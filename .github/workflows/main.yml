@@ -76,6 +76,10 @@ jobs:
           port: ${{ secrets.EC2_PORT }}
           key: ${{ secrets.EC2_KEY }}
           script: |
+            source ~/.bashrc
+            source ~/.nvm/nvm.sh || true # if using nvm
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.TARGET_DIR }}/api
             npm install --production
             pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
