@@ -1,0 +1,81 @@
+name: Build Frontend + Backend and Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout backend repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 🔧 Build backend
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Build backend
+        run: npm run build
+
+      # ⬇️ Clone and build frontend
+      - name: Clone frontend repo
+        run: |
+          git clone https://github.com/Hamiltonwise/signalsai.git frontend
+          cd frontend
+          npm ci
+          npm run build
+          cd ..
+
+      # 📦 Organize deploy structure
+      - name: Prepare bundle
+        run: |
+          mkdir -p bundle/frontend
+          mkdir -p bundle/api
+          cp -r frontend/dist/* bundle/frontend
+          cp -r dist/* bundle/api
+          cp package.json bundle/api
+          cp -r ecosystem.config.js bundle/api || true
+
+      # 🧹 Clean EC2 target dir
+      - name: Clean remote target dir
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          port: ${{ secrets.EC2_PORT }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            rm -rf ${{ secrets.TARGET_DIR }}/*
+            mkdir -p ${{ secrets.TARGET_DIR }}
+
+      # 📤 Upload to EC2
+      - name: Upload bundle to EC2
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          port: ${{ secrets.EC2_PORT }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "bundle/**"
+          target: ${{ secrets.TARGET_DIR }}
+          strip_components: 1
+
+      # 🚀 Start or reload backend with PM2
+      - name: Start/Reload PM2 on EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          port: ${{ secrets.EC2_PORT }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            cd ${{ secrets.TARGET_DIR }}/api
+            npm install --production
+            pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
