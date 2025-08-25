@@ -12,19 +12,24 @@ jobs:
       - name: Checkout backend repo
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 🔧 Build backend
+      # ✅ Inject .env file from GitHub Secrets
+      - name: Create .env file
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env
+
+      # 📦 Build backend
       - name: Install backend dependencies
         run: npm ci
 
       - name: Build backend
         run: npm run build
 
-      # ⬇️ Clone and build frontend
+      # 🔁 Clone and build frontend
       - name: Clone frontend repo
         run: |
           git clone https://github.com/Hamiltonwise/signalsai.git frontend
@@ -33,17 +38,24 @@ jobs:
           npm run build
           cd ..
 
-      # 📦 Organize deploy structure
-      - name: Prepare bundle
+      # 🧩 Move frontend build into backend/public
+      - name: Move frontend build into backend
         run: |
-          mkdir -p bundle/frontend
-          mkdir -p bundle/api
-          cp -r frontend/dist/* bundle/frontend
-          cp -r dist/* bundle/api
-          cp package.json bundle/api
-          cp -r ecosystem.config.js bundle/api || true
+          rm -rf public || true
+          mkdir -p public
+          cp -r frontend/dist/* public/
 
-      # 🧹 Clean EC2 target dir
+      # 📦 Prepare deployment bundle
+      - name: Prepare deploy bundle
+        run: |
+          mkdir -p bundle
+          cp -r dist bundle/
+          cp -r public bundle/
+          cp -r ecosystem.config.js bundle/
+          cp package*.json bundle/
+          cp .env bundle/    # <-- include env file
+
+      # 🧹 Clean EC2 target directory
       - name: Clean remote target dir
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -53,33 +65,4 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             rm -rf ${{ secrets.TARGET_DIR }}/*
-            mkdir -p ${{ secrets.TARGET_DIR }}
-
-      # 📤 Upload to EC2
-      - name: Upload bundle to EC2
-        uses: appleboy/scp-action@v0.1.5
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          port: ${{ secrets.EC2_PORT }}
-          key: ${{ secrets.EC2_KEY }}
-          source: "bundle/**"
-          target: ${{ secrets.TARGET_DIR }}
-          strip_components: 1
-
-      # 🚀 Start or reload backend with PM2
-      - name: Start/Reload PM2 on EC2
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          port: ${{ secrets.EC2_PORT }}
-          key: ${{ secrets.EC2_KEY }}
-          script: |
-            source ~/.bashrc
-            source ~/.nvm/nvm.sh || true # if using nvm
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            cd ${{ secrets.TARGET_DIR }}/api
-            npm install --production
-            pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
+            mkdir -p ${{ secrets.TARGET_DIR }_
