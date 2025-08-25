@@ -65,4 +65,30 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             rm -rf ${{ secrets.TARGET_DIR }}/*
-            mkdir -p ${{ secrets.TARGET_DIR }_
+            mkdir -p ${{ secrets.TARGET_DIR }}
+
+      # 🚀 Upload backend with frontend included
+      - name: Upload bundle to EC2
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          port: ${{ secrets.EC2_PORT }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "bundle/**"
+          target: ${{ secrets.TARGET_DIR }}
+          strip_components: 1
+
+      # 🔁 Restart Node app with PM2
+      - name: Start/Reload PM2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          port: ${{ secrets.EC2_PORT }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            source ~/.bashrc
+            cd ${{ secrets.TARGET_DIR }}
+            npm install --production
+            pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
