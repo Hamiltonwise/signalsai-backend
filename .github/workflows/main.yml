@@ -22,6 +22,11 @@ jobs:
         run: |
           echo "${{ secrets.ENV_FILE }}" > .env
 
+      # ✅ Create Google service account key file
+      - name: Create signals-google-key.json file
+        run: |
+          echo '${{ secrets.SIGNALS_GOOGLE_KEY }}' > signals-google-key.json
+
       # 📦 Build backend
       - name: Install backend dependencies
         run: npm ci
@@ -53,7 +58,8 @@ jobs:
           cp -r public bundle/
           cp -r ecosystem.config.js bundle/
           cp package*.json bundle/
-          cp .env bundle/    # <-- include env file
+          cp .env bundle/                    # <-- include env file
+          cp signals-google-key.json bundle/ # <-- include google key file
 
       # 🧹 Clean EC2 target directory
       - name: Clean remote target dir
