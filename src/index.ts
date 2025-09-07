@@ -4,15 +4,21 @@ import path from "path";
 
 import { Router } from "express";
 
+import ga4Routes from "./routes/ga4";
+import gscRoutes from "./routes/gsc";
+
 const app = express();
 const port = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === "production";
 const router = Router();
-app.use(router);
 
-router.get("/api/hello", (req, res) => {
-  res.send("hello world");
-});
+// Add JSON body parser middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use(router);
+app.use("/api/ga4", ga4Routes);
+app.use("/api/gsc", gscRoutes);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));
