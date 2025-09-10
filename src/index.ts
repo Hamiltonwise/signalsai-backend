@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import path from "path";
@@ -6,6 +9,8 @@ import { Router } from "express";
 
 import ga4Routes from "./routes/ga4";
 import gscRoutes from "./routes/gsc";
+import googleAuthRoutes from "./routes/googleauth";
+import gbpRoutes from "./routes/gbp";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -19,6 +24,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(router);
 app.use("/api/ga4", ga4Routes);
 app.use("/api/gsc", gscRoutes);
+app.use("/api/auth", googleAuthRoutes);
+app.use("/api/gbp", gbpRoutes);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));

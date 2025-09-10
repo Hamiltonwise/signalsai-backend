@@ -1,17 +1,12 @@
 import express from "express";
 import { google } from "googleapis";
-import path from "path";
+import { createGA4Auth } from "../auth/oauth2Helper";
 
 const ga4Routes = express.Router();
 
-const KEY_FILE = path.resolve(__dirname, "../../signals-google-key.json");
-
-// Reusable authentication helper
+// Reusable authentication helper using OAuth2
 const createGoogleAuth = () => {
-  return new google.auth.GoogleAuth({
-    keyFile: KEY_FILE,
-    scopes: ["https://www.googleapis.com/auth/analytics.readonly"],
-  });
+  return createGA4Auth();
 };
 
 // Reusable analytics data client helper
@@ -347,7 +342,7 @@ const calculateTrendScore = (currentData: any, previousData: any) => {
 };
 
 // Main endpoint to get key data by GA4 property ID
-ga4Routes.post("/getKeyDataByPropertyId", async (req, res) => {
+ga4Routes.post("/getKeyData", async (req, res) => {
   try {
     const propertyId = req.body.propertyId;
 

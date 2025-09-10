@@ -1,17 +1,12 @@
 import express from "express";
 import { google } from "googleapis";
-import path from "path";
+import { createGSCAuth } from "../auth/oauth2Helper";
 
 const gscRoutes = express.Router();
 
-const KEY_FILE = path.resolve(__dirname, "../../signals-google-key.json");
-
-// Reusable authentication helper
+// Reusable authentication helper using OAuth2
 const createGoogleAuth = () => {
-  return new google.auth.GoogleAuth({
-    keyFile: KEY_FILE,
-    scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
-  });
+  return createGSCAuth();
 };
 
 // Reusable search console client helper
@@ -176,7 +171,7 @@ const calculateTrendScore = (currentData: any, previousData: any) => {
   return Math.round(trendScore * 100) / 100; // Round to 2 decimal places
 };
 
-gscRoutes.post("/getKeyDataByDomainProperty", async (req, res) => {
+gscRoutes.post("/getKeyData", async (req, res) => {
   try {
     const domainProperty = req.body.domainProperty;
 
