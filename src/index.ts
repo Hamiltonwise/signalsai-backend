@@ -11,6 +11,12 @@ import ga4Routes from "./routes/ga4";
 import gscRoutes from "./routes/gsc";
 import googleAuthRoutes from "./routes/googleauth";
 import gbpRoutes from "./routes/gbp";
+import {
+  testConnection,
+  healthCheck,
+  closeConnection,
+} from "./database/connection";
+import clarityRoutes from "./routes/clarity";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -21,11 +27,18 @@ const router = Router();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Database health check endpoint
+app.get("/api/health/db", async (req, res) => {
+  const health = await healthCheck();
+  res.status(health.status === "healthy" ? 200 : 500).json(health);
+});
+
 app.use(router);
 app.use("/api/ga4", ga4Routes);
 app.use("/api/gsc", gscRoutes);
 app.use("/api/auth", googleAuthRoutes);
 app.use("/api/gbp", gbpRoutes);
+app.use("/api/clarity", clarityRoutes);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));
@@ -44,10 +57,39 @@ if (isProd) {
   );
 }
 
-app.listen(port, () => {
-  console.log(
-    `Server running in ${
-      isProd ? "production" : "development"
-    } mode at http://localhost:${port}`
-  );
+// Initialize database connection and start server
+const startServer = async () => {
+  try {
+    // Test database connection on startup
+    await testConnection();
+
+    app.listen(port, () => {
+      console.log(
+        `🚀 Server running in ${
+          isProd ? "production" : "development"
+        } mode at http://localhost:${port}`
+      );
+      console.log(
+        `📊 Database health check: http://localhost:${port}/api/health/db`
+      );
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
+};
+
+// Graceful shutdown
+process.on("SIGINT", async () => {
+  console.log("\n🛑 Shutting down server...");
+  await closeConnection();
+  process.exit(0);
 });
+
+process.on("SIGTERM", async () => {
+  console.log("\n🛑 Shutting down server...");
+  await closeConnection();
+  process.exit(0);
+});
+
+startServer();

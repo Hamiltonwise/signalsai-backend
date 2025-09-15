@@ -5,13 +5,18 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "db:migrate": "knex migrate:latest",
+    "db:rollback": "knex migrate:rollback",
+    "db:seed": "knex seed:run",
+    "db:make-migration": "knex migrate:make",
+    "db:make-seed": "knex seed:make"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
-  "dependencies": {  
+  "dependencies": {
     "@googleapis/businessprofileperformance": "^3.0.1",
     "@googleapis/mybusinessaccountmanagement": "^5.0.1",
     "@googleapis/mybusinessbusinesscalls": "^6.0.1",
@@ -23,6 +28,8 @@
     "express": "^5.1.0",
     "googleapis": "^159.0.0",
     "http-proxy-middleware": "^3.0.5",
+    "knex": "^3.1.0",
+    "mysql2": "^3.14.5",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.2"
