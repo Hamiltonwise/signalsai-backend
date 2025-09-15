@@ -17,6 +17,7 @@ import {
   closeConnection,
 } from "./database/connection";
 import clarityRoutes from "./routes/clarity";
+import mondayRoutes from "./routes/monday";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -39,6 +40,7 @@ app.use("/api/gsc", gscRoutes);
 app.use("/api/auth", googleAuthRoutes);
 app.use("/api/gbp", gbpRoutes);
 app.use("/api/clarity", clarityRoutes);
+app.use("/api/monday", mondayRoutes);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));
