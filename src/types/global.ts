@@ -6,6 +6,7 @@ export interface DomainMapping {
   gbp_accountId?: string;
   gbp_locationId?: string | string[];
   clarity_projectId?: string;
+  clarity_apiToken?: string;
   completed?: boolean;
 }
 
