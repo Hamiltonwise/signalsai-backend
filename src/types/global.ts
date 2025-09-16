@@ -4,8 +4,9 @@ export interface DomainMapping {
   gsc_domainkey: string;
   ga4_propertyId: string;
   gbp_accountId?: string;
-  gbp_locationId?: string;
+  gbp_locationId?: string | string[];
   clarity_projectId?: string;
+  completed?: boolean;
 }
 
 // Monday.com type definitions
