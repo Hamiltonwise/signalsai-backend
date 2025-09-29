@@ -2,18 +2,18 @@ import type { DomainMapping } from "../types/global";
 
 export const domainMappings: DomainMapping[] = [
   // Artful
-  // {
-  //   displayName: "Artful Orthodontics", //
-  //   domain: "artfulorthodontics.com", //  domain identifier -- will be used by front-end for filtered fetching
-  //   gsc_domainkey: "sc-domain:artfulorthodontics.com", // google search console -- ids retrievable via its api diag routes
-  //   ga4_propertyId: "381278947", // google analytics -- ids retrievable via its api diag routes
-  //   gbp_accountId: "114810842911950437772", // google business profile -- constant; relates to parent info@hamiltonwise account
-  //   gbp_locationId: "10282052848626216313", // google business profile -- retrievable via its api diag routes
-  //   clarity_projectId: "r9qqoq5h01", // microsoft clarity identifier --
-  //   clarity_apiToken:
-  //     "eyJhbGciOiJSUzI1NiIsImtpZCI6IjQ4M0FCMDhFNUYwRDMxNjdEOTRFMTQ3M0FEQTk2RTcyRDkwRUYwRkYiLCJ0eXAiOiJKV1QifQ.eyJqdGkiOiIxZGM5NGI5YS1lNmE3LTRlNTUtOTk0MC05OTZiNzI0YjUwNWUiLCJzdWIiOiIyNzY5NjA0Mzc4OTM1MTIxIiwic2NvcGUiOiJEYXRhLkV4cG9ydCIsIm5iZiI6MTc1ODAxNTU1OCwiZXhwIjo0OTExNjE1NTU4LCJpYXQiOjE3NTgwMTU1NTgsImlzcyI6ImNsYXJpdHkiLCJhdWQiOiJjbGFyaXR5LmRhdGEtZXhwb3J0ZXIifQ.NkE_Wtcy-odxLSBW4JyaGLqJmJzqyVfmz1mhTiVo1alfZdRskQrezUb3tZ-WgIarhF7dRt2TWuKQvePOKQD2mMOUmpDt5wXi0gJLBR8HxOJCOqu7b2Vhxy_85704I9HOCcs3gmj4Ar-Ffm1WnuGsJOIiYNRPD0I-coVkuz7k15-XgzyEQDj5PY7tkv3Z6QTG-dkNxxGJqj0zQTgRFiUuioEuouzWO_3blENKCsd7HT-kS5hyo7fJOJTRTnsukpSy2bcMfT0HJXfIGnqjnE-RsD7xQcTXsrHuqkovtPixCFxpZH-co1wx2TPDZ1JH3J1IQnF3ZOqiBalbNtv9AN39hA",
-  //   completed: true,
-  // },
+  {
+    displayName: "Artful Orthodontics", //
+    domain: "artfulorthodontics.com", //  domain identifier -- will be used by front-end for filtered fetching
+    gsc_domainkey: "sc-domain:artfulorthodontics.com", // google search console -- ids retrievable via its api diag routes
+    ga4_propertyId: "381278947", // google analytics -- ids retrievable via its api diag routes
+    gbp_accountId: "114810842911950437772", // google business profile -- constant; relates to parent info@hamiltonwise account
+    gbp_locationId: "10282052848626216313", // google business profile -- retrievable via its api diag routes
+    clarity_projectId: "r9qqoq5h01", // microsoft clarity identifier --
+    clarity_apiToken:
+      "eyJhbGciOiJSUzI1NiIsImtpZCI6IjQ4M0FCMDhFNUYwRDMxNjdEOTRFMTQ3M0FEQTk2RTcyRDkwRUYwRkYiLCJ0eXAiOiJKV1QifQ.eyJqdGkiOiIxZGM5NGI5YS1lNmE3LTRlNTUtOTk0MC05OTZiNzI0YjUwNWUiLCJzdWIiOiIyNzY5NjA0Mzc4OTM1MTIxIiwic2NvcGUiOiJEYXRhLkV4cG9ydCIsIm5iZiI6MTc1ODAxNTU1OCwiZXhwIjo0OTExNjE1NTU4LCJpYXQiOjE3NTgwMTU1NTgsImlzcyI6ImNsYXJpdHkiLCJhdWQiOiJjbGFyaXR5LmRhdGEtZXhwb3J0ZXIifQ.NkE_Wtcy-odxLSBW4JyaGLqJmJzqyVfmz1mhTiVo1alfZdRskQrezUb3tZ-WgIarhF7dRt2TWuKQvePOKQD2mMOUmpDt5wXi0gJLBR8HxOJCOqu7b2Vhxy_85704I9HOCcs3gmj4Ar-Ffm1WnuGsJOIiYNRPD0I-coVkuz7k15-XgzyEQDj5PY7tkv3Z6QTG-dkNxxGJqj0zQTgRFiUuioEuouzWO_3blENKCsd7HT-kS5hyo7fJOJTRTnsukpSy2bcMfT0HJXfIGnqjnE-RsD7xQcTXsrHuqkovtPixCFxpZH-co1wx2TPDZ1JH3J1IQnF3ZOqiBalbNtv9AN39hA",
+    completed: true,
+  },
 
   // Garrison
   {
