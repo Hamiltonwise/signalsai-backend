@@ -180,6 +180,7 @@ pmsRoutes.post("/upload", upload.single("csvFile"), async (req, res) => {
       time_elapsed: 0,
       status: "pending",
       response_log: null,
+      domain: "artfulorthodontics.com",
     });
 
     if (!jobId) {
@@ -545,8 +546,12 @@ pmsRoutes.get("/keyData", async (req, res) => {
  */
 pmsRoutes.get("/jobs", async (req, res) => {
   try {
-    const { page: pageParam, status: statusParam, isApproved, domain } =
-      req.query;
+    const {
+      page: pageParam,
+      status: statusParam,
+      isApproved,
+      domain,
+    } = req.query;
 
     const page = Math.max(parseInt(String(pageParam || "1"), 10) || 1, 1);
     const statuses: PmsStatus[] = Array.isArray(statusParam)
@@ -653,7 +658,14 @@ pmsRoutes.patch("/jobs/:id/approval", async (req, res) => {
     }
 
     const existingJob = await db("pms_jobs")
-      .select("id", "time_elapsed", "status", "response_log", "timestamp", "is_approved")
+      .select(
+        "id",
+        "time_elapsed",
+        "status",
+        "response_log",
+        "timestamp",
+        "is_approved"
+      )
       .where({ id: jobId })
       .first();
 
@@ -703,12 +715,17 @@ pmsRoutes.patch("/jobs/:id/approval", async (req, res) => {
       updatePayload.status = "approved";
     }
 
-    await db("pms_jobs")
-      .where({ id: jobId })
-      .update(updatePayload);
+    await db("pms_jobs").where({ id: jobId }).update(updatePayload);
 
     const updatedJob = await db("pms_jobs")
-      .select("id", "time_elapsed", "status", "response_log", "timestamp", "is_approved")
+      .select(
+        "id",
+        "time_elapsed",
+        "status",
+        "response_log",
+        "timestamp",
+        "is_approved"
+      )
       .where({ id: jobId })
       .first();
 
@@ -724,10 +741,15 @@ pmsRoutes.patch("/jobs/:id/approval", async (req, res) => {
           is_approved: updatedJob?.is_approved === 1,
         },
       },
-      message: `PMS job ${nextApprovalValue ? "approved" : "updated"} successfully`,
+      message: `PMS job ${
+        nextApprovalValue ? "approved" : "updated"
+      } successfully`,
     });
   } catch (error: any) {
-    console.error("❌ Error in /pms/jobs/:id/approval:", error?.message || error);
+    console.error(
+      "❌ Error in /pms/jobs/:id/approval:",
+      error?.message || error
+    );
     return res.status(500).json({
       success: false,
       error: `Failed to update PMS job approval: ${error.message}`,
@@ -811,7 +833,9 @@ pmsRoutes.patch("/jobs/:id/client-approval", async (req, res) => {
             updatedJob?.is_client_approved === true,
         },
       },
-      message: `PMS job client approval ${clientApproval ? "confirmed" : "reset"} successfully`,
+      message: `PMS job client approval ${
+        clientApproval ? "confirmed" : "reset"
+      } successfully`,
     });
   } catch (error: any) {
     console.error(
@@ -891,9 +915,7 @@ pmsRoutes.patch("/jobs/:id/response", async (req, res) => {
     }
 
     const responseValue =
-      normalizedResponse === null
-        ? null
-        : JSON.stringify(normalizedResponse);
+      normalizedResponse === null ? null : JSON.stringify(normalizedResponse);
 
     await db("pms_jobs")
       .where({ id: jobId })
@@ -930,7 +952,10 @@ pmsRoutes.patch("/jobs/:id/response", async (req, res) => {
       message: "PMS job response log updated successfully",
     });
   } catch (error: any) {
-    console.error("❌ Error in /pms/jobs/:id/response:", error?.message || error);
+    console.error(
+      "❌ Error in /pms/jobs/:id/response:",
+      error?.message || error
+    );
     return res.status(500).json({
       success: false,
       error: `Failed to update PMS job response: ${error.message}`,
