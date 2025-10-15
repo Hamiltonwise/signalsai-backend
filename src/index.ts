@@ -20,6 +20,8 @@ import clarityRoutes from "./routes/clarity";
 import mondayRoutes from "./routes/monday";
 import authRoutes from "./routes/auth";
 import pmsRoutes from "./routes/pms";
+import onboardingRoutes from "./routes/onboarding";
+import ragRoutes from "./routes/rag";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -39,12 +41,13 @@ app.get("/api/health/db", async (req, res) => {
 app.use(router);
 app.use("/api/ga4", ga4Routes);
 app.use("/api/gsc", gscRoutes);
-app.use("/api/auth", googleAuthRoutes);
 app.use("/api/gbp", gbpRoutes);
 app.use("/api/clarity", clarityRoutes);
 app.use("/api/monday", mondayRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/pms", pmsRoutes);
+app.use("/api/onboarding", onboardingRoutes);
+app.use("/api/rag", ragRoutes);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));

@@ -309,7 +309,7 @@ clarityRoutes.post("/getAIReadyData", async (req, res) => {
     const ranges = getMonthRanges();
 
     const rows = await db("clarity_data_store")
-      .where("domain", clientId)
+      .where("domain", "artfulorthodontics.com")
       .andWhereBetween("report_date", [
         ranges.currMonth.start,
         ranges.currMonth.end,

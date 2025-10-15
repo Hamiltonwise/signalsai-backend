@@ -1,24 +1,29 @@
 import express from "express";
 import { google } from "googleapis";
-import { createGA4Auth } from "../auth/oauth2Helper";
+import {
+  tokenRefreshMiddleware,
+  AuthenticatedRequest,
+} from "../middleware/tokenRefresh";
 
 const ga4Routes = express.Router();
 
-// Reusable authentication helper using OAuth2
-const createGoogleAuth = () => {
-  return createGA4Auth();
-};
+// Apply token refresh middleware to all GA4 routes
+ga4Routes.use(tokenRefreshMiddleware);
 
 // Reusable analytics data client helper
-const createAnalyticsDataClient = () => {
-  const auth = createGoogleAuth();
-  return google.analyticsdata({ version: "v1beta", auth });
+const createAnalyticsDataClient = (req: AuthenticatedRequest) => {
+  if (!req.oauth2Client) {
+    throw new Error("OAuth2 client not initialized");
+  }
+  return google.analyticsdata({ version: "v1beta", auth: req.oauth2Client });
 };
 
 // Reusable analytics admin client helper (for properties listing)
-const createAnalyticsAdminClient = () => {
-  const auth = createGoogleAuth();
-  return google.analyticsadmin({ version: "v1beta", auth });
+const createAnalyticsAdminClient = (req: AuthenticatedRequest) => {
+  if (!req.oauth2Client) {
+    throw new Error("OAuth2 client not initialized");
+  }
+  return google.analyticsadmin({ version: "v1beta", auth: req.oauth2Client });
 };
 
 // Reusable error handler
@@ -342,7 +347,7 @@ const calculateTrendScore = (currentData: any, previousData: any) => {
 };
 
 // Main endpoint to get key data by GA4 property ID
-ga4Routes.post("/getKeyData", async (req, res) => {
+ga4Routes.post("/getKeyData", async (req: AuthenticatedRequest, res) => {
   try {
     const propertyId = req.body.propertyId;
 
@@ -358,7 +363,7 @@ ga4Routes.post("/getKeyData", async (req, res) => {
       ? propertyId
       : `properties/${propertyId}`;
 
-    const analyticsdata = createAnalyticsDataClient();
+    const analyticsdata = createAnalyticsDataClient(req);
     const dateRanges = getDateRanges();
 
     // Fetch data for both months
@@ -401,9 +406,9 @@ ga4Routes.post("/getKeyData", async (req, res) => {
 });
 
 // Diagnosis route to get available GA4 properties
-ga4Routes.get("/diag/properties", async (req, res) => {
+ga4Routes.get("/diag/properties", async (req: AuthenticatedRequest, res) => {
   try {
-    const analyticsadmin = createAnalyticsAdminClient();
+    const analyticsadmin = createAnalyticsAdminClient(req);
     const response = await analyticsadmin.accounts.list();
 
     if (!response.data.accounts) {
@@ -448,9 +453,9 @@ ga4Routes.get("/diag/properties", async (req, res) => {
 });
 
 // Simple endpoint to get available GA4 properties with domain names
-ga4Routes.get("/properties/get", async (req, res) => {
+ga4Routes.get("/properties/get", async (req: AuthenticatedRequest, res) => {
   try {
-    const analyticsadmin = createAnalyticsAdminClient();
+    const analyticsadmin = createAnalyticsAdminClient(req);
     const response = await analyticsadmin.accounts.list();
 
     if (!response.data.accounts) {
@@ -550,7 +555,7 @@ ga4Routes.get("/properties/get", async (req, res) => {
 });
 
 // Comprehensive AI-ready data endpoint for GA4
-ga4Routes.post("/getAIReadyData", async (req, res) => {
+ga4Routes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
   try {
     const propertyId = req.body.propertyId;
 
@@ -566,7 +571,7 @@ ga4Routes.post("/getAIReadyData", async (req, res) => {
       ? propertyId
       : `properties/${propertyId}`;
 
-    const analyticsdata = createAnalyticsDataClient();
+    const analyticsdata = createAnalyticsDataClient(req);
     const dateRanges = getDateRanges();
     const { startDate, endDate } = dateRanges.currentMonth;
 

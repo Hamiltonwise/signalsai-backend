@@ -5,16 +5,23 @@ import { mybusinessbusinessinformation_v1 } from "@googleapis/mybusinessbusiness
 // Calls client is optional — only import if you installed it
 // import { mybusinessbusinesscalls_v1 } from "@googleapis/mybusinessbusinesscalls";
 import { businessprofileperformance_v1 } from "@googleapis/businessprofileperformance";
-import { createGSCAuth as createGBPAuth } from "../auth/oauth2Helper";
+import {
+  tokenRefreshMiddleware,
+  AuthenticatedRequest,
+} from "../middleware/tokenRefresh";
 
 const gbpRoutes = express.Router();
 
-/** OAuth helper */
-const createGoogleAuth = () => createGBPAuth();
+// Apply token refresh middleware to all GBP routes
+gbpRoutes.use(tokenRefreshMiddleware);
 
 /** API clients (no legacy google.mybusiness calls) */
-const createClients = () => {
-  const auth = createGoogleAuth();
+const createClients = (req: AuthenticatedRequest) => {
+  if (!req.oauth2Client) {
+    throw new Error("OAuth2 client not initialized");
+  }
+
+  const auth = req.oauth2Client;
 
   const acctMgmt =
     new mybusinessaccountmanagement_v1.Mybusinessaccountmanagement({ auth });
@@ -26,7 +33,7 @@ const createClients = () => {
     auth,
   });
 
-  // Optional calls client; comment out entirely if you didn’t install the package
+  // Optional calls client; comment out entirely if you didn't install the package
   // const calls =
   //   new mybusinessbusinesscalls_v1.Mybusinessbusinesscalls({ auth });
 
@@ -239,7 +246,7 @@ const calculateGBPTrendScore = (currentData: any, previousData: any) => {
  * - trendScore: number (weighted: newReviews 50%, avgRating 30%, callClicks 20%)
  * - Falls back from Business Calls API to Performance CALL_CLICKS if needed
  */
-gbpRoutes.post("/getKeyData", async (req, res) => {
+gbpRoutes.post("/getKeyData", async (req: AuthenticatedRequest, res) => {
   try {
     const { accountId, locationId } = req.body || {};
     if (!accountId || !locationId) {
@@ -248,7 +255,7 @@ gbpRoutes.post("/getKeyData", async (req, res) => {
         message: "Missing accountId or locationId",
       });
     }
-    const { auth, perf /* , calls */ } = createClients();
+    const { auth, perf /* , calls */ } = createClients(req);
     const { prevMonth, prevPrevMonth } = getMonthlyRanges();
 
     // Reviews (prev & prev-prev)
@@ -346,7 +353,7 @@ gbpRoutes.post("/getKeyData", async (req, res) => {
  * Body: { accountId: string, locationId: string, startDate?: "YYYY-MM-DD", endDate?: "YYYY-MM-DD" }
  * - Always includes Performance series (incl. CALL_CLICKS).
  */
-gbpRoutes.post("/getAIReadyData", async (req, res) => {
+gbpRoutes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
   try {
     const { accountId, locationId } = req.body || {};
     if (!accountId || !locationId) {
@@ -355,7 +362,7 @@ gbpRoutes.post("/getAIReadyData", async (req, res) => {
         message: "Missing accountId or locationId",
       });
     }
-    const { auth, perf } = createClients();
+    const { auth, perf } = createClients(req);
 
     const { prevMonth } = getMonthlyRanges();
     const startDate = req.body.startDate || prevMonth.startDate;
@@ -365,10 +372,6 @@ gbpRoutes.post("/getAIReadyData", async (req, res) => {
       "CALL_CLICKS",
       "WEBSITE_CLICKS",
       "BUSINESS_DIRECTION_REQUESTS",
-      "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH",
-      "BUSINESS_IMPRESSIONS_MOBILE_SEARCH",
-      "BUSINESS_IMPRESSIONS_DESKTOP_MAPS",
-      "BUSINESS_IMPRESSIONS_MOBILE_MAPS",
     ];
 
     const timeSeries = await fetchPerfTimeSeries(
@@ -416,9 +419,12 @@ gbpRoutes.post("/getAIReadyData", async (req, res) => {
 });
 
 /** Diagnosis (unchanged) */
-gbpRoutes.get("/diag/accounts", async (_req, res) => {
+gbpRoutes.get("/diag/accounts", async (req: AuthenticatedRequest, res) => {
   try {
-    const auth = createGBPAuth();
+    if (!req.oauth2Client) {
+      throw new Error("OAuth2 client not initialized");
+    }
+    const auth = req.oauth2Client;
     const acctMgmt =
       new mybusinessaccountmanagement_v1.Mybusinessaccountmanagement({ auth });
     const { data } = await acctMgmt.accounts.list({});
@@ -432,9 +438,12 @@ gbpRoutes.get("/diag/accounts", async (_req, res) => {
   }
 });
 
-gbpRoutes.get("/diag/locations", async (req, res) => {
+gbpRoutes.get("/diag/locations", async (req: AuthenticatedRequest, res) => {
   try {
-    const auth = createGBPAuth();
+    if (!req.oauth2Client) {
+      throw new Error("OAuth2 client not initialized");
+    }
+    const auth = req.oauth2Client;
     const acctMgmt =
       new mybusinessaccountmanagement_v1.Mybusinessaccountmanagement({ auth });
     const bizInfo =

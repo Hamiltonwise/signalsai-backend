@@ -1,18 +1,21 @@
 import express from "express";
 import { google } from "googleapis";
-import { createGSCAuth } from "../auth/oauth2Helper";
+import {
+  tokenRefreshMiddleware,
+  AuthenticatedRequest,
+} from "../middleware/tokenRefresh";
 
 const gscRoutes = express.Router();
 
-// Reusable authentication helper using OAuth2
-const createGoogleAuth = () => {
-  return createGSCAuth();
-};
+// Apply token refresh middleware to all GSC routes
+gscRoutes.use(tokenRefreshMiddleware);
 
 // Reusable search console client helper
-const createSearchConsoleClient = () => {
-  const auth = createGoogleAuth();
-  return google.searchconsole({ version: "v1", auth });
+const createSearchConsoleClient = (req: AuthenticatedRequest) => {
+  if (!req.oauth2Client) {
+    throw new Error("OAuth2 client not initialized");
+  }
+  return google.searchconsole({ version: "v1", auth: req.oauth2Client });
 };
 
 // Reusable error handler
@@ -171,7 +174,7 @@ const calculateTrendScore = (currentData: any, previousData: any) => {
   return Math.round(trendScore * 100) / 100; // Round to 2 decimal places
 };
 
-gscRoutes.post("/getKeyData", async (req, res) => {
+gscRoutes.post("/getKeyData", async (req: AuthenticatedRequest, res) => {
   try {
     const domainProperty = req.body.domainProperty;
 
@@ -182,7 +185,7 @@ gscRoutes.post("/getKeyData", async (req, res) => {
       });
     }
 
-    const searchconsole = createSearchConsoleClient();
+    const searchconsole = createSearchConsoleClient(req);
     const dateRanges = getDateRanges();
 
     // Fetch data for both months
@@ -224,7 +227,7 @@ gscRoutes.post("/getKeyData", async (req, res) => {
   }
 });
 
-gscRoutes.post("/getAIReadyData", async (req, res) => {
+gscRoutes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
   try {
     const domainProperty = req.body.domainProperty;
 
@@ -235,7 +238,7 @@ gscRoutes.post("/getAIReadyData", async (req, res) => {
       });
     }
 
-    const searchconsole = createSearchConsoleClient();
+    const searchconsole = createSearchConsoleClient(req);
     const dateRanges = getDateRanges();
     const { startDate, endDate } = dateRanges.currentMonth;
 
@@ -296,9 +299,9 @@ gscRoutes.post("/getAIReadyData", async (req, res) => {
 });
 
 // Diagnosis routes
-gscRoutes.get("/diag/sites", async (req, res) => {
+gscRoutes.get("/diag/sites", async (req: AuthenticatedRequest, res) => {
   try {
-    const searchconsole = createSearchConsoleClient();
+    const searchconsole = createSearchConsoleClient(req);
     const { data } = await searchconsole.sites.list({});
 
     // data.siteEntry: [{ siteUrl, permissionLevel }, ...]
@@ -313,9 +316,9 @@ gscRoutes.get("/diag/sites", async (req, res) => {
   }
 });
 
-gscRoutes.get("/sites/get", async (req, res) => {
+gscRoutes.get("/sites/get", async (req: AuthenticatedRequest, res) => {
   try {
-    const searchconsole = createSearchConsoleClient();
+    const searchconsole = createSearchConsoleClient(req);
     const { data } = await searchconsole.sites.list({});
 
     // Extract just the siteUrl values as an array of strings

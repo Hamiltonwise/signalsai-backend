@@ -110,6 +110,7 @@ interface CallbackResponse {
   message: string;
   accessToken?: string;
   expiresAt?: Date;
+  googleAccountId?: number; // Added for multi-tenant token refresh
 }
 
 /**
@@ -130,6 +131,9 @@ interface ErrorResponse {
  * Required OAuth scopes for all Google APIs
  */
 const REQUIRED_SCOPES = [
+  "openid", // OpenID Connect - required for user identity
+  "email", // Email access - required for user email
+  "profile", // Profile access - required for user profile info
   "https://www.googleapis.com/auth/analytics.readonly", // GA4
   "https://www.googleapis.com/auth/webmasters.readonly", // GSC
   "https://www.googleapis.com/auth/business.manage", // GBP
@@ -144,7 +148,7 @@ const REQUIRED_ENV_VARS = [
   "GOOGLE_REDIRECT_URI",
   "DB_HOST",
   "DB_USER",
-  "DB_PASS",
+  "DB_PASSWORD",
   "DB_NAME",
 ] as const;
 
@@ -238,9 +242,6 @@ function logRequest(req: Request, res: Response, next: NextFunction): void {
   });
   next();
 }
-
-// Apply logging middleware to all routes
-router.use(logRequest);
 
 // =====================================================================
 // DATABASE OPERATIONS
@@ -416,7 +417,11 @@ async function refreshAccessToken(
  * - scopes: string[] - List of requested OAuth scopes
  * - message: string - Human-readable success message
  */
-router.get("/auth/google", async (req: Request, res: Response) => {
+router.get("/ttim", async (req: Request, res: Response) => {
+  return res.json("hello");
+});
+
+router.get("/google", async (req: Request, res: Response) => {
   try {
     console.log("[AUTH] Generating OAuth authorization URL");
 
@@ -451,6 +456,377 @@ router.get("/auth/google", async (req: Request, res: Response) => {
     return handleError(res, error, "Generate OAuth authorization URL");
   }
 });
+/**
+ * Shared OAuth callback handler function
+ * Processes OAuth callback from Google after user grants permissions
+ *
+ * @param req Express request object
+ * @param res Express response object
+ */
+async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
+  try {
+    const { code, state, error } = req.query;
+
+    console.log("[AUTH] Processing OAuth callback", {
+      hasCode: !!code,
+      hasState: !!state,
+      error: error || "none",
+    });
+
+    // Handle OAuth errors
+    if (error) {
+      console.error("[AUTH] OAuth authorization failed:", error);
+      res.status(400).json({
+        success: false,
+        error: "OAuth authorization failed",
+        message: error as string,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // Validate required parameters
+    if (!code) {
+      res.status(400).json({
+        success: false,
+        error: "Missing authorization code",
+        message: "Authorization code is required to complete OAuth flow",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    validateEnvironmentVariables();
+    const oauth2Client = createOAuth2Client();
+
+    // Exchange authorization code for tokens
+    console.log("[AUTH] Exchanging authorization code for tokens");
+    const { tokens } = await oauth2Client.getToken(code as string);
+
+    // CRITICAL: Set credentials on client BEFORE using it
+    oauth2Client.setCredentials(tokens);
+
+    if (!tokens.refresh_token) {
+      console.warn(
+        "[AUTH] No refresh token received - user may have already authorized"
+      );
+    }
+
+    console.log("[AUTH] OAuth tokens received:", {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      expiryDate: tokens.expiry_date,
+      scopes: tokens.scope,
+      // Log first and last 10 chars for debugging (secure)
+      accessTokenPreview: tokens.access_token
+        ? `${tokens.access_token.substring(
+            0,
+            10
+          )}...${tokens.access_token.substring(
+            tokens.access_token.length - 10
+          )}`
+        : "NONE",
+      accessTokenLength: tokens.access_token?.length || 0,
+    });
+
+    // Verify we have an access token
+    if (!tokens.access_token) {
+      throw new Error("No access token received from Google OAuth");
+    }
+
+    // Fetch user profile from Google using direct fetch (bypasses oauth2Client auth issues)
+    console.log("[AUTH] Fetching user profile from Google");
+    console.log("[AUTH] Using access token:", {
+      preview: `${tokens.access_token.substring(
+        0,
+        10
+      )}...${tokens.access_token.substring(tokens.access_token.length - 10)}`,
+      length: tokens.access_token.length,
+      authHeader: `Bearer ${tokens.access_token.substring(0, 20)}...`,
+    });
+
+    const userInfoResponse = await fetch(
+      "https://www.googleapis.com/oauth2/v2/userinfo",
+      {
+        headers: {
+          Authorization: `Bearer ${tokens.access_token}`,
+        },
+      }
+    );
+
+    if (!userInfoResponse.ok) {
+      const errorText = await userInfoResponse.text();
+      throw new Error(
+        `Failed to fetch user profile: ${userInfoResponse.status} ${userInfoResponse.statusText}. ${errorText}`
+      );
+    }
+
+    const profile = await userInfoResponse.json();
+
+    if (!profile.id || !profile.email) {
+      throw new Error("Invalid user profile received from Google");
+    }
+
+    const googleProfile: GoogleUserProfile = {
+      id: profile.id,
+      email: profile.email,
+      name: profile.name || profile.email.split("@")[0],
+      picture: profile.picture || undefined,
+      verified_email: profile.verified_email || undefined,
+    };
+
+    console.log("[AUTH] Google profile fetched:", {
+      id: googleProfile.id,
+      email: googleProfile.email,
+      name: googleProfile.name,
+      verified: googleProfile.verified_email,
+    });
+
+    // Database transaction for user and account creation/update with proper error handling
+    console.log("[AUTH] Starting database transaction");
+
+    let result;
+    try {
+      result = await db.transaction(async (trx) => {
+        // Create or find user (using transaction context)
+        const existingUser = await trx("users")
+          .where({ email: googleProfile.email.toLowerCase() })
+          .first();
+
+        let user: User;
+        if (existingUser) {
+          console.log(`[AUTH] Found existing user: ${googleProfile.email}`);
+          user = existingUser;
+        } else {
+          const userData = {
+            email: googleProfile.email.toLowerCase(),
+            name: googleProfile.name,
+            created_at: new Date(),
+            updated_at: new Date(),
+          };
+
+          user = (await trx("users").insert(userData).returning("*"))[0];
+          console.log(
+            `[AUTH] Created new user: ${googleProfile.email} (ID: ${user.id})`
+          );
+        }
+
+        // Create or update Google account (using transaction context)
+        const accountData = {
+          user_id: user.id,
+          google_user_id: googleProfile.id,
+          email: googleProfile.email.toLowerCase(),
+          refresh_token: tokens.refresh_token,
+          access_token: tokens.access_token,
+          token_type: tokens.token_type || "Bearer",
+          expiry_date: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+          scopes: tokens.scope || REQUIRED_SCOPES.join(","),
+          updated_at: new Date(),
+        };
+
+        const existingAccount = await trx("google_accounts")
+          .where({
+            google_user_id: googleProfile.id,
+            user_id: user.id,
+          })
+          .first();
+
+        let googleAccount: GoogleAccount;
+        if (existingAccount) {
+          // Update existing account
+          await trx("google_accounts")
+            .where({ id: existingAccount.id })
+            .update(accountData);
+
+          googleAccount = { ...existingAccount, ...accountData };
+          console.log(`[AUTH] Updated Google account for user ${user.id}`);
+        } else {
+          // Create new Google account
+          googleAccount = (
+            await trx("google_accounts")
+              .insert({
+                ...accountData,
+                created_at: new Date(),
+              })
+              .returning("*")
+          )[0];
+
+          console.log(`[AUTH] Created new Google account for user ${user.id}`);
+        }
+
+        return { user, googleAccount };
+      });
+
+      console.log("[AUTH] Database transaction completed successfully");
+    } catch (transactionError: any) {
+      console.error("[AUTH] Database transaction failed:", {
+        error: transactionError.message,
+        code: transactionError.code,
+        errno: transactionError.errno,
+      });
+
+      // If transaction fails, try non-transactional approach as fallback
+      console.log("[AUTH] Attempting fallback non-transactional save...");
+
+      try {
+        // Find or create user without transaction
+        let user = await db("users")
+          .where({ email: googleProfile.email.toLowerCase() })
+          .first();
+
+        if (!user) {
+          const userData = {
+            email: googleProfile.email.toLowerCase(),
+            name: googleProfile.name,
+            created_at: new Date(),
+            updated_at: new Date(),
+          };
+          user = (await db("users").insert(userData).returning("*"))[0];
+        }
+
+        // Find or create Google account without transaction
+        let googleAccount = await db("google_accounts")
+          .where({
+            google_user_id: googleProfile.id,
+            user_id: user.id,
+          })
+          .first();
+
+        const accountData = {
+          user_id: user.id,
+          google_user_id: googleProfile.id,
+          email: googleProfile.email.toLowerCase(),
+          refresh_token: tokens.refresh_token,
+          access_token: tokens.access_token,
+          token_type: tokens.token_type || "Bearer",
+          expiry_date: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+          scopes: tokens.scope || REQUIRED_SCOPES.join(","),
+          updated_at: new Date(),
+        };
+
+        if (googleAccount) {
+          await db("google_accounts")
+            .where({ id: googleAccount.id })
+            .update(accountData);
+          googleAccount = { ...googleAccount, ...accountData };
+        } else {
+          googleAccount = (
+            await db("google_accounts")
+              .insert({
+                ...accountData,
+                created_at: new Date(),
+              })
+              .returning("*")
+          )[0];
+        }
+
+        result = { user, googleAccount };
+        console.log("[AUTH] Fallback non-transactional save completed");
+      } catch (fallbackError) {
+        console.error("[AUTH] Fallback save also failed:", fallbackError);
+        throw transactionError; // Throw original transaction error
+      }
+    }
+
+    const response: CallbackResponse = {
+      success: true,
+      user: result.user,
+      googleAccount: result.googleAccount,
+      message: `OAuth authorization successful for ${googleProfile.email}`,
+      accessToken: tokens.access_token || undefined,
+      expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
+      googleAccountId: result.googleAccount.id, // Added for multi-tenant token refresh
+    };
+
+    console.log(
+      `[AUTH] OAuth flow completed successfully for user: ${googleProfile.email}`
+    );
+
+    // Return HTML that posts message to parent window and closes popup
+    const htmlResponse = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Successful</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    .success-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      margin: 0 0 1rem 0;
+      font-size: 1.75rem;
+    }
+    p {
+      margin: 0;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success-icon">✓</div>
+    <h1>Authentication Successful!</h1>
+    <p>This window will close automatically...</p>
+  </div>
+  <script>
+    // Send success message to parent window
+    // Use "*" as target origin because cross-origin redirects break origin matching
+    // Security is handled by origin validation in the frontend message handler
+    if (window.opener) {
+      window.opener.postMessage(
+        {
+          type: 'GOOGLE_OAUTH_SUCCESS',
+          payload: ${JSON.stringify(response)}
+        },
+        '*'
+      );
+    }
+    
+    // Close popup after a short delay
+    setTimeout(() => {
+      window.close();
+    }, 1500);
+  </script>
+</body>
+</html>`;
+
+    res.setHeader("Content-Type", "text/html");
+    res.send(htmlResponse);
+  } catch (error) {
+    console.error("[AUTH] OAuth callback error:", error);
+    handleError(res, error, "Process OAuth callback");
+  }
+}
+
+/**
+ * GET /callback
+ *
+ * Alternative callback endpoint for Google OAuth (without /google prefix)
+ * This matches Google's redirect URI when configured as /api/auth/callback
+ *
+ * Query Parameters:
+ * - code: string - Authorization code from Google OAuth
+ * - state: string - State parameter for CSRF validation
+ * - error: string - Error message if authorization failed
+ *
+ * Response: Same as /auth/google/callback
+ */
+router.get("/callback", handleOAuthCallback);
 
 /**
  * GET /auth/google/callback
@@ -475,177 +851,7 @@ router.get("/auth/google", async (req: Request, res: Response) => {
  * - accessToken: string (optional, for immediate use)
  * - expiresAt: Date (optional, token expiration)
  */
-router.get("/auth/google/callback", async (req: Request, res: Response) => {
-  try {
-    const { code, state, error } = req.query;
-
-    console.log("[AUTH] Processing OAuth callback", {
-      hasCode: !!code,
-      hasState: !!state,
-      error: error || "none",
-    });
-
-    // Handle OAuth errors
-    if (error) {
-      console.error("[AUTH] OAuth authorization failed:", error);
-      return res.status(400).json({
-        success: false,
-        error: "OAuth authorization failed",
-        message: error as string,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // Validate required parameters
-    if (!code) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing authorization code",
-        message: "Authorization code is required to complete OAuth flow",
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    validateEnvironmentVariables();
-    const oauth2Client = createOAuth2Client();
-
-    // Exchange authorization code for tokens
-    console.log("[AUTH] Exchanging authorization code for tokens");
-    const { tokens } = await oauth2Client.getToken(code as string);
-
-    if (!tokens.refresh_token) {
-      console.warn(
-        "[AUTH] No refresh token received - user may have already authorized"
-      );
-    }
-
-    console.log("[AUTH] OAuth tokens received:", {
-      hasAccessToken: !!tokens.access_token,
-      hasRefreshToken: !!tokens.refresh_token,
-      expiryDate: tokens.expiry_date,
-      scopes: tokens.scope,
-    });
-
-    // Set credentials for profile fetch
-    oauth2Client.setCredentials(tokens);
-
-    // Fetch user profile from Google
-    console.log("[AUTH] Fetching user profile from Google");
-    const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
-    const { data: profile } = await oauth2.userinfo.get();
-
-    if (!profile.id || !profile.email) {
-      throw new Error("Invalid user profile received from Google");
-    }
-
-    const googleProfile: GoogleUserProfile = {
-      id: profile.id,
-      email: profile.email,
-      name: profile.name || profile.email.split("@")[0],
-      picture: profile.picture || undefined,
-      verified_email: profile.verified_email || undefined,
-    };
-
-    console.log("[AUTH] Google profile fetched:", {
-      id: googleProfile.id,
-      email: googleProfile.email,
-      name: googleProfile.name,
-      verified: googleProfile.verified_email,
-    });
-
-    // Database transaction for user and account creation/update
-    console.log("[AUTH] Starting database transaction");
-    const result = await db.transaction(async (trx) => {
-      // Create or find user (using transaction context)
-      const existingUser = await trx("users")
-        .where({ email: googleProfile.email.toLowerCase() })
-        .first();
-
-      let user: User;
-      if (existingUser) {
-        console.log(`[AUTH] Found existing user: ${googleProfile.email}`);
-        user = existingUser;
-      } else {
-        const userData = {
-          email: googleProfile.email.toLowerCase(),
-          name: googleProfile.name,
-          created_at: new Date(),
-          updated_at: new Date(),
-        };
-
-        const [userId] = await trx("users").insert(userData);
-        user = await trx("users").where({ id: userId }).first();
-        console.log(
-          `[AUTH] Created new user: ${googleProfile.email} (ID: ${userId})`
-        );
-      }
-
-      // Create or update Google account (using transaction context)
-      const accountData = {
-        user_id: user.id,
-        google_user_id: googleProfile.id,
-        email: googleProfile.email.toLowerCase(),
-        refresh_token: tokens.refresh_token,
-        access_token: tokens.access_token,
-        token_type: tokens.token_type || "Bearer",
-        expiry_date: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-        scopes: tokens.scope || REQUIRED_SCOPES.join(","),
-        updated_at: new Date(),
-      };
-
-      const existingAccount = await trx("google_accounts")
-        .where({
-          google_user_id: googleProfile.id,
-          user_id: user.id,
-        })
-        .first();
-
-      let googleAccount: GoogleAccount;
-      if (existingAccount) {
-        // Update existing account
-        await trx("google_accounts")
-          .where({ id: existingAccount.id })
-          .update(accountData);
-
-        googleAccount = { ...existingAccount, ...accountData };
-        console.log(`[AUTH] Updated Google account for user ${user.id}`);
-      } else {
-        // Create new Google account
-        const [accountId] = await trx("google_accounts").insert({
-          ...accountData,
-          created_at: new Date(),
-        });
-
-        googleAccount = await trx("google_accounts")
-          .where({ id: accountId })
-          .first();
-
-        console.log(`[AUTH] Created new Google account for user ${user.id}`);
-      }
-
-      return { user, googleAccount };
-    });
-
-    console.log("[AUTH] Database transaction completed successfully");
-
-    const response: CallbackResponse = {
-      success: true,
-      user: result.user,
-      googleAccount: result.googleAccount,
-      message: `OAuth authorization successful for ${googleProfile.email}`,
-      accessToken: tokens.access_token || undefined,
-      expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-    };
-
-    console.log(
-      `[AUTH] OAuth flow completed successfully for user: ${googleProfile.email}`
-    );
-    res.json(response);
-  } catch (error) {
-    console.error("[AUTH] OAuth callback error:", error);
-    return handleError(res, error, "Process OAuth callback");
-  }
-});
+router.get("/google/callback", handleOAuthCallback);
 
 // =====================================================================
 // ADDITIONAL UTILITY ROUTES
@@ -657,7 +863,7 @@ router.get("/auth/google/callback", async (req: Request, res: Response) => {
  * Validates and potentially refreshes OAuth tokens for a Google account
  */
 router.get(
-  "/auth/google/validate/:googleAccountId",
+  "/google/validate/:googleAccountId",
   async (req: Request, res: Response) => {
     try {
       const { googleAccountId } = req.params;
@@ -689,7 +895,7 @@ router.get(
  *
  * Returns information about required OAuth scopes
  */
-router.get("/auth/google/scopes", (req: Request, res: Response) => {
+router.get("/google/scopes", (req: Request, res: Response) => {
   res.json({
     success: true,
     requiredScopes: REQUIRED_SCOPES,
