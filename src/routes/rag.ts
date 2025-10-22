@@ -30,8 +30,14 @@ const NOTION_API_VERSION = "2022-06-28";
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const CHUNK_SIZE_TOKENS = 512;
 const CHUNK_SIZE_CHARS = 2048; // Approximation: 512 tokens ≈ 2048 characters
-const LOG_FILE = path.join(__dirname, "../logs/rag.log");
-const ERROR_LOG_FILE = path.join(__dirname, "../logs/rag-error.log");
+const LOG_DIR = path.join(__dirname, "../logs");
+const LOG_FILE = path.join(LOG_DIR, "rag.log");
+const ERROR_LOG_FILE = path.join(LOG_DIR, "rag-error.log");
+
+// Ensure logs directory exists
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+}
 
 // =====================================================================
 // TYPES AND INTERFACES
@@ -539,6 +545,8 @@ async function saveEmbedding(data: EmbeddingData): Promise<void> {
       text: data.chunk_text,
       embedding: JSON.stringify(data.embedding),
       metadata: {
+        page_id: data.page_id,
+        database_id: data.database_id,
         database_name: data.database_name,
         page_title: data.page_title,
         properties: data.properties,

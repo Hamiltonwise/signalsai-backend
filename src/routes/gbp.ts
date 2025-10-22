@@ -348,6 +348,73 @@ gbpRoutes.post("/getKeyData", async (req: AuthenticatedRequest, res) => {
   }
 });
 
+// Exported function for direct use (bypassing HTTP)
+export async function getGBPAIReadyData(
+  oauth2Client: any,
+  accountId: string,
+  locationId: string,
+  startDate?: string,
+  endDate?: string
+) {
+  const perf = new businessprofileperformance_v1.Businessprofileperformance({
+    auth: oauth2Client,
+  });
+
+  const { prevMonth } = getMonthlyRanges();
+  const finalStartDate = startDate || prevMonth.startDate;
+  const finalEndDate = endDate || prevMonth.endDate;
+
+  const metrics = [
+    "CALL_CLICKS",
+    "WEBSITE_CLICKS",
+    "BUSINESS_DIRECTION_REQUESTS",
+  ];
+
+  const timeSeries = await fetchPerfTimeSeries(
+    perf,
+    locationId,
+    metrics,
+    finalStartDate,
+    finalEndDate
+  );
+
+  // Reviews all-time + window stats
+  const parentPath = `accounts/${accountId}/locations/${locationId}`;
+  const headers = await buildAuthHeaders(oauth2Client);
+  const firstPage = await axios.get(
+    `https://mybusiness.googleapis.com/v4/${parentPath}/reviews`,
+    { params: { pageSize: 1 }, headers }
+  );
+  const allTimeAvg = firstPage.data?.averageRating || 0;
+  const allTimeCount = firstPage.data?.totalReviewCount || 0;
+
+  const windowStats = await listAllReviewsInRangeREST(
+    oauth2Client,
+    accountId,
+    locationId,
+    finalStartDate,
+    finalEndDate
+  );
+
+  return {
+    meta: {
+      accountId,
+      locationId,
+      dateRange: { startDate: finalStartDate, endDate: finalEndDate },
+    },
+    reviews: {
+      allTime: { averageRating: allTimeAvg, totalReviewCount: allTimeCount },
+      window: {
+        averageRating: windowStats.avgRatingWindow,
+        newReviews: windowStats.newReviewsCount,
+      },
+    },
+    performance: {
+      series: timeSeries, // includes CALL_CLICKS (unique-user-per-day)
+    },
+  };
+}
+
 /**
  * POST /gbp/getAIReadyData
  * Body: { accountId: string, locationId: string, startDate?: "YYYY-MM-DD", endDate?: "YYYY-MM-DD" }
@@ -362,57 +429,20 @@ gbpRoutes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
         message: "Missing accountId or locationId",
       });
     }
-    const { auth, perf } = createClients(req);
 
     const { prevMonth } = getMonthlyRanges();
     const startDate = req.body.startDate || prevMonth.startDate;
     const endDate = req.body.endDate || prevMonth.endDate;
 
-    const metrics = [
-      "CALL_CLICKS",
-      "WEBSITE_CLICKS",
-      "BUSINESS_DIRECTION_REQUESTS",
-    ];
-
-    const timeSeries = await fetchPerfTimeSeries(
-      perf,
-      locationId,
-      metrics,
-      startDate,
-      endDate
-    );
-
-    // Reviews all-time + window stats
-    const parentPath = `accounts/${accountId}/locations/${locationId}`;
-    const headers = await buildAuthHeaders(auth); // ✅ use helper
-    const firstPage = await axios.get(
-      `https://mybusiness.googleapis.com/v4/${parentPath}/reviews`,
-      { params: { pageSize: 1 }, headers }
-    );
-    const allTimeAvg = firstPage.data?.averageRating || 0;
-    const allTimeCount = firstPage.data?.totalReviewCount || 0;
-
-    const windowStats = await listAllReviewsInRangeREST(
-      auth,
+    const aiReadyData = await getGBPAIReadyData(
+      req.oauth2Client,
       accountId,
       locationId,
       startDate,
       endDate
     );
 
-    return res.json({
-      meta: { accountId, locationId, dateRange: { startDate, endDate } },
-      reviews: {
-        allTime: { averageRating: allTimeAvg, totalReviewCount: allTimeCount },
-        window: {
-          averageRating: windowStats.avgRatingWindow,
-          newReviews: windowStats.newReviewsCount,
-        },
-      },
-      performance: {
-        series: timeSeries, // includes CALL_CLICKS (unique-user-per-day)
-      },
-    });
+    return res.json(aiReadyData);
   } catch (error: any) {
     return handleError(res, error, "GBP AI data");
   }

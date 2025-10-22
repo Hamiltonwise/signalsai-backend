@@ -22,6 +22,7 @@ import authRoutes from "./routes/auth";
 import pmsRoutes from "./routes/pms";
 import onboardingRoutes from "./routes/onboarding";
 import ragRoutes from "./routes/rag";
+import agentRoutes from "./routes/agents";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -48,6 +49,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/pms", pmsRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/rag", ragRoutes);
+app.use("/api/agents", agentRoutes);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));

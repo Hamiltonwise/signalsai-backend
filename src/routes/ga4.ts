@@ -554,6 +554,210 @@ ga4Routes.get("/properties/get", async (req: AuthenticatedRequest, res) => {
   }
 });
 
+// Exported function for direct use (bypassing HTTP)
+export async function getGA4AIReadyData(
+  oauth2Client: any,
+  propertyId: string,
+  startDate?: string,
+  endDate?: string
+) {
+  // Ensure propertyId is in correct format
+  const formattedPropertyId = propertyId.startsWith("properties/")
+    ? propertyId
+    : `properties/${propertyId}`;
+
+  const analyticsdata = google.analyticsdata({
+    version: "v1beta",
+    auth: oauth2Client,
+  });
+
+  const dateRanges = getDateRanges();
+  const finalStartDate = startDate || dateRanges.currentMonth.startDate;
+  const finalEndDate = endDate || dateRanges.currentMonth.endDate;
+
+  // Define metrics for different data categories
+  const overviewMetrics = [
+    "sessions",
+    "totalUsers",
+    "screenPageViews",
+    "engagementRate",
+    "averageSessionDuration",
+    "bounceRate",
+  ];
+  const acquisitionMetrics = [
+    "sessions",
+    "totalUsers",
+    "engagementRate",
+    "conversions",
+  ];
+  const behaviorMetrics = [
+    "screenPageViews",
+    "totalUsers",
+    "userEngagementDuration",
+    "sessions",
+    "engagedSessions",
+  ];
+  const ecommerceMetrics = [
+    "purchaseRevenue",
+    "transactions",
+    "itemRevenue",
+    "itemsViewed",
+  ];
+  const audienceMetrics = ["totalUsers", "sessions", "engagementRate"];
+
+  // Parallel fetch all data types
+  const [
+    overviewData,
+    acquisitionData,
+    audienceGeoData,
+    audienceDeviceData,
+    behaviorPagesData,
+    behaviorEventsData,
+    ecommerceData,
+    realTimeData,
+  ] = await Promise.all([
+    // 1. Traffic Overview
+    fetchGA4DataWithDimensions(
+      analyticsdata,
+      formattedPropertyId,
+      finalStartDate,
+      finalEndDate,
+      overviewMetrics
+    ),
+
+    // 2. Acquisition Data - by source/medium
+    fetchGA4DataWithDimensions(
+      analyticsdata,
+      formattedPropertyId,
+      finalStartDate,
+      finalEndDate,
+      acquisitionMetrics,
+      ["sessionSource", "sessionMedium"],
+      20
+    ),
+
+    // 3. Audience Insights - Geographic
+    fetchGA4DataWithDimensions(
+      analyticsdata,
+      formattedPropertyId,
+      finalStartDate,
+      finalEndDate,
+      audienceMetrics,
+      ["country"],
+      15
+    ),
+
+    // 3. Audience Insights - Technology
+    fetchGA4DataWithDimensions(
+      analyticsdata,
+      formattedPropertyId,
+      finalStartDate,
+      finalEndDate,
+      audienceMetrics,
+      ["deviceCategory"]
+    ),
+
+    // 4. Behavior Data - Pages
+    fetchGA4DataWithDimensions(
+      analyticsdata,
+      formattedPropertyId,
+      finalStartDate,
+      finalEndDate,
+      behaviorMetrics,
+      ["pagePath"],
+      25
+    ),
+
+    // 4. Behavior Data - Events
+    fetchGA4DataWithDimensions(
+      analyticsdata,
+      formattedPropertyId,
+      finalStartDate,
+      finalEndDate,
+      ["eventCount", "totalUsers"],
+      ["eventName"],
+      20
+    ),
+
+    // 5. E-commerce Data
+    fetchGA4DataWithDimensions(
+      analyticsdata,
+      formattedPropertyId,
+      finalStartDate,
+      finalEndDate,
+      ecommerceMetrics,
+      ["itemName"],
+      15
+    ).catch(() => ({ rows: [] })),
+
+    // 6. Real-time Data (using last 30 minutes)
+    fetchGA4DataWithDimensions(
+      analyticsdata,
+      formattedPropertyId,
+      "30minutesAgo",
+      "now",
+      ["activeUsers"],
+      ["pagePath"],
+      10
+    ).catch(() => ({ rows: [] })),
+  ]);
+
+  // Process and structure data for AI
+  const aiReadyData = {
+    // 1. Traffic Overview 📊
+    overview: {
+      sessions: overviewData.sessions || 0,
+      users: overviewData.totalUsers || 0,
+      pageviews: overviewData.screenPageViews || 0,
+      engagementRate: overviewData.engagementRate || 0,
+      avgSessionDuration: overviewData.averageSessionDuration || 0,
+      bounceRate: overviewData.bounceRate || 0,
+      dateRange: { startDate: finalStartDate, endDate: finalEndDate },
+    },
+
+    // 2. Acquisition Data 🎯
+    acquisition: processAcquisitionData(acquisitionData.rows || []),
+
+    // 3. Audience Insights 👥
+    audience: processAudienceData(
+      audienceGeoData.rows || [],
+      audienceDeviceData.rows || []
+    ),
+
+    // 4. Behavior Data 🔄
+    behavior: processBehaviorData(
+      behaviorPagesData.rows || [],
+      behaviorEventsData.rows || []
+    ),
+
+    // 5. E-commerce Data 💰
+    ecommerce: processEcommerceData(ecommerceData.rows || []),
+
+    // 6. Real-time Data ⚡
+    realTime: {
+      activeUsers:
+        realTimeData.rows?.reduce(
+          (sum: number, row: any) => sum + (row.activeUsers || 0),
+          0
+        ) || 0,
+      popularPages:
+        realTimeData.rows?.slice(0, 5).map((row: any) => ({
+          page: row.pagePath || "Unknown",
+          activeUsers: row.activeUsers || 0,
+        })) || [],
+    },
+
+    // AI Optimization Opportunities
+    opportunities: calculateGA4Opportunities(
+      overviewData,
+      behaviorPagesData.rows || [],
+      acquisitionData.rows || []
+    ),
+  };
+
+  return aiReadyData;
+}
+
 // Comprehensive AI-ready data endpoint for GA4
 ga4Routes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
   try {
@@ -566,194 +770,16 @@ ga4Routes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    // Ensure propertyId is in correct format
-    const formattedPropertyId = propertyId.startsWith("properties/")
-      ? propertyId
-      : `properties/${propertyId}`;
-
-    const analyticsdata = createAnalyticsDataClient(req);
     const dateRanges = getDateRanges();
-    const { startDate, endDate } = dateRanges.currentMonth;
+    const startDate = req.body.startDate || dateRanges.currentMonth.startDate;
+    const endDate = req.body.endDate || dateRanges.currentMonth.endDate;
 
-    // Define metrics for different data categories
-    const overviewMetrics = [
-      "sessions",
-      "totalUsers",
-      "screenPageViews",
-      "engagementRate",
-      "averageSessionDuration",
-      "bounceRate",
-    ];
-    const acquisitionMetrics = [
-      "sessions",
-      "totalUsers",
-      "engagementRate",
-      "conversions",
-    ];
-    const behaviorMetrics = [
-      "screenPageViews",
-      "totalUsers",
-      "userEngagementDuration",
-      "sessions",
-      "engagedSessions",
-    ];
-    const ecommerceMetrics = [
-      "purchaseRevenue",
-      "transactions",
-      "itemRevenue",
-      "itemsViewed",
-    ];
-    const audienceMetrics = ["totalUsers", "sessions", "engagementRate"];
-
-    // Parallel fetch all data types
-    const [
-      overviewData,
-      acquisitionData,
-      audienceGeoData,
-      audienceDeviceData,
-      behaviorPagesData,
-      behaviorEventsData,
-      ecommerceData,
-      realTimeData,
-    ] = await Promise.all([
-      // 1. Traffic Overview
-      fetchGA4DataWithDimensions(
-        analyticsdata,
-        formattedPropertyId,
-        startDate,
-        endDate,
-        overviewMetrics
-      ),
-
-      // 2. Acquisition Data - by source/medium
-      fetchGA4DataWithDimensions(
-        analyticsdata,
-        formattedPropertyId,
-        startDate,
-        endDate,
-        acquisitionMetrics,
-        ["sessionSource", "sessionMedium"],
-        20
-      ),
-
-      // 3. Audience Insights - Geographic
-      fetchGA4DataWithDimensions(
-        analyticsdata,
-        formattedPropertyId,
-        startDate,
-        endDate,
-        audienceMetrics,
-        ["country"],
-        15
-      ),
-
-      // 3. Audience Insights - Technology
-      fetchGA4DataWithDimensions(
-        analyticsdata,
-        formattedPropertyId,
-        startDate,
-        endDate,
-        audienceMetrics,
-        ["deviceCategory"]
-      ),
-
-      // 4. Behavior Data - Pages
-      fetchGA4DataWithDimensions(
-        analyticsdata,
-        formattedPropertyId,
-        startDate,
-        endDate,
-        behaviorMetrics,
-        ["pagePath"],
-        25
-      ),
-
-      // 4. Behavior Data - Events
-      fetchGA4DataWithDimensions(
-        analyticsdata,
-        formattedPropertyId,
-        startDate,
-        endDate,
-        ["eventCount", "totalUsers"],
-        ["eventName"],
-        20
-      ),
-
-      // 5. E-commerce Data
-      fetchGA4DataWithDimensions(
-        analyticsdata,
-        formattedPropertyId,
-        startDate,
-        endDate,
-        ecommerceMetrics,
-        ["itemName"],
-        15
-      ).catch(() => ({ rows: [] })),
-
-      // 6. Real-time Data (using last 30 minutes)
-      fetchGA4DataWithDimensions(
-        analyticsdata,
-        formattedPropertyId,
-        "30minutesAgo",
-        "now",
-        ["activeUsers"],
-        ["pagePath"],
-        10
-      ).catch(() => ({ rows: [] })),
-    ]);
-
-    // Process and structure data for AI
-    const aiReadyData = {
-      // 1. Traffic Overview 📊
-      overview: {
-        sessions: overviewData.sessions || 0,
-        users: overviewData.totalUsers || 0,
-        pageviews: overviewData.screenPageViews || 0,
-        engagementRate: overviewData.engagementRate || 0,
-        avgSessionDuration: overviewData.averageSessionDuration || 0,
-        bounceRate: overviewData.bounceRate || 0,
-        dateRange: { startDate, endDate },
-      },
-
-      // 2. Acquisition Data 🎯
-      acquisition: processAcquisitionData(acquisitionData.rows || []),
-
-      // 3. Audience Insights 👥
-      audience: processAudienceData(
-        audienceGeoData.rows || [],
-        audienceDeviceData.rows || []
-      ),
-
-      // 4. Behavior Data 🔄
-      behavior: processBehaviorData(
-        behaviorPagesData.rows || [],
-        behaviorEventsData.rows || []
-      ),
-
-      // 5. E-commerce Data 💰
-      ecommerce: processEcommerceData(ecommerceData.rows || []),
-
-      // 6. Real-time Data ⚡
-      realTime: {
-        activeUsers:
-          realTimeData.rows?.reduce(
-            (sum: number, row: any) => sum + (row.activeUsers || 0),
-            0
-          ) || 0,
-        popularPages:
-          realTimeData.rows?.slice(0, 5).map((row: any) => ({
-            page: row.pagePath || "Unknown",
-            activeUsers: row.activeUsers || 0,
-          })) || [],
-      },
-
-      // AI Optimization Opportunities
-      opportunities: calculateGA4Opportunities(
-        overviewData,
-        behaviorPagesData.rows || [],
-        acquisitionData.rows || []
-      ),
-    };
+    const aiReadyData = await getGA4AIReadyData(
+      req.oauth2Client,
+      propertyId,
+      startDate,
+      endDate
+    );
 
     return res.json(aiReadyData);
   } catch (error: any) {

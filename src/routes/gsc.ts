@@ -227,6 +227,79 @@ gscRoutes.post("/getKeyData", async (req: AuthenticatedRequest, res) => {
   }
 });
 
+// Exported function for direct use (bypassing HTTP)
+export async function getGSCAIReadyData(
+  oauth2Client: any,
+  domainProperty: string,
+  startDate?: string,
+  endDate?: string
+) {
+  const searchconsole = google.searchconsole({
+    version: "v1",
+    auth: oauth2Client,
+  });
+
+  const dateRanges = getDateRanges();
+  const finalStartDate = startDate || dateRanges.currentMonth.startDate;
+  const finalEndDate = endDate || dateRanges.currentMonth.endDate;
+
+  // Parallel fetch all data types
+  const [overviewData, queryData, pageData, deviceData, geoData] =
+    await Promise.all([
+      fetchGSCData(searchconsole, domainProperty, finalStartDate, finalEndDate), // Overview
+      fetchGSCData(
+        searchconsole,
+        domainProperty,
+        finalStartDate,
+        finalEndDate,
+        ["query"],
+        25
+      ),
+      fetchGSCData(
+        searchconsole,
+        domainProperty,
+        finalStartDate,
+        finalEndDate,
+        ["page"],
+        50
+      ),
+      fetchGSCData(
+        searchconsole,
+        domainProperty,
+        finalStartDate,
+        finalEndDate,
+        ["device"]
+      ),
+      fetchGSCData(
+        searchconsole,
+        domainProperty,
+        finalStartDate,
+        finalEndDate,
+        ["country"],
+        10
+      ),
+    ]);
+
+  // Process and structure for AI
+  const aiReadyData = {
+    overview: {
+      totalClicks: overviewData.clicks,
+      totalImpressions: overviewData.impressions,
+      avgCTR: overviewData.clicks / (overviewData.impressions || 1),
+      avgPosition: overviewData.avgPosition,
+      dateRange: { startDate: finalStartDate, endDate: finalEndDate },
+    },
+    topQueries: queryData.rows || [],
+    underperformingPages:
+      pageData.rows?.filter((page: any) => page.position > 10) || [],
+    deviceBreakdown: processDeviceData(deviceData.rows),
+    geoPerformance: geoData.rows || [],
+    opportunities: calculateOpportunities(queryData.rows, pageData.rows),
+  };
+
+  return aiReadyData;
+}
+
 gscRoutes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
   try {
     const domainProperty = req.body.domainProperty;
@@ -238,59 +311,16 @@ gscRoutes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    const searchconsole = createSearchConsoleClient(req);
     const dateRanges = getDateRanges();
-    const { startDate, endDate } = dateRanges.currentMonth;
+    const startDate = req.body.startDate || dateRanges.currentMonth.startDate;
+    const endDate = req.body.endDate || dateRanges.currentMonth.endDate;
 
-    // Parallel fetch all data types
-    const [overviewData, queryData, pageData, deviceData, geoData] =
-      await Promise.all([
-        fetchGSCData(searchconsole, domainProperty, startDate, endDate), // Overview
-        fetchGSCData(
-          searchconsole,
-          domainProperty,
-          startDate,
-          endDate,
-          ["query"],
-          25
-        ),
-        fetchGSCData(
-          searchconsole,
-          domainProperty,
-          startDate,
-          endDate,
-          ["page"],
-          50
-        ),
-        fetchGSCData(searchconsole, domainProperty, startDate, endDate, [
-          "device",
-        ]),
-        fetchGSCData(
-          searchconsole,
-          domainProperty,
-          startDate,
-          endDate,
-          ["country"],
-          10
-        ),
-      ]);
-
-    // Process and structure for AI
-    const aiReadyData = {
-      overview: {
-        totalClicks: overviewData.clicks,
-        totalImpressions: overviewData.impressions,
-        avgCTR: overviewData.clicks / (overviewData.impressions || 1),
-        avgPosition: overviewData.avgPosition,
-        dateRange: { startDate, endDate },
-      },
-      topQueries: queryData.rows || [],
-      underperformingPages:
-        pageData.rows?.filter((page: any) => page.position > 10) || [],
-      deviceBreakdown: processDeviceData(deviceData.rows),
-      geoPerformance: geoData.rows || [],
-      opportunities: calculateOpportunities(queryData.rows, pageData.rows),
-    };
+    const aiReadyData = await getGSCAIReadyData(
+      req.oauth2Client,
+      domainProperty,
+      startDate,
+      endDate
+    );
 
     return res.json(aiReadyData);
   } catch (error: any) {
