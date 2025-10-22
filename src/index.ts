@@ -22,7 +22,7 @@ import authRoutes from "./routes/auth";
 import pmsRoutes from "./routes/pms";
 import onboardingRoutes from "./routes/onboarding";
 import ragRoutes from "./routes/rag";
-import agentRoutes from "./routes/agents";
+import agentRoutes from "./routes/agentsV2";
 
 const app = express();
 const port = process.env.PORT || 3000;

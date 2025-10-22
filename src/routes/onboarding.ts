@@ -11,8 +11,15 @@ import { db } from "../database/connection";
 
 const onboardingRoutes = express.Router();
 
-// Apply token refresh middleware to all onboarding routes
-onboardingRoutes.use(tokenRefreshMiddleware);
+// Do NOT apply token middleware globally; only to routes that need Google APIs.
+
+// Helper to parse google account id from header when middleware isn't used
+const getAccountIdFromHeader = (req: express.Request): number | null => {
+  const header = req.headers["x-google-account-id"]; 
+  if (!header) return null;
+  const id = parseInt(header as string, 10);
+  return isNaN(id) ? null : id;
+};
 
 /**
  * Error handler
@@ -44,7 +51,7 @@ const buildAuthHeaders = async (auth: any): Promise<Record<string, string>> => {
  */
 onboardingRoutes.get("/status", async (req: AuthenticatedRequest, res) => {
   try {
-    const googleAccountId = req.googleAccountId;
+    const googleAccountId = req.googleAccountId ?? getAccountIdFromHeader(req);
 
     if (!googleAccountId) {
       return res.status(400).json({
@@ -91,6 +98,7 @@ onboardingRoutes.get("/status", async (req: AuthenticatedRequest, res) => {
  */
 onboardingRoutes.get(
   "/available-properties",
+  tokenRefreshMiddleware,
   async (req: AuthenticatedRequest, res) => {
     try {
       if (!req.oauth2Client) {
@@ -315,7 +323,7 @@ onboardingRoutes.post(
   "/save-properties",
   async (req: AuthenticatedRequest, res) => {
     try {
-      const googleAccountId = req.googleAccountId;
+      const googleAccountId = req.googleAccountId ?? getAccountIdFromHeader(req);
 
       if (!googleAccountId) {
         return res.status(400).json({

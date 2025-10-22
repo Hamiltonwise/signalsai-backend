@@ -11,11 +11,16 @@ import {
   tokenRefreshMiddleware,
   AuthenticatedRequest,
 } from "../middleware/tokenRefresh";
-import { getPreviousWeekDates, isValidWeekRange } from "../utils/weekDates";
-import { fetchAllServiceData } from "../services/dataFetcher";
+// import { getPreviousWeekDates, isValidWeekRange } from "../utils/weekDates";
+import { fetchAllServiceDataForRange, fetchAllServiceDataForDay } from "../services/dataFetcher";
 import {
   callAgentWebhooks,
-  compileDataForAgent,
+  compileProoflineDailyPayload,
+  compileMonthlySummaryPayload,
+  compileMonthlyOpportunityPayload,
+  PROOFLINE_AGENT_WEBHOOK,
+  SUMMARY_AGENT_WEBHOOK,
+  OPPORTUNITY_AGENT_WEBHOOK,
 } from "../services/agentWebhook";
 import * as fs from "fs";
 import * as path from "path";
@@ -63,60 +68,73 @@ function logError(operation: string, error: any): void {
 }
 
 // =====================================================================
-// ROUTE 1: POST /api/agents/process-weekly
+// DATE HELPERS (Daily/Monthly)
+// =====================================================================
+
+function formatDate(d: Date) {
+  return d.toISOString().split("T")[0];
+}
+
+function getYesterdayAndTwoDaysAgo(baseDate?: string): {
+  yesterday: string;
+  twoDaysAgo: string;
+} {
+  const base = baseDate ? new Date(baseDate) : new Date();
+  const y = new Date(base);
+  y.setDate(y.getDate() - 1);
+  y.setHours(0, 0, 0, 0);
+  const two = new Date(base);
+  two.setDate(two.getDate() - 2);
+  two.setHours(0, 0, 0, 0);
+  return { yesterday: formatDate(y), twoDaysAgo: formatDate(two) };
+}
+
+function getPreviousMonthRange(referenceDate?: string): {
+  startDate: string;
+  endDate: string;
+} {
+  const now = referenceDate ? new Date(referenceDate) : new Date();
+  // previous month: from first day to last day
+  const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const end = new Date(now.getFullYear(), now.getMonth(), 0);
+  return { startDate: formatDate(start), endDate: formatDate(end) };
+}
+
+
+// =====================================================================
+// ROUTE 1B: POST /api/agents/process-daily
 // =====================================================================
 
 /**
- * Main endpoint to process weekly data and generate agent insights
- * Triggered by N8N or manually for testing
+ * Daily processing: runs the Proofline agent with data for last two days and yesterday.
+ * Optionally accepts a reference date in body (YYYY-MM-DD); defaults to today.
  */
 router.post(
-  "/process-weekly",
+  "/process-daily",
   tokenRefreshMiddleware,
   async (req: AuthenticatedRequest, res: Response) => {
     const startTime = Date.now();
-
     try {
-      const { weekStart, weekEnd } = req.body;
       const googleAccountId = req.googleAccountId;
+      const { referenceDate } = req.body || {};
 
       log("==========================================");
-      log("POST /api/agents/process-weekly - Starting");
+      log("POST /api/agents/process-daily - Starting");
       log(`Google Account ID: ${googleAccountId}`);
-      log(`Week: ${weekStart} to ${weekEnd}`);
+      if (referenceDate) log(`Reference Date: ${referenceDate}`);
 
-      // Validation
-      if (!weekStart || !weekEnd) {
-        log("ERROR: Missing required parameters");
-        return res.status(400).json({
-          success: false,
-          error: "MISSING_PARAMETERS",
-          message: "weekStart and weekEnd are required",
-        });
-      }
-
-      // Validate googleAccountId is reasonable (not a huge Google User ID)
+      // Validate account id
       if (!googleAccountId || googleAccountId > 1000000) {
         log(`ERROR: Invalid googleAccountId: ${googleAccountId}`);
         return res.status(400).json({
           success: false,
           error: "INVALID_ACCOUNT_ID",
           message:
-            "x-google-account-id header must be the database ID (e.g., 1, 2, 3), not the Google User ID. Query google_accounts table to find your id.",
+            "x-google-account-id header must be the database ID (e.g., 1, 2, 3)",
         });
       }
 
-      // Validate date range
-      if (!isValidWeekRange(weekStart, weekEnd)) {
-        log("ERROR: Invalid date range - must be exactly 7 days");
-        return res.status(400).json({
-          success: false,
-          error: "INVALID_DATE_RANGE",
-          message: "Date range must be exactly 7 days (one week)",
-        });
-      }
-
-      // Get domain name from google_accounts
+      // Resolve domain
       const account = await db("google_accounts")
         .where({ id: googleAccountId })
         .select("domain_name")
@@ -127,151 +145,627 @@ router.post(
         return res.status(400).json({
           success: false,
           error: "NO_DOMAIN",
-          message:
-            "No domain_name found for this account. Complete onboarding first.",
+          message: "No domain_name found for this account.",
         });
       }
-
       const domain = account.domain_name;
       log(`Domain: ${domain}`);
 
-      // Check for duplicate processing
-      log("Checking for existing results...");
-      const existingResult = await db("agent_results")
+      // Compute dates
+      const { yesterday, twoDaysAgo } = getYesterdayAndTwoDaysAgo(referenceDate);
+      const lastTwoStart = twoDaysAgo;
+      const lastTwoEnd = yesterday;
+      log(`Daily ranges: lastTwoDays=${lastTwoStart}..${lastTwoEnd}, yesterday=${yesterday}`);
+
+      // Duplicate guard: use the two-day range as the result's range
+      const existing = await db("agent_results")
         .where({
-          week_start: weekStart,
-          week_end: weekEnd,
-          domain: domain,
+          date_start: lastTwoStart,
+          date_end: lastTwoEnd,
+          domain,
+          agent_name: "proofline",
         })
         .whereIn("status", ["pending", "approved"])
         .first();
-
-      if (existingResult) {
-        log(`Found existing result with status: ${existingResult.status}`);
+      if (existing) {
+        log(`Daily result already exists (id ${existing.id}, status ${existing.status})`);
         return res.json({
           success: true,
-          message: "Result already exists",
-          weekStart,
-          weekEnd,
+          message: "Daily result already exists",
           domain,
-          resultId: existingResult.id,
-          status: existingResult.status,
-          insights: existingResult.agent_response,
+          resultId: existing.id,
+          status: existing.status,
+          insights: existing.agent_response,
         });
       }
 
-      // Step 1: Fetch service data
-      log("=== STEP 1: Fetching service data ===");
-      const serviceData = await fetchAllServiceData({
-        oauth2Client: req.oauth2Client!,
-        googleAccountId: req.googleAccountId!,
-        weekStart,
-        weekEnd,
-      });
+      // Fetch service data for both ranges in parallel
+      log("=== STEP 1: Fetching service data for daily ranges ===");
+      const [lastTwoDaysData, yesterdayData] = await Promise.all([
+        fetchAllServiceDataForRange({
+          oauth2Client: req.oauth2Client!,
+          googleAccountId: googleAccountId!,
+          startDate: lastTwoStart,
+          endDate: lastTwoEnd,
+        }),
+        fetchAllServiceDataForDay(req.oauth2Client!, googleAccountId!, yesterday),
+      ]);
 
-      log(
-        `Service data fetched: GA4=${!!serviceData.ga4Data}, GSC=${!!serviceData.gscData}, GBP=${!!serviceData.gbpData}, Clarity=${!!serviceData.clarityData}, PMS=${!!serviceData.pmsData}`
-      );
+      // Store raw data rows (one for each range)
+      log("=== STEP 2: Storing raw service data (daily) ===");
+      await db("google_data_store").insert([
+        {
+          date_start: lastTwoStart,
+          date_end: lastTwoEnd,
+          domain,
+          run_type: "daily",
+          agent_name: "proofline",
+          ga4_data: lastTwoDaysData.ga4Data,
+          gbp_data: lastTwoDaysData.gbpData,
+          gsc_data: lastTwoDaysData.gscData,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+        {
+          date_start: yesterday,
+          date_end: yesterday,
+          domain,
+          run_type: "daily",
+          agent_name: "proofline",
+          ga4_data: yesterdayData.ga4Data,
+          gbp_data: yesterdayData.gbpData,
+          gsc_data: yesterdayData.gscData,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ]);
 
-      // Step 2: Store raw data in google_data_store
-      log("=== STEP 2: Storing raw service data ===");
-      await db("google_data_store").insert({
-        week_start: weekStart,
-        week_end: weekEnd,
-        domain: domain,
-        ga4_data: serviceData.ga4Data,
-        gbp_data: serviceData.gbpData,
-        gsc_data: serviceData.gscData,
-        created_at: new Date(),
-        updated_at: new Date(),
-      });
-
-      log("Raw service data stored successfully");
-
-      // Step 3: Call agent webhooks
-      log("=== STEP 3: Calling agent webhooks ===");
-      const compiledData = compileDataForAgent(
-        weekStart,
-        weekEnd,
+      // Build payload for Proofline daily agent
+      log("=== STEP 3: Calling Proofline (daily) ===");
+      const payload = compileProoflineDailyPayload({
         domain,
-        serviceData
-      );
+        lastTwoDays: {
+          startDate: lastTwoStart,
+          endDate: lastTwoEnd,
+          serviceData: lastTwoDaysData,
+        },
+        yesterday: { date: yesterday, serviceData: yesterdayData },
+      });
 
-      const agentResults = await callAgentWebhooks(compiledData, log);
-
-      // Check if any webhooks succeeded
-      const successfulResults = agentResults.filter((r) => r.success);
-
-      if (successfulResults.length === 0) {
-        log("ERROR: All agent webhook calls failed");
-
-        // Store error result
-        const [errorResultId] = await db("agent_results")
-          .insert({
-            week_start: weekStart,
-            week_end: weekEnd,
-            domain: domain,
-            agent_response: {
-              error: "All agent webhooks failed",
-              attempts: agentResults,
-            },
-            status: "error",
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .returning("id");
-
-        return res.status(500).json({
-          success: false,
-          error: "AGENT_WEBHOOKS_FAILED",
-          message: "All agent webhook calls failed",
-          details: agentResults,
-        });
-      }
-
-      // Step 4: Store agent results
-      log("=== STEP 4: Storing agent results ===");
-      const combinedResponse = {
-        webhooks: agentResults,
-        successCount: successfulResults.length,
-        totalCount: agentResults.length,
-      };
-
+      const agentResults = await callAgentWebhooks(payload, log, [
+        PROOFLINE_AGENT_WEBHOOK,
+      ]);
+      const prooflineResult = agentResults[0];
       const [resultId] = await db("agent_results")
         .insert({
-          week_start: weekStart,
-          week_end: weekEnd,
-          domain: domain,
-          agent_response: combinedResponse,
-          status: "pending",
+          date_start: lastTwoStart,
+          date_end: lastTwoEnd,
+          domain,
+          agent_name: "proofline",
+          agent_response: prooflineResult,
+          status: prooflineResult?.success ? "pending" : "error",
           created_at: new Date(),
           updated_at: new Date(),
         })
         .returning("id");
 
       const duration = Date.now() - startTime;
-      log(`=== COMPLETE: Result ID ${resultId} created in ${duration}ms ===`);
+      log(`=== DAILY COMPLETE: Result ID ${resultId} created in ${duration}ms ===`);
       log("==========================================");
 
       return res.json({
         success: true,
-        weekStart,
-        weekEnd,
         domain,
         resultId,
-        insights: combinedResponse,
+        agentResponse: prooflineResult,
         duration: `${duration}ms`,
       });
     } catch (error: any) {
-      logError("process-weekly", error);
+      logError("process-daily", error);
       const duration = Date.now() - startTime;
-      log(`=== FAILED after ${duration}ms ===`);
+      log(`=== DAILY FAILED after ${duration}ms ===`);
       log("==========================================");
-
       return res.status(500).json({
         success: false,
         error: "PROCESSING_ERROR",
-        message: error.message || "Failed to process weekly data",
+        message: error.message || "Failed to process daily data",
+      });
+    }
+  }
+);
+
+// =====================================================================
+// ROUTE 1C: POST /api/agents/process-monthly
+// =====================================================================
+
+/**
+ * Monthly processing: runs Summary first, then Opportunity using Summary output.
+ * Optionally accepts a reference date in body to anchor "previous month".
+ */
+router.post(
+  "/process-monthly",
+  tokenRefreshMiddleware,
+  async (req: AuthenticatedRequest, res: Response) => {
+    const startTime = Date.now();
+    try {
+      const googleAccountId = req.googleAccountId;
+      const { referenceDate } = req.body || {};
+
+      log("==========================================");
+      log("POST /api/agents/process-monthly - Starting");
+      log(`Google Account ID: ${googleAccountId}`);
+      if (referenceDate) log(`Reference Date: ${referenceDate}`);
+
+      if (!googleAccountId || googleAccountId > 1000000) {
+        log(`ERROR: Invalid googleAccountId: ${googleAccountId}`);
+        return res.status(400).json({
+          success: false,
+          error: "INVALID_ACCOUNT_ID",
+          message:
+            "x-google-account-id header must be the database ID (e.g., 1, 2, 3)",
+        });
+      }
+
+      const account = await db("google_accounts")
+        .where({ id: googleAccountId })
+        .select("domain_name")
+        .first();
+      if (!account || !account.domain_name) {
+        log(`ERROR: No domain found for account ${googleAccountId}`);
+        return res.status(400).json({
+          success: false,
+          error: "NO_DOMAIN",
+          message: "No domain_name found for this account.",
+        });
+      }
+      const domain = account.domain_name;
+
+      const { startDate, endDate } = getPreviousMonthRange(referenceDate);
+      log(`Monthly range: ${startDate}..${endDate}`);
+
+      // Duplicate block for monthly
+      const existingSummary = await db("agent_results")
+        .where({ date_start: startDate, date_end: endDate, domain, agent_name: "summary" })
+        .whereIn("status", ["pending", "approved"])
+        .first();
+      if (existingSummary) {
+        log(`Monthly summary already exists (id ${existingSummary.id}, status ${existingSummary.status})`);
+        return res.json({
+          success: true,
+          message: "Monthly result already exists",
+          domain,
+          summaryResultId: existingSummary.id,
+          status: existingSummary.status,
+        });
+      }
+
+      // Fetch aggregated month data
+      log("=== STEP 1: Fetching service data for month ===");
+      const monthData = await fetchAllServiceDataForRange({
+        oauth2Client: req.oauth2Client!,
+        googleAccountId: googleAccountId!,
+        startDate,
+        endDate,
+      });
+
+      // Persist raw month data
+      log("=== STEP 2: Storing raw service data (monthly) ===");
+      await db("google_data_store").insert([
+        {
+          date_start: startDate,
+          date_end: endDate,
+          domain,
+          run_type: "monthly",
+          agent_name: "summary",
+          ga4_data: monthData.ga4Data,
+          gbp_data: monthData.gbpData,
+          gsc_data: monthData.gscData,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+        {
+          date_start: startDate,
+          date_end: endDate,
+          domain,
+          run_type: "monthly",
+          agent_name: "opportunity",
+          ga4_data: monthData.ga4Data,
+          gbp_data: monthData.gbpData,
+          gsc_data: monthData.gscData,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+      ]);
+
+      // Run Summary agent
+      log("=== STEP 3: Calling Summary (monthly) ===");
+      const summaryPayload = compileMonthlySummaryPayload({
+        domain,
+        startDate,
+        endDate,
+        serviceData: monthData,
+      });
+      const [summaryResult] = await callAgentWebhooks(summaryPayload, log, [
+        SUMMARY_AGENT_WEBHOOK,
+      ]);
+
+      // Run Opportunity agent with Summary output
+      log("=== STEP 4: Calling Opportunity (monthly) ===");
+      const opportunityPayload = compileMonthlyOpportunityPayload({
+        domain,
+        startDate,
+        endDate,
+        serviceData: monthData,
+        summaryResponse: summaryResult?.data,
+      });
+      const [opportunityResult] = await callAgentWebhooks(
+        opportunityPayload,
+        log,
+        [OPPORTUNITY_AGENT_WEBHOOK]
+      );
+
+      // Save Summary row
+      const [summaryId] = await db("agent_results")
+        .insert({
+          date_start: startDate,
+          date_end: endDate,
+          domain,
+          agent_name: "summary",
+          agent_response: summaryResult,
+          status: summaryResult?.success ? "pending" : "error",
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .returning("id");
+
+      // Save Opportunity row
+      const [opportunityId] = await db("agent_results")
+        .insert({
+          date_start: startDate,
+          date_end: endDate,
+          domain,
+          agent_name: "opportunity",
+          agent_response: opportunityResult,
+          status: opportunityResult?.success ? "pending" : "error",
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .returning("id");
+
+      const duration = Date.now() - startTime;
+      log(
+        `=== MONTHLY COMPLETE: Summary ID ${summaryId}, Opportunity ID ${opportunityId} in ${duration}ms ===`
+      );
+      log("==========================================");
+      return res.json({
+        success: true,
+        domain,
+        summaryResultId: summaryId,
+        opportunityResultId: opportunityId,
+        duration: `${duration}ms`,
+      });
+    } catch (error: any) {
+      logError("process-monthly", error);
+      const duration = Date.now() - startTime;
+      log(`=== MONTHLY FAILED after ${duration}ms ===`);
+      log("==========================================");
+      return res.status(500).json({
+        success: false,
+        error: "PROCESSING_ERROR",
+        message: error.message || "Failed to process monthly data",
+      });
+    }
+  }
+);
+
+// =====================================================================
+// ROUTE 1D: POST /api/agents/process
+// =====================================================================
+
+/**
+ * Single daily endpoint that:
+ * - Always runs the daily Proofline agent (last two days + yesterday)
+ * - Conditionally runs monthly (Summary then Opportunity) if previous month is complete and no monthly result exists yet
+ * Body: { referenceDate?: YYYY-MM-DD }
+ */
+router.post(
+  "/process",
+  tokenRefreshMiddleware,
+  async (req: AuthenticatedRequest, res: Response) => {
+    const startTimeAll = Date.now();
+    const runs: any = { daily: null, monthly: null };
+    try {
+      const googleAccountId = req.googleAccountId;
+      const { referenceDate } = req.body || {};
+
+      log("==========================================");
+      log("POST /api/agents/process - Starting (daily + conditional monthly)");
+      log(`Google Account ID: ${googleAccountId}`);
+      if (referenceDate) log(`Reference Date: ${referenceDate}`);
+
+      if (!googleAccountId || googleAccountId > 1000000) {
+        log(`ERROR: Invalid googleAccountId: ${googleAccountId}`);
+        return res.status(400).json({
+          success: false,
+          error: "INVALID_ACCOUNT_ID",
+          message:
+            "x-google-account-id header must be the database ID (e.g., 1, 2, 3)",
+        });
+      }
+
+      const account = await db("google_accounts")
+        .where({ id: googleAccountId })
+        .select("domain_name")
+        .first();
+      if (!account || !account.domain_name) {
+        log(`ERROR: No domain found for account ${googleAccountId}`);
+        return res.status(400).json({
+          success: false,
+          error: "NO_DOMAIN",
+          message: "No domain_name found for this account.",
+        });
+      }
+      const domain = account.domain_name;
+
+      // ------------------------
+      // Run DAILY (always)
+      // ------------------------
+      const startTimeDaily = Date.now();
+      try {
+        const { yesterday, twoDaysAgo } = getYesterdayAndTwoDaysAgo(referenceDate);
+        const lastTwoStart = twoDaysAgo;
+        const lastTwoEnd = yesterday;
+        log(
+          `DAILY ranges: lastTwoDays=${lastTwoStart}..${lastTwoEnd}, yesterday=${yesterday}`
+        );
+
+        // Guard duplicate by the 2-day range
+      const existingDaily = await db("agent_results")
+        .where({
+          date_start: lastTwoStart,
+          date_end: lastTwoEnd,
+          domain,
+          agent_name: "proofline",
+        })
+        .whereIn("status", ["pending", "approved"])
+        .first();
+        if (existingDaily) {
+          log(
+            `Daily result already exists (id ${existingDaily.id}, status ${existingDaily.status})`
+          );
+          runs.daily = {
+            skipped: true,
+            reason: "existing",
+            resultId: existingDaily.id,
+            status: existingDaily.status,
+          };
+        } else {
+          // Fetch data
+          log("=== DAILY STEP 1: Fetching service data ===");
+          const [lastTwoDaysData, yesterdayData] = await Promise.all([
+            fetchAllServiceDataForRange({
+              oauth2Client: req.oauth2Client!,
+              googleAccountId: googleAccountId!,
+              startDate: lastTwoStart,
+              endDate: lastTwoEnd,
+            }),
+            fetchAllServiceDataForDay(
+              req.oauth2Client!,
+              googleAccountId!,
+              yesterday
+            ),
+          ]);
+
+          // Store raw rows
+          log("=== DAILY STEP 2: Storing raw data ===");
+          await db("google_data_store").insert([
+            {
+              date_start: lastTwoStart,
+              date_end: lastTwoEnd,
+              domain,
+              run_type: "daily",
+              agent_name: "proofline",
+              ga4_data: lastTwoDaysData.ga4Data,
+              gbp_data: lastTwoDaysData.gbpData,
+              gsc_data: lastTwoDaysData.gscData,
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+            {
+              date_start: yesterday,
+              date_end: yesterday,
+              domain,
+              run_type: "daily",
+              agent_name: "proofline",
+              ga4_data: yesterdayData.ga4Data,
+              gbp_data: yesterdayData.gbpData,
+              gsc_data: yesterdayData.gscData,
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+          ]);
+
+          // Call Proofline daily agent
+          log("=== DAILY STEP 3: Calling Proofline ===");
+          const payload = compileProoflineDailyPayload({
+            domain,
+            lastTwoDays: {
+              startDate: lastTwoStart,
+              endDate: lastTwoEnd,
+              serviceData: lastTwoDaysData,
+            },
+            yesterday: { date: yesterday, serviceData: yesterdayData },
+          });
+
+          const dailyResults = await callAgentWebhooks(payload, log, [
+            PROOFLINE_AGENT_WEBHOOK,
+          ]);
+          const prooflineResult = dailyResults[0];
+          const [dailyId] = await db("agent_results")
+            .insert({
+              date_start: lastTwoStart,
+              date_end: lastTwoEnd,
+              domain,
+              agent_name: "proofline",
+              agent_response: prooflineResult,
+              status: prooflineResult?.success ? "pending" : "error",
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning("id");
+          runs.daily = { skipped: false, resultId: dailyId };
+        }
+      } catch (e: any) {
+        logError("process (daily)", e);
+        runs.daily = { error: e.message || String(e) };
+      }
+
+      // ------------------------
+      // Conditionally run MONTHLY
+      // ------------------------
+      try {
+        const { startDate, endDate } = getPreviousMonthRange(referenceDate);
+        // matured if today > endDate
+        const today = referenceDate
+          ? new Date(referenceDate)
+          : new Date();
+        const end = new Date(endDate + "T23:59:59Z");
+        const matured = today.getTime() > end.getTime();
+
+        // Already exists?
+        const existingMonthly = await db("agent_results")
+          .where({ date_start: startDate, date_end: endDate, domain, agent_name: "summary" })
+          .whereIn("status", ["pending", "approved"])
+          .first();
+
+        if (!matured) {
+          runs.monthly = { skipped: true, reason: "not_matured", startDate, endDate };
+        } else if (existingMonthly) {
+          runs.monthly = {
+            skipped: true,
+            reason: "existing",
+            resultId: existingMonthly.id,
+            status: existingMonthly.status,
+            startDate,
+            endDate,
+          };
+        } else {
+          log(`MONTHLY due for ${startDate}..${endDate}`);
+          // Fetch month data
+          log("=== MONTHLY STEP 1: Fetching month data ===");
+          const monthData = await fetchAllServiceDataForRange({
+            oauth2Client: req.oauth2Client!,
+            googleAccountId: googleAccountId!,
+            startDate,
+            endDate,
+          });
+
+          // Store raw
+          log("=== MONTHLY STEP 2: Storing raw data ===");
+          await db("google_data_store").insert([
+            {
+              date_start: startDate,
+              date_end: endDate,
+              domain,
+              run_type: "monthly",
+              agent_name: "summary",
+              ga4_data: monthData.ga4Data,
+              gbp_data: monthData.gbpData,
+              gsc_data: monthData.gscData,
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+            {
+              date_start: startDate,
+              date_end: endDate,
+              domain,
+              run_type: "monthly",
+              agent_name: "opportunity",
+              ga4_data: monthData.ga4Data,
+              gbp_data: monthData.gbpData,
+              gsc_data: monthData.gscData,
+              created_at: new Date(),
+              updated_at: new Date(),
+            },
+          ]);
+
+          // Call Summary then Opportunity
+          log("=== MONTHLY STEP 3: Calling Summary ===");
+          const summaryPayload = compileMonthlySummaryPayload({
+            domain,
+            startDate,
+            endDate,
+            serviceData: monthData,
+          });
+          const [summaryResult] = await callAgentWebhooks(summaryPayload, log, [
+            SUMMARY_AGENT_WEBHOOK,
+          ]);
+
+          log("=== MONTHLY STEP 4: Calling Opportunity ===");
+          const opportunityPayload = compileMonthlyOpportunityPayload({
+            domain,
+            startDate,
+            endDate,
+            serviceData: monthData,
+            summaryResponse: summaryResult?.data,
+          });
+          const [opportunityResult] = await callAgentWebhooks(
+            opportunityPayload,
+            log,
+            [OPPORTUNITY_AGENT_WEBHOOK]
+          );
+
+          const [summaryId] = await db("agent_results")
+            .insert({
+              date_start: startDate,
+              date_end: endDate,
+              domain,
+              agent_name: "summary",
+              agent_response: summaryResult,
+              status: summaryResult?.success ? "pending" : "error",
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning("id");
+
+          const [opportunityId] = await db("agent_results")
+            .insert({
+              date_start: startDate,
+              date_end: endDate,
+              domain,
+              agent_name: "opportunity",
+              agent_response: opportunityResult,
+              status: opportunityResult?.success ? "pending" : "error",
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning("id");
+          runs.monthly = {
+            skipped: false,
+            summaryResultId: summaryId,
+            opportunityResultId: opportunityId,
+            startDate,
+            endDate,
+          };
+        }
+      } catch (e: any) {
+        logError("process (monthly)", e);
+        runs.monthly = { error: e.message || String(e) };
+      }
+
+      const durationAll = Date.now() - startTimeAll;
+      log(`=== PROCESS COMPLETE in ${durationAll}ms ===`);
+      log("==========================================");
+      return res.json({ success: true, domain, runs, duration: `${durationAll}ms` });
+    } catch (error: any) {
+      logError("process (combined)", error);
+      const durationAll = Date.now() - startTimeAll;
+      log(`=== PROCESS FAILED after ${durationAll}ms ===`);
+      log("==========================================");
+      return res.status(500).json({
+        success: false,
+        error: "PROCESSING_ERROR",
+        message: error.message || "Failed to process agents",
       });
     }
   }
@@ -293,7 +787,8 @@ router.get("/results", async (req: Request, res: Response) => {
       domain,
       startDate,
       endDate,
-    } = req.query;
+      agentName,
+    } = req.query as any;
 
     log(
       `GET /api/agents/results - page=${page}, limit=${limit}, status=${status}, domain=${domain}`
@@ -316,12 +811,16 @@ router.get("/results", async (req: Request, res: Response) => {
       baseQuery = baseQuery.where("domain", domain as string);
     }
 
+    if (agentName) {
+      baseQuery = baseQuery.where("agent_name", agentName as string);
+    }
+
     if (startDate) {
-      baseQuery = baseQuery.where("week_start", ">=", startDate as string);
+      baseQuery = baseQuery.where("date_start", ">=", startDate as string);
     }
 
     if (endDate) {
-      baseQuery = baseQuery.where("week_end", "<=", endDate as string);
+      baseQuery = baseQuery.where("date_end", "<=", endDate as string);
     }
 
     // Get total count with a separate query
@@ -344,11 +843,15 @@ router.get("/results", async (req: Request, res: Response) => {
       success: true,
       data: results.map((r) => ({
         id: r.id,
-        weekStart: r.week_start,
-        weekEnd: r.week_end,
+        dateStart: r.date_start,
+        dateEnd: r.date_end,
+        weekStart: r.date_start, // compat alias
+        weekEnd: r.date_end, // compat alias
         domain: r.domain,
         status: r.status,
+        agentName: r.agent_name,
         agentResponse: r.agent_response,
+        insights: r.agent_response, // compat alias
         approvedBy: r.approved_by,
         approvedAt: r.approved_at,
         createdAt: r.created_at,
@@ -379,7 +882,7 @@ router.get("/results", async (req: Request, res: Response) => {
  */
 router.get("/latest", async (req: Request, res: Response) => {
   try {
-    const { domain } = req.query;
+    const { domain, agentName } = req.query as any;
 
     log(`GET /api/agents/latest - domain=${domain}`);
 
@@ -391,10 +894,9 @@ router.get("/latest", async (req: Request, res: Response) => {
       });
     }
 
-    const result = await db("agent_results")
-      .where("domain", domain as string)
-      .orderBy("created_at", "desc")
-      .first();
+    let base = db("agent_results").where("domain", domain as string);
+    if (agentName) base = base.andWhere("agent_name", agentName as string);
+    const result = await base.orderBy("created_at", "desc").first();
 
     if (!result) {
       log(`No results found for domain: ${domain}`);
@@ -411,11 +913,15 @@ router.get("/latest", async (req: Request, res: Response) => {
       success: true,
       data: {
         id: result.id,
-        weekStart: result.week_start,
-        weekEnd: result.week_end,
+        dateStart: result.date_start,
+        dateEnd: result.date_end,
+        weekStart: result.date_start, // compat alias
+        weekEnd: result.date_end, // compat alias
         domain: result.domain,
         status: result.status,
+        agentName: result.agent_name,
         agentResponse: result.agent_response,
+        insights: result.agent_response, // compat alias
         approvedBy: result.approved_by,
         approvedAt: result.approved_at,
         createdAt: result.created_at,
@@ -571,11 +1077,15 @@ router.put("/update-response", async (req: Request, res: Response) => {
       message: "Agent response updated successfully",
       data: {
         id: updatedResult.id,
-        weekStart: updatedResult.week_start,
-        weekEnd: updatedResult.week_end,
+        dateStart: updatedResult.date_start,
+        dateEnd: updatedResult.date_end,
+        weekStart: updatedResult.date_start, // compat alias
+        weekEnd: updatedResult.date_end, // compat alias
         domain: updatedResult.domain,
         status: updatedResult.status,
+        agentName: updatedResult.agent_name,
         agentResponse: updatedResult.agent_response,
+        insights: updatedResult.agent_response, // compat alias
         approvedBy: updatedResult.approved_by,
         approvedAt: updatedResult.approved_at,
         createdAt: updatedResult.created_at,
@@ -600,38 +1110,37 @@ router.put("/update-response", async (req: Request, res: Response) => {
  */
 router.get("/weekly-data", async (req: Request, res: Response) => {
   try {
-    const { weekStart, weekEnd, domain } = req.query;
+    const { weekStart, weekEnd, dateStart, dateEnd, domain } = req.query as any;
 
-    log(
-      `GET /api/agents/weekly-data - domain=${domain}, week=${weekStart} to ${weekEnd}`
-    );
+    const start = (dateStart as string) || (weekStart as string);
+    const end = (dateEnd as string) || (weekEnd as string);
+
+    log(`GET /api/agents/weekly-data - domain=${domain}, range=${start} to ${end}`);
 
     // Validation
-    if (!weekStart || !weekEnd || !domain) {
+    if (!start || !end || !domain) {
       return res.status(400).json({
         success: false,
         error: "MISSING_PARAMETERS",
-        message: "weekStart, weekEnd, and domain are required",
+        message: "dateStart, dateEnd, and domain are required",
       });
     }
 
     // Fetch raw data
     const data = await db("google_data_store")
       .where({
-        week_start: weekStart as string,
-        week_end: weekEnd as string,
+        date_start: start,
+        date_end: end,
         domain: domain as string,
       })
       .first();
 
     if (!data) {
-      log(
-        `No data found for domain: ${domain}, week: ${weekStart} to ${weekEnd}`
-      );
+      log(`No data found for domain: ${domain}, range: ${start} to ${end}`);
       return res.status(404).json({
         success: false,
         error: "NOT_FOUND",
-        message: "No data found for this week and location",
+        message: "No data found for this range and location",
       });
     }
 
@@ -641,9 +1150,13 @@ router.get("/weekly-data", async (req: Request, res: Response) => {
       success: true,
       data: {
         id: data.id,
-        weekStart: data.week_start,
-        weekEnd: data.week_end,
+        dateStart: data.date_start,
+        dateEnd: data.date_end,
+        weekStart: data.date_start, // compat alias
+        weekEnd: data.date_end, // compat alias
         domain: data.domain,
+        runType: data.run_type,
+        agentName: data.agent_name,
         ga4Data: data.ga4_data,
         gbpData: data.gbp_data,
         gscData: data.gsc_data,
@@ -656,6 +1169,66 @@ router.get("/weekly-data", async (req: Request, res: Response) => {
       success: false,
       error: "QUERY_ERROR",
       message: "Failed to fetch weekly data",
+    });
+  }
+});
+
+// =====================================================================
+// ROUTE 6B: GET /api/agents/data
+// =====================================================================
+
+/**
+ * Retrieve raw Google data for a domain and date range, optional agentName filter.
+ * Query: domain (required), dateStart, dateEnd (required), agentName (optional)
+ */
+router.get("/data", async (req: Request, res: Response) => {
+  try {
+    const { domain, dateStart, dateEnd, agentName } = req.query as any;
+
+    log(
+      `GET /api/agents/data - domain=${domain}, range=${dateStart} to ${dateEnd}, agentName=${agentName}`
+    );
+
+    if (!domain || !dateStart || !dateEnd) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PARAMETERS",
+        message: "domain, dateStart, and dateEnd are required",
+      });
+    }
+
+    let base = db("google_data_store")
+      .where({ domain: domain as string })
+      .andWhere("date_start", dateStart as string)
+      .andWhere("date_end", dateEnd as string);
+
+    if (agentName) base = base.andWhere("agent_name", agentName as string);
+
+    const rows = await base.orderBy("created_at", "desc");
+
+    return res.json({
+      success: true,
+      data: rows.map((data: any) => ({
+        id: data.id,
+        dateStart: data.date_start,
+        dateEnd: data.date_end,
+        weekStart: data.date_start, // compat alias
+        weekEnd: data.date_end, // compat alias
+        domain: data.domain,
+        runType: data.run_type,
+        agentName: data.agent_name,
+        ga4Data: data.ga4_data,
+        gbpData: data.gbp_data,
+        gscData: data.gsc_data,
+        createdAt: data.created_at,
+      })),
+    });
+  } catch (error: any) {
+    logError("GET /data", error);
+    return res.status(500).json({
+      success: false,
+      error: "QUERY_ERROR",
+      message: "Failed to fetch data",
     });
   }
 });
