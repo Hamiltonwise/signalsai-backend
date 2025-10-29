@@ -103,18 +103,15 @@ const extractMonthEntriesFromResponse = (
 
   if (typeof candidate === "object" && candidate !== null) {
     const container = candidate as Record<string, unknown>;
-    const possibleArrays = [
-      container.data,
-      container.months,
-      container.entries,
-      container.result,
-      container.payload,
-    ];
 
-    for (const possible of possibleArrays) {
-      if (Array.isArray(possible)) {
-        return possible as RawPmsMonthEntry[];
-      }
+    // Check for monthly_rollup as the canonical field (primary)
+    if (Array.isArray(container.monthly_rollup)) {
+      return container.monthly_rollup as RawPmsMonthEntry[];
+    }
+
+    // Fallback to report_data for backward compatibility
+    if (Array.isArray(container.report_data)) {
+      return container.report_data as RawPmsMonthEntry[];
     }
   }
 
@@ -176,12 +173,16 @@ pmsRoutes.post("/upload", upload.single("csvFile"), async (req, res) => {
     const fileName = req.file.originalname.toLowerCase();
     let csvData: string;
 
-    const [jobId] = await db("pms_jobs").insert({
-      time_elapsed: 0,
-      status: "pending",
-      response_log: null,
-      domain: "artfulorthodontics.com",
-    });
+    const [result] = await db("pms_jobs")
+      .insert({
+        time_elapsed: 0,
+        status: "pending",
+        response_log: null,
+        domain: "artfulorthodontics.com",
+      })
+      .returning("id");
+
+    const jobId = result?.id;
 
     if (!jobId) {
       throw new Error("Failed to create PMS job record");
@@ -397,6 +398,7 @@ pmsRoutes.get("/keyData", async (req, res) => {
       });
     }
 
+    // Track month data with timestamps to keep only the latest
     const monthMap = new Map<
       string,
       {
@@ -405,23 +407,20 @@ pmsRoutes.get("/keyData", async (req, res) => {
         doctorReferrals: number;
         totalReferrals: number;
         productionTotal: number;
+        timestamp: string;
+        sources: RawPmsSource[];
       }
     >();
 
-    const sourceMap = new Map<
-      string,
-      { name: string; referrals: number; production: number }
-    >();
-
-    let totalReferrals = 0;
-    let totalProduction = 0;
-
+    // Process jobs to build month map (keeping only latest data per month)
     for (const job of approvedJobs) {
       const entries = extractMonthEntriesFromResponse(job.response_log);
 
       if (!entries.length) {
         continue;
       }
+
+      const jobTimestamp = job.timestamp;
 
       for (const entry of entries) {
         const monthKey = entry?.month?.trim();
@@ -438,43 +437,55 @@ pmsRoutes.get("/keyData", async (req, res) => {
             : selfReferrals + doctorReferrals;
         const entryProductionTotal = toNumber(entry.production_total);
 
-        const monthRecord = monthMap.get(monthKey) ?? {
-          month: monthKey,
-          selfReferrals: 0,
-          doctorReferrals: 0,
-          totalReferrals: 0,
-          productionTotal: 0,
+        const existingMonth = monthMap.get(monthKey);
+
+        // Only update if this job is newer or month doesn't exist
+        if (
+          !existingMonth ||
+          new Date(jobTimestamp) > new Date(existingMonth.timestamp)
+        ) {
+          monthMap.set(monthKey, {
+            month: monthKey,
+            selfReferrals,
+            doctorReferrals,
+            totalReferrals: entryTotalReferrals,
+            productionTotal: entryProductionTotal,
+            timestamp: jobTimestamp,
+            sources: ensureArray<RawPmsSource>(entry.sources),
+          });
+        }
+      }
+    }
+
+    // Now aggregate sources from the final month map
+    const sourceMap = new Map<
+      string,
+      { name: string; referrals: number; production: number }
+    >();
+
+    let totalReferrals = 0;
+    let totalProduction = 0;
+
+    for (const monthData of monthMap.values()) {
+      totalReferrals += monthData.totalReferrals;
+      totalProduction += monthData.productionTotal;
+
+      for (const source of monthData.sources) {
+        const name = source?.name?.trim();
+        if (!name) {
+          continue;
+        }
+
+        const existing = sourceMap.get(name) ?? {
+          name,
+          referrals: 0,
+          production: 0,
         };
 
-        monthRecord.selfReferrals += selfReferrals;
-        monthRecord.doctorReferrals += doctorReferrals;
-        monthRecord.totalReferrals += entryTotalReferrals;
-        monthRecord.productionTotal += entryProductionTotal;
+        existing.referrals += toNumber(source.referrals);
+        existing.production += toNumber(source.production);
 
-        monthMap.set(monthKey, monthRecord);
-
-        totalReferrals += entryTotalReferrals;
-        totalProduction += entryProductionTotal;
-
-        const sources = ensureArray<RawPmsSource>(entry.sources);
-
-        for (const source of sources) {
-          const name = source?.name?.trim();
-          if (!name) {
-            continue;
-          }
-
-          const existing = sourceMap.get(name) ?? {
-            name,
-            referrals: 0,
-            production: 0,
-          };
-
-          existing.referrals += toNumber(source.referrals);
-          existing.production += toNumber(source.production);
-
-          sourceMap.set(name, existing);
-        }
+        sourceMap.set(name, existing);
       }
     }
 
@@ -598,7 +609,7 @@ pmsRoutes.get("/jobs", async (req, res) => {
       status: job.status,
       response_log: parseResponseLog(job.response_log),
       timestamp: job.timestamp,
-      is_approved: job.is_approved === 1,
+      is_approved: job.is_approved === 1 || job.is_approved === true,
       is_client_approved:
         job.is_client_approved === 1 || job.is_client_approved === true,
       domain: job.domain ?? null,

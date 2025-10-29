@@ -135,51 +135,79 @@ const fetchGA4DataWithDimensions = async (
     }));
   }
 
-  const response = await analyticsdata.properties.runReport({
-    property: propertyId,
-    requestBody,
-  });
+  console.log(`[GA4 API] Calling runReport for ${startDate} to ${endDate}`);
+  console.log(`  - Property: ${propertyId}`);
+  console.log(`  - Metrics: ${metrics.join(", ")}`);
+  console.log(
+    `  - Dimensions: ${dimensions.length > 0 ? dimensions.join(", ") : "none"}`
+  );
 
-  const rows = response.data.rows || [];
-  const metricHeaders = response.data.metricHeaders || [];
-  const dimensionHeaders = response.data.dimensionHeaders || [];
-
-  if (dimensions.length === 0) {
-    // Return aggregated data for no dimensions
-    const row = rows[0];
-    if (!row || !row.metricValues) return {};
-
-    const result: any = {};
-    metricHeaders.forEach((header: any, index: number) => {
-      const metricName = header.name;
-      const value = parseFloat(row.metricValues[index].value) || 0;
-      result[metricName] = value;
+  try {
+    const response = await analyticsdata.properties.runReport({
+      property: propertyId,
+      requestBody,
     });
-    return result;
-  }
 
-  // Return structured data with rows for dimensions
-  return {
-    rows: rows.map((row: any) => {
+    console.log(
+      `[GA4 API] ✓ runReport successful for ${startDate} to ${endDate}`
+    );
+    console.log(`  - Rows returned: ${response.data.rows?.length || 0}`);
+
+    const rows = response.data.rows || [];
+    const metricHeaders = response.data.metricHeaders || [];
+    const dimensionHeaders = response.data.dimensionHeaders || [];
+
+    if (dimensions.length === 0) {
+      // Return aggregated data for no dimensions
+      const row = rows[0];
+      if (!row || !row.metricValues) return {};
+
       const result: any = {};
-
-      // Add dimension values
-      if (row.dimensionValues) {
-        dimensionHeaders.forEach((header: any, index: number) => {
-          result[header.name] = row.dimensionValues[index].value;
-        });
-      }
-
-      // Add metric values
-      if (row.metricValues) {
-        metricHeaders.forEach((header: any, index: number) => {
-          result[header.name] = parseFloat(row.metricValues[index].value) || 0;
-        });
-      }
-
+      metricHeaders.forEach((header: any, index: number) => {
+        const metricName = header.name;
+        const value = parseFloat(row.metricValues[index].value) || 0;
+        result[metricName] = value;
+      });
       return result;
-    }),
-  };
+    }
+
+    // Return structured data with rows for dimensions
+    return {
+      rows: rows.map((row: any) => {
+        const result: any = {};
+
+        // Add dimension values
+        if (row.dimensionValues) {
+          dimensionHeaders.forEach((header: any, index: number) => {
+            result[header.name] = row.dimensionValues[index].value;
+          });
+        }
+
+        // Add metric values
+        if (row.metricValues) {
+          metricHeaders.forEach((header: any, index: number) => {
+            result[header.name] =
+              parseFloat(row.metricValues[index].value) || 0;
+          });
+        }
+
+        return result;
+      }),
+    };
+  } catch (error: any) {
+    console.error(
+      `[GA4 API] ✗ runReport FAILED for ${startDate} to ${endDate}`
+    );
+    console.error(`  - Property: ${propertyId}`);
+    console.error(`  - Error type: ${error?.constructor?.name || "Unknown"}`);
+    console.error(`  - Error message: ${error?.message || String(error)}`);
+    console.error(`  - HTTP Status: ${error?.response?.status || "N/A"}`);
+    console.error(
+      `  - Response data:`,
+      JSON.stringify(error?.response?.data || {}, null, 2)
+    );
+    throw error;
+  }
 };
 
 // Helper function to process acquisition data
@@ -561,10 +589,28 @@ export async function getGA4AIReadyData(
   startDate?: string,
   endDate?: string
 ) {
+  // ✅ CRITICAL: Refresh token before API calls to prevent 401 errors
+  try {
+    console.log(`[GA4 Export] Refreshing access token before API calls`);
+    await oauth2Client.refreshAccessToken();
+    console.log(`[GA4 Export] ✓ Token refresh successful`);
+  } catch (refreshError: any) {
+    console.error(`[GA4 Export] ⚠ Token refresh failed:`, refreshError.message);
+    console.error(
+      `[GA4 Export] Continuing with existing token (might still work if valid)`
+    );
+    // Continue with existing token - might work if still valid
+  }
+
   // Ensure propertyId is in correct format
   const formattedPropertyId = propertyId.startsWith("properties/")
     ? propertyId
     : `properties/${propertyId}`;
+
+  console.log(`[GA4 Core] Starting data fetch`);
+  console.log(`  - Property ID: ${formattedPropertyId}`);
+  console.log(`  - Start Date: ${startDate || "using default"}`);
+  console.log(`  - End Date: ${endDate || "using default"}`);
 
   const analyticsdata = google.analyticsdata({
     version: "v1beta",
@@ -574,6 +620,10 @@ export async function getGA4AIReadyData(
   const dateRanges = getDateRanges();
   const finalStartDate = startDate || dateRanges.currentMonth.startDate;
   const finalEndDate = endDate || dateRanges.currentMonth.endDate;
+
+  console.log(
+    `[GA4 Core] Final date range: ${finalStartDate} to ${finalEndDate}`
+  );
 
   // Define metrics for different data categories
   const overviewMetrics = [
@@ -597,15 +647,13 @@ export async function getGA4AIReadyData(
     "sessions",
     "engagedSessions",
   ];
-  const ecommerceMetrics = [
-    "purchaseRevenue",
-    "transactions",
-    "itemRevenue",
-    "itemsViewed",
-  ];
   const audienceMetrics = ["totalUsers", "sessions", "engagementRate"];
 
   // Parallel fetch all data types
+  console.log(
+    `[GA4 Core] Starting parallel data fetch for ${finalStartDate} to ${finalEndDate}`
+  );
+
   const [
     overviewData,
     acquisitionData,
@@ -613,8 +661,6 @@ export async function getGA4AIReadyData(
     audienceDeviceData,
     behaviorPagesData,
     behaviorEventsData,
-    ecommerceData,
-    realTimeData,
   ] = await Promise.all([
     // 1. Traffic Overview
     fetchGA4DataWithDimensions(
@@ -678,29 +724,13 @@ export async function getGA4AIReadyData(
       ["eventName"],
       20
     ),
+  ]).catch((error) => {
+    console.error(`[GA4 Core] CRITICAL: Promise.all failed: ${error.message}`);
+    console.error(`[GA4 Core] Error details:`, error);
+    throw error;
+  });
 
-    // 5. E-commerce Data
-    fetchGA4DataWithDimensions(
-      analyticsdata,
-      formattedPropertyId,
-      finalStartDate,
-      finalEndDate,
-      ecommerceMetrics,
-      ["itemName"],
-      15
-    ).catch(() => ({ rows: [] })),
-
-    // 6. Real-time Data (using last 30 minutes)
-    fetchGA4DataWithDimensions(
-      analyticsdata,
-      formattedPropertyId,
-      "30minutesAgo",
-      "now",
-      ["activeUsers"],
-      ["pagePath"],
-      10
-    ).catch(() => ({ rows: [] })),
-  ]);
+  console.log(`[GA4 Core] ✓ All parallel data fetches completed successfully`);
 
   // Process and structure data for AI
   const aiReadyData = {
@@ -730,21 +760,20 @@ export async function getGA4AIReadyData(
       behaviorEventsData.rows || []
     ),
 
-    // 5. E-commerce Data 💰
-    ecommerce: processEcommerceData(ecommerceData.rows || []),
+    // 5. E-commerce Data 💰 (Removed - incompatible metrics)
+    ecommerce: {
+      revenue: {
+        total: 0,
+        transactions: 0,
+        avgOrderValue: 0,
+      },
+      products: [],
+    },
 
-    // 6. Real-time Data ⚡
+    // 6. Real-time Data ⚡ (Removed - invalid date format)
     realTime: {
-      activeUsers:
-        realTimeData.rows?.reduce(
-          (sum: number, row: any) => sum + (row.activeUsers || 0),
-          0
-        ) || 0,
-      popularPages:
-        realTimeData.rows?.slice(0, 5).map((row: any) => ({
-          page: row.pagePath || "Unknown",
-          activeUsers: row.activeUsers || 0,
-        })) || [],
+      activeUsers: 0,
+      popularPages: [],
     },
 
     // AI Optimization Opportunities

@@ -65,78 +65,70 @@ export const tokenRefreshMiddleware = async (
       });
     }
 
-    // Check if token needs refresh (expired or < 5 minutes remaining)
-    const needsRefresh =
-      !googleAccount.expiry_date ||
-      new Date(googleAccount.expiry_date).getTime() - Date.now() <
-        5 * 60 * 1000;
+    // ✅ ALWAYS refresh token to ensure it's valid (fixes 401 errors)
+    console.log(
+      `[Token Refresh] Force refreshing token for account ${googleAccountId}`
+    );
 
-    if (needsRefresh) {
-      console.log(
-        `[Token Refresh] Refreshing token for account ${googleAccountId}`
-      );
-
-      try {
-        // Create OAuth2 client and refresh token
-        const oauth2Client = await createOAuth2ClientForAccount(
-          googleAccountId
-        );
-        const { token } = await oauth2Client.getAccessToken();
-
-        if (!token) {
-          throw new Error("Failed to refresh access token");
-        }
-
-        // Calculate new expiry (1 hour from now)
-        const newExpiry = new Date(Date.now() + 3600000); // +1 hour
-
-        // Update database with new token
-        await db("google_accounts").where({ id: googleAccountId }).update({
-          access_token: token,
-          expiry_date: newExpiry,
-          updated_at: new Date(),
-        });
-
-        console.log(
-          `[Token Refresh] Token refreshed successfully for account ${googleAccountId}. Expires at: ${newExpiry.toISOString()}`
-        );
-
-        // Update oauth2Client with new token
-        oauth2Client.setCredentials({
-          access_token: token,
-          refresh_token: googleAccount.refresh_token,
-        });
-
-        // Attach to request
-        req.oauth2Client = oauth2Client;
-        req.googleAccountId = googleAccountId;
-      } catch (refreshError: any) {
-        console.error(
-          `[Token Refresh] Failed to refresh token for account ${googleAccountId}:`,
-          refreshError
-        );
-
-        return res.status(401).json({
-          error: "Token refresh failed",
-          message: "Failed to refresh access token. Please re-authenticate.",
-          details:
-            process.env.NODE_ENV === "development"
-              ? refreshError.message
-              : undefined,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } else {
-      // Token is still valid, just create client with existing credentials
+    try {
+      // Create OAuth2 client and force token refresh
       const oauth2Client = await createOAuth2ClientForAccount(googleAccountId);
+
+      // Force refresh to get a fresh access token
+      const { credentials } = await oauth2Client.refreshAccessToken();
+
+      if (!credentials.access_token) {
+        throw new Error("Failed to obtain access token after refresh");
+      }
+
+      // Calculate new expiry from credentials or default to 1 hour
+      const newExpiry = credentials.expiry_date
+        ? new Date(credentials.expiry_date)
+        : new Date(Date.now() + 3600000);
+
+      // Update database with fresh token
+      await db("google_accounts").where({ id: googleAccountId }).update({
+        access_token: credentials.access_token,
+        expiry_date: newExpiry,
+        updated_at: new Date(),
+      });
+
+      console.log(
+        `[Token Refresh] ✓ Token refreshed successfully for account ${googleAccountId}`
+      );
+      console.log(`  - New expiry: ${newExpiry.toISOString()}`);
+      console.log(`  - Has access token: ${!!credentials.access_token}`);
+      console.log(`  - Has refresh token: ${!!credentials.refresh_token}`);
+      console.log(`  - Scopes: ${credentials.scope || "not available"}`);
+
+      // Ensure credentials are set on the client
+      oauth2Client.setCredentials({
+        access_token: credentials.access_token,
+        refresh_token: googleAccount.refresh_token,
+        expiry_date: credentials.expiry_date,
+        scope: credentials.scope,
+        token_type: credentials.token_type,
+      });
+
+      // Attach to request
       req.oauth2Client = oauth2Client;
       req.googleAccountId = googleAccountId;
-
-      console.log(
-        `[Token Refresh] Token still valid for account ${googleAccountId}. Expires at: ${new Date(
-          googleAccount.expiry_date
-        ).toISOString()}`
+    } catch (refreshError: any) {
+      console.error(
+        `[Token Refresh] ✗ Failed to refresh token for account ${googleAccountId}:`,
+        refreshError.message
       );
+      console.error(`[Token Refresh] Error details:`, refreshError);
+
+      return res.status(401).json({
+        error: "Token refresh failed",
+        message: "Failed to refresh access token. Please re-authenticate.",
+        details:
+          process.env.NODE_ENV === "development"
+            ? refreshError.message
+            : undefined,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     next();

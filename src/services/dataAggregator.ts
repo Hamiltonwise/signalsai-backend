@@ -55,14 +55,61 @@ export async function fetchGA4DataForRange(
   endDate: string
 ): Promise<any> {
   try {
+    console.log(
+      `[GA4] Attempting to fetch data for property: ${propertyId} (${startDate} to ${endDate})`
+    );
+
+    // Log credential status (without exposing sensitive data)
+    const credentials = oauth2Client.credentials;
+    console.log(`[GA4] OAuth credentials status:`, {
+      hasAccessToken: !!credentials?.access_token,
+      hasRefreshToken: !!credentials?.refresh_token,
+      tokenExpiry: credentials?.expiry_date
+        ? new Date(credentials.expiry_date).toISOString()
+        : "unknown",
+      scopes: credentials?.scope || "not available",
+    });
+
     const data = await getGA4AIReadyData(
       oauth2Client,
       propertyId,
       startDate,
       endDate
     );
+    console.log(
+      `[GA4] ✓ Successfully fetched data for property: ${propertyId}`
+    );
     return data;
-  } catch (error) {
+  } catch (error: any) {
+    console.error(
+      `[GA4 ERROR] Failed to fetch data for property: ${propertyId}`
+    );
+    console.error(`[GA4 ERROR] Date range: ${startDate} to ${endDate}`);
+    console.error(
+      `[GA4 ERROR] Error type: ${error?.constructor?.name || "Unknown"}`
+    );
+    console.error(
+      `[GA4 ERROR] Error message: ${error?.message || String(error)}`
+    );
+
+    // Log additional error details if available
+    if (error?.response) {
+      console.error(`[GA4 ERROR] HTTP Status: ${error.response?.status}`);
+      console.error(
+        `[GA4 ERROR] Response data:`,
+        JSON.stringify(error.response?.data, null, 2)
+      );
+    }
+    if (error?.code) {
+      console.error(`[GA4 ERROR] Error code: ${error.code}`);
+    }
+    if (error?.errors) {
+      console.error(
+        `[GA4 ERROR] Detailed errors:`,
+        JSON.stringify(error.errors, null, 2)
+      );
+    }
+
     console.error(`Error fetching GA4 data: ${error}`);
     return null;
   }
