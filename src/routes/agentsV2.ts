@@ -547,6 +547,60 @@ async function processMonthlyAgents(
 
     log(`  [MONTHLY] ✓ Opportunity completed successfully`);
 
+    // === STEP 3: Create tasks from action items ===
+    try {
+      const actionItems =
+        opportunityOutput?.action_items || opportunityOutput?.actionItems || [];
+
+      if (Array.isArray(actionItems) && actionItems.length > 0) {
+        log(
+          `  [MONTHLY] Creating ${actionItems.length} task(s) from action items`
+        );
+
+        for (const item of actionItems) {
+          const category =
+            item.category?.toUpperCase() === "USER" ? "USER" : "ALLORO";
+
+          const taskData = {
+            domain_name: domain,
+            google_account_id: googleAccountId,
+            title: item.title || item.name || "Untitled Task",
+            description: item.description || item.details || null,
+            category,
+            status: "pending",
+            is_approved: false,
+            created_by_admin: true,
+            due_date:
+              item.due_date || item.dueDate
+                ? new Date(item.due_date || item.dueDate)
+                : null,
+            metadata: item.metadata ? JSON.stringify(item.metadata) : null,
+            created_at: new Date(),
+            updated_at: new Date(),
+          };
+
+          try {
+            const [result] = await db("tasks").insert(taskData).returning("id");
+            const taskId = result.id;
+            log(
+              `    ✓ Created ${category} task (ID: ${taskId}): ${taskData.title}`
+            );
+          } catch (taskError: any) {
+            log(
+              `    ⚠ Failed to create task "${taskData.title}": ${taskError.message}`
+            );
+          }
+        }
+
+        log(`  [MONTHLY] ✓ Task creation completed`);
+      } else {
+        log(`  [MONTHLY] No action items found in opportunity output`);
+      }
+    } catch (taskCreationError: any) {
+      // Don't fail the entire operation if task creation fails
+      log(`  [MONTHLY] ⚠ Error creating tasks: ${taskCreationError.message}`);
+    }
+
     return {
       success: true,
       summaryOutput,

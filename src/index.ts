@@ -17,7 +17,7 @@ import {
   closeConnection,
 } from "./database/connection";
 import clarityRoutes from "./routes/clarity";
-import mondayRoutes from "./routes/monday";
+import taskRoutes from "./routes/tasks";
 import authRoutes from "./routes/auth";
 import pmsRoutes from "./routes/pms";
 import onboardingRoutes from "./routes/onboarding";
@@ -44,7 +44,7 @@ app.use("/api/ga4", ga4Routes);
 app.use("/api/gsc", gscRoutes);
 app.use("/api/gbp", gbpRoutes);
 app.use("/api/clarity", clarityRoutes);
-app.use("/api/monday", mondayRoutes);
+app.use("/api/tasks", taskRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/pms", pmsRoutes);
 app.use("/api/onboarding", onboardingRoutes);
