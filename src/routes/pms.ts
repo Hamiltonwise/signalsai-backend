@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import csv from "csvtojson";
 import axios from "axios";
 import db from "../database/connection";
+import { aggregatePmsData } from "../utils/pmsAggregator";
 
 type PmsStatus = "pending" | "error" | "completed" | string;
 
@@ -392,117 +393,9 @@ pmsRoutes.get("/keyData", async (req, res) => {
       });
     }
 
-    // Track month data with timestamps to keep only the latest
-    const monthMap = new Map<
-      string,
-      {
-        month: string;
-        selfReferrals: number;
-        doctorReferrals: number;
-        totalReferrals: number;
-        productionTotal: number;
-        timestamp: string;
-        sources: RawPmsSource[];
-      }
-    >();
-
-    // Process jobs to build month map (keeping only latest data per month)
-    for (const job of approvedJobs) {
-      const entries = extractMonthEntriesFromResponse(job.response_log);
-
-      if (!entries.length) {
-        continue;
-      }
-
-      const jobTimestamp = job.timestamp;
-
-      for (const entry of entries) {
-        const monthKey = entry?.month?.trim();
-
-        if (!monthKey) {
-          continue;
-        }
-
-        const selfReferrals = toNumber(entry.self_referrals);
-        const doctorReferrals = toNumber(entry.doctor_referrals);
-        const entryTotalReferrals =
-          entry.total_referrals !== undefined
-            ? toNumber(entry.total_referrals)
-            : selfReferrals + doctorReferrals;
-        const entryProductionTotal = toNumber(entry.production_total);
-
-        const existingMonth = monthMap.get(monthKey);
-
-        // Only update if this job is newer or month doesn't exist
-        if (
-          !existingMonth ||
-          new Date(jobTimestamp) > new Date(existingMonth.timestamp)
-        ) {
-          monthMap.set(monthKey, {
-            month: monthKey,
-            selfReferrals,
-            doctorReferrals,
-            totalReferrals: entryTotalReferrals,
-            productionTotal: entryProductionTotal,
-            timestamp: jobTimestamp,
-            sources: ensureArray<RawPmsSource>(entry.sources),
-          });
-        }
-      }
-    }
-
-    // Now aggregate sources from the final month map
-    const sourceMap = new Map<
-      string,
-      { name: string; referrals: number; production: number }
-    >();
-
-    let totalReferrals = 0;
-    let totalProduction = 0;
-
-    for (const monthData of monthMap.values()) {
-      totalReferrals += monthData.totalReferrals;
-      totalProduction += monthData.productionTotal;
-
-      for (const source of monthData.sources) {
-        const name = source?.name?.trim();
-        if (!name) {
-          continue;
-        }
-
-        const existing = sourceMap.get(name) ?? {
-          name,
-          referrals: 0,
-          production: 0,
-        };
-
-        existing.referrals += toNumber(source.referrals);
-        existing.production += toNumber(source.production);
-
-        sourceMap.set(name, existing);
-      }
-    }
-
-    const months = Array.from(monthMap.values()).sort((a, b) =>
-      a.month.localeCompare(b.month)
-    );
-
-    const sources = Array.from(sourceMap.values())
-      .sort((a, b) => b.production - a.production)
-      .map((source, index) => {
-        const percentage =
-          totalProduction > 0
-            ? Number(((source.production / totalProduction) * 100).toFixed(2))
-            : 0;
-
-        return {
-          rank: index + 1,
-          name: source.name,
-          referrals: Number(source.referrals.toFixed(2)),
-          production: Number(source.production.toFixed(2)),
-          percentage,
-        };
-      });
+    // Use shared aggregation function for consistent PMS data handling
+    const aggregatedData = await aggregatePmsData(domain);
+    const { months, sources, totals } = aggregatedData;
 
     const stats = {
       jobCount: approvedJobs.length,
@@ -524,10 +417,7 @@ pmsRoutes.get("/keyData", async (req, res) => {
         domain,
         months,
         sources,
-        totals: {
-          totalReferrals: Number(totalReferrals.toFixed(2)),
-          totalProduction: Number(totalProduction.toFixed(2)),
-        },
+        totals,
         stats,
         latestJobRaw:
           latestJob?.response_log !== undefined &&

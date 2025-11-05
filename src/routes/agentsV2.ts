@@ -21,6 +21,7 @@ import {
   fetchAllServiceData,
   GooglePropertyIds,
 } from "../services/dataAggregator";
+import { aggregatePmsData } from "../utils/pmsAggregator";
 import axios from "axios";
 import * as fs from "fs";
 import * as path from "path";
@@ -476,27 +477,36 @@ async function processMonthlyAgents(
       endDate
     );
 
-    // Fetch PMS data for the month
-    log(`  [MONTHLY] Fetching PMS data for ${domain}`);
+    // Fetch aggregated PMS data across all approved submissions
+    log(`  [MONTHLY] Fetching aggregated PMS data for ${domain}`);
     let pmsData = null;
     try {
-      const pmsJobs = await db("pms_jobs")
-        .where({ domain, is_approved: 1 })
-        .orderBy("timestamp", "desc")
-        .select("response_log")
-        .limit(1);
+      const aggregated = await aggregatePmsData(domain);
 
-      if (pmsJobs.length > 0 && pmsJobs[0].response_log) {
-        pmsData =
-          typeof pmsJobs[0].response_log === "string"
-            ? JSON.parse(pmsJobs[0].response_log)
-            : pmsJobs[0].response_log;
-        log(`  [MONTHLY] ✓ PMS data found`);
+      if (aggregated.months.length > 0) {
+        // Use aggregated data structure for Summary agent
+        pmsData = {
+          monthly_rollup: aggregated.months.map((month) => ({
+            month: month.month,
+            self_referrals: month.selfReferrals,
+            doctor_referrals: month.doctorReferrals,
+            total_referrals: month.totalReferrals,
+            production_total: month.productionTotal,
+            sources: month.sources,
+          })),
+          sources_summary: aggregated.sources,
+          totals: aggregated.totals,
+        };
+        log(
+          `  [MONTHLY] ✓ Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources)`
+        );
       } else {
         log(`  [MONTHLY] ⚠ No approved PMS data found`);
       }
     } catch (pmsError: any) {
-      log(`  [MONTHLY] ⚠ Error fetching PMS data: ${pmsError.message}`);
+      log(
+        `  [MONTHLY] ⚠ Error fetching aggregated PMS data: ${pmsError.message}`
+      );
     }
 
     // Fetch Clarity data for the month
