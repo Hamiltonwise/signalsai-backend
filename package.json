@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "predev": "pkill -9 node || true",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "db:migrate": "knex migrate:latest",
@@ -42,6 +43,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@types/xlsx": "^0.0.36"
+    "@types/xlsx": "^0.0.36",
+    "tsx": "^4.20.6"
   }
 }

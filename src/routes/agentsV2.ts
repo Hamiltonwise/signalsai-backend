@@ -266,6 +266,7 @@ function buildProoflinePayload(params: {
 
 /**
  * Build payload for Summary monthly agent
+ * Includes GA4, GBP, GSC, PMS, and Clarity data
  */
 function buildSummaryPayload(params: {
   domain: string;
@@ -273,6 +274,8 @@ function buildSummaryPayload(params: {
   startDate: string;
   endDate: string;
   monthData: any;
+  pmsData?: any;
+  clarityData?: any;
 }): any {
   return {
     agent: "summary",
@@ -282,7 +285,11 @@ function buildSummaryPayload(params: {
       start: params.startDate,
       end: params.endDate,
     },
-    additional_data: params.monthData,
+    additional_data: {
+      ...params.monthData,
+      pms: params.pmsData || null,
+      clarity: params.clarityData || null,
+    },
   };
 }
 
@@ -458,8 +465,8 @@ async function processMonthlyAgents(
         ? JSON.parse(account.google_property_ids)
         : account.google_property_ids;
 
-    // Fetch month data
-    log(`  [MONTHLY] Fetching data for ${startDate} to ${endDate}`);
+    // Fetch month data (GA4, GBP, GSC)
+    log(`  [MONTHLY] Fetching GA4/GBP/GSC data for ${startDate} to ${endDate}`);
     const monthData = await fetchAllServiceData(
       oauth2Client,
       googleAccountId,
@@ -468,6 +475,53 @@ async function processMonthlyAgents(
       startDate,
       endDate
     );
+
+    // Fetch PMS data for the month
+    log(`  [MONTHLY] Fetching PMS data for ${domain}`);
+    let pmsData = null;
+    try {
+      const pmsJobs = await db("pms_jobs")
+        .where({ domain, is_approved: 1 })
+        .orderBy("timestamp", "desc")
+        .select("response_log")
+        .limit(1);
+
+      if (pmsJobs.length > 0 && pmsJobs[0].response_log) {
+        pmsData =
+          typeof pmsJobs[0].response_log === "string"
+            ? JSON.parse(pmsJobs[0].response_log)
+            : pmsJobs[0].response_log;
+        log(`  [MONTHLY] ✓ PMS data found`);
+      } else {
+        log(`  [MONTHLY] ⚠ No approved PMS data found`);
+      }
+    } catch (pmsError: any) {
+      log(`  [MONTHLY] ⚠ Error fetching PMS data: ${pmsError.message}`);
+    }
+
+    // Fetch Clarity data for the month
+    log(`  [MONTHLY] Fetching Clarity data for ${domain}`);
+    let clarityData = null;
+    try {
+      const clarityResult = await db("clarity_data_store")
+        .where({ domain: domain })
+        .whereBetween("report_date", [startDate, endDate])
+        .orderBy("report_date", "desc")
+        .select("*");
+
+      if (clarityResult.length > 0) {
+        // Parse the JSON data field and aggregate results
+        clarityData = clarityResult.map((row) => ({
+          report_date: row.report_date,
+          data: typeof row.data === "string" ? JSON.parse(row.data) : row.data,
+        }));
+        log(`  [MONTHLY] ✓ Found ${clarityData.length} Clarity data record(s)`);
+      } else {
+        log(`  [MONTHLY] ⚠ No Clarity data found for this period`);
+      }
+    } catch (clarityError: any) {
+      log(`  [MONTHLY] ⚠ Error fetching Clarity data: ${clarityError.message}`);
+    }
 
     // Prepare raw data for potential DB storage
     const rawData = {
@@ -491,6 +545,8 @@ async function processMonthlyAgents(
       startDate,
       endDate,
       monthData,
+      pmsData,
+      clarityData,
     });
 
     const summaryOutput = await callAgentWebhook(
@@ -549,24 +605,24 @@ async function processMonthlyAgents(
 
     // === STEP 3: Create tasks from action items ===
     try {
-      const actionItems =
-        opportunityOutput?.action_items || opportunityOutput?.actionItems || [];
+      const actionItems = opportunityOutput[0]?.opportunities || [];
 
+      console.log(opportunityOutput[0].opportunities);
       if (Array.isArray(actionItems) && actionItems.length > 0) {
         log(
           `  [MONTHLY] Creating ${actionItems.length} task(s) from action items`
         );
 
         for (const item of actionItems) {
-          const category =
-            item.category?.toUpperCase() === "USER" ? "USER" : "ALLORO";
+          // Use type from action item, default to ALLORO if not USER
+          const type = item.type?.toUpperCase() === "USER" ? "USER" : "ALLORO";
 
           const taskData = {
             domain_name: domain,
             google_account_id: googleAccountId,
             title: item.title || item.name || "Untitled Task",
             description: item.description || item.details || null,
-            category,
+            category: type,
             status: "pending",
             is_approved: false,
             created_by_admin: true,
@@ -583,7 +639,7 @@ async function processMonthlyAgents(
             const [result] = await db("tasks").insert(taskData).returning("id");
             const taskId = result.id;
             log(
-              `    ✓ Created ${category} task (ID: ${taskId}): ${taskData.title}`
+              `    ✓ Created ${type} task (ID: ${taskId}): ${taskData.title}`
             );
           } catch (taskError: any) {
             log(
@@ -902,12 +958,392 @@ async function processClient(
 }
 
 // =====================================================================
-// MAIN ENDPOINT
+// MAIN ENDPOINTS
 // =====================================================================
+
+/**
+ * POST /api/agents/proofline-run
+ *
+ * Daily proofline agent endpoint
+ * - Runs only Proofline agent for all clients
+ * - Should be triggered by daily cron job
+ *
+ * Body: { referenceDate?: "YYYY-MM-DD" } (optional, for testing)
+ */
+router.post("/proofline-run", async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  const { referenceDate } = req.body || {};
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/proofline-run - STARTING");
+  log("=".repeat(70));
+  if (referenceDate) log(`Reference Date: ${referenceDate}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+
+  try {
+    // Fetch all onboarded Google accounts
+    log("\n[SETUP] Fetching all onboarded Google accounts...");
+    const accounts = await db("google_accounts")
+      .where("onboarding_completed", true)
+      .select("*");
+
+    if (!accounts || accounts.length === 0) {
+      log("[SETUP] No onboarded accounts found");
+      return res.json({
+        success: true,
+        message: "No accounts to process",
+        processed: 0,
+        results: [],
+      });
+    }
+
+    log(`[SETUP] Found ${accounts.length} account(s) to process`);
+
+    // Process each client sequentially
+    const results: any[] = [];
+
+    for (const account of accounts) {
+      const { id: googleAccountId, domain_name: domain } = account;
+
+      log(`\n[${"=".repeat(60)}]`);
+      log(`[CLIENT] Processing Proofline: ${domain} (ID: ${googleAccountId})`);
+      log(`[${"=".repeat(60)}]`);
+
+      try {
+        // Create OAuth2 client
+        log(`[CLIENT] Creating OAuth2 client`);
+        const oauth2Client = await createOAuth2ClientForAccount(
+          googleAccountId
+        );
+
+        // Refresh token
+        log(`[CLIENT] Refreshing OAuth token`);
+        await oauth2Client.refreshAccessToken();
+        const credentials = oauth2Client.credentials;
+
+        if (credentials.access_token) {
+          const expiryDate = credentials.expiry_date
+            ? new Date(credentials.expiry_date)
+            : new Date(Date.now() + 3600000);
+
+          await db("google_accounts").where({ id: googleAccountId }).update({
+            access_token: credentials.access_token,
+            expiry_date: expiryDate,
+            updated_at: new Date(),
+          });
+
+          log(`[CLIENT] ✓ Token refreshed`);
+        }
+
+        // Get date range
+        const dailyDates = getDailyDates(referenceDate);
+
+        // Run proofline agent
+        log(`[CLIENT] Running Proofline agent`);
+        const dailyResult = await processDailyAgent(
+          account,
+          oauth2Client,
+          dailyDates
+        );
+
+        if (!dailyResult.success) {
+          throw new Error(dailyResult.error || "Proofline agent failed");
+        }
+
+        // Check for duplicate before saving
+        const existingDaily = await db("agent_results")
+          .where({
+            google_account_id: googleAccountId,
+            domain,
+            agent_type: "proofline",
+            date_start: dailyDates.dayBeforeYesterday,
+            date_end: dailyDates.yesterday,
+          })
+          .whereIn("status", ["success", "pending"])
+          .first();
+
+        if (!existingDaily) {
+          // Save raw data
+          await db("google_data_store").insert(dailyResult.rawData);
+
+          // Save agent result
+          const [result] = await db("agent_results")
+            .insert({
+              google_account_id: googleAccountId,
+              domain,
+              agent_type: "proofline",
+              date_start: dailyDates.dayBeforeYesterday,
+              date_end: dailyDates.yesterday,
+              agent_input: JSON.stringify(dailyResult.payload),
+              agent_output: JSON.stringify(dailyResult.output),
+              status: "success",
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning("id");
+
+          const resultId = result.id;
+          log(`[CLIENT] ✓ Proofline result saved (ID: ${resultId})`);
+        } else {
+          log(
+            `[CLIENT] ℹ Proofline result already exists (ID: ${existingDaily.id})`
+          );
+        }
+
+        results.push({
+          googleAccountId,
+          domain,
+          success: true,
+        });
+
+        log(`[CLIENT] ✓ ${domain} completed successfully`);
+
+        // Delay between clients
+        if (accounts.indexOf(account) < accounts.length - 1) {
+          log(`\n[SETUP] Waiting 15 seconds before next client...`);
+          await delay(15000);
+        }
+      } catch (error: any) {
+        logError(`Proofline for ${domain}`, error);
+        results.push({
+          googleAccountId,
+          domain,
+          success: false,
+          error: error?.message || String(error),
+        });
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    const successfulClients = results.filter((r) => r.success).length;
+
+    log("\n" + "=".repeat(70));
+    log(`[COMPLETE] ✓ Proofline run completed`);
+    log(`  - Total clients: ${accounts.length}`);
+    log(`  - Successful: ${successfulClients}`);
+    log(`  - Failed: ${accounts.length - successfulClients}`);
+    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      message: `Processed ${accounts.length} account(s)`,
+      processed: accounts.length,
+      successful: successfulClients,
+      duration: `${duration}ms`,
+      results,
+    });
+  } catch (error: any) {
+    logError("proofline-run", error);
+    const duration = Date.now() - startTime;
+    log(`\n[FAILED] ❌ Proofline run failed after ${duration}ms`);
+    log("=".repeat(70) + "\n");
+
+    return res.status(500).json({
+      success: false,
+      error: "PROOFLINE_RUN_ERROR",
+      message: error?.message || "Failed to run proofline agent",
+      duration: `${duration}ms`,
+    });
+  }
+});
+
+/**
+ * POST /api/agents/monthly-agents-run
+ *
+ * Monthly agents endpoint (Summary + Opportunity)
+ * - Runs for a specific account when triggered by PMS client approval
+ * - Includes PMS and Clarity data in Summary agent
+ * - Creates tasks from Opportunity agent action items
+ *
+ * Body: { googleAccountId: number, domain: string, force?: boolean }
+ */
+router.post("/monthly-agents-run", async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  const { googleAccountId, domain, force = false } = req.body;
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/monthly-agents-run - STARTING");
+  log("=".repeat(70));
+  log(`Account ID: ${googleAccountId}`);
+  log(`Domain: ${domain}`);
+  log(`Force run: ${force}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+
+  try {
+    // Validate input
+    if (!googleAccountId || !domain) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PARAMETERS",
+        message: "googleAccountId and domain are required",
+      });
+    }
+
+    // Fetch account
+    log(`\n[SETUP] Fetching account ${googleAccountId}...`);
+    const account = await db("google_accounts")
+      .where({ id: googleAccountId })
+      .first();
+
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        error: "ACCOUNT_NOT_FOUND",
+        message: `Account ${googleAccountId} not found`,
+      });
+    }
+
+    log(`[SETUP] Account found: ${account.domain_name}`);
+
+    // Get month range
+    const monthRange = getPreviousMonthRange();
+    log(
+      `[SETUP] Month range: ${monthRange.startDate} to ${monthRange.endDate}`
+    );
+
+    // Check for existing results unless force=true
+    if (!force) {
+      const existingSummary = await db("agent_results")
+        .where({
+          google_account_id: googleAccountId,
+          domain,
+          agent_type: "summary",
+          date_start: monthRange.startDate,
+          date_end: monthRange.endDate,
+        })
+        .whereIn("status", ["success", "pending"])
+        .first();
+
+      if (existingSummary) {
+        log(
+          `[SETUP] Monthly agents already completed for this period - skipping`
+        );
+        return res.json({
+          success: true,
+          message: "Monthly agents already run for this period",
+          skipped: true,
+          existingResultId: existingSummary.id,
+        });
+      }
+    } else {
+      log(`[SETUP] Force mode enabled - will overwrite existing results`);
+    }
+
+    // Create OAuth2 client
+    log(`[CLIENT] Creating OAuth2 client`);
+    const oauth2Client = await createOAuth2ClientForAccount(googleAccountId);
+
+    // Refresh token
+    log(`[CLIENT] Refreshing OAuth token`);
+    await oauth2Client.refreshAccessToken();
+    const credentials = oauth2Client.credentials;
+
+    if (credentials.access_token) {
+      const expiryDate = credentials.expiry_date
+        ? new Date(credentials.expiry_date)
+        : new Date(Date.now() + 3600000);
+
+      await db("google_accounts").where({ id: googleAccountId }).update({
+        access_token: credentials.access_token,
+        expiry_date: expiryDate,
+        updated_at: new Date(),
+      });
+
+      log(`[CLIENT] ✓ Token refreshed`);
+    }
+
+    // Run monthly agents
+    log(`[CLIENT] Running monthly agents (Summary + Opportunity)`);
+    const monthlyResult = await processMonthlyAgents(
+      account,
+      oauth2Client,
+      monthRange
+    );
+
+    if (!monthlyResult.success) {
+      throw new Error(monthlyResult.error || "Monthly agents failed");
+    }
+
+    // Save results
+    log(`[CLIENT] Saving results to database...`);
+
+    // Save raw data
+    await db("google_data_store").insert(monthlyResult.rawData);
+
+    // Save Summary result
+    const [summaryResult] = await db("agent_results")
+      .insert({
+        google_account_id: googleAccountId,
+        domain,
+        agent_type: "summary",
+        date_start: monthRange.startDate,
+        date_end: monthRange.endDate,
+        agent_input: JSON.stringify(monthlyResult.summaryPayload),
+        agent_output: JSON.stringify(monthlyResult.summaryOutput),
+        status: "success",
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning("id");
+
+    const summaryId = summaryResult.id;
+    log(`[CLIENT] ✓ Summary result saved (ID: ${summaryId})`);
+
+    // Save Opportunity result
+    const [opportunityResult] = await db("agent_results")
+      .insert({
+        google_account_id: googleAccountId,
+        domain,
+        agent_type: "opportunity",
+        date_start: monthRange.startDate,
+        date_end: monthRange.endDate,
+        agent_input: JSON.stringify(monthlyResult.opportunityPayload),
+        agent_output: JSON.stringify(monthlyResult.opportunityOutput),
+        status: "success",
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning("id");
+
+    const opportunityId = opportunityResult.id;
+    log(`[CLIENT] ✓ Opportunity result saved (ID: ${opportunityId})`);
+
+    const duration = Date.now() - startTime;
+
+    log("\n" + "=".repeat(70));
+    log(`[COMPLETE] ✓ Monthly agents completed successfully`);
+    log(`  - Summary ID: ${summaryId}`);
+    log(`  - Opportunity ID: ${opportunityId}`);
+    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      message: "Monthly agents completed successfully",
+      summaryId,
+      opportunityId,
+      duration: `${duration}ms`,
+    });
+  } catch (error: any) {
+    logError("monthly-agents-run", error);
+    const duration = Date.now() - startTime;
+    log(`\n[FAILED] ❌ Monthly agents failed after ${duration}ms`);
+    log("=".repeat(70) + "\n");
+
+    return res.status(500).json({
+      success: false,
+      error: "MONTHLY_AGENTS_ERROR",
+      message: error?.message || "Failed to run monthly agents",
+      duration: `${duration}ms`,
+    });
+  }
+});
 
 /**
  * POST /api/agents/process-all
  *
+ * DEPRECATED - Use /proofline-run instead
  * Main endpoint that processes all clients daily
  * - Always runs Proofline (daily) for each client
  * - Conditionally runs Summary + Opportunity (monthly) when conditions are met

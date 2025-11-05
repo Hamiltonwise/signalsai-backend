@@ -18,15 +18,15 @@ const config: { [key: string]: Knex.Config } = {
     pool: {
       min: 2,
       max: 50,
-      acquireTimeoutMillis: 90000, // 90 seconds
+      acquireTimeoutMillis: 90000,
       createTimeoutMillis: 30000,
       destroyTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,
       reapIntervalMillis: 1000,
       createRetryIntervalMillis: 200,
-      propagateCreateError: false, // Don't fail fast on connection errors
+      propagateCreateError: false,
     },
-    acquireConnectionTimeout: 90000, // Match pool timeout
+    acquireConnectionTimeout: 90000,
     useNullAsDefault: true,
     log: {
       warn(message) {
@@ -57,16 +57,16 @@ const config: { [key: string]: Knex.Config } = {
     },
     pool: {
       min: 2,
-      max: 50,
-      acquireTimeoutMillis: 90000, // 90 seconds
-      createTimeoutMillis: 30000,
+      max: 10, // Reduced from 100 to prevent connection exhaustion
+      acquireTimeoutMillis: 60000, // Reduced from 90000
+      createTimeoutMillis: 10000, // Reduced from 30000
       destroyTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,
       reapIntervalMillis: 1000,
       createRetryIntervalMillis: 200,
       propagateCreateError: false,
     },
-    acquireConnectionTimeout: 90000,
+    acquireConnectionTimeout: 60000, // Reduced from 90000
     useNullAsDefault: true,
     log: {
       warn(message) {

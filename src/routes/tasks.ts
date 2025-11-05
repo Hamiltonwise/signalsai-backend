@@ -322,49 +322,90 @@ router.get("/admin/all", async (req: Request, res: Response) => {
 
     console.log("[TASKS] Admin fetching all tasks with filters:", req.query);
 
-    // Build query
-    let query = db("tasks").select("tasks.*");
+    // Build count query
+    let countQuery = db("tasks");
 
-    // Apply filters
+    // Apply filters to count query
     if (domain_name) {
-      query = query.where("tasks.domain_name", domain_name);
+      countQuery = countQuery.where("tasks.domain_name", domain_name);
     }
 
     if (status && status !== "all") {
-      query = query.where("tasks.status", status);
+      countQuery = countQuery.where("tasks.status", status);
     } else {
       // Default: exclude archived
-      query = query.whereNot("tasks.status", "archived");
+      countQuery = countQuery.whereNot("tasks.status", "archived");
     }
 
     if (category && category !== "all") {
-      query = query.where("tasks.category", category);
+      countQuery = countQuery.where("tasks.category", category);
     }
 
     if (is_approved !== undefined && is_approved !== "all") {
       const approvedValue = is_approved === "true" || is_approved === true;
-      query = query.where("tasks.is_approved", approvedValue);
+      countQuery = countQuery.where("tasks.is_approved", approvedValue);
     }
 
     if (date_from) {
-      query = query.where("tasks.created_at", ">=", new Date(date_from));
+      countQuery = countQuery.where(
+        "tasks.created_at",
+        ">=",
+        new Date(date_from)
+      );
     }
 
     if (date_to) {
-      query = query.where("tasks.created_at", "<=", new Date(date_to));
+      countQuery = countQuery.where(
+        "tasks.created_at",
+        "<=",
+        new Date(date_to)
+      );
     }
 
-    // Get total count before pagination
-    const countQuery = query.clone();
-    const [{ count }] = await countQuery.clearSelect().count("* as count");
+    // Execute count query
+    const [{ count }] = await countQuery.count("* as count");
 
-    // Apply pagination
-    query = query
+    // Build data query separately
+    let dataQuery = db("tasks").select("tasks.*");
+
+    // Apply same filters to data query
+    if (domain_name) {
+      dataQuery = dataQuery.where("tasks.domain_name", domain_name);
+    }
+
+    if (status && status !== "all") {
+      dataQuery = dataQuery.where("tasks.status", status);
+    } else {
+      // Default: exclude archived
+      dataQuery = dataQuery.whereNot("tasks.status", "archived");
+    }
+
+    if (category && category !== "all") {
+      dataQuery = dataQuery.where("tasks.category", category);
+    }
+
+    if (is_approved !== undefined && is_approved !== "all") {
+      const approvedValue = is_approved === "true" || is_approved === true;
+      dataQuery = dataQuery.where("tasks.is_approved", approvedValue);
+    }
+
+    if (date_from) {
+      dataQuery = dataQuery.where(
+        "tasks.created_at",
+        ">=",
+        new Date(date_from)
+      );
+    }
+
+    if (date_to) {
+      dataQuery = dataQuery.where("tasks.created_at", "<=", new Date(date_to));
+    }
+
+    // Execute data query with pagination
+    const tasks = await dataQuery
       .orderBy("tasks.created_at", "desc")
       .limit(parseInt(limit))
       .offset(parseInt(offset));
-
-    const tasks = await query;
 
     console.log(
       `[TASKS] Admin fetched ${tasks.length} tasks (total: ${count})`
@@ -519,6 +560,146 @@ router.get("/clients", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     return handleError(res, error, "Fetch clients");
+  }
+});
+
+/**
+ * POST /api/tasks/bulk/delete
+ * Bulk archive tasks
+ * Body: { taskIds: number[] }
+ */
+router.post("/bulk/delete", async (req: Request, res: Response) => {
+  try {
+    const { taskIds } = req.body;
+
+    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid task IDs",
+        message: "taskIds must be a non-empty array",
+      });
+    }
+
+    console.log(`[TASKS] Bulk archiving ${taskIds.length} task(s)`);
+
+    // Archive all tasks
+    const updated = await db("tasks").whereIn("id", taskIds).update({
+      status: "archived",
+      updated_at: new Date(),
+    });
+
+    console.log(`[TASKS] Archived ${updated} task(s)`);
+
+    return res.json({
+      success: true,
+      message: `${updated} task(s) archived successfully`,
+      count: updated,
+    });
+  } catch (error: any) {
+    return handleError(res, error, "Bulk archive tasks");
+  }
+});
+
+/**
+ * POST /api/tasks/bulk/approve
+ * Bulk approve/unapprove tasks
+ * Body: { taskIds: number[], is_approved: boolean }
+ */
+router.post("/bulk/approve", async (req: Request, res: Response) => {
+  try {
+    const { taskIds, is_approved } = req.body;
+
+    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid task IDs",
+        message: "taskIds must be a non-empty array",
+      });
+    }
+
+    if (typeof is_approved !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid approval status",
+        message: "is_approved must be a boolean",
+      });
+    }
+
+    console.log(
+      `[TASKS] Bulk ${is_approved ? "approving" : "unapproving"} ${
+        taskIds.length
+      } task(s)`
+    );
+
+    // Update all tasks
+    const updated = await db("tasks").whereIn("id", taskIds).update({
+      is_approved,
+      updated_at: new Date(),
+    });
+
+    console.log(`[TASKS] Updated ${updated} task(s)`);
+
+    return res.json({
+      success: true,
+      message: `${updated} task(s) ${
+        is_approved ? "approved" : "unapproved"
+      } successfully`,
+      count: updated,
+    });
+  } catch (error: any) {
+    return handleError(res, error, "Bulk approve tasks");
+  }
+});
+
+/**
+ * POST /api/tasks/bulk/status
+ * Bulk update task status
+ * Body: { taskIds: number[], status: ActionItemStatus }
+ */
+router.post("/bulk/status", async (req: Request, res: Response) => {
+  try {
+    const { taskIds, status } = req.body;
+
+    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid task IDs",
+        message: "taskIds must be a non-empty array",
+      });
+    }
+
+    if (!["pending", "in_progress", "complete", "archived"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid status",
+        message: "status must be pending, in_progress, complete, or archived",
+      });
+    }
+
+    console.log(`[TASKS] Bulk updating ${taskIds.length} task(s) to ${status}`);
+
+    const updateData: any = {
+      status,
+      updated_at: new Date(),
+    };
+
+    // Set completed_at for tasks being marked complete
+    if (status === "complete") {
+      updateData.completed_at = new Date();
+    }
+
+    // Update all tasks
+    const updated = await db("tasks").whereIn("id", taskIds).update(updateData);
+
+    console.log(`[TASKS] Updated ${updated} task(s)`);
+
+    return res.json({
+      success: true,
+      message: `${updated} task(s) updated to ${status} successfully`,
+      count: updated,
+    });
+  } catch (error: any) {
+    return handleError(res, error, "Bulk update task status");
   }
 });
 

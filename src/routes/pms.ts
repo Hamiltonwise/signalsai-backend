@@ -309,38 +309,32 @@ pmsRoutes.get("/keyData", async (req, res) => {
         ? domainParam.trim()
         : "artfulorthodontics.com";
 
-    const jobsRaw = await db("pms_jobs")
-      .select(
-        "id",
-        "timestamp",
-        "response_log",
-        "is_approved",
-        "is_client_approved"
-      )
-      .modify((queryBuilder) => {
-        queryBuilder.orderBy("timestamp", "asc");
+    // Build and execute jobs query directly
+    let jobsQuery = db("pms_jobs").select(
+      "id",
+      "timestamp",
+      "response_log",
+      "is_approved",
+      "is_client_approved"
+    );
+    if (domain) {
+      jobsQuery = jobsQuery.where("domain", domain);
+    }
+    const jobsRaw = await jobsQuery.orderBy("timestamp", "asc");
 
-        if (domain) {
-          queryBuilder.where("domain", domain);
-        }
-      });
-
-    const latestJob = await db("pms_jobs")
-      .select(
-        "id",
-        "timestamp",
-        "status",
-        "is_approved",
-        "is_client_approved",
-        "response_log"
-      )
-      .modify((queryBuilder) => {
-        if (domain) {
-          queryBuilder.where("domain", domain);
-        }
-      })
-      .orderBy("timestamp", "desc")
-      .first();
+    // Build and execute latest job query directly
+    let latestJobQuery = db("pms_jobs").select(
+      "id",
+      "timestamp",
+      "status",
+      "is_approved",
+      "is_client_approved",
+      "response_log"
+    );
+    if (domain) {
+      latestJobQuery = latestJobQuery.where("domain", domain);
+    }
+    const latestJob = await latestJobQuery.orderBy("timestamp", "desc").first();
 
     const normalizeApproval = (value: any): boolean | null => {
       if (value === 1 || value === true || value === "1") {
@@ -580,25 +574,32 @@ pmsRoutes.get("/jobs", async (req, res) => {
         ? domain.trim()
         : undefined;
 
-    const baseQuery = db("pms_jobs").modify((queryBuilder) => {
-      if (statuses.length > 0) {
-        queryBuilder.whereIn("status", statuses);
-      }
-
-      if (approvedFilter !== undefined) {
-        queryBuilder.where("is_approved", approvedFilter ? 1 : 0);
-      }
-
-      if (domainFilter) {
-        queryBuilder.where("domain", domainFilter);
-      }
-    });
-
-    const totalResult = await baseQuery.clone().count({ total: "*" });
+    // Build count query with filters - execute immediately
+    let countQuery = db("pms_jobs");
+    if (statuses.length > 0) {
+      countQuery = countQuery.whereIn("status", statuses);
+    }
+    if (approvedFilter !== undefined) {
+      countQuery = countQuery.where("is_approved", approvedFilter ? 1 : 0);
+    }
+    if (domainFilter) {
+      countQuery = countQuery.where("domain", domainFilter);
+    }
+    const totalResult = await countQuery.count({ total: "*" });
     const total = Number(totalResult?.[0]?.total ?? 0);
 
-    const jobsRaw = await baseQuery
-      .clone()
+    // Build data query with same filters - execute immediately
+    let dataQuery = db("pms_jobs");
+    if (statuses.length > 0) {
+      dataQuery = dataQuery.whereIn("status", statuses);
+    }
+    if (approvedFilter !== undefined) {
+      dataQuery = dataQuery.where("is_approved", approvedFilter ? 1 : 0);
+    }
+    if (domainFilter) {
+      dataQuery = dataQuery.where("domain", domainFilter);
+    }
+    const jobsRaw = await dataQuery
       .orderBy("timestamp", "desc")
       .limit(PAGE_SIZE)
       .offset((page - 1) * PAGE_SIZE);
@@ -824,10 +825,59 @@ pmsRoutes.patch("/jobs/:id/client-approval", async (req, res) => {
         "response_log",
         "timestamp",
         "is_approved",
-        "is_client_approved"
+        "is_client_approved",
+        "domain"
       )
       .where({ id: jobId })
       .first();
+
+    // Trigger monthly agents when client approves PMS
+    if (clientApproval && updatedJob) {
+      console.log(
+        `[PMS] Client approved PMS job ${jobId} - triggering monthly agents`
+      );
+
+      try {
+        // Get google account ID from domain
+        const account = await db("google_accounts")
+          .where({ domain_name: updatedJob.domain })
+          .first();
+
+        if (account) {
+          // Trigger monthly agents asynchronously (don't wait for response)
+          axios
+            .post(
+              `http://localhost:${
+                process.env.PORT || 3000
+              }/api/agents/monthly-agents-run`,
+              {
+                googleAccountId: account.id,
+                domain: updatedJob.domain,
+                force: true, // Force re-run to use latest PMS data
+              }
+            )
+            .then(() => {
+              console.log(
+                `[PMS] Monthly agents triggered successfully for ${updatedJob.domain}`
+              );
+            })
+            .catch((error) => {
+              console.error(
+                `[PMS] Failed to trigger monthly agents: ${error.message}`
+              );
+            });
+        } else {
+          console.warn(
+            `[PMS] No account found for domain ${updatedJob.domain}`
+          );
+        }
+      } catch (triggerError: any) {
+        console.error(
+          `[PMS] Error triggering monthly agents: ${triggerError.message}`
+        );
+        // Don't fail the approval if agent trigger fails
+      }
+    }
 
     return res.json({
       success: true,
