@@ -22,6 +22,7 @@ import {
   GooglePropertyIds,
 } from "../services/dataAggregator";
 import { aggregatePmsData } from "../utils/pmsAggregator";
+import { createNotification } from "../utils/notificationHelper";
 import axios from "axios";
 import * as fs from "fs";
 import * as path from "path";
@@ -1318,6 +1319,27 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
 
     const opportunityId = opportunityResult.id;
     log(`[CLIENT] ✓ Opportunity result saved (ID: ${opportunityId})`);
+
+    // Create notification for completed monthly agents
+    try {
+      await createNotification(
+        domain,
+        "Monthly Insights Ready",
+        "Your monthly summary and opportunities are now available for review",
+        "agent",
+        {
+          summaryId,
+          opportunityId,
+          dateRange: `${monthRange.startDate} to ${monthRange.endDate}`,
+        }
+      );
+      log(`[CLIENT] ✓ Notification created for completed monthly agents`);
+    } catch (notificationError: any) {
+      log(
+        `[CLIENT] ⚠ Failed to create notification: ${notificationError.message}`
+      );
+      // Don't fail the entire operation if notification creation fails
+    }
 
     const duration = Date.now() - startTime;
 

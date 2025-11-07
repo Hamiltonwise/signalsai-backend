@@ -150,3 +150,39 @@ export interface GroupedActionItemsResponse {
   total: number;
   message?: string;
 }
+
+// =====================================================================
+// NOTIFICATION SYSTEM TYPES
+// =====================================================================
+
+export type NotificationType = "task" | "pms" | "agent" | "system";
+
+export interface Notification {
+  id: number;
+  google_account_id?: number;
+  domain_name: string;
+  title: string;
+  message?: string;
+  type: NotificationType;
+  read: boolean;
+  read_timestamp?: Date;
+  metadata?: any;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CreateNotificationRequest {
+  google_account_id?: number;
+  domain_name: string;
+  title: string;
+  message?: string;
+  type: NotificationType;
+  metadata?: any;
+}
+
+export interface NotificationsResponse {
+  success: boolean;
+  notifications: Notification[];
+  unreadCount: number;
+  total: number;
+}

@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import { db } from "../database/connection";
+import { createNotification } from "../utils/notificationHelper";
 import type {
   ActionItem,
   ActionItemCategory,
@@ -476,10 +477,37 @@ router.patch("/:id", async (req: Request, res: Response) => {
     if (updates.metadata !== undefined)
       updateData.metadata = JSON.stringify(updates.metadata);
 
+    // Track if approval status is changing to true for USER tasks
+    const isApprovingUserTask =
+      updates.is_approved === true &&
+      task.is_approved === false &&
+      task.category === "USER";
+
     // Update task
     await db("tasks").where({ id: taskId }).update(updateData);
 
     const updatedTask = await db("tasks").where({ id: taskId }).first();
+
+    // Create notification if USER task was just approved
+    if (isApprovingUserTask && task.domain_name) {
+      try {
+        await createNotification(
+          task.domain_name,
+          "New Task Approved",
+          "A new opportunity awaits your action! Visit the tasks tab to see more",
+          "task",
+          { taskId, taskTitle: task.title }
+        );
+        console.log(
+          `[TASKS] Created notification for approved USER task ${taskId}`
+        );
+      } catch (notificationError: any) {
+        console.error(
+          `[TASKS] Failed to create notification: ${notificationError.message}`
+        );
+        // Don't fail the update if notification creation fails
+      }
+    }
 
     console.log(`[TASKS] Updated task ${taskId}`);
 
@@ -490,6 +518,63 @@ router.patch("/:id", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     return handleError(res, error, "Update task");
+  }
+});
+
+/**
+ * PATCH /api/tasks/:id/category
+ * Update task category (admin only)
+ * Body: { category: "ALLORO" | "USER" }
+ */
+router.patch("/:id/category", async (req: Request, res: Response) => {
+  try {
+    const taskId = parseInt(req.params.id, 10);
+    const { category } = req.body;
+
+    if (isNaN(taskId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid task ID",
+        message: "Task ID must be a valid number",
+      });
+    }
+
+    if (!category || !["ALLORO", "USER"].includes(category)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid category",
+        message: "Category must be ALLORO or USER",
+      });
+    }
+
+    // Check if task exists
+    const task = await db("tasks").where({ id: taskId }).first();
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: "Task not found",
+        message: "Task does not exist",
+      });
+    }
+
+    // Update category
+    await db("tasks").where({ id: taskId }).update({
+      category,
+      updated_at: new Date(),
+    });
+
+    const updatedTask = await db("tasks").where({ id: taskId }).first();
+
+    console.log(`[TASKS] Updated task ${taskId} category to ${category}`);
+
+    return res.json({
+      success: true,
+      task: updatedTask,
+      message: `Task category updated to ${category} successfully`,
+    });
+  } catch (error: any) {
+    return handleError(res, error, "Update task category");
   }
 });
 
@@ -631,6 +716,29 @@ router.post("/bulk/approve", async (req: Request, res: Response) => {
       } task(s)`
     );
 
+    // If approving, fetch tasks to check which are USER tasks and not yet approved
+    let userTasksToNotify: { domain_name: string; count: number }[] = [];
+    if (is_approved) {
+      const tasksToApprove = await db("tasks")
+        .whereIn("id", taskIds)
+        .where("is_approved", false)
+        .where("category", "USER")
+        .select("domain_name");
+
+      // Group by domain to send one notification per domain
+      const domainCounts = tasksToApprove.reduce((acc: any, task: any) => {
+        acc[task.domain_name] = (acc[task.domain_name] || 0) + 1;
+        return acc;
+      }, {});
+
+      userTasksToNotify = Object.entries(domainCounts).map(
+        ([domain, count]) => ({
+          domain_name: domain as string,
+          count: count as number,
+        })
+      );
+    }
+
     // Update all tasks
     const updated = await db("tasks").whereIn("id", taskIds).update({
       is_approved,
@@ -638,6 +746,34 @@ router.post("/bulk/approve", async (req: Request, res: Response) => {
     });
 
     console.log(`[TASKS] Updated ${updated} task(s)`);
+
+    // Create notifications for approved USER tasks
+    if (is_approved && userTasksToNotify.length > 0) {
+      for (const { domain_name, count } of userTasksToNotify) {
+        try {
+          const message =
+            count === 1
+              ? "A new opportunity awaits your action! Visit the tasks tab to see more"
+              : `${count} new opportunities awaiting your action! Visit tasks to see more`;
+
+          await createNotification(
+            domain_name,
+            count === 1 ? "New Task Approved" : "New Tasks Approved",
+            message,
+            "task",
+            { taskCount: count }
+          );
+          console.log(
+            `[TASKS] Created notification for ${count} approved USER task(s) for ${domain_name}`
+          );
+        } catch (notificationError: any) {
+          console.error(
+            `[TASKS] Failed to create notification for ${domain_name}: ${notificationError.message}`
+          );
+          // Don't fail the approval if notification creation fails
+        }
+      }
+    }
 
     return res.json({
       success: true,

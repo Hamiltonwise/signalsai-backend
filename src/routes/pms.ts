@@ -5,6 +5,7 @@ import csv from "csvtojson";
 import axios from "axios";
 import db from "../database/connection";
 import { aggregatePmsData } from "../utils/pmsAggregator";
+import { createNotification } from "../utils/notificationHelper";
 
 type PmsStatus = "pending" | "error" | "completed" | string;
 
@@ -566,7 +567,8 @@ pmsRoutes.patch("/jobs/:id/approval", async (req, res) => {
         "status",
         "response_log",
         "timestamp",
-        "is_approved"
+        "is_approved",
+        "domain"
       )
       .where({ id: jobId })
       .first();
@@ -618,6 +620,17 @@ pmsRoutes.patch("/jobs/:id/approval", async (req, res) => {
     }
 
     await db("pms_jobs").where({ id: jobId }).update(updatePayload);
+
+    // Create notification for PMS approval
+    if (nextApprovalValue === 1 && existingJob.domain) {
+      await createNotification(
+        existingJob.domain,
+        "PMS Data Approved",
+        "PMS data is now ingested and ready for your review",
+        "pms",
+        { jobId, timestamp: new Date() }
+      );
+    }
 
     const updatedJob = await db("pms_jobs")
       .select(
@@ -787,6 +800,9 @@ pmsRoutes.patch("/jobs/:id/client-approval", async (req, res) => {
       message: `PMS job client approval ${
         clientApproval ? "confirmed" : "reset"
       } successfully`,
+      toastMessage: clientApproval
+        ? "We're now processing and setting up your action items. You'll be notified when ready!"
+        : undefined,
     });
   } catch (error: any) {
     console.error(
