@@ -40,6 +40,8 @@ const LOG_FILE = path.join(LOG_DIR, "agent-run.log");
 const PROOFLINE_WEBHOOK = process.env.PROOFLINE_AGENT_WEBHOOK || "";
 const SUMMARY_WEBHOOK = process.env.SUMMARY_AGENT_WEBHOOK || "";
 const OPPORTUNITY_WEBHOOK = process.env.OPPORTUNITY_AGENT_WEBHOOK || "";
+const CRO_OPTIMIZER_WEBHOOK = process.env.CRO_OPTIMIZER_AGENT_WEBHOOK || "";
+const COPY_COMPANION_WEBHOOK = process.env.COPY_COMPANION_AGENT_WEBHOOK || "";
 
 // PMS data availability flag (always true for now as placeholder)
 const MONTH_PMS_DATA_AVAILABLE = true;
@@ -223,7 +225,7 @@ async function callAgentWebhook(
 
   try {
     const response = await axios.post(webhookUrl, payload, {
-      timeout: 300000, // 5 minutes timeout
+      timeout: 600000, // 10 minutes timeout
       headers: {
         "Content-Type": "application/json",
       },
@@ -308,6 +310,29 @@ function buildOpportunityPayload(params: {
 }): any {
   return {
     agent: "opportunity",
+    domain: params.domain,
+    googleAccountId: params.googleAccountId,
+    dateRange: {
+      start: params.startDate,
+      end: params.endDate,
+    },
+    additional_data: params.summaryOutput,
+  };
+}
+
+/**
+ * Build payload for CRO Optimizer monthly agent
+ * Only passes the Summary agent's output, nothing else
+ */
+function buildCroOptimizerPayload(params: {
+  domain: string;
+  googleAccountId: number;
+  startDate: string;
+  endDate: string;
+  summaryOutput: any;
+}): any {
+  return {
+    agent: "cro_optimizer",
     domain: params.domain,
     googleAccountId: params.googleAccountId,
     dateRange: {
@@ -447,8 +472,10 @@ async function processMonthlyAgents(
   success: boolean;
   summaryOutput?: any;
   opportunityOutput?: any;
+  croOptimizerOutput?: any;
   summaryPayload?: any;
   opportunityPayload?: any;
+  croOptimizerPayload?: any;
   rawData?: any;
   skipped?: boolean;
   error?: string;
@@ -614,7 +641,74 @@ async function processMonthlyAgents(
 
     log(`  [MONTHLY] ✓ Opportunity completed successfully`);
 
-    // === STEP 3: Create tasks from action items ===
+    // === STEP 3: Run CRO Optimizer Agent with retry logic ===
+    log(`  [MONTHLY] Waiting 15 seconds before CRO Optimizer agent...`);
+    await delay(15000); // 15-second delay before CRO Optimizer
+
+    log(`  [MONTHLY] Calling CRO Optimizer agent webhook (max 3 attempts)`);
+
+    let croOptimizerOutput: any = null;
+    let croOptimizerPayload: any = null;
+    let croAttempt = 0;
+    const MAX_CRO_ATTEMPTS = 3;
+
+    for (croAttempt = 1; croAttempt <= MAX_CRO_ATTEMPTS; croAttempt++) {
+      if (croAttempt > 1) {
+        log(
+          `  [MONTHLY] 🔄 CRO Optimizer retry attempt ${croAttempt}/${MAX_CRO_ATTEMPTS}`
+        );
+        log(`  [MONTHLY] Waiting 30 seconds before retry...`);
+        await delay(30000);
+      }
+
+      try {
+        croOptimizerPayload = buildCroOptimizerPayload({
+          domain,
+          googleAccountId,
+          startDate,
+          endDate,
+          summaryOutput,
+        });
+
+        croOptimizerOutput = await callAgentWebhook(
+          CRO_OPTIMIZER_WEBHOOK,
+          croOptimizerPayload,
+          "CRO Optimizer"
+        );
+
+        // Log and validate CRO Optimizer output
+        logAgentOutput("CRO Optimizer", croOptimizerOutput);
+        const croValid = isValidAgentOutput(
+          croOptimizerOutput,
+          "CRO Optimizer"
+        );
+
+        if (!croValid) {
+          throw new Error(
+            "CRO Optimizer agent returned empty or invalid output"
+          );
+        }
+
+        log(
+          `  [MONTHLY] ✓ CRO Optimizer completed successfully on attempt ${croAttempt}`
+        );
+        break; // Success, exit retry loop
+      } catch (croError: any) {
+        log(
+          `  [MONTHLY] ⚠ CRO Optimizer attempt ${croAttempt} failed: ${croError.message}`
+        );
+
+        if (croAttempt === MAX_CRO_ATTEMPTS) {
+          // All retries exhausted, fail the entire monthly run
+          return {
+            success: false,
+            error: `CRO Optimizer failed after ${MAX_CRO_ATTEMPTS} attempts: ${croError.message}`,
+          };
+        }
+      }
+    }
+
+    // === STEP 4: Create tasks from action items ===
     try {
       const actionItems = opportunityOutput[0]?.opportunities || [];
 
@@ -625,15 +719,18 @@ async function processMonthlyAgents(
         );
 
         for (const item of actionItems) {
-          // Use type from action item, default to ALLORO if not USER
-          const type = item.type?.toUpperCase() === "USER" ? "USER" : "ALLORO";
+          // Use type from action item, default to USER if not ALLORO (Opportunity agent outputs USER tasks)
+          const type =
+            item.type?.toUpperCase() === "ALLORO" ? "ALLORO" : "USER";
 
           const taskData = {
             domain_name: domain,
             google_account_id: googleAccountId,
             title: item.title || item.name || "Untitled Task",
-            description: item.description || item.details || null,
+            description:
+              item.explanation || item.description || item.details || null,
             category: type,
+            agent_type: "OPPORTUNITY",
             status: "pending",
             is_approved: false,
             created_by_admin: true,
@@ -641,7 +738,11 @@ async function processMonthlyAgents(
               item.due_date || item.dueDate
                 ? new Date(item.due_date || item.dueDate)
                 : null,
-            metadata: item.metadata ? JSON.stringify(item.metadata) : null,
+            metadata: JSON.stringify({
+              agent_category: item.category || null,
+              urgency: item.urgency || null,
+              ...(item.metadata || {}),
+            }),
             created_at: new Date(),
             updated_at: new Date(),
           };
@@ -665,20 +766,379 @@ async function processMonthlyAgents(
       }
     } catch (taskCreationError: any) {
       // Don't fail the entire operation if task creation fails
-      log(`  [MONTHLY] ⚠ Error creating tasks: ${taskCreationError.message}`);
+      log(
+        `  [MONTHLY] ⚠ Error creating Opportunity tasks: ${taskCreationError.message}`
+      );
+    }
+
+    // === STEP 5: Create tasks from CRO Optimizer action items ===
+    try {
+      const croActionItems = croOptimizerOutput[0]?.opportunities || [];
+
+      if (Array.isArray(croActionItems) && croActionItems.length > 0) {
+        log(
+          `  [MONTHLY] Creating ${croActionItems.length} CRO Optimizer task(s) from action items`
+        );
+
+        for (const item of croActionItems) {
+          // Use type from action item, default to ALLORO if not USER (CRO Optimizer outputs ALLORO tasks)
+          const type = item.type?.toUpperCase() === "USER" ? "USER" : "ALLORO";
+
+          const taskData = {
+            domain_name: domain,
+            google_account_id: googleAccountId,
+            title: item.title || item.name || "Untitled Task",
+            description:
+              item.explanation || item.description || item.details || null,
+            category: type,
+            agent_type: "CRO_OPTIMIZER",
+            status: "pending",
+            is_approved: false,
+            created_by_admin: true,
+            due_date:
+              item.due_date || item.dueDate
+                ? new Date(item.due_date || item.dueDate)
+                : null,
+            metadata: JSON.stringify({
+              agent_category: item.category || null,
+              urgency: item.urgency || null,
+              ...(item.metadata || {}),
+            }),
+            created_at: new Date(),
+            updated_at: new Date(),
+          };
+
+          try {
+            const [result] = await db("tasks").insert(taskData).returning("id");
+            const taskId = result.id;
+            log(
+              `    ✓ Created ${type} task (ID: ${taskId}): ${taskData.title}`
+            );
+          } catch (taskError: any) {
+            log(
+              `    ⚠ Failed to create task "${taskData.title}": ${taskError.message}`
+            );
+          }
+        }
+
+        log(`  [MONTHLY] ✓ CRO Optimizer task creation completed`);
+      } else {
+        log(`  [MONTHLY] No CRO Optimizer action items found in output`);
+      }
+    } catch (taskCreationError: any) {
+      // Don't fail the entire operation if task creation fails
+      log(
+        `  [MONTHLY] ⚠ Error creating CRO Optimizer tasks: ${taskCreationError.message}`
+      );
     }
 
     return {
       success: true,
       summaryOutput,
       opportunityOutput,
+      croOptimizerOutput,
       summaryPayload,
       opportunityPayload,
+      croOptimizerPayload,
       rawData,
     };
   } catch (error: any) {
     logError("processMonthlyAgents", error);
     return { success: false, error: error?.message || String(error) };
+  }
+}
+
+// =====================================================================
+// GBP COPY OPTIMIZER FUNCTIONS
+// =====================================================================
+
+/**
+ * Build payload for Copy Companion agent from GBP data
+ */
+function buildCopyCompanionPayload(
+  gbpData: any,
+  domain: string,
+  googleAccountId: number
+): any {
+  log(`  [GBP-OPTIMIZER] Building Copy Companion payload for ${domain}`);
+
+  const textSources = [];
+
+  for (const location of gbpData.locations) {
+    const locationName = location.meta?.businessName || "Unknown Location";
+    log(`    → Processing location: ${locationName}`);
+
+    const profile = location.gbp_profile;
+    const posts = location.gbp_posts;
+
+    // Add profile fields
+    if (profile?.description) {
+      textSources.push({
+        field: "business_description",
+        text: profile.description,
+      });
+      log(
+        `      ✓ Added business_description (${profile.description.length} chars)`
+      );
+    }
+
+    if (profile?.profile?.description) {
+      textSources.push({
+        field: "bio",
+        text: profile.profile.description,
+      });
+      log(`      ✓ Added bio (${profile.profile.description.length} chars)`);
+    }
+
+    if (profile?.callToAction?.actionType) {
+      const ctaText = `${profile.callToAction.actionType}: ${
+        profile.callToAction.url || ""
+      }`;
+      textSources.push({
+        field: "cta",
+        text: ctaText,
+      });
+      log(`      ✓ Added CTA: ${profile.callToAction.actionType}`);
+    }
+
+    // Add posts
+    log(`      → Processing ${posts.length} posts`);
+    posts.forEach((post: any, index: number) => {
+      if (post.summary) {
+        textSources.push({
+          field: `gbp_post_${index + 1}`,
+          text: post.summary,
+          metadata: {
+            postId: post.postId,
+            createTime: post.createTime,
+            topicType: post.topicType,
+            locationName: locationName,
+          },
+        });
+      }
+    });
+    log(`      ✓ Added ${posts.length} posts`);
+  }
+
+  log(
+    `  [GBP-OPTIMIZER] ✓ Built payload with ${textSources.length} text sources`
+  );
+
+  return {
+    additional_data: {
+      text_sources: textSources,
+    },
+    domain: domain,
+    googleAccountId: googleAccountId,
+  };
+}
+
+/**
+ * Process GBP Optimizer agent for a single client
+ */
+async function processGBPOptimizerAgent(
+  account: any,
+  oauth2Client: any,
+  monthRange: { startDate: string; endDate: string }
+): Promise<{
+  success: boolean;
+  output?: any;
+  payload?: any;
+  rawData?: any;
+  error?: string;
+}> {
+  const { id: googleAccountId, domain_name: domain } = account;
+
+  log(`\n  [GBP-OPTIMIZER] Starting processing for ${domain}`);
+  log(
+    `  [GBP-OPTIMIZER] Date range: ${monthRange.startDate} to ${monthRange.endDate}`
+  );
+
+  try {
+    // Import getGBPTextSources
+    const { getGBPTextSources } = require("./gbp");
+
+    log(`  [GBP-OPTIMIZER] Fetching GBP text sources...`);
+    const gbpData = await getGBPTextSources(
+      oauth2Client,
+      googleAccountId,
+      monthRange.startDate,
+      monthRange.endDate
+    );
+
+    if (!gbpData.locations || gbpData.locations.length === 0) {
+      log(`  [GBP-OPTIMIZER] ⚠ No GBP locations found`);
+      return {
+        success: false,
+        error: "No GBP locations found for this account",
+      };
+    }
+
+    log(`  [GBP-OPTIMIZER] ✓ Found ${gbpData.locations.length} location(s)`);
+
+    // Log location details
+    gbpData.locations.forEach((loc: any, idx: number) => {
+      log(
+        `    [${idx + 1}] ${loc.meta?.businessName || "Unknown"}: ${
+          loc.gbp_posts.length
+        } posts`
+      );
+    });
+
+    // Transform to Copy Companion format
+    const payload = buildCopyCompanionPayload(gbpData, domain, googleAccountId);
+
+    log(`  [GBP-OPTIMIZER] Calling Copy Companion agent...`);
+    log(`  [GBP-OPTIMIZER] Webhook: ${COPY_COMPANION_WEBHOOK}`);
+    log(
+      `  [GBP-OPTIMIZER] Sending ${payload.additional_data.text_sources.length} text sources`
+    );
+
+    const agentOutput = await callAgentWebhook(
+      COPY_COMPANION_WEBHOOK,
+      payload,
+      "Copy Companion"
+    );
+
+    // Log and validate output
+    logAgentOutput("Copy Companion", agentOutput);
+    const isValid = isValidAgentOutput(agentOutput, "Copy Companion");
+
+    if (!isValid) {
+      log(`  [GBP-OPTIMIZER] ✗ Agent returned invalid output`);
+      return {
+        success: false,
+        error: "Agent returned empty or invalid output",
+      };
+    }
+
+    // Count recommendations
+    const recommendations = agentOutput[0] || {};
+    const recCount = Object.keys(recommendations).length;
+    log(`  [GBP-OPTIMIZER] ✓ Received ${recCount} recommendation(s)`);
+
+    log(`  [GBP-OPTIMIZER] ✓ Copy Companion completed successfully`);
+
+    return {
+      success: true,
+      output: agentOutput,
+      payload,
+      rawData: gbpData,
+    };
+  } catch (error: any) {
+    logError("processGBPOptimizerAgent", error);
+    log(`  [GBP-OPTIMIZER] ✗ Failed: ${error?.message || String(error)}`);
+    return { success: false, error: error?.message || String(error) };
+  }
+}
+
+/**
+ * Create tasks from Copy Companion recommendations
+ */
+async function createTasksFromCopyRecommendations(
+  agentOutput: any,
+  googleAccountId: number,
+  domain: string
+): Promise<void> {
+  log(`\n  [GBP-OPTIMIZER] Creating tasks from recommendations...`);
+
+  try {
+    // Copy Companion returns an array directly, not nested in [0]
+    const recommendations = Array.isArray(agentOutput) ? agentOutput : [];
+
+    if (recommendations.length === 0) {
+      log(`  [GBP-OPTIMIZER] No recommendations found in output`);
+      return;
+    }
+
+    log(
+      `  [GBP-OPTIMIZER] Found ${recommendations.length} total recommendation(s)`
+    );
+
+    let createdCount = 0;
+    let skippedCount = 0;
+    let taskIndex = 0;
+
+    for (const item of recommendations) {
+      const verdict = item.verdict || "UNKNOWN";
+      const lineage = item.lineage || "unknown";
+      const confidence = item.confidence || 0;
+
+      log(
+        `    [${lineage}] Verdict: ${verdict}, Confidence: ${(
+          confidence * 100
+        ).toFixed(0)}%`
+      );
+
+      // Only create tasks for recommendations that need action
+      if (!["CONFIRMED", "PENDING_REVIEW"].includes(verdict)) {
+        log(`      → Skipping (verdict: ${verdict})`);
+        skippedCount++;
+        continue;
+      }
+
+      taskIndex++;
+
+      const taskData = {
+        domain_name: domain,
+        google_account_id: googleAccountId,
+        title: `Update GBP Post ${taskIndex}`,
+        description: `
+**Current Text:**
+${item.source_text || "N/A"}
+
+**Recommended Text:**
+${item.recommendation || "N/A"}
+
+**Confidence:** ${(confidence * 100).toFixed(0)}%
+
+**Notes:**
+${item.notes || "No additional notes"}
+
+${
+  item.alerts && item.alerts.length > 0
+    ? `**Alerts:**\n${item.alerts.join("\n")}`
+    : ""
+}
+        `.trim(),
+        category: "USER",
+        agent_type: "GBP_OPTIMIZATION",
+        status: "pending",
+        is_approved: false,
+        created_by_admin: true,
+        due_date: null,
+        metadata: JSON.stringify({
+          agent_slug: item.agent_slug,
+          agent_name: item.agent_name,
+          lineage: lineage,
+          confidence: confidence,
+          verdict: verdict,
+          citations: item.citations || [],
+          freshness: item.freshness,
+          source_text: item.source_text,
+          recommendation: item.recommendation,
+        }),
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+
+      try {
+        const [result] = await db("tasks").insert(taskData).returning("id");
+        const taskId = result.id;
+        log(`      ✓ Created task (ID: ${taskId}): ${taskData.title}`);
+        createdCount++;
+      } catch (taskError: any) {
+        log(`      ✗ Failed to create task: ${taskError.message}`);
+      }
+    }
+
+    log(`  [GBP-OPTIMIZER] ✓ Task creation completed`);
+    log(`    - Created: ${createdCount}`);
+    log(`    - Skipped: ${skippedCount}`);
+    log(`    - Total: ${recommendations.length}`);
+  } catch (error: any) {
+    logError("createTasksFromCopyRecommendations", error);
+    log(`  [GBP-OPTIMIZER] ⚠ Error creating tasks: ${error.message}`);
   }
 }
 
@@ -909,6 +1369,24 @@ async function processClient(
           .returning("id");
 
         log(`[CLIENT] ✓ Opportunity result saved (ID: ${opportunityId})`);
+
+        // Save CRO Optimizer result
+        const [croOptimizerId] = await db("agent_results")
+          .insert({
+            google_account_id: googleAccountId,
+            domain,
+            agent_type: "cro_optimizer",
+            date_start: monthRange.startDate,
+            date_end: monthRange.endDate,
+            agent_input: JSON.stringify(monthlyResult.croOptimizerPayload),
+            agent_output: JSON.stringify(monthlyResult.croOptimizerOutput),
+            status: "success",
+            created_at: new Date(),
+            updated_at: new Date(),
+          })
+          .returning("id");
+
+        log(`[CLIENT] ✓ CRO Optimizer result saved (ID: ${croOptimizerId})`);
       }
 
       log(
@@ -1320,6 +1798,25 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     const opportunityId = opportunityResult.id;
     log(`[CLIENT] ✓ Opportunity result saved (ID: ${opportunityId})`);
 
+    // Save CRO Optimizer result
+    const [croOptimizerResult] = await db("agent_results")
+      .insert({
+        google_account_id: googleAccountId,
+        domain,
+        agent_type: "cro_optimizer",
+        date_start: monthRange.startDate,
+        date_end: monthRange.endDate,
+        agent_input: JSON.stringify(monthlyResult.croOptimizerPayload),
+        agent_output: JSON.stringify(monthlyResult.croOptimizerOutput),
+        status: "success",
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning("id");
+
+    const croOptimizerId = croOptimizerResult.id;
+    log(`[CLIENT] ✓ CRO Optimizer result saved (ID: ${croOptimizerId})`);
+
     // Create notification for completed monthly agents
     try {
       await createNotification(
@@ -1330,6 +1827,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
         {
           summaryId,
           opportunityId,
+          croOptimizerId,
           dateRange: `${monthRange.startDate} to ${monthRange.endDate}`,
         }
       );
@@ -1347,6 +1845,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     log(`[COMPLETE] ✓ Monthly agents completed successfully`);
     log(`  - Summary ID: ${summaryId}`);
     log(`  - Opportunity ID: ${opportunityId}`);
+    log(`  - CRO Optimizer ID: ${croOptimizerId}`);
     log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
     log("=".repeat(70) + "\n");
 
@@ -1355,6 +1854,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
       message: "Monthly agents completed successfully",
       summaryId,
       opportunityId,
+      croOptimizerId,
       duration: `${duration}ms`,
     });
   } catch (error: any) {
@@ -1367,6 +1867,280 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
       success: false,
       error: "MONTHLY_AGENTS_ERROR",
       message: error?.message || "Failed to run monthly agents",
+      duration: `${duration}ms`,
+    });
+  }
+});
+/**
+ * POST /api/agents/gbp-optimizer-run
+ *
+ * Monthly GBP Copy Optimizer agent
+ * - Runs for all accounts on 1st of each month
+ * - Fetches GBP posts from previous month
+ * - Sends to Copy Companion agent for optimization recommendations
+ * - Creates tasks for copy updates
+ *
+ * Body: { referenceDate?: "YYYY-MM-DD" } (optional, for testing)
+ */
+router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  const { referenceDate } = req.body || {};
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/gbp-optimizer-run - STARTING");
+  log("=".repeat(70));
+  if (referenceDate) log(`Reference Date: ${referenceDate}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+  log(`Webhook: ${COPY_COMPANION_WEBHOOK || "NOT CONFIGURED"}`);
+
+  try {
+    // Validate webhook configuration
+    if (!COPY_COMPANION_WEBHOOK) {
+      throw new Error(
+        "COPY_COMPANION_AGENT_WEBHOOK not configured in environment"
+      );
+    }
+
+    // Fetch all onboarded Google accounts
+    log("\n[SETUP] Fetching all onboarded Google accounts...");
+    const accounts = await db("google_accounts")
+      .where("onboarding_completed", true)
+      .select("*");
+
+    if (!accounts || accounts.length === 0) {
+      log("[SETUP] No onboarded accounts found");
+      return res.json({
+        success: true,
+        message: "No accounts to process",
+        processed: 0,
+        results: [],
+      });
+    }
+
+    log(`[SETUP] Found ${accounts.length} total account(s)`);
+
+    // Filter accounts that have GBP configured
+    log("[SETUP] Filtering accounts with GBP configured...");
+    const gbpAccounts = accounts.filter((account) => {
+      const propertyIds =
+        typeof account.google_property_ids === "string"
+          ? JSON.parse(account.google_property_ids)
+          : account.google_property_ids;
+      return (
+        propertyIds?.gbp &&
+        Array.isArray(propertyIds.gbp) &&
+        propertyIds.gbp.length > 0
+      );
+    });
+
+    if (gbpAccounts.length === 0) {
+      log("[SETUP] ⚠ No accounts with GBP configured");
+      return res.json({
+        success: true,
+        message: "No accounts with GBP to process",
+        processed: 0,
+        results: [],
+      });
+    }
+
+    log(`[SETUP] ✓ Found ${gbpAccounts.length} account(s) with GBP configured`);
+
+    // Log account details
+    gbpAccounts.forEach((acc, idx) => {
+      const propertyIds =
+        typeof acc.google_property_ids === "string"
+          ? JSON.parse(acc.google_property_ids)
+          : acc.google_property_ids;
+      const locationCount = propertyIds?.gbp?.length || 0;
+      log(
+        `  [${idx + 1}] ${acc.domain_name} (${locationCount} location${
+          locationCount !== 1 ? "s" : ""
+        })`
+      );
+    });
+
+    // Get previous month date range
+    const monthRange = getPreviousMonthRange(referenceDate);
+    log(
+      `\n[SETUP] Month range: ${monthRange.startDate} to ${monthRange.endDate}`
+    );
+
+    // Process each client sequentially
+    const results: any[] = [];
+
+    for (const account of gbpAccounts) {
+      const { id: googleAccountId, domain_name: domain } = account;
+      const accountIndex = gbpAccounts.indexOf(account) + 1;
+
+      log(`\n[${"=".repeat(60)}]`);
+      log(
+        `[CLIENT ${accountIndex}/${gbpAccounts.length}] Processing: ${domain} (ID: ${googleAccountId})`
+      );
+      log(`[${"=".repeat(60)}]`);
+
+      try {
+        // Check for duplicate before running
+        log(`[CLIENT] Checking for existing results...`);
+        const existingResult = await db("agent_results")
+          .where({
+            google_account_id: googleAccountId,
+            domain,
+            agent_type: "gbp_optimizer",
+            date_start: monthRange.startDate,
+            date_end: monthRange.endDate,
+          })
+          .whereIn("status", ["success", "pending"])
+          .first();
+
+        if (existingResult) {
+          log(
+            `[CLIENT] ℹ GBP Optimizer already run for this period (Result ID: ${existingResult.id})`
+          );
+          log(`[CLIENT] Skipping ${domain}`);
+          results.push({
+            googleAccountId,
+            domain,
+            success: true,
+            skipped: true,
+            reason: "already_exists",
+            existingResultId: existingResult.id,
+          });
+          continue;
+        }
+
+        log(`[CLIENT] No existing results found - proceeding`);
+
+        // Create OAuth2 client
+        log(`[CLIENT] Creating OAuth2 client for account ${googleAccountId}`);
+        const oauth2Client = await createOAuth2ClientForAccount(
+          googleAccountId
+        );
+
+        // Refresh token
+        log(`[CLIENT] Refreshing OAuth token...`);
+        await oauth2Client.refreshAccessToken();
+        const credentials = oauth2Client.credentials;
+
+        if (credentials.access_token) {
+          const expiryDate = credentials.expiry_date
+            ? new Date(credentials.expiry_date)
+            : new Date(Date.now() + 3600000);
+
+          await db("google_accounts").where({ id: googleAccountId }).update({
+            access_token: credentials.access_token,
+            expiry_date: expiryDate,
+            updated_at: new Date(),
+          });
+
+          log(
+            `[CLIENT] ✓ Token refreshed. Expires: ${expiryDate.toISOString()}`
+          );
+        }
+
+        // Run GBP Optimizer agent
+        log(`\n[CLIENT] Running GBP Optimizer agent...`);
+        const result = await processGBPOptimizerAgent(
+          account,
+          oauth2Client,
+          monthRange
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || "GBP Optimizer agent failed");
+        }
+
+        // Save agent result to database
+        log(`\n[CLIENT] Saving results to database...`);
+        const [agentResultRecord] = await db("agent_results")
+          .insert({
+            google_account_id: googleAccountId,
+            domain,
+            agent_type: "gbp_optimizer",
+            date_start: monthRange.startDate,
+            date_end: monthRange.endDate,
+            agent_input: JSON.stringify(result.payload),
+            agent_output: JSON.stringify(result.output),
+            status: "success",
+            created_at: new Date(),
+            updated_at: new Date(),
+          })
+          .returning("id");
+
+        const resultId = agentResultRecord.id;
+        log(`[CLIENT] ✓ Agent result saved (ID: ${resultId})`);
+
+        // Create tasks from recommendations
+        await createTasksFromCopyRecommendations(
+          result.output,
+          googleAccountId,
+          domain
+        );
+
+        results.push({
+          googleAccountId,
+          domain,
+          success: true,
+          resultId,
+          recommendationCount: Object.keys(result.output[0] || {}).length,
+        });
+
+        log(`\n[CLIENT] ✓ ${domain} completed successfully`);
+
+        // Delay between clients (except for last one)
+        if (accountIndex < gbpAccounts.length) {
+          log(`\n[SETUP] Waiting 15 seconds before next client...`);
+          await delay(15000);
+        }
+      } catch (error: any) {
+        logError(`GBP Optimizer for ${domain}`, error);
+        log(`[CLIENT] ✗ ${domain} failed: ${error?.message || String(error)}`);
+
+        results.push({
+          googleAccountId,
+          domain,
+          success: false,
+          error: error?.message || String(error),
+        });
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    const successfulClients = results.filter(
+      (r) => r.success && !r.skipped
+    ).length;
+    const skippedClients = results.filter((r) => r.skipped).length;
+    const failedClients = results.filter((r) => !r.success).length;
+
+    log("\n" + "=".repeat(70));
+    log(`[COMPLETE] ✓ GBP Optimizer run completed`);
+    log(`  - Total accounts: ${gbpAccounts.length}`);
+    log(`  - Successful: ${successfulClients}`);
+    log(`  - Skipped: ${skippedClients}`);
+    log(`  - Failed: ${failedClients}`);
+    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      message: `Processed ${gbpAccounts.length} account(s)`,
+      processed: gbpAccounts.length,
+      successful: successfulClients,
+      skipped: skippedClients,
+      failed: failedClients,
+      duration: `${duration}ms`,
+      results,
+    });
+  } catch (error: any) {
+    logError("gbp-optimizer-run", error);
+    const duration = Date.now() - startTime;
+    log(`\n[FAILED] ❌ GBP Optimizer run failed after ${duration}ms`);
+    log(`  Error: ${error?.message || String(error)}`);
+    log("=".repeat(70) + "\n");
+
+    return res.status(500).json({
+      success: false,
+      error: "GBP_OPTIMIZER_RUN_ERROR",
+      message: error?.message || "Failed to run GBP optimizer agent",
       duration: `${duration}ms`,
     });
   }
@@ -1595,6 +2369,8 @@ router.get("/health", (_req: Request, res: Response) => {
       proofline: !!PROOFLINE_WEBHOOK,
       summary: !!SUMMARY_WEBHOOK,
       opportunity: !!OPPORTUNITY_WEBHOOK,
+      cro_optimizer: !!CRO_OPTIMIZER_WEBHOOK,
+      copy_companion: !!COPY_COMPANION_WEBHOOK,
     },
   });
 });

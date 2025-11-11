@@ -460,6 +460,524 @@ gbpRoutes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
     return handleError(res, error, "GBP AI data");
   }
 });
+/** ---------- NEW: TEXT SOURCES FOR COPY OPTIMIZER ---------- */
+
+/**
+ * Helper: Fetch location profile with comprehensive data using REST API
+ * Returns null if profile cannot be fetched (graceful degradation)
+ */
+const getLocationProfile = async (
+  auth: any,
+  accountId: string,
+  locationId: string
+) => {
+  try {
+    const name = `accounts/${accountId}/locations/${locationId}`;
+    const headers = await buildAuthHeaders(auth);
+
+    // Try the v1 endpoint
+    const { data } = await axios.get(
+      `https://mybusinessbusinessinformation.googleapis.com/v1/${name}`,
+      {
+        params: {
+          readMask:
+            "name,title,profile,websiteUri,phoneNumbers,categories,adWordsLocationExtensions",
+        },
+        headers,
+      }
+    );
+    return data;
+  } catch (error: any) {
+    console.warn(
+      `[GBP] Could not fetch detailed profile for location ${locationId}: ${error.message}`
+    );
+    // Return null to use fallback data
+    return null;
+  }
+};
+
+/**
+ * Helper: List local posts in date range with early exit optimization
+ */
+const listLocalPostsInRange = async (
+  auth: any,
+  accountId: string,
+  locationId: string,
+  startDate: string,
+  endDate: string,
+  maxPosts: number = 50
+) => {
+  const parent = `accounts/${accountId}/locations/${locationId}`;
+  const headers = await buildAuthHeaders(auth);
+  const posts: any[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const { data } = await axios.get(
+      `https://mybusiness.googleapis.com/v4/${parent}/localPosts`,
+      {
+        params: { pageSize: 100, pageToken },
+        headers,
+      }
+    );
+
+    let shouldContinue = false;
+
+    for (const post of data.localPosts || []) {
+      const created = post.createTime;
+
+      // If post is older than our range, stop fetching
+      if (created < `${startDate}T00:00:00Z`) {
+        shouldContinue = false;
+        break;
+      }
+
+      // If post is within our range, collect it
+      if (
+        created >= `${startDate}T00:00:00Z` &&
+        created <= `${endDate}T23:59:59Z`
+      ) {
+        posts.push({
+          postId: post.name?.split("/").pop() || "",
+          topicType: post.topicType || "STANDARD",
+          summary: post.summary || "",
+          callToAction: post.callToAction
+            ? {
+                actionType: post.callToAction.actionType || null,
+                url: post.callToAction.url || null,
+              }
+            : null,
+          createTime: post.createTime,
+          updateTime: post.updateTime,
+          state: post.state || "UNKNOWN",
+        });
+        shouldContinue = true;
+
+        // Enforce max posts limit for LLM
+        if (posts.length >= maxPosts) {
+          shouldContinue = false;
+          break;
+        }
+      }
+    }
+
+    // Exit early if we've passed our date range or hit max
+    if (!shouldContinue) break;
+
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  return posts;
+};
+
+/**
+ * Exported function for programmatic use (bypassing HTTP)
+ * Gets text sources for all GBP locations for a given Google account
+ */
+export async function getGBPTextSources(
+  oauth2Client: any,
+  googleAccountId: number,
+  startDate?: string,
+  endDate?: string,
+  options?: {
+    maxPostsPerLocation?: number;
+    includeEmptyLocations?: boolean;
+  }
+) {
+  const { maxPostsPerLocation = 50, includeEmptyLocations = true } =
+    options || {};
+
+  // Import db here to avoid circular dependency
+  const { db } = await import("../database/connection");
+
+  console.log(
+    `[GBP TextSources Export] Starting for googleAccountId ${googleAccountId}`
+  );
+
+  // Refresh token before API calls
+  try {
+    console.log(`[GBP TextSources Export] Refreshing access token`);
+    await oauth2Client.refreshAccessToken();
+    console.log(`[GBP TextSources Export] ✓ Token refresh successful`);
+  } catch (refreshError: any) {
+    console.error(
+      `[GBP TextSources Export] ⚠ Token refresh failed:`,
+      refreshError.message
+    );
+    console.error(
+      `[GBP TextSources Export] Continuing with existing token (might still work if valid)`
+    );
+  }
+
+  // Query database for property IDs
+  const account = await db("google_accounts")
+    .where({ id: googleAccountId })
+    .first();
+
+  if (!account?.google_property_ids?.gbp) {
+    throw new Error(
+      `No GBP properties configured for googleAccountId ${googleAccountId}`
+    );
+  }
+
+  const gbpLocations = Array.isArray(account.google_property_ids.gbp)
+    ? account.google_property_ids.gbp
+    : [];
+
+  if (gbpLocations.length === 0) {
+    return {
+      locations: [],
+      summary: {
+        googleAccountId,
+        totalLocations: 0,
+        dateRange: { startDate: "", endDate: "" },
+        message: "No GBP locations configured",
+      },
+    };
+  }
+
+  console.log(
+    `[GBP TextSources Export] Processing ${gbpLocations.length} locations`
+  );
+
+  // Rate limiting check
+  if (gbpLocations.length > 20) {
+    throw new Error(
+      `Too many locations to process at once (${gbpLocations.length}). Maximum 20 locations per request.`
+    );
+  }
+
+  // Create API clients
+  const bizInfo =
+    new mybusinessbusinessinformation_v1.Mybusinessbusinessinformation({
+      auth: oauth2Client,
+    });
+  const auth = oauth2Client;
+
+  // Get date range
+  const { prevMonth } = getMonthlyRanges();
+  const finalStartDate = startDate || prevMonth.startDate;
+  const finalEndDate = endDate || prevMonth.endDate;
+
+  console.log(
+    `[GBP TextSources Export] Date range: ${finalStartDate} to ${finalEndDate}`
+  );
+
+  // Process locations in batches of 5 to avoid overwhelming the API
+  const batchSize = 5;
+  const locationResults: any[] = [];
+  const errors: any[] = [];
+
+  for (let i = 0; i < gbpLocations.length; i += batchSize) {
+    const batch = gbpLocations.slice(i, i + batchSize);
+    console.log(
+      `[GBP TextSources Export] Processing batch ${
+        Math.floor(i / batchSize) + 1
+      }/${Math.ceil(gbpLocations.length / batchSize)}`
+    );
+
+    const batchResults = await Promise.all(
+      batch.map(async (location: any) => {
+        try {
+          // Fetch posts (required)
+          const posts = await listLocalPostsInRange(
+            auth,
+            location.accountId,
+            location.locationId,
+            finalStartDate,
+            finalEndDate,
+            maxPostsPerLocation
+          );
+
+          // Fetch profile (optional - graceful fallback)
+          const profile = await getLocationProfile(
+            auth,
+            location.accountId,
+            location.locationId
+          );
+
+          // Skip locations with no posts if configured
+          if (!includeEmptyLocations && posts.length === 0) {
+            return null;
+          }
+
+          return {
+            gbp_profile: {
+              businessName: profile?.title || location.displayName,
+              locationId: location.locationId,
+              accountId: location.accountId,
+              description: profile?.profile?.description || "",
+              websiteUrl: profile?.websiteUri || "",
+              phoneNumber: profile?.phoneNumbers?.primaryPhone || "",
+              categories:
+                profile?.categories?.primaryCategory?.displayName || "",
+              adPhone: profile?.adWordsLocationExtensions?.adPhone || "",
+            },
+            gbp_posts: posts,
+            meta: {
+              displayName: location.displayName,
+              postsCount: posts.length,
+            },
+          };
+        } catch (error: any) {
+          console.error(
+            `[GBP TextSources Export] Failed for location ${location.locationId}:`,
+            error.message
+          );
+          errors.push({
+            locationId: location.locationId,
+            displayName: location.displayName,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+          });
+          return null;
+        }
+      })
+    );
+
+    locationResults.push(...batchResults);
+
+    // Add delay between batches to respect rate limits
+    if (i + batchSize < gbpLocations.length) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  // Filter out failed locations
+  const locations = locationResults.filter((loc) => loc !== null);
+
+  console.log(
+    `[GBP TextSources Export] ✓ Completed: ${locations.length} successful, ${errors.length} errors`
+  );
+
+  return {
+    locations,
+    errors: errors.length > 0 ? errors : undefined,
+    summary: {
+      googleAccountId,
+      totalLocations: locations.length,
+      totalErrors: errors.length,
+      successRate:
+        gbpLocations.length > 0
+          ? Number((locations.length / gbpLocations.length).toFixed(2))
+          : 0,
+      dateRange: { startDate: finalStartDate, endDate: finalEndDate },
+    },
+  };
+}
+
+/**
+ * POST /gbp/getTextSources
+ * Headers: googleAccountId (from tokenRefreshMiddleware)
+ * Body: {
+ *   startDate?: "YYYY-MM-DD",
+ *   endDate?: "YYYY-MM-DD",
+ *   maxPostsPerLocation?: number,
+ *   includeEmptyLocations?: boolean
+ * }
+ * Returns: Text sources for all GBP locations (profile + posts) for copy optimization
+ */
+gbpRoutes.post("/getTextSources", async (req: AuthenticatedRequest, res) => {
+  const startTime = Date.now();
+
+  try {
+    const googleAccountId = (req as any).googleAccountId;
+
+    if (!googleAccountId) {
+      return res.status(400).json({
+        successful: false,
+        message: "Missing googleAccountId header",
+      });
+    }
+
+    console.log(
+      `[GBP TextSources] Starting for googleAccountId ${googleAccountId}`
+    );
+
+    // Import db here
+    const { db } = await import("../database/connection");
+
+    // Query database for property IDs
+    const account = await db("google_accounts")
+      .where({ id: googleAccountId })
+      .first();
+
+    // Validation
+    if (!account) {
+      return res.status(404).json({
+        successful: false,
+        message: `Google account ${googleAccountId} not found`,
+      });
+    }
+
+    if (!account.google_property_ids) {
+      return res.status(400).json({
+        successful: false,
+        message: "Google properties not configured for this account",
+        hint: "Please connect Google Business Profile first",
+      });
+    }
+
+    const gbpLocations = Array.isArray(account.google_property_ids.gbp)
+      ? account.google_property_ids.gbp
+      : [];
+
+    if (gbpLocations.length === 0) {
+      return res.json({
+        locations: [],
+        summary: {
+          googleAccountId,
+          totalLocations: 0,
+          dateRange: { startDate: "", endDate: "" },
+          message: "No GBP locations configured",
+        },
+      });
+    }
+
+    console.log(
+      `[GBP TextSources] Processing ${gbpLocations.length} locations`
+    );
+
+    // Rate limiting check
+    if (gbpLocations.length > 20) {
+      return res.status(400).json({
+        successful: false,
+        message: `Too many locations to process at once (${gbpLocations.length})`,
+        hint: "Maximum 20 locations per request. Consider batching or contacting support.",
+      });
+    }
+
+    // Get options from body (handle empty body)
+    const body = req.body || {};
+    const maxPostsPerLocation = body.maxPostsPerLocation || 50;
+    const includeEmptyLocations = body.includeEmptyLocations !== false;
+
+    // Get date range
+    const { prevMonth } = getMonthlyRanges();
+    const startDate = body.startDate || prevMonth.startDate;
+    const endDate = body.endDate || prevMonth.endDate;
+
+    console.log(`[GBP TextSources] Date range: ${startDate} to ${endDate}`);
+    console.log(
+      `[GBP TextSources] Max posts per location: ${maxPostsPerLocation}`
+    );
+
+    // Create API clients
+    const { bizInfo, auth } = createClients(req);
+
+    // Process locations in batches of 5 to avoid overwhelming the API
+    const batchSize = 5;
+    const locationResults: any[] = [];
+    const errors: any[] = [];
+
+    for (let i = 0; i < gbpLocations.length; i += batchSize) {
+      const batch = gbpLocations.slice(i, i + batchSize);
+      console.log(
+        `[GBP TextSources] Processing batch ${
+          Math.floor(i / batchSize) + 1
+        }/${Math.ceil(gbpLocations.length / batchSize)}`
+      );
+
+      const batchResults = await Promise.all(
+        batch.map(async (location: any) => {
+          try {
+            // Fetch posts (required)
+            const posts = await listLocalPostsInRange(
+              auth,
+              location.accountId,
+              location.locationId,
+              startDate,
+              endDate,
+              maxPostsPerLocation
+            );
+
+            // Fetch profile (optional - graceful fallback)
+            const profile = await getLocationProfile(
+              auth,
+              location.accountId,
+              location.locationId
+            );
+
+            // Skip locations with no posts if configured
+            if (!includeEmptyLocations && posts.length === 0) {
+              return null;
+            }
+
+            return {
+              gbp_profile: {
+                businessName: profile?.title || location.displayName,
+                locationId: location.locationId,
+                accountId: location.accountId,
+                description: profile?.profile?.description || "",
+                websiteUrl: profile?.websiteUri || "",
+                phoneNumber: profile?.phoneNumbers?.primaryPhone || "",
+                categories:
+                  profile?.categories?.primaryCategory?.displayName || "",
+                adPhone: profile?.adWordsLocationExtensions?.adPhone || "",
+              },
+              gbp_posts: posts,
+              meta: {
+                displayName: location.displayName,
+                postsCount: posts.length,
+              },
+            };
+          } catch (error: any) {
+            console.error(
+              `[GBP TextSources] Failed for location ${location.locationId}:`,
+              error.message
+            );
+            errors.push({
+              locationId: location.locationId,
+              displayName: location.displayName,
+              error: error.message,
+              timestamp: new Date().toISOString(),
+            });
+            return null;
+          }
+        })
+      );
+
+      locationResults.push(...batchResults);
+
+      // Add delay between batches to respect rate limits
+      if (i + batchSize < gbpLocations.length) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+
+    // Filter out failed locations
+    const locations = locationResults.filter((loc) => loc !== null);
+
+    const duration = Date.now() - startTime;
+    console.log(`[GBP TextSources] ✓ Completed in ${duration}ms`);
+    console.log(
+      `[GBP TextSources] Success: ${locations.length}, Errors: ${errors.length}`
+    );
+
+    return res.json({
+      locations,
+      errors: errors.length > 0 ? errors : undefined,
+      summary: {
+        googleAccountId,
+        totalLocations: locations.length,
+        totalErrors: errors.length,
+        successRate:
+          gbpLocations.length > 0
+            ? Number((locations.length / gbpLocations.length).toFixed(2))
+            : 0,
+        dateRange: { startDate, endDate },
+        processingTimeMs: duration,
+      },
+    });
+  } catch (error: any) {
+    const duration = Date.now() - startTime;
+    console.error(
+      `[GBP TextSources] ✗ Failed after ${duration}ms:`,
+      error.message
+    );
+    return handleError(res, error, "GBP text sources");
+  }
+});
 
 /** Diagnosis (unchanged) */
 gbpRoutes.get("/diag/accounts", async (req: AuthenticatedRequest, res) => {

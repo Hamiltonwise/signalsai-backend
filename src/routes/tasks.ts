@@ -314,6 +314,7 @@ router.get("/admin/all", async (req: Request, res: Response) => {
       domain_name,
       status,
       category,
+      agent_type,
       is_approved,
       date_from,
       date_to,
@@ -340,6 +341,10 @@ router.get("/admin/all", async (req: Request, res: Response) => {
 
     if (category && category !== "all") {
       countQuery = countQuery.where("tasks.category", category);
+    }
+
+    if (agent_type && agent_type !== "all") {
+      countQuery = countQuery.where("tasks.agent_type", agent_type);
     }
 
     if (is_approved !== undefined && is_approved !== "all") {
@@ -383,6 +388,10 @@ router.get("/admin/all", async (req: Request, res: Response) => {
 
     if (category && category !== "all") {
       dataQuery = dataQuery.where("tasks.category", category);
+    }
+
+    if (agent_type && agent_type !== "all") {
+      dataQuery = dataQuery.where("tasks.agent_type", agent_type);
     }
 
     if (is_approved !== undefined && is_approved !== "all") {
