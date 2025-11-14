@@ -42,6 +42,8 @@ const SUMMARY_WEBHOOK = process.env.SUMMARY_AGENT_WEBHOOK || "";
 const OPPORTUNITY_WEBHOOK = process.env.OPPORTUNITY_AGENT_WEBHOOK || "";
 const CRO_OPTIMIZER_WEBHOOK = process.env.CRO_OPTIMIZER_AGENT_WEBHOOK || "";
 const COPY_COMPANION_WEBHOOK = process.env.COPY_COMPANION_AGENT_WEBHOOK || "";
+const GUARDIAN_AGENT_WEBHOOK = process.env.GUARDIAN_AGENT_WEBHOOK || "";
+const GOVERNANCE_AGENT_WEBHOOK = process.env.GOVERNANCE_AGENT_WEBHOOK || "";
 
 // PMS data availability flag (always true for now as placeholder)
 const MONTH_PMS_DATA_AVAILABLE = true;
@@ -205,6 +207,23 @@ function shouldRunMonthlyAgents(referenceDate?: string): boolean {
   return true;
 }
 
+/**
+ * Get current month date range (1st of month to today)
+ */
+function getCurrentMonthRange(): {
+  startDate: string;
+  endDate: string;
+} {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = now;
+
+  return {
+    startDate: formatDate(start),
+    endDate: formatDate(end),
+  };
+}
+
 // =====================================================================
 // AGENT WEBHOOK CALLS
 // =====================================================================
@@ -341,6 +360,198 @@ function buildCroOptimizerPayload(params: {
     },
     additional_data: params.summaryOutput,
   };
+}
+
+/**
+ * Build payload for Guardian/Governance agents
+ */
+function buildGuardianGovernancePayload(
+  agentUnderTest: string,
+  outputs: any[]
+): any {
+  return {
+    additional_data: {
+      agent_under_test: agentUnderTest,
+      outputs: outputs,
+    },
+  };
+}
+
+/**
+ * Parse and save recommendations from Guardian and Governance agent outputs
+ * to the agent_recommendations table for admin tracking
+ * Failsafe: Will not throw errors, only logs warnings
+ */
+async function saveRecommendationsFromAgents(
+  guardianResultId: number,
+  governanceResultId: number,
+  guardianResults: any[],
+  governanceResults: any[]
+): Promise<void> {
+  const recommendations: any[] = [];
+
+  log(`[GUARDIAN-GOV] Parsing recommendations for database storage...`);
+
+  // ============================================================
+  // Process Guardian recommendations
+  // ============================================================
+  try {
+    for (const result of guardianResults) {
+      const agentUnderTest = result.agent_under_test;
+
+      if (!result.recommendations || !Array.isArray(result.recommendations)) {
+        log(
+          `  [WARNING] No recommendations array for guardian/${agentUnderTest}`
+        );
+        continue;
+      }
+
+      for (const rec of result.recommendations) {
+        // Guardian output structure: recommendations is array of objects,
+        // each object has a nested 'recommendations' array
+        const nestedRecs = Array.isArray(rec.recommendations)
+          ? rec.recommendations
+          : [];
+
+        for (const item of nestedRecs) {
+          // Skip if essential fields are missing
+          if (!item.title) {
+            log(`  [WARNING] Skipping guardian recommendation without title`);
+            continue;
+          }
+
+          recommendations.push({
+            agent_result_id: guardianResultId,
+            source_agent_type: "guardian",
+            agent_under_test: agentUnderTest,
+            title: item.title,
+            explanation: item.explanation || null,
+            type: item.type || null,
+            category: item.category || null,
+            urgency: item.urgency || null,
+            severity: item.severity || rec.severity || 1,
+            verdict: rec.verdict || null,
+            confidence: rec.confidence || null,
+            status: "PENDING",
+            evidence_links: JSON.stringify(item.evidence_links || []),
+            rule_reference:
+              item.rule_reference || rec.citations?.join("; ") || null,
+            suggested_action: item.suggested_action || null,
+            escalation_required: item.escalation_required || false,
+            observed_at: rec.observed_at
+              ? new Date(rec.observed_at)
+              : new Date(),
+            created_at: new Date(),
+            updated_at: new Date(),
+          });
+        }
+      }
+    }
+
+    log(
+      `  [GUARDIAN-GOV] Parsed ${recommendations.length} Guardian recommendation(s)`
+    );
+  } catch (error: any) {
+    logError("Parse Guardian recommendations", error);
+    log(`  [WARNING] Guardian parsing failed, continuing with Governance...`);
+  }
+
+  // ============================================================
+  // Process Governance recommendations
+  // ============================================================
+  try {
+    for (const result of governanceResults) {
+      const agentUnderTest = result.agent_under_test;
+
+      if (!result.recommendations || !Array.isArray(result.recommendations)) {
+        log(
+          `  [WARNING] No recommendations array for governance/${agentUnderTest}`
+        );
+        continue;
+      }
+
+      for (const rec of result.recommendations) {
+        // Governance output structure: similar to Guardian
+        const nestedRecs = Array.isArray(rec.recommendations)
+          ? rec.recommendations
+          : [];
+
+        for (const item of nestedRecs) {
+          if (!item.title) {
+            log(`  [WARNING] Skipping governance recommendation without title`);
+            continue;
+          }
+
+          recommendations.push({
+            agent_result_id: governanceResultId,
+            source_agent_type: "governance_sentinel",
+            agent_under_test: agentUnderTest,
+            title: item.title,
+            explanation: item.explanation || null,
+            type: item.type || null,
+            category: item.category || null,
+            urgency: item.urgency || null,
+            severity: item.severity || rec.severity || 1,
+            verdict: rec.verdict || null,
+            confidence: rec.confidence || null,
+            status: "PENDING",
+            evidence_links: JSON.stringify(item.evidence_links || []),
+            rule_reference:
+              item.rule_reference || rec.citations?.join("; ") || null,
+            suggested_action: item.suggested_action || null,
+            escalation_required: item.escalation_required || false,
+            observed_at: rec.observed_at
+              ? new Date(rec.observed_at)
+              : new Date(),
+            created_at: new Date(),
+            updated_at: new Date(),
+          });
+        }
+      }
+    }
+
+    log(
+      `  [GUARDIAN-GOV] Parsed ${
+        recommendations.length -
+        guardianResults.reduce(
+          (acc, r) =>
+            acc +
+            (r.recommendations?.reduce(
+              (sum: number, rec: any) =>
+                sum +
+                (Array.isArray(rec.recommendations)
+                  ? rec.recommendations.length
+                  : 0),
+              0
+            ) || 0),
+          0
+        )
+      } Governance recommendation(s)`
+    );
+  } catch (error: any) {
+    logError("Parse Governance recommendations", error);
+    log(`  [WARNING] Governance parsing failed`);
+  }
+
+  // ============================================================
+  // Bulk insert all recommendations
+  // ============================================================
+  if (recommendations.length > 0) {
+    try {
+      await db("agent_recommendations").insert(recommendations);
+      log(
+        `[GUARDIAN-GOV] ✓ Saved ${recommendations.length} total recommendation(s) to database`
+      );
+    } catch (error: any) {
+      logError("saveRecommendationsFromAgents - Database Insert", error);
+      // Don't fail the entire process if recommendation saving fails
+      log(
+        `[GUARDIAN-GOV] ⚠ Failed to save recommendations, but agent run succeeded`
+      );
+    }
+  } else {
+    log(`[GUARDIAN-GOV] No recommendations to save`);
+  }
 }
 
 // =====================================================================
@@ -2147,6 +2358,414 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/agents/guardian-governance-agents-run
+ *
+ * Monthly Guardian & Governance Sentinel agents
+ * - Runs system-wide analysis on all agent outputs from current month
+ * - Groups results by agent_type
+ * - Sends each group to Guardian and Governance agents
+ * - Collects all results and saves as 2 aggregated rows (1 guardian, 1 governance)
+ * - For admin oversight and quality assurance
+ *
+ * Body: { referenceDate?: "YYYY-MM-DD" } (optional, for testing)
+ */
+router.post(
+  "/guardian-governance-agents-run",
+  async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    const { referenceDate } = req.body || {};
+
+    log("\n" + "=".repeat(70));
+    log("POST /api/agents/guardian-governance-agents-run - STARTING");
+    log("=".repeat(70));
+    if (referenceDate) log(`Reference Date: ${referenceDate}`);
+    log(`Timestamp: ${new Date().toISOString()}`);
+
+    try {
+      // Validate webhook configuration
+      if (!GUARDIAN_AGENT_WEBHOOK || !GOVERNANCE_AGENT_WEBHOOK) {
+        throw new Error(
+          "GUARDIAN_AGENT_WEBHOOK or GOVERNANCE_AGENT_WEBHOOK not configured in environment"
+        );
+      }
+
+      log(`Guardian webhook: ${GUARDIAN_AGENT_WEBHOOK}`);
+      log(`Governance webhook: ${GOVERNANCE_AGENT_WEBHOOK}`);
+
+      // Get current month date range
+      const monthRange = getCurrentMonthRange();
+      log(
+        `\n[GUARDIAN-GOV] Date range: ${monthRange.startDate} to ${monthRange.endDate}`
+      );
+
+      // Fetch all successful agent results from current month
+      // Exclude guardian, governance_sentinel, and gbp_optimizer
+      log("\n[GUARDIAN-GOV] Fetching agent results from current month...");
+      const results = await db("agent_results")
+        .whereBetween("created_at", [
+          new Date(monthRange.startDate),
+          new Date(monthRange.endDate + "T23:59:59"),
+        ])
+        .where("status", "success")
+        .whereNotIn("agent_type", [
+          "guardian",
+          "governance_sentinel",
+          "gbp_optimizer",
+        ])
+        .orderBy("agent_type")
+        .orderBy("created_at")
+        .select("*");
+
+      if (!results || results.length === 0) {
+        log("[GUARDIAN-GOV] No agent results found for current month");
+        return res.json({
+          success: true,
+          message: "No agent results to process",
+          processed: 0,
+          guardianResultId: null,
+          governanceResultId: null,
+        });
+      }
+
+      log(`[GUARDIAN-GOV] Found ${results.length} total results`);
+
+      // Group results by agent_type
+      log("[GUARDIAN-GOV] Grouping by agent_type...");
+      const groupedResults: Record<string, any[]> = {};
+
+      for (const result of results) {
+        const agentType = result.agent_type;
+        if (!groupedResults[agentType]) {
+          groupedResults[agentType] = [];
+        }
+
+        // Parse agent_output if it's a string
+        let parsedOutput = result.agent_output;
+        if (typeof result.agent_output === "string") {
+          try {
+            parsedOutput = JSON.parse(result.agent_output);
+          } catch (e) {
+            log(
+              `  [WARNING] Failed to parse agent_output for result ${result.id}`
+            );
+          }
+        }
+
+        groupedResults[agentType].push(parsedOutput);
+      }
+
+      const agentTypes = Object.keys(groupedResults);
+      log(
+        `[GUARDIAN-GOV] ✓ Created ${agentTypes.length} groups: ${agentTypes
+          .map((t) => `${t}(${groupedResults[t].length})`)
+          .join(", ")}`
+      );
+
+      // Check for duplicates
+      const existingGuardian = await db("agent_results")
+        .where({
+          agent_type: "guardian",
+          domain: "SYSTEM",
+          date_start: monthRange.startDate,
+          date_end: monthRange.endDate,
+        })
+        .whereIn("status", ["success", "pending"])
+        .first();
+
+      if (existingGuardian) {
+        log(
+          `[GUARDIAN-GOV] Guardian/Governance already run for this period (ID: ${existingGuardian.id})`
+        );
+        return res.json({
+          success: true,
+          message: "Guardian/Governance already run for this period",
+          skipped: true,
+          existingResultId: existingGuardian.id,
+        });
+      }
+
+      // Initialize result collectors
+      const guardianResults: any[] = [];
+      const governanceResults: any[] = [];
+      let successfulGroups = 0;
+      let failedGroups = 0;
+
+      // Process each agent_type group
+      let groupIndex = 0;
+      for (const agentType of agentTypes) {
+        groupIndex++;
+        const outputs = groupedResults[agentType];
+
+        log(`\n[${"=".repeat(60)}]`);
+        log(
+          `[GUARDIAN-GOV] Processing group ${groupIndex}/${agentTypes.length}: ${agentType}`
+        );
+        log(`[${"=".repeat(60)}]`);
+        log(`[GUARDIAN-GOV] Results in group: ${outputs.length}`);
+
+        // Build payload
+        const payload = buildGuardianGovernancePayload(agentType, outputs);
+
+        // === STEP 1: Call Guardian Agent ===
+        log(`[GUARDIAN-GOV]   → Calling Guardian agent`);
+        let guardianSuccess = false;
+        let guardianOutput: any = null;
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          if (attempt > 1) {
+            log(
+              `[GUARDIAN-GOV]   🔄 Guardian retry attempt ${attempt}/3 for ${agentType}`
+            );
+            log(`[GUARDIAN-GOV]   Waiting 30 seconds before retry...`);
+            await delay(30000);
+          }
+
+          try {
+            guardianOutput = await callAgentWebhook(
+              GUARDIAN_AGENT_WEBHOOK,
+              payload,
+              `Guardian (${agentType})`
+            );
+
+            // Validate output
+            if (isValidAgentOutput(guardianOutput, `Guardian-${agentType}`)) {
+              log(`[GUARDIAN-GOV]   ✓ Guardian completed successfully`);
+              guardianSuccess = true;
+              break;
+            } else {
+              throw new Error("Guardian returned empty or invalid output");
+            }
+          } catch (error: any) {
+            log(
+              `[GUARDIAN-GOV]   ⚠ Guardian attempt ${attempt} failed: ${error.message}`
+            );
+            if (attempt === 3) {
+              log(
+                `[GUARDIAN-GOV]   ✗ Guardian failed after 3 attempts for ${agentType}`
+              );
+            }
+          }
+        }
+
+        // Collect Guardian result (success or failure)
+        if (guardianSuccess && guardianOutput) {
+          guardianResults.push({
+            agent_under_test: agentType,
+            recommendations: guardianOutput,
+          });
+        } else {
+          guardianResults.push({
+            agent_under_test: agentType,
+            error: "Failed after 3 attempts",
+          });
+          failedGroups++;
+        }
+
+        // Delay before Governance call
+        log(`[GUARDIAN-GOV] Waiting 15 seconds before Governance agent...`);
+        await delay(15000);
+
+        // === STEP 2: Call Governance Sentinel Agent ===
+        log(`[GUARDIAN-GOV]   → Calling Governance agent`);
+        let governanceSuccess = false;
+        let governanceOutput: any = null;
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          if (attempt > 1) {
+            log(
+              `[GUARDIAN-GOV]   🔄 Governance retry attempt ${attempt}/3 for ${agentType}`
+            );
+            log(`[GUARDIAN-GOV]   Waiting 30 seconds before retry...`);
+            await delay(30000);
+          }
+
+          try {
+            governanceOutput = await callAgentWebhook(
+              GOVERNANCE_AGENT_WEBHOOK,
+              payload,
+              `Governance (${agentType})`
+            );
+
+            // Validate output
+            if (
+              isValidAgentOutput(governanceOutput, `Governance-${agentType}`)
+            ) {
+              log(`[GUARDIAN-GOV]   ✓ Governance completed successfully`);
+              governanceSuccess = true;
+              break;
+            } else {
+              throw new Error("Governance returned empty or invalid output");
+            }
+          } catch (error: any) {
+            log(
+              `[GUARDIAN-GOV]   ⚠ Governance attempt ${attempt} failed: ${error.message}`
+            );
+            if (attempt === 3) {
+              log(
+                `[GUARDIAN-GOV]   ✗ Governance failed after 3 attempts for ${agentType}`
+              );
+            }
+          }
+        }
+
+        // Collect Governance result (success or failure)
+        if (governanceSuccess && governanceOutput) {
+          governanceResults.push({
+            agent_under_test: agentType,
+            recommendations: governanceOutput,
+          });
+        } else {
+          governanceResults.push({
+            agent_under_test: agentType,
+            error: "Failed after 3 attempts",
+          });
+          if (!guardianSuccess) {
+            // Only increment if guardian also failed
+            failedGroups++;
+          }
+        }
+
+        // Track successful groups
+        if (guardianSuccess && governanceSuccess) {
+          successfulGroups++;
+        }
+
+        // Delay before next group (except for last group)
+        if (groupIndex < agentTypes.length) {
+          log(
+            `[GUARDIAN-GOV] Waiting 15 seconds before next group (${groupIndex}/${agentTypes.length} completed)...`
+          );
+          await delay(15000);
+        }
+      }
+
+      // === STEP 3: Save aggregated results to database ===
+      log(`\n[${"=".repeat(60)}]`);
+      log("[GUARDIAN-GOV] ALL GROUPS PROCESSED - Saving to database");
+      log(`[${"=".repeat(60)}]`);
+      log(
+        `[GUARDIAN-GOV] Guardian results collected: ${guardianResults.length} groups`
+      );
+      log(
+        `[GUARDIAN-GOV] Governance results collected: ${governanceResults.length} groups`
+      );
+
+      // Save Guardian result
+      const [guardianRecord] = await db("agent_results")
+        .insert({
+          google_account_id: null,
+          domain: "SYSTEM",
+          agent_type: "guardian",
+          date_start: monthRange.startDate,
+          date_end: monthRange.endDate,
+          agent_input: JSON.stringify({
+            type: "SYSTEM",
+            aggregated_from: agentTypes,
+            total_results: results.length,
+            date_range: `${monthRange.startDate} to ${monthRange.endDate}`,
+          }),
+          agent_output: JSON.stringify(guardianResults),
+          status: "success",
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .returning("id");
+
+      const guardianId = guardianRecord.id;
+      log(`[GUARDIAN-GOV] ✓ Guardian result saved (ID: ${guardianId})`);
+
+      // Save Governance Sentinel result
+      const [governanceRecord] = await db("agent_results")
+        .insert({
+          google_account_id: null,
+          domain: "SYSTEM",
+          agent_type: "governance_sentinel",
+          date_start: monthRange.startDate,
+          date_end: monthRange.endDate,
+          agent_input: JSON.stringify({
+            type: "SYSTEM",
+            aggregated_from: agentTypes,
+            total_results: results.length,
+            date_range: `${monthRange.startDate} to ${monthRange.endDate}`,
+          }),
+          agent_output: JSON.stringify(governanceResults),
+          status: "success",
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .returning("id");
+
+      const governanceId = governanceRecord.id;
+      log(`[GUARDIAN-GOV] ✓ Governance result saved (ID: ${governanceId})`);
+
+      // Parse and save recommendations to agent_recommendations table
+      try {
+        await saveRecommendationsFromAgents(
+          guardianId,
+          governanceId,
+          guardianResults,
+          governanceResults
+        );
+      } catch (recError: any) {
+        // Log but don't fail the entire process
+        logError("Recommendation parsing", recError);
+        log(
+          `[GUARDIAN-GOV] ⚠ Recommendation parsing failed but agent run succeeded`
+        );
+      }
+
+      const duration = Date.now() - startTime;
+
+      log("\n" + "=".repeat(70));
+      log(`[GUARDIAN-GOV] ✓ COMPLETED SUCCESSFULLY`);
+      log(`  - Total groups: ${agentTypes.length}`);
+      log(`  - Successful: ${successfulGroups}`);
+      log(`  - Failed: ${failedGroups}`);
+      log(`  - Guardian ID: ${guardianId}`);
+      log(`  - Governance ID: ${governanceId}`);
+      log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+      log("=".repeat(70) + "\n");
+
+      return res.json({
+        success: true,
+        message: "Guardian and Governance agents completed",
+        guardianResultId: guardianId,
+        governanceResultId: governanceId,
+        groupsProcessed: agentTypes.length,
+        successfulGroups,
+        failedGroups,
+        groupDetails: agentTypes.map((type) => ({
+          agent_type: type,
+          count: groupedResults[type].length,
+          guardian_success: !guardianResults.find(
+            (r) => r.agent_under_test === type && r.error
+          ),
+          governance_success: !governanceResults.find(
+            (r) => r.agent_under_test === type && r.error
+          ),
+        })),
+        duration: `${duration}ms`,
+      });
+    } catch (error: any) {
+      logError("guardian-governance-agents-run", error);
+      const duration = Date.now() - startTime;
+      log(
+        `\n[GUARDIAN-GOV] ❌ Guardian/Governance run failed after ${duration}ms`
+      );
+      log(`  Error: ${error?.message || String(error)}`);
+      log("=".repeat(70) + "\n");
+
+      return res.status(500).json({
+        success: false,
+        error: "GUARDIAN_GOVERNANCE_RUN_ERROR",
+        message: error?.message || "Failed to run guardian/governance agents",
+        duration: `${duration}ms`,
+      });
+    }
+  }
+);
+
+/**
  * POST /api/agents/process-all
  *
  * DEPRECATED - Use /proofline-run instead
@@ -2371,6 +2990,8 @@ router.get("/health", (_req: Request, res: Response) => {
       opportunity: !!OPPORTUNITY_WEBHOOK,
       cro_optimizer: !!CRO_OPTIMIZER_WEBHOOK,
       copy_companion: !!COPY_COMPANION_WEBHOOK,
+      guardian: !!GUARDIAN_AGENT_WEBHOOK,
+      governance: !!GOVERNANCE_AGENT_WEBHOOK,
     },
   });
 });

@@ -24,6 +24,8 @@ import onboardingRoutes from "./routes/onboarding";
 import ragRoutes from "./routes/rag";
 import agentRoutes from "./routes/agentsV2";
 import notificationsRoutes from "./routes/notifications";
+import adminAgentInsightsRoutes from "./routes/adminAgentInsights";
+import appLogsRoutes from "./routes/appLogs";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -52,6 +54,8 @@ app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/rag", ragRoutes);
 app.use("/api/agents", agentRoutes);
 app.use("/api/notifications", notificationsRoutes);
+app.use("/api/admin/agent-insights", adminAgentInsightsRoutes);
+app.use("/api/admin/app-logs", appLogsRoutes);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));
