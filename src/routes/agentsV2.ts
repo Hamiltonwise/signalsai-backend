@@ -432,7 +432,7 @@ async function saveRecommendationsFromAgents(
             severity: item.severity || rec.severity || 1,
             verdict: rec.verdict || null,
             confidence: rec.confidence || null,
-            status: "PENDING",
+            status: null,
             evidence_links: JSON.stringify(item.evidence_links || []),
             rule_reference:
               item.rule_reference || rec.citations?.join("; ") || null,
@@ -494,7 +494,7 @@ async function saveRecommendationsFromAgents(
             severity: item.severity || rec.severity || 1,
             verdict: rec.verdict || null,
             confidence: rec.confidence || null,
-            status: "PENDING",
+            status: null,
             evidence_links: JSON.stringify(item.evidence_links || []),
             rule_reference:
               item.rule_reference || rec.citations?.join("; ") || null,

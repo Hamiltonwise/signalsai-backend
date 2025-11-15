@@ -2,7 +2,7 @@
  * Admin Agent Insights API Routes
  *
  * Endpoints for viewing Guardian and Governance Sentinel agent recommendations
- * and tracking their status (PENDING/COMPLETED)
+ * and tracking their status (PASS/REJECT)
  */
 
 import express, { Request, Response } from "express";
@@ -25,7 +25,7 @@ const router = express.Router();
  *   - pass_rate: Percentage of PASS verdicts from agent outputs
  *   - confidence_rate: Average confidence score
  *   - total_recommendations: Count from agent_recommendations table
- *   - fixed_count: Count where status = 'COMPLETED'
+ *   - fixed_count: Count where status = 'PASS'
  */
 router.get("/summary", async (req: Request, res: Response) => {
   try {
@@ -170,9 +170,7 @@ router.get("/summary", async (req: Request, res: Response) => {
       .select("agent_under_test")
       .count("* as total")
       .select(
-        db.raw("SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as fixed", [
-          "COMPLETED",
-        ])
+        db.raw("SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as fixed", ["PASS"])
       )
       .groupBy("agent_under_test");
 
@@ -237,7 +235,7 @@ router.get("/summary", async (req: Request, res: Response) => {
  *
  * Query params:
  *   - source: Filter by 'guardian' or 'governance_sentinel' or 'all' (default: all)
- *   - status: Filter by 'PENDING' or 'COMPLETED' or 'all' (default: all)
+ *   - status: Filter by 'PASS' or 'REJECT' or 'all' (default: all)
  *   - page: Page number (default: 1)
  *   - limit: Items per page (default: 50)
  */
@@ -330,27 +328,30 @@ router.get(
 // PATCH /api/admin/agent-insights/recommendations/:id
 // =====================================================================
 /**
- * Update recommendation status (PENDING <-> COMPLETED)
+ * Update recommendation status (NULL/PASS/REJECT)
  *
  * Path params:
  *   - id: The recommendation ID
  *
  * Body:
- *   - status: 'PENDING' or 'COMPLETED'
+ *   - status: 'PASS', 'REJECT', or 'IGNORE' (IGNORE sets to NULL)
  */
 router.patch("/recommendations/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    // Validate status
-    if (!status || !["PENDING", "COMPLETED"].includes(status)) {
+    // Validate status - IGNORE will be converted to NULL
+    if (!status || !["PASS", "REJECT", "IGNORE"].includes(status)) {
       return res.status(400).json({
         success: false,
         error: "INVALID_STATUS",
-        message: "Status must be PENDING or COMPLETED",
+        message: "Status must be PASS, REJECT, or IGNORE",
       });
     }
+
+    // Convert IGNORE to NULL for database
+    const dbStatus = status === "IGNORE" ? null : status;
 
     console.log(
       `[Admin Agent Insights] Updating recommendation ${id} to status ${status}`
@@ -368,15 +369,15 @@ router.patch("/recommendations/:id", async (req: Request, res: Response) => {
 
     // Build update object
     const updates: any = {
-      status,
+      status: dbStatus,
       updated_at: new Date(),
     };
 
-    // Set completed_at timestamp when marking as completed
-    if (status === "COMPLETED") {
+    // Set completed_at timestamp when marking as PASS
+    if (status === "PASS") {
       updates.completed_at = new Date();
-    } else if (status === "PENDING") {
-      // Clear completed_at when marking back to pending
+    } else {
+      // Clear completed_at when marking as REJECT or IGNORE (NULL)
       updates.completed_at = null;
     }
 
@@ -388,7 +389,7 @@ router.patch("/recommendations/:id", async (req: Request, res: Response) => {
     return res.json({
       success: true,
       message: "Recommendation status updated successfully",
-      data: { id, status },
+      data: { id, status: dbStatus },
     });
   } catch (error: any) {
     console.error(
@@ -404,10 +405,10 @@ router.patch("/recommendations/:id", async (req: Request, res: Response) => {
 });
 
 // =====================================================================
-// PATCH /api/admin/agent-insights/:agentType/recommendations/mark-all-completed
+// PATCH /api/admin/agent-insights/:agentType/recommendations/mark-all-pass
 // =====================================================================
 /**
- * Mark all recommendations for a specific agent as completed
+ * Mark all recommendations for a specific agent as PASS
  *
  * Path params:
  *   - agentType: The agent type (e.g., 'opportunity')
@@ -416,21 +417,21 @@ router.patch("/recommendations/:id", async (req: Request, res: Response) => {
  *   - source: Optional filter by 'guardian' or 'governance_sentinel'
  */
 router.patch(
-  "/:agentType/recommendations/mark-all-completed",
+  "/:agentType/recommendations/mark-all-pass",
   async (req: Request, res: Response) => {
     try {
       const { agentType } = req.params;
       const { source } = req.query;
 
       console.log(
-        `[Admin Agent Insights] Marking all recommendations as completed for ${agentType}${
+        `[Admin Agent Insights] Marking all recommendations as PASS for ${agentType}${
           source ? ` (source: ${source})` : ""
         }`
       );
 
       let query = db("agent_recommendations")
         .where("agent_under_test", agentType)
-        .where("status", "PENDING");
+        .where("status", "REJECT");
 
       // Apply source filter if provided
       if (source && source !== "all") {
@@ -439,30 +440,26 @@ router.patch(
 
       // Update all matching recommendations
       const updated = await query.update({
-        status: "COMPLETED",
+        status: "PASS",
         completed_at: new Date(),
         updated_at: new Date(),
       });
 
       console.log(
-        `[Admin Agent Insights] ✓ Marked ${updated} recommendation(s) as completed`
+        `[Admin Agent Insights] ✓ Marked ${updated} recommendation(s) as PASS`
       );
 
       return res.json({
         success: true,
-        message: `Marked ${updated} recommendation(s) as completed`,
+        message: `Marked ${updated} recommendation(s) as PASS`,
         data: { agentType, updated },
       });
     } catch (error: any) {
-      console.error(
-        "[Admin Agent Insights] Error marking all as completed:",
-        error
-      );
+      console.error("[Admin Agent Insights] Error marking all as PASS:", error);
       return res.status(500).json({
         success: false,
         error: "UPDATE_ERROR",
-        message:
-          error?.message || "Failed to mark recommendations as completed",
+        message: error?.message || "Failed to mark recommendations as PASS",
       });
     }
   }
@@ -523,6 +520,176 @@ router.delete(
     }
   }
 );
+
+// =====================================================================
+// DELETE /api/admin/agent-insights/clear-month-data
+// =====================================================================
+/**
+ * Clear all Guardian and Governance data for the current month
+ * - Deletes all agent_recommendations
+ * - Deletes all agent_results where agent_type is guardian or governance_sentinel
+ *
+ * Query params:
+ *   - month: Optional YYYY-MM format (defaults to current month)
+ */
+router.delete("/clear-month-data", async (req: Request, res: Response) => {
+  try {
+    const { month } = req.query;
+
+    // Determine date range
+    const now = new Date();
+    const startDate = month
+      ? `${month}-01`
+      : new Date(now.getFullYear(), now.getMonth(), 1)
+          .toISOString()
+          .split("T")[0];
+
+    const endOfMonth = month
+      ? new Date(
+          new Date(month + "-01").getFullYear(),
+          new Date(month + "-01").getMonth() + 1,
+          0
+        )
+      : new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const endDate = endOfMonth.toISOString().split("T")[0];
+
+    console.log(
+      `[Admin Agent Insights] Clearing Guardian/Governance data for ${startDate} to ${endDate}`
+    );
+
+    // Delete agent_results first (will cascade to recommendations if foreign key exists)
+    const deletedResults = await db("agent_results")
+      .whereIn("agent_type", ["guardian", "governance_sentinel"])
+      .whereBetween("date_start", [startDate, endDate])
+      .del();
+
+    // Delete all recommendations (in case there are orphaned records)
+    const deletedRecs = await db("agent_recommendations").del();
+
+    console.log(
+      `[Admin Agent Insights] ✓ Deleted ${deletedResults} agent results and ${deletedRecs} recommendations`
+    );
+
+    return res.json({
+      success: true,
+      message: `Cleared Guardian and Governance data for ${startDate} to ${endDate}`,
+      data: {
+        deletedResults,
+        deletedRecommendations: deletedRecs,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Agent Insights] Error clearing month data:", error);
+    return res.status(500).json({
+      success: false,
+      error: "DELETE_ERROR",
+      message: error?.message || "Failed to clear month data",
+    });
+  }
+});
+
+// =====================================================================
+// GET /api/admin/agent-insights/:agentType/passed-ids
+// =====================================================================
+/**
+ * Get all PASS recommendation IDs for a specific agent
+ *
+ * Path params:
+ *   - agentType: The agent to get passed IDs for (e.g., 'opportunity')
+ *
+ * Returns:
+ *   - ids: Array of recommendation IDs with status = 'PASS'
+ *   - count: Total number of passed recommendations
+ */
+router.get("/:agentType/passed-ids", async (req: Request, res: Response) => {
+  try {
+    const { agentType } = req.params;
+
+    console.log(
+      `[Admin Agent Insights] Fetching PASS recommendation IDs for ${agentType}`
+    );
+
+    const results = await db("agent_recommendations")
+      .where("agent_under_test", agentType)
+      .where("status", "PASS")
+      .select("id");
+
+    const ids = results.map((r) => r.id);
+
+    console.log(
+      `[Admin Agent Insights] Found ${ids.length} PASS recommendations for ${agentType}`
+    );
+
+    return res.json({
+      success: true,
+      ids,
+      count: ids.length,
+    });
+  } catch (error: any) {
+    console.error("[Admin Agent Insights] Error fetching passed IDs:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch passed recommendation IDs",
+    });
+  }
+});
+
+// =====================================================================
+// POST /api/admin/agent-insights/recommendations/by-ids
+// =====================================================================
+/**
+ * Get recommendation details by IDs
+ *
+ * Body:
+ *   - ids: Array of recommendation IDs
+ *
+ * Returns:
+ *   - data: Array of recommendations with id, title, explanation, status
+ *   - count: Number of recommendations returned
+ */
+router.post("/recommendations/by-ids", async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+
+    // Validate input
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "Must provide an array of recommendation IDs",
+      });
+    }
+
+    console.log(
+      `[Admin Agent Insights] Fetching ${ids.length} recommendation(s) by IDs`
+    );
+
+    const recommendations = await db("agent_recommendations")
+      .whereIn("id", ids)
+      .select("id", "title", "explanation", "status");
+
+    console.log(
+      `[Admin Agent Insights] Found ${recommendations.length} recommendation(s)`
+    );
+
+    return res.json({
+      success: true,
+      data: recommendations,
+      count: recommendations.length,
+    });
+  } catch (error: any) {
+    console.error(
+      "[Admin Agent Insights] Error fetching recommendations by IDs:",
+      error
+    );
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch recommendations",
+    });
+  }
+});
 
 // =====================================================================
 // EXPORTS
