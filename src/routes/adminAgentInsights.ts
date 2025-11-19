@@ -589,94 +589,135 @@ router.delete("/clear-month-data", async (req: Request, res: Response) => {
 });
 
 // =====================================================================
-// GET /api/admin/agent-insights/:agentType/passed-ids
+// GET /api/admin/agent-insights/:agentType/governance-ids
 // =====================================================================
 /**
- * Get all PASS recommendation IDs for a specific agent
+ * Get all PASS and REJECT recommendation IDs for a specific agent
  *
  * Path params:
- *   - agentType: The agent to get passed IDs for (e.g., 'opportunity')
+ *   - agentType: The agent to get governance IDs for (e.g., 'opportunity')
  *
  * Returns:
- *   - ids: Array of recommendation IDs with status = 'PASS'
- *   - count: Total number of passed recommendations
+ *   - passed: Array of recommendation IDs with status = 'PASS'
+ *   - rejected: Array of recommendation IDs with status = 'REJECT'
+ *   - counts: Object with passed and rejected counts
  */
-router.get("/:agentType/passed-ids", async (req: Request, res: Response) => {
-  try {
-    const { agentType } = req.params;
+router.get(
+  "/:agentType/governance-ids",
+  async (req: Request, res: Response) => {
+    try {
+      const { agentType } = req.params;
 
-    console.log(
-      `[Admin Agent Insights] Fetching PASS recommendation IDs for ${agentType}`
-    );
+      console.log(
+        `[Admin Agent Insights] Fetching governance recommendation IDs for ${agentType}`
+      );
 
-    const results = await db("agent_recommendations")
-      .where("agent_under_test", agentType)
-      .where("status", "PASS")
-      .select("id");
+      // Get PASS recommendations
+      const passedResults = await db("agent_recommendations")
+        .where("agent_under_test", agentType)
+        .where("status", "PASS")
+        .select("id");
 
-    const ids = results.map((r) => r.id);
+      // Get REJECT recommendations
+      const rejectedResults = await db("agent_recommendations")
+        .where("agent_under_test", agentType)
+        .where("status", "REJECT")
+        .select("id");
 
-    console.log(
-      `[Admin Agent Insights] Found ${ids.length} PASS recommendations for ${agentType}`
-    );
+      const passed = passedResults.map((r) => r.id);
+      const rejected = rejectedResults.map((r) => r.id);
 
-    return res.json({
-      success: true,
-      ids,
-      count: ids.length,
-    });
-  } catch (error: any) {
-    console.error("[Admin Agent Insights] Error fetching passed IDs:", error);
-    return res.status(500).json({
-      success: false,
-      error: "FETCH_ERROR",
-      message: error?.message || "Failed to fetch passed recommendation IDs",
-    });
+      console.log(
+        `[Admin Agent Insights] Found ${passed.length} PASS and ${rejected.length} REJECT recommendations for ${agentType}`
+      );
+
+      return res.json({
+        success: true,
+        passed,
+        rejected,
+        counts: {
+          passed: passed.length,
+          rejected: rejected.length,
+        },
+      });
+    } catch (error: any) {
+      console.error(
+        "[Admin Agent Insights] Error fetching governance IDs:",
+        error
+      );
+      return res.status(500).json({
+        success: false,
+        error: "FETCH_ERROR",
+        message:
+          error?.message || "Failed to fetch governance recommendation IDs",
+      });
+    }
   }
-});
+);
 
 // =====================================================================
 // POST /api/admin/agent-insights/recommendations/by-ids
 // =====================================================================
 /**
- * Get recommendation details by IDs
+ * Get recommendation details by IDs grouped by status
  *
  * Body:
- *   - ids: Array of recommendation IDs
+ *   - passed: Array of PASS recommendation IDs (optional)
+ *   - rejected: Array of REJECT recommendation IDs (optional)
  *
  * Returns:
- *   - data: Array of recommendations with id, title, explanation, status
- *   - count: Number of recommendations returned
+ *   - passed: Array of PASS recommendations with id, title, explanation, status
+ *   - rejected: Array of REJECT recommendations with id, title, explanation, status
+ *   - counts: Object with passed and rejected counts
  */
-router.post("/recommendations/by-ids", async (req: Request, res: Response) => {
+router.post("/by-ids", async (req: Request, res: Response) => {
   try {
-    const { ids } = req.body;
+    console.log("reached here");
+    const { passed, rejected } = req.body;
 
     // Validate input
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    if (!passed && !rejected) {
       return res.status(400).json({
         success: false,
         error: "INVALID_INPUT",
-        message: "Must provide an array of recommendation IDs",
+        message: "Must provide passed and/or rejected arrays",
       });
     }
 
     console.log(
-      `[Admin Agent Insights] Fetching ${ids.length} recommendation(s) by IDs`
+      `[Admin Agent Insights] Fetching recommendations: ${
+        passed?.length || 0
+      } passed, ${rejected?.length || 0} rejected`
     );
 
-    const recommendations = await db("agent_recommendations")
-      .whereIn("id", ids)
-      .select("id", "title", "explanation", "status");
+    // Fetch passed recommendations
+    const passedRecs =
+      passed && Array.isArray(passed) && passed.length > 0
+        ? await db("agent_recommendations")
+            .whereIn("id", passed)
+            .select("id", "title", "explanation", "status")
+        : [];
+
+    // Fetch rejected recommendations
+    const rejectedRecs =
+      rejected && Array.isArray(rejected) && rejected.length > 0
+        ? await db("agent_recommendations")
+            .whereIn("id", rejected)
+            .select("id", "title", "explanation", "status")
+        : [];
 
     console.log(
-      `[Admin Agent Insights] Found ${recommendations.length} recommendation(s)`
+      `[Admin Agent Insights] Found ${passedRecs.length} passed and ${rejectedRecs.length} rejected recommendation(s)`
     );
 
     return res.json({
       success: true,
-      data: recommendations,
-      count: recommendations.length,
+      passed: passedRecs,
+      rejected: rejectedRecs,
+      counts: {
+        passed: passedRecs.length,
+        rejected: rejectedRecs.length,
+      },
     });
   } catch (error: any) {
     console.error(

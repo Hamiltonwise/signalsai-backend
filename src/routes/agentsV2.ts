@@ -364,15 +364,26 @@ function buildCroOptimizerPayload(params: {
 
 /**
  * Build payload for Guardian/Governance agents
+ * Includes historical PASS and REJECT recommendations for context
  */
 function buildGuardianGovernancePayload(
   agentUnderTest: string,
-  outputs: any[]
+  outputs: any[],
+  passedRecommendations?: any[],
+  rejectedRecommendations?: any[]
 ): any {
   return {
     additional_data: {
       agent_under_test: agentUnderTest,
       outputs: outputs,
+      historical_context: {
+        passed_recommendations: passedRecommendations || [],
+        rejected_recommendations: rejectedRecommendations || [],
+        summary: {
+          total_passed: passedRecommendations?.length || 0,
+          total_rejected: rejectedRecommendations?.length || 0,
+        },
+      },
     },
   };
 }
@@ -2503,8 +2514,50 @@ router.post(
         log(`[${"=".repeat(60)}]`);
         log(`[GUARDIAN-GOV] Results in group: ${outputs.length}`);
 
-        // Build payload
-        const payload = buildGuardianGovernancePayload(agentType, outputs);
+        // Fetch historical PASS and REJECT recommendations for context
+        log(
+          `[GUARDIAN-GOV] Fetching historical recommendations for ${agentType}...`
+        );
+
+        const passedRecs = await db("agent_recommendations")
+          .where("agent_under_test", agentType)
+          .where("status", "PASS")
+          .select(
+            "id",
+            "title",
+            "explanation",
+            "verdict",
+            "confidence",
+            "created_at"
+          )
+          .orderBy("created_at", "desc")
+          .limit(50); // Limit to most recent 50
+
+        const rejectedRecs = await db("agent_recommendations")
+          .where("agent_under_test", agentType)
+          .where("status", "REJECT")
+          .select(
+            "id",
+            "title",
+            "explanation",
+            "verdict",
+            "confidence",
+            "created_at"
+          )
+          .orderBy("created_at", "desc")
+          .limit(50);
+
+        log(
+          `[GUARDIAN-GOV] Found ${passedRecs.length} PASS, ${rejectedRecs.length} REJECT recommendations`
+        );
+
+        // Build payload with historical context
+        const payload = buildGuardianGovernancePayload(
+          agentType,
+          outputs,
+          passedRecs,
+          rejectedRecs
+        );
 
         // === STEP 1: Call Guardian Agent ===
         log(`[GUARDIAN-GOV]   → Calling Guardian agent`);
