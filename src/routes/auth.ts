@@ -59,6 +59,7 @@ interface GoogleAccount {
   token_type?: string;
   expiry_date?: Date;
   scopes?: string;
+  organization_id?: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -654,6 +655,29 @@ async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
           console.log(`[AUTH] Created new Google account for user ${user.id}`);
         }
 
+        // Ensure user has organization relationship with admin role for OAuth users
+        if (googleAccount.organization_id) {
+          const orgUser = await trx("organization_users")
+            .where({
+              user_id: user.id,
+              organization_id: googleAccount.organization_id,
+            })
+            .first();
+
+          if (!orgUser) {
+            await trx("organization_users").insert({
+              user_id: user.id,
+              organization_id: googleAccount.organization_id,
+              role: "admin", // OAuth users (owners) are admins
+              created_at: new Date(),
+              updated_at: new Date(),
+            });
+            console.log(
+              `[AUTH] Created admin role for user ${user.id} in organization`
+            );
+          }
+        }
+
         return { user, googleAccount };
       });
 
@@ -728,7 +752,21 @@ async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
       }
     }
 
-    const response: CallbackResponse = {
+    // Get user role for response
+    let userRole = "admin"; // Default for OAuth users
+    if (result.googleAccount.organization_id) {
+      const orgUser = await db("organization_users")
+        .where({
+          user_id: result.user.id,
+          organization_id: result.googleAccount.organization_id,
+        })
+        .first();
+      if (orgUser) {
+        userRole = orgUser.role;
+      }
+    }
+
+    const response: CallbackResponse & { role?: string } = {
       success: true,
       user: result.user,
       googleAccount: result.googleAccount,
@@ -736,6 +774,7 @@ async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
       accessToken: tokens.access_token || undefined,
       expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
       googleAccountId: result.googleAccount.id, // Added for multi-tenant token refresh
+      role: userRole, // Add role to response
     };
 
     console.log(

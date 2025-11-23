@@ -91,220 +91,9 @@ onboardingRoutes.get("/status", async (req: AuthenticatedRequest, res) => {
 });
 
 /**
- * GET /api/onboarding/available-properties
- *
- * Fetch all available GA4 properties, GSC sites, and GBP locations
- * that the user has access to
- */
-onboardingRoutes.get(
-  "/available-properties",
-  tokenRefreshMiddleware,
-  async (req: AuthenticatedRequest, res) => {
-    try {
-      if (!req.oauth2Client) {
-        return res.status(401).json({
-          success: false,
-          error: "OAuth client not initialized",
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      const auth = req.oauth2Client;
-      const availableProperties: any = {
-        ga4: [],
-        gsc: [],
-        gbp: [],
-      };
-
-      // Fetch GA4 properties
-      try {
-        console.log("[Onboarding] Fetching GA4 properties");
-        const analyticsAdmin = google.analyticsadmin({
-          version: "v1beta",
-          auth,
-        });
-        const accountsResponse = await analyticsAdmin.accounts.list();
-
-        if (accountsResponse.data.accounts) {
-          for (const account of accountsResponse.data.accounts) {
-            if (account.name) {
-              try {
-                const propertiesResponse = await analyticsAdmin.properties.list(
-                  {
-                    filter: `parent:${account.name}`,
-                  }
-                );
-
-                if (propertiesResponse.data.properties) {
-                  for (const prop of propertiesResponse.data.properties) {
-                    if (prop.name && prop.displayName) {
-                      availableProperties.ga4.push({
-                        propertyId: prop.name,
-                        displayName: prop.displayName,
-                        accountName: account.displayName || account.name,
-                      });
-                    }
-                  }
-                }
-              } catch (propError) {
-                console.warn(
-                  `[Onboarding] Failed to fetch properties for account ${account.name}`
-                );
-              }
-            }
-          }
-        }
-        console.log(
-          `[Onboarding] Found ${availableProperties.ga4.length} GA4 properties`
-        );
-      } catch (ga4Error: any) {
-        console.error("[Onboarding] GA4 fetch error:", ga4Error?.message);
-        // Continue with other services even if GA4 fails
-      }
-
-      // Fetch GSC sites
-      try {
-        console.log("[Onboarding] Fetching GSC sites");
-        const searchConsole = google.searchconsole({ version: "v1", auth });
-        const sitesResponse = await searchConsole.sites.list({});
-
-        if (sitesResponse.data.siteEntry) {
-          availableProperties.gsc = sitesResponse.data.siteEntry
-            .filter((site) => site.siteUrl)
-            .map((site) => ({
-              siteUrl: site.siteUrl!,
-              displayName: site
-                .siteUrl!.replace("sc-domain:", "")
-                .replace("https://", "")
-                .replace("http://", ""),
-              permissionLevel: site.permissionLevel || "unknown",
-            }));
-        }
-        console.log(
-          `[Onboarding] Found ${availableProperties.gsc.length} GSC sites`
-        );
-      } catch (gscError: any) {
-        console.error("[Onboarding] GSC fetch error:", gscError?.message);
-        // Continue with other services even if GSC fails
-      }
-
-      // Fetch GBP locations
-      try {
-        console.log("[Onboarding] Fetching GBP locations");
-        const acctMgmt =
-          new mybusinessaccountmanagement_v1.Mybusinessaccountmanagement({
-            auth,
-          });
-        const bizInfo =
-          new mybusinessbusinessinformation_v1.Mybusinessbusinessinformation({
-            auth,
-          });
-
-        const accountsResponse = await acctMgmt.accounts.list({});
-
-        if (accountsResponse.data.accounts) {
-          for (const account of accountsResponse.data.accounts) {
-            if (account.name) {
-              try {
-                // Extract accountId from account.name format: accounts/{accountId}
-                const accountParts = account.name.split("/");
-                const accountId = accountParts[1];
-
-                if (!accountId) {
-                  console.warn(
-                    `[Onboarding] Skipping account with invalid name format: ${account.name}`
-                  );
-                  continue;
-                }
-
-                let pageToken: string | undefined;
-                do {
-                  const locationsResponse =
-                    await bizInfo.accounts.locations.list({
-                      parent: account.name,
-                      readMask: "name,title,storeCode",
-                      pageSize: 100,
-                      pageToken,
-                    });
-
-                  if (locationsResponse.data.locations) {
-                    for (const location of locationsResponse.data.locations) {
-                      if (location.name) {
-                        // Location name can be in two formats:
-                        // 1. Full: accounts/{accountId}/locations/{locationId}
-                        // 2. Short: locations/{locationId}
-                        const nameParts = location.name.split("/");
-                        let locationId: string;
-
-                        if (nameParts.length === 4) {
-                          // Full format: accounts/{accountId}/locations/{locationId}
-                          locationId = nameParts[3];
-                        } else if (nameParts.length === 2) {
-                          // Short format: locations/{locationId}
-                          locationId = nameParts[1];
-                        } else {
-                          console.warn(
-                            `[Onboarding] Skipping location with unexpected name format: ${location.name}`
-                          );
-                          continue;
-                        }
-
-                        if (!locationId) {
-                          console.warn(
-                            `[Onboarding] Skipping location with missing locationId: ${location.name}`
-                          );
-                          continue;
-                        }
-
-                        availableProperties.gbp.push({
-                          accountId,
-                          locationId,
-                          displayName: (location as any).title || location.name,
-                          storeCode: (location as any).storeCode || null,
-                          fullName: location.name,
-                        });
-
-                        console.log(
-                          `[Onboarding] Added GBP location: ${location.name} -> accountId=${accountId}, locationId=${locationId}`
-                        );
-                      }
-                    }
-                  }
-
-                  pageToken = locationsResponse.data.nextPageToken || undefined;
-                } while (pageToken);
-              } catch (locError) {
-                console.warn(
-                  `[Onboarding] Failed to fetch locations for account ${account.name}:`,
-                  locError
-                );
-              }
-            }
-          }
-        }
-        console.log(
-          `[Onboarding] Found ${availableProperties.gbp.length} GBP locations`
-        );
-      } catch (gbpError: any) {
-        console.error("[Onboarding] GBP fetch error:", gbpError?.message);
-        // Continue even if GBP fails
-      }
-
-      return res.json({
-        success: true,
-        properties: availableProperties,
-        message: "Successfully fetched available properties",
-      });
-    } catch (error) {
-      return handleError(res, error, "Fetch available properties");
-    }
-  }
-);
-
-/**
  * POST /api/onboarding/save-properties
  *
- * Save user's selected properties and profile information to database
+ * Save user's profile information to database and mark onboarding as complete
  *
  * Request body:
  * {
@@ -313,10 +102,7 @@ onboardingRoutes.get(
  *     lastName: string,
  *     practiceName: string,
  *     domainName: string
- *   },
- *   ga4: { propertyId: string, displayName: string } | null,
- *   gsc: { siteUrl: string, displayName: string } | null,
- *   gbp: [{ accountId: string, locationId: string, displayName: string }] | []
+ *   }
  * }
  */
 onboardingRoutes.post(
@@ -333,7 +119,7 @@ onboardingRoutes.post(
         });
       }
 
-      const { profile, ga4, gsc, gbp } = req.body;
+      const { profile } = req.body;
 
       // Validate profile data
       if (
@@ -351,108 +137,71 @@ onboardingRoutes.post(
         });
       }
 
-      // Validate input structure
-      if (ga4 && (!ga4.propertyId || !ga4.displayName)) {
-        return res.status(400).json({
-          success: false,
-          error: "Invalid GA4 property data",
-          timestamp: new Date().toISOString(),
-        });
-      }
+      // Update database with profile info only
+      // Also create organization if it doesn't exist (handled by migration for existing users, 
+      // but new users need org creation here or in auth)
+      // For this refactor, let's assume auth creates the user/account, and here we just update profile.
+      // We should also ensure an organization exists.
 
-      if (gsc && (!gsc.siteUrl || !gsc.displayName)) {
-        return res.status(400).json({
-          success: false,
-          error: "Invalid GSC site data",
-          timestamp: new Date().toISOString(),
-        });
-      }
+      await db.transaction(async (trx) => {
+        const googleAccount = await trx("google_accounts")
+          .where({ id: googleAccountId })
+          .first();
 
-      if (gbp && !Array.isArray(gbp)) {
-        return res.status(400).json({
-          success: false,
-          error: "GBP locations must be an array",
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      // Validate GBP locations
-      if (gbp && gbp.length > 0) {
-        for (let i = 0; i < gbp.length; i++) {
-          const location = gbp[i];
-          const missingFields = [];
-
-          if (!location.accountId) missingFields.push("accountId");
-          if (!location.locationId) missingFields.push("locationId");
-          if (!location.displayName) missingFields.push("displayName");
-
-          if (missingFields.length > 0) {
-            console.error(`[Onboarding] Invalid GBP location at index ${i}:`, {
-              location,
-              missingFields,
-              receivedPayload: req.body,
-            });
-
-            return res.status(400).json({
-              success: false,
-              error: `Invalid GBP location data at index ${i}`,
-              details: {
-                missingFields,
-                receivedLocation: location,
-                expectedFields: ["accountId", "locationId", "displayName"],
-              },
-              timestamp: new Date().toISOString(),
-            });
-          }
+        if (!googleAccount) {
+          throw new Error("Google account not found");
         }
-      }
 
-      // Build property IDs JSON
-      const propertyIds: any = {};
+        let orgId = googleAccount.organization_id;
 
-      if (ga4) {
-        propertyIds.ga4 = {
-          propertyId: ga4.propertyId,
-          displayName: ga4.displayName,
-        };
-      }
+        // If no organization exists (e.g. new user), create one
+        if (!orgId) {
+          const [newOrg] = await trx("organizations")
+            .insert({
+              name: profile.practiceName || `${profile.firstName}'s Organization`,
+              domain: profile.domainName,
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning("id");
+          
+          orgId = newOrg.id;
 
-      if (gsc) {
-        propertyIds.gsc = {
-          siteUrl: gsc.siteUrl,
-          displayName: gsc.displayName,
-        };
-      }
+          // Link user to organization as admin
+          await trx("organization_users").insert({
+            organization_id: orgId,
+            user_id: googleAccount.user_id,
+            role: "admin",
+            created_at: new Date(),
+            updated_at: new Date(),
+          });
+        } else {
+          // Update existing organization name/domain
+          await trx("organizations")
+            .where({ id: orgId })
+            .update({
+              name: profile.practiceName,
+              domain: profile.domainName,
+              updated_at: new Date(),
+            });
+        }
 
-      if (gbp && gbp.length > 0) {
-        propertyIds.gbp = gbp.map((location: any) => ({
-          accountId: location.accountId,
-          locationId: location.locationId,
-          displayName: location.displayName,
-        }));
-      } else {
-        propertyIds.gbp = [];
-      }
-
-      // Update database with profile and properties
-      await db("google_accounts")
-        .where({ id: googleAccountId })
-        .update({
-          first_name: profile.firstName,
-          last_name: profile.lastName,
-          practice_name: profile.practiceName,
-          domain_name: profile.domainName,
-          google_property_ids: JSON.stringify(propertyIds),
-          onboarding_completed: true,
-          updated_at: new Date(),
-        });
+        // Update google account
+        await trx("google_accounts")
+          .where({ id: googleAccountId })
+          .update({
+            first_name: profile.firstName,
+            last_name: profile.lastName,
+            practice_name: profile.practiceName,
+            domain_name: profile.domainName,
+            organization_id: orgId,
+            onboarding_completed: true,
+            updated_at: new Date(),
+          });
+      });
 
       console.log(
-        `[Onboarding] Saved properties for account ${googleAccountId}`
-      );
-      console.log(
-        `[Onboarding] Properties:`,
-        JSON.stringify(propertyIds, null, 2)
+        `[Onboarding] Completed onboarding for account ${googleAccountId}`
       );
 
       return res.json({
@@ -464,7 +213,6 @@ onboardingRoutes.post(
           practiceName: profile.practiceName,
           domainName: profile.domainName,
         },
-        propertyIds,
       });
     } catch (error) {
       return handleError(res, error, "Save properties");

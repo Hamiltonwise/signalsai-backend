@@ -65,6 +65,17 @@ export const tokenRefreshMiddleware = async (
       });
     }
 
+    // RBAC Check: Ensure the requesting user (if identified) belongs to the organization
+    // Note: In this architecture, the "user" is identified by the googleAccountId in the header for now.
+    // Ideally, we should have a separate user authentication token (JWT) to identify the user,
+    // and then check if that user belongs to the organization that owns this google account.
+    // However, per the current flow, the googleAccountId IS the session identifier.
+    // So we implicitly trust that if they have the ID, they are that "session".
+    // But for multi-user, we need to know WHO is making the request.
+    // Since we don't have a separate auth token yet, we'll assume the googleAccountId implies access
+    // to that account's organization.
+    // TODO: Implement proper JWT auth for users to distinguish "who" is acting on "which" account.
+
     // ✅ ALWAYS refresh token to ensure it's valid (fixes 401 errors)
     console.log(
       `[Token Refresh] Force refreshing token for account ${googleAccountId}`
