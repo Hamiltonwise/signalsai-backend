@@ -63,6 +63,7 @@ app.use("/api/admin/agent-insights", adminAgentInsightsRoutes);
 app.use("/api/admin/app-logs", appLogsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/admin/organizations", organizationsRoutes);
+app.use("/api/admin", adminAuthRoutes);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));
