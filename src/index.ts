@@ -28,6 +28,8 @@ import notificationsRoutes from "./routes/notifications";
 import adminAgentInsightsRoutes from "./routes/adminAgentInsights";
 import appLogsRoutes from "./routes/appLogs";
 import settingsRoutes from "./routes/settings";
+import organizationsRoutes from "./routes/admin/organizations";
+import adminAuthRoutes from "./routes/admin/auth";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -60,6 +62,7 @@ app.use("/api/notifications", notificationsRoutes);
 app.use("/api/admin/agent-insights", adminAgentInsightsRoutes);
 app.use("/api/admin/app-logs", appLogsRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/admin/organizations", organizationsRoutes);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));

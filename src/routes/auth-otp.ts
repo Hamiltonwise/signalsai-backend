@@ -18,13 +18,28 @@ const generateCode = () => {
  */
 router.post("/request", async (req: Request, res: Response) => {
   try {
-    const { email } = req.body;
+    const { email, isAdminLogin } = req.body;
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
     }
 
     const normalizedEmail = email.toLowerCase();
+
+    // Check if Super Admin
+    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => e.length > 0);
+    
+    const isSuperAdmin = superAdminEmails.includes(normalizedEmail);
+
+    // If Admin Login, STRICTLY require Super Admin status
+    if (isAdminLogin && !isSuperAdmin) {
+      return res.status(403).json({ 
+        error: "Access denied. Your email is not authorized for Admin access." 
+      });
+    }
 
     // Check if user exists
     const user = await db("users").where({ email: normalizedEmail }).first();
@@ -34,7 +49,7 @@ router.post("/request", async (req: Request, res: Response) => {
       .where({ email: normalizedEmail, status: "pending" })
       .first();
 
-    if (!user && !invitation) {
+    if (!user && !invitation && !isSuperAdmin) {
       // For security, we shouldn't reveal if email exists or not,
       // but for this MVP/internal tool, we might want to be explicit or just allow it?
       // Let's allow it but maybe not send email?
@@ -76,13 +91,28 @@ router.post("/request", async (req: Request, res: Response) => {
  */
 router.post("/verify", async (req: Request, res: Response) => {
   try {
-    const { email, code } = req.body;
+    const { email, code, isAdminLogin } = req.body;
 
     if (!email || !code) {
       return res.status(400).json({ error: "Email and code are required" });
     }
 
     const normalizedEmail = email.toLowerCase();
+
+    // Check if Super Admin
+    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => e.length > 0);
+    
+    const isSuperAdmin = superAdminEmails.includes(normalizedEmail);
+
+    // If Admin Login, STRICTLY require Super Admin status
+    if (isAdminLogin && !isSuperAdmin) {
+      return res.status(403).json({ 
+        error: "Access denied. Your email is not authorized for Admin access." 
+      });
+    }
 
     // Verify code
     const otpRecord = await db("otp_codes")
@@ -114,13 +144,21 @@ router.post("/verify", async (req: Request, res: Response) => {
         .where({ email: normalizedEmail, status: "pending" })
         .first();
 
-      if (!invitation) {
+      // Check if Super Admin
+      const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "")
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => e.length > 0);
+      
+      const isSuperAdmin = superAdminEmails.includes(normalizedEmail);
+
+      if (!invitation && !isSuperAdmin) {
         return res
           .status(400)
           .json({ error: "No account found and no pending invitation." });
       }
 
-      // Create user from invitation
+      // Create user
       isNewUser = true;
       const [newUser] = await db("users")
         .insert({
@@ -133,18 +171,22 @@ router.post("/verify", async (req: Request, res: Response) => {
 
       user = newUser;
 
-      // Accept invitation
-      await db("organization_users").insert({
-        organization_id: invitation.organization_id,
-        user_id: user.id,
-        role: invitation.role,
-        created_at: new Date(),
-        updated_at: new Date(),
-      });
+      if (invitation) {
+        // Accept invitation
+        await db("organization_users").insert({
+          organization_id: invitation.organization_id,
+          user_id: user.id,
+          role: invitation.role,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
 
-      await db("invitations")
-        .where({ id: invitation.id })
-        .update({ status: "accepted", updated_at: new Date() });
+        await db("invitations")
+          .where({ id: invitation.id })
+          .update({ status: "accepted", updated_at: new Date() });
+      }
+      // If Super Admin (and no invitation), they are created but not linked to any org yet.
+      // This is fine for Admin Dashboard access which might not require org context immediately.
     }
 
     // Generate JWT
