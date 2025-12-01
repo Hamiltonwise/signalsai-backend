@@ -23,6 +23,7 @@ import { OAuth2Client } from "google-auth-library";
 import { Knex } from "knex";
 import * as dotenv from "dotenv";
 import { db } from "../database/connection";
+import { getValidOAuth2Client } from "../auth/oauth2Helper";
 
 // Load environment variables
 dotenv.config();
@@ -363,35 +364,19 @@ async function refreshAccessToken(
   googleAccountId: number
 ): Promise<GoogleAccount> {
   try {
+    // Use the safe helper which handles expiry check and DB update
+    await getValidOAuth2Client(googleAccountId);
+
+    // Fetch the updated account
     const googleAccount = await db("google_accounts")
       .where({ id: googleAccountId })
       .first();
 
-    if (!googleAccount || !googleAccount.refresh_token) {
-      throw new Error("Google account not found or missing refresh token");
+    if (!googleAccount) {
+      throw new Error("Google account not found after refresh");
     }
 
-    const oauth2Client = createOAuth2Client();
-    oauth2Client.setCredentials({
-      refresh_token: googleAccount.refresh_token,
-    });
-
-    const { token } = await oauth2Client.getAccessToken();
-
-    if (token) {
-      const updatedData = {
-        access_token: token,
-        updated_at: new Date(),
-      };
-
-      await db("google_accounts")
-        .where({ id: googleAccountId })
-        .update(updatedData);
-
-      return { ...googleAccount, ...updatedData };
-    } else {
-      throw new Error("Failed to refresh access token");
-    }
+    return googleAccount;
   } catch (error) {
     console.error("[AUTH] Error refreshing access token:", error);
     throw error;

@@ -76,50 +76,66 @@ export const tokenRefreshMiddleware = async (
     // to that account's organization.
     // TODO: Implement proper JWT auth for users to distinguish "who" is acting on "which" account.
 
-    // ✅ ALWAYS refresh token to ensure it's valid (fixes 401 errors)
-    console.log(
-      `[Token Refresh] Force refreshing token for account ${googleAccountId}`
-    );
+    // Check if token is expired or expiring soon (e.g., in 5 minutes)
+    const expiryDate = googleAccount.expiry_date
+      ? new Date(googleAccount.expiry_date)
+      : new Date(0);
+    const isExpiringSoon = expiryDate.getTime() - Date.now() < 5 * 60 * 1000; // 5 minutes
 
     try {
-      // Create OAuth2 client and force token refresh
+      // Create OAuth2 client
       const oauth2Client = await createOAuth2ClientForAccount(googleAccountId);
 
-      // Force refresh to get a fresh access token
-      const { credentials } = await oauth2Client.refreshAccessToken();
+      if (isExpiringSoon) {
+        console.log(
+          `[Token Refresh] Token expiring soon (or expired), refreshing for account ${googleAccountId}`
+        );
 
-      if (!credentials.access_token) {
-        throw new Error("Failed to obtain access token after refresh");
+        // Force refresh to get a fresh access token
+        const { credentials } = await oauth2Client.refreshAccessToken();
+
+        if (!credentials.access_token) {
+          throw new Error("Failed to obtain access token after refresh");
+        }
+
+        // Calculate new expiry from credentials or default to 1 hour
+        const newExpiry = credentials.expiry_date
+          ? new Date(credentials.expiry_date)
+          : new Date(Date.now() + 3600000);
+
+        // Update database with fresh token
+        await db("google_accounts").where({ id: googleAccountId }).update({
+          access_token: credentials.access_token,
+          expiry_date: newExpiry,
+          updated_at: new Date(),
+        });
+
+        console.log(
+          `[Token Refresh] ✓ Token refreshed successfully for account ${googleAccountId}`
+        );
+        console.log(`  - New expiry: ${newExpiry.toISOString()}`);
+
+        // Ensure credentials are set on the client
+        oauth2Client.setCredentials({
+          access_token: credentials.access_token,
+          refresh_token: googleAccount.refresh_token,
+          expiry_date: credentials.expiry_date,
+          scope: credentials.scope,
+          token_type: credentials.token_type,
+        });
+      } else {
+        console.log(
+          `[Token Refresh] Token valid for account ${googleAccountId}, skipping refresh`
+        );
+        // Use existing credentials
+        oauth2Client.setCredentials({
+          access_token: googleAccount.access_token,
+          refresh_token: googleAccount.refresh_token,
+          expiry_date: googleAccount.expiry_date
+            ? new Date(googleAccount.expiry_date).getTime()
+            : undefined,
+        });
       }
-
-      // Calculate new expiry from credentials or default to 1 hour
-      const newExpiry = credentials.expiry_date
-        ? new Date(credentials.expiry_date)
-        : new Date(Date.now() + 3600000);
-
-      // Update database with fresh token
-      await db("google_accounts").where({ id: googleAccountId }).update({
-        access_token: credentials.access_token,
-        expiry_date: newExpiry,
-        updated_at: new Date(),
-      });
-
-      console.log(
-        `[Token Refresh] ✓ Token refreshed successfully for account ${googleAccountId}`
-      );
-      console.log(`  - New expiry: ${newExpiry.toISOString()}`);
-      console.log(`  - Has access token: ${!!credentials.access_token}`);
-      console.log(`  - Has refresh token: ${!!credentials.refresh_token}`);
-      console.log(`  - Scopes: ${credentials.scope || "not available"}`);
-
-      // Ensure credentials are set on the client
-      oauth2Client.setCredentials({
-        access_token: credentials.access_token,
-        refresh_token: googleAccount.refresh_token,
-        expiry_date: credentials.expiry_date,
-        scope: credentials.scope,
-        token_type: credentials.token_type,
-      });
 
       // Attach to request
       req.oauth2Client = oauth2Client;

@@ -16,7 +16,10 @@
 
 import express, { Request, Response } from "express";
 import { db } from "../database/connection";
-import { createOAuth2ClientForAccount } from "../auth/oauth2Helper";
+import {
+  createOAuth2ClientForAccount,
+  getValidOAuth2Client,
+} from "../auth/oauth2Helper";
 import {
   fetchAllServiceData,
   GooglePropertyIds,
@@ -39,6 +42,7 @@ const LOG_FILE = path.join(LOG_DIR, "agent-run.log");
 // Agent webhook URLs from environment variables
 const PROOFLINE_WEBHOOK = process.env.PROOFLINE_AGENT_WEBHOOK || "";
 const SUMMARY_WEBHOOK = process.env.SUMMARY_AGENT_WEBHOOK || "";
+const REFERRAL_ENGINE_WEBHOOK = process.env.REFERRAL_ENGINE_AGENT_WEBHOOK || "";
 const OPPORTUNITY_WEBHOOK = process.env.OPPORTUNITY_AGENT_WEBHOOK || "";
 const CRO_OPTIMIZER_WEBHOOK = process.env.CRO_OPTIMIZER_AGENT_WEBHOOK || "";
 const COPY_COMPANION_WEBHOOK = process.env.COPY_COMPANION_AGENT_WEBHOOK || "";
@@ -336,6 +340,35 @@ function buildOpportunityPayload(params: {
       end: params.endDate,
     },
     additional_data: params.summaryOutput,
+  };
+}
+
+/**
+ * Build payload for Referral Analysis Engine agent
+ * Includes GA4, GBP, GSC, PMS, and Clarity data (same as Summary agent)
+ */
+function buildReferralEnginePayload(params: {
+  domain: string;
+  googleAccountId: number;
+  startDate: string;
+  endDate: string;
+  monthData: any;
+  pmsData?: any;
+  clarityData?: any;
+}): any {
+  return {
+    agent: "referral_engine",
+    domain: params.domain,
+    googleAccountId: params.googleAccountId,
+    dateRange: {
+      start: params.startDate,
+      end: params.endDate,
+    },
+    additional_data: {
+      ...params.monthData,
+      pms: params.pmsData || null,
+      clarity: params.clarityData || null,
+    },
   };
 }
 
@@ -683,7 +716,7 @@ async function processDailyAgent(
 }
 
 /**
- * Process monthly agents (Summary + Opportunity) for a single client
+ * Process monthly agents (Summary + Referral Engine + Opportunity + CRO Optimizer) for a single client
  * Returns outputs in memory without saving to DB
  */
 async function processMonthlyAgents(
@@ -693,9 +726,11 @@ async function processMonthlyAgents(
 ): Promise<{
   success: boolean;
   summaryOutput?: any;
+  referralEngineOutput?: any;
   opportunityOutput?: any;
   croOptimizerOutput?: any;
   summaryPayload?: any;
+  referralEnginePayload?: any;
   opportunityPayload?: any;
   croOptimizerPayload?: any;
   rawData?: any;
@@ -706,7 +741,7 @@ async function processMonthlyAgents(
   const { startDate, endDate } = monthRange;
 
   log(
-    `  [MONTHLY] Processing Summary + Opportunity for ${domain} (${startDate} to ${endDate})`
+    `  [MONTHLY] Processing Summary + Referral Engine + Opportunity + CRO Optimizer for ${domain} (${startDate} to ${endDate})`
   );
 
   try {
@@ -826,12 +861,43 @@ async function processMonthlyAgents(
       };
     }
 
-    log(`  [MONTHLY] Waiting 15 seconds before Opportunity agent...`);
-    await delay(15000); // 15-second delay before Opportunity
-
     log(`  [MONTHLY] ✓ Summary completed successfully`);
 
-    // === STEP 2: Run Opportunity Agent (only uses Summary output) ===
+    // === STEP 2: Run Referral Analysis Engine (uses same raw data as Summary) ===
+    log(`  [MONTHLY] Calling Referral Engine agent webhook`);
+    const referralEnginePayload = buildReferralEnginePayload({
+      domain,
+      googleAccountId,
+      startDate,
+      endDate,
+      monthData,
+      pmsData,
+      clarityData,
+    });
+
+    const referralEngineOutput = await callAgentWebhook(
+      REFERRAL_ENGINE_WEBHOOK,
+      referralEnginePayload,
+      "Referral Engine"
+    );
+
+    // Log and validate Referral Engine output
+    logAgentOutput("Referral Engine", referralEngineOutput);
+    const referralEngineValid = isValidAgentOutput(
+      referralEngineOutput,
+      "Referral Engine"
+    );
+
+    if (!referralEngineValid) {
+      return {
+        success: false,
+        error: "Referral Engine agent returned empty or invalid output",
+      };
+    }
+
+    log(`  [MONTHLY] ✓ Referral Engine completed successfully`);
+
+    // === STEP 3: Run Opportunity Agent (only uses Summary output) ===
     log(`  [MONTHLY] Calling Opportunity agent webhook`);
     const opportunityPayload = buildOpportunityPayload({
       domain,
@@ -863,10 +929,7 @@ async function processMonthlyAgents(
 
     log(`  [MONTHLY] ✓ Opportunity completed successfully`);
 
-    // === STEP 3: Run CRO Optimizer Agent with retry logic ===
-    log(`  [MONTHLY] Waiting 15 seconds before CRO Optimizer agent...`);
-    await delay(15000); // 15-second delay before CRO Optimizer
-
+    // === STEP 4: Run CRO Optimizer Agent with retry logic ===
     log(`  [MONTHLY] Calling CRO Optimizer agent webhook (max 3 attempts)`);
 
     let croOptimizerOutput: any = null;
@@ -930,7 +993,7 @@ async function processMonthlyAgents(
       }
     }
 
-    // === STEP 4: Create tasks from action items ===
+    // === STEP 5: Create tasks from action items ===
     try {
       const actionItems = opportunityOutput[0]?.opportunities || [];
 
@@ -993,7 +1056,7 @@ async function processMonthlyAgents(
       );
     }
 
-    // === STEP 5: Create tasks from CRO Optimizer action items ===
+    // === STEP 6: Create tasks from CRO Optimizer action items ===
     try {
       const croActionItems = croOptimizerOutput[0]?.opportunities || [];
 
@@ -1057,9 +1120,11 @@ async function processMonthlyAgents(
     return {
       success: true,
       summaryOutput,
+      referralEngineOutput,
       opportunityOutput,
       croOptimizerOutput,
       summaryPayload,
+      referralEnginePayload,
       opportunityPayload,
       croOptimizerPayload,
       rawData,
@@ -1397,50 +1462,9 @@ async function processClient(
     }
 
     try {
-      // Create OAuth2 client for this account
-      log(`[CLIENT] Creating OAuth2 client`);
-      const oauth2Client = await createOAuth2ClientForAccount(googleAccountId);
-
-      // Force token refresh to ensure validity
-      try {
-        log(`[CLIENT] Refreshing OAuth token for account ${googleAccountId}`);
-        await oauth2Client.refreshAccessToken();
-
-        const credentials = oauth2Client.credentials;
-
-        log(`[CLIENT] Credentials status after refresh:`);
-        log(`  - Has access token: ${!!credentials?.access_token}`);
-        log(`  - Has refresh token: ${!!credentials?.refresh_token}`);
-        log(
-          `  - Token expiry: ${
-            credentials?.expiry_date
-              ? new Date(credentials.expiry_date).toISOString()
-              : "unknown"
-          }`
-        );
-        log(`  - Scopes: ${credentials?.scope || "not available"}`);
-
-        if (credentials.access_token) {
-          const expiryDate = credentials.expiry_date
-            ? new Date(credentials.expiry_date)
-            : new Date(Date.now() + 3600000);
-
-          await db("google_accounts").where({ id: googleAccountId }).update({
-            access_token: credentials.access_token,
-            expiry_date: expiryDate,
-            updated_at: new Date(),
-          });
-
-          log(
-            `[CLIENT] ✓ Token refreshed successfully. Expires: ${expiryDate.toISOString()}`
-          );
-        }
-      } catch (refreshError: any) {
-        logError(`Token refresh for account ${googleAccountId}`, refreshError);
-        throw new Error(
-          `Authentication failed: Unable to refresh token - ${refreshError.message}`
-        );
-      }
+      // Get valid OAuth2 client (handles refresh automatically if needed)
+      log(`[CLIENT] Getting valid OAuth2 client`);
+      const oauth2Client = await getValidOAuth2Client(googleAccountId);
 
       // Get date ranges
       const dailyDates = getDailyDates(referenceDate);
@@ -1484,9 +1508,6 @@ async function processClient(
           log(`[CLIENT] Monthly agents already completed - skipping`);
           monthlyResult = { skipped: true, reason: "already_exists" };
         } else {
-          log(`[CLIENT] Waiting 15 seconds before monthly agents...`);
-          await delay(15000);
-
           log(
             `[CLIENT] Running monthly agents (attempt ${attempt}/${MAX_ATTEMPTS})`
           );
@@ -1591,6 +1612,26 @@ async function processClient(
           .returning("id");
 
         log(`[CLIENT] ✓ Opportunity result saved (ID: ${opportunityId})`);
+
+        // Save Referral Engine result
+        const [referralEngineId] = await db("agent_results")
+          .insert({
+            google_account_id: googleAccountId,
+            domain,
+            agent_type: "referral_engine",
+            date_start: monthRange.startDate,
+            date_end: monthRange.endDate,
+            agent_input: JSON.stringify(monthlyResult.referralEnginePayload),
+            agent_output: JSON.stringify(monthlyResult.referralEngineOutput),
+            status: "success",
+            created_at: new Date(),
+            updated_at: new Date(),
+          })
+          .returning("id");
+
+        log(
+          `[CLIENT] ✓ Referral Engine result saved (ID: ${referralEngineId})`
+        );
 
         // Save CRO Optimizer result
         const [croOptimizerId] = await db("agent_results")
@@ -1721,30 +1762,9 @@ router.post("/proofline-run", async (req: Request, res: Response) => {
       log(`[${"=".repeat(60)}]`);
 
       try {
-        // Create OAuth2 client
-        log(`[CLIENT] Creating OAuth2 client`);
-        const oauth2Client = await createOAuth2ClientForAccount(
-          googleAccountId
-        );
-
-        // Refresh token
-        log(`[CLIENT] Refreshing OAuth token`);
-        await oauth2Client.refreshAccessToken();
-        const credentials = oauth2Client.credentials;
-
-        if (credentials.access_token) {
-          const expiryDate = credentials.expiry_date
-            ? new Date(credentials.expiry_date)
-            : new Date(Date.now() + 3600000);
-
-          await db("google_accounts").where({ id: googleAccountId }).update({
-            access_token: credentials.access_token,
-            expiry_date: expiryDate,
-            updated_at: new Date(),
-          });
-
-          log(`[CLIENT] ✓ Token refreshed`);
-        }
+        // Get valid OAuth2 client
+        log(`[CLIENT] Getting valid OAuth2 client`);
+        const oauth2Client = await getValidOAuth2Client(googleAccountId);
 
         // Get date range
         const dailyDates = getDailyDates(referenceDate);
@@ -1808,12 +1828,6 @@ router.post("/proofline-run", async (req: Request, res: Response) => {
         });
 
         log(`[CLIENT] ✓ ${domain} completed successfully`);
-
-        // Delay between clients
-        if (accounts.indexOf(account) < accounts.length - 1) {
-          log(`\n[SETUP] Waiting 15 seconds before next client...`);
-          await delay(15000);
-        }
       } catch (error: any) {
         logError(`Proofline for ${domain}`, error);
         results.push({
@@ -1941,28 +1955,9 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
       log(`[SETUP] Force mode enabled - will overwrite existing results`);
     }
 
-    // Create OAuth2 client
-    log(`[CLIENT] Creating OAuth2 client`);
-    const oauth2Client = await createOAuth2ClientForAccount(googleAccountId);
-
-    // Refresh token
-    log(`[CLIENT] Refreshing OAuth token`);
-    await oauth2Client.refreshAccessToken();
-    const credentials = oauth2Client.credentials;
-
-    if (credentials.access_token) {
-      const expiryDate = credentials.expiry_date
-        ? new Date(credentials.expiry_date)
-        : new Date(Date.now() + 3600000);
-
-      await db("google_accounts").where({ id: googleAccountId }).update({
-        access_token: credentials.access_token,
-        expiry_date: expiryDate,
-        updated_at: new Date(),
-      });
-
-      log(`[CLIENT] ✓ Token refreshed`);
-    }
+    // Get valid OAuth2 client
+    log(`[CLIENT] Getting valid OAuth2 client`);
+    const oauth2Client = await getValidOAuth2Client(googleAccountId);
 
     // Run monthly agents
     log(`[CLIENT] Running monthly agents (Summary + Opportunity)`);
@@ -2020,6 +2015,25 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     const opportunityId = opportunityResult.id;
     log(`[CLIENT] ✓ Opportunity result saved (ID: ${opportunityId})`);
 
+    // Save Referral Engine result
+    const [referralEngineResult] = await db("agent_results")
+      .insert({
+        google_account_id: googleAccountId,
+        domain,
+        agent_type: "referral_engine",
+        date_start: monthRange.startDate,
+        date_end: monthRange.endDate,
+        agent_input: JSON.stringify(monthlyResult.referralEnginePayload),
+        agent_output: JSON.stringify(monthlyResult.referralEngineOutput),
+        status: "success",
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning("id");
+
+    const referralEngineId = referralEngineResult.id;
+    log(`[CLIENT] ✓ Referral Engine result saved (ID: ${referralEngineId})`);
+
     // Save CRO Optimizer result
     const [croOptimizerResult] = await db("agent_results")
       .insert({
@@ -2048,6 +2062,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
         "agent",
         {
           summaryId,
+          referralEngineId,
           opportunityId,
           croOptimizerId,
           dateRange: `${monthRange.startDate} to ${monthRange.endDate}`,
@@ -2066,6 +2081,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     log("\n" + "=".repeat(70));
     log(`[COMPLETE] ✓ Monthly agents completed successfully`);
     log(`  - Summary ID: ${summaryId}`);
+    log(`  - Referral Engine ID: ${referralEngineId}`);
     log(`  - Opportunity ID: ${opportunityId}`);
     log(`  - CRO Optimizer ID: ${croOptimizerId}`);
     log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
@@ -2075,6 +2091,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
       success: true,
       message: "Monthly agents completed successfully",
       summaryId,
+      referralEngineId,
       opportunityId,
       croOptimizerId,
       duration: `${duration}ms`,
@@ -2232,32 +2249,11 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
 
         log(`[CLIENT] No existing results found - proceeding`);
 
-        // Create OAuth2 client
-        log(`[CLIENT] Creating OAuth2 client for account ${googleAccountId}`);
-        const oauth2Client = await createOAuth2ClientForAccount(
-          googleAccountId
+        // Get valid OAuth2 client
+        log(
+          `[CLIENT] Getting valid OAuth2 client for account ${googleAccountId}`
         );
-
-        // Refresh token
-        log(`[CLIENT] Refreshing OAuth token...`);
-        await oauth2Client.refreshAccessToken();
-        const credentials = oauth2Client.credentials;
-
-        if (credentials.access_token) {
-          const expiryDate = credentials.expiry_date
-            ? new Date(credentials.expiry_date)
-            : new Date(Date.now() + 3600000);
-
-          await db("google_accounts").where({ id: googleAccountId }).update({
-            access_token: credentials.access_token,
-            expiry_date: expiryDate,
-            updated_at: new Date(),
-          });
-
-          log(
-            `[CLIENT] ✓ Token refreshed. Expires: ${expiryDate.toISOString()}`
-          );
-        }
+        const oauth2Client = await getValidOAuth2Client(googleAccountId);
 
         // Run GBP Optimizer agent
         log(`\n[CLIENT] Running GBP Optimizer agent...`);
@@ -2307,12 +2303,6 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
         });
 
         log(`\n[CLIENT] ✓ ${domain} completed successfully`);
-
-        // Delay between clients (except for last one)
-        if (accountIndex < gbpAccounts.length) {
-          log(`\n[SETUP] Waiting 15 seconds before next client...`);
-          await delay(15000);
-        }
       } catch (error: any) {
         logError(`GBP Optimizer for ${domain}`, error);
         log(`[CLIENT] ✗ ${domain} failed: ${error?.message || String(error)}`);
@@ -2614,10 +2604,6 @@ router.post(
           failedGroups++;
         }
 
-        // Delay before Governance call
-        log(`[GUARDIAN-GOV] Waiting 15 seconds before Governance agent...`);
-        await delay(15000);
-
         // === STEP 2: Call Governance Sentinel Agent ===
         log(`[GUARDIAN-GOV]   → Calling Governance agent`);
         let governanceSuccess = false;
@@ -2681,14 +2667,6 @@ router.post(
         // Track successful groups
         if (guardianSuccess && governanceSuccess) {
           successfulGroups++;
-        }
-
-        // Delay before next group (except for last group)
-        if (groupIndex < agentTypes.length) {
-          log(
-            `[GUARDIAN-GOV] Waiting 15 seconds before next group (${groupIndex}/${agentTypes.length} completed)...`
-          );
-          await delay(15000);
         }
       }
 
@@ -2888,12 +2866,6 @@ router.post("/process-all", async (req: Request, res: Response) => {
           `Processing failed for ${account.domain_name} after ${result.attempts} attempts: ${result.error}`
         );
       }
-
-      // Add delay between clients if there are more to process
-      if (accounts.indexOf(account) < accounts.length - 1) {
-        log(`\n[SETUP] Waiting 15 seconds before next client...`);
-        await delay(15000);
-      }
     }
 
     const duration = Date.now() - startTime;
@@ -3025,6 +2997,108 @@ router.get("/latest/:googleAccountId", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/agents/getLatestReferralEngineOutput/:googleAccountId
+ *
+ * Fetch the latest successful Referral Engine output for a given google account
+ * Used by frontend Referral Engine dashboard
+ */
+router.get(
+  "/getLatestReferralEngineOutput/:googleAccountId",
+  async (req: Request, res: Response) => {
+    const { googleAccountId } = req.params;
+
+    try {
+      log(
+        `\n[GET /getLatestReferralEngineOutput/${googleAccountId}] Fetching latest referral engine output`
+      );
+
+      // Validate googleAccountId
+      const accountId = parseInt(googleAccountId, 10);
+      if (isNaN(accountId)) {
+        return res.status(400).json({
+          success: false,
+          error: "INVALID_ACCOUNT_ID",
+          message: "Invalid google account ID provided",
+        });
+      }
+
+      // Fetch account details
+      const account = await db("google_accounts")
+        .where("id", accountId)
+        .first();
+
+      if (!account) {
+        return res.status(404).json({
+          success: false,
+          error: "ACCOUNT_NOT_FOUND",
+          message: "Google account not found",
+        });
+      }
+
+      // Fetch latest successful referral_engine result
+      const result = await db("agent_results")
+        .where({
+          google_account_id: accountId,
+          agent_type: "referral_engine",
+          status: "success",
+        })
+        .orderBy("created_at", "desc")
+        .first();
+
+      if (!result) {
+        log(
+          `  [NO DATA] No referral engine results found for account ${accountId}`
+        );
+        return res.status(404).json({
+          success: false,
+          error: "NO_DATA",
+          message: "No referral engine data available yet",
+        });
+      }
+
+      // Parse agent_output from JSON string to object
+      let parsedOutput = null;
+      try {
+        parsedOutput =
+          typeof result.agent_output === "string"
+            ? JSON.parse(result.agent_output)
+            : result.agent_output;
+      } catch (parseError) {
+        log(`  [WARNING] Failed to parse agent_output: ${parseError}`);
+        parsedOutput = result.agent_output;
+      }
+
+      log(
+        `  [SUCCESS] Retrieved referral engine output for account ${accountId} (${account.domain_name})`
+      );
+      log(`  - Result ID: ${result.id}`);
+      log(`  - Date range: ${result.date_start} to ${result.date_end}`);
+      log(`  - Created: ${result.created_at}`);
+
+      return res.json({
+        success: true,
+        googleAccountId: accountId,
+        domain: account.domain_name,
+        data: parsedOutput,
+        metadata: {
+          resultId: result.id,
+          dateStart: result.date_start,
+          dateEnd: result.date_end,
+          lastUpdated: result.created_at,
+        },
+      });
+    } catch (error: any) {
+      logError(`GET /getLatestReferralEngineOutput/${googleAccountId}`, error);
+      return res.status(500).json({
+        success: false,
+        error: "FETCH_ERROR",
+        message: error?.message || "Failed to fetch referral engine output",
+      });
+    }
+  }
+);
+
 // =====================================================================
 // HEALTH CHECK ENDPOINT
 // =====================================================================
@@ -3040,6 +3114,7 @@ router.get("/health", (_req: Request, res: Response) => {
     webhooks: {
       proofline: !!PROOFLINE_WEBHOOK,
       summary: !!SUMMARY_WEBHOOK,
+      referral_engine: !!REFERRAL_ENGINE_WEBHOOK,
       opportunity: !!OPPORTUNITY_WEBHOOK,
       cro_optimizer: !!CRO_OPTIMIZER_WEBHOOK,
       copy_companion: !!COPY_COMPANION_WEBHOOK,

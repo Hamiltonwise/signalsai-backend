@@ -589,19 +589,6 @@ export async function getGA4AIReadyData(
   startDate?: string,
   endDate?: string
 ) {
-  // ✅ CRITICAL: Refresh token before API calls to prevent 401 errors
-  try {
-    console.log(`[GA4 Export] Refreshing access token before API calls`);
-    await oauth2Client.refreshAccessToken();
-    console.log(`[GA4 Export] ✓ Token refresh successful`);
-  } catch (refreshError: any) {
-    console.error(`[GA4 Export] ⚠ Token refresh failed:`, refreshError.message);
-    console.error(
-      `[GA4 Export] Continuing with existing token (might still work if valid)`
-    );
-    // Continue with existing token - might work if still valid
-  }
-
   // Ensure propertyId is in correct format
   const formattedPropertyId = propertyId.startsWith("properties/")
     ? propertyId

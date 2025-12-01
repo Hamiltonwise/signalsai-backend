@@ -356,19 +356,6 @@ export async function getGBPAIReadyData(
   startDate?: string,
   endDate?: string
 ) {
-  // ✅ CRITICAL: Refresh token before API calls to prevent 401 errors
-  try {
-    console.log(`[GBP Export] Refreshing access token before API calls`);
-    await oauth2Client.refreshAccessToken();
-    console.log(`[GBP Export] ✓ Token refresh successful`);
-  } catch (refreshError: any) {
-    console.error(`[GBP Export] ⚠ Token refresh failed:`, refreshError.message);
-    console.error(
-      `[GBP Export] Continuing with existing token (might still work if valid)`
-    );
-    // Continue with existing token - might work if still valid
-  }
-
   const perf = new businessprofileperformance_v1.Businessprofileperformance({
     auth: oauth2Client,
   });
@@ -593,21 +580,6 @@ export async function getGBPTextSources(
   console.log(
     `[GBP TextSources Export] Starting for googleAccountId ${googleAccountId}`
   );
-
-  // Refresh token before API calls
-  try {
-    console.log(`[GBP TextSources Export] Refreshing access token`);
-    await oauth2Client.refreshAccessToken();
-    console.log(`[GBP TextSources Export] ✓ Token refresh successful`);
-  } catch (refreshError: any) {
-    console.error(
-      `[GBP TextSources Export] ⚠ Token refresh failed:`,
-      refreshError.message
-    );
-    console.error(
-      `[GBP TextSources Export] Continuing with existing token (might still work if valid)`
-    );
-  }
 
   // Query database for property IDs
   const account = await db("google_accounts")

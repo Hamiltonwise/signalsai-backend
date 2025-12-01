@@ -234,19 +234,6 @@ export async function getGSCAIReadyData(
   startDate?: string,
   endDate?: string
 ) {
-  // ✅ CRITICAL: Refresh token before API calls to prevent 401 errors
-  try {
-    console.log(`[GSC Export] Refreshing access token before API calls`);
-    await oauth2Client.refreshAccessToken();
-    console.log(`[GSC Export] ✓ Token refresh successful`);
-  } catch (refreshError: any) {
-    console.error(`[GSC Export] ⚠ Token refresh failed:`, refreshError.message);
-    console.error(
-      `[GSC Export] Continuing with existing token (might still work if valid)`
-    );
-    // Continue with existing token - might work if still valid
-  }
-
   const searchconsole = google.searchconsole({
     version: "v1",
     auth: oauth2Client,
