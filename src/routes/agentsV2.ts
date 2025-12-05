@@ -1117,6 +1117,162 @@ async function processMonthlyAgents(
       );
     }
 
+    // === STEP 7: Create tasks from Referral Engine action items ===
+    try {
+      // Referral Engine output may be wrapped in array, handle both cases
+      const referralOutput = Array.isArray(referralEngineOutput)
+        ? referralEngineOutput[0]
+        : referralEngineOutput;
+
+      // ALLORO tasks from alloro_automation_opportunities (internal/agency tasks)
+      const alloroItems = referralOutput?.alloro_automation_opportunities || [];
+
+      // USER tasks from practice_action_plan (client tasks)
+      const userItems = referralOutput?.practice_action_plan || [];
+
+      const totalReferralTasks = alloroItems.length + userItems.length;
+
+      if (totalReferralTasks > 0) {
+        log(
+          `  [MONTHLY] Creating ${totalReferralTasks} Referral Engine task(s) (${alloroItems.length} ALLORO, ${userItems.length} USER)`
+        );
+
+        // Create ALLORO tasks from alloro_automation_opportunities
+        for (const item of alloroItems) {
+          // Handle both string items and object items
+          const isStringItem = typeof item === "string";
+          const fullText = isStringItem
+            ? item
+            : item.description ||
+              item.rationale ||
+              item.explanation ||
+              item.details ||
+              item.title ||
+              "";
+          const titleText = isStringItem
+            ? item.length > 80
+              ? item.substring(0, 80) + "..."
+              : item
+            : item.title ||
+              item.opportunity ||
+              item.name ||
+              (fullText.length > 80
+                ? fullText.substring(0, 80) + "..."
+                : fullText) ||
+              "Untitled Referral Engine Task";
+
+          const taskData = {
+            domain_name: domain,
+            google_account_id: googleAccountId,
+            title: titleText,
+            description: fullText || null,
+            category: "ALLORO",
+            agent_type: "REFERRAL_ENGINE_ANALYSIS",
+            status: "pending",
+            is_approved: false,
+            created_by_admin: true,
+            due_date: isStringItem
+              ? null
+              : item.due_date || item.dueDate
+              ? new Date(item.due_date || item.dueDate)
+              : null,
+            metadata: JSON.stringify({
+              source_field: "alloro_automation_opportunities",
+              priority: isStringItem ? null : item.priority || null,
+              impact: isStringItem ? null : item.impact || null,
+              effort: isStringItem ? null : item.effort || null,
+              category: isStringItem ? null : item.category || null,
+              ...(isStringItem ? {} : item.metadata || {}),
+            }),
+            created_at: new Date(),
+            updated_at: new Date(),
+          };
+
+          try {
+            const [result] = await db("tasks").insert(taskData).returning("id");
+            const taskId = result.id;
+            log(`    ✓ Created ALLORO task (ID: ${taskId}): ${taskData.title}`);
+          } catch (taskError: any) {
+            log(
+              `    ⚠ Failed to create ALLORO task "${taskData.title}": ${taskError.message}`
+            );
+          }
+        }
+
+        // Create USER tasks from practice_action_plan
+        for (const item of userItems) {
+          // Handle both string items and object items
+          const isStringItem = typeof item === "string";
+          const fullText = isStringItem
+            ? item
+            : item.description ||
+              item.rationale ||
+              item.explanation ||
+              item.details ||
+              item.title ||
+              "";
+          const titleText = isStringItem
+            ? item.length > 80
+              ? item.substring(0, 80) + "..."
+              : item
+            : item.title ||
+              item.action ||
+              item.name ||
+              (fullText.length > 80
+                ? fullText.substring(0, 80) + "..."
+                : fullText) ||
+              "Untitled Practice Action";
+
+          const taskData = {
+            domain_name: domain,
+            google_account_id: googleAccountId,
+            title: titleText,
+            description: fullText || null,
+            category: "USER",
+            agent_type: "REFERRAL_ENGINE_ANALYSIS",
+            status: "pending",
+            is_approved: false,
+            created_by_admin: true,
+            due_date: isStringItem
+              ? null
+              : item.due_date || item.dueDate
+              ? new Date(item.due_date || item.dueDate)
+              : null,
+            metadata: JSON.stringify({
+              source_field: "practice_action_plan",
+              priority: isStringItem ? null : item.priority || null,
+              impact: isStringItem ? null : item.impact || null,
+              effort: isStringItem ? null : item.effort || null,
+              category: isStringItem ? null : item.category || null,
+              owner: isStringItem ? null : item.owner || null,
+              ...(isStringItem ? {} : item.metadata || {}),
+            }),
+            created_at: new Date(),
+            updated_at: new Date(),
+          };
+
+          try {
+            const [result] = await db("tasks").insert(taskData).returning("id");
+            const taskId = result.id;
+            log(`    ✓ Created USER task (ID: ${taskId}): ${taskData.title}`);
+          } catch (taskError: any) {
+            log(
+              `    ⚠ Failed to create USER task "${taskData.title}": ${taskError.message}`
+            );
+          }
+        }
+
+        log(`  [MONTHLY] ✓ Referral Engine task creation completed`);
+      } else {
+        log(`  [MONTHLY] No Referral Engine action items found in output`);
+      }
+    } catch (taskCreationError: any) {
+      // Don't fail the entire operation if task creation fails
+      log(
+        `  [MONTHLY] ⚠ Error creating Referral Engine tasks: ${taskCreationError.message}`
+      );
+    }
+
     return {
       success: true,
       summaryOutput,
@@ -2362,23 +2518,26 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
  * POST /api/agents/guardian-governance-agents-run
  *
  * Monthly Guardian & Governance Sentinel agents
- * - Runs system-wide analysis on all agent outputs from current month
+ * - Runs system-wide analysis on all agent outputs from a specific month
  * - Groups results by agent_type
  * - Sends each group to Guardian and Governance agents
  * - Collects all results and saves as 2 aggregated rows (1 guardian, 1 governance)
  * - For admin oversight and quality assurance
  *
- * Body: { referenceDate?: "YYYY-MM-DD" } (optional, for testing)
+ * Body: { month?: "YYYY-MM", referenceDate?: "YYYY-MM-DD" } (optional)
+ *   - month: If provided, analyze agent outputs from this specific month
+ *   - referenceDate: Legacy parameter, if month not provided, uses this to determine the month
  */
 router.post(
   "/guardian-governance-agents-run",
   async (req: Request, res: Response) => {
     const startTime = Date.now();
-    const { referenceDate } = req.body || {};
+    const { month, referenceDate } = req.body || {};
 
     log("\n" + "=".repeat(70));
     log("POST /api/agents/guardian-governance-agents-run - STARTING");
     log("=".repeat(70));
+    if (month) log(`Month: ${month}`);
     if (referenceDate) log(`Reference Date: ${referenceDate}`);
     log(`Timestamp: ${new Date().toISOString()}`);
 
@@ -2393,8 +2552,24 @@ router.post(
       log(`Guardian webhook: ${GUARDIAN_AGENT_WEBHOOK}`);
       log(`Governance webhook: ${GOVERNANCE_AGENT_WEBHOOK}`);
 
-      // Get current month date range
-      const monthRange = getCurrentMonthRange();
+      // Get month date range - use month param if provided, otherwise current month
+      let monthRange: { startDate: string; endDate: string };
+
+      if (month) {
+        // Parse YYYY-MM format
+        const startDate = `${month}-01`;
+        const endOfMonth = new Date(
+          new Date(month + "-01").getFullYear(),
+          new Date(month + "-01").getMonth() + 1,
+          0
+        );
+        const endDate = formatDate(endOfMonth);
+        monthRange = { startDate, endDate };
+        log(`[GUARDIAN-GOV] Using specified month: ${month}`);
+      } else {
+        monthRange = getCurrentMonthRange();
+        log(`[GUARDIAN-GOV] Using current month`);
+      }
       log(
         `\n[GUARDIAN-GOV] Date range: ${monthRange.startDate} to ${monthRange.endDate}`
       );

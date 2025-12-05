@@ -14,7 +14,7 @@ const router = express.Router();
 // GET /api/admin/agent-insights/summary
 // =====================================================================
 /**
- * Returns summary statistics for current month's agents
+ * Returns summary statistics for agents with recommendations
  *
  * Query params:
  *   - month: Optional YYYY-MM format (defaults to current month)
@@ -22,10 +22,12 @@ const router = express.Router();
  *   - limit: Items per page (default: 50)
  *
  * Returns per agent_under_test:
- *   - pass_rate: Percentage of PASS verdicts from agent outputs
+ *   - pass_rate: Percentage of PASS verdicts
  *   - confidence_rate: Average confidence score
- *   - total_recommendations: Count from agent_recommendations table
+ *   - total_recommendations: Count of recommendations
  *   - fixed_count: Count where status = 'PASS'
+ *
+ * NOTE: Queries agent_recommendations table directly using created_at for month filtering
  */
 router.get("/summary", async (req: Request, res: Response) => {
   try {
@@ -51,20 +53,43 @@ router.get("/summary", async (req: Request, res: Response) => {
       : new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const endDate = endOfMonth.toISOString().split("T")[0];
 
+    // Add time to endDate to include the entire last day
+    const endDateTime = `${endDate}T23:59:59.999Z`;
+
     console.log(
       `[Admin Agent Insights] Fetching summary for ${startDate} to ${endDate}`
     );
 
-    // Fetch guardian and governance results for this month
-    const agentResults = await db("agent_results")
-      .whereIn("agent_type", ["guardian", "governance_sentinel"])
-      .whereBetween("date_start", [startDate, endDate])
-      .where("status", "success")
-      .select("*");
+    // Query agent_recommendations directly, grouped by agent_under_test
+    // Filter by created_at for the selected month
+    const summaryData = await db("agent_recommendations")
+      .select("agent_under_test")
+      .count("* as total_recommendations")
+      .select(
+        db.raw(
+          "SUM(CASE WHEN verdict = 'PASS' THEN 1 ELSE 0 END) as pass_count"
+        )
+      )
+      .select(
+        db.raw(
+          "SUM(CASE WHEN verdict = 'FAIL' THEN 1 ELSE 0 END) as fail_count"
+        )
+      )
+      .select(
+        db.raw(
+          "SUM(CASE WHEN status = 'PASS' THEN 1 ELSE 0 END) as fixed_count"
+        )
+      )
+      .avg("confidence as avg_confidence")
+      .where("created_at", ">=", startDate)
+      .where("created_at", "<=", endDateTime)
+      .whereNotNull("agent_under_test")
+      .groupBy("agent_under_test")
+      .orderBy("agent_under_test");
 
-    if (agentResults.length === 0) {
+    if (summaryData.length === 0) {
       console.log(
-        "[Admin Agent Insights] No guardian/governance results found for this period"
+        "[Admin Agent Insights] No recommendations found for this period"
       );
       return res.json({
         success: true,
@@ -75,122 +100,28 @@ router.get("/summary", async (req: Request, res: Response) => {
           total: 0,
           totalPages: 0,
         },
-        message: "No agent results found for this period",
+        period: { startDate, endDate },
+        message: "No recommendations found for this period",
       });
     }
 
     console.log(
-      `[Admin Agent Insights] Found ${agentResults.length} guardian/governance results`
+      `[Admin Agent Insights] Found ${summaryData.length} agent types with recommendations`
     );
 
-    // Parse agent outputs and calculate metrics per agent_under_test
-    const metricsMap: Record<
-      string,
-      {
-        agent_type: string;
-        total_checks: number;
-        pass_count: number;
-        fail_count: number;
-        pending_count: number;
-        confidence_sum: number;
-        confidence_count: number;
-      }
-    > = {};
-
-    for (const result of agentResults) {
-      let output: any[];
-
-      try {
-        output =
-          typeof result.agent_output === "string"
-            ? JSON.parse(result.agent_output)
-            : result.agent_output;
-      } catch (parseError) {
-        console.error(
-          `Failed to parse agent_output for result ${result.id}:`,
-          parseError
-        );
-        continue;
-      }
-
-      if (!Array.isArray(output)) {
-        console.warn(`agent_output for result ${result.id} is not an array`);
-        continue;
-      }
-
-      for (const item of output) {
-        const agentType = item.agent_under_test;
-
-        if (!agentType) {
-          console.warn(`Missing agent_under_test in result ${result.id}`);
-          continue;
-        }
-
-        // Initialize metrics for this agent type
-        if (!metricsMap[agentType]) {
-          metricsMap[agentType] = {
-            agent_type: agentType,
-            total_checks: 0,
-            pass_count: 0,
-            fail_count: 0,
-            pending_count: 0,
-            confidence_sum: 0,
-            confidence_count: 0,
-          };
-        }
-
-        const metrics = metricsMap[agentType];
-
-        // Process recommendations array
-        const recommendations = item.recommendations || [];
-        for (const rec of recommendations) {
-          metrics.total_checks++;
-
-          // Count verdict types
-          const verdict = rec.verdict?.toUpperCase();
-          if (verdict === "PASS") {
-            metrics.pass_count++;
-          } else if (verdict === "FAIL") {
-            metrics.fail_count++;
-          } else {
-            metrics.pending_count++;
-          }
-
-          // Sum confidence scores
-          if (rec.confidence !== null && rec.confidence !== undefined) {
-            metrics.confidence_sum += rec.confidence;
-            metrics.confidence_count++;
-          }
-        }
-      }
-    }
-
-    // Get recommendation counts from agent_recommendations table
-    const recCounts = await db("agent_recommendations")
-      .select("agent_under_test")
-      .count("* as total")
-      .select(
-        db.raw("SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as fixed", ["PASS"])
-      )
-      .groupBy("agent_under_test");
-
-    // Combine metrics
-    const allSummary = Object.keys(metricsMap).map((agentType) => {
-      const m = metricsMap[agentType];
-      const recData = recCounts.find(
-        (r) => r.agent_under_test === agentType
-      ) || {
-        total: "0",
-        fixed: "0",
-      };
+    // Format the response
+    const allSummary = summaryData.map((row: any) => {
+      const totalRecs = parseInt(String(row.total_recommendations)) || 0;
+      const passCount = parseInt(String(row.pass_count)) || 0;
+      const fixedCount = parseInt(String(row.fixed_count)) || 0;
+      const avgConfidence = parseFloat(String(row.avg_confidence)) || 0;
 
       return {
-        agent_type: agentType,
-        pass_rate: m.total_checks > 0 ? m.pass_count / m.total_checks : 0,
-        confidence_rate:
-          m.confidence_count > 0 ? m.confidence_sum / m.confidence_count : 0,
-        total_recommendations: parseInt(String(recData.total)) || 0,
-        fixed_count: parseInt(String(recData.fixed)) || 0,
+        agent_type: row.agent_under_test,
+        pass_rate: totalRecs > 0 ? passCount / totalRecs : 0,
+        confidence_rate: avgConfidence,
+        total_recommendations: totalRecs,
+        fixed_count: fixedCount,
       };
     });
 
@@ -234,6 +165,7 @@ router.get("/summary", async (req: Request, res: Response) => {
  *   - agentType: The agent to get recommendations for (e.g., 'opportunity')
  *
  * Query params:
+ *   - month: Optional YYYY-MM format (defaults to all time)
  *   - source: Filter by 'guardian' or 'governance_sentinel' or 'all' (default: all)
  *   - status: Filter by 'PASS' or 'REJECT' or 'all' (default: all)
  *   - page: Page number (default: 1)
@@ -245,6 +177,7 @@ router.get(
     try {
       const { agentType } = req.params;
       const {
+        month,
         source = "all",
         status = "all",
         page = "1",
@@ -256,13 +189,31 @@ router.get(
       const offset = (pageNum - 1) * limitNum;
 
       console.log(
-        `[Admin Agent Insights] Fetching recommendations for ${agentType}, source=${source}, status=${status}, page=${pageNum}`
+        `[Admin Agent Insights] Fetching recommendations for ${agentType}, month=${
+          month || "all"
+        }, source=${source}, status=${status}, page=${pageNum}`
       );
 
       let query = db("agent_recommendations").where(
         "agent_under_test",
         agentType
       );
+
+      // Apply month filter if provided
+      if (month) {
+        const startDate = `${month}-01`;
+        const endOfMonth = new Date(
+          new Date(month + "-01").getFullYear(),
+          new Date(month + "-01").getMonth() + 1,
+          0
+        );
+        const endDate = endOfMonth.toISOString().split("T")[0];
+        const endDateTime = `${endDate}T23:59:59.999Z`;
+
+        query = query
+          .where("created_at", ">=", startDate)
+          .where("created_at", "<=", endDateTime);
+      }
 
       // Apply source filter
       if (source && source !== "all") {
@@ -525,9 +476,9 @@ router.delete(
 // DELETE /api/admin/agent-insights/clear-month-data
 // =====================================================================
 /**
- * Clear all Guardian and Governance data for the current month
- * - Deletes all agent_recommendations
- * - Deletes all agent_results where agent_type is guardian or governance_sentinel
+ * Clear Guardian and Governance data for a specific month
+ * - Deletes agent_recommendations where created_at is in the selected month
+ * - Deletes agent_results where agent_type is guardian or governance_sentinel
  *
  * Query params:
  *   - month: Optional YYYY-MM format (defaults to current month)
@@ -553,18 +504,25 @@ router.delete("/clear-month-data", async (req: Request, res: Response) => {
       : new Date(now.getFullYear(), now.getMonth() + 1, 0);
     const endDate = endOfMonth.toISOString().split("T")[0];
 
+    // Add time to endDate to include the entire last day
+    const endDateTime = `${endDate}T23:59:59.999Z`;
+
     console.log(
       `[Admin Agent Insights] Clearing Guardian/Governance data for ${startDate} to ${endDate}`
     );
 
-    // Delete agent_results first (will cascade to recommendations if foreign key exists)
-    const deletedResults = await db("agent_results")
-      .whereIn("agent_type", ["guardian", "governance_sentinel"])
-      .whereBetween("date_start", [startDate, endDate])
+    // Delete recommendations for this month (by created_at)
+    const deletedRecs = await db("agent_recommendations")
+      .where("created_at", ">=", startDate)
+      .where("created_at", "<=", endDateTime)
       .del();
 
-    // Delete all recommendations (in case there are orphaned records)
-    const deletedRecs = await db("agent_recommendations").del();
+    // Delete agent_results for this month
+    const deletedResults = await db("agent_results")
+      .whereIn("agent_type", ["guardian", "governance_sentinel"])
+      .where("created_at", ">=", startDate)
+      .where("created_at", "<=", endDateTime)
+      .del();
 
     console.log(
       `[Admin Agent Insights] ✓ Deleted ${deletedResults} agent results and ${deletedRecs} recommendations`
