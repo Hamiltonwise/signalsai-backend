@@ -40,6 +40,7 @@ export type AggregatedPmsData = {
     totalReferrals: number;
     totalProduction: number;
   };
+  patientRecords: any[];
 };
 
 /**
@@ -109,6 +110,36 @@ const extractMonthEntriesFromResponse = (
 };
 
 /**
+ * Extract additional_data (patient records) from response_log
+ */
+const extractAdditionalDataFromResponse = (responseLog: unknown): any[] => {
+  if (responseLog === null || responseLog === undefined) {
+    return [];
+  }
+
+  let candidate: unknown = responseLog;
+
+  if (typeof candidate === "string") {
+    try {
+      candidate = JSON.parse(candidate);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  if (typeof candidate === "object" && candidate !== null) {
+    const container = candidate as Record<string, unknown>;
+
+    // Extract additional_data array if present
+    if (Array.isArray(container.additional_data)) {
+      return container.additional_data;
+    }
+  }
+
+  return [];
+};
+
+/**
  * Aggregate PMS data across all approved jobs for a domain
  * This function implements smart deduplication - keeps only the latest data for each month
  *
@@ -132,15 +163,25 @@ export async function aggregatePmsData(
         totalReferrals: 0,
         totalProduction: 0,
       },
+      patientRecords: [],
     };
   }
 
   // Track month data with timestamps to keep only the latest
   const monthMap = new Map<string, AggregatedMonthData>();
 
+  // Collect all patient records from all approved jobs
+  const allPatientRecords: any[] = [];
+
   // Process jobs to build month map (keeping only latest data per month)
   for (const job of approvedJobs) {
     const entries = extractMonthEntriesFromResponse(job.response_log);
+
+    // Extract and collect additional_data (patient records)
+    const patientRecords = extractAdditionalDataFromResponse(job.response_log);
+    if (patientRecords.length > 0) {
+      allPatientRecords.push(...patientRecords);
+    }
 
     if (!entries.length) {
       continue;
@@ -243,5 +284,6 @@ export async function aggregatePmsData(
       totalReferrals: Number(totalReferrals.toFixed(2)),
       totalProduction: Number(totalProduction.toFixed(2)),
     },
+    patientRecords: allPatientRecords,
   };
 }

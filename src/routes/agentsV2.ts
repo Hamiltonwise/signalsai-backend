@@ -781,9 +781,10 @@ async function processMonthlyAgents(
           })),
           sources_summary: aggregated.sources,
           totals: aggregated.totals,
+          patient_records: aggregated.patientRecords,
         };
         log(
-          `  [MONTHLY] ✓ Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources)`
+          `  [MONTHLY] ✓ Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources, ${aggregated.patientRecords.length} patient records)`
         );
       } else {
         log(`  [MONTHLY] ⚠ No approved PMS data found`);
