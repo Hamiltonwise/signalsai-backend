@@ -348,6 +348,79 @@ gbpRoutes.post("/getKeyData", async (req: AuthenticatedRequest, res) => {
   }
 });
 
+// Helper: Fetch location profile with comprehensive data using REST API
+// Exported for use in practice ranking
+const getLocationProfileForRanking = async (
+  auth: any,
+  accountId: string,
+  locationId: string
+) => {
+  try {
+    // Business Information API v1 uses locations/{locationId} format
+    const locationName = `locations/${locationId}`;
+    const headers = await buildAuthHeaders(auth);
+
+    console.log(`[GBP Profile] Fetching profile for location ${locationId}...`);
+
+    // Fetch comprehensive profile data including hours
+    const { data } = await axios.get(
+      `https://mybusinessbusinessinformation.googleapis.com/v1/${locationName}`,
+      {
+        params: {
+          readMask:
+            "name,title,profile,websiteUri,phoneNumbers,categories,regularHours,specialHours,adWordsLocationExtensions",
+        },
+        headers,
+      }
+    );
+
+    console.log(
+      `[GBP Profile] ✓ Got profile for ${locationId}: title=${data?.title}, website=${data?.websiteUri}, phone=${data?.phoneNumbers?.primaryPhone}, category=${data?.categories?.primaryCategory?.displayName}`
+    );
+
+    return data;
+  } catch (error: any) {
+    // Try alternate format with accounts prefix
+    try {
+      const alternateName = `accounts/${accountId}/locations/${locationId}`;
+      const headers = await buildAuthHeaders(auth);
+
+      console.log(
+        `[GBP Profile] Retrying with alternate format: ${alternateName}`
+      );
+
+      const { data } = await axios.get(
+        `https://mybusinessbusinessinformation.googleapis.com/v1/${alternateName}`,
+        {
+          params: {
+            readMask:
+              "name,title,profile,websiteUri,phoneNumbers,categories,regularHours,specialHours,adWordsLocationExtensions",
+          },
+          headers,
+        }
+      );
+
+      console.log(
+        `[GBP Profile] ✓ Got profile with alternate format for ${locationId}`
+      );
+
+      return data;
+    } catch (altError: any) {
+      console.warn(
+        `[GBP Profile] ✗ Could not fetch profile for location ${locationId}: ${error.message} | Alt: ${altError.message}`
+      );
+      // Log full error details for debugging
+      if (error?.response?.data) {
+        console.warn(
+          `[GBP Profile] Error response:`,
+          JSON.stringify(error.response.data)
+        );
+      }
+      return null;
+    }
+  }
+};
+
 // Exported function for direct use (bypassing HTTP)
 export async function getGBPAIReadyData(
   oauth2Client: any,
@@ -370,30 +443,40 @@ export async function getGBPAIReadyData(
     "BUSINESS_DIRECTION_REQUESTS",
   ];
 
-  const timeSeries = await fetchPerfTimeSeries(
-    perf,
-    locationId,
-    metrics,
-    finalStartDate,
-    finalEndDate
-  );
-
-  // Reviews all-time + window stats
-  const parentPath = `accounts/${accountId}/locations/${locationId}`;
-  const headers = await buildAuthHeaders(oauth2Client);
-  const firstPage = await axios.get(
-    `https://mybusiness.googleapis.com/v4/${parentPath}/reviews`,
-    { params: { pageSize: 1 }, headers }
-  );
-  const allTimeAvg = firstPage.data?.averageRating || 0;
-  const allTimeCount = firstPage.data?.totalReviewCount || 0;
-
-  const windowStats = await listAllReviewsInRangeREST(
-    oauth2Client,
-    accountId,
-    locationId,
-    finalStartDate,
-    finalEndDate
+  // Fetch all data in parallel for better performance
+  const [timeSeries, reviewsPage, windowStats, profileData] = await Promise.all(
+    [
+      fetchPerfTimeSeries(
+        perf,
+        locationId,
+        metrics,
+        finalStartDate,
+        finalEndDate
+      ),
+      // Reviews all-time stats
+      (async () => {
+        const parentPath = `accounts/${accountId}/locations/${locationId}`;
+        const headers = await buildAuthHeaders(oauth2Client);
+        const firstPage = await axios.get(
+          `https://mybusiness.googleapis.com/v4/${parentPath}/reviews`,
+          { params: { pageSize: 1 }, headers }
+        );
+        return {
+          allTimeAvg: firstPage.data?.averageRating || 0,
+          allTimeCount: firstPage.data?.totalReviewCount || 0,
+        };
+      })(),
+      // Reviews in date window
+      listAllReviewsInRangeREST(
+        oauth2Client,
+        accountId,
+        locationId,
+        finalStartDate,
+        finalEndDate
+      ),
+      // Profile data (website, phone, hours, category)
+      getLocationProfileForRanking(oauth2Client, accountId, locationId),
+    ]
   );
 
   return {
@@ -403,7 +486,10 @@ export async function getGBPAIReadyData(
       dateRange: { startDate: finalStartDate, endDate: finalEndDate },
     },
     reviews: {
-      allTime: { averageRating: allTimeAvg, totalReviewCount: allTimeCount },
+      allTime: {
+        averageRating: reviewsPage.allTimeAvg,
+        totalReviewCount: reviewsPage.allTimeCount,
+      },
       window: {
         averageRating: windowStats.avgRatingWindow,
         newReviews: windowStats.newReviewsCount,
@@ -411,6 +497,24 @@ export async function getGBPAIReadyData(
     },
     performance: {
       series: timeSeries, // includes CALL_CLICKS (unique-user-per-day)
+    },
+    // Profile data for NAP consistency scoring
+    profile: {
+      title: profileData?.title || null,
+      description: profileData?.profile?.description || null,
+      websiteUri: profileData?.websiteUri || null,
+      phoneNumber: profileData?.phoneNumbers?.primaryPhone || null,
+      primaryCategory:
+        profileData?.categories?.primaryCategory?.displayName || null,
+      additionalCategories:
+        profileData?.categories?.additionalCategories?.map(
+          (c: any) => c.displayName
+        ) || [],
+      regularHours: profileData?.regularHours || null,
+      hasHours: !!(
+        profileData?.regularHours?.periods &&
+        profileData.regularHours.periods.length > 0
+      ),
     },
   };
 }
