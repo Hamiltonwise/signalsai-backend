@@ -155,7 +155,7 @@ export interface GroupedActionItemsResponse {
 // NOTIFICATION SYSTEM TYPES
 // =====================================================================
 
-export type NotificationType = "task" | "pms" | "agent" | "system";
+export type NotificationType = "task" | "pms" | "agent" | "system" | "ranking";
 
 export interface Notification {
   id: number;
