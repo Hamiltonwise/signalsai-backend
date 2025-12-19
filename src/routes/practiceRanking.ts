@@ -1562,6 +1562,89 @@ async function processLocationRanking(
       );
       logDebug(`  LLM response keys: ${Object.keys(llmAnalysis).join(", ")}`);
 
+      // ========== CREATE TASKS FROM TOP RECOMMENDATIONS ==========
+      // Archive old tasks for this location before creating new ones
+      // This ensures that when re-running analysis, old action items are replaced
+      try {
+        // Find previous ranking IDs for this location (excluding current)
+        const previousRankings = await db("practice_rankings")
+          .where({
+            google_account_id: googleAccountId,
+            gbp_location_id: gbpLocationId,
+          })
+          .whereNot({ id: rankingId })
+          .select("id");
+
+        const previousRankingIds = previousRankings.map((r) => r.id);
+
+        if (previousRankingIds.length > 0) {
+          // Archive tasks from previous rankings for this location
+          const archivedCount = await db("tasks")
+            .where({ agent_type: "RANKING" })
+            .whereRaw("metadata::jsonb->>'practice_ranking_id' IN (?)", [
+              previousRankingIds.map(String).join(","),
+            ])
+            .whereNot({ status: "archived" })
+            .update({
+              status: "archived",
+              updated_at: new Date(),
+            });
+
+          if (archivedCount > 0) {
+            logDebug(
+              `  Archived ${archivedCount} tasks from previous rankings`
+            );
+          }
+        }
+
+        // Extract top_recommendations from LLM analysis
+        const topRecommendations = llmAnalysis.top_recommendations || [];
+        logDebug(
+          `  Found ${topRecommendations.length} top recommendations to create as tasks`
+        );
+
+        // Create task records for each recommendation
+        if (topRecommendations.length > 0) {
+          const tasksToInsert = topRecommendations.map((item: any) => ({
+            domain_name: domain,
+            google_account_id: googleAccountId,
+            title: item.title || "Ranking Improvement Action",
+            description: item.expected_outcome
+              ? `${item.description || ""}\n\n**Expected Outcome:**\n${
+                  item.expected_outcome
+                }`
+              : item.description || "",
+            category: "USER",
+            agent_type: "RANKING",
+            status: "pending",
+            is_approved: false,
+            created_by_admin: true,
+            due_date: null,
+            metadata: JSON.stringify({
+              practice_ranking_id: rankingId,
+              gbp_location_id: gbpLocationId,
+              gbp_location_name: gbpLocationName,
+              priority: item.priority || null,
+              impact: item.impact || null,
+              effort: item.effort || null,
+              timeline: item.timeline || null,
+            }),
+            created_at: new Date(),
+            updated_at: new Date(),
+          }));
+
+          await db("tasks").insert(tasksToInsert);
+          logDebug(
+            `  Created ${tasksToInsert.length} pending tasks from ranking recommendations`
+          );
+        }
+      } catch (taskError: any) {
+        // Log but don't fail the ranking process if task creation fails
+        logWarn(
+          `Failed to create tasks from ranking recommendations: ${taskError.message}`
+        );
+      }
+
       // Save LLM analysis and complete
       await db("practice_rankings")
         .where({ id: rankingId })
@@ -2443,19 +2526,20 @@ router.get("/latest", async (req: Request, res: Response) => {
       });
     }
 
-    // Get latest ranking for each location
-    const rankings = await Promise.all(
+    // Get latest ranking AND previous ranking for each location (for trend comparison)
+    const rankingsWithPrevious = await Promise.all(
       locationIds.map(async (locationId) => {
-        const ranking = await db("practice_rankings")
+        // Get the two most recent completed rankings for this location
+        const [current, previous] = await db("practice_rankings")
           .where({
             google_account_id: Number(googleAccountId),
             gbp_location_id: locationId,
             status: "completed",
           })
           .orderBy("created_at", "desc")
-          .first();
+          .limit(2);
 
-        return ranking;
+        return { current, previous: previous || null };
       })
     );
 
@@ -2465,9 +2549,9 @@ router.get("/latest", async (req: Request, res: Response) => {
       return typeof field === "string" ? JSON.parse(field) : field;
     };
 
-    const validRankings = rankings
-      .filter((r) => r !== null && r !== undefined)
-      .map((ranking) => ({
+    const validRankings = rankingsWithPrevious
+      .filter((r) => r.current !== null && r.current !== undefined)
+      .map(({ current: ranking, previous }) => ({
         id: ranking.id,
         googleAccountId: ranking.google_account_id,
         domain: ranking.domain,
@@ -2489,6 +2573,17 @@ router.get("/latest", async (req: Request, res: Response) => {
         errorMessage: ranking.error_message,
         createdAt: ranking.created_at,
         updatedAt: ranking.updated_at,
+        // Include previous ranking data for trend comparison
+        previousAnalysis: previous
+          ? {
+              id: previous.id,
+              observedAt: previous.observed_at,
+              rankScore: previous.rank_score,
+              rankPosition: previous.rank_position,
+              totalCompetitors: previous.total_competitors,
+              rawData: parse(previous.raw_data),
+            }
+          : null,
       }));
 
     return res.json({
@@ -2501,6 +2596,135 @@ router.get("/latest", async (req: Request, res: Response) => {
       success: false,
       error: "LATEST_ERROR",
       message: error.message || "Failed to get latest rankings",
+    });
+  }
+});
+
+/**
+ * GET /api/practice-ranking/tasks
+ * Get approved ranking tasks for the Practice Ranking dashboard
+ * Query params: practiceRankingId OR (googleAccountId + gbpLocationId)
+ * Returns only approved tasks for display in the Action Plans card
+ */
+router.get("/tasks", async (req: Request, res: Response) => {
+  try {
+    const { practiceRankingId, googleAccountId, gbpLocationId } = req.query;
+
+    log(
+      `[Tasks] Fetching approved ranking tasks with params: ${JSON.stringify(
+        req.query
+      )}`
+    );
+
+    let tasks: any[] = [];
+
+    if (practiceRankingId) {
+      // Fetch tasks for specific practice ranking
+      tasks = await db("tasks")
+        .where({
+          agent_type: "RANKING",
+          is_approved: true,
+        })
+        .whereRaw("metadata::jsonb->>'practice_ranking_id' = ?", [
+          String(practiceRankingId),
+        ])
+        .whereNot({ status: "archived" })
+        .orderBy("created_at", "asc")
+        .select("*");
+    } else if (googleAccountId && gbpLocationId) {
+      // Find the latest completed ranking for this location
+      const latestRanking = await db("practice_rankings")
+        .where({
+          google_account_id: Number(googleAccountId),
+          gbp_location_id: String(gbpLocationId),
+          status: "completed",
+        })
+        .orderBy("created_at", "desc")
+        .first();
+
+      if (latestRanking) {
+        // Fetch tasks for this ranking
+        tasks = await db("tasks")
+          .where({
+            agent_type: "RANKING",
+            is_approved: true,
+          })
+          .whereRaw("metadata::jsonb->>'practice_ranking_id' = ?", [
+            String(latestRanking.id),
+          ])
+          .whereNot({ status: "archived" })
+          .orderBy("created_at", "asc")
+          .select("*");
+      }
+    } else if (googleAccountId) {
+      // Fetch all approved ranking tasks for this account (across all locations)
+      tasks = await db("tasks")
+        .where({
+          google_account_id: Number(googleAccountId),
+          agent_type: "RANKING",
+          is_approved: true,
+        })
+        .whereNot({ status: "archived" })
+        .orderBy("created_at", "asc")
+        .select("*");
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PARAMS",
+        message:
+          "Either practiceRankingId, googleAccountId, or both googleAccountId and gbpLocationId are required",
+      });
+    }
+
+    // Parse metadata for each task
+    const formattedTasks = tasks.map((task) => {
+      let metadata = null;
+      try {
+        metadata =
+          typeof task.metadata === "string"
+            ? JSON.parse(task.metadata)
+            : task.metadata;
+      } catch (e) {
+        // Ignore JSON parse errors
+      }
+
+      return {
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        category: task.category,
+        agentType: task.agent_type,
+        isApproved: task.is_approved,
+        dueDate: task.due_date,
+        createdAt: task.created_at,
+        updatedAt: task.updated_at,
+        completedAt: task.completed_at,
+        metadata: {
+          practiceRankingId: metadata?.practice_ranking_id || null,
+          gbpLocationId: metadata?.gbp_location_id || null,
+          gbpLocationName: metadata?.gbp_location_name || null,
+          priority: metadata?.priority || null,
+          impact: metadata?.impact || null,
+          effort: metadata?.effort || null,
+          timeline: metadata?.timeline || null,
+        },
+      };
+    });
+
+    log(`[Tasks] Found ${formattedTasks.length} approved ranking tasks`);
+
+    return res.json({
+      success: true,
+      tasks: formattedTasks,
+      total: formattedTasks.length,
+    });
+  } catch (error: any) {
+    logError("GET /tasks", error);
+    return res.status(500).json({
+      success: false,
+      error: "TASKS_ERROR",
+      message: error.message || "Failed to fetch ranking tasks",
     });
   }
 });
@@ -2563,6 +2787,101 @@ router.post("/webhook/llm-response", async (req: Request, res: Response) => {
         });
 
       return res.json({ success: true, message: "Error recorded" });
+    }
+
+    // Get the ranking record to access context for task creation
+    const ranking = await db("practice_rankings")
+      .where({ id: practice_ranking_id })
+      .first();
+
+    if (!ranking) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: `Ranking ${practice_ranking_id} not found`,
+      });
+    }
+
+    // ========== CREATE TASKS FROM TOP RECOMMENDATIONS ==========
+    // Archive old tasks for this location before creating new ones
+    try {
+      // Find previous ranking IDs for this location (excluding current)
+      const previousRankings = await db("practice_rankings")
+        .where({
+          google_account_id: ranking.google_account_id,
+          gbp_location_id: ranking.gbp_location_id,
+        })
+        .whereNot({ id: practice_ranking_id })
+        .select("id");
+
+      const previousRankingIds = previousRankings.map((r: any) => r.id);
+
+      if (previousRankingIds.length > 0) {
+        // Archive tasks from previous rankings for this location
+        const archivedCount = await db("tasks")
+          .where({ agent_type: "RANKING" })
+          .whereRaw("metadata::jsonb->>'practice_ranking_id' IN (?)", [
+            previousRankingIds.map(String).join(","),
+          ])
+          .whereNot({ status: "archived" })
+          .update({
+            status: "archived",
+            updated_at: new Date(),
+          });
+
+        if (archivedCount > 0) {
+          logDebug(
+            `  [Webhook] Archived ${archivedCount} tasks from previous rankings`
+          );
+        }
+      }
+
+      // Extract top_recommendations from LLM analysis
+      const topRecommendations = llmAnalysis.top_recommendations || [];
+      logDebug(
+        `  [Webhook] Found ${topRecommendations.length} top recommendations to create as tasks`
+      );
+
+      // Create task records for each recommendation
+      if (topRecommendations.length > 0) {
+        const tasksToInsert = topRecommendations.map((item: any) => ({
+          domain_name: ranking.domain,
+          google_account_id: ranking.google_account_id,
+          title: item.title || "Ranking Improvement Action",
+          description: item.expected_outcome
+            ? `${item.description || ""}\n\n**Expected Outcome:**\n${
+                item.expected_outcome
+              }`
+            : item.description || "",
+          category: "USER",
+          agent_type: "RANKING",
+          status: "pending",
+          is_approved: false,
+          created_by_admin: true,
+          due_date: null,
+          metadata: JSON.stringify({
+            practice_ranking_id: practice_ranking_id,
+            gbp_location_id: ranking.gbp_location_id,
+            gbp_location_name: ranking.gbp_location_name,
+            priority: item.priority || null,
+            impact: item.impact || null,
+            effort: item.effort || null,
+            timeline: item.timeline || null,
+          }),
+          created_at: new Date(),
+          updated_at: new Date(),
+        }));
+
+        await db("tasks").insert(tasksToInsert);
+        logDebug(
+          `  [Webhook] Created ${tasksToInsert.length} pending tasks from ranking recommendations`
+        );
+      }
+    } catch (taskError: any) {
+      // Log but don't fail the webhook if task creation fails
+      logWarn(
+        `[Webhook] Failed to create tasks from ranking recommendations: ${taskError.message}`
+      );
     }
 
     // Save successful LLM analysis
