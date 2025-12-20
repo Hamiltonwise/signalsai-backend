@@ -7,6 +7,9 @@ import crypto from "crypto";
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-key-change-in-prod";
 
+// Test account email - bypasses OTP verification
+const TEST_EMAIL = "tester@google.com";
+
 // Helper to generate 6-digit code
 const generateCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -26,18 +29,28 @@ router.post("/request", async (req: Request, res: Response) => {
 
     const normalizedEmail = email.toLowerCase();
 
+    // Check if this is a test account - bypass OTP
+    if (normalizedEmail === TEST_EMAIL) {
+      console.log("[AUTH] Test account detected, skipping OTP email");
+      return res.json({
+        success: true,
+        message: "Test account - no OTP required",
+        isTestAccount: true,
+      });
+    }
+
     // Check if Super Admin
     const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "")
       .split(",")
       .map((e) => e.trim().toLowerCase())
       .filter((e) => e.length > 0);
-    
+
     const isSuperAdmin = superAdminEmails.includes(normalizedEmail);
 
     // If Admin Login, STRICTLY require Super Admin status
     if (isAdminLogin && !isSuperAdmin) {
-      return res.status(403).json({ 
-        error: "Access denied. Your email is not authorized for Admin access." 
+      return res.status(403).json({
+        error: "Access denied. Your email is not authorized for Admin access.",
       });
     }
 
@@ -99,40 +112,48 @@ router.post("/verify", async (req: Request, res: Response) => {
 
     const normalizedEmail = email.toLowerCase();
 
+    // Check if this is a test account - bypass OTP verification
+    const isTestAccount = normalizedEmail === TEST_EMAIL;
+
     // Check if Super Admin
     const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "")
       .split(",")
       .map((e) => e.trim().toLowerCase())
       .filter((e) => e.length > 0);
-    
+
     const isSuperAdmin = superAdminEmails.includes(normalizedEmail);
 
     // If Admin Login, STRICTLY require Super Admin status
     if (isAdminLogin && !isSuperAdmin) {
-      return res.status(403).json({ 
-        error: "Access denied. Your email is not authorized for Admin access." 
+      return res.status(403).json({
+        error: "Access denied. Your email is not authorized for Admin access.",
       });
     }
 
-    // Verify code
-    const otpRecord = await db("otp_codes")
-      .where({
-        email: normalizedEmail,
-        code,
-        used: false,
-      })
-      .where("expires_at", ">", new Date())
-      .orderBy("created_at", "desc")
-      .first();
+    // Skip OTP verification for test account
+    if (!isTestAccount) {
+      // Verify code
+      const otpRecord = await db("otp_codes")
+        .where({
+          email: normalizedEmail,
+          code,
+          used: false,
+        })
+        .where("expires_at", ">", new Date())
+        .orderBy("created_at", "desc")
+        .first();
 
-    if (!otpRecord) {
-      return res.status(400).json({ error: "Invalid or expired code" });
+      if (!otpRecord) {
+        return res.status(400).json({ error: "Invalid or expired code" });
+      }
+
+      // Mark code as used
+      await db("otp_codes")
+        .where({ id: otpRecord.id })
+        .update({ used: true, updated_at: new Date() });
+    } else {
+      console.log("[AUTH] Test account - bypassing OTP verification");
     }
-
-    // Mark code as used
-    await db("otp_codes")
-      .where({ id: otpRecord.id })
-      .update({ used: true, updated_at: new Date() });
 
     // Find or create user
     let user = await db("users").where({ email: normalizedEmail }).first();
@@ -149,7 +170,7 @@ router.post("/verify", async (req: Request, res: Response) => {
         .split(",")
         .map((e) => e.trim().toLowerCase())
         .filter((e) => e.length > 0);
-      
+
       const isSuperAdmin = superAdminEmails.includes(normalizedEmail);
 
       if (!invitation && !isSuperAdmin) {
