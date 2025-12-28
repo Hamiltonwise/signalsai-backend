@@ -1938,45 +1938,27 @@ router.post("/proofline-run", async (req: Request, res: Response) => {
           throw new Error(dailyResult.error || "Proofline agent failed");
         }
 
-        // Check for duplicate before saving
-        const existingDaily = await db("agent_results")
-          .where({
+        // Save raw data
+        await db("google_data_store").insert(dailyResult.rawData);
+
+        // Save agent result
+        const [result] = await db("agent_results")
+          .insert({
             google_account_id: googleAccountId,
             domain,
             agent_type: "proofline",
             date_start: dailyDates.dayBeforeYesterday,
             date_end: dailyDates.yesterday,
+            agent_input: JSON.stringify(dailyResult.payload),
+            agent_output: JSON.stringify(dailyResult.output),
+            status: "success",
+            created_at: new Date(),
+            updated_at: new Date(),
           })
-          .whereIn("status", ["success", "pending"])
-          .first();
+          .returning("id");
 
-        if (!existingDaily) {
-          // Save raw data
-          await db("google_data_store").insert(dailyResult.rawData);
-
-          // Save agent result
-          const [result] = await db("agent_results")
-            .insert({
-              google_account_id: googleAccountId,
-              domain,
-              agent_type: "proofline",
-              date_start: dailyDates.dayBeforeYesterday,
-              date_end: dailyDates.yesterday,
-              agent_input: JSON.stringify(dailyResult.payload),
-              agent_output: JSON.stringify(dailyResult.output),
-              status: "success",
-              created_at: new Date(),
-              updated_at: new Date(),
-            })
-            .returning("id");
-
-          const resultId = result.id;
-          log(`[CLIENT] ✓ Proofline result saved (ID: ${resultId})`);
-        } else {
-          log(
-            `[CLIENT] ℹ Proofline result already exists (ID: ${existingDaily.id})`
-          );
-        }
+        const resultId = result.id;
+        log(`[CLIENT] ✓ Proofline result saved (ID: ${resultId})`);
 
         results.push({
           googleAccountId,
@@ -2084,33 +2066,8 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
       `[SETUP] Month range: ${monthRange.startDate} to ${monthRange.endDate}`
     );
 
-    // Check for existing results unless force=true
-    if (!force) {
-      const existingSummary = await db("agent_results")
-        .where({
-          google_account_id: googleAccountId,
-          domain,
-          agent_type: "summary",
-          date_start: monthRange.startDate,
-          date_end: monthRange.endDate,
-        })
-        .whereIn("status", ["success", "pending"])
-        .first();
-
-      if (existingSummary) {
-        log(
-          `[SETUP] Monthly agents already completed for this period - skipping`
-        );
-        return res.json({
-          success: true,
-          message: "Monthly agents already run for this period",
-          skipped: true,
-          existingResultId: existingSummary.id,
-        });
-      }
-    } else {
-      log(`[SETUP] Force mode enabled - will overwrite existing results`);
-    }
+    // Removed duplicate check - always run monthly agents when called
+    log(`[SETUP] Proceeding with monthly agents run`);
 
     // Get valid OAuth2 client
     log(`[CLIENT] Getting valid OAuth2 client`);
