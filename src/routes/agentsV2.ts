@@ -23,12 +23,27 @@ import {
 import {
   fetchAllServiceData,
   GooglePropertyIds,
+  fetchGBPDataForRange,
 } from "../services/dataAggregator";
 import { aggregatePmsData } from "../utils/pmsAggregator";
 import { createNotification } from "../utils/notificationHelper";
+import {
+  processLocationRanking,
+  MAX_RETRIES,
+  RETRY_DELAY_MS,
+} from "../services/rankingService";
+import {
+  updateAutomationStatus,
+  completeStep,
+  completeAutomation,
+  failAutomation,
+  AutomationSummary,
+  MonthlyAgentKey,
+} from "../utils/pmsAutomationStatus";
 import axios from "axios";
 import * as fs from "fs";
 import * as path from "path";
+import { v4 as uuidv4 } from "uuid";
 
 const router = express.Router();
 
@@ -48,6 +63,7 @@ const CRO_OPTIMIZER_WEBHOOK = process.env.CRO_OPTIMIZER_AGENT_WEBHOOK || "";
 const COPY_COMPANION_WEBHOOK = process.env.COPY_COMPANION_AGENT_WEBHOOK || "";
 const GUARDIAN_AGENT_WEBHOOK = process.env.GUARDIAN_AGENT_WEBHOOK || "";
 const GOVERNANCE_AGENT_WEBHOOK = process.env.GOVERNANCE_AGENT_WEBHOOK || "";
+const IDENTIFIER_AGENT_WEBHOOK = process.env.IDENTIFIER_AGENT_WEBHOOK || "";
 
 // PMS data availability flag (always true for now as placeholder)
 const MONTH_PMS_DATA_AVAILABLE = true;
@@ -260,6 +276,81 @@ async function callAgentWebhook(
     log(`  ✗ ${agentName} webhook failed: ${error?.message || String(error)}`);
     throw error;
   }
+}
+
+/**
+ * Call Identifier Agent to determine specialty and market location from GBP profile
+ */
+async function identifyLocationMeta(
+  gbpData: any,
+  domain: string
+): Promise<{ specialty: string; marketLocation: string }> {
+  log(`  [IDENTIFIER] Identifying specialty and market for ${domain}`);
+
+  if (!IDENTIFIER_AGENT_WEBHOOK) {
+    log(
+      `  [IDENTIFIER] ⚠ IDENTIFIER_AGENT_WEBHOOK not configured, using fallbacks`
+    );
+    return getFallbackMeta(gbpData);
+  }
+
+  try {
+    const payload = {
+      domain,
+      gbp_profile: gbpData.profile || {},
+      // Include full storefront address fields for better location identification
+      storefront_address: gbpData.profile?.storefrontAddress || {},
+      address: {
+        locality: gbpData.profile?.storefrontAddress?.locality || "",
+        administrativeArea:
+          gbpData.profile?.storefrontAddress?.administrativeArea || "",
+        postalCode: gbpData.profile?.storefrontAddress?.postalCode || "",
+        addressLines: gbpData.profile?.storefrontAddress?.addressLines || [],
+      },
+    };
+
+    const response = await axios.post(IDENTIFIER_AGENT_WEBHOOK, payload, {
+      timeout: 60000,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    let data = response.data;
+    if (Array.isArray(data)) data = data[0] || {};
+
+    const specialty = data.specialty || "orthodontist";
+    const marketLocation = data.marketLocation || getFallbackMarket(gbpData);
+
+    log(`  [IDENTIFIER] ✓ Identified: ${specialty} in ${marketLocation}`);
+
+    return { specialty, marketLocation };
+  } catch (error: any) {
+    log(`  [IDENTIFIER] ✗ Webhook failed: ${error.message}. Using fallbacks.`);
+    return getFallbackMeta(gbpData);
+  }
+}
+
+/**
+ * Fallback logic for location metadata
+ */
+function getFallbackMeta(gbpData: any): {
+  specialty: string;
+  marketLocation: string;
+} {
+  return {
+    specialty: "orthodontist",
+    marketLocation: getFallbackMarket(gbpData),
+  };
+}
+
+/**
+ * Extract city, state from GBP profile storefront address
+ */
+function getFallbackMarket(gbpData: any): string {
+  const addr = gbpData.profile?.storefrontAddress;
+  if (addr && addr.locality && addr.administrativeArea) {
+    return `${addr.locality}, ${addr.administrativeArea}`;
+  }
+  return "Unknown, US";
 }
 
 // =====================================================================
@@ -2019,12 +2110,13 @@ router.post("/proofline-run", async (req: Request, res: Response) => {
  * - Runs for a specific account when triggered by PMS client approval
  * - Includes PMS and Clarity data in Summary agent
  * - Creates tasks from Opportunity agent action items
+ * - Updates automation_status_detail in pms_jobs for progress tracking
  *
- * Body: { googleAccountId: number, domain: string, force?: boolean }
+ * Body: { googleAccountId: number, domain: string, force?: boolean, pmsJobId?: number }
  */
 router.post("/monthly-agents-run", async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { googleAccountId, domain, force = false } = req.body;
+  const { googleAccountId, domain, force = false, pmsJobId } = req.body;
 
   log("\n" + "=".repeat(70));
   log("POST /api/agents/monthly-agents-run - STARTING");
@@ -2032,7 +2124,25 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
   log(`Account ID: ${googleAccountId}`);
   log(`Domain: ${domain}`);
   log(`Force run: ${force}`);
+  log(`PMS Job ID: ${pmsJobId || "N/A"}`);
   log(`Timestamp: ${new Date().toISOString()}`);
+
+  // Helper to update PMS automation status if pmsJobId is provided
+  const updatePmsStatus = async (
+    subStep: MonthlyAgentKey,
+    customMessage?: string,
+    agentCompleted?: MonthlyAgentKey
+  ) => {
+    if (pmsJobId) {
+      await updateAutomationStatus(pmsJobId, {
+        step: "monthly_agents",
+        stepStatus: "processing",
+        subStep,
+        customMessage,
+        agentCompleted,
+      });
+    }
+  };
 
   try {
     // Validate input
@@ -2073,6 +2183,12 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     log(`[CLIENT] Getting valid OAuth2 client`);
     const oauth2Client = await getValidOAuth2Client(googleAccountId);
 
+    // Update status: data fetching
+    await updatePmsStatus(
+      "data_fetch",
+      "Fetching GA4, GBP, GSC, PMS, and Clarity data..."
+    );
+
     // Run monthly agents
     log(`[CLIENT] Running monthly agents (Summary + Opportunity)`);
     const monthlyResult = await processMonthlyAgents(
@@ -2082,11 +2198,26 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     );
 
     if (!monthlyResult.success) {
+      // Update PMS status on failure
+      if (pmsJobId) {
+        await failAutomation(
+          pmsJobId,
+          "monthly_agents",
+          monthlyResult.error || "Monthly agents failed"
+        );
+      }
       throw new Error(monthlyResult.error || "Monthly agents failed");
     }
 
     // Save results
     log(`[CLIENT] Saving results to database...`);
+
+    // Update status: Summary agent completed, starting Referral Engine
+    await updatePmsStatus(
+      "summary_agent",
+      "Summary Agent completed",
+      "summary_agent"
+    );
 
     // Save raw data
     await db("google_data_store").insert(monthlyResult.rawData);
@@ -2110,6 +2241,13 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     const summaryId = summaryResult.id;
     log(`[CLIENT] ✓ Summary result saved (ID: ${summaryId})`);
 
+    // Update status: Referral Engine completed
+    await updatePmsStatus(
+      "referral_engine",
+      "Referral Engine Agent completed",
+      "referral_engine"
+    );
+
     // Save Opportunity result
     const [opportunityResult] = await db("agent_results")
       .insert({
@@ -2128,6 +2266,13 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
 
     const opportunityId = opportunityResult.id;
     log(`[CLIENT] ✓ Opportunity result saved (ID: ${opportunityId})`);
+
+    // Update status: Opportunity agent completed
+    await updatePmsStatus(
+      "opportunity_agent",
+      "Opportunity Agent completed",
+      "opportunity_agent"
+    );
 
     // Save Referral Engine result
     const [referralEngineResult] = await db("agent_results")
@@ -2148,6 +2293,13 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     const referralEngineId = referralEngineResult.id;
     log(`[CLIENT] ✓ Referral Engine result saved (ID: ${referralEngineId})`);
 
+    // Update status: CRO Optimizer completed
+    await updatePmsStatus(
+      "cro_optimizer",
+      "CRO Optimizer Agent completed",
+      "cro_optimizer"
+    );
+
     // Save CRO Optimizer result
     const [croOptimizerResult] = await db("agent_results")
       .insert({
@@ -2166,6 +2318,15 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
 
     const croOptimizerId = croOptimizerResult.id;
     log(`[CLIENT] ✓ CRO Optimizer result saved (ID: ${croOptimizerId})`);
+
+    // Update status: Task creation
+    if (pmsJobId) {
+      await updateAutomationStatus(pmsJobId, {
+        step: "task_creation",
+        stepStatus: "processing",
+        customMessage: "Creating tasks from agent recommendations...",
+      });
+    }
 
     // Create notification for completed monthly agents
     try {
@@ -2192,12 +2353,58 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
 
     const duration = Date.now() - startTime;
 
+    // Count tasks created (simplified - count would need to be tracked during processMonthlyAgents)
+    // For now, we'll estimate based on agent outputs
+    const tasksCreated = {
+      user: 0,
+      alloro: 0,
+      total: 0,
+    };
+
+    // Get task counts from database for this domain created in last minute
+    try {
+      const recentTasks = await db("tasks")
+        .where("domain_name", domain)
+        .where("created_at", ">=", new Date(startTime))
+        .select("category");
+
+      tasksCreated.total = recentTasks.length;
+      tasksCreated.user = recentTasks.filter(
+        (t: any) => t.category === "USER"
+      ).length;
+      tasksCreated.alloro = recentTasks.filter(
+        (t: any) => t.category === "ALLORO"
+      ).length;
+    } catch (e) {
+      log(`[CLIENT] Could not count tasks: ${e}`);
+    }
+
+    // Complete the PMS automation status
+    if (pmsJobId) {
+      const automationSummary: AutomationSummary = {
+        tasksCreated,
+        agentResults: {
+          summary: { success: true, resultId: summaryId },
+          referral_engine: { success: true, resultId: referralEngineId },
+          opportunity: { success: true, resultId: opportunityId },
+          cro_optimizer: { success: true, resultId: croOptimizerId },
+        },
+        duration: `${(duration / 1000).toFixed(1)}s`,
+      };
+
+      await completeAutomation(pmsJobId, automationSummary);
+      log(`[CLIENT] ✓ PMS automation status marked as complete`);
+    }
+
     log("\n" + "=".repeat(70));
     log(`[COMPLETE] ✓ Monthly agents completed successfully`);
     log(`  - Summary ID: ${summaryId}`);
     log(`  - Referral Engine ID: ${referralEngineId}`);
     log(`  - Opportunity ID: ${opportunityId}`);
     log(`  - CRO Optimizer ID: ${croOptimizerId}`);
+    log(
+      `  - Tasks created: ${tasksCreated.total} (${tasksCreated.user} USER, ${tasksCreated.alloro} ALLORO)`
+    );
     log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
     log("=".repeat(70) + "\n");
 
@@ -2215,6 +2422,15 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     const duration = Date.now() - startTime;
     log(`\n[FAILED] ❌ Monthly agents failed after ${duration}ms`);
     log("=".repeat(70) + "\n");
+
+    // Mark PMS automation as failed
+    if (pmsJobId) {
+      await failAutomation(
+        pmsJobId,
+        "monthly_agents",
+        error?.message || "Monthly agents failed"
+      );
+    }
 
     return res.status(500).json({
       success: false,
@@ -2469,6 +2685,243 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
       message: error?.message || "Failed to run GBP optimizer agent",
       duration: `${duration}ms`,
     });
+  }
+});
+
+/**
+ * POST /api/agents/ranking-run
+ *
+ * Automated practice ranking agent run
+ * - Runs for all accounts sequentially
+ * - Runs each location within an account sequentially
+ * - Uses Identifier Agent to automatically determine specialty/market
+ *
+ * Body: { googleAccountId?: number } (optional)
+ */
+router.post("/ranking-run", async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  const { googleAccountId } = req.body || {};
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/ranking-run - STARTING");
+  log("=".repeat(70));
+  if (googleAccountId) log(`Account ID: ${googleAccountId}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+
+  try {
+    // 1. Fetch accounts to process
+    let accounts = [];
+    if (googleAccountId) {
+      const account = await db("google_accounts")
+        .where({ id: googleAccountId, onboarding_completed: true })
+        .first();
+      if (!account)
+        throw new Error(`Onboarded account ${googleAccountId} not found`);
+      accounts = [account];
+    } else {
+      accounts = await db("google_accounts")
+        .where("onboarding_completed", true)
+        .select("*");
+    }
+
+    if (!accounts || accounts.length === 0) {
+      log("[SETUP] No accounts to process");
+      return res.json({ success: true, message: "No accounts found" });
+    }
+
+    log(`[SETUP] Found ${accounts.length} account(s) to process`);
+
+    // 2. Process each account sequentially
+    const results: any[] = [];
+    for (const account of accounts) {
+      const { id: accId, domain_name: domain } = account;
+      log(`\n[${"=".repeat(60)}]`);
+      log(`[ACCOUNT] Processing: ${domain} (ID: ${accId})`);
+      log(`[${"=".repeat(60)}]`);
+
+      try {
+        const propertyIds: GooglePropertyIds =
+          typeof account.google_property_ids === "string"
+            ? JSON.parse(account.google_property_ids)
+            : account.google_property_ids;
+
+        const gbpLocations = propertyIds?.gbp || [];
+        if (gbpLocations.length === 0) {
+          log(`  [ACCOUNT] No GBP locations found for ${domain}, skipping`);
+          continue;
+        }
+
+        const oauth2Client = await getValidOAuth2Client(accId);
+        const batchId = uuidv4();
+        log(`  [ACCOUNT] Batch ID: ${batchId}`);
+        log(
+          `  [ACCOUNT] Performing upfront identification for ${gbpLocations.length} locations...`
+        );
+
+        // === UPFRONT IDENTIFICATION AND RECORD CREATION ===
+        const locationMetaMap = new Map<
+          string,
+          { specialty: string; marketLocation: string }
+        >();
+        const locationRankingMap = new Map<string, number>();
+
+        for (const loc of gbpLocations) {
+          log(`    → Identifying: ${loc.displayName || loc.locationId}`);
+          try {
+            const gbpProfile = await fetchGBPDataForRange(
+              oauth2Client,
+              [loc],
+              new Date().toISOString().split("T")[0],
+              new Date().toISOString().split("T")[0]
+            );
+
+            const locationData = gbpProfile?.locations?.[0]?.data || {};
+            const meta = await identifyLocationMeta(locationData, domain);
+            locationMetaMap.set(loc.locationId, meta);
+          } catch (identErr: any) {
+            log(
+              `    ✗ Identification failed for ${loc.locationId}, using fallback`
+            );
+            locationMetaMap.set(loc.locationId, {
+              specialty: "orthodontist",
+              marketLocation: "Unknown, US",
+            });
+          }
+        }
+
+        // Create ALL ranking records upfront with "pending" status
+        // This ensures the dashboard shows all locations (e.g. 1/3, 2/3) immediately
+        for (let i = 0; i < gbpLocations.length; i++) {
+          const loc = gbpLocations[i];
+          const meta = locationMetaMap.get(loc.locationId)!;
+
+          const [rankingRecord] = await db("practice_rankings")
+            .insert({
+              google_account_id: accId,
+              domain,
+              specialty: meta.specialty,
+              location: meta.marketLocation,
+              gbp_account_id: loc.accountId,
+              gbp_location_id: loc.locationId,
+              gbp_location_name: loc.displayName || domain,
+              batch_id: batchId,
+              observed_at: new Date(),
+              status: "pending",
+              status_detail: JSON.stringify({
+                currentStep: "queued",
+                message: `Waiting in queue (${i + 1}/${
+                  gbpLocations.length
+                })...`,
+                progress: 0,
+                stepsCompleted: [],
+                timestamps: { created_at: new Date().toISOString() },
+              }),
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning("id");
+
+          locationRankingMap.set(loc.locationId, rankingRecord.id);
+        }
+
+        log(`    ✓ Created ${gbpLocations.length} records upfront`);
+
+        // === SEQUENTIAL ANALYSIS PHASE ===
+        const accResults = [];
+        for (let i = 0; i < gbpLocations.length; i++) {
+          const loc = gbpLocations[i];
+          const rankingId = locationRankingMap.get(loc.locationId)!;
+          const meta = locationMetaMap.get(loc.locationId)!;
+
+          log(
+            `\n  [LOCATION] Processing ${i + 1}/${gbpLocations.length}: ${
+              loc.displayName || loc.locationId
+            }`
+          );
+
+          // Update status to processing with progress context
+          await db("practice_rankings")
+            .where({ id: rankingId })
+            .update({
+              status: "processing",
+              status_detail: JSON.stringify({
+                currentStep: "starting",
+                message: `Starting analysis ${i + 1}/${gbpLocations.length}...`,
+                progress: 5,
+                stepsCompleted: ["queued"],
+                timestamps: { started_at: new Date().toISOString() },
+              }),
+            });
+
+          // Process the ranking with retry logic
+          let success = false;
+          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+              if (attempt > 1) {
+                log(
+                  `    🔄 Retry ${attempt}/${MAX_RETRIES} for ID ${rankingId}`
+                );
+                await delay(RETRY_DELAY_MS);
+              }
+
+              const result = await processLocationRanking(
+                rankingId,
+                accId,
+                loc.accountId,
+                loc.locationId,
+                loc.displayName || domain,
+                meta.specialty,
+                meta.marketLocation,
+                domain,
+                batchId,
+                log
+              );
+
+              accResults.push(result);
+              success = true;
+              break;
+            } catch (err: any) {
+              log(`    ✗ Attempt ${attempt} failed: ${err.message}`);
+              if (attempt === MAX_RETRIES) {
+                await db("practice_rankings")
+                  .where({ id: rankingId })
+                  .update({ status: "failed", error_message: err.message });
+              }
+            }
+          }
+
+          if (!success) {
+            log(`    ✗ FAILED: Exhausted retries for ${loc.locationId}`);
+          }
+        }
+
+        results.push({
+          domain,
+          batchId,
+          processed: accResults.length,
+          total: gbpLocations.length,
+        });
+      } catch (accErr: any) {
+        logError(`Account ${domain} failed`, accErr);
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    log("\n" + "=".repeat(70));
+    log(
+      `[COMPLETE] ✓ Ranking run completed in ${(duration / 1000).toFixed(1)}s`
+    );
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      message: `Processed ${accounts.length} account(s)`,
+      duration: `${duration}ms`,
+      results,
+    });
+  } catch (error: any) {
+    logError("ranking-run", error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 

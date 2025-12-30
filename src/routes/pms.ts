@@ -6,6 +6,14 @@ import axios from "axios";
 import db from "../database/connection";
 import { aggregatePmsData } from "../utils/pmsAggregator";
 import { createNotification } from "../utils/notificationHelper";
+import {
+  initializeAutomationStatus,
+  updateAutomationStatus,
+  completeStep,
+  setAwaitingApproval,
+  getAutomationStatus,
+  AutomationStatusDetail,
+} from "../utils/pmsAutomationStatus";
 
 type PmsStatus = "pending" | "error" | "completed" | string;
 
@@ -175,12 +183,15 @@ pmsRoutes.post("/upload", upload.single("csvFile"), async (req, res) => {
     const fileName = req.file.originalname.toLowerCase();
     let csvData: string;
 
+    // Get domain from request body or use default
+    const domain = req.body.domain || "artfulorthodontics.com";
+
     const [result] = await db("pms_jobs")
       .insert({
         time_elapsed: 0,
         status: "pending",
         response_log: null,
-        domain: "artfulorthodontics.com",
+        domain: domain,
       })
       .returning("id");
 
@@ -189,6 +200,16 @@ pmsRoutes.post("/upload", upload.single("csvFile"), async (req, res) => {
     if (!jobId) {
       throw new Error("Failed to create PMS job record");
     }
+
+    // Initialize automation status tracking
+    await initializeAutomationStatus(jobId);
+
+    // Update status: file received
+    await updateAutomationStatus(jobId, {
+      step: "file_upload",
+      stepStatus: "processing",
+      customMessage: "Processing uploaded file...",
+    });
 
     if (fileName.endsWith(".csv") || fileName.endsWith(".txt")) {
       // Directly use CSV/TXT buffer as string
@@ -224,6 +245,16 @@ pmsRoutes.post("/upload", upload.single("csvFile"), async (req, res) => {
         error: "Failed to convert file data to JSON",
       });
 
+    // Complete file_upload step and start pms_parser step
+    await completeStep(jobId, "file_upload", "pms_parser");
+
+    // Update status: sending to parser
+    await updateAutomationStatus(jobId, {
+      step: "pms_parser",
+      stepStatus: "processing",
+      customMessage: "Sending to PMS parser agent...",
+    });
+
     const response = await axios.post(
       "https://n8napp.getalloro.com/webhook/parse-csv",
       {
@@ -238,6 +269,10 @@ pmsRoutes.post("/upload", upload.single("csvFile"), async (req, res) => {
     );
 
     console.log(response);
+
+    // Parser has been sent to n8n webhook - it will process asynchronously
+    // Keep pms_parser in "processing" state until webhook actually completes
+    // The webhook callback or job status update will mark it as complete
 
     return res.json({
       success: true,
@@ -495,17 +530,35 @@ pmsRoutes.get("/jobs", async (req, res) => {
       .limit(PAGE_SIZE)
       .offset((page - 1) * PAGE_SIZE);
 
-    const jobs = jobsRaw.map((job: any) => ({
-      id: job.id,
-      time_elapsed: job.time_elapsed,
-      status: job.status,
-      response_log: parseResponseLog(job.response_log),
-      timestamp: job.timestamp,
-      is_approved: job.is_approved === 1 || job.is_approved === true,
-      is_client_approved:
-        job.is_client_approved === 1 || job.is_client_approved === true,
-      domain: job.domain ?? null,
-    }));
+    const jobs = jobsRaw.map((job: any) => {
+      // Parse automation_status_detail if present
+      let automationStatusDetail = null;
+      if (job.automation_status_detail) {
+        try {
+          automationStatusDetail =
+            typeof job.automation_status_detail === "string"
+              ? JSON.parse(job.automation_status_detail)
+              : job.automation_status_detail;
+        } catch (e) {
+          console.warn(
+            `Failed to parse automation_status_detail for job ${job.id}`
+          );
+        }
+      }
+
+      return {
+        id: job.id,
+        time_elapsed: job.time_elapsed,
+        status: job.status,
+        response_log: parseResponseLog(job.response_log),
+        timestamp: job.timestamp,
+        is_approved: job.is_approved === 1 || job.is_approved === true,
+        is_client_approved:
+          job.is_client_approved === 1 || job.is_client_approved === true,
+        domain: job.domain ?? null,
+        automation_status_detail: automationStatusDetail,
+      };
+    });
 
     const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
@@ -621,6 +674,16 @@ pmsRoutes.patch("/jobs/:id/approval", async (req, res) => {
 
     await db("pms_jobs").where({ id: jobId }).update(updatePayload);
 
+    // Update automation status: admin approved, move to client approval
+    if (nextApprovalValue === 1) {
+      // First, complete pms_parser step if it was still processing
+      // (n8n webhook runs async, so it must be done by the time admin can approve)
+      await completeStep(jobId, "pms_parser", "admin_approval");
+      // Now complete admin_approval and move to client_approval
+      await completeStep(jobId, "admin_approval", "client_approval");
+      await setAwaitingApproval(jobId, "client_approval");
+    }
+
     // Create notification for PMS approval
     if (nextApprovalValue === 1 && existingJob.domain) {
       await createNotification(
@@ -720,6 +783,18 @@ pmsRoutes.patch("/jobs/:id/client-approval", async (req, res) => {
       .where({ id: jobId })
       .update({ is_client_approved: clientApproval ? 1 : 0 });
 
+    // Update automation status: client approved, start monthly agents
+    if (clientApproval) {
+      await completeStep(jobId, "client_approval", "monthly_agents");
+      await updateAutomationStatus(jobId, {
+        status: "processing",
+        step: "monthly_agents",
+        stepStatus: "processing",
+        subStep: "data_fetch",
+        customMessage: "Starting monthly agents - fetching data...",
+      });
+    }
+
     const updatedJob = await db("pms_jobs")
       .select(
         "id",
@@ -757,6 +832,7 @@ pmsRoutes.patch("/jobs/:id/client-approval", async (req, res) => {
                 googleAccountId: account.id,
                 domain: updatedJob.domain,
                 force: true, // Force re-run to use latest PMS data
+                pmsJobId: jobId, // Pass job ID for automation status tracking
               }
             )
             .then(() => {
@@ -969,6 +1045,169 @@ pmsRoutes.delete("/jobs/:id", async (req, res) => {
     return res.status(500).json({
       success: false,
       error: `Failed to delete PMS job: ${error.message}`,
+    });
+  }
+});
+
+/**
+ * GET /pms/jobs/:id/automation-status
+ * Polling endpoint for automation progress tracking
+ */
+pmsRoutes.get("/jobs/:id/automation-status", async (req, res) => {
+  try {
+    const jobId = Number(req.params.id);
+
+    if (Number.isNaN(jobId) || jobId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid job id provided",
+      });
+    }
+
+    // Get job with automation status
+    const job = await db("pms_jobs")
+      .where({ id: jobId })
+      .select(
+        "id",
+        "domain",
+        "status",
+        "is_approved",
+        "is_client_approved",
+        "automation_status_detail",
+        "timestamp",
+        "response_log"
+      )
+      .first();
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: "PMS job not found",
+      });
+    }
+
+    // Parse automation status
+    let automationStatus: AutomationStatusDetail | null = null;
+    if (job.automation_status_detail) {
+      automationStatus =
+        typeof job.automation_status_detail === "string"
+          ? JSON.parse(job.automation_status_detail)
+          : job.automation_status_detail;
+    }
+
+    // Auto-advance: If job status is "completed" but pms_parser is still processing,
+    // n8n has finished - advance to admin_approval awaiting
+    if (
+      job.status === "completed" &&
+      automationStatus?.steps?.pms_parser?.status === "processing" &&
+      !job.is_approved
+    ) {
+      await completeStep(jobId, "pms_parser", "admin_approval");
+      await setAwaitingApproval(jobId, "admin_approval");
+      // Refresh the automation status
+      const updatedJob = await db("pms_jobs")
+        .where({ id: jobId })
+        .select("automation_status_detail")
+        .first();
+      if (updatedJob?.automation_status_detail) {
+        automationStatus =
+          typeof updatedJob.automation_status_detail === "string"
+            ? JSON.parse(updatedJob.automation_status_detail)
+            : updatedJob.automation_status_detail;
+      }
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        jobId: job.id,
+        domain: job.domain,
+        jobStatus: job.status,
+        isAdminApproved: job.is_approved === 1 || job.is_approved === true,
+        isClientApproved:
+          job.is_client_approved === 1 || job.is_client_approved === true,
+        timestamp: job.timestamp,
+        automationStatus: automationStatus,
+      },
+    });
+  } catch (error: any) {
+    console.error(
+      "❌ Error in /pms/jobs/:id/automation-status:",
+      error?.message || error
+    );
+    return res.status(500).json({
+      success: false,
+      error: `Failed to fetch automation status: ${error.message}`,
+    });
+  }
+});
+
+/**
+ * GET /pms/automation/active
+ * Get all active (non-completed) PMS automation jobs for dashboard
+ */
+pmsRoutes.get("/automation/active", async (req, res) => {
+  try {
+    const { domain } = req.query;
+
+    let query = db("pms_jobs")
+      .whereNotNull("automation_status_detail")
+      .whereRaw(
+        "automation_status_detail::jsonb->>'status' IN ('pending', 'processing', 'awaiting_approval')"
+      )
+      .select(
+        "id",
+        "domain",
+        "status",
+        "is_approved",
+        "is_client_approved",
+        "automation_status_detail",
+        "timestamp"
+      )
+      .orderBy("timestamp", "desc");
+
+    if (domain && typeof domain === "string") {
+      query = query.where("domain", domain);
+    }
+
+    const jobs = await query;
+
+    const formattedJobs = jobs.map((job) => {
+      let automationStatus: AutomationStatusDetail | null = null;
+      if (job.automation_status_detail) {
+        automationStatus =
+          typeof job.automation_status_detail === "string"
+            ? JSON.parse(job.automation_status_detail)
+            : job.automation_status_detail;
+      }
+
+      return {
+        jobId: job.id,
+        domain: job.domain,
+        jobStatus: job.status,
+        isAdminApproved: job.is_approved === 1 || job.is_approved === true,
+        isClientApproved:
+          job.is_client_approved === 1 || job.is_client_approved === true,
+        timestamp: job.timestamp,
+        automationStatus: automationStatus,
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        jobs: formattedJobs,
+        count: formattedJobs.length,
+      },
+    });
+  } catch (error: any) {
+    console.error(
+      "❌ Error in /pms/automation/active:",
+      error?.message || error
+    );
+    return res.status(500).json({
+      success: false,
+      error: `Failed to fetch active automation jobs: ${error.message}`,
     });
   }
 });
