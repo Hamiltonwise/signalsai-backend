@@ -3622,6 +3622,34 @@ router.get(
         });
       }
 
+      // Check for active automation (monthly agents processing)
+      // This prevents showing stale data while new referral engine output is being generated
+      const activeAutomation = await db("pms_jobs")
+        .where({ domain: account.domain_name })
+        .whereRaw(
+          `automation_status_detail::jsonb->>'status' = 'processing'
+           AND automation_status_detail::jsonb->>'currentStep' = 'monthly_agents'`
+        )
+        .first();
+
+      if (activeAutomation) {
+        log(
+          `  [PENDING] Active automation found for ${account.domain_name} - PMS Job ID: ${activeAutomation.id}`
+        );
+        return res.json({
+          success: true,
+          pending: true,
+          message: "Monthly insights are being generated...",
+          googleAccountId: accountId,
+          domain: account.domain_name,
+          data: null,
+          metadata: {
+            pmsJobId: activeAutomation.id,
+            automationStatus: "processing",
+          },
+        });
+      }
+
       // Fetch latest successful referral_engine result
       const result = await db("agent_results")
         .where({
@@ -3664,6 +3692,7 @@ router.get(
 
       return res.json({
         success: true,
+        pending: false,
         googleAccountId: accountId,
         domain: account.domain_name,
         data: parsedOutput,

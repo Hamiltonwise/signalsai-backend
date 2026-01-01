@@ -219,6 +219,48 @@ router.patch("/mark-all-read", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * DELETE /api/notifications/delete-all
+ * Delete all notifications for a domain
+ * Body: { googleAccountId: number }
+ */
+router.delete("/delete-all", async (req: Request, res: Response) => {
+  try {
+    const { googleAccountId } = req.body;
+
+    if (!googleAccountId) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing google account ID",
+        message: "googleAccountId is required",
+      });
+    }
+
+    // Get domain from account ID
+    const domain = await getDomainFromAccountId(googleAccountId);
+    if (!domain) {
+      return res.status(404).json({
+        success: false,
+        error: "Account not found",
+        message: "Google account not found",
+      });
+    }
+
+    // Delete all notifications for this domain
+    const deleted = await db("notifications")
+      .where({ domain_name: domain })
+      .delete();
+
+    return res.json({
+      success: true,
+      message: `${deleted} notification(s) deleted`,
+      count: deleted,
+    });
+  } catch (error: any) {
+    return handleError(res, error, "Delete all notifications");
+  }
+});
+
 // =====================================================================
 // ADMIN ENDPOINTS (Unrestricted Access)
 // =====================================================================
