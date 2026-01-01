@@ -22,7 +22,10 @@ import {
   RETRY_DELAY_MS,
   StatusDetail,
 } from "../services/rankingService";
-import { createNotification } from "../utils/notificationHelper";
+import {
+  createNotification,
+  notifyAdminsRankingComplete,
+} from "../utils/notificationHelper";
 import { v4 as uuidv4 } from "uuid";
 
 const router = express.Router();
@@ -336,31 +339,29 @@ async function processBatchAnalysis(
       `╚════════════════════════════════════════════════════════════════════╝`
     );
 
-    // Create notification for the client
+    // Create notification for the client (also sends user email)
+    const locationCount = locations.length;
+    const locationText =
+      locationCount === 1
+        ? locations[0].gbpLocationName
+        : `${locationCount} locations`;
+
+    // Get average score from successful results
+    const avgScore =
+      successfulResults.length > 0
+        ? Math.round(
+            (successfulResults.reduce(
+              (sum, r) => sum + (r.results?.rankScore || 0),
+              0
+            ) /
+              successfulResults.length) *
+              10
+          ) / 10
+        : null;
+
+    const scoreText = avgScore ? ` Average score: ${avgScore.toFixed(1)}` : "";
+
     try {
-      const locationCount = locations.length;
-      const locationText =
-        locationCount === 1
-          ? locations[0].gbpLocationName
-          : `${locationCount} locations`;
-
-      // Get average score from successful results
-      const avgScore =
-        successfulResults.length > 0
-          ? Math.round(
-              (successfulResults.reduce(
-                (sum, r) => sum + (r.results?.rankScore || 0),
-                0
-              ) /
-                successfulResults.length) *
-                10
-            ) / 10
-          : null;
-
-      const scoreText = avgScore
-        ? ` Average score: ${avgScore.toFixed(1)}`
-        : "";
-
       await createNotification(
         domain,
         "Practice Ranking Analysis Complete",
@@ -378,6 +379,21 @@ async function processBatchAnalysis(
     } catch (notifyError: any) {
       logWarn(
         `Failed to create notification for batch ${batchId}: ${notifyError.message}`
+      );
+    }
+
+    // Send admin email notification about ranking completion
+    try {
+      await notifyAdminsRankingComplete(
+        domain,
+        batchId,
+        locationCount,
+        avgScore
+      );
+      log(`[Batch ${batchId}] Admin email sent for ranking completion`);
+    } catch (adminEmailError: any) {
+      logWarn(
+        `Failed to send admin email for batch ${batchId}: ${adminEmailError.message}`
       );
     }
   } catch (error: any) {
@@ -586,31 +602,29 @@ async function processBatchAnalysisWithExistingRecords(
       `╚════════════════════════════════════════════════════════════════════╝`
     );
 
-    // Create notification for the client
+    // Create notification for the client (also sends user email)
+    const locationCount = locations.length;
+    const locationText =
+      locationCount === 1
+        ? locations[0].gbpLocationName
+        : `${locationCount} locations`;
+
+    // Get average score from successful results
+    const avgScore =
+      successfulResults.length > 0
+        ? Math.round(
+            (successfulResults.reduce(
+              (sum, r) => sum + (r.results?.rankScore || 0),
+              0
+            ) /
+              successfulResults.length) *
+              10
+          ) / 10
+        : null;
+
+    const scoreText = avgScore ? ` Average score: ${avgScore.toFixed(1)}` : "";
+
     try {
-      const locationCount = locations.length;
-      const locationText =
-        locationCount === 1
-          ? locations[0].gbpLocationName
-          : `${locationCount} locations`;
-
-      // Get average score from successful results
-      const avgScore =
-        successfulResults.length > 0
-          ? Math.round(
-              (successfulResults.reduce(
-                (sum, r) => sum + (r.results?.rankScore || 0),
-                0
-              ) /
-                successfulResults.length) *
-                10
-            ) / 10
-          : null;
-
-      const scoreText = avgScore
-        ? ` Average score: ${avgScore.toFixed(1)}`
-        : "";
-
       await createNotification(
         domain,
         "Practice Ranking Analysis Complete",
@@ -628,6 +642,21 @@ async function processBatchAnalysisWithExistingRecords(
     } catch (notifyError: any) {
       logWarn(
         `Failed to create notification for batch ${batchId}: ${notifyError.message}`
+      );
+    }
+
+    // Send admin email notification about ranking completion
+    try {
+      await notifyAdminsRankingComplete(
+        domain,
+        batchId,
+        locationCount,
+        avgScore
+      );
+      log(`[Batch ${batchId}] Admin email sent for ranking completion`);
+    } catch (adminEmailError: any) {
+      logWarn(
+        `Failed to send admin email for batch ${batchId}: ${adminEmailError.message}`
       );
     }
   } catch (error: any) {

@@ -15,7 +15,7 @@ const onboardingRoutes = express.Router();
 
 // Helper to parse google account id from header when middleware isn't used
 const getAccountIdFromHeader = (req: express.Request): number | null => {
-  const header = req.headers["x-google-account-id"]; 
+  const header = req.headers["x-google-account-id"];
   if (!header) return null;
   const id = parseInt(header as string, 10);
   return isNaN(id) ? null : id;
@@ -83,6 +83,7 @@ onboardingRoutes.get("/status", async (req: AuthenticatedRequest, res) => {
         lastName: googleAccount.last_name || null,
         practiceName: googleAccount.practice_name || null,
         domainName: googleAccount.domain_name || null,
+        email: googleAccount.email || null,
       },
     });
   } catch (error) {
@@ -109,7 +110,8 @@ onboardingRoutes.post(
   "/save-properties",
   async (req: AuthenticatedRequest, res) => {
     try {
-      const googleAccountId = req.googleAccountId ?? getAccountIdFromHeader(req);
+      const googleAccountId =
+        req.googleAccountId ?? getAccountIdFromHeader(req);
 
       if (!googleAccountId) {
         return res.status(400).json({
@@ -138,7 +140,7 @@ onboardingRoutes.post(
       }
 
       // Update database with profile info only
-      // Also create organization if it doesn't exist (handled by migration for existing users, 
+      // Also create organization if it doesn't exist (handled by migration for existing users,
       // but new users need org creation here or in auth)
       // For this refactor, let's assume auth creates the user/account, and here we just update profile.
       // We should also ensure an organization exists.
@@ -158,13 +160,14 @@ onboardingRoutes.post(
         if (!orgId) {
           const [newOrg] = await trx("organizations")
             .insert({
-              name: profile.practiceName || `${profile.firstName}'s Organization`,
+              name:
+                profile.practiceName || `${profile.firstName}'s Organization`,
               domain: profile.domainName,
               created_at: new Date(),
               updated_at: new Date(),
             })
             .returning("id");
-          
+
           orgId = newOrg.id;
 
           // Link user to organization as admin
@@ -177,27 +180,23 @@ onboardingRoutes.post(
           });
         } else {
           // Update existing organization name/domain
-          await trx("organizations")
-            .where({ id: orgId })
-            .update({
-              name: profile.practiceName,
-              domain: profile.domainName,
-              updated_at: new Date(),
-            });
+          await trx("organizations").where({ id: orgId }).update({
+            name: profile.practiceName,
+            domain: profile.domainName,
+            updated_at: new Date(),
+          });
         }
 
         // Update google account
-        await trx("google_accounts")
-          .where({ id: googleAccountId })
-          .update({
-            first_name: profile.firstName,
-            last_name: profile.lastName,
-            practice_name: profile.practiceName,
-            domain_name: profile.domainName,
-            organization_id: orgId,
-            onboarding_completed: true,
-            updated_at: new Date(),
-          });
+        await trx("google_accounts").where({ id: googleAccountId }).update({
+          first_name: profile.firstName,
+          last_name: profile.lastName,
+          practice_name: profile.practiceName,
+          domain_name: profile.domainName,
+          organization_id: orgId,
+          onboarding_completed: true,
+          updated_at: new Date(),
+        });
       });
 
       console.log(

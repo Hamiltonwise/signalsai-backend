@@ -5,7 +5,7 @@ import csv from "csvtojson";
 import axios from "axios";
 import db from "../database/connection";
 import { aggregatePmsData } from "../utils/pmsAggregator";
-import { createNotification } from "../utils/notificationHelper";
+import { createNotification, notifyAdmins } from "../utils/notificationHelper";
 import {
   initializeAutomationStatus,
   updateAutomationStatus,
@@ -14,6 +14,11 @@ import {
   getAutomationStatus,
   AutomationStatusDetail,
 } from "../utils/pmsAutomationStatus";
+
+const APP_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://app.getalloro.com"
+    : "http://localhost:5174";
 
 type PmsStatus = "pending" | "error" | "completed" | string;
 
@@ -1104,6 +1109,27 @@ pmsRoutes.get("/jobs/:id/automation-status", async (req, res) => {
     ) {
       await completeStep(jobId, "pms_parser", "admin_approval");
       await setAwaitingApproval(jobId, "admin_approval");
+
+      // Send admin email notification that PMS output is ready for review
+      try {
+        const domain = job.domain || "Unknown";
+        await notifyAdmins({
+          summary: `PMS parser output is ready for admin review for ${domain}`,
+          newActionItems: 1,
+          practiceRankingsCompleted: [],
+          monthlyAgentsCompleted: [],
+        });
+        console.log(
+          `[PMS] ✓ Admin email sent for PMS job ${jobId} ready for review`
+        );
+      } catch (emailError: any) {
+        console.error(
+          `[PMS] ⚠ Failed to send admin email for PMS job ${jobId}:`,
+          emailError.message
+        );
+        // Don't fail the request if email fails
+      }
+
       // Refresh the automation status
       const updatedJob = await db("pms_jobs")
         .where({ id: jobId })

@@ -26,7 +26,11 @@ import {
   fetchGBPDataForRange,
 } from "../services/dataAggregator";
 import { aggregatePmsData } from "../utils/pmsAggregator";
-import { createNotification } from "../utils/notificationHelper";
+import {
+  createNotification,
+  notifyAdmins,
+  notifyAdminsMonthlyAgentComplete,
+} from "../utils/notificationHelper";
 import {
   processLocationRanking,
   MAX_RETRIES,
@@ -2328,7 +2332,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
       });
     }
 
-    // Create notification for completed monthly agents
+    // Create notification for completed monthly agents (also sends user email)
     try {
       await createNotification(
         domain,
@@ -2353,15 +2357,13 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
 
     const duration = Date.now() - startTime;
 
-    // Count tasks created (simplified - count would need to be tracked during processMonthlyAgents)
-    // For now, we'll estimate based on agent outputs
+    // Count tasks created from database for this domain created during this run
     const tasksCreated = {
       user: 0,
       alloro: 0,
       total: 0,
     };
 
-    // Get task counts from database for this domain created in last minute
     try {
       const recentTasks = await db("tasks")
         .where("domain_name", domain)
@@ -2377,6 +2379,19 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
       ).length;
     } catch (e) {
       log(`[CLIENT] Could not count tasks: ${e}`);
+    }
+
+    // Send admin email notification about monthly agent completion (after tasksCreated is populated)
+    try {
+      await notifyAdminsMonthlyAgentComplete(
+        domain,
+        { summaryId, referralEngineId, opportunityId, croOptimizerId },
+        tasksCreated
+      );
+      log(`[CLIENT] ✓ Admin email sent for monthly agents completion`);
+    } catch (adminEmailError: any) {
+      log(`[CLIENT] ⚠ Failed to send admin email: ${adminEmailError.message}`);
+      // Don't fail the entire operation if admin email fails
     }
 
     // Complete the PMS automation status
