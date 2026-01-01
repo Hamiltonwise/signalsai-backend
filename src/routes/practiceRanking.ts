@@ -1341,7 +1341,8 @@ router.post("/refresh-competitors", async (req: Request, res: Response) => {
 /**
  * GET /api/practice-ranking/latest
  * Get the latest completed rankings for all locations of a google account (client dashboard)
- * Returns array of rankings, one per gbp_location_id
+ * Returns array of rankings from the MOST RECENT BATCH only
+ * This ensures clients see only the locations from their latest analysis run
  */
 router.get("/latest", async (req: Request, res: Response) => {
   try {
@@ -1355,24 +1356,31 @@ router.get("/latest", async (req: Request, res: Response) => {
       });
     }
 
-    // Get unique gbp_location_ids for this account
-    const locationIds = await db("practice_rankings")
+    // Helper function to parse JSON fields
+    const parse = (field: any) => {
+      if (!field) return null;
+      return typeof field === "string" ? JSON.parse(field) : field;
+    };
+
+    // Step 1: Find the most recent batch_id with completed rankings for this account
+    const latestBatchRecord = await db("practice_rankings")
       .where({
         google_account_id: Number(googleAccountId),
         status: "completed",
       })
-      .whereNotNull("gbp_location_id")
-      .distinct("gbp_location_id")
-      .pluck("gbp_location_id");
+      .whereNotNull("batch_id")
+      .orderBy("created_at", "desc")
+      .first()
+      .select("batch_id");
 
-    if (locationIds.length === 0) {
-      // Fall back to legacy: get latest ranking without gbp_location_id
+    if (!latestBatchRecord || !latestBatchRecord.batch_id) {
+      // Fall back to legacy: get latest ranking without batch_id (old format)
       const legacyRanking = await db("practice_rankings")
         .where({
           google_account_id: Number(googleAccountId),
           status: "completed",
         })
-        .whereNull("gbp_location_id")
+        .whereNull("batch_id")
         .orderBy("created_at", "desc")
         .first();
 
@@ -1385,11 +1393,6 @@ router.get("/latest", async (req: Request, res: Response) => {
       }
 
       // Return legacy single ranking in array format for consistency
-      const parse = (field: any) => {
-        if (!field) return null;
-        return typeof field === "string" ? JSON.parse(field) : field;
-      };
-
       return res.json({
         success: true,
         rankings: [
@@ -1415,37 +1418,59 @@ router.get("/latest", async (req: Request, res: Response) => {
             errorMessage: legacyRanking.error_message,
             createdAt: legacyRanking.created_at,
             updatedAt: legacyRanking.updated_at,
+            previousAnalysis: null,
           },
         ],
       });
     }
 
-    // Get latest ranking AND previous ranking for each location (for trend comparison)
+    const latestBatchId = latestBatchRecord.batch_id;
+    log(
+      `[GET /latest] Found latest batch: ${latestBatchId} for account ${googleAccountId}`
+    );
+
+    // Step 2: Get all completed rankings from the latest batch
+    const batchRankings = await db("practice_rankings")
+      .where({
+        google_account_id: Number(googleAccountId),
+        batch_id: latestBatchId,
+        status: "completed",
+      })
+      .orderBy("created_at", "asc");
+
+    if (batchRankings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "No completed rankings found in the latest batch",
+      });
+    }
+
+    log(
+      `[GET /latest] Found ${batchRankings.length} rankings in batch ${latestBatchId}`
+    );
+
+    // Step 3: For each ranking in the batch, get the previous analysis for trend comparison
     const rankingsWithPrevious = await Promise.all(
-      locationIds.map(async (locationId) => {
-        // Get the two most recent completed rankings for this location
-        const [current, previous] = await db("practice_rankings")
+      batchRankings.map(async (ranking) => {
+        // Get the previous completed ranking for this location (excluding current batch)
+        const previous = await db("practice_rankings")
           .where({
             google_account_id: Number(googleAccountId),
-            gbp_location_id: locationId,
+            gbp_location_id: ranking.gbp_location_id,
             status: "completed",
           })
+          .whereNot({ batch_id: latestBatchId })
           .orderBy("created_at", "desc")
-          .limit(2);
+          .first();
 
-        return { current, previous: previous || null };
+        return { ranking, previous: previous || null };
       })
     );
 
-    // Filter out nulls and parse JSON fields
-    const parse = (field: any) => {
-      if (!field) return null;
-      return typeof field === "string" ? JSON.parse(field) : field;
-    };
-
-    const validRankings = rankingsWithPrevious
-      .filter((r) => r.current !== null && r.current !== undefined)
-      .map(({ current: ranking, previous }) => ({
+    // Format the response
+    const formattedRankings = rankingsWithPrevious.map(
+      ({ ranking, previous }) => ({
         id: ranking.id,
         googleAccountId: ranking.google_account_id,
         domain: ranking.domain,
@@ -1467,7 +1492,7 @@ router.get("/latest", async (req: Request, res: Response) => {
         errorMessage: ranking.error_message,
         createdAt: ranking.created_at,
         updatedAt: ranking.updated_at,
-        // Include previous ranking data for trend comparison
+        // Include previous ranking data for trend comparison (from any previous batch)
         previousAnalysis: previous
           ? {
               id: previous.id,
@@ -1478,11 +1503,13 @@ router.get("/latest", async (req: Request, res: Response) => {
               rawData: parse(previous.raw_data),
             }
           : null,
-      }));
+      })
+    );
 
     return res.json({
       success: true,
-      rankings: validRankings,
+      batchId: latestBatchId,
+      rankings: formattedRankings,
     });
   } catch (error: any) {
     logError("GET /latest", error);
