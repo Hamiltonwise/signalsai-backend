@@ -507,6 +507,93 @@ router.post("/bulk/unarchive", async (req: Request, res: Response) => {
 });
 
 // =====================================================================
+// DELETE /api/admin/agent-outputs/:id
+// =====================================================================
+/**
+ * Permanently delete a single agent output
+ */
+router.delete("/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    console.log(`[Admin Agent Outputs] Deleting output ID: ${id}`);
+
+    // Check if output exists
+    const output = await db("agent_results").where("id", id).first();
+
+    if (!output) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Agent output not found",
+      });
+    }
+
+    // Delete the output
+    await db("agent_results").where("id", id).del();
+
+    console.log(`[Admin Agent Outputs] ✓ Permanently deleted output ID: ${id}`);
+
+    return res.json({
+      success: true,
+      message: "Agent output permanently deleted",
+      data: { id: parseInt(id, 10) },
+    });
+  } catch (error: any) {
+    console.error("[Admin Agent Outputs] Error deleting output:", error);
+    return res.status(500).json({
+      success: false,
+      error: "DELETE_ERROR",
+      message: error?.message || "Failed to delete agent output",
+    });
+  }
+});
+
+// =====================================================================
+// POST /api/admin/agent-outputs/bulk/delete
+// =====================================================================
+/**
+ * Bulk delete multiple agent outputs permanently
+ * Body: { ids: number[] }
+ */
+router.post("/bulk/delete", async (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+
+    // Validate input
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "Must provide an array of output IDs",
+      });
+    }
+
+    console.log(`[Admin Agent Outputs] Bulk deleting ${ids.length} output(s)`);
+
+    // Delete all outputs
+    const deleted = await db("agent_results").whereIn("id", ids).del();
+
+    console.log(
+      `[Admin Agent Outputs] ✓ Permanently deleted ${deleted} output(s)`
+    );
+
+    return res.json({
+      success: true,
+      message: `${deleted} output(s) permanently deleted`,
+      data: { deleted },
+    });
+  } catch (error: any) {
+    console.error("[Admin Agent Outputs] Error bulk deleting:", error);
+    return res.status(500).json({
+      success: false,
+      error: "BULK_DELETE_ERROR",
+      message: error?.message || "Failed to bulk delete outputs",
+    });
+  }
+});
+
+// =====================================================================
 // GET /api/admin/agent-outputs/stats/summary
 // =====================================================================
 /**
