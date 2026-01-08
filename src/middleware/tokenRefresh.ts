@@ -9,6 +9,10 @@ import { OAuth2Client } from "google-auth-library";
 export interface AuthenticatedRequest extends Request {
   oauth2Client?: OAuth2Client;
   googleAccountId?: number;
+  user?: {
+    userId: number;
+    email: string;
+  };
 }
 
 /**

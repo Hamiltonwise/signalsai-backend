@@ -1,7 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import { db } from "../../database/connection";
-import { authenticateToken } from "../../middleware/auth";
+import { authenticateToken, AuthRequest } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";
 
 const router = express.Router();
@@ -16,7 +16,7 @@ router.post(
   "/pilot/:userId",
   authenticateToken,
   superAdminMiddleware,
-  async (req, res) => {
+  async (req: AuthRequest, res) => {
     try {
       const { userId } = req.params;
 
