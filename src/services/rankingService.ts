@@ -32,6 +32,7 @@ import {
 } from "../services/rankingAlgorithm";
 import { createNotification } from "../utils/notificationHelper";
 import axios from "axios";
+import { listLocalPostsInRange } from "../routes/gbp";
 
 // Webhook URL from environment
 const PRACTICE_RANKING_ANALYSIS_WEBHOOK =
@@ -435,6 +436,95 @@ export async function processLocationRanking(
   const gbpData = clientLocation?.data;
   const profileData = gbpData?.profile;
 
+  // Fetch local posts for last 30 days via GBP API
+  let postsLast30d = 0;
+  try {
+    const postsEndDate = new Date();
+    const postsStartDate = new Date();
+    postsStartDate.setDate(postsStartDate.getDate() - 30);
+    const postsStart = postsStartDate.toISOString().split("T")[0];
+    const postsEnd = postsEndDate.toISOString().split("T")[0];
+
+    log(
+      `[RANKING] [${rankingId}] Fetching posts for ${gbpAccountId}/${gbpLocationId} from ${postsStart} to ${postsEnd}`
+    );
+
+    const localPosts = await listLocalPostsInRange(
+      oauth2Client,
+      gbpAccountId,
+      gbpLocationId,
+      postsStart,
+      postsEnd,
+      50
+    );
+    postsLast30d = localPosts.length;
+    log(
+      `[RANKING] [${rankingId}] ✓ Fetched ${postsLast30d} posts from last 30 days`
+    );
+  } catch (error: any) {
+    log(`[RANKING] [${rankingId}] ✗ Failed to fetch posts: ${error.message}`);
+    // Continue with postsLast30d = 0 if fetch fails
+  }
+
+  // Fetch client photos count via Apify
+  // First search for client on Google Maps to get their Place ID (GBP location ID ≠ Google Place ID)
+  let clientPhotosCount = 0;
+  let clientPlaceId: string | null = null;
+  try {
+    // Search for client business on Google Maps to find their Place ID
+    const clientSearchQuery = `${gbpLocationName} ${marketLocation}`;
+    log(
+      `[RANKING] [${rankingId}] Searching Google Maps for client: "${clientSearchQuery}"`
+    );
+
+    const searchResults = await discoverCompetitors(clientSearchQuery, 10);
+    log(
+      `[RANKING] [${rankingId}] Found ${searchResults.length} search results`
+    );
+
+    // Find the client in search results by matching name
+    const clientNameLower = gbpLocationName.toLowerCase().trim();
+    const clientMatch = searchResults.find((result) => {
+      const resultNameLower = (result.name || "").toLowerCase().trim();
+      return (
+        resultNameLower === clientNameLower ||
+        resultNameLower.includes(clientNameLower) ||
+        clientNameLower.includes(resultNameLower)
+      );
+    });
+
+    if (clientMatch?.placeId) {
+      clientPlaceId = clientMatch.placeId;
+      log(
+        `[RANKING] [${rankingId}] ✓ Found client Place ID: ${clientPlaceId} (name: ${clientMatch.name})`
+      );
+
+      // Now fetch detailed data including photos using the correct Place ID
+      const clientApifyData = await getCompetitorDetails([clientPlaceId], []);
+      if (clientApifyData.length > 0) {
+        clientPhotosCount = clientApifyData[0]?.photosCount || 0;
+        log(
+          `[RANKING] [${rankingId}] ✓ Fetched ${clientPhotosCount} photos from Apify`
+        );
+      } else {
+        log(
+          `[RANKING] [${rankingId}] ✗ Apify returned empty data for Place ID: ${clientPlaceId}`
+        );
+      }
+    } else {
+      log(
+        `[RANKING] [${rankingId}] ✗ Could not find client in Google Maps search results. Searched: ${searchResults
+          .map((r) => r.name)
+          .join(", ")}`
+      );
+    }
+  } catch (error: any) {
+    log(
+      `[RANKING] [${rankingId}] ✗ Failed to fetch client photos: ${error.message}`
+    );
+    // Continue with clientPhotosCount = 0 if fetch fails
+  }
+
   const clientPracticeData: PracticeData = {
     name: gbpLocationName || profileData?.title || domain,
     primaryCategory: profileData?.primaryCategory || "Dentist",
@@ -442,13 +532,13 @@ export async function processLocationRanking(
     totalReviews: gbpData?.reviews?.allTime?.totalReviewCount || 0,
     averageRating: gbpData?.reviews?.allTime?.averageRating || 0,
     reviewsLast30d: gbpData?.reviews?.window?.newReviews || 0,
-    postsLast90d: 0,
+    postsLast30d: postsLast30d,
     hasWebsite: !!profileData?.websiteUri,
     hasPhone: !!profileData?.phoneNumber,
     hasHours: !!profileData?.hasHours,
     hoursComplete: profileData?.hasHours || false,
     descriptionLength: profileData?.description?.length || 0,
-    photosCount: 0,
+    photosCount: clientPhotosCount,
   };
 
   const clientRanking = calculateRankingScore(clientPracticeData, specialty);
@@ -462,7 +552,7 @@ export async function processLocationRanking(
       totalReviews: comp.totalReviews,
       averageRating: comp.averageRating,
       reviewsLast30d: comp.reviewsLast30d || 0,
-      postsLast90d: comp.postsLast90d || 0,
+      postsLast30d: comp.postsLast90d || 0,
       hasWebsite: comp.hasWebsite,
       hasPhone: comp.hasPhone,
       hasHours: comp.hasHours,
@@ -496,7 +586,7 @@ export async function processLocationRanking(
       averageRating: clientPracticeData.averageRating,
       primaryCategory: clientPracticeData.primaryCategory,
       reviewsLast30d: clientPracticeData.reviewsLast30d,
-      postsLast90d: clientPracticeData.postsLast90d,
+      postsLast30d: clientPracticeData.postsLast30d,
       photosCount: clientPracticeData.photosCount || 0,
       hasWebsite: clientPracticeData.hasWebsite,
       hasPhone: clientPracticeData.hasPhone,
@@ -590,7 +680,7 @@ export async function processLocationRanking(
         clientRanking.factors.gbpActivity.max,
       weighted: clientRanking.factors.gbpActivity.score,
       weight: FACTOR_WEIGHTS.gbpActivity,
-      value: clientPracticeData.postsLast90d,
+      value: clientPracticeData.postsLast30d,
       details: clientRanking.factors.gbpActivity.details,
     },
     sentiment: {

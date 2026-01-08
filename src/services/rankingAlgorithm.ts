@@ -96,9 +96,15 @@ const BENCHMARKS = {
   },
   gbpPosts: {
     min: 0,
-    avg: 4,
-    excellent: 12,
-    max: 24, // posts per 90 days
+    avg: 2,
+    excellent: 4,
+    max: 8, // posts per month (30 days)
+  },
+  gbpPhotos: {
+    min: 0,
+    avg: 10,
+    excellent: 30,
+    max: 100, // total photos
   },
 };
 
@@ -110,7 +116,7 @@ export interface PracticeData {
   averageRating: number;
   reviewsLast30d: number;
   reviewsLast90d?: number;
-  postsLast90d: number;
+  postsLast30d: number;
   hasWebsite: boolean;
   hasPhone: boolean;
   hasHours: boolean;
@@ -382,10 +388,10 @@ function calculateNapConsistencyScore(
 
 /**
  * Calculate GBP profile activity score
- * Based on posts in last 90 days and profile completeness
+ * Based on posts in last 30 days, photos, and description
  */
 function calculateGbpActivityScore(
-  postsLast90d: number,
+  postsLast30d: number,
   photosCount: number = 0,
   descriptionLength: number = 0
 ): FactorScore {
@@ -393,10 +399,11 @@ function calculateGbpActivityScore(
 
   // Posts are the main factor (60% of this score)
   const postScore =
-    Math.min(postsLast90d / BENCHMARKS.gbpPosts.excellent, 1.0) * 0.6;
+    Math.min(postsLast30d / BENCHMARKS.gbpPosts.excellent, 1.0) * 0.6;
 
   // Photos (25% of this score)
-  const photoScore = Math.min(photosCount / 50, 1.0) * 0.25;
+  const photoScore =
+    Math.min(photosCount / BENCHMARKS.gbpPhotos.excellent, 1.0) * 0.25;
 
   // Description (15% of this score)
   const descScore = Math.min(descriptionLength / 750, 1.0) * 0.15;
@@ -405,12 +412,12 @@ function calculateGbpActivityScore(
   const score = totalNormalized * maxScore;
 
   let details: string;
-  if (postsLast90d >= BENCHMARKS.gbpPosts.excellent) {
-    details = `Excellent GBP activity: ${postsLast90d} posts in last 90 days`;
-  } else if (postsLast90d >= BENCHMARKS.gbpPosts.avg) {
-    details = `Good GBP activity: ${postsLast90d} posts in last 90 days`;
+  if (postsLast30d >= BENCHMARKS.gbpPosts.excellent) {
+    details = `Excellent GBP activity: ${postsLast30d} posts in last 30 days, ${photosCount} photos`;
+  } else if (postsLast30d >= BENCHMARKS.gbpPosts.avg) {
+    details = `Good GBP activity: ${postsLast30d} posts in last 30 days, ${photosCount} photos`;
   } else {
-    details = `Low GBP activity: ${postsLast90d} posts in last 90 days (recommended: ${BENCHMARKS.gbpPosts.excellent})`;
+    details = `Low GBP activity: ${postsLast30d} posts in last 30 days (recommended: ${BENCHMARKS.gbpPosts.excellent}), ${photosCount} photos`;
   }
 
   return {
@@ -486,7 +493,7 @@ export function calculateRankingScore(
       practice.hoursComplete
     ),
     gbpActivity: calculateGbpActivityScore(
-      practice.postsLast90d,
+      practice.postsLast30d,
       practice.photosCount,
       practice.descriptionLength
     ),

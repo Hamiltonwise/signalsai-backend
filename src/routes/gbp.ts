@@ -589,8 +589,9 @@ const getLocationProfile = async (
 
 /**
  * Helper: List local posts in date range with early exit optimization
+ * Exported for use in practice ranking
  */
-const listLocalPostsInRange = async (
+export const listLocalPostsInRange = async (
   auth: any,
   accountId: string,
   locationId: string,

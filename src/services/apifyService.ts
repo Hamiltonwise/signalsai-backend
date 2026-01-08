@@ -285,7 +285,8 @@ export async function getCompetitorDetails(
         })),
         language: "en",
         maxReviews: 10,
-        maxImages: 0,
+        maxImages: 1, // Need at least 1 to get imageCount in response
+        scrapeImageUrls: false, // Don't need actual URLs, just count
       },
       {
         headers: {
@@ -332,6 +333,15 @@ export async function getCompetitorDetails(
         });
       }
 
+      // Log raw item data for debugging photo count issues
+      const photosCount =
+        item.imageCount || item.imagesCount || item.images?.length || 0;
+      if (photosCount === 0) {
+        log(
+          `[${name}] Photo fields: imageCount=${item.imageCount}, imagesCount=${item.imagesCount}, images.length=${item.images?.length}`
+        );
+      }
+
       return {
         placeId: item.placeId,
         name: name,
@@ -342,7 +352,7 @@ export async function getCompetitorDetails(
         averageRating: item.totalScore || 0,
         reviewsLast30d,
         reviewsLast90d,
-        photosCount: item.imageCount || item.images?.length || 0,
+        photosCount: photosCount,
         postsLast90d: 0, // GBP posts not available via scraping
         hasWebsite: !!item.website,
         hasPhone: !!item.phone,
