@@ -12,6 +12,7 @@ import {
   completeStep,
   setAwaitingApproval,
   getAutomationStatus,
+  resetToStep,
   AutomationStatusDetail,
 } from "../utils/pmsAutomationStatus";
 
@@ -165,31 +166,180 @@ const upload = multer({
 /**
  * POST /pms/upload
  * Upload and process PMS data from CSV, XLS, XLSX, or TXT files
- * Converts files to CSV format then to JSON using csvtojson library
+ * OR accept manually entered data (JSON body with entryType: 'manual')
+ *
+ * For file uploads: Converts files to CSV format then to JSON using csvtojson library
+ * For manual entry: Data goes directly to monthly agents (skips admin/client approval)
  */
 pmsRoutes.post("/upload", upload.single("csvFile"), async (req, res) => {
   try {
-    const { clientId, pmsType } = req.body;
+    const { domain, pmsType, manualData, entryType } = req.body;
 
-    if (!clientId) {
+    if (!domain) {
       return res.status(400).json({
         success: false,
-        error: "Missing clientId",
+        error: "Missing domain parameter",
       });
     }
 
+    // =====================================================================
+    // MANUAL ENTRY PATH
+    // Client entered data directly - skip parsing, skip approvals
+    // =====================================================================
+    if (entryType === "manual" && manualData) {
+      console.log(
+        `[PMS] Manual entry received for domain: ${domain}, months: ${
+          Array.isArray(manualData) ? manualData.length : 0
+        }`
+      );
+
+      // Parse manualData if it's a string
+      let parsedManualData = manualData;
+      if (typeof manualData === "string") {
+        try {
+          parsedManualData = JSON.parse(manualData);
+        } catch (parseError) {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid manualData format - must be valid JSON",
+          });
+        }
+      }
+
+      if (!Array.isArray(parsedManualData) || parsedManualData.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "manualData must be a non-empty array of month entries",
+        });
+      }
+
+      // Create job record with manual entry data
+      const [result] = await db("pms_jobs")
+        .insert({
+          time_elapsed: 0,
+          status: "approved", // Skip directly to approved status
+          response_log: JSON.stringify({
+            monthly_rollup: parsedManualData,
+            entry_type: "manual",
+          }),
+          domain: domain,
+          is_approved: 1, // Auto-approve (no admin review needed)
+          is_client_approved: 1, // Auto-approve (client entered it themselves)
+        })
+        .returning("id");
+
+      const jobId = result?.id;
+
+      if (!jobId) {
+        throw new Error("Failed to create PMS job record");
+      }
+
+      // Initialize automation status tracking
+      await initializeAutomationStatus(jobId);
+
+      // Mark file_upload as completed (manual data received)
+      await completeStep(jobId, "file_upload");
+
+      // Skip pms_parser step (no AI parsing needed for manual entry)
+      await updateAutomationStatus(jobId, {
+        step: "pms_parser",
+        stepStatus: "skipped",
+        customMessage: "Manual entry - no parsing required",
+      });
+
+      // Skip admin_approval step (client entered it themselves)
+      await updateAutomationStatus(jobId, {
+        step: "admin_approval",
+        stepStatus: "skipped",
+        customMessage: "Manual entry - no admin approval required",
+      });
+
+      // Skip client_approval step (client entered it themselves)
+      await updateAutomationStatus(jobId, {
+        step: "client_approval",
+        stepStatus: "skipped",
+        customMessage: "Manual entry - no client approval required",
+      });
+
+      // Start monthly agents immediately
+      await updateAutomationStatus(jobId, {
+        status: "processing",
+        step: "monthly_agents",
+        stepStatus: "processing",
+        subStep: "data_fetch",
+        customMessage: "Starting monthly agents - fetching data...",
+      });
+
+      // Trigger monthly agents immediately
+      try {
+        const account = await db("google_accounts")
+          .where({ domain_name: domain })
+          .first();
+
+        if (account) {
+          console.log(
+            `[PMS] Manual entry: Triggering monthly agents for ${domain}`
+          );
+
+          // Fire async request to start monthly agents (don't wait)
+          axios
+            .post(
+              `http://localhost:${
+                process.env.PORT || 3000
+              }/api/agents/monthly-agents-run`,
+              {
+                googleAccountId: account.id,
+                domain: domain,
+                force: true,
+                pmsJobId: jobId,
+              }
+            )
+            .then(() => {
+              console.log(
+                `[PMS] Monthly agents triggered successfully for ${domain} (manual entry)`
+              );
+            })
+            .catch((error) => {
+              console.error(
+                `[PMS] Failed to trigger monthly agents for manual entry: ${error.message}`
+              );
+            });
+        } else {
+          console.warn(
+            `[PMS] No google account found for domain ${domain} - monthly agents not triggered`
+          );
+        }
+      } catch (triggerError: any) {
+        console.error(
+          `[PMS] Error triggering monthly agents for manual entry: ${triggerError.message}`
+        );
+        // Don't fail the request if agent trigger fails
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          recordsProcessed: parsedManualData.length,
+          recordsStored: parsedManualData.length,
+          entryType: "manual",
+          jobId,
+        },
+        message: `Manual entry received - ${parsedManualData.length} month(s) processed. Insights are being generated.`,
+      });
+    }
+
+    // =====================================================================
+    // FILE UPLOAD PATH (existing logic)
+    // =====================================================================
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        error: "No data file provided",
+        error: "No data file or manual entry provided",
       });
     }
 
     const fileName = req.file.originalname.toLowerCase();
     let csvData: string;
-
-    // Get domain from request body or use default
-    const domain = req.body.domain || "artfulorthodontics.com";
 
     const [result] = await db("pms_jobs")
       .insert({
@@ -242,13 +392,16 @@ pmsRoutes.post("/upload", upload.single("csvFile"), async (req, res) => {
     const jsonData = await csv().fromString(csvData);
     const recordsProcessed = jsonData.length;
 
-    // return res.json(jsonData);
-
     if (!jsonData)
       return res.status(500).json({
         success: false,
         error: "Failed to convert file data to JSON",
       });
+
+    // Save the raw input data for potential retry
+    await db("pms_jobs")
+      .where({ id: jobId })
+      .update({ raw_input_data: JSON.stringify(jsonData) });
 
     // Complete file_upload step and start pms_parser step
     await completeStep(jobId, "file_upload", "pms_parser");
@@ -283,8 +436,9 @@ pmsRoutes.post("/upload", upload.single("csvFile"), async (req, res) => {
       success: true,
       data: {
         recordsProcessed,
-        recordsStored: recordsProcessed, // For now, same as processed
-        jsonData,
+        recordsStored: recordsProcessed,
+        entryType: "csv",
+        jobId,
       },
       message: `Successfully processed file ${req.file.originalname} with ${recordsProcessed} records`,
     });
@@ -967,7 +1121,7 @@ pmsRoutes.patch("/jobs/:id/response", async (req, res) => {
 
     await db("pms_jobs")
       .where({ id: jobId })
-      .update({ response_log: responseValue, is_client_approved: 1 });
+      .update({ response_log: responseValue });
 
     const updatedJob = await db("pms_jobs")
       .select(
@@ -1234,6 +1388,262 @@ pmsRoutes.get("/automation/active", async (req, res) => {
     return res.status(500).json({
       success: false,
       error: `Failed to fetch active automation jobs: ${error.message}`,
+    });
+  }
+});
+
+/**
+ * POST /pms/jobs/:id/retry
+ * Retry a failed automation step (pms_parser or monthly_agents)
+ */
+pmsRoutes.post("/jobs/:id/retry", async (req, res) => {
+  try {
+    const jobId = Number(req.params.id);
+
+    if (Number.isNaN(jobId) || jobId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid job id provided",
+      });
+    }
+
+    const { stepToRetry } = req.body;
+
+    if (
+      !stepToRetry ||
+      !["pms_parser", "monthly_agents"].includes(stepToRetry)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "stepToRetry must be 'pms_parser' or 'monthly_agents'",
+      });
+    }
+
+    // Get the job with all relevant data
+    const job = await db("pms_jobs")
+      .where({ id: jobId })
+      .select(
+        "id",
+        "domain",
+        "status",
+        "raw_input_data",
+        "response_log",
+        "automation_status_detail",
+        "is_approved",
+        "is_client_approved"
+      )
+      .first();
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        error: "PMS job not found",
+      });
+    }
+
+    // Parse automation status to check if the step actually failed
+    let automationStatus: AutomationStatusDetail | null = null;
+    if (job.automation_status_detail) {
+      automationStatus =
+        typeof job.automation_status_detail === "string"
+          ? JSON.parse(job.automation_status_detail)
+          : job.automation_status_detail;
+    }
+
+    // Retry PMS Parser
+    if (stepToRetry === "pms_parser") {
+      // Check if we have raw input data to retry with
+      if (!job.raw_input_data) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "Cannot retry PMS parser - no raw input data saved. Please re-upload the file.",
+        });
+      }
+
+      // Parse the raw input data
+      let rawData;
+      try {
+        rawData =
+          typeof job.raw_input_data === "string"
+            ? JSON.parse(job.raw_input_data)
+            : job.raw_input_data;
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid raw input data format",
+        });
+      }
+
+      // Reset automation status to pms_parser step
+      await resetToStep(jobId, "pms_parser");
+
+      // Update job status back to pending
+      await db("pms_jobs").where({ id: jobId }).update({
+        status: "pending",
+        response_log: null,
+        is_approved: 0,
+        is_client_approved: 0,
+      });
+
+      // Update automation status to processing
+      await updateAutomationStatus(jobId, {
+        status: "processing",
+        step: "pms_parser",
+        stepStatus: "processing",
+        customMessage: "Retrying PMS parser agent...",
+      });
+
+      // Resend to n8n webhook
+      try {
+        await axios.post(
+          "https://n8napp.getalloro.com/webhook/parse-csv",
+          {
+            report_data: rawData,
+            jobId,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        console.log(
+          `[PMS] Successfully triggered PMS parser retry for job ${jobId}`
+        );
+
+        return res.json({
+          success: true,
+          message: "PMS parser retry initiated successfully",
+          data: {
+            jobId,
+            stepRetried: "pms_parser",
+          },
+        });
+      } catch (webhookError: any) {
+        console.error(
+          `[PMS] Failed to trigger PMS parser retry: ${webhookError.message}`
+        );
+
+        // Mark as failed again
+        await updateAutomationStatus(jobId, {
+          status: "failed",
+          step: "pms_parser",
+          stepStatus: "failed",
+          error: `Retry failed: ${webhookError.message}`,
+          customMessage: `Retry failed: ${webhookError.message}`,
+        });
+
+        return res.status(500).json({
+          success: false,
+          error: `Failed to retry PMS parser: ${webhookError.message}`,
+        });
+      }
+    }
+
+    // Retry Monthly Agents
+    if (stepToRetry === "monthly_agents") {
+      // Monthly agents need: domain, google account, and parsed PMS data (response_log)
+      if (!job.domain) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "Cannot retry monthly agents - no domain associated with this job",
+        });
+      }
+
+      // Check if response_log exists (PMS data must be parsed first)
+      if (!job.response_log) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "Cannot retry monthly agents - PMS data has not been parsed yet",
+        });
+      }
+
+      // Get google account for this domain
+      const account = await db("google_accounts")
+        .where({ domain_name: job.domain })
+        .first();
+
+      if (!account) {
+        return res.status(400).json({
+          success: false,
+          error: `Cannot retry monthly agents - no Google account found for domain ${job.domain}`,
+        });
+      }
+
+      // Reset automation status to monthly_agents step
+      await resetToStep(jobId, "monthly_agents");
+
+      // Update automation status to processing
+      await updateAutomationStatus(jobId, {
+        status: "processing",
+        step: "monthly_agents",
+        stepStatus: "processing",
+        subStep: "data_fetch",
+        customMessage: "Retrying monthly agents - fetching data...",
+      });
+
+      // Trigger monthly agents
+      try {
+        axios
+          .post(
+            `http://localhost:${
+              process.env.PORT || 3000
+            }/api/agents/monthly-agents-run`,
+            {
+              googleAccountId: account.id,
+              domain: job.domain,
+              force: true,
+              pmsJobId: jobId,
+            }
+          )
+          .then(() => {
+            console.log(
+              `[PMS] Monthly agents retry triggered successfully for ${job.domain}`
+            );
+          })
+          .catch((error) => {
+            console.error(
+              `[PMS] Failed to trigger monthly agents retry: ${error.message}`
+            );
+          });
+
+        return res.json({
+          success: true,
+          message: "Monthly agents retry initiated successfully",
+          data: {
+            jobId,
+            stepRetried: "monthly_agents",
+            domain: job.domain,
+          },
+        });
+      } catch (triggerError: any) {
+        console.error(
+          `[PMS] Error triggering monthly agents retry: ${triggerError.message}`
+        );
+
+        return res.status(500).json({
+          success: false,
+          error: `Failed to retry monthly agents: ${triggerError.message}`,
+        });
+      }
+    }
+
+    return res.status(400).json({
+      success: false,
+      error: "Invalid retry step",
+    });
+  } catch (error: any) {
+    console.error(
+      "❌ Error in POST /pms/jobs/:id/retry:",
+      error?.message || error
+    );
+    return res.status(500).json({
+      success: false,
+      error: `Failed to retry step: ${error.message}`,
     });
   }
 });

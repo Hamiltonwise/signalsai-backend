@@ -396,6 +396,106 @@ export async function failAutomation(
 }
 
 /**
+ * Reset automation status to retry from a specific step
+ * Clears error state, resets the target step and all subsequent steps
+ */
+export async function resetToStep(
+  jobId: number,
+  targetStep: StepKey
+): Promise<void> {
+  const job = await db("pms_jobs")
+    .where({ id: jobId })
+    .select("automation_status_detail")
+    .first();
+
+  if (!job) {
+    console.error(`[PMS-AUTOMATION] Job ${jobId} not found for reset`);
+    return;
+  }
+
+  let currentStatus: AutomationStatusDetail;
+
+  if (job.automation_status_detail) {
+    currentStatus =
+      typeof job.automation_status_detail === "string"
+        ? JSON.parse(job.automation_status_detail)
+        : job.automation_status_detail;
+  } else {
+    currentStatus = createInitialStatus();
+  }
+
+  const now = new Date().toISOString();
+
+  // Define step order for determining which steps to reset
+  const stepOrder: StepKey[] = [
+    "file_upload",
+    "pms_parser",
+    "admin_approval",
+    "client_approval",
+    "monthly_agents",
+    "task_creation",
+    "complete",
+  ];
+
+  const targetIndex = stepOrder.indexOf(targetStep);
+
+  // Reset target step and all subsequent steps
+  for (let i = targetIndex; i < stepOrder.length; i++) {
+    const stepKey = stepOrder[i];
+
+    if (stepKey === targetStep) {
+      // Reset target step to processing
+      currentStatus.steps[stepKey] = {
+        status: "processing",
+        startedAt: now,
+      };
+
+      // Special handling for monthly_agents - reset agentsCompleted
+      if (stepKey === "monthly_agents") {
+        currentStatus.steps[stepKey].agentsCompleted = [];
+        currentStatus.steps[stepKey].currentAgent = undefined;
+        currentStatus.steps[stepKey].subStep = undefined;
+      }
+    } else {
+      // Reset subsequent steps to pending
+      currentStatus.steps[stepKey] = {
+        status: "pending",
+      };
+
+      // Special handling for monthly_agents
+      if (stepKey === "monthly_agents") {
+        currentStatus.steps[stepKey].agentsCompleted = [];
+      }
+    }
+  }
+
+  // Update top-level status
+  currentStatus.status = "processing";
+  currentStatus.currentStep = targetStep;
+  currentStatus.currentSubStep = undefined;
+  currentStatus.progress = calculateProgress(targetStep);
+  currentStatus.message = getMessage(
+    targetStep,
+    undefined,
+    `Retrying ${STEP_CONFIG[targetStep].label}...`
+  );
+  currentStatus.error = undefined;
+  currentStatus.completedAt = undefined;
+  currentStatus.summary = undefined;
+
+  // Save to database
+  await db("pms_jobs")
+    .where({ id: jobId })
+    .update({
+      automation_status_detail: JSON.stringify(currentStatus),
+    });
+
+  console.log(
+    `[PMS-AUTOMATION] [${jobId}] Reset to step: ${targetStep} for retry`
+  );
+}
+
+/**
  * Complete the entire automation process
  */
 export async function completeAutomation(
