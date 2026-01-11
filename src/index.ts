@@ -34,6 +34,7 @@ import adminAuthRoutes from "./routes/admin/auth";
 import adminAgentOutputsRoutes from "./routes/admin/agentOutputs";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
+import scraperRoutes from "./routes/scraper";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -73,6 +74,7 @@ app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest
 app.use("/api/admin", adminAuthRoutes);
 app.use("/api/support", supportRoutes); // Help form / support inquiries
+app.use("/api/scraper", scraperRoutes); // Website scraper for n8n webhooks
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));
