@@ -105,6 +105,85 @@ interface HomepageRequest {
   domain: string;
 }
 
+/**
+ * Auto-scroll through entire page to trigger lazy-loaded content and animations
+ * This is critical for Elementor/WOW.js/AOS animations that trigger on scroll
+ */
+async function autoScrollPage(page: any): Promise<void> {
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve) => {
+      let totalHeight = 0;
+      const distance = 300; // Scroll 300px at a time
+      const delay = 100; // 100ms between scrolls
+
+      const timer = setInterval(() => {
+        const scrollHeight = document.body.scrollHeight;
+        window.scrollBy(0, distance);
+        totalHeight += distance;
+
+        if (totalHeight >= scrollHeight) {
+          clearInterval(timer);
+          // Scroll back to top for the screenshot
+          window.scrollTo(0, 0);
+          resolve();
+        }
+      }, delay);
+    });
+  });
+}
+
+/**
+ * Inject CSS to force visibility on common animation libraries
+ * Targets Elementor, WOW.js, AOS, and similar animation frameworks
+ */
+async function forceAnimationVisibility(page: any): Promise<void> {
+  await page.addStyleTag({
+    content: `
+      /* Force visibility for Elementor animations */
+      .elementor-invisible,
+      .elementor-widget.elementor-invisible {
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      
+      /* Force visibility for WOW.js */
+      .wow {
+        visibility: visible !important;
+        opacity: 1 !important;
+        animation: none !important;
+      }
+      
+      /* Force visibility for AOS (Animate On Scroll) */
+      [data-aos] {
+        opacity: 1 !important;
+        transform: none !important;
+        visibility: visible !important;
+      }
+      
+      /* Force visibility for GSAP ScrollTrigger */
+      .gsap-hidden,
+      [data-gsap] {
+        opacity: 1 !important;
+        visibility: visible !important;
+      }
+      
+      /* Generic animation overrides */
+      .animate__animated,
+      .animated {
+        animation-duration: 0s !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+      }
+      
+      /* Disable transitions temporarily */
+      *, *::before, *::after {
+        transition-duration: 0s !important;
+        animation-duration: 0s !important;
+      }
+    `,
+  });
+}
+
 interface HomepageResponse {
   success: boolean;
   desktop_screenshot?: string;
@@ -126,8 +205,8 @@ interface HomepageResponse {
  *
  * Response:
  *   - success: boolean
- *   - desktop_screenshot: base64 data URI (PNG)
- *   - mobile_screenshot: base64 data URI (PNG)
+ *   - desktop_screenshot: base64 data URI (JPEG, ~80% quality)
+ *   - mobile_screenshot: base64 data URI (JPEG, ~80% quality)
  *   - homepage_markup: raw HTML string
  */
 router.post(
@@ -182,10 +261,14 @@ router.post(
         }
       });
 
-      // ============ DESKTOP CAPTURE (1920x1080) ============
-      log("INFO", `Starting desktop capture`, { viewport: "1920x1080" });
+      // ============ DESKTOP CAPTURE (1280x720 - reduced for file size) ============
+      log("INFO", `Starting desktop capture`, { viewport: "1280x720" });
 
-      await page.setViewport({ width: 1920, height: 1080 });
+      await page.setViewport({
+        width: 1280,
+        height: 720,
+        deviceScaleFactor: 1,
+      });
       await page.setUserAgent(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       );
@@ -197,18 +280,29 @@ router.post(
         timeout: 30000,
       });
 
-      log("DEBUG", `Page loaded, waiting 5 seconds for dynamic content`);
+      log("DEBUG", `Page loaded, injecting animation visibility CSS`);
 
-      // Wait 5 seconds after page load for dynamic content
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      // Inject CSS to force visibility of animated elements
+      await forceAnimationVisibility(page);
 
-      log("DEBUG", `Taking desktop screenshot (full page)`);
+      log("DEBUG", `Auto-scrolling to trigger lazy content and animations`);
 
-      // Capture desktop screenshot (full page - top to bottom)
+      // Auto-scroll through page to trigger all animations
+      await autoScrollPage(page);
+
+      log("DEBUG", `Waiting 2 seconds for animations to settle`);
+
+      // Wait for animations to complete after scrolling
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      log("DEBUG", `Taking desktop screenshot (full page, JPEG 80% quality)`);
+
+      // Capture desktop screenshot (full page - JPEG for smaller file size)
       const desktopScreenshotBuffer = await page.screenshot({
         fullPage: true,
         encoding: "base64",
-        type: "png",
+        type: "jpeg",
+        quality: 80, // 80% quality - good balance of size and clarity
       });
 
       const desktopScreenshotSize = Math.round(
@@ -223,15 +317,15 @@ router.post(
       const markupSize = Math.round(homepageMarkup.length / 1024);
       log("INFO", `Homepage markup captured`, { sizeKB: markupSize });
 
-      // ============ MOBILE CAPTURE (390x844 - iPhone 14 Pro) ============
-      log("INFO", `Starting mobile capture`, { viewport: "390x844" });
+      // ============ MOBILE CAPTURE (375x667 - iPhone SE, reduced scale) ============
+      log("INFO", `Starting mobile capture`, { viewport: "375x667" });
 
       await page.setViewport({
-        width: 390,
-        height: 844,
+        width: 375,
+        height: 667,
         isMobile: true,
         hasTouch: true,
-        deviceScaleFactor: 2,
+        deviceScaleFactor: 1, // Reduced from 2 to save file size
       });
       await page.setUserAgent(
         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
@@ -245,18 +339,29 @@ router.post(
         timeout: 30000,
       });
 
-      log("DEBUG", `Mobile page loaded, waiting 5 seconds for dynamic content`);
+      log("DEBUG", `Mobile page loaded, injecting animation visibility CSS`);
 
-      // Wait 5 seconds after page load
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      // Inject CSS again for mobile view
+      await forceAnimationVisibility(page);
 
-      log("DEBUG", `Taking mobile screenshot (full page)`);
+      log("DEBUG", `Auto-scrolling mobile view`);
 
-      // Capture mobile screenshot (full page - top to bottom)
+      // Auto-scroll mobile view
+      await autoScrollPage(page);
+
+      log("DEBUG", `Waiting 2 seconds for mobile animations to settle`);
+
+      // Wait for animations to complete
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      log("DEBUG", `Taking mobile screenshot (full page, JPEG 80% quality)`);
+
+      // Capture mobile screenshot (full page - JPEG for smaller file size)
       const mobileScreenshotBuffer = await page.screenshot({
         fullPage: true,
         encoding: "base64",
-        type: "png",
+        type: "jpeg",
+        quality: 80,
       });
 
       const mobileScreenshotSize = Math.round(
@@ -281,8 +386,8 @@ router.post(
 
       return res.json({
         success: true,
-        desktop_screenshot: `data:image/png;base64,${desktopScreenshotBuffer}`,
-        mobile_screenshot: `data:image/png;base64,${mobileScreenshotBuffer}`,
+        desktop_screenshot: `data:image/jpeg;base64,${desktopScreenshotBuffer}`,
+        mobile_screenshot: `data:image/jpeg;base64,${mobileScreenshotBuffer}`,
         homepage_markup: homepageMarkup,
       } as HomepageResponse);
     } catch (error: any) {
