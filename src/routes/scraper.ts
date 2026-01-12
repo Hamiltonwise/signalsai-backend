@@ -1,7 +1,9 @@
 import { Router, Request, Response, NextFunction } from "express";
-import puppeteer, { Browser } from "puppeteer";
+import puppeteer, { Browser, Page } from "puppeteer";
 import fs from "fs";
 import path from "path";
+import https from "https";
+import http from "http";
 
 const router = Router();
 
@@ -184,11 +186,158 @@ async function forceAnimationVisibility(page: any): Promise<void> {
   });
 }
 
+/**
+ * Extract all unique links from the page
+ */
+async function extractPageLinks(page: Page): Promise<string[]> {
+  const links = await page.evaluate(() => {
+    const anchors = document.querySelectorAll("a[href]");
+    const hrefs: string[] = [];
+
+    anchors.forEach((anchor) => {
+      const href = anchor.getAttribute("href");
+      if (
+        href &&
+        !href.startsWith("#") &&
+        !href.startsWith("javascript:") &&
+        !href.startsWith("mailto:") &&
+        !href.startsWith("tel:")
+      ) {
+        hrefs.push(href);
+      }
+    });
+
+    return hrefs;
+  });
+
+  return [...new Set(links)]; // Remove duplicates
+}
+
+/**
+ * Check if a URL is broken (returns 4xx/5xx or times out)
+ */
+async function checkLinkStatus(
+  linkUrl: string,
+  baseUrl: string
+): Promise<{ url: string; status: number | string } | null> {
+  return new Promise((resolve) => {
+    try {
+      // Resolve relative URLs
+      let fullUrl: string;
+      try {
+        fullUrl = new URL(linkUrl, baseUrl).href;
+      } catch {
+        resolve({ url: linkUrl, status: "invalid_url" });
+        return;
+      }
+
+      const isHttps = fullUrl.startsWith("https://");
+      const protocol = isHttps ? https : http;
+
+      const request = protocol.request(
+        fullUrl,
+        {
+          method: "HEAD",
+          timeout: 5000,
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; LinkChecker/1.0)",
+          },
+        },
+        (response) => {
+          const status = response.statusCode || 0;
+          // Consider 4xx and 5xx as broken
+          if (status >= 400) {
+            resolve({ url: fullUrl, status });
+          } else {
+            resolve(null); // Link is OK
+          }
+        }
+      );
+
+      request.on("error", () => {
+        resolve({ url: fullUrl, status: "connection_error" });
+      });
+
+      request.on("timeout", () => {
+        request.destroy();
+        resolve({ url: fullUrl, status: "timeout" });
+      });
+
+      request.end();
+    } catch (error) {
+      resolve({ url: linkUrl, status: "error" });
+    }
+  });
+}
+
+/**
+ * Check multiple links and return broken ones (max 10)
+ */
+async function findBrokenLinks(
+  page: Page,
+  baseUrl: string,
+  maxBrokenLinks: number = 10
+): Promise<Array<{ url: string; status: number | string }>> {
+  const links = await extractPageLinks(page);
+  const brokenLinks: Array<{ url: string; status: number | string }> = [];
+
+  log("DEBUG", `Checking ${links.length} links for broken URLs`);
+
+  // Check links in batches of 5 to avoid overwhelming the server
+  const batchSize = 5;
+  for (
+    let i = 0;
+    i < links.length && brokenLinks.length < maxBrokenLinks;
+    i += batchSize
+  ) {
+    const batch = links.slice(i, i + batchSize);
+    const results = await Promise.all(
+      batch.map((link) => checkLinkStatus(link, baseUrl))
+    );
+
+    for (const result of results) {
+      if (result && brokenLinks.length < maxBrokenLinks) {
+        brokenLinks.push(result);
+      }
+    }
+  }
+
+  return brokenLinks;
+}
+
+/**
+ * Get page load time using Performance API
+ */
+async function getPageLoadTime(page: Page): Promise<number> {
+  const timing = await page.evaluate(() => {
+    const perf = performance.timing;
+    return {
+      navigationStart: perf.navigationStart,
+      loadEventEnd: perf.loadEventEnd,
+    };
+  });
+
+  // If loadEventEnd hasn't fired yet, use current time
+  if (timing.loadEventEnd === 0) {
+    return Date.now() - timing.navigationStart;
+  }
+
+  return timing.loadEventEnd - timing.navigationStart;
+}
+
+interface BrokenLink {
+  url: string;
+  status: number | string;
+}
+
 interface HomepageResponse {
   success: boolean;
   desktop_screenshot?: string;
   mobile_screenshot?: string;
   homepage_markup?: string;
+  isSecure?: boolean;
+  loadTime?: number;
+  brokenLinks?: BrokenLink[];
   error?: string;
 }
 
@@ -208,6 +357,9 @@ interface HomepageResponse {
  *   - desktop_screenshot: base64 data URI (JPEG, ~80% quality)
  *   - mobile_screenshot: base64 data URI (JPEG, ~80% quality)
  *   - homepage_markup: raw HTML string
+ *   - isSecure: boolean (true if site uses HTTPS)
+ *   - loadTime: number (page load time in milliseconds, excludes artificial delays)
+ *   - brokenLinks: array of broken links (max 10)
  */
 router.post(
   "/homepage",
@@ -280,6 +432,15 @@ router.post(
         timeout: 30000,
       });
 
+      // Capture page load time immediately after load (before our artificial delays)
+      const loadTime = await getPageLoadTime(page);
+      log("INFO", `Page load time captured`, { loadTimeMs: loadTime });
+
+      // Check if the final URL is secure (HTTPS)
+      const finalUrl = page.url();
+      const isSecure = finalUrl.startsWith("https://");
+      log("INFO", `Security check`, { isSecure, finalUrl });
+
       log("DEBUG", `Page loaded, injecting animation visibility CSS`);
 
       // Inject CSS to force visibility of animated elements
@@ -316,6 +477,13 @@ router.post(
       const homepageMarkup = await page.content();
       const markupSize = Math.round(homepageMarkup.length / 1024);
       log("INFO", `Homepage markup captured`, { sizeKB: markupSize });
+
+      // ============ BROKEN LINKS CHECK ============
+      log("INFO", `Starting broken links check (max 10)`);
+      const brokenLinks = await findBrokenLinks(page, finalUrl, 10);
+      log("INFO", `Broken links check completed`, {
+        brokenCount: brokenLinks.length,
+      });
 
       // ============ MOBILE CAPTURE (375x667 - iPhone SE, reduced scale) ============
       log("INFO", `Starting mobile capture`, { viewport: "375x667" });
@@ -389,6 +557,9 @@ router.post(
         desktop_screenshot: `data:image/jpeg;base64,${desktopScreenshotBuffer}`,
         mobile_screenshot: `data:image/jpeg;base64,${mobileScreenshotBuffer}`,
         homepage_markup: homepageMarkup,
+        isSecure,
+        loadTime,
+        brokenLinks,
       } as HomepageResponse);
     } catch (error: any) {
       const durationMs = Date.now() - startTime;
