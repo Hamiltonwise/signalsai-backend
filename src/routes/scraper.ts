@@ -325,6 +325,244 @@ async function getPageLoadTime(page: Page): Promise<number> {
   return timing.loadEventEnd - timing.navigationStart;
 }
 
+/**
+ * NAP (Name, Address, Phone) Detection
+ * Extracts business contact information from the page
+ */
+interface NAPDetails {
+  businessName: string | null;
+  addresses: string[];
+  phoneNumbers: string[];
+  emails: string[];
+}
+
+/**
+ * Extract NAP (Name, Address, Phone) details from the page
+ */
+async function extractNAPDetails(page: Page): Promise<NAPDetails> {
+  const napData = await page.evaluate(() => {
+    const result: NAPDetails = {
+      businessName: null,
+      addresses: [],
+      phoneNumbers: [],
+      emails: [],
+    };
+
+    // ============ BUSINESS NAME DETECTION ============
+    // Priority: Schema.org > OG title > h1 > title tag
+
+    // Try Schema.org LocalBusiness or Organization
+    const schemaScripts = document.querySelectorAll(
+      'script[type="application/ld+json"]'
+    );
+    schemaScripts.forEach((script) => {
+      try {
+        const data = JSON.parse(script.textContent || "");
+        // Handle both single object and array of objects
+        const schemas = Array.isArray(data) ? data : [data];
+        for (const schema of schemas) {
+          if (
+            schema["@type"] &&
+            (schema["@type"].includes("LocalBusiness") ||
+              schema["@type"].includes("Organization") ||
+              schema["@type"] === "LocalBusiness" ||
+              schema["@type"] === "Organization" ||
+              schema["@type"] === "MedicalBusiness" ||
+              schema["@type"] === "Dentist" ||
+              schema["@type"] === "Physician")
+          ) {
+            if (schema.name && !result.businessName) {
+              result.businessName = schema.name;
+            }
+            // Also extract address and phone from schema if available
+            if (schema.address) {
+              const addr = schema.address;
+              if (typeof addr === "string") {
+                result.addresses.push(addr);
+              } else if (addr.streetAddress) {
+                const parts = [
+                  addr.streetAddress,
+                  addr.addressLocality,
+                  addr.addressRegion,
+                  addr.postalCode,
+                  addr.addressCountry,
+                ].filter(Boolean);
+                result.addresses.push(parts.join(", "));
+              }
+            }
+            if (schema.telephone) {
+              result.phoneNumbers.push(schema.telephone);
+            }
+            if (schema.email) {
+              result.emails.push(schema.email);
+            }
+          }
+        }
+      } catch (e) {
+        // Invalid JSON, skip
+      }
+    });
+
+    // Fallback to OG site_name or title
+    if (!result.businessName) {
+      const ogSiteName = document.querySelector(
+        'meta[property="og:site_name"]'
+      );
+      if (ogSiteName) {
+        result.businessName = ogSiteName.getAttribute("content");
+      }
+    }
+
+    // Fallback to first h1
+    if (!result.businessName) {
+      const h1 = document.querySelector("h1");
+      if (h1 && h1.textContent) {
+        const text = h1.textContent.trim();
+        // Only use if it's reasonably short (likely a business name)
+        if (text.length < 100) {
+          result.businessName = text;
+        }
+      }
+    }
+
+    // Final fallback to title tag (cleaned)
+    if (!result.businessName) {
+      const title = document.title;
+      if (title) {
+        // Remove common suffixes like "| Home", "- Welcome", etc.
+        result.businessName = title.split(/[|\-–—]/)[0].trim();
+      }
+    }
+
+    // ============ PHONE NUMBER DETECTION ============
+    const bodyText = document.body.innerText || "";
+    const htmlContent = document.body.innerHTML || "";
+
+    // Phone regex patterns (US formats primarily, but also international)
+    const phonePatterns = [
+      // US formats: (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890
+      /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g,
+      // International with + prefix
+      /\+\d{1,3}[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}/g,
+    ];
+
+    const phoneSet = new Set<string>(result.phoneNumbers);
+    phonePatterns.forEach((pattern) => {
+      const matches = bodyText.match(pattern);
+      if (matches) {
+        matches.forEach((phone) => {
+          // Clean and normalize the phone number
+          const cleaned = phone.replace(/[^\d+]/g, "");
+          if (cleaned.length >= 10 && cleaned.length <= 15) {
+            phoneSet.add(phone.trim());
+          }
+        });
+      }
+    });
+
+    // Also check tel: links
+    const telLinks = document.querySelectorAll('a[href^="tel:"]');
+    telLinks.forEach((link) => {
+      const href = link.getAttribute("href");
+      if (href) {
+        const phone = href.replace("tel:", "").trim();
+        if (phone.length >= 10) {
+          phoneSet.add(phone);
+        }
+      }
+    });
+
+    result.phoneNumbers = [...phoneSet].slice(0, 5); // Max 5 phone numbers
+
+    // ============ ADDRESS DETECTION ============
+    // Look for common address patterns
+    const addressPatterns = [
+      // US street address: 123 Main Street, City, ST 12345
+      /\d{1,5}\s+[\w\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Court|Ct|Place|Pl|Circle|Cir|Highway|Hwy)\.?(?:\s*,?\s*(?:Suite|Ste|Apt|Unit|#)\s*[\w\d-]+)?(?:\s*,?\s*[\w\s]+)?(?:\s*,?\s*[A-Z]{2})?\s*\d{5}(?:-\d{4})?/gi,
+    ];
+
+    const addressSet = new Set<string>(result.addresses);
+
+    // Check for address in common containers
+    const addressSelectors = [
+      '[class*="address"]',
+      '[class*="location"]',
+      '[class*="contact"]',
+      '[itemtype*="PostalAddress"]',
+      "address",
+      "[data-address]",
+    ];
+
+    addressSelectors.forEach((selector) => {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach((el) => {
+        const text = el.textContent?.trim();
+        if (text && text.length > 10 && text.length < 200) {
+          // Check if it looks like an address (contains numbers and common address words)
+          if (
+            /\d/.test(text) &&
+            /street|st\.|avenue|ave\.|road|rd\.|blvd|drive|dr\.|suite|ste|city|state|\d{5}/i.test(
+              text
+            )
+          ) {
+            addressSet.add(text.replace(/\s+/g, " ").trim());
+          }
+        }
+      });
+    });
+
+    // Also try to find addresses in body text using patterns
+    addressPatterns.forEach((pattern) => {
+      const matches = bodyText.match(pattern);
+      if (matches) {
+        matches.forEach((addr) => {
+          addressSet.add(addr.replace(/\s+/g, " ").trim());
+        });
+      }
+    });
+
+    result.addresses = [...addressSet].slice(0, 3); // Max 3 addresses
+
+    // ============ EMAIL DETECTION ============
+    const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    const emailSet = new Set<string>(result.emails);
+
+    // Check mailto: links first (most reliable)
+    const mailtoLinks = document.querySelectorAll('a[href^="mailto:"]');
+    mailtoLinks.forEach((link) => {
+      const href = link.getAttribute("href");
+      if (href) {
+        const email = href.replace("mailto:", "").split("?")[0].trim();
+        if (email.includes("@")) {
+          emailSet.add(email.toLowerCase());
+        }
+      }
+    });
+
+    // Then check body text
+    const emailMatches = bodyText.match(emailPattern);
+    if (emailMatches) {
+      emailMatches.forEach((email) => {
+        // Filter out common false positives
+        if (
+          !email.includes("example.com") &&
+          !email.includes("yourdomain") &&
+          !email.endsWith(".png") &&
+          !email.endsWith(".jpg")
+        ) {
+          emailSet.add(email.toLowerCase());
+        }
+      });
+    }
+
+    result.emails = [...emailSet].slice(0, 3); // Max 3 emails
+
+    return result;
+  });
+
+  return napData;
+}
+
 interface BrokenLink {
   url: string;
   status: number | string;
@@ -338,6 +576,7 @@ interface HomepageResponse {
   isSecure?: boolean;
   loadTime?: number;
   brokenLinks?: BrokenLink[];
+  napDetails?: NAPDetails;
   error?: string;
 }
 
@@ -360,6 +599,7 @@ interface HomepageResponse {
  *   - isSecure: boolean (true if site uses HTTPS)
  *   - loadTime: number (page load time in milliseconds, excludes artificial delays)
  *   - brokenLinks: array of broken links (max 10)
+ *   - napDetails: NAP (Name, Address, Phone) details detected on the page
  */
 router.post(
   "/homepage",
@@ -485,6 +725,16 @@ router.post(
         brokenCount: brokenLinks.length,
       });
 
+      // ============ NAP DETAILS EXTRACTION ============
+      log("INFO", `Extracting NAP (Name, Address, Phone) details`);
+      const napDetails = await extractNAPDetails(page);
+      log("INFO", `NAP extraction completed`, {
+        hasBusinessName: !!napDetails.businessName,
+        addressCount: napDetails.addresses.length,
+        phoneCount: napDetails.phoneNumbers.length,
+        emailCount: napDetails.emails.length,
+      });
+
       // ============ MOBILE CAPTURE (375x667 - iPhone SE, reduced scale) ============
       log("INFO", `Starting mobile capture`, { viewport: "375x667" });
 
@@ -560,6 +810,7 @@ router.post(
         isSecure,
         loadTime,
         brokenLinks,
+        napDetails,
       } as HomepageResponse);
     } catch (error: any) {
       const durationMs = Date.now() - startTime;
