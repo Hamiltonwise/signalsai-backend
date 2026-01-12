@@ -249,12 +249,12 @@ router.post(
       const page = await browser.newPage();
       log("DEBUG", `New page created`);
 
-      // Block unnecessary resources to speed up loading
+      // Block unnecessary resources to speed up loading (but allow fonts for icons/text)
       await page.setRequestInterception(true);
       page.on("request", (req) => {
         const resourceType = req.resourceType();
-        // Block heavy resources that aren't essential for screenshots
-        if (["media", "font"].includes(resourceType)) {
+        // Only block media (video/audio) - fonts are needed for icons and text rendering
+        if (resourceType === "media") {
           req.abort();
         } else {
           req.continue();
