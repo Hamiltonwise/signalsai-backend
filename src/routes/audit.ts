@@ -3,9 +3,7 @@ import { db } from "../database/connection";
 
 const auditRoutes = express.Router();
 
-const N8N_WEBHOOK_URL =
-  process.env.N8N_WEBHOOK_URL ||
-  "https://n8napp.getalloro.com/webhook/website-scraping-tool";
+const N8N_WEBHOOK_URL = process.env.WEB_SCRAPING_TOOL_AGENT_WEBHOOK;
 
 // ============================================
 // NORMALIZATION HELPERS
