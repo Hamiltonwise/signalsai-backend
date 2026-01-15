@@ -57,6 +57,7 @@ app.use((req, res, next) => {
     "http://127.0.0.1:3002",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
+    "https://audit.getalloro.com",
   ];
 
   const origin = req.headers.origin;
