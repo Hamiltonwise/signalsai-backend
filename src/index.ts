@@ -35,11 +35,52 @@ import adminAgentOutputsRoutes from "./routes/admin/agentOutputs";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
+import placesRoutes from "./routes/places";
+import auditRoutes from "./routes/audit";
 
 const app = express();
 const port = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === "production";
 const router = Router();
+
+// CORS middleware for development
+app.use((req, res, next) => {
+  // Allow requests from localhost development servers
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:3002",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+  ];
+
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With, x-scraper-key, googleaccountid"
+  );
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
 
 // Add JSON body parser middleware with increased limit for large PMS data
 app.use(express.json({ limit: "50mb" }));
@@ -75,6 +116,8 @@ app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoi
 app.use("/api/admin", adminAuthRoutes);
 app.use("/api/support", supportRoutes); // Help form / support inquiries
 app.use("/api/scraper", scraperRoutes); // Website scraper for n8n webhooks
+app.use("/api/places", placesRoutes); // Google Places API for GBP search
+app.use("/api/audit", auditRoutes); // Audit process tracking for leadgen tool
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));
