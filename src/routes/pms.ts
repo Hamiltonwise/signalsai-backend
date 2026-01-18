@@ -66,6 +66,7 @@ type RawPmsSource = {
   name?: string;
   referrals?: number | string;
   production?: number | string;
+  inferred_referral_type?: "self" | "doctor";
 };
 
 type RawPmsMonthEntry = {
