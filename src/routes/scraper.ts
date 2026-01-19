@@ -115,8 +115,8 @@ async function autoScrollPage(page: any): Promise<void> {
   await page.evaluate(async () => {
     await new Promise<void>((resolve) => {
       let totalHeight = 0;
-      const distance = 300; // Scroll 300px at a time
-      const delay = 100; // 100ms between scrolls
+      const distance = 400; // Scroll 400px at a time (optimized)
+      const delay = 80; // 80ms between scrolls (optimized)
 
       const timer = setInterval(() => {
         const scrollHeight = document.body.scrollHeight;
@@ -691,19 +691,19 @@ router.post(
       // Auto-scroll through page to trigger all animations
       await autoScrollPage(page);
 
-      log("DEBUG", `Waiting 2 seconds for animations to settle`);
+      log("DEBUG", `Waiting 1 second for animations to settle`);
 
-      // Wait for animations to complete after scrolling
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Wait for animations to complete after scrolling (reduced from 2s for performance)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      log("DEBUG", `Taking desktop screenshot (full page, JPEG 80% quality)`);
+      log("DEBUG", `Taking desktop screenshot (full page, JPEG 70% quality)`);
 
       // Capture desktop screenshot (full page - JPEG for smaller file size)
       const desktopScreenshotBuffer = await page.screenshot({
         fullPage: true,
         encoding: "base64",
         type: "jpeg",
-        quality: 80, // 80% quality - good balance of size and clarity
+        quality: 70, // 70% quality - optimized for speed while maintaining clarity
       });
 
       const desktopScreenshotSize = Math.round(
@@ -719,11 +719,9 @@ router.post(
       log("INFO", `Homepage markup captured`, { sizeKB: markupSize });
 
       // ============ BROKEN LINKS CHECK ============
-      log("INFO", `Starting broken links check (max 10)`);
-      const brokenLinks = await findBrokenLinks(page, finalUrl, 10);
-      log("INFO", `Broken links check completed`, {
-        brokenCount: brokenLinks.length,
-      });
+      // Start broken links check in background (don't wait for it)
+      log("INFO", `Starting broken links check (max 3) in background`);
+      const brokenLinksPromise = findBrokenLinks(page, finalUrl, 3);
 
       // ============ NAP DETAILS EXTRACTION ============
       log("INFO", `Extracting NAP (Name, Address, Phone) details`);
@@ -749,15 +747,7 @@ router.post(
         "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
       );
 
-      log("DEBUG", `Reloading page for mobile view`);
-
-      // Reload for mobile version (some sites serve different content)
-      await page.goto(url, {
-        waitUntil: "load",
-        timeout: 30000,
-      });
-
-      log("DEBUG", `Mobile page loaded, injecting animation visibility CSS`);
+      log("DEBUG", `Mobile page viewport set, injecting animation visibility CSS (no reload - viewport change triggers re-render)`);
 
       // Inject CSS again for mobile view
       await forceAnimationVisibility(page);
@@ -767,19 +757,19 @@ router.post(
       // Auto-scroll mobile view
       await autoScrollPage(page);
 
-      log("DEBUG", `Waiting 2 seconds for mobile animations to settle`);
+      log("DEBUG", `Waiting 1 second for mobile animations to settle`);
 
-      // Wait for animations to complete
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Wait for animations to complete (reduced from 2s for performance)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      log("DEBUG", `Taking mobile screenshot (full page, JPEG 80% quality)`);
+      log("DEBUG", `Taking mobile screenshot (full page, JPEG 70% quality)`);
 
       // Capture mobile screenshot (full page - JPEG for smaller file size)
       const mobileScreenshotBuffer = await page.screenshot({
         fullPage: true,
         encoding: "base64",
         type: "jpeg",
-        quality: 80,
+        quality: 70,
       });
 
       const mobileScreenshotSize = Math.round(
@@ -792,6 +782,13 @@ router.post(
       await browser.close();
       browser = null;
 
+      // Wait for broken links check to complete before returning response
+      log("DEBUG", `Waiting for broken links check to complete`);
+      const brokenLinks = await brokenLinksPromise;
+      log("INFO", `Broken links check completed`, {
+        brokenCount: brokenLinks.length,
+      });
+
       const durationMs = Date.now() - startTime;
       logOperationComplete(domain, durationMs, true);
 
@@ -800,6 +797,7 @@ router.post(
         mobileSizeKB: mobileScreenshotSize,
         markupSizeKB: markupSize,
         totalDurationMs: durationMs,
+        brokenLinksCount: brokenLinks.length,
       });
 
       return res.json({
