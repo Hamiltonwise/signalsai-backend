@@ -2483,7 +2483,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     log(`[TEST-SETUP] Setting up OAuth2 client...`);
     let oauth2Client;
     try {
-      oauth2Client = await getValidOAuth2Client(account);
+      oauth2Client = await getValidOAuth2Client(googleAccountId);
     } catch (error: any) {
       return res.status(500).json({
         success: false,
