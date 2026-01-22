@@ -2431,6 +2431,263 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     });
   }
 });
+
+/**
+ * POST /api/agents/monthly-agents-run-test
+ *
+ * Test endpoint for monthly agents
+ * - Runs all monthly agents (Summary, Referral Engine, Opportunity, CRO Optimizer)
+ * - Does NOT persist any data to database
+ * - Does NOT send emails
+ * - Returns all agent inputs/outputs and preview of tasks that would be created
+ *
+ * Body: { googleAccountId, domain, startDate?, endDate? }
+ * Response: { agents: {...}, tasksToBeCreated: {...}, duration }
+ */
+router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  const { googleAccountId, domain } = req.body;
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/monthly-agents-run-test - STARTING");
+  log("=".repeat(70));
+  log(`Account ID: ${googleAccountId}`);
+  log(`Domain: ${domain}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+
+  try {
+    // Validate input
+    if (!googleAccountId || !domain) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PARAMETERS",
+        message: "googleAccountId and domain are required",
+      });
+    }
+
+    // Fetch account
+    log(`\n[SETUP] Fetching account ${googleAccountId}...`);
+    const account = await db("google_accounts")
+      .where({ id: googleAccountId })
+      .first();
+
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        error: "ACCOUNT_NOT_FOUND",
+        message: `Account ${googleAccountId} not found`,
+      });
+    }
+
+    // Get OAuth2 client
+    log(`[SETUP] Setting up OAuth2 client...`);
+    let oauth2Client;
+    try {
+      oauth2Client = await getValidOAuth2Client(account);
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: "OAUTH_ERROR",
+        message: error.message,
+      });
+    }
+
+    // Run agents via processMonthlyAgents
+    log(`[AGENTS] Running all monthly agents...`);
+    const monthlyResult = await processMonthlyAgents(
+      oauth2Client,
+      googleAccountId,
+      domain,
+      account,
+      req.body.startDate,
+      req.body.endDate
+    );
+
+    if (!monthlyResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: "AGENTS_ERROR",
+        message: monthlyResult.error || "Failed to run agents",
+      });
+    }
+
+    // Simulate task creation without persisting
+    log(`[TASKS] Simulating task creation...`);
+    const tasksToBeCreated = simulateTaskCreation({
+      opportunityOutput: monthlyResult.opportunityOutput,
+      croOptimizerOutput: monthlyResult.croOptimizerOutput,
+      referralEngineOutput: monthlyResult.referralEngineOutput,
+    });
+
+    const duration = Date.now() - startTime;
+
+    log("\n" + "=".repeat(70));
+    log(`[COMPLETE] ✓ Test run completed successfully`);
+    log(
+      `  - Opportunity tasks: ${tasksToBeCreated.from_opportunity.length}`
+    );
+    log(`  - CRO Optimizer tasks: ${tasksToBeCreated.from_cro_optimizer.length}`);
+    log(
+      `  - Referral Engine tasks: ${tasksToBeCreated.from_referral_engine.alloro.length} ALLORO, ${tasksToBeCreated.from_referral_engine.user.length} USER`
+    );
+    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      duration: `${duration}ms`,
+      agents: {
+        summary: {
+          input: monthlyResult.summaryPayload,
+          output: monthlyResult.summaryOutput,
+        },
+        opportunity: {
+          input: monthlyResult.opportunityPayload,
+          output: monthlyResult.opportunityOutput,
+        },
+        referral_engine: {
+          input: monthlyResult.referralEnginePayload,
+          output: monthlyResult.referralEngineOutput,
+        },
+        cro_optimizer: {
+          input: monthlyResult.croOptimizerPayload,
+          output: monthlyResult.croOptimizerOutput,
+        },
+      },
+      tasksToBeCreated,
+    });
+  } catch (error: any) {
+    logError("monthly-agents-run-test", error);
+    const duration = Date.now() - startTime;
+    log(`\n[FAILED] ❌ Test run failed after ${duration}ms`);
+    log("=".repeat(70) + "\n");
+
+    return res.status(500).json({
+      success: false,
+      error: "TEST_RUN_ERROR",
+      message: error?.message || "Test run failed",
+      duration: `${duration}ms`,
+    });
+  }
+});
+
+/**
+ * Helper function to simulate task creation without persisting to database
+ */
+function simulateTaskCreation(agentOutputs: {
+  opportunityOutput: any;
+  croOptimizerOutput: any;
+  referralEngineOutput: any;
+}): {
+  from_opportunity: any[];
+  from_cro_optimizer: any[];
+  from_referral_engine: { alloro: any[]; user: any[] };
+  summary: { total_tasks: number; user_tasks: number; alloro_tasks: number };
+} {
+  const result = {
+    from_opportunity: [] as any[],
+    from_cro_optimizer: [] as any[],
+    from_referral_engine: { alloro: [] as any[], user: [] as any[] },
+    summary: { total_tasks: 0, user_tasks: 0, alloro_tasks: 0 },
+  };
+
+  try {
+    // Simulate Opportunity tasks
+    const opportunityItems = agentOutputs.opportunityOutput?.[0]?.opportunities || [];
+    if (Array.isArray(opportunityItems)) {
+      for (const item of opportunityItems) {
+        const type =
+          item.type?.toUpperCase() === "ALLORO" ? "ALLORO" : "USER";
+        result.from_opportunity.push({
+          title: item.title || item.name || "Untitled Task",
+          description:
+            item.explanation || item.description || item.details || null,
+          category: type,
+          agent_type: "OPPORTUNITY",
+          urgency: item.urgency || null,
+          due_date: item.due_date || item.dueDate || null,
+          metadata: item.metadata || {},
+        });
+        result.summary[type === "USER" ? "user_tasks" : "alloro_tasks"]++;
+      }
+    }
+  } catch (e) {
+    log(`[TASKS] ⚠ Error simulating Opportunity tasks: ${e}`);
+  }
+
+  try {
+    // Simulate CRO Optimizer tasks
+    const croItems = agentOutputs.croOptimizerOutput?.[0]?.opportunities || [];
+    if (Array.isArray(croItems)) {
+      for (const item of croItems) {
+        const type = item.type?.toUpperCase() === "USER" ? "USER" : "ALLORO";
+        result.from_cro_optimizer.push({
+          title: item.title || item.name || "Untitled Task",
+          description:
+            item.explanation || item.description || item.details || null,
+          category: type,
+          agent_type: "CRO_OPTIMIZER",
+          urgency: item.urgency || null,
+          due_date: item.due_date || item.dueDate || null,
+          metadata: item.metadata || {},
+        });
+        result.summary[type === "USER" ? "user_tasks" : "alloro_tasks"]++;
+      }
+    }
+  } catch (e) {
+    log(`[TASKS] ⚠ Error simulating CRO Optimizer tasks: ${e}`);
+  }
+
+  try {
+    // Simulate Referral Engine tasks
+    const referralOutput = Array.isArray(agentOutputs.referralEngineOutput)
+      ? agentOutputs.referralEngineOutput[0]
+      : agentOutputs.referralEngineOutput;
+
+    const alloroItems = referralOutput?.alloro_automation_opportunities || [];
+    const userItems = referralOutput?.practice_action_plan || [];
+
+    // Process ALLORO tasks
+    for (const item of alloroItems) {
+      const isStringItem = typeof item === "string";
+      const fullText = isStringItem ? item : JSON.stringify(item);
+      const title = isStringItem ? item.substring(0, 100) : item.opportunity || item.title || "Opportunity";
+
+      result.from_referral_engine.alloro.push({
+        title,
+        description: isStringItem ? null : item.description || item.explanation || null,
+        category: "ALLORO",
+        agent_type: "REFERRAL_ENGINE_ANALYSIS",
+        full_text: fullText,
+      });
+      result.summary.alloro_tasks++;
+    }
+
+    // Process USER tasks
+    for (const item of userItems) {
+      const isStringItem = typeof item === "string";
+      const fullText = isStringItem ? item : JSON.stringify(item);
+      const title = isStringItem ? item.substring(0, 100) : item.action || item.title || "Action Item";
+
+      result.from_referral_engine.user.push({
+        title,
+        description: isStringItem ? null : item.description || item.explanation || null,
+        category: "USER",
+        agent_type: "REFERRAL_ENGINE_ANALYSIS",
+        full_text: fullText,
+      });
+      result.summary.user_tasks++;
+    }
+  } catch (e) {
+    log(`[TASKS] ⚠ Error simulating Referral Engine tasks: ${e}`);
+  }
+
+  result.summary.total_tasks =
+    result.summary.user_tasks + result.summary.alloro_tasks;
+
+  return result;
+}
+
 /**
  * POST /api/agents/gbp-optimizer-run
  *
