@@ -2497,41 +2497,185 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
       ? { startDate: req.body.startDate, endDate: req.body.endDate }
       : getPreviousMonthRange();
 
-    log(`[TEST-AGENTS] Running all monthly agents for ${monthRange.startDate} to ${monthRange.endDate}...`);
+    const { startDate, endDate } = monthRange;
 
-    // Run agents via processMonthlyAgents
-    const monthlyResult = await processMonthlyAgents(
-      account,
+    log(`[TEST-AGENTS] Running all monthly agents for ${startDate} to ${endDate}...`);
+    log(`[TEST-AGENTS] NOTE: This is a TEST run - NO data will be persisted to database`);
+
+    // === FETCH DATA (read-only) ===
+    log(`[TEST-DATA] Fetching GA4/GBP/GSC/Clarity data...`);
+    const propertyIds = {
+      ga4: account.ga4_property_id,
+      gbp: account.gbp_account_id,
+      gsc: account.gsc_site_url,
+    };
+
+    const monthData = await fetchAllServiceData(
       oauth2Client,
-      monthRange
+      googleAccountId,
+      domain,
+      propertyIds,
+      startDate,
+      endDate
     );
 
-    if (!monthlyResult.success) {
-      return res.status(500).json({
-        success: false,
-        error: "AGENTS_ERROR",
-        message: monthlyResult.error || "Failed to run agents",
-      });
+    // Fetch aggregated PMS data (read-only)
+    log(`[TEST-DATA] Fetching aggregated PMS data for ${domain}...`);
+    let pmsData = null;
+    try {
+      const aggregated = await aggregatePmsData(domain);
+
+      if (aggregated.months.length > 0) {
+        pmsData = {
+          monthly_rollup: aggregated.months.map((month) => ({
+            month: month.month,
+            self_referrals: month.selfReferrals,
+            doctor_referrals: month.doctorReferrals,
+            total_referrals: month.totalReferrals,
+            production_total: month.productionTotal,
+            sources: month.sources,
+          })),
+          sources_summary: aggregated.sources,
+          totals: aggregated.totals,
+          patient_records: aggregated.patientRecords,
+        };
+        log(`[TEST-DATA] ✓ PMS data found (${aggregated.months.length} months)`);
+      } else {
+        log(`[TEST-DATA] ⚠ No approved PMS data found`);
+      }
+    } catch (pmsError: any) {
+      log(`[TEST-DATA] ⚠ Error fetching PMS data: ${pmsError.message}`);
     }
 
-    // Simulate task creation without persisting
-    log(`[TEST-TASKS] Simulating task creation...`);
+    // === STEP 1: Run Summary Agent (webhook only, NO DB) ===
+    log(`[TEST-SUMMARY] Calling Summary agent webhook...`);
+    const summaryPayload = buildSummaryPayload({
+      domain,
+      googleAccountId,
+      startDate,
+      endDate,
+      monthData,
+      pmsData,
+      clarityData: monthData.clarityData,
+    });
+
+    const summaryOutput = await callAgentWebhook(
+      SUMMARY_WEBHOOK,
+      summaryPayload,
+      "Summary"
+    );
+
+    logAgentOutput("Summary", summaryOutput);
+    if (!isValidAgentOutput(summaryOutput, "Summary")) {
+      return res.status(500).json({
+        success: false,
+        error: "SUMMARY_INVALID",
+        message: "Summary agent returned invalid output",
+      });
+    }
+    log(`[TEST-SUMMARY] ✓ Summary completed`);
+
+    // === STEP 2: Run Referral Engine Agent (webhook only, NO DB) ===
+    log(`[TEST-REFERRAL] Calling Referral Engine agent webhook...`);
+    const referralEnginePayload = buildReferralEnginePayload({
+      domain,
+      googleAccountId,
+      startDate,
+      endDate,
+      monthData,
+      pmsData,
+      clarityData: monthData.clarityData,
+    });
+
+    const referralEngineOutput = await callAgentWebhook(
+      REFERRAL_ENGINE_WEBHOOK,
+      referralEnginePayload,
+      "Referral Engine"
+    );
+
+    logAgentOutput("Referral Engine", referralEngineOutput);
+    if (!isValidAgentOutput(referralEngineOutput, "Referral Engine")) {
+      return res.status(500).json({
+        success: false,
+        error: "REFERRAL_ENGINE_INVALID",
+        message: "Referral Engine agent returned invalid output",
+      });
+    }
+    log(`[TEST-REFERRAL] ✓ Referral Engine completed`);
+
+    // === STEP 3: Run Opportunity Agent (webhook only, NO DB) ===
+    log(`[TEST-OPPORTUNITY] Calling Opportunity agent webhook...`);
+    const opportunityPayload = buildOpportunityPayload({
+      domain,
+      googleAccountId,
+      startDate,
+      endDate,
+      summaryOutput,
+    });
+
+    const opportunityOutput = await callAgentWebhook(
+      OPPORTUNITY_WEBHOOK,
+      opportunityPayload,
+      "Opportunity"
+    );
+
+    logAgentOutput("Opportunity", opportunityOutput);
+    if (!isValidAgentOutput(opportunityOutput, "Opportunity")) {
+      return res.status(500).json({
+        success: false,
+        error: "OPPORTUNITY_INVALID",
+        message: "Opportunity agent returned invalid output",
+      });
+    }
+    log(`[TEST-OPPORTUNITY] ✓ Opportunity completed`);
+
+    // === STEP 4: Run CRO Optimizer Agent (webhook only, NO DB) ===
+    log(`[TEST-CRO] Calling CRO Optimizer agent webhook...`);
+    const croOptimizerPayload = buildCroOptimizerPayload({
+      domain,
+      googleAccountId,
+      startDate,
+      endDate,
+      summaryOutput,
+    });
+
+    const croOptimizerOutput = await callAgentWebhook(
+      CRO_OPTIMIZER_WEBHOOK,
+      croOptimizerPayload,
+      "CRO Optimizer"
+    );
+
+    logAgentOutput("CRO Optimizer", croOptimizerOutput);
+    if (!isValidAgentOutput(croOptimizerOutput, "CRO Optimizer")) {
+      return res.status(500).json({
+        success: false,
+        error: "CRO_OPTIMIZER_INVALID",
+        message: "CRO Optimizer agent returned invalid output",
+      });
+    }
+    log(`[TEST-CRO] ✓ CRO Optimizer completed`);
+
+    // === SIMULATE TASK CREATION (NO DB INSERTS) ===
+    log(`[TEST-TASKS] Simulating task creation (NO database writes)...`);
     const tasksToBeCreated = simulateTaskCreation({
-      opportunityOutput: monthlyResult.opportunityOutput,
-      croOptimizerOutput: monthlyResult.croOptimizerOutput,
-      referralEngineOutput: monthlyResult.referralEngineOutput,
+      opportunityOutput,
+      croOptimizerOutput,
+      referralEngineOutput,
     });
 
     const duration = Date.now() - startTime;
 
     log("\n" + "=".repeat(70));
     log(`[TEST-COMPLETE] ✓ Test run completed successfully`);
+    log(`  - NO data was persisted to database`);
+    log(`  - NO emails were sent`);
+    log(`  - NO notifications were created`);
     log(
-      `  - Opportunity tasks: ${tasksToBeCreated.from_opportunity.length}`
+      `  - Opportunity tasks (simulated): ${tasksToBeCreated.from_opportunity.length}`
     );
-    log(`  - CRO Optimizer tasks: ${tasksToBeCreated.from_cro_optimizer.length}`);
+    log(`  - CRO Optimizer tasks (simulated): ${tasksToBeCreated.from_cro_optimizer.length}`);
     log(
-      `  - Referral Engine tasks: ${tasksToBeCreated.from_referral_engine.alloro.length} ALLORO, ${tasksToBeCreated.from_referral_engine.user.length} USER`
+      `  - Referral Engine tasks (simulated): ${tasksToBeCreated.from_referral_engine.alloro.length} ALLORO, ${tasksToBeCreated.from_referral_engine.user.length} USER`
     );
     log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
     log("=".repeat(70) + "\n");
@@ -2539,22 +2683,24 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     return res.json({
       success: true,
       duration: `${duration}ms`,
+      testMode: true,
+      note: "This was a TEST run - no data was persisted, no emails sent, no tasks created",
       agents: {
         summary: {
-          input: monthlyResult.summaryPayload,
-          output: monthlyResult.summaryOutput,
+          input: summaryPayload,
+          output: summaryOutput,
         },
         opportunity: {
-          input: monthlyResult.opportunityPayload,
-          output: monthlyResult.opportunityOutput,
+          input: opportunityPayload,
+          output: opportunityOutput,
         },
         referral_engine: {
-          input: monthlyResult.referralEnginePayload,
-          output: monthlyResult.referralEngineOutput,
+          input: referralEnginePayload,
+          output: referralEngineOutput,
         },
         cro_optimizer: {
-          input: monthlyResult.croOptimizerPayload,
-          output: monthlyResult.croOptimizerOutput,
+          input: croOptimizerPayload,
+          output: croOptimizerOutput,
         },
       },
       tasksToBeCreated,

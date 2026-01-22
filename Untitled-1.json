@@ -1,6 +1,250 @@
 [
   {
-    "report_date": "2025-12-01T00:00:00.000Z",
+    "report_date": "2025-11-29T16:00:00.000Z",
+    "data": [
+      {
+        "metricName": "DeadClickCount",
+        "information": [
+          {
+            "sessionsCount": "8",
+            "sessionsWithMetricPercentage": 0,
+            "sessionsWithoutMetricPercentage": 100,
+            "pagesViews": "0",
+            "subTotal": "0"
+          }
+        ]
+      },
+      {
+        "metricName": "ExcessiveScroll",
+        "information": [
+          {
+            "sessionsCount": "8",
+            "sessionsWithMetricPercentage": 0,
+            "sessionsWithoutMetricPercentage": 100,
+            "pagesViews": "0",
+            "subTotal": "0"
+          }
+        ]
+      },
+      {
+        "metricName": "RageClickCount",
+        "information": [
+          {
+            "sessionsCount": "8",
+            "sessionsWithMetricPercentage": 0,
+            "sessionsWithoutMetricPercentage": 100,
+            "pagesViews": "0",
+            "subTotal": "0"
+          }
+        ]
+      },
+      {
+        "metricName": "QuickbackClick",
+        "information": [
+          {
+            "sessionsCount": "8",
+            "sessionsWithMetricPercentage": 0,
+            "sessionsWithoutMetricPercentage": 100,
+            "pagesViews": "0",
+            "subTotal": "0"
+          }
+        ]
+      },
+      {
+        "metricName": "ScriptErrorCount",
+        "information": [
+          {
+            "sessionsCount": "8",
+            "sessionsWithMetricPercentage": 0,
+            "sessionsWithoutMetricPercentage": 100,
+            "pagesViews": "0",
+            "subTotal": "0"
+          }
+        ]
+      },
+      {
+        "metricName": "ErrorClickCount",
+        "information": [
+          {
+            "sessionsCount": "8",
+            "sessionsWithMetricPercentage": 0,
+            "sessionsWithoutMetricPercentage": 100,
+            "pagesViews": "0",
+            "subTotal": "0"
+          }
+        ]
+      },
+      {
+        "metricName": "ScrollDepth",
+        "information": [
+          {
+            "averageScrollDepth": 33.5
+          }
+        ]
+      },
+      {
+        "metricName": "Traffic",
+        "information": [
+          {
+            "totalSessionCount": "8",
+            "totalBotSessionCount": "3",
+            "distinctUserCount": "36",
+            "pagesPerSessionPercentage": 1
+          }
+        ]
+      },
+      {
+        "metricName": "EngagementTime",
+        "information": [
+          {
+            "totalTime": "7",
+            "activeTime": "7"
+          }
+        ]
+      },
+      {
+        "metricName": "Browser",
+        "information": [
+          {
+            "name": "Chrome",
+            "sessionsCount": "4"
+          },
+          {
+            "name": "ChromeMobile",
+            "sessionsCount": "2"
+          },
+          {
+            "name": "MobileSafari",
+            "sessionsCount": "2"
+          }
+        ]
+      },
+      {
+        "metricName": "Device",
+        "information": [
+          {
+            "name": "Mobile",
+            "sessionsCount": "4"
+          },
+          {
+            "name": "PC",
+            "sessionsCount": "4"
+          }
+        ]
+      },
+      {
+        "metricName": "OS",
+        "information": [
+          {
+            "name": "Windows",
+            "sessionsCount": "3"
+          },
+          {
+            "name": "Android",
+            "sessionsCount": "2"
+          },
+          {
+            "name": "IOS",
+            "sessionsCount": "2"
+          },
+          {
+            "name": "Linux",
+            "sessionsCount": "1"
+          }
+        ]
+      },
+      {
+        "metricName": "Country",
+        "information": [
+          {
+            "name": "United States",
+            "sessionsCount": "4"
+          },
+          {
+            "name": "Singapore",
+            "sessionsCount": "3"
+          },
+          {
+            "name": "Bangladesh",
+            "sessionsCount": "1"
+          }
+        ]
+      },
+      {
+        "metricName": "PageTitle",
+        "information": [
+          {
+            "name": "Orthodontic Care in West Orange, NJ - Garrison Orthodontics",
+            "sessionsCount": "2"
+          },
+          {
+            "name": "How Long Does Clear Aligner Treatment Take? Guide 2025",
+            "sessionsCount": "2"
+          },
+          {
+            "name": "Blog - Garrison Orthodontics",
+            "sessionsCount": "1"
+          },
+          {
+            "name": "Web Accessibility - Garrison Orthodontics",
+            "sessionsCount": "1"
+          },
+          {
+            "name": "Preventive, Interceptive & Corrective Orthodontics | Clear Aligners West Orange NJ",
+            "sessionsCount": "1"
+          },
+          {
+            "name": "Top 5 Preventive Orthodontic Treatments and How They Work",
+            "sessionsCount": "1"
+          }
+        ]
+      },
+      {
+        "metricName": "ReferrerUrl",
+        "information": [
+          {
+            "name": null,
+            "sessionsCount": "6"
+          },
+          {
+            "name": "https://www.google.com/",
+            "sessionsCount": "1"
+          },
+          {
+            "name": "https://search.yahoo.com/",
+            "sessionsCount": "1"
+          }
+        ]
+      },
+      {
+        "metricName": "PopularPages",
+        "information": [
+          {
+            "url": "https://garrisonorthodontics.com/",
+            "visitsCount": "7"
+          },
+          {
+            "url": "https://garrisonorthodontics.com/how-long-clear-aligner-treatment-take/",
+            "visitsCount": "2"
+          },
+          {
+            "url": "https://garrisonorthodontics.com/blog/",
+            "visitsCount": "1"
+          },
+          {
+            "url": "https://garrisonorthodontics.com/schedule-free-appointment/",
+            "visitsCount": "1"
+          },
+          {
+            "url": "https://garrisonorthodontics.com/preventive-orthodontic-treatments/",
+            "visitsCount": "1"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "report_date": "2025-11-30T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -308,7 +552,7 @@
     ]
   },
   {
-    "report_date": "2025-12-02T00:00:00.000Z",
+    "report_date": "2025-12-01T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -620,7 +864,7 @@
     ]
   },
   {
-    "report_date": "2025-12-03T00:00:00.000Z",
+    "report_date": "2025-12-02T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -932,7 +1176,7 @@
     ]
   },
   {
-    "report_date": "2025-12-04T00:00:00.000Z",
+    "report_date": "2025-12-03T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -1248,7 +1492,7 @@
     ]
   },
   {
-    "report_date": "2025-12-05T00:00:00.000Z",
+    "report_date": "2025-12-04T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -1568,7 +1812,7 @@
     ]
   },
   {
-    "report_date": "2025-12-06T00:00:00.000Z",
+    "report_date": "2025-12-05T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -1860,7 +2104,7 @@
     ]
   },
   {
-    "report_date": "2025-12-07T00:00:00.000Z",
+    "report_date": "2025-12-06T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -2080,7 +2324,7 @@
     ]
   },
   {
-    "report_date": "2025-12-08T00:00:00.000Z",
+    "report_date": "2025-12-07T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -2376,7 +2620,7 @@
     ]
   },
   {
-    "report_date": "2025-12-09T00:00:00.000Z",
+    "report_date": "2025-12-08T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -2680,7 +2924,7 @@
     ]
   },
   {
-    "report_date": "2025-12-10T00:00:00.000Z",
+    "report_date": "2025-12-09T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -2968,7 +3212,7 @@
     ]
   },
   {
-    "report_date": "2025-12-11T00:00:00.000Z",
+    "report_date": "2025-12-10T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -3292,7 +3536,7 @@
     ]
   },
   {
-    "report_date": "2025-12-12T00:00:00.000Z",
+    "report_date": "2025-12-11T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -3608,7 +3852,7 @@
     ]
   },
   {
-    "report_date": "2025-12-13T00:00:00.000Z",
+    "report_date": "2025-12-12T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -3928,7 +4172,7 @@
     ]
   },
   {
-    "report_date": "2025-12-14T00:00:00.000Z",
+    "report_date": "2025-12-13T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -4244,7 +4488,7 @@
     ]
   },
   {
-    "report_date": "2025-12-15T00:00:00.000Z",
+    "report_date": "2025-12-14T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -4500,7 +4744,7 @@
     ]
   },
   {
-    "report_date": "2025-12-16T00:00:00.000Z",
+    "report_date": "2025-12-15T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -4792,7 +5036,7 @@
     ]
   },
   {
-    "report_date": "2025-12-17T00:00:00.000Z",
+    "report_date": "2025-12-16T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -5100,7 +5344,7 @@
     ]
   },
   {
-    "report_date": "2025-12-18T00:00:00.000Z",
+    "report_date": "2025-12-17T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -5416,7 +5660,7 @@
     ]
   },
   {
-    "report_date": "2025-12-19T00:00:00.000Z",
+    "report_date": "2025-12-18T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -5716,7 +5960,7 @@
     ]
   },
   {
-    "report_date": "2025-12-20T00:00:00.000Z",
+    "report_date": "2025-12-19T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -6016,7 +6260,7 @@
     ]
   },
   {
-    "report_date": "2025-12-21T00:00:00.000Z",
+    "report_date": "2025-12-20T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -6300,7 +6544,7 @@
     ]
   },
   {
-    "report_date": "2025-12-22T00:00:00.000Z",
+    "report_date": "2025-12-21T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -6556,7 +6800,7 @@
     ]
   },
   {
-    "report_date": "2025-12-23T00:00:00.000Z",
+    "report_date": "2025-12-22T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -6868,7 +7112,7 @@
     ]
   },
   {
-    "report_date": "2025-12-24T00:00:00.000Z",
+    "report_date": "2025-12-23T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -7176,7 +7420,7 @@
     ]
   },
   {
-    "report_date": "2025-12-25T00:00:00.000Z",
+    "report_date": "2025-12-24T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -7484,7 +7728,7 @@
     ]
   },
   {
-    "report_date": "2025-12-26T00:00:00.000Z",
+    "report_date": "2025-12-25T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -7724,7 +7968,7 @@
     ]
   },
   {
-    "report_date": "2025-12-27T00:00:00.000Z",
+    "report_date": "2025-12-26T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -8012,7 +8256,7 @@
     ]
   },
   {
-    "report_date": "2025-12-28T00:00:00.000Z",
+    "report_date": "2025-12-27T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -8328,7 +8572,7 @@
     ]
   },
   {
-    "report_date": "2025-12-29T00:00:00.000Z",
+    "report_date": "2025-12-28T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -8636,7 +8880,7 @@
     ]
   },
   {
-    "report_date": "2025-12-30T00:00:00.000Z",
+    "report_date": "2025-12-29T16:00:00.000Z",
     "data": [
       {
         "metricName": "DeadClickCount",
@@ -8938,318 +9182,6 @@
           {
             "url": "https://garrisonorthodontics.com/retention-therapy-west-orange/",
             "visitsCount": "2"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "report_date": "2025-12-31T00:00:00.000Z",
-    "data": [
-      {
-        "metricName": "DeadClickCount",
-        "information": [
-          {
-            "sessionsCount": "22",
-            "sessionsWithMetricPercentage": 18.18,
-            "sessionsWithoutMetricPercentage": 81.82,
-            "pagesViews": "4",
-            "subTotal": "8"
-          }
-        ]
-      },
-      {
-        "metricName": "ExcessiveScroll",
-        "information": [
-          {
-            "sessionsCount": "22",
-            "sessionsWithMetricPercentage": 0,
-            "sessionsWithoutMetricPercentage": 100,
-            "pagesViews": "0",
-            "subTotal": "0"
-          }
-        ]
-      },
-      {
-        "metricName": "RageClickCount",
-        "information": [
-          {
-            "sessionsCount": "22",
-            "sessionsWithMetricPercentage": 0,
-            "sessionsWithoutMetricPercentage": 100,
-            "pagesViews": "0",
-            "subTotal": "0"
-          }
-        ]
-      },
-      {
-        "metricName": "QuickbackClick",
-        "information": [
-          {
-            "sessionsCount": "22",
-            "sessionsWithMetricPercentage": 13.64,
-            "sessionsWithoutMetricPercentage": 86.36,
-            "pagesViews": "4",
-            "subTotal": "4"
-          }
-        ]
-      },
-      {
-        "metricName": "ScriptErrorCount",
-        "information": [
-          {
-            "sessionsCount": "22",
-            "sessionsWithMetricPercentage": 0,
-            "sessionsWithoutMetricPercentage": 100,
-            "pagesViews": "0",
-            "subTotal": "0"
-          }
-        ]
-      },
-      {
-        "metricName": "ErrorClickCount",
-        "information": [
-          {
-            "sessionsCount": "22",
-            "sessionsWithMetricPercentage": 0,
-            "sessionsWithoutMetricPercentage": 100,
-            "pagesViews": "0",
-            "subTotal": "0"
-          }
-        ]
-      },
-      {
-        "metricName": "ScrollDepth",
-        "information": [
-          {
-            "averageScrollDepth": 50
-          }
-        ]
-      },
-      {
-        "metricName": "Traffic",
-        "information": [
-          {
-            "totalSessionCount": "22",
-            "totalBotSessionCount": "2",
-            "distinctUserCount": "20",
-            "pagesPerSessionPercentage": 4
-          }
-        ]
-      },
-      {
-        "metricName": "EngagementTime",
-        "information": [
-          {
-            "totalTime": "177",
-            "activeTime": "64"
-          }
-        ]
-      },
-      {
-        "metricName": "Browser",
-        "information": [
-          {
-            "name": "MobileSafari",
-            "sessionsCount": "12"
-          },
-          {
-            "name": "Chrome",
-            "sessionsCount": "4"
-          },
-          {
-            "name": "ChromeMobile",
-            "sessionsCount": "3"
-          },
-          {
-            "name": "SamsungInternet",
-            "sessionsCount": "2"
-          },
-          {
-            "name": "Edge",
-            "sessionsCount": "1"
-          }
-        ]
-      },
-      {
-        "metricName": "Device",
-        "information": [
-          {
-            "name": "Mobile",
-            "sessionsCount": "17"
-          },
-          {
-            "name": "PC",
-            "sessionsCount": "4"
-          },
-          {
-            "name": "Tablet",
-            "sessionsCount": "1"
-          }
-        ]
-      },
-      {
-        "metricName": "OS",
-        "information": [
-          {
-            "name": "IOS",
-            "sessionsCount": "12"
-          },
-          {
-            "name": "Android",
-            "sessionsCount": "6"
-          },
-          {
-            "name": "Windows",
-            "sessionsCount": "4"
-          }
-        ]
-      },
-      {
-        "metricName": "Country",
-        "information": [
-          {
-            "name": "United States",
-            "sessionsCount": "18"
-          },
-          {
-            "name": "Kazakhstan",
-            "sessionsCount": "2"
-          },
-          {
-            "name": "Malaysia",
-            "sessionsCount": "1"
-          },
-          {
-            "name": "Philippines",
-            "sessionsCount": "1"
-          }
-        ]
-      },
-      {
-        "metricName": "PageTitle",
-        "information": [
-          {
-            "name": "Orthodontic Care in West Orange, NJ - Garrison Orthodontics",
-            "sessionsCount": "6"
-          },
-          {
-            "name": "Preventive, Interceptive & Corrective Orthodontics | Clear Aligners West Orange NJ",
-            "sessionsCount": "6"
-          },
-          {
-            "name": "About Us - Garrison Orthodontics",
-            "sessionsCount": "5"
-          },
-          {
-            "name": "Schedule Free Appointment - Garrison Orthodontics",
-            "sessionsCount": "5"
-          },
-          {
-            "name": "About Us - Garrison Orthodontics in West Orange, NJ",
-            "sessionsCount": "3"
-          },
-          {
-            "name": "10 Things to Know Before Starting Clear Aligner Treatment",
-            "sessionsCount": "3"
-          },
-          {
-            "name": "Bite Correction in West Orange | Overbite & Underbite Treatment",
-            "sessionsCount": "2"
-          },
-          {
-            "name": "Preventive Orthodontics in West Orange, NJ | Early Orthodontic Care",
-            "sessionsCount": "2"
-          },
-          {
-            "name": "How Long Does Clear Aligner Treatment Take? Guide 2025",
-            "sessionsCount": "1"
-          },
-          {
-            "name": "Corrective Orthodontics in West Orange, NJ | Expert Braces & Aligners",
-            "sessionsCount": "1"
-          }
-        ]
-      },
-      {
-        "metricName": "ReferrerUrl",
-        "information": [
-          {
-            "name": "https://www.google.com/",
-            "sessionsCount": "16"
-          },
-          {
-            "name": "https://garrisonorthodontics.com/",
-            "sessionsCount": "10"
-          },
-          {
-            "name": null,
-            "sessionsCount": "4"
-          },
-          {
-            "name": "https://garrisonorthodontics.com/about-us/",
-            "sessionsCount": "2"
-          },
-          {
-            "name": "https://garrisonorthodontics.com/corrective-orthodontics-west-orange/",
-            "sessionsCount": "1"
-          },
-          {
-            "name": "https://garrisonorthodontics.com/jaw-remodelling-west-orange/",
-            "sessionsCount": "1"
-          },
-          {
-            "name": "https://garrisonorthodontics.com/bite-correction-west-orange/",
-            "sessionsCount": "1"
-          },
-          {
-            "name": "https://garrisonorthodontics.com/clear-aligners-west-orange/",
-            "sessionsCount": "1"
-          }
-        ]
-      },
-      {
-        "metricName": "PopularPages",
-        "information": [
-          {
-            "url": "https://garrisonorthodontics.com/",
-            "visitsCount": "15"
-          },
-          {
-            "url": "https://garrisonorthodontics.com/about-us/",
-            "visitsCount": "9"
-          },
-          {
-            "url": "https://garrisonorthodontics.com/schedule-free-appointment/",
-            "visitsCount": "7"
-          },
-          {
-            "url": "https://garrisonorthodontics.com/preventive-orthodontic-west-orange/",
-            "visitsCount": "4"
-          },
-          {
-            "url": "https://garrisonorthodontics.com/bite-correction-west-orange/",
-            "visitsCount": "4"
-          },
-          {
-            "url": "https://garrisonorthodontics.com/livingston-nj/",
-            "visitsCount": "3"
-          },
-          {
-            "url": "https://garrisonorthodontics.com/west-orange-nj/",
-            "visitsCount": "3"
-          },
-          {
-            "url": "https://garrisonorthodontics.com/corrective-orthodontics-west-orange/",
-            "visitsCount": "3"
-          },
-          {
-            "url": "https://garrisonorthodontics.com/things-before-clear-aligner-treatment/",
-            "visitsCount": "3"
-          },
-          {
-            "url": "https://garrisonorthodontics.com/jaw-remodelling-west-orange/",
-            "visitsCount": "3"
           }
         ]
       }
