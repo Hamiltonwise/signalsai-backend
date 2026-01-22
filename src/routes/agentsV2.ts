@@ -944,7 +944,7 @@ async function processMonthlyAgents(
       endDate,
       monthData,
       pmsData,
-      clarityData,
+      clarityData: monthData.clarityData,
     });
 
     const referralEngineOutput = await callAgentWebhook(
