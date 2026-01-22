@@ -286,14 +286,12 @@ function aggregateClarityMetrics(dataArray: any[]): any {
       // Aggregate information arrays
       if (metric.information && Array.isArray(metric.information)) {
         for (const info of metric.information) {
-          // Find existing entry or create new one
-          let existingInfo = aggregated[metricName].information.find(
-            (i: any) => i.subTotal !== undefined
-          );
+          // Always use the first (and only) info object for each metric
+          let existingInfo = aggregated[metricName].information[0];
 
           if (!existingInfo) {
             existingInfo = {};
-            aggregated[metricName].information.push(existingInfo);
+            aggregated[metricName].information[0] = existingInfo;
           }
 
           // Sum numeric values

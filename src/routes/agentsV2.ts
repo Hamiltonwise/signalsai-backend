@@ -890,30 +890,6 @@ async function processMonthlyAgents(
       );
     }
 
-    // Fetch Clarity data for the month
-    log(`  [MONTHLY] Fetching Clarity data for ${domain}`);
-    let clarityData = null;
-    try {
-      const clarityResult = await db("clarity_data_store")
-        .where({ domain: domain })
-        .whereBetween("report_date", [startDate, endDate])
-        .orderBy("report_date", "desc")
-        .select("*");
-
-      if (clarityResult.length > 0) {
-        // Parse the JSON data field and aggregate results
-        clarityData = clarityResult.map((row) => ({
-          report_date: row.report_date,
-          data: typeof row.data === "string" ? JSON.parse(row.data) : row.data,
-        }));
-        log(`  [MONTHLY] ✓ Found ${clarityData.length} Clarity data record(s)`);
-      } else {
-        log(`  [MONTHLY] ⚠ No Clarity data found for this period`);
-      }
-    } catch (clarityError: any) {
-      log(`  [MONTHLY] ⚠ Error fetching Clarity data: ${clarityError.message}`);
-    }
-
     // Prepare raw data for potential DB storage
     const rawData = {
       google_account_id: googleAccountId,
@@ -937,7 +913,7 @@ async function processMonthlyAgents(
       endDate,
       monthData,
       pmsData,
-      clarityData,
+      clarityData: monthData.clarityData,
     });
 
     const summaryOutput = await callAgentWebhook(
