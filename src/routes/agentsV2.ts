@@ -2492,15 +2492,18 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
       });
     }
 
+    // Calculate month range (use provided dates or default to previous month)
+    const monthRange = req.body.startDate && req.body.endDate
+      ? { startDate: req.body.startDate, endDate: req.body.endDate }
+      : getPreviousMonthRange();
+
+    log(`[TEST-AGENTS] Running all monthly agents for ${monthRange.startDate} to ${monthRange.endDate}...`);
+
     // Run agents via processMonthlyAgents
-    log(`[TEST-AGENTS] Running all monthly agents...`);
     const monthlyResult = await processMonthlyAgents(
-      oauth2Client,
-      googleAccountId,
-      domain,
       account,
-      req.body.startDate,
-      req.body.endDate
+      oauth2Client,
+      monthRange
     );
 
     if (!monthlyResult.success) {
