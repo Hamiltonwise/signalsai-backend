@@ -2451,9 +2451,9 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
   log("\n" + "=".repeat(70));
   log("POST /api/agents/monthly-agents-run-test - STARTING");
   log("=".repeat(70));
-  log(`Account ID: ${googleAccountId}`);
-  log(`Domain: ${domain}`);
-  log(`Timestamp: ${new Date().toISOString()}`);
+  log(`[TEST MODE] Account ID: ${googleAccountId}`);
+  log(`[TEST MODE] Domain: ${domain}`);
+  log(`[TEST MODE] Timestamp: ${new Date().toISOString()}`);
 
   try {
     // Validate input
@@ -2466,7 +2466,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     }
 
     // Fetch account
-    log(`\n[SETUP] Fetching account ${googleAccountId}...`);
+    log(`\n[TEST-SETUP] Fetching account ${googleAccountId}...`);
     const account = await db("google_accounts")
       .where({ id: googleAccountId })
       .first();
@@ -2480,7 +2480,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     }
 
     // Get OAuth2 client
-    log(`[SETUP] Setting up OAuth2 client...`);
+    log(`[TEST-SETUP] Setting up OAuth2 client...`);
     let oauth2Client;
     try {
       oauth2Client = await getValidOAuth2Client(account);
@@ -2493,7 +2493,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     }
 
     // Run agents via processMonthlyAgents
-    log(`[AGENTS] Running all monthly agents...`);
+    log(`[TEST-AGENTS] Running all monthly agents...`);
     const monthlyResult = await processMonthlyAgents(
       oauth2Client,
       googleAccountId,
@@ -2512,7 +2512,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     }
 
     // Simulate task creation without persisting
-    log(`[TASKS] Simulating task creation...`);
+    log(`[TEST-TASKS] Simulating task creation...`);
     const tasksToBeCreated = simulateTaskCreation({
       opportunityOutput: monthlyResult.opportunityOutput,
       croOptimizerOutput: monthlyResult.croOptimizerOutput,
@@ -2522,7 +2522,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     const duration = Date.now() - startTime;
 
     log("\n" + "=".repeat(70));
-    log(`[COMPLETE] ✓ Test run completed successfully`);
+    log(`[TEST-COMPLETE] ✓ Test run completed successfully`);
     log(
       `  - Opportunity tasks: ${tasksToBeCreated.from_opportunity.length}`
     );
@@ -2559,7 +2559,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
   } catch (error: any) {
     logError("monthly-agents-run-test", error);
     const duration = Date.now() - startTime;
-    log(`\n[FAILED] ❌ Test run failed after ${duration}ms`);
+    log(`\n[TEST-FAILED] ❌ Test run failed after ${duration}ms`);
     log("=".repeat(70) + "\n");
 
     return res.status(500).json({
@@ -2612,7 +2612,7 @@ function simulateTaskCreation(agentOutputs: {
       }
     }
   } catch (e) {
-    log(`[TASKS] ⚠ Error simulating Opportunity tasks: ${e}`);
+    log(`[TEST-TASKS] ⚠ Error simulating Opportunity tasks: ${e}`);
   }
 
   try {
@@ -2635,7 +2635,7 @@ function simulateTaskCreation(agentOutputs: {
       }
     }
   } catch (e) {
-    log(`[TASKS] ⚠ Error simulating CRO Optimizer tasks: ${e}`);
+    log(`[TEST-TASKS] ⚠ Error simulating CRO Optimizer tasks: ${e}`);
   }
 
   try {
@@ -2679,7 +2679,7 @@ function simulateTaskCreation(agentOutputs: {
       result.summary.user_tasks++;
     }
   } catch (e) {
-    log(`[TASKS] ⚠ Error simulating Referral Engine tasks: ${e}`);
+    log(`[TEST-TASKS] ⚠ Error simulating Referral Engine tasks: ${e}`);
   }
 
   result.summary.total_tasks =
