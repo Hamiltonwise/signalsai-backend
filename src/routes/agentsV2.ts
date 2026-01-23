@@ -258,7 +258,7 @@ function getCurrentMonthRange(): {
 async function callAgentWebhook(
   webhookUrl: string,
   payload: any,
-  agentName: string
+  agentName: string,
 ): Promise<any> {
   if (!webhookUrl) {
     throw new Error(`No webhook URL configured for ${agentName}`);
@@ -287,13 +287,13 @@ async function callAgentWebhook(
  */
 async function identifyLocationMeta(
   gbpData: any,
-  domain: string
+  domain: string,
 ): Promise<{ specialty: string; marketLocation: string }> {
   log(`  [IDENTIFIER] Identifying specialty and market for ${domain}`);
 
   if (!IDENTIFIER_AGENT_WEBHOOK) {
     log(
-      `  [IDENTIFIER] ⚠ IDENTIFIER_AGENT_WEBHOOK not configured, using fallbacks`
+      `  [IDENTIFIER] ⚠ IDENTIFIER_AGENT_WEBHOOK not configured, using fallbacks`,
     );
     return getFallbackMeta(gbpData);
   }
@@ -498,7 +498,7 @@ function buildGuardianGovernancePayload(
   agentUnderTest: string,
   outputs: any[],
   passedRecommendations?: any[],
-  rejectedRecommendations?: any[]
+  rejectedRecommendations?: any[],
 ): any {
   return {
     additional_data: {
@@ -525,7 +525,7 @@ async function saveRecommendationsFromAgents(
   guardianResultId: number,
   governanceResultId: number,
   guardianResults: any[],
-  governanceResults: any[]
+  governanceResults: any[],
 ): Promise<void> {
   const recommendations: any[] = [];
 
@@ -540,7 +540,7 @@ async function saveRecommendationsFromAgents(
 
       if (!result.recommendations || !Array.isArray(result.recommendations)) {
         log(
-          `  [WARNING] No recommendations array for guardian/${agentUnderTest}`
+          `  [WARNING] No recommendations array for guardian/${agentUnderTest}`,
         );
         continue;
       }
@@ -588,7 +588,7 @@ async function saveRecommendationsFromAgents(
     }
 
     log(
-      `  [GUARDIAN-GOV] Parsed ${recommendations.length} Guardian recommendation(s)`
+      `  [GUARDIAN-GOV] Parsed ${recommendations.length} Guardian recommendation(s)`,
     );
   } catch (error: any) {
     logError("Parse Guardian recommendations", error);
@@ -604,7 +604,7 @@ async function saveRecommendationsFromAgents(
 
       if (!result.recommendations || !Array.isArray(result.recommendations)) {
         log(
-          `  [WARNING] No recommendations array for governance/${agentUnderTest}`
+          `  [WARNING] No recommendations array for governance/${agentUnderTest}`,
         );
         continue;
       }
@@ -661,11 +661,11 @@ async function saveRecommendationsFromAgents(
                 (Array.isArray(rec.recommendations)
                   ? rec.recommendations.length
                   : 0),
-              0
+              0,
             ) || 0),
-          0
+          0,
         )
-      } Governance recommendation(s)`
+      } Governance recommendation(s)`,
     );
   } catch (error: any) {
     logError("Parse Governance recommendations", error);
@@ -679,13 +679,13 @@ async function saveRecommendationsFromAgents(
     try {
       await db("agent_recommendations").insert(recommendations);
       log(
-        `[GUARDIAN-GOV] ✓ Saved ${recommendations.length} total recommendation(s) to database`
+        `[GUARDIAN-GOV] ✓ Saved ${recommendations.length} total recommendation(s) to database`,
       );
     } catch (error: any) {
       logError("saveRecommendationsFromAgents - Database Insert", error);
       // Don't fail the entire process if recommendation saving fails
       log(
-        `[GUARDIAN-GOV] ⚠ Failed to save recommendations, but agent run succeeded`
+        `[GUARDIAN-GOV] ⚠ Failed to save recommendations, but agent run succeeded`,
       );
     }
   } else {
@@ -704,7 +704,7 @@ async function saveRecommendationsFromAgents(
 async function processDailyAgent(
   account: any,
   oauth2Client: any,
-  dates: ReturnType<typeof getDailyDates>
+  dates: ReturnType<typeof getDailyDates>,
 ): Promise<{
   success: boolean;
   output?: any;
@@ -725,7 +725,7 @@ async function processDailyAgent(
 
     // Fetch data for day before yesterday (single day)
     log(
-      `  [DAILY] Fetching data for ${dates.dayBeforeYesterday} (day before yesterday)`
+      `  [DAILY] Fetching data for ${dates.dayBeforeYesterday} (day before yesterday)`,
     );
     const dayBeforeYesterdayData = await fetchAllServiceData(
       oauth2Client,
@@ -733,7 +733,7 @@ async function processDailyAgent(
       domain,
       propertyIds,
       dates.dayBeforeYesterday,
-      dates.dayBeforeYesterday
+      dates.dayBeforeYesterday,
     );
 
     // Fetch data for yesterday (single day)
@@ -744,7 +744,7 @@ async function processDailyAgent(
       domain,
       propertyIds,
       dates.yesterday,
-      dates.yesterday
+      dates.yesterday,
     );
 
     // Prepare raw data for potential DB storage
@@ -783,7 +783,7 @@ async function processDailyAgent(
     const agentOutput = await callAgentWebhook(
       PROOFLINE_WEBHOOK,
       payload,
-      "Proofline"
+      "Proofline",
     );
 
     // Log and validate output
@@ -817,7 +817,7 @@ async function processDailyAgent(
 async function processMonthlyAgents(
   account: any,
   oauth2Client: any,
-  monthRange: ReturnType<typeof getPreviousMonthRange>
+  monthRange: ReturnType<typeof getPreviousMonthRange>,
 ): Promise<{
   success: boolean;
   summaryOutput?: any;
@@ -836,7 +836,7 @@ async function processMonthlyAgents(
   const { startDate, endDate } = monthRange;
 
   log(
-    `  [MONTHLY] Processing Summary + Referral Engine + Opportunity + CRO Optimizer for ${domain} (${startDate} to ${endDate})`
+    `  [MONTHLY] Processing Summary + Referral Engine + Opportunity + CRO Optimizer for ${domain} (${startDate} to ${endDate})`,
   );
 
   try {
@@ -844,7 +844,7 @@ async function processMonthlyAgents(
     const propertyIds: GooglePropertyIds =
       typeof account.google_property_ids === "string"
         ? JSON.parse(account.google_property_ids)
-        : account.google_property_ids;
+        : (account.google_property_ids || {});
 
     // Fetch month data (GA4, GBP, GSC)
     log(`  [MONTHLY] Fetching GA4/GBP/GSC data for ${startDate} to ${endDate}`);
@@ -854,7 +854,7 @@ async function processMonthlyAgents(
       domain,
       propertyIds,
       startDate,
-      endDate
+      endDate,
     );
 
     // Fetch aggregated PMS data across all approved submissions
@@ -879,14 +879,14 @@ async function processMonthlyAgents(
           patient_records: aggregated.patientRecords,
         };
         log(
-          `  [MONTHLY] ✓ Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources, ${aggregated.patientRecords.length} patient records)`
+          `  [MONTHLY] ✓ Aggregated PMS data found (${aggregated.months.length} months, ${aggregated.sources.length} sources, ${aggregated.patientRecords.length} patient records)`,
         );
       } else {
         log(`  [MONTHLY] ⚠ No approved PMS data found`);
       }
     } catch (pmsError: any) {
       log(
-        `  [MONTHLY] ⚠ Error fetching aggregated PMS data: ${pmsError.message}`
+        `  [MONTHLY] ⚠ Error fetching aggregated PMS data: ${pmsError.message}`,
       );
     }
 
@@ -919,7 +919,7 @@ async function processMonthlyAgents(
     const summaryOutput = await callAgentWebhook(
       SUMMARY_WEBHOOK,
       summaryPayload,
-      "Summary"
+      "Summary",
     );
 
     // Log and validate Summary output
@@ -950,14 +950,14 @@ async function processMonthlyAgents(
     const referralEngineOutput = await callAgentWebhook(
       REFERRAL_ENGINE_WEBHOOK,
       referralEnginePayload,
-      "Referral Engine"
+      "Referral Engine",
     );
 
     // Log and validate Referral Engine output
     logAgentOutput("Referral Engine", referralEngineOutput);
     const referralEngineValid = isValidAgentOutput(
       referralEngineOutput,
-      "Referral Engine"
+      "Referral Engine",
     );
 
     if (!referralEngineValid) {
@@ -982,14 +982,14 @@ async function processMonthlyAgents(
     const opportunityOutput = await callAgentWebhook(
       OPPORTUNITY_WEBHOOK,
       opportunityPayload,
-      "Opportunity"
+      "Opportunity",
     );
 
     // Log and validate Opportunity output
     logAgentOutput("Opportunity", opportunityOutput);
     const opportunityValid = isValidAgentOutput(
       opportunityOutput,
-      "Opportunity"
+      "Opportunity",
     );
 
     if (!opportunityValid) {
@@ -1012,7 +1012,7 @@ async function processMonthlyAgents(
     for (croAttempt = 1; croAttempt <= MAX_CRO_ATTEMPTS; croAttempt++) {
       if (croAttempt > 1) {
         log(
-          `  [MONTHLY] 🔄 CRO Optimizer retry attempt ${croAttempt}/${MAX_CRO_ATTEMPTS}`
+          `  [MONTHLY] 🔄 CRO Optimizer retry attempt ${croAttempt}/${MAX_CRO_ATTEMPTS}`,
         );
         log(`  [MONTHLY] Waiting 30 seconds before retry...`);
         await delay(30000);
@@ -1030,29 +1030,29 @@ async function processMonthlyAgents(
         croOptimizerOutput = await callAgentWebhook(
           CRO_OPTIMIZER_WEBHOOK,
           croOptimizerPayload,
-          "CRO Optimizer"
+          "CRO Optimizer",
         );
 
         // Log and validate CRO Optimizer output
         logAgentOutput("CRO Optimizer", croOptimizerOutput);
         const croValid = isValidAgentOutput(
           croOptimizerOutput,
-          "CRO Optimizer"
+          "CRO Optimizer",
         );
 
         if (!croValid) {
           throw new Error(
-            "CRO Optimizer agent returned empty or invalid output"
+            "CRO Optimizer agent returned empty or invalid output",
           );
         }
 
         log(
-          `  [MONTHLY] ✓ CRO Optimizer completed successfully on attempt ${croAttempt}`
+          `  [MONTHLY] ✓ CRO Optimizer completed successfully on attempt ${croAttempt}`,
         );
         break; // Success, exit retry loop
       } catch (croError: any) {
         log(
-          `  [MONTHLY] ⚠ CRO Optimizer attempt ${croAttempt} failed: ${croError.message}`
+          `  [MONTHLY] ⚠ CRO Optimizer attempt ${croAttempt} failed: ${croError.message}`,
         );
 
         if (croAttempt === MAX_CRO_ATTEMPTS) {
@@ -1072,7 +1072,7 @@ async function processMonthlyAgents(
       console.log(opportunityOutput[0].opportunities);
       if (Array.isArray(actionItems) && actionItems.length > 0) {
         log(
-          `  [MONTHLY] Creating ${actionItems.length} task(s) from action items`
+          `  [MONTHLY] Creating ${actionItems.length} task(s) from action items`,
         );
 
         for (const item of actionItems) {
@@ -1108,11 +1108,11 @@ async function processMonthlyAgents(
             const [result] = await db("tasks").insert(taskData).returning("id");
             const taskId = result.id;
             log(
-              `    ✓ Created ${type} task (ID: ${taskId}): ${taskData.title}`
+              `    ✓ Created ${type} task (ID: ${taskId}): ${taskData.title}`,
             );
           } catch (taskError: any) {
             log(
-              `    ⚠ Failed to create task "${taskData.title}": ${taskError.message}`
+              `    ⚠ Failed to create task "${taskData.title}": ${taskError.message}`,
             );
           }
         }
@@ -1124,7 +1124,7 @@ async function processMonthlyAgents(
     } catch (taskCreationError: any) {
       // Don't fail the entire operation if task creation fails
       log(
-        `  [MONTHLY] ⚠ Error creating Opportunity tasks: ${taskCreationError.message}`
+        `  [MONTHLY] ⚠ Error creating Opportunity tasks: ${taskCreationError.message}`,
       );
     }
 
@@ -1134,7 +1134,7 @@ async function processMonthlyAgents(
 
       if (Array.isArray(croActionItems) && croActionItems.length > 0) {
         log(
-          `  [MONTHLY] Creating ${croActionItems.length} CRO Optimizer task(s) from action items`
+          `  [MONTHLY] Creating ${croActionItems.length} CRO Optimizer task(s) from action items`,
         );
 
         for (const item of croActionItems) {
@@ -1169,11 +1169,11 @@ async function processMonthlyAgents(
             const [result] = await db("tasks").insert(taskData).returning("id");
             const taskId = result.id;
             log(
-              `    ✓ Created ${type} task (ID: ${taskId}): ${taskData.title}`
+              `    ✓ Created ${type} task (ID: ${taskId}): ${taskData.title}`,
             );
           } catch (taskError: any) {
             log(
-              `    ⚠ Failed to create task "${taskData.title}": ${taskError.message}`
+              `    ⚠ Failed to create task "${taskData.title}": ${taskError.message}`,
             );
           }
         }
@@ -1185,7 +1185,7 @@ async function processMonthlyAgents(
     } catch (taskCreationError: any) {
       // Don't fail the entire operation if task creation fails
       log(
-        `  [MONTHLY] ⚠ Error creating CRO Optimizer tasks: ${taskCreationError.message}`
+        `  [MONTHLY] ⚠ Error creating CRO Optimizer tasks: ${taskCreationError.message}`,
       );
     }
 
@@ -1206,7 +1206,7 @@ async function processMonthlyAgents(
 
       if (totalReferralTasks > 0) {
         log(
-          `  [MONTHLY] Creating ${totalReferralTasks} Referral Engine task(s) (${alloroItems.length} ALLORO, ${userItems.length} USER)`
+          `  [MONTHLY] Creating ${totalReferralTasks} Referral Engine task(s) (${alloroItems.length} ALLORO, ${userItems.length} USER)`,
         );
 
         // Create ALLORO tasks from alloro_automation_opportunities
@@ -1246,8 +1246,8 @@ async function processMonthlyAgents(
             due_date: isStringItem
               ? null
               : item.due_date || item.dueDate
-              ? new Date(item.due_date || item.dueDate)
-              : null,
+                ? new Date(item.due_date || item.dueDate)
+                : null,
             metadata: JSON.stringify({
               source_field: "alloro_automation_opportunities",
               priority: isStringItem ? null : item.priority || null,
@@ -1266,7 +1266,7 @@ async function processMonthlyAgents(
             log(`    ✓ Created ALLORO task (ID: ${taskId}): ${taskData.title}`);
           } catch (taskError: any) {
             log(
-              `    ⚠ Failed to create ALLORO task "${taskData.title}": ${taskError.message}`
+              `    ⚠ Failed to create ALLORO task "${taskData.title}": ${taskError.message}`,
             );
           }
         }
@@ -1308,8 +1308,8 @@ async function processMonthlyAgents(
             due_date: isStringItem
               ? null
               : item.due_date || item.dueDate
-              ? new Date(item.due_date || item.dueDate)
-              : null,
+                ? new Date(item.due_date || item.dueDate)
+                : null,
             metadata: JSON.stringify({
               source_field: "practice_action_plan",
               priority: isStringItem ? null : item.priority || null,
@@ -1329,7 +1329,7 @@ async function processMonthlyAgents(
             log(`    ✓ Created USER task (ID: ${taskId}): ${taskData.title}`);
           } catch (taskError: any) {
             log(
-              `    ⚠ Failed to create USER task "${taskData.title}": ${taskError.message}`
+              `    ⚠ Failed to create USER task "${taskData.title}": ${taskError.message}`,
             );
           }
         }
@@ -1341,7 +1341,7 @@ async function processMonthlyAgents(
     } catch (taskCreationError: any) {
       // Don't fail the entire operation if task creation fails
       log(
-        `  [MONTHLY] ⚠ Error creating Referral Engine tasks: ${taskCreationError.message}`
+        `  [MONTHLY] ⚠ Error creating Referral Engine tasks: ${taskCreationError.message}`,
       );
     }
 
@@ -1373,7 +1373,7 @@ async function processMonthlyAgents(
 function buildCopyCompanionPayload(
   gbpData: any,
   domain: string,
-  googleAccountId: number
+  googleAccountId: number,
 ): any {
   log(`  [GBP-OPTIMIZER] Building Copy Companion payload for ${domain}`);
 
@@ -1393,7 +1393,7 @@ function buildCopyCompanionPayload(
         text: profile.description,
       });
       log(
-        `      ✓ Added business_description (${profile.description.length} chars)`
+        `      ✓ Added business_description (${profile.description.length} chars)`,
       );
     }
 
@@ -1436,7 +1436,7 @@ function buildCopyCompanionPayload(
   }
 
   log(
-    `  [GBP-OPTIMIZER] ✓ Built payload with ${textSources.length} text sources`
+    `  [GBP-OPTIMIZER] ✓ Built payload with ${textSources.length} text sources`,
   );
 
   return {
@@ -1454,7 +1454,7 @@ function buildCopyCompanionPayload(
 async function processGBPOptimizerAgent(
   account: any,
   oauth2Client: any,
-  monthRange: { startDate: string; endDate: string }
+  monthRange: { startDate: string; endDate: string },
 ): Promise<{
   success: boolean;
   output?: any;
@@ -1466,7 +1466,7 @@ async function processGBPOptimizerAgent(
 
   log(`\n  [GBP-OPTIMIZER] Starting processing for ${domain}`);
   log(
-    `  [GBP-OPTIMIZER] Date range: ${monthRange.startDate} to ${monthRange.endDate}`
+    `  [GBP-OPTIMIZER] Date range: ${monthRange.startDate} to ${monthRange.endDate}`,
   );
 
   try {
@@ -1478,7 +1478,7 @@ async function processGBPOptimizerAgent(
       oauth2Client,
       googleAccountId,
       monthRange.startDate,
-      monthRange.endDate
+      monthRange.endDate,
     );
 
     if (!gbpData.locations || gbpData.locations.length === 0) {
@@ -1496,7 +1496,7 @@ async function processGBPOptimizerAgent(
       log(
         `    [${idx + 1}] ${loc.meta?.businessName || "Unknown"}: ${
           loc.gbp_posts.length
-        } posts`
+        } posts`,
       );
     });
 
@@ -1506,13 +1506,13 @@ async function processGBPOptimizerAgent(
     log(`  [GBP-OPTIMIZER] Calling Copy Companion agent...`);
     log(`  [GBP-OPTIMIZER] Webhook: ${COPY_COMPANION_WEBHOOK}`);
     log(
-      `  [GBP-OPTIMIZER] Sending ${payload.additional_data.text_sources.length} text sources`
+      `  [GBP-OPTIMIZER] Sending ${payload.additional_data.text_sources.length} text sources`,
     );
 
     const agentOutput = await callAgentWebhook(
       COPY_COMPANION_WEBHOOK,
       payload,
-      "Copy Companion"
+      "Copy Companion",
     );
 
     // Log and validate output
@@ -1553,7 +1553,7 @@ async function processGBPOptimizerAgent(
 async function createTasksFromCopyRecommendations(
   agentOutput: any,
   googleAccountId: number,
-  domain: string
+  domain: string,
 ): Promise<void> {
   log(`\n  [GBP-OPTIMIZER] Creating tasks from recommendations...`);
 
@@ -1567,7 +1567,7 @@ async function createTasksFromCopyRecommendations(
     }
 
     log(
-      `  [GBP-OPTIMIZER] Found ${recommendations.length} total recommendation(s)`
+      `  [GBP-OPTIMIZER] Found ${recommendations.length} total recommendation(s)`,
     );
 
     let createdCount = 0;
@@ -1582,7 +1582,7 @@ async function createTasksFromCopyRecommendations(
       log(
         `    [${lineage}] Verdict: ${verdict}, Confidence: ${(
           confidence * 100
-        ).toFixed(0)}%`
+        ).toFixed(0)}%`,
       );
 
       // Only create tasks for recommendations that need action
@@ -1664,7 +1664,7 @@ ${
  */
 async function processClient(
   account: any,
-  referenceDate?: string
+  referenceDate?: string,
 ): Promise<{
   success: boolean;
   daily?: any;
@@ -1683,7 +1683,7 @@ async function processClient(
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     if (attempt > 1) {
       log(
-        `\n[CLIENT] 🔄 RETRY ATTEMPT ${attempt}/${MAX_ATTEMPTS} for ${domain}`
+        `\n[CLIENT] 🔄 RETRY ATTEMPT ${attempt}/${MAX_ATTEMPTS} for ${domain}`,
       );
       log(`[CLIENT] Waiting 30 seconds before retry...`);
       await delay(30000); // Wait 30 seconds between retries
@@ -1703,7 +1703,7 @@ async function processClient(
       const dailyResult = await processDailyAgent(
         account,
         oauth2Client,
-        dailyDates
+        dailyDates,
       );
 
       if (!dailyResult.success) {
@@ -1712,7 +1712,7 @@ async function processClient(
           continue; // Retry
         }
         throw new Error(
-          `Daily agent failed after ${MAX_ATTEMPTS} attempts: ${dailyResult.error}`
+          `Daily agent failed after ${MAX_ATTEMPTS} attempts: ${dailyResult.error}`,
         );
       }
 
@@ -1737,12 +1737,12 @@ async function processClient(
           monthlyResult = { skipped: true, reason: "already_exists" };
         } else {
           log(
-            `[CLIENT] Running monthly agents (attempt ${attempt}/${MAX_ATTEMPTS})`
+            `[CLIENT] Running monthly agents (attempt ${attempt}/${MAX_ATTEMPTS})`,
           );
           monthlyResult = await processMonthlyAgents(
             account,
             oauth2Client,
-            monthRange
+            monthRange,
           );
 
           if (!monthlyResult.success && !monthlyResult.skipped) {
@@ -1751,7 +1751,7 @@ async function processClient(
               continue; // Retry
             }
             throw new Error(
-              `Monthly agents failed after ${MAX_ATTEMPTS} attempts: ${monthlyResult.error}`
+              `Monthly agents failed after ${MAX_ATTEMPTS} attempts: ${monthlyResult.error}`,
             );
           }
         }
@@ -1858,7 +1858,7 @@ async function processClient(
           .returning("id");
 
         log(
-          `[CLIENT] ✓ Referral Engine result saved (ID: ${referralEngineId})`
+          `[CLIENT] ✓ Referral Engine result saved (ID: ${referralEngineId})`,
         );
 
         // Save CRO Optimizer result
@@ -1881,7 +1881,7 @@ async function processClient(
       }
 
       log(
-        `[CLIENT] ✓ ${domain} processing completed successfully on attempt ${attempt}`
+        `[CLIENT] ✓ ${domain} processing completed successfully on attempt ${attempt}`,
       );
 
       return {
@@ -2002,7 +2002,7 @@ router.post("/proofline-run", async (req: Request, res: Response) => {
         const dailyResult = await processDailyAgent(
           account,
           oauth2Client,
-          dailyDates
+          dailyDates,
         );
 
         if (!dailyResult.success) {
@@ -2111,7 +2111,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
   const updatePmsStatus = async (
     subStep: MonthlyAgentKey,
     customMessage?: string,
-    agentCompleted?: MonthlyAgentKey
+    agentCompleted?: MonthlyAgentKey,
   ) => {
     if (pmsJobId) {
       await updateAutomationStatus(pmsJobId, {
@@ -2153,7 +2153,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     // Get month range
     const monthRange = getPreviousMonthRange();
     log(
-      `[SETUP] Month range: ${monthRange.startDate} to ${monthRange.endDate}`
+      `[SETUP] Month range: ${monthRange.startDate} to ${monthRange.endDate}`,
     );
 
     // Removed duplicate check - always run monthly agents when called
@@ -2166,7 +2166,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     // Update status: data fetching
     await updatePmsStatus(
       "data_fetch",
-      "Fetching GA4, GBP, GSC, PMS, and Clarity data..."
+      "Fetching GA4, GBP, GSC, PMS, and Clarity data...",
     );
 
     // Run monthly agents
@@ -2174,7 +2174,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     const monthlyResult = await processMonthlyAgents(
       account,
       oauth2Client,
-      monthRange
+      monthRange,
     );
 
     if (!monthlyResult.success) {
@@ -2183,7 +2183,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
         await failAutomation(
           pmsJobId,
           "monthly_agents",
-          monthlyResult.error || "Monthly agents failed"
+          monthlyResult.error || "Monthly agents failed",
         );
       }
       throw new Error(monthlyResult.error || "Monthly agents failed");
@@ -2196,7 +2196,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     await updatePmsStatus(
       "summary_agent",
       "Summary Agent completed",
-      "summary_agent"
+      "summary_agent",
     );
 
     // Save raw data
@@ -2225,7 +2225,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     await updatePmsStatus(
       "referral_engine",
       "Referral Engine Agent completed",
-      "referral_engine"
+      "referral_engine",
     );
 
     // Save Opportunity result
@@ -2251,7 +2251,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     await updatePmsStatus(
       "opportunity_agent",
       "Opportunity Agent completed",
-      "opportunity_agent"
+      "opportunity_agent",
     );
 
     // Save Referral Engine result
@@ -2277,7 +2277,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     await updatePmsStatus(
       "cro_optimizer",
       "CRO Optimizer Agent completed",
-      "cro_optimizer"
+      "cro_optimizer",
     );
 
     // Save CRO Optimizer result
@@ -2321,12 +2321,12 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
           opportunityId,
           croOptimizerId,
           dateRange: `${monthRange.startDate} to ${monthRange.endDate}`,
-        }
+        },
       );
       log(`[CLIENT] ✓ Notification created for completed monthly agents`);
     } catch (notificationError: any) {
       log(
-        `[CLIENT] ⚠ Failed to create notification: ${notificationError.message}`
+        `[CLIENT] ⚠ Failed to create notification: ${notificationError.message}`,
       );
       // Don't fail the entire operation if notification creation fails
     }
@@ -2348,10 +2348,10 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
 
       tasksCreated.total = recentTasks.length;
       tasksCreated.user = recentTasks.filter(
-        (t: any) => t.category === "USER"
+        (t: any) => t.category === "USER",
       ).length;
       tasksCreated.alloro = recentTasks.filter(
-        (t: any) => t.category === "ALLORO"
+        (t: any) => t.category === "ALLORO",
       ).length;
     } catch (e) {
       log(`[CLIENT] Could not count tasks: ${e}`);
@@ -2362,7 +2362,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
       await notifyAdminsMonthlyAgentComplete(
         domain,
         { summaryId, referralEngineId, opportunityId, croOptimizerId },
-        tasksCreated
+        tasksCreated,
       );
       log(`[CLIENT] ✓ Admin email sent for monthly agents completion`);
     } catch (adminEmailError: any) {
@@ -2394,7 +2394,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
     log(`  - Opportunity ID: ${opportunityId}`);
     log(`  - CRO Optimizer ID: ${croOptimizerId}`);
     log(
-      `  - Tasks created: ${tasksCreated.total} (${tasksCreated.user} USER, ${tasksCreated.alloro} ALLORO)`
+      `  - Tasks created: ${tasksCreated.total} (${tasksCreated.user} USER, ${tasksCreated.alloro} ALLORO)`,
     );
     log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
     log("=".repeat(70) + "\n");
@@ -2419,7 +2419,7 @@ router.post("/monthly-agents-run", async (req: Request, res: Response) => {
       await failAutomation(
         pmsJobId,
         "monthly_agents",
-        error?.message || "Monthly agents failed"
+        error?.message || "Monthly agents failed",
       );
     }
 
@@ -2493,22 +2493,27 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     }
 
     // Calculate month range (use provided dates or default to previous month)
-    const monthRange = req.body.startDate && req.body.endDate
-      ? { startDate: req.body.startDate, endDate: req.body.endDate }
-      : getPreviousMonthRange();
+    const monthRange =
+      req.body.startDate && req.body.endDate
+        ? { startDate: req.body.startDate, endDate: req.body.endDate }
+        : getPreviousMonthRange();
 
     const { startDate, endDate } = monthRange;
 
-    log(`[TEST-AGENTS] Running all monthly agents for ${startDate} to ${endDate}...`);
-    log(`[TEST-AGENTS] NOTE: This is a TEST run - NO data will be persisted to database`);
+    log(
+      `[TEST-AGENTS] Running all monthly agents for ${startDate} to ${endDate}...`,
+    );
+    log(
+      `[TEST-AGENTS] NOTE: This is a TEST run - NO data will be persisted to database`,
+    );
 
     // === FETCH DATA (read-only) ===
     log(`[TEST-DATA] Fetching GA4/GBP/GSC/Clarity data...`);
-    const propertyIds = {
-      ga4: account.ga4_property_id,
-      gbp: account.gbp_account_id,
-      gsc: account.gsc_site_url,
-    };
+    // Parse property IDs from the stored JSON structure
+    const propertyIds: GooglePropertyIds =
+      typeof account.google_property_ids === "string"
+        ? JSON.parse(account.google_property_ids)
+        : (account.google_property_ids || {});
 
     const monthData = await fetchAllServiceData(
       oauth2Client,
@@ -2516,7 +2521,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
       domain,
       propertyIds,
       startDate,
-      endDate
+      endDate,
     );
 
     // Fetch aggregated PMS data (read-only)
@@ -2539,7 +2544,9 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
           totals: aggregated.totals,
           patient_records: aggregated.patientRecords,
         };
-        log(`[TEST-DATA] ✓ PMS data found (${aggregated.months.length} months)`);
+        log(
+          `[TEST-DATA] ✓ PMS data found (${aggregated.months.length} months)`,
+        );
       } else {
         log(`[TEST-DATA] ⚠ No approved PMS data found`);
       }
@@ -2562,7 +2569,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     const summaryOutput = await callAgentWebhook(
       SUMMARY_WEBHOOK,
       summaryPayload,
-      "Summary"
+      "Summary",
     );
 
     logAgentOutput("Summary", summaryOutput);
@@ -2590,7 +2597,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     const referralEngineOutput = await callAgentWebhook(
       REFERRAL_ENGINE_WEBHOOK,
       referralEnginePayload,
-      "Referral Engine"
+      "Referral Engine",
     );
 
     logAgentOutput("Referral Engine", referralEngineOutput);
@@ -2616,7 +2623,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     const opportunityOutput = await callAgentWebhook(
       OPPORTUNITY_WEBHOOK,
       opportunityPayload,
-      "Opportunity"
+      "Opportunity",
     );
 
     logAgentOutput("Opportunity", opportunityOutput);
@@ -2642,7 +2649,7 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     const croOptimizerOutput = await callAgentWebhook(
       CRO_OPTIMIZER_WEBHOOK,
       croOptimizerPayload,
-      "CRO Optimizer"
+      "CRO Optimizer",
     );
 
     logAgentOutput("CRO Optimizer", croOptimizerOutput);
@@ -2671,11 +2678,13 @@ router.post("/monthly-agents-run-test", async (req: Request, res: Response) => {
     log(`  - NO emails were sent`);
     log(`  - NO notifications were created`);
     log(
-      `  - Opportunity tasks (simulated): ${tasksToBeCreated.from_opportunity.length}`
+      `  - Opportunity tasks (simulated): ${tasksToBeCreated.from_opportunity.length}`,
     );
-    log(`  - CRO Optimizer tasks (simulated): ${tasksToBeCreated.from_cro_optimizer.length}`);
     log(
-      `  - Referral Engine tasks (simulated): ${tasksToBeCreated.from_referral_engine.alloro.length} ALLORO, ${tasksToBeCreated.from_referral_engine.user.length} USER`
+      `  - CRO Optimizer tasks (simulated): ${tasksToBeCreated.from_cro_optimizer.length}`,
+    );
+    log(
+      `  - Referral Engine tasks (simulated): ${tasksToBeCreated.from_referral_engine.alloro.length} ALLORO, ${tasksToBeCreated.from_referral_engine.user.length} USER`,
     );
     log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
     log("=".repeat(70) + "\n");
@@ -2742,11 +2751,11 @@ function simulateTaskCreation(agentOutputs: {
 
   try {
     // Simulate Opportunity tasks
-    const opportunityItems = agentOutputs.opportunityOutput?.[0]?.opportunities || [];
+    const opportunityItems =
+      agentOutputs.opportunityOutput?.[0]?.opportunities || [];
     if (Array.isArray(opportunityItems)) {
       for (const item of opportunityItems) {
-        const type =
-          item.type?.toUpperCase() === "ALLORO" ? "ALLORO" : "USER";
+        const type = item.type?.toUpperCase() === "ALLORO" ? "ALLORO" : "USER";
         result.from_opportunity.push({
           title: item.title || item.name || "Untitled Task",
           description:
@@ -2800,11 +2809,15 @@ function simulateTaskCreation(agentOutputs: {
     for (const item of alloroItems) {
       const isStringItem = typeof item === "string";
       const fullText = isStringItem ? item : JSON.stringify(item);
-      const title = isStringItem ? item.substring(0, 100) : item.opportunity || item.title || "Opportunity";
+      const title = isStringItem
+        ? item.substring(0, 100)
+        : item.opportunity || item.title || "Opportunity";
 
       result.from_referral_engine.alloro.push({
         title,
-        description: isStringItem ? null : item.description || item.explanation || null,
+        description: isStringItem
+          ? null
+          : item.description || item.explanation || null,
         category: "ALLORO",
         agent_type: "REFERRAL_ENGINE_ANALYSIS",
         full_text: fullText,
@@ -2816,11 +2829,15 @@ function simulateTaskCreation(agentOutputs: {
     for (const item of userItems) {
       const isStringItem = typeof item === "string";
       const fullText = isStringItem ? item : JSON.stringify(item);
-      const title = isStringItem ? item.substring(0, 100) : item.action || item.title || "Action Item";
+      const title = isStringItem
+        ? item.substring(0, 100)
+        : item.action || item.title || "Action Item";
 
       result.from_referral_engine.user.push({
         title,
-        description: isStringItem ? null : item.description || item.explanation || null,
+        description: isStringItem
+          ? null
+          : item.description || item.explanation || null,
         category: "USER",
         agent_type: "REFERRAL_ENGINE_ANALYSIS",
         full_text: fullText,
@@ -2863,7 +2880,7 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
     // Validate webhook configuration
     if (!COPY_COMPANION_WEBHOOK) {
       throw new Error(
-        "COPY_COMPANION_AGENT_WEBHOOK not configured in environment"
+        "COPY_COMPANION_AGENT_WEBHOOK not configured in environment",
       );
     }
 
@@ -2921,14 +2938,14 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
       log(
         `  [${idx + 1}] ${acc.domain_name} (${locationCount} location${
           locationCount !== 1 ? "s" : ""
-        })`
+        })`,
       );
     });
 
     // Get previous month date range
     const monthRange = getPreviousMonthRange(referenceDate);
     log(
-      `\n[SETUP] Month range: ${monthRange.startDate} to ${monthRange.endDate}`
+      `\n[SETUP] Month range: ${monthRange.startDate} to ${monthRange.endDate}`,
     );
 
     // Process each client sequentially
@@ -2940,7 +2957,7 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
 
       log(`\n[${"=".repeat(60)}]`);
       log(
-        `[CLIENT ${accountIndex}/${gbpAccounts.length}] Processing: ${domain} (ID: ${googleAccountId})`
+        `[CLIENT ${accountIndex}/${gbpAccounts.length}] Processing: ${domain} (ID: ${googleAccountId})`,
       );
       log(`[${"=".repeat(60)}]`);
 
@@ -2960,7 +2977,7 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
 
         if (existingResult) {
           log(
-            `[CLIENT] ℹ GBP Optimizer already run for this period (Result ID: ${existingResult.id})`
+            `[CLIENT] ℹ GBP Optimizer already run for this period (Result ID: ${existingResult.id})`,
           );
           log(`[CLIENT] Skipping ${domain}`);
           results.push({
@@ -2978,7 +2995,7 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
 
         // Get valid OAuth2 client
         log(
-          `[CLIENT] Getting valid OAuth2 client for account ${googleAccountId}`
+          `[CLIENT] Getting valid OAuth2 client for account ${googleAccountId}`,
         );
         const oauth2Client = await getValidOAuth2Client(googleAccountId);
 
@@ -2987,7 +3004,7 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
         const result = await processGBPOptimizerAgent(
           account,
           oauth2Client,
-          monthRange
+          monthRange,
         );
 
         if (!result.success) {
@@ -3018,7 +3035,7 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
         await createTasksFromCopyRecommendations(
           result.output,
           googleAccountId,
-          domain
+          domain,
         );
 
         results.push({
@@ -3045,7 +3062,7 @@ router.post("/gbp-optimizer-run", async (req: Request, res: Response) => {
 
     const duration = Date.now() - startTime;
     const successfulClients = results.filter(
-      (r) => r.success && !r.skipped
+      (r) => r.success && !r.skipped,
     ).length;
     const skippedClients = results.filter((r) => r.skipped).length;
     const failedClients = results.filter((r) => !r.success).length;
@@ -3152,7 +3169,7 @@ router.post("/ranking-run", async (req: Request, res: Response) => {
         const batchId = uuidv4();
         log(`  [ACCOUNT] Batch ID: ${batchId}`);
         log(
-          `  [ACCOUNT] Performing upfront identification for ${gbpLocations.length} locations...`
+          `  [ACCOUNT] Performing upfront identification for ${gbpLocations.length} locations...`,
         );
 
         // === UPFRONT IDENTIFICATION AND RECORD CREATION ===
@@ -3169,7 +3186,7 @@ router.post("/ranking-run", async (req: Request, res: Response) => {
               oauth2Client,
               [loc],
               new Date().toISOString().split("T")[0],
-              new Date().toISOString().split("T")[0]
+              new Date().toISOString().split("T")[0],
             );
 
             const locationData = gbpProfile?.locations?.[0]?.data || {};
@@ -3177,7 +3194,7 @@ router.post("/ranking-run", async (req: Request, res: Response) => {
             locationMetaMap.set(loc.locationId, meta);
           } catch (identErr: any) {
             log(
-              `    ✗ Identification failed for ${loc.locationId}, using fallback`
+              `    ✗ Identification failed for ${loc.locationId}, using fallback`,
             );
             locationMetaMap.set(loc.locationId, {
               specialty: "orthodontist",
@@ -3233,7 +3250,7 @@ router.post("/ranking-run", async (req: Request, res: Response) => {
           log(
             `\n  [LOCATION] Processing ${i + 1}/${gbpLocations.length}: ${
               loc.displayName || loc.locationId
-            }`
+            }`,
           );
 
           // Update status to processing with progress context
@@ -3256,7 +3273,7 @@ router.post("/ranking-run", async (req: Request, res: Response) => {
             try {
               if (attempt > 1) {
                 log(
-                  `    🔄 Retry ${attempt}/${MAX_RETRIES} for ID ${rankingId}`
+                  `    🔄 Retry ${attempt}/${MAX_RETRIES} for ID ${rankingId}`,
                 );
                 await delay(RETRY_DELAY_MS);
               }
@@ -3271,7 +3288,7 @@ router.post("/ranking-run", async (req: Request, res: Response) => {
                 meta.marketLocation,
                 domain,
                 batchId,
-                log
+                log,
               );
 
               accResults.push(result);
@@ -3306,7 +3323,7 @@ router.post("/ranking-run", async (req: Request, res: Response) => {
     const duration = Date.now() - startTime;
     log("\n" + "=".repeat(70));
     log(
-      `[COMPLETE] ✓ Ranking run completed in ${(duration / 1000).toFixed(1)}s`
+      `[COMPLETE] ✓ Ranking run completed in ${(duration / 1000).toFixed(1)}s`,
     );
     log("=".repeat(70) + "\n");
 
@@ -3353,7 +3370,7 @@ router.post(
       // Validate webhook configuration
       if (!GUARDIAN_AGENT_WEBHOOK || !GOVERNANCE_AGENT_WEBHOOK) {
         throw new Error(
-          "GUARDIAN_AGENT_WEBHOOK or GOVERNANCE_AGENT_WEBHOOK not configured in environment"
+          "GUARDIAN_AGENT_WEBHOOK or GOVERNANCE_AGENT_WEBHOOK not configured in environment",
         );
       }
 
@@ -3369,7 +3386,7 @@ router.post(
         const endOfMonth = new Date(
           new Date(month + "-01").getFullYear(),
           new Date(month + "-01").getMonth() + 1,
-          0
+          0,
         );
         const endDate = formatDate(endOfMonth);
         monthRange = { startDate, endDate };
@@ -3379,7 +3396,7 @@ router.post(
         log(`[GUARDIAN-GOV] Using current month`);
       }
       log(
-        `\n[GUARDIAN-GOV] Date range: ${monthRange.startDate} to ${monthRange.endDate}`
+        `\n[GUARDIAN-GOV] Date range: ${monthRange.startDate} to ${monthRange.endDate}`,
       );
 
       // Fetch all successful agent results from current month
@@ -3430,7 +3447,7 @@ router.post(
             parsedOutput = JSON.parse(result.agent_output);
           } catch (e) {
             log(
-              `  [WARNING] Failed to parse agent_output for result ${result.id}`
+              `  [WARNING] Failed to parse agent_output for result ${result.id}`,
             );
           }
         }
@@ -3442,7 +3459,7 @@ router.post(
       log(
         `[GUARDIAN-GOV] ✓ Created ${agentTypes.length} groups: ${agentTypes
           .map((t) => `${t}(${groupedResults[t].length})`)
-          .join(", ")}`
+          .join(", ")}`,
       );
 
       // Check for duplicates
@@ -3458,7 +3475,7 @@ router.post(
 
       if (existingGuardian) {
         log(
-          `[GUARDIAN-GOV] Guardian/Governance already run for this period (ID: ${existingGuardian.id})`
+          `[GUARDIAN-GOV] Guardian/Governance already run for this period (ID: ${existingGuardian.id})`,
         );
         return res.json({
           success: true,
@@ -3482,14 +3499,14 @@ router.post(
 
         log(`\n[${"=".repeat(60)}]`);
         log(
-          `[GUARDIAN-GOV] Processing group ${groupIndex}/${agentTypes.length}: ${agentType}`
+          `[GUARDIAN-GOV] Processing group ${groupIndex}/${agentTypes.length}: ${agentType}`,
         );
         log(`[${"=".repeat(60)}]`);
         log(`[GUARDIAN-GOV] Results in group: ${outputs.length}`);
 
         // Fetch historical PASS and REJECT recommendations for context
         log(
-          `[GUARDIAN-GOV] Fetching historical recommendations for ${agentType}...`
+          `[GUARDIAN-GOV] Fetching historical recommendations for ${agentType}...`,
         );
 
         const passedRecs = await db("agent_recommendations")
@@ -3501,7 +3518,7 @@ router.post(
             "explanation",
             "verdict",
             "confidence",
-            "created_at"
+            "created_at",
           )
           .orderBy("created_at", "desc")
           .limit(50); // Limit to most recent 50
@@ -3515,13 +3532,13 @@ router.post(
             "explanation",
             "verdict",
             "confidence",
-            "created_at"
+            "created_at",
           )
           .orderBy("created_at", "desc")
           .limit(50);
 
         log(
-          `[GUARDIAN-GOV] Found ${passedRecs.length} PASS, ${rejectedRecs.length} REJECT recommendations`
+          `[GUARDIAN-GOV] Found ${passedRecs.length} PASS, ${rejectedRecs.length} REJECT recommendations`,
         );
 
         // Build payload with historical context
@@ -3529,7 +3546,7 @@ router.post(
           agentType,
           outputs,
           passedRecs,
-          rejectedRecs
+          rejectedRecs,
         );
 
         // === STEP 1: Call Guardian Agent ===
@@ -3540,7 +3557,7 @@ router.post(
         for (let attempt = 1; attempt <= 3; attempt++) {
           if (attempt > 1) {
             log(
-              `[GUARDIAN-GOV]   🔄 Guardian retry attempt ${attempt}/3 for ${agentType}`
+              `[GUARDIAN-GOV]   🔄 Guardian retry attempt ${attempt}/3 for ${agentType}`,
             );
             log(`[GUARDIAN-GOV]   Waiting 30 seconds before retry...`);
             await delay(30000);
@@ -3550,7 +3567,7 @@ router.post(
             guardianOutput = await callAgentWebhook(
               GUARDIAN_AGENT_WEBHOOK,
               payload,
-              `Guardian (${agentType})`
+              `Guardian (${agentType})`,
             );
 
             // Validate output
@@ -3563,11 +3580,11 @@ router.post(
             }
           } catch (error: any) {
             log(
-              `[GUARDIAN-GOV]   ⚠ Guardian attempt ${attempt} failed: ${error.message}`
+              `[GUARDIAN-GOV]   ⚠ Guardian attempt ${attempt} failed: ${error.message}`,
             );
             if (attempt === 3) {
               log(
-                `[GUARDIAN-GOV]   ✗ Guardian failed after 3 attempts for ${agentType}`
+                `[GUARDIAN-GOV]   ✗ Guardian failed after 3 attempts for ${agentType}`,
               );
             }
           }
@@ -3595,7 +3612,7 @@ router.post(
         for (let attempt = 1; attempt <= 3; attempt++) {
           if (attempt > 1) {
             log(
-              `[GUARDIAN-GOV]   🔄 Governance retry attempt ${attempt}/3 for ${agentType}`
+              `[GUARDIAN-GOV]   🔄 Governance retry attempt ${attempt}/3 for ${agentType}`,
             );
             log(`[GUARDIAN-GOV]   Waiting 30 seconds before retry...`);
             await delay(30000);
@@ -3605,7 +3622,7 @@ router.post(
             governanceOutput = await callAgentWebhook(
               GOVERNANCE_AGENT_WEBHOOK,
               payload,
-              `Governance (${agentType})`
+              `Governance (${agentType})`,
             );
 
             // Validate output
@@ -3620,11 +3637,11 @@ router.post(
             }
           } catch (error: any) {
             log(
-              `[GUARDIAN-GOV]   ⚠ Governance attempt ${attempt} failed: ${error.message}`
+              `[GUARDIAN-GOV]   ⚠ Governance attempt ${attempt} failed: ${error.message}`,
             );
             if (attempt === 3) {
               log(
-                `[GUARDIAN-GOV]   ✗ Governance failed after 3 attempts for ${agentType}`
+                `[GUARDIAN-GOV]   ✗ Governance failed after 3 attempts for ${agentType}`,
               );
             }
           }
@@ -3658,10 +3675,10 @@ router.post(
       log("[GUARDIAN-GOV] ALL GROUPS PROCESSED - Saving to database");
       log(`[${"=".repeat(60)}]`);
       log(
-        `[GUARDIAN-GOV] Guardian results collected: ${guardianResults.length} groups`
+        `[GUARDIAN-GOV] Guardian results collected: ${guardianResults.length} groups`,
       );
       log(
-        `[GUARDIAN-GOV] Governance results collected: ${governanceResults.length} groups`
+        `[GUARDIAN-GOV] Governance results collected: ${governanceResults.length} groups`,
       );
 
       // Save Guardian result
@@ -3718,13 +3735,13 @@ router.post(
           guardianId,
           governanceId,
           guardianResults,
-          governanceResults
+          governanceResults,
         );
       } catch (recError: any) {
         // Log but don't fail the entire process
         logError("Recommendation parsing", recError);
         log(
-          `[GUARDIAN-GOV] ⚠ Recommendation parsing failed but agent run succeeded`
+          `[GUARDIAN-GOV] ⚠ Recommendation parsing failed but agent run succeeded`,
         );
       }
 
@@ -3752,10 +3769,10 @@ router.post(
           agent_type: type,
           count: groupedResults[type].length,
           guardian_success: !guardianResults.find(
-            (r) => r.agent_under_test === type && r.error
+            (r) => r.agent_under_test === type && r.error,
           ),
           governance_success: !governanceResults.find(
-            (r) => r.agent_under_test === type && r.error
+            (r) => r.agent_under_test === type && r.error,
           ),
         })),
         duration: `${duration}ms`,
@@ -3764,7 +3781,7 @@ router.post(
       logError("guardian-governance-agents-run", error);
       const duration = Date.now() - startTime;
       log(
-        `\n[GUARDIAN-GOV] ❌ Guardian/Governance run failed after ${duration}ms`
+        `\n[GUARDIAN-GOV] ❌ Guardian/Governance run failed after ${duration}ms`,
       );
       log(`  Error: ${error?.message || String(error)}`);
       log("=".repeat(70) + "\n");
@@ -3776,7 +3793,7 @@ router.post(
         duration: `${duration}ms`,
       });
     }
-  }
+  },
 );
 
 /**
@@ -3830,7 +3847,7 @@ router.post("/process-all", async (req: Request, res: Response) => {
       if (result.attempts && result.attempts > 1) {
         totalRetries += result.attempts - 1;
         log(
-          `[STATS] Client ${account.domain_name} required ${result.attempts} attempt(s)`
+          `[STATS] Client ${account.domain_name} required ${result.attempts} attempt(s)`,
         );
       }
 
@@ -3843,10 +3860,10 @@ router.post("/process-all", async (req: Request, res: Response) => {
       // Stop on first error after all retries exhausted
       if (!result.success) {
         log(
-          `\n[ERROR] ❌ Stopping processing - ${account.domain_name} failed after ${result.attempts} attempts`
+          `\n[ERROR] ❌ Stopping processing - ${account.domain_name} failed after ${result.attempts} attempts`,
         );
         throw new Error(
-          `Processing failed for ${account.domain_name} after ${result.attempts} attempts: ${result.error}`
+          `Processing failed for ${account.domain_name} after ${result.attempts} attempts: ${result.error}`,
         );
       }
     }
@@ -3943,7 +3960,7 @@ router.get("/latest/:googleAccountId", async (req: Request, res: Response) => {
               : result.agent_output;
         } catch (parseError) {
           log(
-            `  [WARNING] Failed to parse agent_output for ${agentType}: ${parseError}`
+            `  [WARNING] Failed to parse agent_output for ${agentType}: ${parseError}`,
           );
           parsedOutput = result.agent_output;
         }
@@ -3961,7 +3978,7 @@ router.get("/latest/:googleAccountId", async (req: Request, res: Response) => {
     }
 
     log(
-      `  [SUCCESS] Retrieved latest outputs for account ${accountId} (${account.domain_name})`
+      `  [SUCCESS] Retrieved latest outputs for account ${accountId} (${account.domain_name})`,
     );
 
     return res.json({
@@ -3993,7 +4010,7 @@ router.get(
 
     try {
       log(
-        `\n[GET /getLatestReferralEngineOutput/${googleAccountId}] Fetching latest referral engine output`
+        `\n[GET /getLatestReferralEngineOutput/${googleAccountId}] Fetching latest referral engine output`,
       );
 
       // Validate googleAccountId
@@ -4025,13 +4042,13 @@ router.get(
         .where({ domain: account.domain_name })
         .whereRaw(
           `automation_status_detail::jsonb->>'status' = 'processing'
-           AND automation_status_detail::jsonb->>'currentStep' = 'monthly_agents'`
+           AND automation_status_detail::jsonb->>'currentStep' = 'monthly_agents'`,
         )
         .first();
 
       if (activeAutomation) {
         log(
-          `  [PENDING] Active automation found for ${account.domain_name} - PMS Job ID: ${activeAutomation.id}`
+          `  [PENDING] Active automation found for ${account.domain_name} - PMS Job ID: ${activeAutomation.id}`,
         );
         return res.json({
           success: true,
@@ -4059,7 +4076,7 @@ router.get(
 
       if (!result) {
         log(
-          `  [NO DATA] No referral engine results found for account ${accountId}`
+          `  [NO DATA] No referral engine results found for account ${accountId}`,
         );
         return res.status(404).json({
           success: false,
@@ -4081,7 +4098,7 @@ router.get(
       }
 
       log(
-        `  [SUCCESS] Retrieved referral engine output for account ${accountId} (${account.domain_name})`
+        `  [SUCCESS] Retrieved referral engine output for account ${accountId} (${account.domain_name})`,
       );
       log(`  - Result ID: ${result.id}`);
       log(`  - Date range: ${result.date_start} to ${result.date_end}`);
@@ -4108,7 +4125,7 @@ router.get(
         message: error?.message || "Failed to fetch referral engine output",
       });
     }
-  }
+  },
 );
 
 // =====================================================================
