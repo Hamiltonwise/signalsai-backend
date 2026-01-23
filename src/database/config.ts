@@ -15,6 +15,10 @@ const config: { [key: string]: Knex.Config } = {
       database: process.env.DB_NAME,
       ssl: { rejectUnauthorized: false },
     },
+    migrations: {
+      directory: "./src/database/migrations",
+      extension: "ts",
+    },
     pool: {
       min: 2,
       max: 50,
@@ -54,6 +58,10 @@ const config: { [key: string]: Knex.Config } = {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       ssl: { rejectUnauthorized: false },
+    },
+    migrations: {
+      directory: "./src/database/migrations",
+      extension: "ts",
     },
     pool: {
       min: 2,

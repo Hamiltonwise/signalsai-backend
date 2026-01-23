@@ -219,4 +219,115 @@ onboardingRoutes.post(
   }
 );
 
+/**
+ * GET /api/onboarding/wizard/status
+ *
+ * Check if user has completed the product tour wizard
+ */
+onboardingRoutes.get("/wizard/status", async (req: AuthenticatedRequest, res) => {
+  try {
+    const googleAccountId = req.googleAccountId ?? getAccountIdFromHeader(req);
+
+    if (!googleAccountId) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing google account ID",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const googleAccount = await db("google_accounts")
+      .where({ id: googleAccountId })
+      .first();
+
+    if (!googleAccount) {
+      return res.status(404).json({
+        success: false,
+        error: "Google account not found",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    return res.json({
+      onboarding_wizard_completed: !!googleAccount.onboarding_wizard_completed,
+    });
+  } catch (error) {
+    return handleError(res, error, "Check wizard status");
+  }
+});
+
+/**
+ * PUT /api/onboarding/wizard/complete
+ *
+ * Mark the product tour wizard as completed
+ */
+onboardingRoutes.put(
+  "/wizard/complete",
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const googleAccountId =
+        req.googleAccountId ?? getAccountIdFromHeader(req);
+
+      if (!googleAccountId) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing google account ID",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      await db("google_accounts")
+        .where({ id: googleAccountId })
+        .update({
+          onboarding_wizard_completed: true,
+          updated_at: new Date(),
+        });
+
+      return res.json({
+        success: true,
+        onboarding_wizard_completed: true,
+      });
+    } catch (error) {
+      return handleError(res, error, "Complete wizard");
+    }
+  }
+);
+
+/**
+ * POST /api/onboarding/wizard/restart
+ *
+ * Reset the product tour wizard completion flag
+ */
+onboardingRoutes.post(
+  "/wizard/restart",
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const googleAccountId =
+        req.googleAccountId ?? getAccountIdFromHeader(req);
+
+      if (!googleAccountId) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing google account ID",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      await db("google_accounts")
+        .where({ id: googleAccountId })
+        .update({
+          onboarding_wizard_completed: false,
+          updated_at: new Date(),
+        });
+
+      return res.json({
+        success: true,
+        onboarding_wizard_completed: false,
+      });
+    } catch (error) {
+      return handleError(res, error, "Restart wizard");
+    }
+  }
+);
+
 export default onboardingRoutes;
