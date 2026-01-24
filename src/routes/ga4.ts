@@ -211,18 +211,28 @@ const fetchGA4DataWithDimensions = async (
 };
 
 // Helper function to process acquisition data
-const processAcquisitionData = (rows: any[]) => {
+const processAcquisitionData = (rows: any[], leadSubmitRows?: any[]) => {
   if (!rows) return {};
 
   return {
-    bySource: rows.slice(0, 10).map((row) => ({
-      source: row.sessionSource || row.firstUserSource || "Unknown",
-      medium: row.sessionMedium || row.firstUserMedium || "Unknown",
-      users: row.activeUsers || 0,
-      sessions: row.sessions || 0,
-      engagementRate: row.engagementRate || 0,
-      conversions: row.conversions || 0,
-    })),
+    bySource: rows.slice(0, 10).map((row) => {
+      // Find matching lead_submit data
+      const leadSubmit = leadSubmitRows?.find(
+        (lr) =>
+          lr.sessionSource === row.sessionSource &&
+          lr.sessionMedium === row.sessionMedium
+      );
+
+      return {
+        source: row.sessionSource || row.firstUserSource || "Unknown",
+        medium: row.sessionMedium || row.firstUserMedium || "Unknown",
+        users: row.activeUsers || 0,
+        sessions: row.sessions || 0,
+        engagementRate: row.engagementRate || 0,
+        conversions: row.conversions || 0,
+        leadSubmissions: leadSubmit?.eventCount || 0,
+      };
+    }),
   };
 };
 
@@ -648,6 +658,8 @@ export async function getGA4AIReadyData(
     audienceDeviceData,
     behaviorPagesData,
     behaviorEventsData,
+    leadSubmitData,
+    leadSubmitBySourceData,
   ] = await Promise.all([
     // 1. Traffic Overview
     fetchGA4DataWithDimensions(
@@ -711,6 +723,43 @@ export async function getGA4AIReadyData(
       ["eventName"],
       20
     ),
+
+    // 5. Lead Submit Event Count - Total
+    fetchGA4DataWithDimensions(
+      analyticsdata,
+      formattedPropertyId,
+      finalStartDate,
+      finalEndDate,
+      ["eventCount"],
+      ["eventName"],
+      1000
+    )
+      .then((response) => {
+        const leadSubmitRow = response.rows?.find(
+          (row: any) => row.eventName === "lead_submit"
+        );
+        return leadSubmitRow?.eventCount || 0;
+      })
+      .catch(() => 0),
+
+    // 6. Lead Submit Event Count - by Source/Medium
+    fetchGA4DataWithDimensions(
+      analyticsdata,
+      formattedPropertyId,
+      finalStartDate,
+      finalEndDate,
+      ["eventCount"],
+      ["sessionSource", "sessionMedium", "eventName"],
+      100
+    )
+      .then((response) => {
+        return {
+          rows:
+            response.rows?.filter((row: any) => row.eventName === "lead_submit") ||
+            [],
+        };
+      })
+      .catch(() => ({ rows: [] })),
   ]).catch((error) => {
     console.error(`[GA4 Core] CRITICAL: Promise.all failed: ${error.message}`);
     console.error(`[GA4 Core] Error details:`, error);
@@ -729,11 +778,12 @@ export async function getGA4AIReadyData(
       engagementRate: overviewData.engagementRate || 0,
       avgSessionDuration: overviewData.averageSessionDuration || 0,
       bounceRate: overviewData.bounceRate || 0,
+      leadSubmissions: leadSubmitData || 0,
       dateRange: { startDate: finalStartDate, endDate: finalEndDate },
     },
 
     // 2. Acquisition Data 🎯
-    acquisition: processAcquisitionData(acquisitionData.rows || []),
+    acquisition: processAcquisitionData(acquisitionData.rows || [], leadSubmitBySourceData.rows || []),
 
     // 3. Audience Insights 👥
     audience: processAudienceData(

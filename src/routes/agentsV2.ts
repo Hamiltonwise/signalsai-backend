@@ -410,7 +410,7 @@ function buildSummaryPayload(params: {
     additional_data: {
       ...params.monthData,
       pms: params.pmsData || null,
-      clarity: params.clarityData || null,
+      // clarity: params.clarityData || null,  // Temporarily disabled for testing
     },
   };
 }
@@ -462,7 +462,7 @@ function buildReferralEnginePayload(params: {
     additional_data: {
       ...params.monthData,
       pms: params.pmsData || null,
-      clarity: params.clarityData || null,
+      // clarity: params.clarityData || null,  // Temporarily disabled for testing
     },
   };
 }
