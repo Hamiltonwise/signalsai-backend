@@ -182,8 +182,9 @@ auditRoutes.get("/:auditId/status", async (req, res) => {
     }
 
     // Process and normalize data
+    // Set success to false if error_message exists (n8n agent failed)
     const response = {
-      success: true,
+      success: !audit.error_message,
       id: audit.id,
       status: audit.status,
       realtime_status: audit.realtime_status,
@@ -236,8 +237,9 @@ auditRoutes.get("/:auditId", async (req, res) => {
       });
     }
 
+    // Set success to false if error_message exists (n8n agent failed)
     return res.json({
-      success: true,
+      success: !audit.error_message,
       audit: {
         id: audit.id,
         domain: audit.domain,

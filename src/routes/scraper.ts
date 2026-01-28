@@ -667,15 +667,6 @@ router.post(
 
       log("DEBUG", `Navigating to URL`, { url });
 
-      // TODO: TEMPORARY - Always return error for n8n testing. REVERT THIS!
-      if (browser) {
-        await browser.close();
-      }
-      return res.json({
-        error: true,
-        error_message: "cannot load page",
-      });
-
       // Retry logic: attempt navigation up to 2 times
       const maxRetries = 2;
       let lastError: Error | null = null;
