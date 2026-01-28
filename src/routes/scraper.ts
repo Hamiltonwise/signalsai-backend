@@ -671,7 +671,7 @@ router.post(
       if (browser) {
         await browser.close();
       }
-      return res.status(500).json({
+      return res.json({
         error: true,
         error_message: "cannot load page",
       });
@@ -709,7 +709,7 @@ router.post(
         if (browser !== null) {
           await browser!.close();
         }
-        return res.status(500).json({
+        return res.json({
           error: true,
           error_message: "cannot load page",
         });
@@ -872,10 +872,10 @@ router.post(
         await browser.close();
       }
 
-      return res.status(500).json({
-        success: false,
-        error: error.message || "Failed to capture screenshot",
-      } as HomepageResponse);
+      return res.json({
+        error: true,
+        error_message: "cannot load page",
+      });
     }
   }
 );
