@@ -702,11 +702,11 @@ router.post(
       }
 
       // If all retries failed, return error response
-      if (lastError) {
+      if (lastError !== null) {
         log("ERROR", `All navigation attempts failed`, {
-          error: lastError.message
+          error: (lastError as Error).message
         });
-        if (browser) {
+        if (browser !== null) {
           await browser.close();
         }
         return res.status(500).json({
@@ -822,7 +822,9 @@ router.post(
         sizeKB: mobileScreenshotSize,
       });
 
-      await browser.close();
+      if (browser !== null) {
+        await browser.close();
+      }
       browser = null;
 
       // Wait for broken links check to complete before returning response
