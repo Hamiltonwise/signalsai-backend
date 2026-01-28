@@ -667,10 +667,53 @@ router.post(
 
       log("DEBUG", `Navigating to URL`, { url });
 
-      await page.goto(url, {
-        waitUntil: "load",
-        timeout: 30000,
+      // TODO: TEMPORARY - Always return error for n8n testing. REVERT THIS!
+      if (browser) {
+        await browser.close();
+      }
+      return res.status(500).json({
+        error: true,
+        error_message: "cannot load page",
       });
+
+      // Retry logic: attempt navigation up to 2 times
+      const maxRetries = 2;
+      let lastError: Error | null = null;
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          log("DEBUG", `Navigation attempt ${attempt}/${maxRetries}`);
+          await page.goto(url, {
+            waitUntil: "domcontentloaded",
+            timeout: 30000,
+          });
+          lastError = null;
+          break; // Success, exit retry loop
+        } catch (navError: any) {
+          lastError = navError;
+          log("WARN", `Navigation attempt ${attempt} failed`, {
+            error: navError.message
+          });
+          if (attempt < maxRetries) {
+            log("DEBUG", `Retrying navigation...`);
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1s before retry
+          }
+        }
+      }
+
+      // If all retries failed, return error response
+      if (lastError) {
+        log("ERROR", `All navigation attempts failed`, {
+          error: lastError.message
+        });
+        if (browser) {
+          await browser.close();
+        }
+        return res.status(500).json({
+          error: true,
+          error_message: "cannot load page",
+        });
+      }
 
       // Capture page load time immediately after load (before our artificial delays)
       const loadTime = await getPageLoadTime(page);
