@@ -707,7 +707,7 @@ router.post(
           error: (lastError as Error).message
         });
         if (browser !== null) {
-          await browser.close();
+          await browser!.close();
         }
         return res.status(500).json({
           error: true,
@@ -823,7 +823,7 @@ router.post(
       });
 
       if (browser !== null) {
-        await browser.close();
+        await browser!.close();
       }
       browser = null;
 
