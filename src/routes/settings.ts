@@ -71,7 +71,114 @@ settingsRoutes.get(
     } catch (error) {
       return handleError(res, error, "Fetch user profile");
     }
-  }
+  },
+);
+
+// =====================================================================
+// SCOPES MANAGEMENT
+// =====================================================================
+
+/**
+ * Required OAuth scopes for each Google API
+ */
+const SCOPE_MAP = {
+  ga4: "https://www.googleapis.com/auth/analytics.readonly",
+  gsc: "https://www.googleapis.com/auth/webmasters.readonly",
+  gbp: "https://www.googleapis.com/auth/business.manage",
+} as const;
+
+/**
+ * GET /api/settings/scopes
+ * Check which API scopes the user has granted
+ */
+settingsRoutes.get(
+  "/scopes",
+  tokenRefreshMiddleware,
+  rbacMiddleware,
+  async (req: RBACRequest, res) => {
+    try {
+      const googleAccountId = req.googleAccountId;
+
+      if (!googleAccountId) {
+        return res.status(400).json({ error: "Missing google account ID" });
+      }
+
+      const googleAccount = await db("google_accounts")
+        .where({ id: googleAccountId })
+        .first();
+
+      if (!googleAccount) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+
+      // Parse the scopes from the database
+      // Google OAuth returns scopes as space-separated, but we might have stored them as comma-separated
+      const scopeString = googleAccount.scopes || "";
+
+      // Try to detect the delimiter (space or comma)
+      let grantedScopes: string[] = [];
+      if (scopeString.includes(" ")) {
+        // Space-separated (Google OAuth format)
+        grantedScopes = scopeString.split(" ");
+      } else if (scopeString.includes(",")) {
+        // Comma-separated (fallback format)
+        grantedScopes = scopeString.split(",");
+      } else if (scopeString.length > 0) {
+        // Single scope
+        grantedScopes = [scopeString];
+      }
+
+      // Normalize scopes (remove any whitespace and empty strings)
+      const normalizedScopes = grantedScopes
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+
+      // Debug logging
+      console.log("[Settings] Scopes for account", googleAccountId, ":", {
+        raw: scopeString,
+        parsed: normalizedScopes,
+        checkingFor: Object.values(SCOPE_MAP),
+      });
+
+      // Check each required scope
+      const scopeStatus = {
+        ga4: {
+          granted: normalizedScopes.includes(SCOPE_MAP.ga4),
+          scope: SCOPE_MAP.ga4,
+          name: "Google Analytics 4",
+          description: "Read-only access to analytics data and reports",
+        },
+        gsc: {
+          granted: normalizedScopes.includes(SCOPE_MAP.gsc),
+          scope: SCOPE_MAP.gsc,
+          name: "Google Search Console",
+          description: "Read-only access to search performance data",
+        },
+        gbp: {
+          granted: normalizedScopes.includes(SCOPE_MAP.gbp),
+          scope: SCOPE_MAP.gbp,
+          name: "Google Business Profile",
+          description:
+            "Manage business listings (used for read access and future review replies)",
+        },
+      };
+
+      // Count missing scopes
+      const missingScopes = Object.entries(scopeStatus)
+        .filter(([_, status]) => !status.granted)
+        .map(([key]) => key);
+
+      return res.json({
+        success: true,
+        scopes: scopeStatus,
+        missingCount: missingScopes.length,
+        missingScopes,
+        allGranted: missingScopes.length === 0,
+      });
+    } catch (error) {
+      return handleError(res, error, "Check scopes");
+    }
+  },
 );
 
 // =====================================================================
@@ -128,7 +235,7 @@ settingsRoutes.get(
     } catch (error) {
       return handleError(res, error, "Fetch properties");
     }
-  }
+  },
 );
 
 /**
@@ -200,7 +307,7 @@ settingsRoutes.post(
     } catch (error) {
       return handleError(res, error, "Update property");
     }
-  }
+  },
 );
 
 /**
@@ -305,7 +412,7 @@ settingsRoutes.get(
     } catch (error) {
       return handleError(res, error, `Fetch available ${req.params.type}`);
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -344,7 +451,7 @@ settingsRoutes.get(
           "users.email",
           "users.name",
           "organization_users.role",
-          "organization_users.created_at as joined_at"
+          "organization_users.created_at as joined_at",
         );
 
       // Fetch pending invitations
@@ -360,7 +467,7 @@ settingsRoutes.get(
     } catch (error) {
       return handleError(res, error, "Fetch users");
     }
-  }
+  },
 );
 
 /**
@@ -456,7 +563,7 @@ settingsRoutes.post(
       const emailSent = await sendInvitation(
         email.toLowerCase(),
         organizationName,
-        role || "viewer"
+        role || "viewer",
       );
 
       if (!emailSent) {
@@ -472,7 +579,7 @@ settingsRoutes.post(
     } catch (error) {
       return handleError(res, error, "Invite user");
     }
-  }
+  },
 );
 
 /**
@@ -531,7 +638,7 @@ settingsRoutes.delete(
     } catch (error) {
       return handleError(res, error, "Remove user");
     }
-  }
+  },
 );
 
 /**
@@ -599,7 +706,7 @@ settingsRoutes.put(
     } catch (error) {
       return handleError(res, error, "Update role");
     }
-  }
+  },
 );
 
 export default settingsRoutes;

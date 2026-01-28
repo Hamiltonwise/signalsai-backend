@@ -168,7 +168,7 @@ function validateEnvironmentVariables(): void {
   if (missing.length > 0) {
     throw new Error(
       `Missing required environment variables: ${missing.join(", ")}. ` +
-        "Please check your .env file configuration."
+        "Please check your .env file configuration.",
     );
   }
 }
@@ -183,7 +183,7 @@ function createOAuth2Client(): OAuth2Client {
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID!,
     process.env.GOOGLE_CLIENT_SECRET!,
-    process.env.GOOGLE_REDIRECT_URI!
+    process.env.GOOGLE_REDIRECT_URI!,
   );
 }
 
@@ -285,7 +285,7 @@ async function findOrCreateUser(email: string, name?: string): Promise<User> {
     throw new Error(
       `Failed to create or find user: ${
         error instanceof Error ? error.message : "Unknown error"
-      }`
+      }`,
     );
   }
 }
@@ -300,7 +300,7 @@ async function findOrCreateUser(email: string, name?: string): Promise<User> {
 async function upsertGoogleAccount(
   userId: number,
   googleProfile: GoogleUserProfile,
-  tokens: any
+  tokens: any,
 ): Promise<GoogleAccount> {
   try {
     const accountData = {
@@ -350,7 +350,7 @@ async function upsertGoogleAccount(
     throw new Error(
       `Failed to create or update Google account: ${
         error instanceof Error ? error.message : "Unknown error"
-      }`
+      }`,
     );
   }
 }
@@ -361,7 +361,7 @@ async function upsertGoogleAccount(
  * @returns Promise resolving to updated GoogleAccount
  */
 async function refreshAccessToken(
-  googleAccountId: number
+  googleAccountId: number,
 ): Promise<GoogleAccount> {
   try {
     // Use the safe helper which handles expiry check and DB update
@@ -494,7 +494,7 @@ async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
 
     if (!tokens.refresh_token) {
       console.warn(
-        "[AUTH] No refresh token received - user may have already authorized"
+        "[AUTH] No refresh token received - user may have already authorized",
       );
     }
 
@@ -507,9 +507,9 @@ async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
       accessTokenPreview: tokens.access_token
         ? `${tokens.access_token.substring(
             0,
-            10
+            10,
           )}...${tokens.access_token.substring(
-            tokens.access_token.length - 10
+            tokens.access_token.length - 10,
           )}`
         : "NONE",
       accessTokenLength: tokens.access_token?.length || 0,
@@ -525,7 +525,7 @@ async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
     console.log("[AUTH] Using access token:", {
       preview: `${tokens.access_token.substring(
         0,
-        10
+        10,
       )}...${tokens.access_token.substring(tokens.access_token.length - 10)}`,
       length: tokens.access_token.length,
       authHeader: `Bearer ${tokens.access_token.substring(0, 20)}...`,
@@ -537,13 +537,13 @@ async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
         headers: {
           Authorization: `Bearer ${tokens.access_token}`,
         },
-      }
+      },
     );
 
     if (!userInfoResponse.ok) {
       const errorText = await userInfoResponse.text();
       throw new Error(
-        `Failed to fetch user profile: ${userInfoResponse.status} ${userInfoResponse.statusText}. ${errorText}`
+        `Failed to fetch user profile: ${userInfoResponse.status} ${userInfoResponse.statusText}. ${errorText}`,
       );
     }
 
@@ -593,7 +593,7 @@ async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
 
           user = (await trx("users").insert(userData).returning("*"))[0];
           console.log(
-            `[AUTH] Created new user: ${googleProfile.email} (ID: ${user.id})`
+            `[AUTH] Created new user: ${googleProfile.email} (ID: ${user.id})`,
           );
         }
 
@@ -658,7 +658,7 @@ async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
               updated_at: new Date(),
             });
             console.log(
-              `[AUTH] Created admin role for user ${user.id} in organization`
+              `[AUTH] Created admin role for user ${user.id} in organization`,
             );
           }
         }
@@ -763,7 +763,7 @@ async function handleOAuthCallback(req: Request, res: Response): Promise<void> {
     };
 
     console.log(
-      `[AUTH] OAuth flow completed successfully for user: ${googleProfile.email}`
+      `[AUTH] OAuth flow completed successfully for user: ${googleProfile.email}`,
     );
 
     // Return HTML that posts message to parent window and closes popup
@@ -911,7 +911,7 @@ router.get(
     } catch (error) {
       return handleError(res, error, "Validate OAuth tokens");
     }
-  }
+  },
 );
 
 /**
@@ -938,6 +938,123 @@ router.get("/google/scopes", (req: Request, res: Response) => {
     ],
     message: "These scopes provide access to all required Google APIs",
   });
+});
+
+/**
+ * Scope mapping for incremental authorization
+ */
+const SCOPE_MAP: Record<string, string> = {
+  ga4: "https://www.googleapis.com/auth/analytics.readonly",
+  gsc: "https://www.googleapis.com/auth/webmasters.readonly",
+  gbp: "https://www.googleapis.com/auth/business.manage",
+};
+
+/**
+ * GET /auth/google/reconnect
+ *
+ * Generates an OAuth URL for incremental authorization (re-granting missing scopes).
+ * This endpoint allows users to grant additional API access without fully re-authenticating.
+ *
+ * Query Parameters:
+ * - scopes: Comma-separated list of scope keys to request (e.g., "ga4,gbp" or "all")
+ *           Accepts: ga4, gsc, gbp, or "all" for all missing scopes
+ *
+ * Response:
+ * - success: boolean
+ * - authUrl: string - URL to redirect user for OAuth consent
+ * - requestedScopes: string[] - List of scope URLs being requested
+ * - message: string - Human-readable message
+ */
+router.get("/google/reconnect", async (req: Request, res: Response) => {
+  try {
+    const { scopes } = req.query;
+
+    if (!scopes || typeof scopes !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "Missing scopes parameter",
+        message:
+          "Please specify which scopes to request (e.g., scopes=ga4,gbp or scopes=all)",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    console.log("[AUTH] Generating incremental OAuth URL for scopes:", scopes);
+
+    validateEnvironmentVariables();
+    const oauth2Client = createOAuth2Client();
+
+    // Parse requested scopes
+    let requestedScopes: string[] = [];
+
+    if (scopes === "all") {
+      // Request all API scopes (not including openid/email/profile as those are already granted)
+      requestedScopes = [SCOPE_MAP.ga4, SCOPE_MAP.gsc, SCOPE_MAP.gbp];
+    } else {
+      // Parse comma-separated scope keys
+      const scopeKeys = scopes.split(",").map((s) => s.trim().toLowerCase());
+
+      for (const key of scopeKeys) {
+        if (SCOPE_MAP[key]) {
+          requestedScopes.push(SCOPE_MAP[key]);
+        } else {
+          return res.status(400).json({
+            success: false,
+            error: `Invalid scope key: ${key}`,
+            message: "Valid scope keys are: ga4, gsc, gbp, or 'all'",
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    if (requestedScopes.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No valid scopes specified",
+        message:
+          "Please specify at least one valid scope (ga4, gsc, gbp, or all)",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Generate secure state parameter
+    const state = generateSecureState() + "_reconnect";
+
+    // Generate incremental authorization URL
+    // The key is include_granted_scopes: true which combines new scopes with existing ones
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      prompt: "consent", // Force consent screen to show the new scopes
+      include_granted_scopes: true, // CRITICAL: Combines with existing scopes
+      scope: requestedScopes, // Only request the missing scopes
+      state: state,
+    });
+
+    console.log("[AUTH] Generated incremental authorization URL");
+    console.log(`[AUTH] Requested scopes: ${requestedScopes.join(", ")}`);
+
+    res.json({
+      success: true,
+      authUrl,
+      state,
+      requestedScopes,
+      message: `Authorization URL generated for incremental scope grant. Visit authUrl to grant permissions for: ${requestedScopes
+        .map((s) => {
+          if (s.includes("analytics")) return "Google Analytics 4";
+          if (s.includes("webmasters")) return "Google Search Console";
+          if (s.includes("business")) return "Google Business Profile";
+          return s;
+        })
+        .join(", ")}`,
+    });
+  } catch (error) {
+    return handleError(
+      res,
+      error,
+      "Generate incremental OAuth authorization URL",
+    );
+  }
 });
 
 // =====================================================================
