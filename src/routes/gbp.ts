@@ -44,7 +44,7 @@ const createClients = (req: AuthenticatedRequest) => {
 const handleError = (res: express.Response, error: any, operation: string) => {
   console.error(
     `${operation} Error:`,
-    error?.response?.data || error?.message || error
+    error?.response?.data || error?.message || error,
   );
   return res
     .status(500)
@@ -69,7 +69,7 @@ const buildAuthHeaders = async (auth: any): Promise<Record<string, string>> => {
   // Safest: construct from access token directly (avoids any Headers/iterable weirdness)
   const tokenResp = await auth.getAccessToken();
   const token =
-    typeof tokenResp === "string" ? tokenResp : tokenResp?.token ?? "";
+    typeof tokenResp === "string" ? tokenResp : (tokenResp?.token ?? "");
   return { Authorization: `Bearer ${token}` };
 };
 
@@ -79,7 +79,7 @@ const listAllReviewsInRangeREST = async (
   accountId: string,
   locationId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ) => {
   const parentPath = `accounts/${accountId}/locations/${locationId}`;
   const headers = await buildAuthHeaders(auth); // ✅ use helper
@@ -101,7 +101,7 @@ const listAllReviewsInRangeREST = async (
       {
         params: { pageSize: 50, pageToken, orderBy: "updateTime desc" },
         headers,
-      }
+      },
     );
 
     for (const r of data.reviews || []) {
@@ -126,7 +126,7 @@ const listAllReviewsInRangeREST = async (
       return undefined;
     })
     .filter((n: number | undefined): n is number =>
-      Number.isFinite(n as number)
+      Number.isFinite(n as number),
     );
 
   const avgRatingWindow = stars.length
@@ -142,7 +142,7 @@ const fetchPerfTimeSeries = async (
   locationId: string,
   metrics: string[],
   startDate: string,
-  endDate: string
+  endDate: string,
 ) => {
   const location = `locations/${locationId}`;
   const y1 = +startDate.slice(0, 4);
@@ -172,14 +172,14 @@ const getCallClicksTotal = async (
   perf: businessprofileperformance_v1.Businessprofileperformance,
   locationId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
 ) => {
   const seriesResp = await fetchPerfTimeSeries(
     perf,
     locationId,
     ["CALL_CLICKS"],
     startDate,
-    endDate
+    endDate,
   );
 
   // seriesResp is Schema$MultiDailyMetricTimeSeries[] from the API
@@ -187,7 +187,7 @@ const getCallClicksTotal = async (
   const dmtList = first?.dailyMetricTimeSeries ?? [];
 
   const callClicksEntry = dmtList.find(
-    (e: any) => e.dailyMetric === "CALL_CLICKS"
+    (e: any) => e.dailyMetric === "CALL_CLICKS",
   );
 
   const dated = callClicksEntry?.timeSeries?.datedValues ?? [];
@@ -212,19 +212,19 @@ const calculateGBPTrendScore = (currentData: any, previousData: any) => {
   // newReviews change (50% weight)
   const newReviewsChange = safePercentageChange(
     currentData.newReviews,
-    previousData.newReviews
+    previousData.newReviews,
   );
 
   // avgRating change (30% weight)
   const avgRatingChange = safePercentageChange(
     currentData.avgRating,
-    previousData.avgRating
+    previousData.avgRating,
   );
 
   // callClicks change (20% weight)
   const callClicksChange = safePercentageChange(
     currentData.callClicks,
-    previousData.callClicks
+    previousData.callClicks,
   );
 
   // Weighted average: newReviews (30%), avgRating (50%), callClicks (20%)
@@ -265,14 +265,14 @@ gbpRoutes.post("/getKeyData", async (req: AuthenticatedRequest, res) => {
         accountId,
         locationId,
         prevMonth.startDate,
-        prevMonth.endDate
+        prevMonth.endDate,
       ),
       listAllReviewsInRangeREST(
         auth,
         accountId,
         locationId,
         prevPrevMonth.startDate,
-        prevPrevMonth.endDate
+        prevPrevMonth.endDate,
       ),
     ]);
 
@@ -353,7 +353,7 @@ gbpRoutes.post("/getKeyData", async (req: AuthenticatedRequest, res) => {
 const getLocationProfileForRanking = async (
   auth: any,
   accountId: string,
-  locationId: string
+  locationId: string,
 ) => {
   try {
     // Business Information API v1 uses locations/{locationId} format
@@ -362,20 +362,20 @@ const getLocationProfileForRanking = async (
 
     console.log(`[GBP Profile] Fetching profile for location ${locationId}...`);
 
-    // Fetch comprehensive profile data including hours
+    // Fetch comprehensive profile data including hours and address
     const { data } = await axios.get(
       `https://mybusinessbusinessinformation.googleapis.com/v1/${locationName}`,
       {
         params: {
           readMask:
-            "name,title,profile,websiteUri,phoneNumbers,categories,regularHours,specialHours,adWordsLocationExtensions",
+            "name,title,profile,websiteUri,phoneNumbers,categories,regularHours,specialHours,adWordsLocationExtensions,storefrontAddress",
         },
         headers,
-      }
+      },
     );
 
     console.log(
-      `[GBP Profile] ✓ Got profile for ${locationId}: title=${data?.title}, website=${data?.websiteUri}, phone=${data?.phoneNumbers?.primaryPhone}, category=${data?.categories?.primaryCategory?.displayName}`
+      `[GBP Profile] ✓ Got profile for ${locationId}: title=${data?.title}, website=${data?.websiteUri}, phone=${data?.phoneNumbers?.primaryPhone}, category=${data?.categories?.primaryCategory?.displayName}, address=${data?.storefrontAddress?.locality}, ${data?.storefrontAddress?.administrativeArea}`,
     );
 
     return data;
@@ -386,7 +386,7 @@ const getLocationProfileForRanking = async (
       const headers = await buildAuthHeaders(auth);
 
       console.log(
-        `[GBP Profile] Retrying with alternate format: ${alternateName}`
+        `[GBP Profile] Retrying with alternate format: ${alternateName}`,
       );
 
       const { data } = await axios.get(
@@ -394,26 +394,26 @@ const getLocationProfileForRanking = async (
         {
           params: {
             readMask:
-              "name,title,profile,websiteUri,phoneNumbers,categories,regularHours,specialHours,adWordsLocationExtensions",
+              "name,title,profile,websiteUri,phoneNumbers,categories,regularHours,specialHours,adWordsLocationExtensions,storefrontAddress",
           },
           headers,
-        }
+        },
       );
 
       console.log(
-        `[GBP Profile] ✓ Got profile with alternate format for ${locationId}`
+        `[GBP Profile] ✓ Got profile with alternate format for ${locationId}`,
       );
 
       return data;
     } catch (altError: any) {
       console.warn(
-        `[GBP Profile] ✗ Could not fetch profile for location ${locationId}: ${error.message} | Alt: ${altError.message}`
+        `[GBP Profile] ✗ Could not fetch profile for location ${locationId}: ${error.message} | Alt: ${altError.message}`,
       );
       // Log full error details for debugging
       if (error?.response?.data) {
         console.warn(
           `[GBP Profile] Error response:`,
-          JSON.stringify(error.response.data)
+          JSON.stringify(error.response.data),
         );
       }
       return null;
@@ -427,7 +427,7 @@ export async function getGBPAIReadyData(
   accountId: string,
   locationId: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ) {
   const perf = new businessprofileperformance_v1.Businessprofileperformance({
     auth: oauth2Client,
@@ -451,7 +451,7 @@ export async function getGBPAIReadyData(
         locationId,
         metrics,
         finalStartDate,
-        finalEndDate
+        finalEndDate,
       ),
       // Reviews all-time stats
       (async () => {
@@ -459,7 +459,7 @@ export async function getGBPAIReadyData(
         const headers = await buildAuthHeaders(oauth2Client);
         const firstPage = await axios.get(
           `https://mybusiness.googleapis.com/v4/${parentPath}/reviews`,
-          { params: { pageSize: 1 }, headers }
+          { params: { pageSize: 1 }, headers },
         );
         return {
           allTimeAvg: firstPage.data?.averageRating || 0,
@@ -472,11 +472,11 @@ export async function getGBPAIReadyData(
         accountId,
         locationId,
         finalStartDate,
-        finalEndDate
+        finalEndDate,
       ),
       // Profile data (website, phone, hours, category)
       getLocationProfileForRanking(oauth2Client, accountId, locationId),
-    ]
+    ],
   );
 
   return {
@@ -498,7 +498,7 @@ export async function getGBPAIReadyData(
     performance: {
       series: timeSeries, // includes CALL_CLICKS (unique-user-per-day)
     },
-    // Profile data for NAP consistency scoring
+    // Profile data for NAP consistency scoring and location identification
     profile: {
       title: profileData?.title || null,
       description: profileData?.profile?.description || null,
@@ -508,13 +508,15 @@ export async function getGBPAIReadyData(
         profileData?.categories?.primaryCategory?.displayName || null,
       additionalCategories:
         profileData?.categories?.additionalCategories?.map(
-          (c: any) => c.displayName
+          (c: any) => c.displayName,
         ) || [],
       regularHours: profileData?.regularHours || null,
       hasHours: !!(
         profileData?.regularHours?.periods &&
         profileData.regularHours.periods.length > 0
       ),
+      // Storefront address for location identification (used by Identifier Agent)
+      storefrontAddress: profileData?.storefrontAddress || null,
     },
   };
 }
@@ -543,7 +545,7 @@ gbpRoutes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
       accountId,
       locationId,
       startDate,
-      endDate
+      endDate,
     );
 
     return res.json(aiReadyData);
@@ -560,7 +562,7 @@ gbpRoutes.post("/getAIReadyData", async (req: AuthenticatedRequest, res) => {
 const getLocationProfile = async (
   auth: any,
   accountId: string,
-  locationId: string
+  locationId: string,
 ) => {
   try {
     const name = `accounts/${accountId}/locations/${locationId}`;
@@ -575,12 +577,12 @@ const getLocationProfile = async (
             "name,title,profile,websiteUri,phoneNumbers,categories,adWordsLocationExtensions",
         },
         headers,
-      }
+      },
     );
     return data;
   } catch (error: any) {
     console.warn(
-      `[GBP] Could not fetch detailed profile for location ${locationId}: ${error.message}`
+      `[GBP] Could not fetch detailed profile for location ${locationId}: ${error.message}`,
     );
     // Return null to use fallback data
     return null;
@@ -597,7 +599,7 @@ export const listLocalPostsInRange = async (
   locationId: string,
   startDate: string,
   endDate: string,
-  maxPosts: number = 50
+  maxPosts: number = 50,
 ) => {
   const parent = `accounts/${accountId}/locations/${locationId}`;
   const headers = await buildAuthHeaders(auth);
@@ -610,7 +612,7 @@ export const listLocalPostsInRange = async (
       {
         params: { pageSize: 100, pageToken },
         headers,
-      }
+      },
     );
 
     let shouldContinue = false;
@@ -674,7 +676,7 @@ export async function getGBPTextSources(
   options?: {
     maxPostsPerLocation?: number;
     includeEmptyLocations?: boolean;
-  }
+  },
 ) {
   const { maxPostsPerLocation = 50, includeEmptyLocations = true } =
     options || {};
@@ -683,7 +685,7 @@ export async function getGBPTextSources(
   const { db } = await import("../database/connection");
 
   console.log(
-    `[GBP TextSources Export] Starting for googleAccountId ${googleAccountId}`
+    `[GBP TextSources Export] Starting for googleAccountId ${googleAccountId}`,
   );
 
   // Query database for property IDs
@@ -693,7 +695,7 @@ export async function getGBPTextSources(
 
   if (!account?.google_property_ids?.gbp) {
     throw new Error(
-      `No GBP properties configured for googleAccountId ${googleAccountId}`
+      `No GBP properties configured for googleAccountId ${googleAccountId}`,
     );
   }
 
@@ -714,13 +716,13 @@ export async function getGBPTextSources(
   }
 
   console.log(
-    `[GBP TextSources Export] Processing ${gbpLocations.length} locations`
+    `[GBP TextSources Export] Processing ${gbpLocations.length} locations`,
   );
 
   // Rate limiting check
   if (gbpLocations.length > 20) {
     throw new Error(
-      `Too many locations to process at once (${gbpLocations.length}). Maximum 20 locations per request.`
+      `Too many locations to process at once (${gbpLocations.length}). Maximum 20 locations per request.`,
     );
   }
 
@@ -737,7 +739,7 @@ export async function getGBPTextSources(
   const finalEndDate = endDate || prevMonth.endDate;
 
   console.log(
-    `[GBP TextSources Export] Date range: ${finalStartDate} to ${finalEndDate}`
+    `[GBP TextSources Export] Date range: ${finalStartDate} to ${finalEndDate}`,
   );
 
   // Process locations in batches of 5 to avoid overwhelming the API
@@ -750,7 +752,7 @@ export async function getGBPTextSources(
     console.log(
       `[GBP TextSources Export] Processing batch ${
         Math.floor(i / batchSize) + 1
-      }/${Math.ceil(gbpLocations.length / batchSize)}`
+      }/${Math.ceil(gbpLocations.length / batchSize)}`,
     );
 
     const batchResults = await Promise.all(
@@ -763,14 +765,14 @@ export async function getGBPTextSources(
             location.locationId,
             finalStartDate,
             finalEndDate,
-            maxPostsPerLocation
+            maxPostsPerLocation,
           );
 
           // Fetch profile (optional - graceful fallback)
           const profile = await getLocationProfile(
             auth,
             location.accountId,
-            location.locationId
+            location.locationId,
           );
 
           // Skip locations with no posts if configured
@@ -799,7 +801,7 @@ export async function getGBPTextSources(
         } catch (error: any) {
           console.error(
             `[GBP TextSources Export] Failed for location ${location.locationId}:`,
-            error.message
+            error.message,
           );
           errors.push({
             locationId: location.locationId,
@@ -809,7 +811,7 @@ export async function getGBPTextSources(
           });
           return null;
         }
-      })
+      }),
     );
 
     locationResults.push(...batchResults);
@@ -824,7 +826,7 @@ export async function getGBPTextSources(
   const locations = locationResults.filter((loc) => loc !== null);
 
   console.log(
-    `[GBP TextSources Export] ✓ Completed: ${locations.length} successful, ${errors.length} errors`
+    `[GBP TextSources Export] ✓ Completed: ${locations.length} successful, ${errors.length} errors`,
   );
 
   return {
@@ -868,7 +870,7 @@ gbpRoutes.post("/getTextSources", async (req: AuthenticatedRequest, res) => {
     }
 
     console.log(
-      `[GBP TextSources] Starting for googleAccountId ${googleAccountId}`
+      `[GBP TextSources] Starting for googleAccountId ${googleAccountId}`,
     );
 
     // Import db here
@@ -912,7 +914,7 @@ gbpRoutes.post("/getTextSources", async (req: AuthenticatedRequest, res) => {
     }
 
     console.log(
-      `[GBP TextSources] Processing ${gbpLocations.length} locations`
+      `[GBP TextSources] Processing ${gbpLocations.length} locations`,
     );
 
     // Rate limiting check
@@ -936,7 +938,7 @@ gbpRoutes.post("/getTextSources", async (req: AuthenticatedRequest, res) => {
 
     console.log(`[GBP TextSources] Date range: ${startDate} to ${endDate}`);
     console.log(
-      `[GBP TextSources] Max posts per location: ${maxPostsPerLocation}`
+      `[GBP TextSources] Max posts per location: ${maxPostsPerLocation}`,
     );
 
     // Create API clients
@@ -952,7 +954,7 @@ gbpRoutes.post("/getTextSources", async (req: AuthenticatedRequest, res) => {
       console.log(
         `[GBP TextSources] Processing batch ${
           Math.floor(i / batchSize) + 1
-        }/${Math.ceil(gbpLocations.length / batchSize)}`
+        }/${Math.ceil(gbpLocations.length / batchSize)}`,
       );
 
       const batchResults = await Promise.all(
@@ -965,14 +967,14 @@ gbpRoutes.post("/getTextSources", async (req: AuthenticatedRequest, res) => {
               location.locationId,
               startDate,
               endDate,
-              maxPostsPerLocation
+              maxPostsPerLocation,
             );
 
             // Fetch profile (optional - graceful fallback)
             const profile = await getLocationProfile(
               auth,
               location.accountId,
-              location.locationId
+              location.locationId,
             );
 
             // Skip locations with no posts if configured
@@ -1001,7 +1003,7 @@ gbpRoutes.post("/getTextSources", async (req: AuthenticatedRequest, res) => {
           } catch (error: any) {
             console.error(
               `[GBP TextSources] Failed for location ${location.locationId}:`,
-              error.message
+              error.message,
             );
             errors.push({
               locationId: location.locationId,
@@ -1011,7 +1013,7 @@ gbpRoutes.post("/getTextSources", async (req: AuthenticatedRequest, res) => {
             });
             return null;
           }
-        })
+        }),
       );
 
       locationResults.push(...batchResults);
@@ -1028,7 +1030,7 @@ gbpRoutes.post("/getTextSources", async (req: AuthenticatedRequest, res) => {
     const duration = Date.now() - startTime;
     console.log(`[GBP TextSources] ✓ Completed in ${duration}ms`);
     console.log(
-      `[GBP TextSources] Success: ${locations.length}, Errors: ${errors.length}`
+      `[GBP TextSources] Success: ${locations.length}, Errors: ${errors.length}`,
     );
 
     return res.json({
@@ -1050,7 +1052,7 @@ gbpRoutes.post("/getTextSources", async (req: AuthenticatedRequest, res) => {
     const duration = Date.now() - startTime;
     console.error(
       `[GBP TextSources] ✗ Failed after ${duration}ms:`,
-      error.message
+      error.message,
     );
     return handleError(res, error, "GBP text sources");
   }
@@ -1070,7 +1072,7 @@ gbpRoutes.get("/diag/accounts", async (req: AuthenticatedRequest, res) => {
   } catch (err: any) {
     console.error(
       "List accounts Error:",
-      err?.response?.data || err?.message || err
+      err?.response?.data || err?.message || err,
     );
     return res.status(500).json({ error: "Failed to list accounts" });
   }
@@ -1121,7 +1123,7 @@ gbpRoutes.get("/diag/locations", async (req: AuthenticatedRequest, res) => {
   } catch (e: any) {
     console.error(
       "List locations Error:",
-      e?.response?.data || e?.message || e
+      e?.response?.data || e?.message || e,
     );
     return res.status(500).json({ error: "Failed to list locations" });
   }

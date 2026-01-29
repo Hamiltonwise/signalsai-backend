@@ -21,11 +21,16 @@ import {
   MAX_RETRIES,
   RETRY_DELAY_MS,
   StatusDetail,
+  LocationParams,
 } from "../services/rankingService";
 import {
   createNotification,
   notifyAdminsRankingComplete,
 } from "../utils/notificationHelper";
+import { identifyLocationMeta } from "../services/identifierService";
+import { getSpecialtyKeywords } from "../services/apifyService";
+import { getValidOAuth2Client } from "../auth/oauth2Helper";
+import { fetchGBPDataForRange } from "../services/dataAggregator";
 import { v4 as uuidv4 } from "uuid";
 
 const router = express.Router();
@@ -55,13 +60,15 @@ interface GbpLocation {
   displayName: string;
 }
 
-// Location input for trigger endpoint
+// Location input for trigger endpoint (specialty/marketLocation now auto-determined)
 interface LocationInput {
   gbpAccountId: string;
   gbpLocationId: string;
   gbpLocationName: string;
-  specialty: string;
-  marketLocation: string;
+  specialty?: string; // Optional - will be auto-determined if not provided
+  marketLocation?: string; // Optional - will be auto-determined if not provided
+  // Location params from Identifier Agent for Apify
+  locationParams?: LocationParams;
 }
 
 // =====================================================================
@@ -104,11 +111,11 @@ function logError(operation: string, error: any): void {
   console.error(
     `[${formatTimestamp()}] [PRACTICE-RANKING] [ERROR] ${operation}: ${
       error.message || error
-    }`
+    }`,
   );
   if (error.stack) {
     console.error(
-      `[${formatTimestamp()}] [PRACTICE-RANKING] [ERROR] Stack: ${error.stack}`
+      `[${formatTimestamp()}] [PRACTICE-RANKING] [ERROR] Stack: ${error.stack}`,
     );
   }
 }
@@ -125,7 +132,7 @@ async function processBatchAnalysis(
   batchId: string,
   googleAccountId: number,
   locations: LocationInput[],
-  domain: string
+  domain: string,
 ): Promise<void> {
   log(`╔════════════════════════════════════════════════════════════════════╗`);
   log(`║ BATCH ANALYSIS STARTED                                            ║`);
@@ -138,14 +145,15 @@ async function processBatchAnalysis(
 
   locations.forEach((loc, idx) => {
     logDebug(
-      `  Location ${idx + 1}: ${loc.gbpLocationName} (${loc.gbpLocationId})`
+      `  Location ${idx + 1}: ${loc.gbpLocationName} (${loc.gbpLocationId})`,
     );
-    logDebug(`    - Specialty: ${loc.specialty}`);
-    logDebug(`    - Market: ${loc.marketLocation}`);
+    logDebug(`    - Specialty: ${loc.specialty || "(auto-detect)"}`);
+    logDebug(`    - Market: ${loc.marketLocation || "(auto-detect)"}`);
   });
 
   // Create ALL ranking records upfront with "pending" status
   // This ensures the frontend can see all locations immediately
+  // Note: specialty/location may be auto-determined later if not provided
   const rankingIds: number[] = [];
   for (let i = 0; i < locations.length; i++) {
     const locationInput = locations[i];
@@ -153,8 +161,8 @@ async function processBatchAnalysis(
       .insert({
         google_account_id: googleAccountId,
         domain: domain,
-        specialty: locationInput.specialty,
-        location: locationInput.marketLocation,
+        specialty: locationInput.specialty || null,
+        location: locationInput.marketLocation || null,
         gbp_account_id: locationInput.gbpAccountId,
         gbp_location_id: locationInput.gbpLocationId,
         gbp_location_name: locationInput.gbpLocationName,
@@ -176,7 +184,7 @@ async function processBatchAnalysis(
   }
 
   log(
-    `[Batch ${batchId}] Created ${rankingIds.length} ranking records upfront`
+    `[Batch ${batchId}] Created ${rankingIds.length} ranking records upfront`,
   );
 
   const batchStatus: BatchStatus = {
@@ -195,7 +203,7 @@ async function processBatchAnalysis(
 
   batchStatusMap.set(batchId, batchStatus);
   log(
-    `[Batch ${batchId}] Starting batch analysis for ${locations.length} locations`
+    `[Batch ${batchId}] Starting batch analysis for ${locations.length} locations`,
   );
 
   // Temporary storage for results - only save to DB if all succeed
@@ -217,7 +225,7 @@ async function processBatchAnalysis(
       log(
         `[Batch ${batchId}] Processing location ${i + 1}/${locations.length}: ${
           locationInput.gbpLocationName
-        }`
+        }`,
       );
 
       // Update this location's status to "processing"
@@ -235,6 +243,137 @@ async function processBatchAnalysis(
           updated_at: new Date(),
         });
 
+      // Auto-detect specialty and location if not provided
+      let specialty = locationInput.specialty;
+      let marketLocation = locationInput.marketLocation;
+
+      if (!specialty || !marketLocation) {
+        log(
+          `[Batch ${batchId}] Auto-detecting specialty/location for ${locationInput.gbpLocationName}...`,
+        );
+
+        try {
+          await db("practice_rankings")
+            .where({ id: rankingId })
+            .update({
+              status_detail: JSON.stringify({
+                currentStep: "identifying",
+                message: "Identifying specialty and market location...",
+                progress: 3,
+                stepsCompleted: ["queued"],
+                timestamps: { identifying_at: new Date().toISOString() },
+              }),
+              updated_at: new Date(),
+            });
+
+          const oauth2Client = await getValidOAuth2Client(googleAccountId);
+          const account = await db("google_accounts")
+            .where({ id: googleAccountId })
+            .first();
+          const propertyIds =
+            typeof account.google_property_ids === "string"
+              ? JSON.parse(account.google_property_ids)
+              : account.google_property_ids;
+
+          const targetLocation = propertyIds?.gbp?.find(
+            (loc: any) =>
+              loc.locationId === locationInput.gbpLocationId &&
+              loc.accountId === locationInput.gbpAccountId,
+          );
+
+          if (targetLocation) {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+            const startDateStr = startDate.toISOString().split("T")[0];
+            const endDateStr = endDate.toISOString().split("T")[0];
+
+            const gbpData = await fetchGBPDataForRange(
+              oauth2Client,
+              [targetLocation],
+              startDateStr,
+              endDateStr,
+            );
+
+            const locationData = gbpData?.locations?.[0]?.data || {};
+            const identifiedMeta = await identifyLocationMeta(
+              locationData,
+              domain,
+              log,
+            );
+
+            specialty = specialty || identifiedMeta.specialty;
+            marketLocation = marketLocation || identifiedMeta.marketLocation;
+
+            // Use dynamic keywords from Identifier Agent if available, otherwise fallback to hardcoded
+            const specialtyKeywords =
+              identifiedMeta.specialtyKeywords &&
+              identifiedMeta.specialtyKeywords.length > 0
+                ? identifiedMeta.specialtyKeywords
+                : getSpecialtyKeywords(specialty);
+            const keywordsString = specialtyKeywords.join(", ");
+
+            // Extract location params for Apify from Identifier Agent
+            locationInput.locationParams = {
+              county: identifiedMeta.county || null,
+              state: identifiedMeta.state || null,
+              postalCode: identifiedMeta.postalCode || null,
+              city: identifiedMeta.city || null,
+            };
+
+            log(
+              `[Batch ${batchId}] Keywords source: ${
+                identifiedMeta.specialtyKeywords &&
+                identifiedMeta.specialtyKeywords.length > 0
+                  ? "Identifier Agent"
+                  : "Hardcoded fallback"
+              }`,
+            );
+            log(
+              `[Batch ${batchId}] Location params: city=${identifiedMeta.city}, state=${identifiedMeta.state}, county=${identifiedMeta.county}, postalCode=${identifiedMeta.postalCode}`,
+            );
+
+            await db("practice_rankings")
+              .where({ id: rankingId })
+              .update({
+                specialty: specialty,
+                location: marketLocation,
+                rank_keywords: keywordsString,
+                // Store location params for debugging
+                search_city: identifiedMeta.city || null,
+                search_state: identifiedMeta.state || null,
+                search_county: identifiedMeta.county || null,
+                search_postal_code: identifiedMeta.postalCode || null,
+                updated_at: new Date(),
+              });
+
+            log(
+              `[Batch ${batchId}] ✓ Identified: ${specialty} in ${marketLocation} (keywords: ${keywordsString})`,
+            );
+          }
+        } catch (identifyError: any) {
+          log(
+            `[Batch ${batchId}] ⚠ Failed to auto-detect: ${identifyError.message}. Using defaults.`,
+          );
+          specialty = specialty || "orthodontist";
+          marketLocation = marketLocation || "Unknown, US";
+
+          await db("practice_rankings").where({ id: rankingId }).update({
+            specialty: specialty,
+            location: marketLocation,
+            updated_at: new Date(),
+          });
+        }
+      } else {
+        // If specialty/location were provided, still get and store keywords
+        const specialtyKeywords = getSpecialtyKeywords(specialty);
+        const keywordsString = specialtyKeywords.join(", ");
+        await db("practice_rankings").where({ id: rankingId }).update({
+          rank_keywords: keywordsString,
+          updated_at: new Date(),
+        });
+      }
+
       // Retry logic for each location
       let lastError: Error | null = null;
       let success = false;
@@ -242,16 +381,17 @@ async function processBatchAnalysis(
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
           log(
-            `┌─────────────────────────────────────────────────────────────────┐`
+            `┌─────────────────────────────────────────────────────────────────┐`,
           );
           log(
             `│ LOCATION ${i + 1}/${locations.length}: ${
               locationInput.gbpLocationName
-            }`
+            }`,
           );
           log(`│ Attempt: ${attempt}/${MAX_RETRIES}`);
+          log(`│ Specialty: ${specialty} | Market: ${marketLocation}`);
           log(
-            `└─────────────────────────────────────────────────────────────────┘`
+            `└─────────────────────────────────────────────────────────────────┘`,
           );
 
           const results = await processLocationRanking(
@@ -260,11 +400,13 @@ async function processBatchAnalysis(
             locationInput.gbpAccountId,
             locationInput.gbpLocationId,
             locationInput.gbpLocationName,
-            locationInput.specialty,
-            locationInput.marketLocation,
+            specialty!,
+            marketLocation!,
             domain,
             batchId,
-            log
+            log,
+            undefined, // keywords - use default from ranking service
+            locationInput.locationParams, // location params from Identifier Agent
           );
 
           successfulResults.push({ rankingId, results });
@@ -280,7 +422,7 @@ async function processBatchAnalysis(
           });
 
           log(
-            `[Batch ${batchId}] Location ${locationInput.gbpLocationName} attempt ${attempt} failed: ${error.message}`
+            `[Batch ${batchId}] Location ${locationInput.gbpLocationName} attempt ${attempt} failed: ${error.message}`,
           );
 
           if (attempt < MAX_RETRIES) {
@@ -307,7 +449,7 @@ async function processBatchAnalysis(
           });
 
         log(
-          `[Batch ${batchId}] FAILED - Location ${locationInput.gbpLocationName} exhausted all retries`
+          `[Batch ${batchId}] FAILED - Location ${locationInput.gbpLocationName} exhausted all retries`,
         );
         return;
       }
@@ -319,13 +461,13 @@ async function processBatchAnalysis(
     batchStatusMap.set(batchId, batchStatus);
 
     log(
-      `╔════════════════════════════════════════════════════════════════════╗`
+      `╔════════════════════════════════════════════════════════════════════╗`,
     );
     log(
-      `║ BATCH ANALYSIS COMPLETED SUCCESSFULLY                             ║`
+      `║ BATCH ANALYSIS COMPLETED SUCCESSFULLY                             ║`,
     );
     log(
-      `╠════════════════════════════════════════════════════════════════════╣`
+      `╠════════════════════════════════════════════════════════════════════╣`,
     );
     log(`║ Batch ID: ${batchId}`);
     log(`║ Total Locations: ${locations.length}`);
@@ -333,12 +475,13 @@ async function processBatchAnalysis(
       `║ Duration: ${(
         (batchStatus.completedAt.getTime() - batchStatus.startedAt.getTime()) /
         1000
-      ).toFixed(1)}s`
+      ).toFixed(1)}s`,
     );
     log(
-      `╚════════════════════════════════════════════════════════════════════╝`
+      `╚════════════════════════════════════════════════════════════════════╝`,
     );
 
+    // TODO: REVERT - User email temporarily disabled
     // Create notification for the client (also sends user email)
     const locationCount = locations.length;
     const locationText =
@@ -352,35 +495,36 @@ async function processBatchAnalysis(
         ? Math.round(
             (successfulResults.reduce(
               (sum, r) => sum + (r.results?.rankScore || 0),
-              0
+              0,
             ) /
               successfulResults.length) *
-              10
+              10,
           ) / 10
         : null;
 
     const scoreText = avgScore ? ` Average score: ${avgScore.toFixed(1)}` : "";
 
-    try {
-      await createNotification(
-        domain,
-        "Practice Ranking Analysis Complete",
-        `Your ranking analysis for ${locationText} has been completed.${scoreText}`,
-        "ranking",
-        {
-          batchId,
-          locationCount,
-          avgScore,
-          rankingIds: batchStatus.rankingIds,
-        }
-      );
+    // TODO: REVERT - Uncomment to re-enable user email notification
+    // try {
+    //   await createNotification(
+    //     domain,
+    //     "Practice Ranking Analysis Complete",
+    //     `Your ranking analysis for ${locationText} has been completed.${scoreText}`,
+    //     "ranking",
+    //     {
+    //       batchId,
+    //       locationCount,
+    //       avgScore,
+    //       rankingIds: batchStatus.rankingIds,
+    //     }
+    //   );
 
-      log(`[Batch ${batchId}] Notification created for ${domain}`);
-    } catch (notifyError: any) {
-      logWarn(
-        `Failed to create notification for batch ${batchId}: ${notifyError.message}`
-      );
-    }
+    //   log(`[Batch ${batchId}] Notification created for ${domain}`);
+    // } catch (notifyError: any) {
+    //   logWarn(
+    //     `Failed to create notification for batch ${batchId}: ${notifyError.message}`
+    //   );
+    // }
 
     // Send admin email notification about ranking completion
     try {
@@ -388,12 +532,12 @@ async function processBatchAnalysis(
         domain,
         batchId,
         locationCount,
-        avgScore
+        avgScore,
       );
       log(`[Batch ${batchId}] Admin email sent for ranking completion`);
     } catch (adminEmailError: any) {
       logWarn(
-        `Failed to send admin email for batch ${batchId}: ${adminEmailError.message}`
+        `Failed to send admin email for batch ${batchId}: ${adminEmailError.message}`,
       );
     }
   } catch (error: any) {
@@ -422,7 +566,7 @@ async function processBatchAnalysisWithExistingRecords(
   googleAccountId: number,
   locations: LocationInput[],
   domain: string,
-  rankingIds: number[]
+  rankingIds: number[],
 ): Promise<void> {
   log(`╔════════════════════════════════════════════════════════════════════╗`);
   log(`║ BATCH ANALYSIS STARTED (WITH PRE-CREATED RECORDS)                 ║`);
@@ -436,10 +580,10 @@ async function processBatchAnalysisWithExistingRecords(
 
   locations.forEach((loc, idx) => {
     logDebug(
-      `  Location ${idx + 1}: ${loc.gbpLocationName} (${loc.gbpLocationId})`
+      `  Location ${idx + 1}: ${loc.gbpLocationName} (${loc.gbpLocationId})`,
     );
-    logDebug(`    - Specialty: ${loc.specialty}`);
-    logDebug(`    - Market: ${loc.marketLocation}`);
+    logDebug(`    - Specialty: ${loc.specialty || "(auto-detect)"}`);
+    logDebug(`    - Market: ${loc.marketLocation || "(auto-detect)"}`);
   });
 
   const batchStatus: BatchStatus = {
@@ -458,7 +602,7 @@ async function processBatchAnalysisWithExistingRecords(
 
   batchStatusMap.set(batchId, batchStatus);
   log(
-    `[Batch ${batchId}] Starting batch analysis for ${locations.length} locations`
+    `[Batch ${batchId}] Starting batch analysis for ${locations.length} locations`,
   );
 
   // Temporary storage for results - only save to DB if all succeed
@@ -480,7 +624,7 @@ async function processBatchAnalysisWithExistingRecords(
       log(
         `[Batch ${batchId}] Processing location ${i + 1}/${locations.length}: ${
           locationInput.gbpLocationName
-        }`
+        }`,
       );
 
       // Update this location's status to "processing"
@@ -498,6 +642,137 @@ async function processBatchAnalysisWithExistingRecords(
           updated_at: new Date(),
         });
 
+      // Auto-detect specialty and location if not provided
+      let specialty = locationInput.specialty;
+      let marketLocation = locationInput.marketLocation;
+
+      if (!specialty || !marketLocation) {
+        log(
+          `[Batch ${batchId}] Auto-detecting specialty/location for ${locationInput.gbpLocationName}...`,
+        );
+
+        try {
+          await db("practice_rankings")
+            .where({ id: rankingId })
+            .update({
+              status_detail: JSON.stringify({
+                currentStep: "identifying",
+                message: "Identifying specialty and market location...",
+                progress: 3,
+                stepsCompleted: ["queued"],
+                timestamps: { identifying_at: new Date().toISOString() },
+              }),
+              updated_at: new Date(),
+            });
+
+          const oauth2Client = await getValidOAuth2Client(googleAccountId);
+          const account = await db("google_accounts")
+            .where({ id: googleAccountId })
+            .first();
+          const propertyIds =
+            typeof account.google_property_ids === "string"
+              ? JSON.parse(account.google_property_ids)
+              : account.google_property_ids;
+
+          const targetLocation = propertyIds?.gbp?.find(
+            (loc: any) =>
+              loc.locationId === locationInput.gbpLocationId &&
+              loc.accountId === locationInput.gbpAccountId,
+          );
+
+          if (targetLocation) {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+            const startDateStr = startDate.toISOString().split("T")[0];
+            const endDateStr = endDate.toISOString().split("T")[0];
+
+            const gbpData = await fetchGBPDataForRange(
+              oauth2Client,
+              [targetLocation],
+              startDateStr,
+              endDateStr,
+            );
+
+            const locationData = gbpData?.locations?.[0]?.data || {};
+            const identifiedMeta = await identifyLocationMeta(
+              locationData,
+              domain,
+              log,
+            );
+
+            specialty = specialty || identifiedMeta.specialty;
+            marketLocation = marketLocation || identifiedMeta.marketLocation;
+
+            // Use dynamic keywords from Identifier Agent if available, otherwise fallback to hardcoded
+            const specialtyKeywords =
+              identifiedMeta.specialtyKeywords &&
+              identifiedMeta.specialtyKeywords.length > 0
+                ? identifiedMeta.specialtyKeywords
+                : getSpecialtyKeywords(specialty);
+            const keywordsString = specialtyKeywords.join(", ");
+
+            // Extract location params for Apify from Identifier Agent
+            locationInput.locationParams = {
+              county: identifiedMeta.county || null,
+              state: identifiedMeta.state || null,
+              postalCode: identifiedMeta.postalCode || null,
+              city: identifiedMeta.city || null,
+            };
+
+            log(
+              `[Batch ${batchId}] Keywords source: ${
+                identifiedMeta.specialtyKeywords &&
+                identifiedMeta.specialtyKeywords.length > 0
+                  ? "Identifier Agent"
+                  : "Hardcoded fallback"
+              }`,
+            );
+            log(
+              `[Batch ${batchId}] Location params: city=${identifiedMeta.city}, state=${identifiedMeta.state}, county=${identifiedMeta.county}, postalCode=${identifiedMeta.postalCode}`,
+            );
+
+            await db("practice_rankings")
+              .where({ id: rankingId })
+              .update({
+                specialty: specialty,
+                location: marketLocation,
+                rank_keywords: keywordsString,
+                // Store location params for debugging
+                search_city: identifiedMeta.city || null,
+                search_state: identifiedMeta.state || null,
+                search_county: identifiedMeta.county || null,
+                search_postal_code: identifiedMeta.postalCode || null,
+                updated_at: new Date(),
+              });
+
+            log(
+              `[Batch ${batchId}] ✓ Identified: ${specialty} in ${marketLocation} (keywords: ${keywordsString})`,
+            );
+          }
+        } catch (identifyError: any) {
+          log(
+            `[Batch ${batchId}] ⚠ Failed to auto-detect: ${identifyError.message}. Using defaults.`,
+          );
+          specialty = specialty || "orthodontist";
+          marketLocation = marketLocation || "Unknown, US";
+
+          await db("practice_rankings").where({ id: rankingId }).update({
+            specialty: specialty,
+            location: marketLocation,
+            updated_at: new Date(),
+          });
+        }
+      } else {
+        // If specialty/location were provided, still get and store keywords
+        const specialtyKeywords = getSpecialtyKeywords(specialty);
+        const keywordsString = specialtyKeywords.join(", ");
+        await db("practice_rankings").where({ id: rankingId }).update({
+          rank_keywords: keywordsString,
+          updated_at: new Date(),
+        });
+      }
+
       // Retry logic for each location
       let lastError: Error | null = null;
       let success = false;
@@ -505,16 +780,17 @@ async function processBatchAnalysisWithExistingRecords(
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
           log(
-            `┌─────────────────────────────────────────────────────────────────┐`
+            `┌─────────────────────────────────────────────────────────────────┐`,
           );
           log(
             `│ LOCATION ${i + 1}/${locations.length}: ${
               locationInput.gbpLocationName
-            }`
+            }`,
           );
           log(`│ Attempt: ${attempt}/${MAX_RETRIES}`);
+          log(`│ Specialty: ${specialty} | Market: ${marketLocation}`);
           log(
-            `└─────────────────────────────────────────────────────────────────┘`
+            `└─────────────────────────────────────────────────────────────────┘`,
           );
 
           const results = await processLocationRanking(
@@ -523,11 +799,13 @@ async function processBatchAnalysisWithExistingRecords(
             locationInput.gbpAccountId,
             locationInput.gbpLocationId,
             locationInput.gbpLocationName,
-            locationInput.specialty,
-            locationInput.marketLocation,
+            specialty!,
+            marketLocation!,
             domain,
             batchId,
-            log
+            log,
+            undefined, // keywords - use default from ranking service
+            locationInput.locationParams, // location params from Identifier Agent
           );
 
           successfulResults.push({ rankingId, results });
@@ -543,7 +821,7 @@ async function processBatchAnalysisWithExistingRecords(
           });
 
           log(
-            `[Batch ${batchId}] Location ${locationInput.gbpLocationName} attempt ${attempt} failed: ${error.message}`
+            `[Batch ${batchId}] Location ${locationInput.gbpLocationName} attempt ${attempt} failed: ${error.message}`,
           );
 
           if (attempt < MAX_RETRIES) {
@@ -570,7 +848,7 @@ async function processBatchAnalysisWithExistingRecords(
           });
 
         log(
-          `[Batch ${batchId}] FAILED - Location ${locationInput.gbpLocationName} exhausted all retries`
+          `[Batch ${batchId}] FAILED - Location ${locationInput.gbpLocationName} exhausted all retries`,
         );
         return;
       }
@@ -582,13 +860,13 @@ async function processBatchAnalysisWithExistingRecords(
     batchStatusMap.set(batchId, batchStatus);
 
     log(
-      `╔════════════════════════════════════════════════════════════════════╗`
+      `╔════════════════════════════════════════════════════════════════════╗`,
     );
     log(
-      `║ BATCH ANALYSIS COMPLETED SUCCESSFULLY                             ║`
+      `║ BATCH ANALYSIS COMPLETED SUCCESSFULLY                             ║`,
     );
     log(
-      `╠════════════════════════════════════════════════════════════════════╣`
+      `╠════════════════════════════════════════════════════════════════════╣`,
     );
     log(`║ Batch ID: ${batchId}`);
     log(`║ Total Locations: ${locations.length}`);
@@ -596,12 +874,13 @@ async function processBatchAnalysisWithExistingRecords(
       `║ Duration: ${(
         (batchStatus.completedAt.getTime() - batchStatus.startedAt.getTime()) /
         1000
-      ).toFixed(1)}s`
+      ).toFixed(1)}s`,
     );
     log(
-      `╚════════════════════════════════════════════════════════════════════╝`
+      `╚════════════════════════════════════════════════════════════════════╝`,
     );
 
+    // TODO: REVERT - User email temporarily disabled
     // Create notification for the client (also sends user email)
     const locationCount = locations.length;
     const locationText =
@@ -615,35 +894,36 @@ async function processBatchAnalysisWithExistingRecords(
         ? Math.round(
             (successfulResults.reduce(
               (sum, r) => sum + (r.results?.rankScore || 0),
-              0
+              0,
             ) /
               successfulResults.length) *
-              10
+              10,
           ) / 10
         : null;
 
     const scoreText = avgScore ? ` Average score: ${avgScore.toFixed(1)}` : "";
 
-    try {
-      await createNotification(
-        domain,
-        "Practice Ranking Analysis Complete",
-        `Your ranking analysis for ${locationText} has been completed.${scoreText}`,
-        "ranking",
-        {
-          batchId,
-          locationCount,
-          avgScore,
-          rankingIds: batchStatus.rankingIds,
-        }
-      );
+    // TODO: REVERT - Uncomment to re-enable user email notification
+    // try {
+    //   await createNotification(
+    //     domain,
+    //     "Practice Ranking Analysis Complete",
+    //     `Your ranking analysis for ${locationText} has been completed.${scoreText}`,
+    //     "ranking",
+    //     {
+    //       batchId,
+    //       locationCount,
+    //       avgScore,
+    //       rankingIds: batchStatus.rankingIds,
+    //     }
+    //   );
 
-      log(`[Batch ${batchId}] Notification created for ${domain}`);
-    } catch (notifyError: any) {
-      logWarn(
-        `Failed to create notification for batch ${batchId}: ${notifyError.message}`
-      );
-    }
+    //   log(`[Batch ${batchId}] Notification created for ${domain}`);
+    // } catch (notifyError: any) {
+    //   logWarn(
+    //     `Failed to create notification for batch ${batchId}: ${notifyError.message}`
+    //   );
+    // }
 
     // Send admin email notification about ranking completion
     try {
@@ -651,12 +931,12 @@ async function processBatchAnalysisWithExistingRecords(
         domain,
         batchId,
         locationCount,
-        avgScore
+        avgScore,
       );
       log(`[Batch ${batchId}] Admin email sent for ranking completion`);
     } catch (adminEmailError: any) {
       logWarn(
-        `Failed to send admin email for batch ${batchId}: ${adminEmailError.message}`
+        `Failed to send admin email for batch ${batchId}: ${adminEmailError.message}`,
       );
     }
   } catch (error: any) {
@@ -717,20 +997,14 @@ router.post("/trigger", async (req: Request, res: Response) => {
 
     // Handle new multi-location format
     if (locations && Array.isArray(locations) && locations.length > 0) {
-      // Validate each location
+      // Validate each location (specialty/marketLocation no longer required - auto-determined)
       for (const loc of locations) {
-        if (
-          !loc.gbpAccountId ||
-          !loc.gbpLocationId ||
-          !loc.gbpLocationName ||
-          !loc.specialty ||
-          !loc.marketLocation
-        ) {
+        if (!loc.gbpAccountId || !loc.gbpLocationId || !loc.gbpLocationName) {
           return res.status(400).json({
             success: false,
             error: "INVALID_LOCATION",
             message:
-              "Each location must have gbpAccountId, gbpLocationId, gbpLocationName, specialty, and marketLocation",
+              "Each location must have gbpAccountId, gbpLocationId, and gbpLocationName",
           });
         }
 
@@ -738,7 +1012,7 @@ router.post("/trigger", async (req: Request, res: Response) => {
         const locationExists = propertyIds?.gbp?.some(
           (gbp: GbpLocation) =>
             gbp.locationId === loc.gbpLocationId &&
-            gbp.accountId === loc.gbpAccountId
+            gbp.accountId === loc.gbpAccountId,
         );
 
         if (!locationExists) {
@@ -754,11 +1028,12 @@ router.post("/trigger", async (req: Request, res: Response) => {
       const batchId = uuidv4();
 
       log(
-        `Starting batch ${batchId} for ${locations.length} locations in account ${googleAccountId}`
+        `Starting batch ${batchId} for ${locations.length} locations in account ${googleAccountId}`,
       );
 
       // Create ALL ranking records upfront with "pending" status
       // This ensures the frontend can see all locations immediately when the trigger returns
+      // Note: specialty/location will be auto-determined during processing via Identifier Agent
       const rankingIds: number[] = [];
       for (let i = 0; i < locations.length; i++) {
         const locationInput = locations[i];
@@ -766,8 +1041,8 @@ router.post("/trigger", async (req: Request, res: Response) => {
           .insert({
             google_account_id: googleAccountId,
             domain: account.domain_name,
-            specialty: locationInput.specialty,
-            location: locationInput.marketLocation,
+            specialty: locationInput.specialty || null, // Will be auto-determined if not provided
+            location: locationInput.marketLocation || null, // Will be auto-determined if not provided
             gbp_account_id: locationInput.gbpAccountId,
             gbp_location_id: locationInput.gbpLocationId,
             gbp_location_name: locationInput.gbpLocationName,
@@ -789,7 +1064,7 @@ router.post("/trigger", async (req: Request, res: Response) => {
       }
 
       log(
-        `[Batch ${batchId}] Created ${rankingIds.length} ranking records upfront`
+        `[Batch ${batchId}] Created ${rankingIds.length} ranking records upfront`,
       );
 
       // Start background batch processing (records already created)
@@ -799,7 +1074,7 @@ router.post("/trigger", async (req: Request, res: Response) => {
           googleAccountId,
           locations,
           account.domain_name,
-          rankingIds
+          rankingIds,
         ).catch((err) => {
           logError(`Background batch process ${batchId}`, err);
         });
@@ -814,8 +1089,8 @@ router.post("/trigger", async (req: Request, res: Response) => {
         locations: locations.map((l: LocationInput) => ({
           gbpLocationId: l.gbpLocationId,
           gbpLocationName: l.gbpLocationName,
-          specialty: l.specialty,
-          marketLocation: l.marketLocation,
+          specialty: l.specialty || "auto-detecting...",
+          marketLocation: l.marketLocation || "auto-detecting...",
         })),
       });
     }
@@ -859,7 +1134,7 @@ router.post("/trigger", async (req: Request, res: Response) => {
         batchId,
         googleAccountId,
         legacyLocations,
-        account.domain_name
+        account.domain_name,
       ).catch((err) => {
         logError(`Background batch process ${batchId}`, err);
       });
@@ -908,7 +1183,7 @@ router.get("/batch/:batchId/status", async (req: Request, res: Response) => {
         completedAt: inMemoryStatus.completedAt,
         progress: Math.round(
           (inMemoryStatus.completedLocations / inMemoryStatus.totalLocations) *
-            100
+            100,
         ),
       });
     }
@@ -925,7 +1200,7 @@ router.get("/batch/:batchId/status", async (req: Request, res: Response) => {
         "rank_position",
         "error_message",
         "created_at",
-        "updated_at"
+        "updated_at",
       )
       .orderBy("created_at", "asc");
 
@@ -940,7 +1215,7 @@ router.get("/batch/:batchId/status", async (req: Request, res: Response) => {
     const completed = rankings.filter((r) => r.status === "completed").length;
     const failed = rankings.filter((r) => r.status === "failed").length;
     const pending = rankings.filter(
-      (r) => r.status === "pending" || r.status === "processing"
+      (r) => r.status === "pending" || r.status === "processing",
     ).length;
 
     let batchStatus: "processing" | "completed" | "failed" = "processing";
@@ -1064,6 +1339,7 @@ router.get("/results/:id", async (req: Request, res: Response) => {
         domain: ranking.domain,
         specialty: ranking.specialty,
         location: ranking.location,
+        rankKeywords: ranking.rank_keywords,
         gbpAccountId: ranking.gbp_account_id,
         gbpLocationId: ranking.gbp_location_id,
         gbpLocationName: ranking.gbp_location_name,
@@ -1078,6 +1354,13 @@ router.get("/results/:id", async (req: Request, res: Response) => {
         llmAnalysis: parse(ranking.llm_analysis),
         statusDetail: parse(ranking.status_detail),
         errorMessage: ranking.error_message,
+        // Location params used for Apify search (for debugging)
+        searchParams: {
+          city: ranking.search_city,
+          state: ranking.search_state,
+          county: ranking.search_county,
+          postalCode: ranking.search_postal_code,
+        },
         createdAt: ranking.created_at,
         updatedAt: ranking.updated_at,
       },
@@ -1107,6 +1390,7 @@ router.get("/list", async (req: Request, res: Response) => {
         "domain",
         "specialty",
         "location",
+        "rank_keywords",
         "gbp_location_id",
         "gbp_location_name",
         "batch_id",
@@ -1114,8 +1398,12 @@ router.get("/list", async (req: Request, res: Response) => {
         "rank_score",
         "rank_position",
         "total_competitors",
+        "search_city",
+        "search_state",
+        "search_county",
+        "search_postal_code",
         "created_at",
-        "updated_at"
+        "updated_at",
       )
       .orderBy("created_at", "desc")
       .limit(Number(limit))
@@ -1136,6 +1424,7 @@ router.get("/list", async (req: Request, res: Response) => {
         domain: r.domain,
         specialty: r.specialty,
         location: r.location,
+        rankKeywords: r.rank_keywords,
         gbpLocationId: r.gbp_location_id,
         gbpLocationName: r.gbp_location_name,
         batchId: r.batch_id,
@@ -1143,6 +1432,13 @@ router.get("/list", async (req: Request, res: Response) => {
         rankScore: r.rank_score,
         rankPosition: r.rank_position,
         totalCompetitors: r.total_competitors,
+        // Location params used for Apify search (for debugging)
+        searchParams: {
+          city: r.search_city,
+          state: r.search_state,
+          county: r.search_county,
+          postalCode: r.search_postal_code,
+        },
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       })),
@@ -1182,7 +1478,7 @@ router.get("/accounts", async (req: Request, res: Response) => {
           log(
             `Account ${a.id} (${
               a.domain_name
-            }) GBP locations raw structure: ${JSON.stringify(rawGbp[0])}`
+            }) GBP locations raw structure: ${JSON.stringify(rawGbp[0])}`,
           );
         }
 
@@ -1347,7 +1643,7 @@ router.post("/refresh-competitors", async (req: Request, res: Response) => {
     const wasInvalidated = await invalidateCache(specialty, location);
 
     log(
-      `Invalidated competitor cache for ${specialty} in ${location}: ${wasInvalidated}`
+      `Invalidated competitor cache for ${specialty} in ${location}: ${wasInvalidated}`,
     );
 
     return res.json({
@@ -1455,7 +1751,7 @@ router.get("/latest", async (req: Request, res: Response) => {
 
     const latestBatchId = latestBatchRecord.batch_id;
     log(
-      `[GET /latest] Found latest batch: ${latestBatchId} for account ${googleAccountId}`
+      `[GET /latest] Found latest batch: ${latestBatchId} for account ${googleAccountId}`,
     );
 
     // Step 2: Get all completed rankings from the latest batch
@@ -1476,7 +1772,7 @@ router.get("/latest", async (req: Request, res: Response) => {
     }
 
     log(
-      `[GET /latest] Found ${batchRankings.length} rankings in batch ${latestBatchId}`
+      `[GET /latest] Found ${batchRankings.length} rankings in batch ${latestBatchId}`,
     );
 
     // Step 3: For each ranking in the batch, get the previous analysis for trend comparison
@@ -1494,7 +1790,7 @@ router.get("/latest", async (req: Request, res: Response) => {
           .first();
 
         return { ranking, previous: previous || null };
-      })
+      }),
     );
 
     // Format the response
@@ -1532,7 +1828,7 @@ router.get("/latest", async (req: Request, res: Response) => {
               rawData: parse(previous.raw_data),
             }
           : null,
-      })
+      }),
     );
 
     return res.json({
@@ -1562,8 +1858,8 @@ router.get("/tasks", async (req: Request, res: Response) => {
 
     log(
       `[Tasks] Fetching approved ranking tasks with params: ${JSON.stringify(
-        req.query
-      )}`
+        req.query,
+      )}`,
     );
 
     let tasks: any[] = [];
@@ -1781,7 +2077,7 @@ router.post("/webhook/llm-response", async (req: Request, res: Response) => {
 
         if (archivedCount > 0) {
           logDebug(
-            `  [Webhook] Archived ${archivedCount} tasks from previous rankings`
+            `  [Webhook] Archived ${archivedCount} tasks from previous rankings`,
           );
         }
       }
@@ -1789,7 +2085,7 @@ router.post("/webhook/llm-response", async (req: Request, res: Response) => {
       // Extract top_recommendations from LLM analysis
       const topRecommendations = llmAnalysis.top_recommendations || [];
       logDebug(
-        `  [Webhook] Found ${topRecommendations.length} top recommendations to create as tasks`
+        `  [Webhook] Found ${topRecommendations.length} top recommendations to create as tasks`,
       );
 
       // Create task records for each recommendation
@@ -1824,13 +2120,13 @@ router.post("/webhook/llm-response", async (req: Request, res: Response) => {
 
         await db("tasks").insert(tasksToInsert);
         logDebug(
-          `  [Webhook] Created ${tasksToInsert.length} pending tasks from ranking recommendations`
+          `  [Webhook] Created ${tasksToInsert.length} pending tasks from ranking recommendations`,
         );
       }
     } catch (taskError: any) {
       // Log but don't fail the webhook if task creation fails
       logWarn(
-        `[Webhook] Failed to create tasks from ranking recommendations: ${taskError.message}`
+        `[Webhook] Failed to create tasks from ranking recommendations: ${taskError.message}`,
       );
     }
 

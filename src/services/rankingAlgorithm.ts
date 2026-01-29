@@ -162,7 +162,7 @@ export interface RankingResult {
  */
 function calculateCategoryMatchScore(
   primaryCategory: string,
-  specialty: string
+  specialty: string,
 ): FactorScore {
   const maxScore = FACTOR_WEIGHTS.categoryMatch * 100;
   const normalizedSpecialty = normalizeSpecialty(specialty);
@@ -174,7 +174,7 @@ function calculateCategoryMatchScore(
   // Perfect match
   if (
     targetCategories.some((cat) =>
-      normalizedCategory.includes(cat.toLowerCase())
+      normalizedCategory.includes(cat.toLowerCase()),
     )
   ) {
     return {
@@ -188,7 +188,7 @@ function calculateCategoryMatchScore(
   const generalCategories = SPECIALTY_CATEGORIES.general;
   if (
     generalCategories.some((cat) =>
-      normalizedCategory.includes(cat.toLowerCase())
+      normalizedCategory.includes(cat.toLowerCase()),
     )
   ) {
     return {
@@ -211,7 +211,7 @@ function calculateCategoryMatchScore(
  */
 function calculateReviewCountScore(
   totalReviews: number,
-  benchmarkMax: number = BENCHMARKS.reviewCount.max
+  benchmarkMax: number = BENCHMARKS.reviewCount.max,
 ): FactorScore {
   const maxScore = FACTOR_WEIGHTS.reviewCount * 100;
 
@@ -243,7 +243,7 @@ function calculateReviewCountScore(
  */
 function calculateStarRatingScore(
   averageRating: number,
-  marketAverage: number = 4.5
+  marketAverage: number = 4.5,
 ): FactorScore {
   const maxScore = FACTOR_WEIGHTS.starRating * 100;
 
@@ -267,7 +267,7 @@ function calculateStarRatingScore(
 
   const comparison = averageRating >= marketAverage ? "above" : "below";
   const details = `${averageRating.toFixed(
-    1
+    1,
   )} star rating (${comparison} market avg of ${marketAverage})`;
 
   return {
@@ -280,32 +280,47 @@ function calculateStarRatingScore(
 /**
  * Calculate keyword in business name score
  * Binary: either has keyword or doesn't
+ * @param businessName - The business name to check
+ * @param specialty - The specialty type (used for fallback keywords)
+ * @param customKeywords - Optional array of custom keywords from Identifier Agent
  */
 function calculateKeywordNameScore(
   businessName: string,
-  specialty: string
+  specialty: string,
+  customKeywords?: string[],
 ): FactorScore {
   const maxScore = FACTOR_WEIGHTS.keywordName * 100;
-  const normalizedSpecialty = normalizeSpecialty(specialty);
-  const keywords = SPECIALTY_KEYWORDS[normalizedSpecialty] || [];
+
+  // Use custom keywords if provided, otherwise fallback to hardcoded specialty keywords
+  let keywords: string[];
+  let keywordSource: string;
+
+  if (customKeywords && customKeywords.length > 0) {
+    keywords = customKeywords;
+    keywordSource = "dynamic";
+  } else {
+    const normalizedSpecialty = normalizeSpecialty(specialty);
+    keywords = SPECIALTY_KEYWORDS[normalizedSpecialty] || [];
+    keywordSource = "hardcoded";
+  }
 
   const normalizedName = businessName.toLowerCase();
-  const hasKeyword = keywords.some((keyword) =>
-    normalizedName.includes(keyword.toLowerCase())
+  const matchedKeyword = keywords.find((keyword) =>
+    normalizedName.includes(keyword.toLowerCase()),
   );
 
-  if (hasKeyword) {
+  if (matchedKeyword) {
     return {
       score: maxScore,
       max: maxScore,
-      details: `Business name "${businessName}" contains specialty keyword`,
+      details: `Business name "${businessName}" contains specialty keyword "${matchedKeyword}" (${keywordSource})`,
     };
   }
 
   return {
     score: 0,
     max: maxScore,
-    details: `Business name "${businessName}" does not contain specialty keyword`,
+    details: `Business name "${businessName}" does not contain specialty keyword (checked ${keywords.length} ${keywordSource} keywords)`,
   };
 }
 
@@ -315,14 +330,14 @@ function calculateKeywordNameScore(
  */
 function calculateReviewVelocityScore(
   reviewsLast30d: number,
-  benchmarkAvg: number = BENCHMARKS.reviewVelocity.avg
+  benchmarkAvg: number = BENCHMARKS.reviewVelocity.avg,
 ): FactorScore {
   const maxScore = FACTOR_WEIGHTS.reviewVelocity * 100;
 
   // Linear scaling with cap at excellent level
   const normalizedScore = Math.min(
     reviewsLast30d / BENCHMARKS.reviewVelocity.excellent,
-    1.0
+    1.0,
   );
   const score = normalizedScore * maxScore;
 
@@ -350,7 +365,7 @@ function calculateNapConsistencyScore(
   hasWebsite: boolean,
   hasPhone: boolean,
   hasHours: boolean,
-  hoursComplete: boolean = true
+  hoursComplete: boolean = true,
 ): FactorScore {
   const maxScore = FACTOR_WEIGHTS.napConsistency * 100;
 
@@ -393,7 +408,7 @@ function calculateNapConsistencyScore(
 function calculateGbpActivityScore(
   postsLast30d: number,
   photosCount: number = 0,
-  descriptionLength: number = 0
+  descriptionLength: number = 0,
 ): FactorScore {
   const maxScore = FACTOR_WEIGHTS.gbpActivity * 100;
 
@@ -433,7 +448,7 @@ function calculateGbpActivityScore(
  */
 function calculateSentimentScore(
   sentimentScore?: number,
-  averageRating?: number
+  averageRating?: number,
 ): FactorScore {
   const maxScore = FACTOR_WEIGHTS.sentiment * 100;
 
@@ -471,35 +486,39 @@ function calculateSentimentScore(
 
 /**
  * Calculate complete ranking score for a practice
+ * @param practice - Practice data to score
+ * @param specialty - Specialty type for scoring
+ * @param keywords - Optional array of custom keywords from Identifier Agent for name matching
  */
 export function calculateRankingScore(
   practice: PracticeData,
-  specialty: string
+  specialty: string,
+  keywords?: string[],
 ): RankingResult {
   // Calculate each factor
   const factors: RankingFactors = {
     categoryMatch: calculateCategoryMatchScore(
       practice.primaryCategory,
-      specialty
+      specialty,
     ),
     reviewCount: calculateReviewCountScore(practice.totalReviews),
     starRating: calculateStarRatingScore(practice.averageRating),
-    keywordName: calculateKeywordNameScore(practice.name, specialty),
+    keywordName: calculateKeywordNameScore(practice.name, specialty, keywords),
     reviewVelocity: calculateReviewVelocityScore(practice.reviewsLast30d),
     napConsistency: calculateNapConsistencyScore(
       practice.hasWebsite,
       practice.hasPhone,
       practice.hasHours,
-      practice.hoursComplete
+      practice.hoursComplete,
     ),
     gbpActivity: calculateGbpActivityScore(
       practice.postsLast30d,
       practice.photosCount,
-      practice.descriptionLength
+      practice.descriptionLength,
     ),
     sentiment: calculateSentimentScore(
       practice.sentimentScore,
-      practice.averageRating
+      practice.averageRating,
     ),
   };
 
@@ -575,20 +594,24 @@ export function calculateRankingScore(
 
 /**
  * Rank multiple practices and return sorted results
+ * @param practices - Array of practices to rank
+ * @param specialty - Specialty type for scoring
+ * @param keywords - Optional array of custom keywords from Identifier Agent for name matching
  */
 export function rankPractices(
   practices: Array<{ id: string; data: PracticeData }>,
-  specialty: string
+  specialty: string,
+  keywords?: string[],
 ): Array<{ id: string; rankPosition: number; rankingResult: RankingResult }> {
   // Calculate scores for all practices
   const scored = practices.map((practice) => ({
     id: practice.id,
-    rankingResult: calculateRankingScore(practice.data, specialty),
+    rankingResult: calculateRankingScore(practice.data, specialty, keywords),
   }));
 
   // Sort by total score (descending)
   scored.sort(
-    (a, b) => b.rankingResult.totalScore - a.rankingResult.totalScore
+    (a, b) => b.rankingResult.totalScore - a.rankingResult.totalScore,
   );
 
   // Assign rank positions
@@ -606,7 +629,7 @@ export function calculateBenchmarks(
     totalReviews: number;
     averageRating: number;
     reviewsLast30d?: number;
-  }>
+  }>,
 ): {
   avgScore: number;
   medianScore: number;

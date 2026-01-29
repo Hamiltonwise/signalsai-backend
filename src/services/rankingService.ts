@@ -58,12 +58,20 @@ export interface LocationRankingResult {
   rankPosition: number;
 }
 
+// Location parameters for competitor discovery (from Identifier Agent)
+export interface LocationParams {
+  county?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+}
+
 /**
  * Sum values from GBP performance time series data
  */
 function sumPerformanceMetric(
   performanceSeries: any[],
-  metricName: string
+  metricName: string,
 ): number {
   if (!performanceSeries || !Array.isArray(performanceSeries)) return 0;
 
@@ -95,7 +103,7 @@ function extractPerformanceMetrics(gbpData: any): {
     calls: sumPerformanceMetric(performanceSeries, "CALL_CLICKS"),
     directions: sumPerformanceMetric(
       performanceSeries,
-      "BUSINESS_DIRECTION_REQUESTS"
+      "BUSINESS_DIRECTION_REQUESTS",
     ),
     clicks: sumPerformanceMetric(performanceSeries, "WEBSITE_CLICKS"),
   };
@@ -111,7 +119,7 @@ export async function updateStatus(
   message: string,
   progress: number,
   existingDetail?: StatusDetail,
-  logger?: (msg: string) => void
+  logger?: (msg: string) => void,
 ): Promise<void> {
   const detail: StatusDetail = existingDetail || {
     currentStep: step,
@@ -154,13 +162,25 @@ export async function updateStatus(
 
   if (logger) {
     logger(
-      `[RANKING] [${rankingId}] Status: ${status} - ${step} (${progress}%): ${message}`
+      `[RANKING] [${rankingId}] Status: ${status} - ${step} (${progress}%): ${message}`,
     );
   }
 }
 
 /**
  * Process ranking analysis for a single location
+ * @param rankingId - Database ID for this ranking record
+ * @param googleAccountId - Google account ID
+ * @param gbpAccountId - GBP account ID
+ * @param gbpLocationId - GBP location ID
+ * @param gbpLocationName - Display name of the location
+ * @param specialty - Practice specialty type
+ * @param marketLocation - Market location string
+ * @param domain - Practice domain name
+ * @param batchId - Batch ID for grouping
+ * @param logger - Optional logging function
+ * @param keywords - Optional custom keywords from Identifier Agent for scoring
+ * @param locationParams - Optional location parameters from Identifier Agent for Apify search
  */
 export async function processLocationRanking(
   rankingId: number,
@@ -172,13 +192,15 @@ export async function processLocationRanking(
   marketLocation: string,
   domain: string,
   batchId: string,
-  logger?: (msg: string) => void
+  logger?: (msg: string) => void,
+  keywords?: string[],
+  locationParams?: LocationParams,
 ): Promise<LocationRankingResult> {
   const startTime = Date.now();
   const log = logger || console.log;
 
   log(
-    `[RANKING] [${rankingId}] START: ${gbpLocationName} (${specialty} in ${marketLocation})`
+    `[RANKING] [${rankingId}] START: ${gbpLocationName} (${specialty} in ${marketLocation})`,
   );
 
   let statusDetail: StatusDetail = {
@@ -221,17 +243,17 @@ export async function processLocationRanking(
     `Fetching GBP data for ${gbpLocationName}...`,
     10,
     statusDetail,
-    log
+    log,
   );
 
   const targetLocation = propertyIds?.gbp?.find(
     (loc: any) =>
-      loc.locationId === gbpLocationId && loc.accountId === gbpAccountId
+      loc.locationId === gbpLocationId && loc.accountId === gbpAccountId,
   );
 
   if (!targetLocation) {
     throw new Error(
-      `GBP location ${gbpLocationId} not found in account ${googleAccountId}`
+      `GBP location ${gbpLocationId} not found in account ${googleAccountId}`,
     );
   }
 
@@ -239,7 +261,7 @@ export async function processLocationRanking(
     oauth2Client,
     [targetLocation],
     startDateStr,
-    endDateStr
+    endDateStr,
   );
 
   // ========== STEP 2: Fetch GSC Data ==========
@@ -250,7 +272,7 @@ export async function processLocationRanking(
     "Fetching GSC data...",
     20,
     statusDetail,
-    log
+    log,
   );
 
   let clientGscData: any = null;
@@ -259,7 +281,7 @@ export async function processLocationRanking(
       oauth2Client,
       propertyIds.gsc.siteUrl,
       startDateStr,
-      endDateStr
+      endDateStr,
     );
   }
 
@@ -271,12 +293,12 @@ export async function processLocationRanking(
     "Checking competitor cache...",
     30,
     statusDetail,
-    log
+    log,
   );
 
   const cachedCompetitors = await getCachedCompetitors(
     specialty,
-    marketLocation
+    marketLocation,
   );
   let discoveredCompetitors: any[];
   let usedCache = false;
@@ -301,7 +323,7 @@ export async function processLocationRanking(
       `Using ${cachedCompetitors.length} cached competitors`,
       35,
       statusDetail,
-      log
+      log,
     );
   } else {
     await updateStatus(
@@ -311,11 +333,19 @@ export async function processLocationRanking(
       "Discovering local competitors...",
       30,
       statusDetail,
-      log
+      log,
     );
 
-    const searchQuery = `${specialty} ${marketLocation}`;
-    discoveredCompetitors = await discoverCompetitors(searchQuery, 50);
+    // Build search query with specialty (Apify will use location params for geographic filtering)
+    const searchQuery = specialty;
+    log(
+      `[RANKING] [${rankingId}] Discovering competitors with search: "${searchQuery}", location params: ${JSON.stringify(locationParams || {})}`,
+    );
+    discoveredCompetitors = await discoverCompetitors(
+      searchQuery,
+      20,
+      locationParams,
+    );
 
     if (discoveredCompetitors.length > 0) {
       const competitorsToCache = discoveredCompetitors.map((c) => ({
@@ -336,25 +366,32 @@ export async function processLocationRanking(
     `Scraping ${discoveredCompetitors.length} competitors...`,
     50,
     statusDetail,
-    log
+    log,
   );
 
-  const specialtyKeywords = getSpecialtyKeywords(specialty);
+  // Use custom keywords from Identifier Agent if provided, otherwise fallback to hardcoded
+  const specialtyKeywords =
+    keywords && keywords.length > 0
+      ? keywords
+      : getSpecialtyKeywords(specialty);
+  log(
+    `[RANKING] [${rankingId}] Using ${specialtyKeywords.length} keywords (source: ${keywords && keywords.length > 0 ? "Identifier Agent" : "hardcoded"})`,
+  );
   let competitorDetails: any[] = [];
 
   try {
     const competitorPlaceIds = discoveredCompetitors.map((c) => c.placeId);
     competitorDetails = await getCompetitorDetails(
       competitorPlaceIds,
-      specialtyKeywords
+      specialtyKeywords,
     );
   } catch (error: any) {
     log(
-      `[RANKING] [${rankingId}] Detailed scrape failed, using discovery fallback: ${error.message}`
+      `[RANKING] [${rankingId}] Detailed scrape failed, using discovery fallback: ${error.message}`,
     );
     competitorDetails = discoveredCompetitors.map((comp) => {
       const hasKeywordInName = specialtyKeywords.some((keyword) =>
-        comp.name.toLowerCase().includes(keyword.toLowerCase())
+        comp.name.toLowerCase().includes(keyword.toLowerCase()),
       );
       return {
         placeId: comp.placeId,
@@ -391,11 +428,11 @@ export async function processLocationRanking(
     ) {
       const shorterLength = Math.min(
         compNameLower.length,
-        clientNameLower.length
+        clientNameLower.length,
       );
       const longerLength = Math.max(
         compNameLower.length,
-        clientNameLower.length
+        clientNameLower.length,
       );
       if (shorterLength / longerLength > 0.5) return false;
     }
@@ -410,7 +447,7 @@ export async function processLocationRanking(
     "Auditing client website...",
     60,
     statusDetail,
-    log
+    log,
   );
 
   let websiteAudit = null;
@@ -429,7 +466,7 @@ export async function processLocationRanking(
     "Calculating ranking scores...",
     80,
     statusDetail,
-    log
+    log,
   );
 
   const clientLocation = clientGbpData?.locations?.[0];
@@ -446,7 +483,7 @@ export async function processLocationRanking(
     const postsEnd = postsEndDate.toISOString().split("T")[0];
 
     log(
-      `[RANKING] [${rankingId}] Fetching posts for ${gbpAccountId}/${gbpLocationId} from ${postsStart} to ${postsEnd}`
+      `[RANKING] [${rankingId}] Fetching posts for ${gbpAccountId}/${gbpLocationId} from ${postsStart} to ${postsEnd}`,
     );
 
     const localPosts = await listLocalPostsInRange(
@@ -455,11 +492,11 @@ export async function processLocationRanking(
       gbpLocationId,
       postsStart,
       postsEnd,
-      50
+      50,
     );
     postsLast30d = localPosts.length;
     log(
-      `[RANKING] [${rankingId}] ✓ Fetched ${postsLast30d} posts from last 30 days`
+      `[RANKING] [${rankingId}] ✓ Fetched ${postsLast30d} posts from last 30 days`,
     );
   } catch (error: any) {
     log(`[RANKING] [${rankingId}] ✗ Failed to fetch posts: ${error.message}`);
@@ -474,12 +511,12 @@ export async function processLocationRanking(
     // Search for client business on Google Maps to find their Place ID
     const clientSearchQuery = `${gbpLocationName} ${marketLocation}`;
     log(
-      `[RANKING] [${rankingId}] Searching Google Maps for client: "${clientSearchQuery}"`
+      `[RANKING] [${rankingId}] Searching Google Maps for client: "${clientSearchQuery}"`,
     );
 
     const searchResults = await discoverCompetitors(clientSearchQuery, 10);
     log(
-      `[RANKING] [${rankingId}] Found ${searchResults.length} search results`
+      `[RANKING] [${rankingId}] Found ${searchResults.length} search results`,
     );
 
     // Find the client in search results by matching name
@@ -496,7 +533,7 @@ export async function processLocationRanking(
     if (clientMatch?.placeId) {
       clientPlaceId = clientMatch.placeId;
       log(
-        `[RANKING] [${rankingId}] ✓ Found client Place ID: ${clientPlaceId} (name: ${clientMatch.name})`
+        `[RANKING] [${rankingId}] ✓ Found client Place ID: ${clientPlaceId} (name: ${clientMatch.name})`,
       );
 
       // Now fetch detailed data including photos using the correct Place ID
@@ -504,23 +541,23 @@ export async function processLocationRanking(
       if (clientApifyData.length > 0) {
         clientPhotosCount = clientApifyData[0]?.photosCount || 0;
         log(
-          `[RANKING] [${rankingId}] ✓ Fetched ${clientPhotosCount} photos from Apify`
+          `[RANKING] [${rankingId}] ✓ Fetched ${clientPhotosCount} photos from Apify`,
         );
       } else {
         log(
-          `[RANKING] [${rankingId}] ✗ Apify returned empty data for Place ID: ${clientPlaceId}`
+          `[RANKING] [${rankingId}] ✗ Apify returned empty data for Place ID: ${clientPlaceId}`,
         );
       }
     } else {
       log(
         `[RANKING] [${rankingId}] ✗ Could not find client in Google Maps search results. Searched: ${searchResults
           .map((r) => r.name)
-          .join(", ")}`
+          .join(", ")}`,
       );
     }
   } catch (error: any) {
     log(
-      `[RANKING] [${rankingId}] ✗ Failed to fetch client photos: ${error.message}`
+      `[RANKING] [${rankingId}] ✗ Failed to fetch client photos: ${error.message}`,
     );
     // Continue with clientPhotosCount = 0 if fetch fails
   }
@@ -541,7 +578,12 @@ export async function processLocationRanking(
     photosCount: clientPhotosCount,
   };
 
-  const clientRanking = calculateRankingScore(clientPracticeData, specialty);
+  // Pass keywords to ranking algorithm for the "keyword in name" scoring factor
+  const clientRanking = calculateRankingScore(
+    clientPracticeData,
+    specialty,
+    specialtyKeywords,
+  );
 
   const competitorsForRanking = competitorDetails.map((comp) => ({
     id: comp.placeId,
@@ -567,7 +609,12 @@ export async function processLocationRanking(
     ...competitorsForRanking,
   ];
 
-  const rankedPractices = rankPractices(allPractices, specialty);
+  // Pass keywords to rankPractices for consistent scoring across all practices
+  const rankedPractices = rankPractices(
+    allPractices,
+    specialty,
+    specialtyKeywords,
+  );
   const clientRankResult = rankedPractices.find((p) => p.id === "client");
 
   const benchmarks = calculateBenchmarks(
@@ -575,7 +622,7 @@ export async function processLocationRanking(
       totalReviews: c.totalReviews,
       averageRating: c.averageRating,
       reviewsLast30d: c.reviewsLast30d,
-    }))
+    })),
   );
 
   const performanceMetrics = extractPerformanceMetrics(gbpData);
@@ -713,7 +760,7 @@ export async function processLocationRanking(
     "Sending to AI for gap analysis...",
     90,
     statusDetail,
-    log
+    log,
   );
 
   if (PRACTICE_RANKING_ANALYSIS_WEBHOOK) {
@@ -753,7 +800,7 @@ export async function processLocationRanking(
         {
           timeout: 120000,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
 
       let llmData = llmResponse.data;
@@ -845,7 +892,7 @@ export async function processLocationRanking(
         "Analysis complete (without AI insights)",
         100,
         statusDetail,
-        log
+        log,
       );
     }
   } else {
@@ -856,7 +903,7 @@ export async function processLocationRanking(
       "Analysis complete",
       100,
       statusDetail,
-      log
+      log,
     );
   }
 
@@ -864,7 +911,7 @@ export async function processLocationRanking(
     `[RANKING] [${rankingId}] COMPLETE in ${(
       (Date.now() - startTime) /
       1000
-    ).toFixed(1)}s`
+    ).toFixed(1)}s`,
   );
 
   return {

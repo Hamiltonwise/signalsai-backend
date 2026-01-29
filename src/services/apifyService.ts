@@ -38,6 +38,14 @@ interface CompetitorSearchResult {
   };
 }
 
+// Location parameters for competitor discovery (from Identifier Agent)
+interface LocationParams {
+  county?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+}
+
 interface CompetitorDetailedData {
   placeId: string;
   name: string;
@@ -103,7 +111,7 @@ function log(message: string): void {
  */
 async function waitForActorRun(
   runId: string,
-  maxWaitMs: number = 300000
+  maxWaitMs: number = 300000,
 ): Promise<ApifyRunResult> {
   const startTime = Date.now();
   const pollInterval = 5000; // 5 seconds
@@ -114,7 +122,7 @@ async function waitForActorRun(
         `${APIFY_API_BASE}/actor-runs/${runId}`,
         {
           headers: { Authorization: `Bearer ${APIFY_API_TOKEN}` },
-        }
+        },
       );
 
       const run = response.data.data;
@@ -159,7 +167,7 @@ async function fetchDatasetItems(datasetId: string): Promise<any[]> {
       {
         headers: { Authorization: `Bearer ${APIFY_API_TOKEN}` },
         params: { format: "json" },
-      }
+      },
     );
     return response.data;
   } catch (error: any) {
@@ -170,36 +178,52 @@ async function fetchDatasetItems(datasetId: string): Promise<any[]> {
 
 /**
  * Discover competitors by searching Google Maps
- * @param searchQuery - Search query (e.g., "orthodontist Austin TX")
+ * @param searchQuery - Search query (e.g., "orthodontist")
  * @param limit - Maximum number of results (default 20)
+ * @param locationParams - Optional location parameters from Identifier Agent (county, state, postalCode, city)
  */
 export async function discoverCompetitors(
   searchQuery: string,
-  limit: number = 20
+  limit: number = 20,
+  locationParams?: LocationParams,
 ): Promise<CompetitorSearchResult[]> {
   if (!APIFY_API_TOKEN) {
     throw new Error("APIFY_TOKEN environment variable is not set");
   }
 
   log(`Discovering competitors for: "${searchQuery}" (limit: ${limit})`);
+  if (locationParams) {
+    log(
+      `  Location params: city=${locationParams.city}, state=${locationParams.state}, county=${locationParams.county}, postalCode=${locationParams.postalCode}`,
+    );
+  }
 
   try {
+    // Build input payload, only including non-null location params
+    const inputPayload: Record<string, any> = {
+      searchStringsArray: [searchQuery],
+      maxCrawledPlacesPerSearch: limit,
+    };
+
+    // Add location parameters only if they have non-null values
+    if (locationParams?.county) inputPayload.county = locationParams.county;
+    if (locationParams?.state) inputPayload.state = locationParams.state;
+    if (locationParams?.postalCode)
+      inputPayload.postalCode = locationParams.postalCode;
+    if (locationParams?.city) inputPayload.city = locationParams.city;
+
+    log(`  Apify input: ${JSON.stringify(inputPayload)}`);
+
     // Start the Google Maps scraper actor (using compass/crawler-google-places input format)
     const runResponse = await axios.post(
       `${APIFY_API_BASE}/acts/${GOOGLE_MAPS_ACTOR}/runs`,
-      {
-        searchStringsArray: [searchQuery],
-        maxCrawledPlacesPerSearch: limit,
-        language: "en",
-        maxReviews: 0,
-        maxImages: 0,
-      },
+      inputPayload,
       {
         headers: {
           Authorization: `Bearer ${APIFY_API_TOKEN}`,
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     const runId = runResponse.data.data.id;
@@ -267,7 +291,7 @@ export async function discoverCompetitors(
  */
 export async function getCompetitorDetails(
   placeIds: string[],
-  specialtyKeywords: string[] = []
+  specialtyKeywords: string[] = [],
 ): Promise<CompetitorDetailedData[]> {
   if (!APIFY_API_TOKEN) {
     throw new Error("APIFY_TOKEN environment variable is not set");
@@ -277,6 +301,7 @@ export async function getCompetitorDetails(
 
   try {
     // Start the Google Maps scraper actor with place IDs (using startUrls)
+    // Note: Removed maxImages to reduce costs - we don't need photo count data
     const runResponse = await axios.post(
       `${APIFY_API_BASE}/acts/${GOOGLE_MAPS_ACTOR}/runs`,
       {
@@ -285,15 +310,13 @@ export async function getCompetitorDetails(
         })),
         language: "en",
         maxReviews: 10,
-        maxImages: 1, // Need at least 1 to get imageCount in response
-        scrapeImageUrls: false, // Don't need actual URLs, just count
       },
       {
         headers: {
           Authorization: `Bearer ${APIFY_API_TOKEN}`,
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     const runId = runResponse.data.data.id;
@@ -314,7 +337,7 @@ export async function getCompetitorDetails(
     const competitors: CompetitorDetailedData[] = items.map((item) => {
       const name = item.title || item.name || "";
       const hasKeywordInName = specialtyKeywords.some((keyword) =>
-        name.toLowerCase().includes(keyword.toLowerCase())
+        name.toLowerCase().includes(keyword.toLowerCase()),
       );
 
       // Calculate reviews in last 30/90 days from recent reviews if available
@@ -338,7 +361,7 @@ export async function getCompetitorDetails(
         item.imageCount || item.imagesCount || item.images?.length || 0;
       if (photosCount === 0) {
         log(
-          `[${name}] Photo fields: imageCount=${item.imageCount}, imagesCount=${item.imagesCount}, images.length=${item.images?.length}`
+          `[${name}] Photo fields: imageCount=${item.imageCount}, imagesCount=${item.imagesCount}, images.length=${item.images?.length}`,
         );
       }
 
@@ -415,7 +438,7 @@ export async function auditWebsite(url: string): Promise<WebsiteAuditResult> {
           Authorization: `Bearer ${APIFY_API_TOKEN}`,
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     const runId = runResponse.data.data.id;
@@ -447,7 +470,7 @@ export async function auditWebsite(url: string): Promise<WebsiteAuditResult> {
     // Check for schema types
     const structuredData = audits["structured-data"]?.details?.items || [];
     const schemaTypes = structuredData.map(
-      (item: any) => item.type?.toLowerCase() || ""
+      (item: any) => item.type?.toLowerCase() || "",
     );
 
     return {
@@ -457,20 +480,20 @@ export async function auditWebsite(url: string): Promise<WebsiteAuditResult> {
       cls: Math.round(cls * 1000) / 1000,
       performanceScore: Math.round((categories.performance?.score || 0) * 100),
       accessibilityScore: Math.round(
-        (categories.accessibility?.score || 0) * 100
+        (categories.accessibility?.score || 0) * 100,
       ),
       bestPracticesScore: Math.round(
-        (categories["best-practices"]?.score || 0) * 100
+        (categories["best-practices"]?.score || 0) * 100,
       ),
       seoScore: Math.round((categories.seo?.score || 0) * 100),
       hasLocalSchema: schemaTypes.some((t: string) =>
-        t.includes("localbusiness")
+        t.includes("localbusiness"),
       ),
       hasOrganizationSchema: schemaTypes.some((t: string) =>
-        t.includes("organization")
+        t.includes("organization"),
       ),
       hasReviewSchema: schemaTypes.some(
-        (t: string) => t.includes("review") || t.includes("aggregaterating")
+        (t: string) => t.includes("review") || t.includes("aggregaterating"),
       ),
       hasFaqSchema: schemaTypes.some((t: string) => t.includes("faq")),
       mobileFriendly: (categories.performance?.score || 0) > 0.5,
