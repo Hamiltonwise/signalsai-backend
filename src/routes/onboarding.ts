@@ -330,4 +330,113 @@ onboardingRoutes.post(
   }
 );
 
+/**
+ * GET /api/onboarding/setup-progress
+ *
+ * Get the setup progress wizard state
+ */
+onboardingRoutes.get(
+  "/setup-progress",
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const googleAccountId =
+        req.googleAccountId ?? getAccountIdFromHeader(req);
+
+      if (!googleAccountId) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing google account ID",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const googleAccount = await db("google_accounts")
+        .where({ id: googleAccountId })
+        .first();
+
+      if (!googleAccount) {
+        return res.status(404).json({
+          success: false,
+          error: "Google account not found",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const defaultProgress = {
+        step1_api_connected: false,
+        step2_pms_uploaded: false,
+        dismissed: false,
+        completed: false,
+      };
+
+      let progress = defaultProgress;
+      if (googleAccount.setup_progress) {
+        try {
+          const stored =
+            typeof googleAccount.setup_progress === "string"
+              ? JSON.parse(googleAccount.setup_progress)
+              : googleAccount.setup_progress;
+          progress = { ...defaultProgress, ...stored };
+        } catch {
+          // Use default if parse fails
+        }
+      }
+
+      return res.json({
+        success: true,
+        progress,
+      });
+    } catch (error) {
+      return handleError(res, error, "Get setup progress");
+    }
+  }
+);
+
+/**
+ * PUT /api/onboarding/setup-progress
+ *
+ * Update the setup progress wizard state
+ */
+onboardingRoutes.put(
+  "/setup-progress",
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      const googleAccountId =
+        req.googleAccountId ?? getAccountIdFromHeader(req);
+
+      if (!googleAccountId) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing google account ID",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const { progress } = req.body;
+
+      if (!progress) {
+        return res.status(400).json({
+          success: false,
+          error: "Progress object is required",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      await db("google_accounts")
+        .where({ id: googleAccountId })
+        .update({
+          setup_progress: JSON.stringify(progress),
+          updated_at: new Date(),
+        });
+
+      return res.json({
+        success: true,
+        progress,
+      });
+    } catch (error) {
+      return handleError(res, error, "Update setup progress");
+    }
+  }
+);
+
 export default onboardingRoutes;
