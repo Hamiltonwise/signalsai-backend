@@ -460,7 +460,8 @@ function buildReferralEnginePayload(params: {
       end: params.endDate,
     },
     additional_data: {
-      ...params.monthData,
+      // TODO: Revert this when needed
+      // ...params.monthData,  // Contains ga4Data, gbpData, gscData, clarityData
       pms: params.pmsData || null,
       // clarity: params.clarityData || null,  // Temporarily disabled for testing
     },

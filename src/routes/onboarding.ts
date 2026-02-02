@@ -81,7 +81,9 @@ onboardingRoutes.get("/status", async (req: AuthenticatedRequest, res) => {
       profile: {
         firstName: googleAccount.first_name || null,
         lastName: googleAccount.last_name || null,
+        phone: googleAccount.phone || null,
         practiceName: googleAccount.practice_name || null,
+        operationalJurisdiction: googleAccount.operational_jurisdiction || null,
         domainName: googleAccount.domain_name || null,
         email: googleAccount.email || null,
       },
@@ -101,7 +103,9 @@ onboardingRoutes.get("/status", async (req: AuthenticatedRequest, res) => {
  *   profile: {
  *     firstName: string,
  *     lastName: string,
+ *     phone: string,
  *     practiceName: string,
+ *     operationalJurisdiction: string,
  *     domainName: string
  *   }
  * }
@@ -128,13 +132,15 @@ onboardingRoutes.post(
         !profile ||
         !profile.firstName ||
         !profile.lastName ||
+        !profile.phone ||
         !profile.practiceName ||
+        !profile.operationalJurisdiction ||
         !profile.domainName
       ) {
         return res.status(400).json({
           success: false,
           error:
-            "Profile information is required (firstName, lastName, practiceName, domainName)",
+            "Profile information is required (firstName, lastName, phone, practiceName, operationalJurisdiction, domainName)",
           timestamp: new Date().toISOString(),
         });
       }
@@ -191,7 +197,9 @@ onboardingRoutes.post(
         await trx("google_accounts").where({ id: googleAccountId }).update({
           first_name: profile.firstName,
           last_name: profile.lastName,
+          phone: profile.phone,
           practice_name: profile.practiceName,
+          operational_jurisdiction: profile.operationalJurisdiction,
           domain_name: profile.domainName,
           organization_id: orgId,
           onboarding_completed: true,
@@ -209,7 +217,9 @@ onboardingRoutes.post(
         profile: {
           firstName: profile.firstName,
           lastName: profile.lastName,
+          phone: profile.phone,
           practiceName: profile.practiceName,
+          operationalJurisdiction: profile.operationalJurisdiction,
           domainName: profile.domainName,
         },
       });
