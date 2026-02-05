@@ -53,15 +53,18 @@ app.use((req, res, next) => {
     "http://localhost:5050",
     "http://localhost:5173",
     "http://localhost:5174",
+    "http://localhost:7777",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
     "http://127.0.0.1:3002",
     "http://127.0.0.1:5050",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
+    "http://127.0.0.1:7777",
     "https://audit.getalloro.com",
     "https://getalloro.com",
     "https://www.getalloro.com",
+    "https://builder.getalloro.com",
   ];
 
   const origin = req.headers.origin;
