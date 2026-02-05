@@ -257,4 +257,80 @@ router.post("/verify", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/auth/otp/validate
+ * Validate a JWT token and return user info
+ * Used by website-builder for unified auth
+ */
+router.post("/validate", async (req: Request, res: Response) => {
+  try {
+    // Get token from Authorization header or body
+    const authHeader = req.headers["authorization"];
+    const headerToken = authHeader && authHeader.split(" ")[1];
+    const bodyToken = req.body.token;
+    const token = headerToken || bodyToken;
+
+    if (!token) {
+      return res.status(401).json({ 
+        valid: false, 
+        error: "No token provided" 
+      });
+    }
+
+    // Verify JWT
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ 
+        valid: false, 
+        error: "Invalid or expired token" 
+      });
+    }
+
+    const { userId, email } = decoded;
+
+    // Check if Super Admin
+    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => e.length > 0);
+
+    const isSuperAdmin = superAdminEmails.includes(email.toLowerCase());
+
+    // Get user from database (optional - for additional user info)
+    const user = await db("users").where({ id: userId }).first();
+
+    if (!user) {
+      return res.status(401).json({ 
+        valid: false, 
+        error: "User not found" 
+      });
+    }
+
+    // Get user role and org (if any)
+    const orgUser = await db("organization_users")
+      .where({ user_id: userId })
+      .first();
+
+    res.json({
+      valid: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        organizationId: orgUser?.organization_id,
+        role: orgUser?.role || "viewer",
+        isSuperAdmin,
+      },
+    });
+  } catch (error) {
+    console.error("Token Validate Error:", error);
+    res.status(500).json({ 
+      valid: false, 
+      error: "Internal server error" 
+    });
+  }
+});
+
 export default router;
