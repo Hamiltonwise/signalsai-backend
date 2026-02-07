@@ -32,11 +32,13 @@ import profileRoutes from "./routes/profile";
 import organizationsRoutes from "./routes/admin/organizations";
 import adminAuthRoutes from "./routes/admin/auth";
 import adminAgentOutputsRoutes from "./routes/admin/agentOutputs";
+import adminWebsitesRoutes from "./routes/admin/websites";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
 import placesRoutes from "./routes/places";
 import auditRoutes from "./routes/audit";
+import importsRoutes from "./routes/imports";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -47,6 +49,7 @@ const router = Router();
 app.use((req, res, next) => {
   // Allow requests from localhost development servers
   const allowedOrigins = [
+    "http://localhost:3003",
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
@@ -74,11 +77,11 @@ app.use((req, res, next) => {
 
   res.setHeader(
     "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    "GET, POST, PUT, DELETE, OPTIONS, PATCH",
   );
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With, x-scraper-key, googleaccountid"
+    "Content-Type, Authorization, X-Requested-With, x-scraper-key, googleaccountid",
   );
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
@@ -119,6 +122,7 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/admin/organizations", organizationsRoutes);
 app.use("/api/admin/agent-outputs", adminAgentOutputsRoutes);
+app.use("/api/admin/websites", adminWebsitesRoutes);
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest
 app.use("/api/admin", adminAuthRoutes);
@@ -126,6 +130,7 @@ app.use("/api/support", supportRoutes); // Help form / support inquiries
 app.use("/api/scraper", scraperRoutes); // Website scraper for n8n webhooks
 app.use("/api/places", placesRoutes); // Google Places API for GBP search
 app.use("/api/audit", auditRoutes); // Audit process tracking for leadgen tool
+app.use("/api/imports", importsRoutes); // Public file serving for self-hosted imports
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));
@@ -140,7 +145,7 @@ if (isProd) {
       target: "http://localhost:5174", // ✅ proxy target
       changeOrigin: true,
       ws: true,
-    })
+    }),
   );
 }
 
@@ -154,10 +159,10 @@ const startServer = async () => {
       console.log(
         `🚀 Server running in ${
           isProd ? "production" : "development"
-        } mode at http://localhost:${port}`
+        } mode at http://localhost:${port}`,
       );
       console.log(
-        `📊 Database health check: http://localhost:${port}/api/health/db`
+        `📊 Database health check: http://localhost:${port}/api/health/db`,
       );
     });
   } catch (error) {
