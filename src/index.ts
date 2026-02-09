@@ -39,6 +39,7 @@ import scraperRoutes from "./routes/scraper";
 import placesRoutes from "./routes/places";
 import auditRoutes from "./routes/audit";
 import importsRoutes from "./routes/imports";
+import websiteContactRoutes from "./routes/websiteContact";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -67,11 +68,16 @@ app.use((req, res, next) => {
     "https://audit.getalloro.com",
     "https://getalloro.com",
     "https://www.getalloro.com",
-    "https://builder.getalloro.com",
   ];
 
   const origin = req.headers.origin;
   if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  } else if (
+    origin &&
+    /\.sites\.(getalloro\.com|localhost:7777)$/.test(origin)
+  ) {
+    // Allow rendered site subdomains (e.g. bright-dental.sites.getalloro.com)
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
 
@@ -131,6 +137,7 @@ app.use("/api/scraper", scraperRoutes); // Website scraper for n8n webhooks
 app.use("/api/places", placesRoutes); // Google Places API for GBP search
 app.use("/api/audit", auditRoutes); // Audit process tracking for leadgen tool
 app.use("/api/imports", importsRoutes); // Public file serving for self-hosted imports
+app.use("/api/websites", websiteContactRoutes); // Public contact form for rendered sites
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));

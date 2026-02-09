@@ -8,6 +8,9 @@
 import express, { Request, Response } from "express";
 import { db } from "../../database/connection";
 import importsRouter from "./imports";
+import * as cheerio from "cheerio";
+import fs from "fs";
+import path from "path";
 
 const router = express.Router();
 
@@ -186,6 +189,51 @@ router.get("/statuses", async (_req: Request, res: Response) => {
       success: false,
       error: "FETCH_ERROR",
       message: error?.message || "Failed to fetch statuses",
+    });
+  }
+});
+
+// =====================================================================
+// STATUS POLLING
+// =====================================================================
+
+/**
+ * GET /api/admin/websites/:id/status
+ * Lightweight status polling — returns only status-relevant fields
+ */
+router.get("/:id/status", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const project = await db(PROJECTS_TABLE)
+      .select(
+        "id",
+        "status",
+        "selected_place_id",
+        "selected_website_url",
+        "step_gbp_scrape",
+        "step_website_scrape",
+        "step_image_analysis",
+        "updated_at"
+      )
+      .where("id", id)
+      .first();
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Project not found",
+      });
+    }
+
+    return res.json(project);
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching project status:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch project status",
     });
   }
 });
@@ -572,6 +620,257 @@ router.post("/start-pipeline", async (req: Request, res: Response) => {
       error: "PIPELINE_ERROR",
       message: error?.message || "Failed to start pipeline",
     });
+  }
+});
+
+// =====================================================================
+// WEBSITE SCRAPE
+// =====================================================================
+
+// Logger for website scraping operations
+const LOG_DIR = path.join(__dirname, "../logs");
+const SCRAPE_LOG_FILE = path.join(LOG_DIR, "website-scrape.log");
+
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+}
+
+const scrapeLogger = {
+  _write(level: string, message: string, data?: Record<string, unknown>) {
+    const timestamp = new Date().toISOString();
+    const dataStr = data ? ` | ${JSON.stringify(data)}` : "";
+    const line = `[${timestamp}] [SCRAPE] [${level}] ${message}${dataStr}\n`;
+    try {
+      fs.appendFileSync(SCRAPE_LOG_FILE, line);
+    } catch {
+      // Ignore write errors
+    }
+  },
+  info(msg: string, data?: Record<string, unknown>) { this._write("INFO", msg, data); },
+  error(msg: string, data?: Record<string, unknown>) { this._write("ERROR", msg, data); },
+  warn(msg: string, data?: Record<string, unknown>) { this._write("WARN", msg, data); },
+};
+
+// Scrape helpers
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 3.5);
+}
+
+function toAbsoluteUrl(href: string, baseUrl: string): string | null {
+  try {
+    if (href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:") || href.startsWith("#")) {
+      return null;
+    }
+    return new URL(href, baseUrl).href;
+  } catch {
+    return null;
+  }
+}
+
+function isInternalUrl(url: string, baseUrl: string): boolean {
+  try {
+    return new URL(url).hostname === new URL(baseUrl).hostname;
+  } catch {
+    return false;
+  }
+}
+
+function getPageName(url: string): string {
+  try {
+    const urlPath = new URL(url).pathname;
+    if (urlPath === "/" || urlPath === "") return "home";
+    const segments = urlPath.split("/").filter(Boolean);
+    const last = segments[segments.length - 1] || "page";
+    return last.replace(/\.(html?|php|aspx?)$/i, "").toLowerCase();
+  } catch {
+    return "page";
+  }
+}
+
+function isValidImageUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  const exts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".avif"];
+  if (exts.some((ext) => lower.includes(ext))) return true;
+  if (lower.includes("/images/") || lower.includes("/img/") || lower.includes("/media/")) return true;
+  return false;
+}
+
+async function fetchPage(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; AlloroBot/1.0; +https://getalloro.com)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) return null;
+    const ct = response.headers.get("content-type") || "";
+    if (!ct.includes("text/html")) return null;
+    return await response.text();
+  } catch (error) {
+    scrapeLogger.error(`Failed to fetch ${url}`, { error: String(error) });
+    return null;
+  }
+}
+
+function extractInternalLinks(html: string, baseUrl: string): string[] {
+  const $ = cheerio.load(html);
+  const links = new Set<string>();
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href");
+    if (!href) return;
+    const abs = toAbsoluteUrl(href, baseUrl);
+    if (abs && isInternalUrl(abs, baseUrl)) {
+      try {
+        const u = new URL(abs);
+        u.hash = "";
+        links.add(u.origin + u.pathname);
+      } catch { /* skip */ }
+    }
+  });
+  return Array.from(links);
+}
+
+function extractImages(html: string, baseUrl: string): string[] {
+  const $ = cheerio.load(html);
+  const images = new Set<string>();
+
+  $("img[src]").each((_, el) => {
+    const src = $(el).attr("src");
+    if (src) {
+      const abs = toAbsoluteUrl(src, baseUrl);
+      if (abs && isValidImageUrl(abs)) images.add(abs);
+    }
+  });
+
+  $("img[srcset]").each((_, el) => {
+    const srcset = $(el).attr("srcset");
+    if (srcset) {
+      srcset.split(",").map((s) => s.trim().split(/\s+/)[0]).forEach((url) => {
+        const abs = toAbsoluteUrl(url, baseUrl);
+        if (abs && isValidImageUrl(abs)) images.add(abs);
+      });
+    }
+  });
+
+  $('[style*="background"]').each((_, el) => {
+    const style = $(el).attr("style") || "";
+    const match = style.match(/url\(['"]?([^'")\s]+)['"]?\)/);
+    if (match && match[1]) {
+      const abs = toAbsoluteUrl(match[1], baseUrl);
+      if (abs && isValidImageUrl(abs)) images.add(abs);
+    }
+  });
+
+  return Array.from(images);
+}
+
+/**
+ * POST /api/admin/websites/scrape
+ * Scrape a website for multi-page HTML content + images (for AI website generation)
+ * Auth: x-scraper-key header
+ */
+router.post("/scrape", async (req: Request, res: Response) => {
+  const startTime = Date.now();
+
+  try {
+    // Validate scraper API key
+    const scraperKey = req.headers["x-scraper-key"];
+    const expectedKey = process.env.SCRAPER_API_KEY;
+    if (expectedKey && scraperKey !== expectedKey) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const { url } = req.body;
+
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({ success: false, error: "URL is required" });
+    }
+
+    let baseUrl: string;
+    try {
+      baseUrl = new URL(url).origin;
+    } catch {
+      return res.status(400).json({ success: false, error: "Invalid URL" });
+    }
+
+    scrapeLogger.info("Starting scrape", { url, baseUrl });
+
+    // Fetch home page
+    const homeHtml = await fetchPage(url);
+    if (!homeHtml) {
+      scrapeLogger.error("Failed to fetch home page", { url });
+      return res.status(500).json({ success: false, error: "Failed to fetch home page" });
+    }
+
+    // Extract internal links
+    const internalLinks = extractInternalLinks(homeHtml, baseUrl);
+    scrapeLogger.info("Found internal links", { count: internalLinks.length });
+
+    const pages: Record<string, string> = {};
+    const homeImages: string[] = [];
+    const otherImages: string[] = [];
+
+    pages["home"] = homeHtml;
+    homeImages.push(...extractImages(homeHtml, baseUrl));
+
+    // Fetch linked pages (max 10)
+    const linksToFetch = internalLinks.slice(0, 10);
+    await Promise.all(
+      linksToFetch.map(async (link) => {
+        const html = await fetchPage(link);
+        if (html) {
+          const pageName = getPageName(link);
+          const uniqueName = pages[pageName] ? `${pageName}-${Date.now()}` : pageName;
+          pages[uniqueName] = html;
+          otherImages.push(...extractImages(html, baseUrl));
+        }
+      })
+    );
+
+    // Deduplicate and cap images at 10
+    const uniqueHomeImages = [...new Set(homeImages)];
+    const uniqueOtherImages = [...new Set(otherImages)].filter((img) => !uniqueHomeImages.includes(img));
+
+    let selectedImages: string[];
+    if (uniqueHomeImages.length >= 10) {
+      selectedImages = [...uniqueHomeImages].sort(() => Math.random() - 0.5).slice(0, 10);
+    } else {
+      const remaining = 10 - uniqueHomeImages.length;
+      const otherSelected = [...uniqueOtherImages].sort(() => Math.random() - 0.5).slice(0, remaining);
+      selectedImages = [...uniqueHomeImages, ...otherSelected];
+    }
+
+    const allContent = Object.values(pages).join("");
+    const charLength = allContent.length;
+    const tokens = estimateTokens(allContent);
+    const elapsedMs = Date.now() - startTime;
+
+    scrapeLogger.info("Scrape completed", {
+      baseUrl,
+      pagesScraped: Object.keys(pages).length,
+      homepageImages: uniqueHomeImages.length,
+      otherImages: uniqueOtherImages.length,
+      selectedImages: selectedImages.length,
+      charLength,
+      estimatedTokens: tokens,
+      elapsedMs,
+    });
+
+    return res.json({
+      success: true,
+      baseUrl,
+      pages,
+      images: selectedImages,
+      elapsedMs,
+      charLength,
+      estimatedTokens: tokens,
+    });
+  } catch (error: any) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    scrapeLogger.error("Scrape failed", { error: message });
+    return res.status(500).json({ success: false, error: message });
   }
 });
 

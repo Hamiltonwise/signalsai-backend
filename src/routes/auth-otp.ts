@@ -217,7 +217,7 @@ router.post("/verify", async (req: Request, res: Response) => {
         email: user.email,
       },
       JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     // Get user role and org (if any)
@@ -239,14 +239,14 @@ router.post("/verify", async (req: Request, res: Response) => {
     }
 
     // Set cookie for cross-app auth sync
-    // Use shared domain in production for cross-app auth between app.getalloro.com and builder.getalloro.com
     res.cookie("auth_token", token, {
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
       httpOnly: false, // Allow client-side access for cross-tab sync
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
-      domain: process.env.NODE_ENV === "production" ? ".getalloro.com" : undefined,
+      domain:
+        process.env.NODE_ENV === "production" ? ".getalloro.com" : undefined,
     });
 
     res.json({
@@ -282,9 +282,9 @@ router.post("/validate", async (req: Request, res: Response) => {
     const token = headerToken || bodyToken;
 
     if (!token) {
-      return res.status(401).json({ 
-        valid: false, 
-        error: "No token provided" 
+      return res.status(401).json({
+        valid: false,
+        error: "No token provided",
       });
     }
 
@@ -293,9 +293,9 @@ router.post("/validate", async (req: Request, res: Response) => {
     try {
       decoded = jwt.verify(token, JWT_SECRET);
     } catch (err) {
-      return res.status(401).json({ 
-        valid: false, 
-        error: "Invalid or expired token" 
+      return res.status(401).json({
+        valid: false,
+        error: "Invalid or expired token",
       });
     }
 
@@ -313,9 +313,9 @@ router.post("/validate", async (req: Request, res: Response) => {
     const user = await db("users").where({ id: userId }).first();
 
     if (!user) {
-      return res.status(401).json({ 
-        valid: false, 
-        error: "User not found" 
+      return res.status(401).json({
+        valid: false,
+        error: "User not found",
       });
     }
 
@@ -337,9 +337,9 @@ router.post("/validate", async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Token Validate Error:", error);
-    res.status(500).json({ 
-      valid: false, 
-      error: "Internal server error" 
+    res.status(500).json({
+      valid: false,
+      error: "Internal server error",
     });
   }
 });
