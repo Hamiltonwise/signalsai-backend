@@ -18,6 +18,23 @@ const router = express.Router();
 const PROJECTS_TABLE = "website_builder.projects";
 const PAGES_TABLE = "website_builder.pages";
 const TEMPLATES_TABLE = "website_builder.templates";
+const TEMPLATE_PAGES_TABLE = "website_builder.template_pages";
+
+// =====================================================================
+// Helper: Normalize sections (handles both [...] and {sections: [...]} from N8N)
+// =====================================================================
+function normalizeSections(raw: unknown): any[] {
+  if (Array.isArray(raw)) return raw;
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "sections" in (raw as Record<string, unknown>) &&
+    Array.isArray((raw as Record<string, unknown>).sections)
+  ) {
+    return (raw as Record<string, unknown>).sections as any[];
+  }
+  return [];
+}
 
 // =====================================================================
 // Helper: Generate random hostname
@@ -85,6 +102,7 @@ router.get("/", async (req: Request, res: Response) => {
       "status",
       "selected_place_id",
       "selected_website_url",
+      "template_id",
       "step_gbp_scrape",
       "created_at",
       "updated_at"
@@ -274,13 +292,22 @@ router.get("/templates", async (_req: Request, res: Response) => {
  */
 router.post("/templates", async (req: Request, res: Response) => {
   try {
-    const { name, html_template, is_active = false } = req.body;
+    const { name, wrapper, header, footer, is_active = false } = req.body;
 
     if (!name) {
       return res.status(400).json({
         success: false,
         error: "INVALID_INPUT",
         message: "name is required",
+      });
+    }
+
+    // Validate wrapper contains {{slot}} if provided
+    if (wrapper && !wrapper.includes("{{slot}}")) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_WRAPPER",
+        message: "Wrapper must contain the {{slot}} placeholder where page content should be injected.",
       });
     }
 
@@ -296,7 +323,9 @@ router.post("/templates", async (req: Request, res: Response) => {
     const [template] = await db(TEMPLATES_TABLE)
       .insert({
         name,
-        html_template: html_template || "",
+        wrapper: wrapper || "",
+        header: header || "",
+        footer: footer || "",
         status: "draft",
         is_active,
       })
@@ -318,9 +347,237 @@ router.post("/templates", async (req: Request, res: Response) => {
   }
 });
 
+// =====================================================================
+// TEMPLATE PAGES
+// =====================================================================
+
+/**
+ * GET /api/admin/websites/templates/:templateId/pages
+ * Fetch all pages for a template
+ */
+router.get("/templates/:templateId/pages", async (req: Request, res: Response) => {
+  try {
+    const { templateId } = req.params;
+
+    console.log(`[Admin Websites] Fetching template pages for template ID: ${templateId}`);
+
+    const template = await db(TEMPLATES_TABLE).where("id", templateId).first();
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Template not found",
+      });
+    }
+
+    const pages = await db(TEMPLATE_PAGES_TABLE)
+      .where("template_id", templateId)
+      .orderBy("created_at", "asc");
+
+    return res.json({
+      success: true,
+      data: pages,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching template pages:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch template pages",
+    });
+  }
+});
+
+/**
+ * POST /api/admin/websites/templates/:templateId/pages
+ * Create a new template page
+ */
+router.post("/templates/:templateId/pages", async (req: Request, res: Response) => {
+  try {
+    const { templateId } = req.params;
+    const { name, sections } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "name is required",
+      });
+    }
+
+    console.log(`[Admin Websites] Creating template page for template ID: ${templateId}`);
+
+    const template = await db(TEMPLATES_TABLE).where("id", templateId).first();
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Template not found",
+      });
+    }
+
+    const [page] = await db(TEMPLATE_PAGES_TABLE)
+      .insert({
+        template_id: templateId,
+        name,
+        sections: JSON.stringify(sections || []),
+      })
+      .returning("*");
+
+    console.log(`[Admin Websites] ✓ Created template page ID: ${page.id}`);
+
+    return res.status(201).json({
+      success: true,
+      data: page,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating template page:", error);
+    return res.status(500).json({
+      success: false,
+      error: "CREATE_ERROR",
+      message: error?.message || "Failed to create template page",
+    });
+  }
+});
+
+/**
+ * GET /api/admin/websites/templates/:templateId/pages/:pageId
+ * Get a single template page
+ */
+router.get("/templates/:templateId/pages/:pageId", async (req: Request, res: Response) => {
+  try {
+    const { templateId, pageId } = req.params;
+
+    console.log(`[Admin Websites] Fetching template page ID: ${pageId}`);
+
+    const page = await db(TEMPLATE_PAGES_TABLE)
+      .where({ id: pageId, template_id: templateId })
+      .first();
+
+    if (!page) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Template page not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: page,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching template page:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch template page",
+    });
+  }
+});
+
+/**
+ * PATCH /api/admin/websites/templates/:templateId/pages/:pageId
+ * Update a template page
+ */
+router.patch("/templates/:templateId/pages/:pageId", async (req: Request, res: Response) => {
+  try {
+    const { templateId, pageId } = req.params;
+    const updates = req.body;
+
+    console.log(`[Admin Websites] Updating template page ID: ${pageId}`);
+
+    const existing = await db(TEMPLATE_PAGES_TABLE)
+      .where({ id: pageId, template_id: templateId })
+      .first();
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Template page not found",
+      });
+    }
+
+    delete updates.id;
+    delete updates.template_id;
+    delete updates.created_at;
+
+    // Stringify JSONB fields for pg driver compatibility
+    if (updates.sections !== undefined) {
+      updates.sections = JSON.stringify(updates.sections);
+    }
+
+    const [page] = await db(TEMPLATE_PAGES_TABLE)
+      .where({ id: pageId, template_id: templateId })
+      .update({
+        ...updates,
+        updated_at: db.fn.now(),
+      })
+      .returning("*");
+
+    console.log(`[Admin Websites] ✓ Updated template page ID: ${pageId}`);
+
+    return res.json({
+      success: true,
+      data: page,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating template page:", error);
+    return res.status(500).json({
+      success: false,
+      error: "UPDATE_ERROR",
+      message: error?.message || "Failed to update template page",
+    });
+  }
+});
+
+/**
+ * DELETE /api/admin/websites/templates/:templateId/pages/:pageId
+ * Delete a template page
+ */
+router.delete("/templates/:templateId/pages/:pageId", async (req: Request, res: Response) => {
+  try {
+    const { templateId, pageId } = req.params;
+
+    console.log(`[Admin Websites] Deleting template page ID: ${pageId}`);
+
+    const existing = await db(TEMPLATE_PAGES_TABLE)
+      .where({ id: pageId, template_id: templateId })
+      .first();
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Template page not found",
+      });
+    }
+
+    await db(TEMPLATE_PAGES_TABLE)
+      .where({ id: pageId, template_id: templateId })
+      .del();
+
+    console.log(`[Admin Websites] ✓ Deleted template page ID: ${pageId}`);
+
+    return res.json({
+      success: true,
+      message: "Template page deleted successfully",
+      data: { id: pageId },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting template page:", error);
+    return res.status(500).json({
+      success: false,
+      error: "DELETE_ERROR",
+      message: error?.message || "Failed to delete template page",
+    });
+  }
+});
+
 /**
  * GET /api/admin/websites/templates/:templateId
- * Get a single template
+ * Get a single template (with template pages)
  */
 router.get("/templates/:templateId", async (req: Request, res: Response) => {
   try {
@@ -338,9 +595,16 @@ router.get("/templates/:templateId", async (req: Request, res: Response) => {
       });
     }
 
+    const templatePages = await db(TEMPLATE_PAGES_TABLE)
+      .where("template_id", templateId)
+      .orderBy("created_at", "asc");
+
     return res.json({
       success: true,
-      data: template,
+      data: {
+        ...template,
+        template_pages: templatePages,
+      },
     });
   } catch (error: any) {
     console.error("[Admin Websites] Error fetching template:", error);
@@ -376,6 +640,15 @@ router.patch("/templates/:templateId", async (req: Request, res: Response) => {
     // Remove fields that shouldn't be updated directly
     delete updates.id;
     delete updates.created_at;
+
+    // Validate wrapper contains {{slot}} if being updated
+    if (updates.wrapper && !updates.wrapper.includes("{{slot}}")) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_WRAPPER",
+        message: "Wrapper must contain the {{slot}} placeholder where page content should be injected.",
+      });
+    }
 
     const [template] = await db(TEMPLATES_TABLE)
       .where("id", templateId)
@@ -488,6 +761,29 @@ router.post("/templates/:templateId/activate", async (req: Request, res: Respons
 });
 
 // =====================================================================
+// PAGE EDITOR — SYSTEM PROMPT
+// =====================================================================
+
+/**
+ * GET /api/admin/websites/editor/system-prompt
+ * Fetch the current page editor system prompt from admin_settings
+ */
+router.get("/editor/system-prompt", async (_req: Request, res: Response) => {
+  try {
+    const { getPageEditorPrompt } = await import("../../prompts/pageEditorPrompt");
+    const prompt = await getPageEditorPrompt();
+    return res.json({ success: true, prompt });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching editor system prompt:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch system prompt",
+    });
+  }
+});
+
+// =====================================================================
 // PIPELINE
 // =====================================================================
 
@@ -500,8 +796,11 @@ router.post("/start-pipeline", async (req: Request, res: Response) => {
     const {
       projectId,
       templateId,
+      templatePageId,
+      path: pagePath,
       placeId,
       websiteUrl,
+      pageContext,
       practiceSearchString,
       businessName,
       formattedAddress,
@@ -564,10 +863,27 @@ router.post("/start-pipeline", async (req: Request, res: Response) => {
       });
     }
 
+    const finalPath = pagePath || "/";
+
+    // Fetch template data to include inline so N8N doesn't need to query the DB
+    const template = await db(TEMPLATES_TABLE).where("id", finalTemplateId).first();
+    const templatePage = templatePageId
+      ? await db(TEMPLATE_PAGES_TABLE).where("id", templatePageId).first()
+      : null;
+
+    const templateData = {
+      wrapper: template.wrapper,
+      header: template.header,
+      footer: template.footer,
+      sections: normalizeSections(templatePage?.sections),
+    };
+
     console.log(`[Admin Websites] Triggering webhook: ${n8nWebhookUrl}`);
     console.log(`[Admin Websites] Payload:`, {
       projectId,
       templateId: finalTemplateId,
+      templatePageId,
+      path: finalPath,
       placeId,
       websiteUrl,
       businessName,
@@ -580,8 +896,12 @@ router.post("/start-pipeline", async (req: Request, res: Response) => {
       body: JSON.stringify({
         projectId,
         templateId: finalTemplateId,
+        templatePageId,
+        templateData,
+        path: finalPath,
         placeId,
         websiteUrl,
+        pageContext,
         practiceSearchString,
         businessName,
         formattedAddress,
@@ -955,6 +1275,15 @@ router.patch("/:id", async (req: Request, res: Response) => {
     delete updates.id;
     delete updates.created_at;
 
+    // Validate wrapper contains {{slot}} if being updated
+    if (updates.wrapper && !updates.wrapper.includes("{{slot}}")) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_WRAPPER",
+        message: "Wrapper must contain the {{slot}} placeholder where page content should be injected.",
+      });
+    }
+
     const [project] = await db(PROJECTS_TABLE)
       .where("id", id)
       .update({
@@ -1066,13 +1395,13 @@ router.get("/:id/pages", async (req: Request, res: Response) => {
 router.post("/:id/pages", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { path = "/", htmlContent, publish = false } = req.body;
+    const { path = "/", sections, publish = false } = req.body;
 
-    if (!htmlContent) {
+    if (!sections) {
       return res.status(400).json({
         success: false,
         error: "INVALID_INPUT",
-        message: "htmlContent is required",
+        message: "sections is required",
       });
     }
 
@@ -1100,7 +1429,7 @@ router.post("/:id/pages", async (req: Request, res: Response) => {
         path,
         version: newVersion,
         status: publish ? "published" : "draft",
-        html_content: { html: htmlContent },
+        sections: JSON.stringify(sections),
       })
       .returning("*");
 
@@ -1176,6 +1505,431 @@ router.post("/:id/pages/:pageId/publish", async (req: Request, res: Response) =>
       success: false,
       error: "PUBLISH_ERROR",
       message: error?.message || "Failed to publish page",
+    });
+  }
+});
+
+/**
+ * GET /api/admin/websites/:id/pages/:pageId
+ * Get a single page by ID
+ */
+router.get("/:id/pages/:pageId", async (req: Request, res: Response) => {
+  try {
+    const { id, pageId } = req.params;
+
+    console.log(`[Admin Websites] Fetching page ID: ${pageId} for project ID: ${id}`);
+
+    const page = await db(PAGES_TABLE)
+      .where({ id: pageId, project_id: id })
+      .first();
+
+    if (!page) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Page not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: page,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching page:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch page",
+    });
+  }
+});
+
+/**
+ * PATCH /api/admin/websites/:id/pages/:pageId
+ * Update a draft page's sections and/or chat history
+ */
+router.patch("/:id/pages/:pageId", async (req: Request, res: Response) => {
+  try {
+    const { id, pageId } = req.params;
+    const { sections, edit_chat_history } = req.body;
+
+    if (!sections && edit_chat_history === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "sections or edit_chat_history is required",
+      });
+    }
+
+    console.log(`[Admin Websites] Updating page ID: ${pageId} for project ID: ${id}`);
+
+    const page = await db(PAGES_TABLE)
+      .where({ id: pageId, project_id: id })
+      .first();
+
+    if (!page) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Page not found",
+      });
+    }
+
+    if (page.status !== "draft") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_STATUS",
+        message: "Only draft pages can be edited",
+      });
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      updated_at: db.fn.now(),
+    };
+
+    if (sections) {
+      updatePayload.sections = JSON.stringify(sections);
+    }
+
+    if (edit_chat_history !== undefined) {
+      updatePayload.edit_chat_history = JSON.stringify(edit_chat_history);
+    }
+
+    const [updatedPage] = await db(PAGES_TABLE)
+      .where("id", pageId)
+      .update(updatePayload)
+      .returning("*");
+
+    console.log(`[Admin Websites] ✓ Updated page ID: ${pageId}`);
+
+    return res.json({
+      success: true,
+      data: updatedPage,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating page:", error);
+    return res.status(500).json({
+      success: false,
+      error: "UPDATE_ERROR",
+      message: error?.message || "Failed to update page",
+    });
+  }
+});
+
+/**
+ * DELETE /api/admin/websites/:id/pages/by-path?path=/about
+ * Delete ALL versions of a page at a given path
+ */
+router.delete("/:id/pages/by-path", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const path = req.query.path as string | undefined;
+
+    if (!path) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "path query parameter is required",
+      });
+    }
+
+    console.log(`[Admin Websites] Deleting all versions at path "${path}" for project ID: ${id}`);
+
+    const pages = await db(PAGES_TABLE)
+      .where({ project_id: id, path })
+      .select("id");
+
+    if (pages.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: `No pages found at path "${path}"`,
+      });
+    }
+
+    const deletedCount = await db(PAGES_TABLE)
+      .where({ project_id: id, path })
+      .del();
+
+    console.log(`[Admin Websites] ✓ Deleted ${deletedCount} version(s) at path "${path}"`);
+
+    return res.json({
+      success: true,
+      message: `Deleted ${deletedCount} version(s) at path "${path}"`,
+      data: { path, deletedCount },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting page by path:", error);
+    return res.status(500).json({
+      success: false,
+      error: "DELETE_ERROR",
+      message: error?.message || "Failed to delete page",
+    });
+  }
+});
+
+/**
+ * DELETE /api/admin/websites/:id/pages/:pageId
+ * Delete a page version (cannot delete published or the last remaining version)
+ */
+router.delete("/:id/pages/:pageId", async (req: Request, res: Response) => {
+  try {
+    const { id, pageId } = req.params;
+
+    console.log(`[Admin Websites] Deleting page ID: ${pageId} for project ID: ${id}`);
+
+    const page = await db(PAGES_TABLE)
+      .where({ id: pageId, project_id: id })
+      .first();
+
+    if (!page) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Page not found",
+      });
+    }
+
+    if (page.status === "published") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_STATUS",
+        message: "Cannot delete a published page version",
+      });
+    }
+
+    // Check if this is the last remaining version for this path
+    const siblingCount = await db(PAGES_TABLE)
+      .where({ project_id: id, path: page.path })
+      .count("* as count")
+      .first();
+
+    if (siblingCount && parseInt(siblingCount.count as string, 10) <= 1) {
+      return res.status(400).json({
+        success: false,
+        error: "LAST_VERSION",
+        message: "Cannot delete the only remaining version of a page",
+      });
+    }
+
+    await db(PAGES_TABLE).where("id", pageId).del();
+
+    console.log(`[Admin Websites] ✓ Deleted page ID: ${pageId}`);
+
+    return res.json({
+      success: true,
+      message: "Page version deleted successfully",
+      data: { id: pageId },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting page:", error);
+    return res.status(500).json({
+      success: false,
+      error: "DELETE_ERROR",
+      message: error?.message || "Failed to delete page version",
+    });
+  }
+});
+
+/**
+ * POST /api/admin/websites/:id/pages/:pageId/create-draft
+ * Clone a published page into a new draft version for editing.
+ * Idempotent: returns existing draft if one already exists for the same path.
+ */
+router.post("/:id/pages/:pageId/create-draft", async (req: Request, res: Response) => {
+  try {
+    const { id, pageId } = req.params;
+
+    console.log(`[Admin Websites] Creating draft from page ID: ${pageId} for project ID: ${id}`);
+
+    const sourcePage = await db(PAGES_TABLE)
+      .where({ id: pageId, project_id: id })
+      .first();
+
+    if (!sourcePage) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Source page not found",
+      });
+    }
+
+    if (sourcePage.status !== "published") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_STATUS",
+        message: "Can only create drafts from published pages",
+      });
+    }
+
+    // Check if a draft already exists for this project+path (idempotent)
+    const existingDraft = await db(PAGES_TABLE)
+      .where({ project_id: id, path: sourcePage.path, status: "draft" })
+      .first();
+
+    if (existingDraft) {
+      console.log(`[Admin Websites] Returning existing draft ID: ${existingDraft.id}`);
+      return res.json({
+        success: true,
+        data: existingDraft,
+      });
+    }
+
+    // Get latest version number
+    const latestPage = await db(PAGES_TABLE)
+      .where({ project_id: id, path: sourcePage.path })
+      .orderBy("version", "desc")
+      .first();
+
+    const newVersion = latestPage ? latestPage.version + 1 : 1;
+
+    // Create the draft
+    const [draftPage] = await db(PAGES_TABLE)
+      .insert({
+        project_id: id,
+        path: sourcePage.path,
+        version: newVersion,
+        status: "draft",
+        sections: JSON.stringify(normalizeSections(sourcePage.sections)),
+      })
+      .returning("*");
+
+    console.log(`[Admin Websites] ✓ Created draft page ID: ${draftPage.id}, version: ${newVersion}`);
+
+    return res.status(201).json({
+      success: true,
+      data: draftPage,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating draft:", error);
+    return res.status(500).json({
+      success: false,
+      error: "CREATE_ERROR",
+      message: error?.message || "Failed to create draft",
+    });
+  }
+});
+
+/**
+ * POST /api/admin/websites/:id/pages/:pageId/edit
+ * Send an edit instruction to Claude for a specific component
+ */
+router.post("/:id/pages/:pageId/edit", async (req: Request, res: Response) => {
+  try {
+    const { id, pageId } = req.params;
+    const { alloroClass, currentHtml, instruction, chatHistory } = req.body;
+
+    if (!alloroClass || !currentHtml || !instruction) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "alloroClass, currentHtml, and instruction are required",
+      });
+    }
+
+    console.log(`[Admin Websites] Edit request for page ${pageId}, class: ${alloroClass}`);
+
+    // Verify page exists and belongs to project
+    const page = await db(PAGES_TABLE)
+      .where({ id: pageId, project_id: id })
+      .first();
+
+    if (!page) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Page not found",
+      });
+    }
+
+    // Import the service lazily to avoid circular deps
+    const { editHtmlComponent } = await import("../../services/pageEditorService");
+
+    const result = await editHtmlComponent({
+      alloroClass,
+      currentHtml,
+      instruction,
+      chatHistory,
+    });
+
+    console.log(`[Admin Websites] ✓ Edit completed for class: ${alloroClass}`);
+
+    return res.json({
+      success: true,
+      editedHtml: result.editedHtml,
+      message: result.message,
+      rejected: result.rejected,
+      debug: result.debug,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error editing page component:", error);
+    return res.status(500).json({
+      success: false,
+      error: "EDIT_ERROR",
+      message: error?.message || "Failed to edit component",
+    });
+  }
+});
+
+// =====================================================================
+// LAYOUT EDITOR — AI EDIT
+// =====================================================================
+
+/**
+ * POST /api/admin/websites/:id/edit-layout
+ * Send an edit instruction to Claude for a layout component (header/footer)
+ * Same LLM service as page editing, but operates on project-level layout fields.
+ */
+router.post("/:id/edit-layout", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { alloroClass, currentHtml, instruction, chatHistory } = req.body;
+
+    if (!alloroClass || !currentHtml || !instruction) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "alloroClass, currentHtml, and instruction are required",
+      });
+    }
+
+    console.log(`[Admin Websites] Layout edit request for project ${id}, class: ${alloroClass}`);
+
+    // Verify project exists
+    const project = await db(PROJECTS_TABLE).where("id", id).first();
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Project not found",
+      });
+    }
+
+    const { editHtmlComponent } = await import("../../services/pageEditorService");
+
+    const result = await editHtmlComponent({
+      alloroClass,
+      currentHtml,
+      instruction,
+      chatHistory,
+    });
+
+    console.log(`[Admin Websites] ✓ Layout edit completed for class: ${alloroClass}`);
+
+    return res.json({
+      success: true,
+      editedHtml: result.editedHtml,
+      message: result.message,
+      rejected: result.rejected,
+      debug: result.debug,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error editing layout component:", error);
+    return res.status(500).json({
+      success: false,
+      error: "EDIT_ERROR",
+      message: error?.message || "Failed to edit layout component",
     });
   }
 });
