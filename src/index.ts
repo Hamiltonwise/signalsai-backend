@@ -33,6 +33,7 @@ import organizationsRoutes from "./routes/admin/organizations";
 import adminAuthRoutes from "./routes/admin/auth";
 import adminAgentOutputsRoutes from "./routes/admin/agentOutputs";
 import adminWebsitesRoutes from "./routes/admin/websites";
+import adminMediaRoutes from "./routes/admin/media";
 import adminSettingsRoutes from "./routes/admin/settings";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
@@ -130,6 +131,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/admin/organizations", organizationsRoutes);
 app.use("/api/admin/agent-outputs", adminAgentOutputsRoutes);
 app.use("/api/admin/websites", adminWebsitesRoutes);
+app.use("/api/admin/websites/:projectId/media", adminMediaRoutes);
 app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest

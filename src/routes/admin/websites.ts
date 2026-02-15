@@ -1843,6 +1843,23 @@ router.post("/:id/pages/:pageId/edit", async (req: Request, res: Response) => {
       });
     }
 
+    // Fetch media library for this project to inject into AI context
+    const mediaItems = await db("website_builder.media")
+      .where({ project_id: id })
+      .orderBy("created_at", "desc")
+      .select("display_name", "s3_url", "alt_text", "mime_type", "width", "height");
+
+    let mediaContext = "";
+    if (mediaItems.length > 0) {
+      mediaContext = `\n\n## Available Media Library\n\nYou have access to the following uploaded media for this project. You can reference these images/videos by their URLs in your HTML:\n\n`;
+      for (const media of mediaItems) {
+        const dimensions = media.width && media.height ? ` (${media.width}x${media.height})` : "";
+        const altText = media.alt_text ? ` - ${media.alt_text}` : "";
+        mediaContext += `- **${media.display_name}**${altText}${dimensions}\n  URL: ${media.s3_url}\n  Type: ${media.mime_type}\n\n`;
+      }
+      mediaContext += `**Note:** When inserting images from the media library, use the exact URL provided above. These images are already optimized and hosted on S3.\n`;
+    }
+
     // Import the service lazily to avoid circular deps
     const { editHtmlComponent } = await import("../../services/pageEditorService");
 
@@ -1851,6 +1868,7 @@ router.post("/:id/pages/:pageId/edit", async (req: Request, res: Response) => {
       currentHtml,
       instruction,
       chatHistory,
+      mediaContext, // Inject media library context
     });
 
     console.log(`[Admin Websites] ✓ Edit completed for class: ${alloroClass}`);
@@ -1906,6 +1924,23 @@ router.post("/:id/edit-layout", async (req: Request, res: Response) => {
       });
     }
 
+    // Fetch media library for this project to inject into AI context
+    const mediaItems = await db("website_builder.media")
+      .where({ project_id: id })
+      .orderBy("created_at", "desc")
+      .select("display_name", "s3_url", "alt_text", "mime_type", "width", "height");
+
+    let mediaContext = "";
+    if (mediaItems.length > 0) {
+      mediaContext = `\n\n## Available Media Library\n\nYou have access to the following uploaded media for this project. You can reference these images/videos by their URLs in your HTML:\n\n`;
+      for (const media of mediaItems) {
+        const dimensions = media.width && media.height ? ` (${media.width}x${media.height})` : "";
+        const altText = media.alt_text ? ` - ${media.alt_text}` : "";
+        mediaContext += `- **${media.display_name}**${altText}${dimensions}\n  URL: ${media.s3_url}\n  Type: ${media.mime_type}\n\n`;
+      }
+      mediaContext += `**Note:** When inserting images from the media library, use the exact URL provided above. These images are already optimized and hosted on S3.\n`;
+    }
+
     const { editHtmlComponent } = await import("../../services/pageEditorService");
 
     const result = await editHtmlComponent({
@@ -1913,6 +1948,7 @@ router.post("/:id/edit-layout", async (req: Request, res: Response) => {
       currentHtml,
       instruction,
       chatHistory,
+      mediaContext, // Inject media library context
     });
 
     console.log(`[Admin Websites] ✓ Layout edit completed for class: ${alloroClass}`);
