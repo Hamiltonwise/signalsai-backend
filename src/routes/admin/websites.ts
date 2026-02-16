@@ -9,6 +9,7 @@ import express, { Request, Response } from "express";
 import { db } from "../../database/connection";
 import importsRouter from "./imports";
 import * as cheerio from "cheerio";
+import sanitizeHtml from "sanitize-html";
 import fs from "fs";
 import path from "path";
 
@@ -19,6 +20,7 @@ const PROJECTS_TABLE = "website_builder.projects";
 const PAGES_TABLE = "website_builder.pages";
 const TEMPLATES_TABLE = "website_builder.templates";
 const TEMPLATE_PAGES_TABLE = "website_builder.template_pages";
+const HFC_TABLE = "website_builder.header_footer_code";
 
 // =====================================================================
 // Helper: Normalize sections (handles both [...] and {sections: [...]} from N8N)
@@ -64,6 +66,41 @@ function generateHostname(): string {
   const noun = nouns[Math.floor(Math.random() * nouns.length)];
   const num = Math.floor(1000 + Math.random() * 9000);
   return `${adj}-${noun}-${num}`;
+}
+
+// =====================================================================
+// Helper: Sanitize HTML code snippets
+// =====================================================================
+function sanitizeCodeSnippet(code: string): { sanitized: string; isValid: boolean; error?: string } {
+  try {
+    const sanitized = sanitizeHtml(code, {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+        'script', 'style', 'link', 'meta', 'noscript', 'iframe'
+      ]),
+      allowedAttributes: {
+        ...sanitizeHtml.defaults.allowedAttributes,
+        script: ['src', 'type', 'async', 'defer', 'crossorigin', 'integrity'],
+        link: ['rel', 'href', 'type', 'sizes', 'media', 'crossorigin', 'integrity'],
+        meta: ['name', 'content', 'property', 'charset', 'http-equiv'],
+        iframe: ['src', 'width', 'height', 'frameborder', 'allowfullscreen', 'loading'],
+        '*': ['class', 'id', 'data-*']
+      },
+      allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+      allowedSchemesByTag: {
+        script: ['https'],
+        link: ['https']
+      },
+      allowVulnerableTags: true
+    });
+
+    if (!sanitized.trim()) {
+      return { sanitized: '', isValid: false, error: 'Code cannot be empty' };
+    }
+
+    return { sanitized, isValid: true };
+  } catch (error: any) {
+    return { sanitized: '', isValid: false, error: error.message || 'Invalid HTML' };
+  }
 }
 
 // =====================================================================
@@ -1966,6 +2003,632 @@ router.post("/:id/edit-layout", async (req: Request, res: Response) => {
       success: false,
       error: "EDIT_ERROR",
       message: error?.message || "Failed to edit layout component",
+    });
+  }
+});
+
+// =====================================================================
+// HEADER FOOTER CODE MANAGER (HFCM)
+// =====================================================================
+
+/**
+ * GET /api/admin/websites/templates/:templateId/code-snippets
+ * List all code snippets for a template
+ */
+router.get("/templates/:templateId/code-snippets", async (req: Request, res: Response) => {
+  try {
+    const { templateId } = req.params;
+
+    console.log(`[HFCM] Fetching code snippets for template: ${templateId}`);
+
+    const snippets = await db(HFC_TABLE)
+      .where({ template_id: templateId })
+      .orderBy('location', 'asc')
+      .orderBy('order_index', 'asc');
+
+    return res.json({
+      success: true,
+      data: snippets,
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error fetching template code snippets:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch code snippets",
+    });
+  }
+});
+
+/**
+ * POST /api/admin/websites/templates/:templateId/code-snippets
+ * Create a new code snippet for a template
+ */
+router.post("/templates/:templateId/code-snippets", async (req: Request, res: Response) => {
+  try {
+    const { templateId } = req.params;
+    const { name, location, code, page_ids = [], order_index = 0 } = req.body;
+
+    // Validate required fields
+    if (!name || !location || !code) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: "Name, location, and code are required",
+      });
+    }
+
+    // Validate location enum
+    const validLocations = ['head_start', 'head_end', 'body_start', 'body_end'];
+    if (!validLocations.includes(location)) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: `Location must be one of: ${validLocations.join(', ')}`,
+      });
+    }
+
+    // Sanitize code
+    const { sanitized, isValid, error: sanitizeError } = sanitizeCodeSnippet(code);
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: sanitizeError || "Invalid HTML code",
+      });
+    }
+
+    console.log(`[HFCM] Creating template snippet: ${name} at ${location}`);
+
+    const [snippet] = await db(HFC_TABLE)
+      .insert({
+        template_id: templateId,
+        name,
+        location,
+        code: sanitized,
+        page_ids: JSON.stringify(page_ids),
+        order_index,
+      })
+      .returning('*');
+
+    console.log(`[HFCM] ✓ Created template snippet: ${snippet.id}`);
+
+    return res.status(201).json({
+      success: true,
+      data: snippet,
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error creating template code snippet:", error);
+    return res.status(500).json({
+      success: false,
+      error: "CREATE_ERROR",
+      message: error?.message || "Failed to create code snippet",
+    });
+  }
+});
+
+/**
+ * PATCH /api/admin/websites/templates/:templateId/code-snippets/:id
+ * Update a code snippet
+ */
+router.patch("/templates/:templateId/code-snippets/:id", async (req: Request, res: Response) => {
+  try {
+    const { templateId, id } = req.params;
+    const { name, location, code, page_ids, order_index } = req.body;
+
+    // Verify ownership
+    const existing = await db(HFC_TABLE).where({ id }).first();
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Code snippet not found",
+      });
+    }
+
+    if (existing.template_id !== templateId) {
+      return res.status(403).json({
+        success: false,
+        error: "FORBIDDEN",
+        message: "This snippet belongs to a different template",
+      });
+    }
+
+    // Build update object
+    const updates: any = { updated_at: db.fn.now() };
+    if (name !== undefined) updates.name = name;
+    if (location !== undefined) {
+      const validLocations = ['head_start', 'head_end', 'body_start', 'body_end'];
+      if (!validLocations.includes(location)) {
+        return res.status(400).json({
+          success: false,
+          error: "VALIDATION_ERROR",
+          message: `Location must be one of: ${validLocations.join(', ')}`,
+        });
+      }
+      updates.location = location;
+    }
+    if (code !== undefined) {
+      const { sanitized, isValid, error: sanitizeError } = sanitizeCodeSnippet(code);
+      if (!isValid) {
+        return res.status(400).json({
+          success: false,
+          error: "VALIDATION_ERROR",
+          message: sanitizeError || "Invalid HTML code",
+        });
+      }
+      updates.code = sanitized;
+    }
+    if (page_ids !== undefined) updates.page_ids = JSON.stringify(page_ids);
+    if (order_index !== undefined) updates.order_index = order_index;
+
+    console.log(`[HFCM] Updating template snippet: ${id}`);
+
+    const [updated] = await db(HFC_TABLE)
+      .where({ id })
+      .update(updates)
+      .returning('*');
+
+    console.log(`[HFCM] ✓ Updated template snippet: ${id}`);
+
+    return res.json({
+      success: true,
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error updating template code snippet:", error);
+    return res.status(500).json({
+      success: false,
+      error: "UPDATE_ERROR",
+      message: error?.message || "Failed to update code snippet",
+    });
+  }
+});
+
+/**
+ * DELETE /api/admin/websites/templates/:templateId/code-snippets/:id
+ * Delete a code snippet
+ */
+router.delete("/templates/:templateId/code-snippets/:id", async (req: Request, res: Response) => {
+  try {
+    const { templateId, id } = req.params;
+
+    // Verify ownership
+    const existing = await db(HFC_TABLE).where({ id }).first();
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Code snippet not found",
+      });
+    }
+
+    if (existing.template_id !== templateId) {
+      return res.status(403).json({
+        success: false,
+        error: "FORBIDDEN",
+        message: "This snippet belongs to a different template",
+      });
+    }
+
+    console.log(`[HFCM] Deleting template snippet: ${id} (${existing.name})`);
+
+    await db(HFC_TABLE).where({ id }).delete();
+
+    console.log(`[HFCM] ✓ Deleted template snippet: ${id}`);
+
+    return res.json({
+      success: true,
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error deleting template code snippet:", error);
+    return res.status(500).json({
+      success: false,
+      error: "DELETE_ERROR",
+      message: error?.message || "Failed to delete code snippet",
+    });
+  }
+});
+
+/**
+ * PATCH /api/admin/websites/templates/:templateId/code-snippets/:id/toggle
+ * Toggle is_enabled for a code snippet
+ */
+router.patch("/templates/:templateId/code-snippets/:id/toggle", async (req: Request, res: Response) => {
+  try {
+    const { templateId, id } = req.params;
+
+    // Verify ownership
+    const existing = await db(HFC_TABLE).where({ id }).first();
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Code snippet not found",
+      });
+    }
+
+    if (existing.template_id !== templateId) {
+      return res.status(403).json({
+        success: false,
+        error: "FORBIDDEN",
+        message: "This snippet belongs to a different template",
+      });
+    }
+
+    const newState = !existing.is_enabled;
+    console.log(`[HFCM] Toggling template snippet: ${id} to ${newState ? 'enabled' : 'disabled'}`);
+
+    await db(HFC_TABLE)
+      .where({ id })
+      .update({ is_enabled: newState, updated_at: db.fn.now() });
+
+    console.log(`[HFCM] ✓ Toggled template snippet: ${id}`);
+
+    return res.json({
+      success: true,
+      data: { is_enabled: newState },
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error toggling template code snippet:", error);
+    return res.status(500).json({
+      success: false,
+      error: "TOGGLE_ERROR",
+      message: error?.message || "Failed to toggle code snippet",
+    });
+  }
+});
+
+/**
+ * PATCH /api/admin/websites/templates/:templateId/code-snippets/reorder
+ * Reorder code snippets
+ */
+router.patch("/templates/:templateId/code-snippets/reorder", async (req: Request, res: Response) => {
+  try {
+    const { templateId } = req.params;
+    const { snippetIds } = req.body;
+
+    if (!Array.isArray(snippetIds)) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: "snippetIds must be an array",
+      });
+    }
+
+    console.log(`[HFCM] Reordering template snippets for template: ${templateId}`);
+
+    // Use transaction for atomic update
+    await db.transaction(async (trx) => {
+      for (let i = 0; i < snippetIds.length; i++) {
+        await trx(HFC_TABLE)
+          .where({ id: snippetIds[i], template_id: templateId })
+          .update({ order_index: i, updated_at: trx.fn.now() });
+      }
+    });
+
+    console.log(`[HFCM] ✓ Reordered ${snippetIds.length} template snippets`);
+
+    return res.json({
+      success: true,
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error reordering template code snippets:", error);
+    return res.status(500).json({
+      success: false,
+      error: "REORDER_ERROR",
+      message: error?.message || "Failed to reorder code snippets",
+    });
+  }
+});
+
+/**
+ * GET /api/admin/websites/:projectId/code-snippets
+ * List all code snippets for a project
+ */
+router.get("/:projectId/code-snippets", async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+
+    console.log(`[HFCM] Fetching code snippets for project: ${projectId}`);
+
+    const snippets = await db(HFC_TABLE)
+      .where({ project_id: projectId })
+      .orderBy('location', 'asc')
+      .orderBy('order_index', 'asc');
+
+    return res.json({
+      success: true,
+      data: snippets,
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error fetching project code snippets:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch code snippets",
+    });
+  }
+});
+
+/**
+ * POST /api/admin/websites/:projectId/code-snippets
+ * Create a new code snippet for a project
+ */
+router.post("/:projectId/code-snippets", async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { name, location, code, page_ids = [], order_index = 0 } = req.body;
+
+    // Validate required fields
+    if (!name || !location || !code) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: "Name, location, and code are required",
+      });
+    }
+
+    // Validate location enum
+    const validLocations = ['head_start', 'head_end', 'body_start', 'body_end'];
+    if (!validLocations.includes(location)) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: `Location must be one of: ${validLocations.join(', ')}`,
+      });
+    }
+
+    // Sanitize code
+    const { sanitized, isValid, error: sanitizeError } = sanitizeCodeSnippet(code);
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: sanitizeError || "Invalid HTML code",
+      });
+    }
+
+    console.log(`[HFCM] Creating project snippet: ${name} at ${location}`);
+
+    const [snippet] = await db(HFC_TABLE)
+      .insert({
+        project_id: projectId,
+        name,
+        location,
+        code: sanitized,
+        page_ids: JSON.stringify(page_ids),
+        order_index,
+      })
+      .returning('*');
+
+    console.log(`[HFCM] ✓ Created project snippet: ${snippet.id}`);
+
+    return res.status(201).json({
+      success: true,
+      data: snippet,
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error creating project code snippet:", error);
+    return res.status(500).json({
+      success: false,
+      error: "CREATE_ERROR",
+      message: error?.message || "Failed to create code snippet",
+    });
+  }
+});
+
+/**
+ * PATCH /api/admin/websites/:projectId/code-snippets/:id
+ * Update a project code snippet
+ */
+router.patch("/:projectId/code-snippets/:id", async (req: Request, res: Response) => {
+  try {
+    const { projectId, id } = req.params;
+    const { name, location, code, page_ids, order_index } = req.body;
+
+    // Verify ownership
+    const existing = await db(HFC_TABLE).where({ id }).first();
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Code snippet not found",
+      });
+    }
+
+    if (existing.project_id !== projectId) {
+      return res.status(403).json({
+        success: false,
+        error: "FORBIDDEN",
+        message: "This snippet belongs to a different project",
+      });
+    }
+
+    // Build update object
+    const updates: any = { updated_at: db.fn.now() };
+    if (name !== undefined) updates.name = name;
+    if (location !== undefined) {
+      const validLocations = ['head_start', 'head_end', 'body_start', 'body_end'];
+      if (!validLocations.includes(location)) {
+        return res.status(400).json({
+          success: false,
+          error: "VALIDATION_ERROR",
+          message: `Location must be one of: ${validLocations.join(', ')}`,
+        });
+      }
+      updates.location = location;
+    }
+    if (code !== undefined) {
+      const { sanitized, isValid, error: sanitizeError } = sanitizeCodeSnippet(code);
+      if (!isValid) {
+        return res.status(400).json({
+          success: false,
+          error: "VALIDATION_ERROR",
+          message: sanitizeError || "Invalid HTML code",
+        });
+      }
+      updates.code = sanitized;
+    }
+    if (page_ids !== undefined) updates.page_ids = JSON.stringify(page_ids);
+    if (order_index !== undefined) updates.order_index = order_index;
+
+    console.log(`[HFCM] Updating project snippet: ${id}`);
+
+    const [updated] = await db(HFC_TABLE)
+      .where({ id })
+      .update(updates)
+      .returning('*');
+
+    console.log(`[HFCM] ✓ Updated project snippet: ${id}`);
+
+    return res.json({
+      success: true,
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error updating project code snippet:", error);
+    return res.status(500).json({
+      success: false,
+      error: "UPDATE_ERROR",
+      message: error?.message || "Failed to update code snippet",
+    });
+  }
+});
+
+/**
+ * DELETE /api/admin/websites/:projectId/code-snippets/:id
+ * Delete a project code snippet
+ */
+router.delete("/:projectId/code-snippets/:id", async (req: Request, res: Response) => {
+  try {
+    const { projectId, id } = req.params;
+
+    // Verify ownership
+    const existing = await db(HFC_TABLE).where({ id }).first();
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Code snippet not found",
+      });
+    }
+
+    if (existing.project_id !== projectId) {
+      return res.status(403).json({
+        success: false,
+        error: "FORBIDDEN",
+        message: "This snippet belongs to a different project",
+      });
+    }
+
+    console.log(`[HFCM] Deleting project snippet: ${id} (${existing.name})`);
+
+    await db(HFC_TABLE).where({ id }).delete();
+
+    console.log(`[HFCM] ✓ Deleted project snippet: ${id}`);
+
+    return res.json({
+      success: true,
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error deleting project code snippet:", error);
+    return res.status(500).json({
+      success: false,
+      error: "DELETE_ERROR",
+      message: error?.message || "Failed to delete code snippet",
+    });
+  }
+});
+
+/**
+ * PATCH /api/admin/websites/:projectId/code-snippets/:id/toggle
+ * Toggle is_enabled for a project code snippet
+ */
+router.patch("/:projectId/code-snippets/:id/toggle", async (req: Request, res: Response) => {
+  try {
+    const { projectId, id } = req.params;
+
+    // Verify ownership
+    const existing = await db(HFC_TABLE).where({ id }).first();
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Code snippet not found",
+      });
+    }
+
+    if (existing.project_id !== projectId) {
+      return res.status(403).json({
+        success: false,
+        error: "FORBIDDEN",
+        message: "This snippet belongs to a different project",
+      });
+    }
+
+    const newState = !existing.is_enabled;
+    console.log(`[HFCM] Toggling project snippet: ${id} to ${newState ? 'enabled' : 'disabled'}`);
+
+    await db(HFC_TABLE)
+      .where({ id })
+      .update({ is_enabled: newState, updated_at: db.fn.now() });
+
+    console.log(`[HFCM] ✓ Toggled project snippet: ${id}`);
+
+    return res.json({
+      success: true,
+      data: { is_enabled: newState },
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error toggling project code snippet:", error);
+    return res.status(500).json({
+      success: false,
+      error: "TOGGLE_ERROR",
+      message: error?.message || "Failed to toggle code snippet",
+    });
+  }
+});
+
+/**
+ * PATCH /api/admin/websites/:projectId/code-snippets/reorder
+ * Reorder project code snippets
+ */
+router.patch("/:projectId/code-snippets/reorder", async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const { snippetIds } = req.body;
+
+    if (!Array.isArray(snippetIds)) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: "snippetIds must be an array",
+      });
+    }
+
+    console.log(`[HFCM] Reordering project snippets for project: ${projectId}`);
+
+    // Use transaction for atomic update
+    await db.transaction(async (trx) => {
+      for (let i = 0; i < snippetIds.length; i++) {
+        await trx(HFC_TABLE)
+          .where({ id: snippetIds[i], project_id: projectId })
+          .update({ order_index: i, updated_at: trx.fn.now() });
+      }
+    });
+
+    console.log(`[HFCM] ✓ Reordered ${snippetIds.length} project snippets`);
+
+    return res.json({
+      success: true,
+    });
+  } catch (error: any) {
+    console.error("[HFCM] Error reordering project code snippets:", error);
+    return res.status(500).json({
+      success: false,
+      error: "REORDER_ERROR",
+      message: error?.message || "Failed to reorder code snippets",
     });
   }
 });
