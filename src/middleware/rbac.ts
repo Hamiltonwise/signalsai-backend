@@ -7,6 +7,7 @@ export type UserRole = "admin" | "manager" | "viewer";
 export interface RBACRequest extends AuthenticatedRequest {
   userRole?: UserRole;
   userId?: number;
+  organizationId?: number;
 }
 
 /**
@@ -46,9 +47,10 @@ export const rbacMiddleware = async (
       return res.status(403).json({ error: "User not in organization" });
     }
 
-    // Attach role and userId to request
+    // Attach role, userId, and organizationId to request
     req.userRole = orgUser.role as UserRole;
     req.userId = googleAccount.user_id;
+    req.organizationId = googleAccount.organization_id;
 
     next();
   } catch (error) {

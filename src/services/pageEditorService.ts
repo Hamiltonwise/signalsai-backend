@@ -27,6 +27,7 @@ interface EditRequest {
   instruction: string;
   chatHistory?: Array<{ role: "user" | "assistant"; content: string }>;
   mediaContext?: string;
+  promptType?: "admin" | "user";
 }
 
 interface EditDebugInfo {
@@ -48,7 +49,7 @@ interface EditResponse {
  * Send a component's HTML + edit instruction to Claude and get back modified HTML.
  */
 export async function editHtmlComponent(params: EditRequest): Promise<EditResponse> {
-  const { alloroClass, currentHtml, instruction, chatHistory = [], mediaContext = "" } = params;
+  const { alloroClass, currentHtml, instruction, chatHistory = [], mediaContext = "", promptType = "admin" } = params;
   const anthropic = getClient();
 
   // Build the messages array from chat history + current instruction
@@ -69,7 +70,7 @@ Instruction: ${instruction}${mediaContext}`;
 
   messages.push({ role: "user", content: userMessage });
 
-  const systemPrompt = await getPageEditorPrompt();
+  const systemPrompt = await getPageEditorPrompt(promptType);
 
   console.log(`[PageEditor] Sending edit request to Claude for class: ${alloroClass}`);
   console.log(`[PageEditor] Instruction: ${instruction}`);

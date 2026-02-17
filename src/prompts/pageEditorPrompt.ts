@@ -9,14 +9,18 @@ import { db } from "../database/connection";
 
 const SETTINGS_TABLE = "website_builder.admin_settings";
 
-export async function getPageEditorPrompt(): Promise<string> {
+export async function getPageEditorPrompt(promptType: "admin" | "user" = "admin"): Promise<string> {
+  const key = promptType === "admin"
+    ? "admin_editing_system_prompt"
+    : "user_editing_system_prompt";
+
   const row = await db(SETTINGS_TABLE)
-    .where({ category: "websites", key: "editing_system_prompt" })
+    .where({ category: "websites", key })
     .first();
 
   if (!row?.value?.trim()) {
     throw new Error(
-      '[PageEditorPrompt] No system prompt configured. Add a row to admin_settings with category="websites", key="editing_system_prompt".'
+      `[PageEditorPrompt] No ${promptType} system prompt configured. Add a row to admin_settings with category="websites", key="${key}".`
     );
   }
 

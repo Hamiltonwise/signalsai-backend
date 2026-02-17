@@ -2,6 +2,8 @@ import express, { Response } from "express";
 import { db } from "../../database/connection";
 import { authenticateToken, AuthRequest } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";
+import { sendToAdmins } from "../../emails/emailService";
+import { v4 as uuid } from "uuid";
 
 const organizationsRoutes = express.Router();
 
@@ -30,7 +32,7 @@ organizationsRoutes.get(
     try {
       // Fetch all organizations
       const organizations = await db("organizations")
-        .select("id", "name", "domain", "created_at")
+        .select("id", "name", "domain", "subscription_tier", "created_at")
         .orderBy("name", "asc");
 
       // Enrich with user counts and connection status
@@ -196,6 +198,115 @@ organizationsRoutes.patch(
       });
     } catch (error) {
       return handleError(res, error, "Update organization");
+    }
+  }
+);
+
+/**
+ * PATCH /api/admin/organizations/:id/tier
+ * Update organization subscription tier
+ */
+organizationsRoutes.patch(
+  "/:id/tier",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req: AuthRequest, res) => {
+    const trx = await db.transaction();
+
+    try {
+      const orgId = parseInt(req.params.id);
+      const { tier } = req.body;
+
+      if (isNaN(orgId)) {
+        await trx.rollback();
+        return res.status(400).json({ error: "Invalid organization ID" });
+      }
+
+      if (!tier || !["DWY", "DFY"].includes(tier)) {
+        await trx.rollback();
+        return res
+          .status(400)
+          .json({ error: "Tier must be either DWY or DFY" });
+      }
+
+      const org = await trx("organizations").where({ id: orgId }).first();
+      if (!org) {
+        await trx.rollback();
+        return res.status(404).json({ error: "Organization not found" });
+      }
+
+      const oldTier = org.subscription_tier;
+
+      // Update tier
+      await trx("organizations").where({ id: orgId }).update({
+        subscription_tier: tier,
+        subscription_updated_at: new Date(),
+      });
+
+      // UPGRADE TO DFY: Create empty website project
+      if (oldTier === "DWY" && tier === "DFY") {
+        const existingProject = await trx("website_builder.projects")
+          .where({ organization_id: orgId })
+          .first();
+
+        if (!existingProject) {
+          // Generate hostname based on org name
+          const baseHostname = org.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")
+            .substring(0, 30);
+          const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+          const hostname = `${baseHostname}-${randomSuffix}`;
+
+          // Auto-create project
+          await trx("website_builder.projects").insert({
+            id: uuid(),
+            organization_id: orgId,
+            generated_hostname: hostname,
+            status: "CREATED",
+            created_at: new Date(),
+            updated_at: new Date(),
+          });
+
+          // Send email to admins
+          await sendToAdmins(
+            `New DFY Website Ready for Setup: ${org.name}`,
+            `Organization "${org.name}" has been upgraded to DFY tier.
+
+A website project has been created but needs pages generated.
+
+Action required:
+1. Go to Admin > Websites
+2. Find project: ${hostname}
+3. Click "Create Page" and select template
+
+Organization ID: ${orgId}
+Hostname: ${hostname}.sites.getalloro.com`
+          );
+        }
+      }
+
+      // DOWNGRADE TO DWY: Make website read-only
+      if (oldTier === "DFY" && tier === "DWY") {
+        await trx("website_builder.projects")
+          .where({ organization_id: orgId })
+          .update({ is_read_only: true });
+      }
+
+      await trx.commit();
+
+      return res.json({
+        success: true,
+        tier,
+        message:
+          tier === "DFY"
+            ? "Organization upgraded. Website project created."
+            : "Organization downgraded. Website is now read-only.",
+      });
+    } catch (error) {
+      await trx.rollback();
+      return handleError(res, error, "Update organization tier");
     }
   }
 );
