@@ -1,0 +1,130 @@
+import { PmsJobModel } from "../../../models/PmsJobModel";
+import { notifyAdmins } from "../../../utils/core/notificationHelper";
+import {
+  completeStep,
+  setAwaitingApproval,
+  AutomationStatusDetail,
+} from "../../../utils/pms/pmsAutomationStatus";
+import db from "../../../database/connection";
+
+/**
+ * Get automation status for a job with auto-advancement logic.
+ * If job status is "completed" but pms_parser is still "processing",
+ * auto-advances to admin_approval and sends admin email.
+ */
+export async function getJobAutomationStatus(jobId: number) {
+  const job = await db("pms_jobs")
+    .where({ id: jobId })
+    .select(
+      "id",
+      "domain",
+      "status",
+      "is_approved",
+      "is_client_approved",
+      "automation_status_detail",
+      "timestamp",
+      "response_log"
+    )
+    .first();
+
+  if (!job) {
+    throw Object.assign(new Error("PMS job not found"), { statusCode: 404 });
+  }
+
+  // Parse automation status
+  let automationStatus: AutomationStatusDetail | null = null;
+  if (job.automation_status_detail) {
+    automationStatus =
+      typeof job.automation_status_detail === "string"
+        ? JSON.parse(job.automation_status_detail)
+        : job.automation_status_detail;
+  }
+
+  // Auto-advance: If job status is "completed" but pms_parser is still processing,
+  // n8n has finished - advance to admin_approval awaiting
+  if (
+    job.status === "completed" &&
+    automationStatus?.steps?.pms_parser?.status === "processing" &&
+    !job.is_approved
+  ) {
+    await completeStep(jobId, "pms_parser", "admin_approval");
+    await setAwaitingApproval(jobId, "admin_approval");
+
+    // Send admin email notification that PMS output is ready for review
+    try {
+      const domain = job.domain || "Unknown";
+      await notifyAdmins({
+        summary: `PMS parser output is ready for admin review for ${domain}`,
+        newActionItems: 1,
+        practiceRankingsCompleted: [],
+        monthlyAgentsCompleted: [],
+      });
+      console.log(
+        `[PMS] Admin email sent for PMS job ${jobId} ready for review`
+      );
+    } catch (emailError: any) {
+      console.error(
+        `[PMS] Failed to send admin email for PMS job ${jobId}:`,
+        emailError.message
+      );
+      // Don't fail the request if email fails
+    }
+
+    // Refresh the automation status
+    const updatedJob = await db("pms_jobs")
+      .where({ id: jobId })
+      .select("automation_status_detail")
+      .first();
+    if (updatedJob?.automation_status_detail) {
+      automationStatus =
+        typeof updatedJob.automation_status_detail === "string"
+          ? JSON.parse(updatedJob.automation_status_detail)
+          : updatedJob.automation_status_detail;
+    }
+  }
+
+  return {
+    jobId: job.id,
+    domain: job.domain,
+    jobStatus: job.status,
+    isAdminApproved: job.is_approved === 1 || job.is_approved === true,
+    isClientApproved:
+      job.is_client_approved === 1 || job.is_client_approved === true,
+    timestamp: job.timestamp,
+    automationStatus: automationStatus,
+  };
+}
+
+/**
+ * Get all active (non-completed) PMS automation jobs.
+ * Optionally filtered by domain.
+ */
+export async function getActiveJobs(domain?: string) {
+  const jobs = await PmsJobModel.findActiveAutomationJobs(domain);
+
+  const formattedJobs = jobs.map((job: any) => {
+    let automationStatus: AutomationStatusDetail | null = null;
+    if (job.automation_status_detail) {
+      automationStatus =
+        typeof job.automation_status_detail === "string"
+          ? JSON.parse(job.automation_status_detail)
+          : job.automation_status_detail;
+    }
+
+    return {
+      jobId: job.id,
+      domain: job.domain,
+      jobStatus: job.status,
+      isAdminApproved: job.is_approved === 1 || job.is_approved === true,
+      isClientApproved:
+        job.is_client_approved === 1 || job.is_client_approved === true,
+      timestamp: job.timestamp,
+      automationStatus: automationStatus,
+    };
+  });
+
+  return {
+    jobs: formattedJobs,
+    count: formattedJobs.length,
+  };
+}

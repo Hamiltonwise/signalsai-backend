@@ -1,0 +1,337 @@
+/**
+ * Practice Ranking Response Formatters
+ *
+ * Pure formatting functions that transform DB records into
+ * the exact response shapes the frontend expects.
+ * No database calls, no side effects.
+ */
+
+import { parseJsonField } from "./util.json-parser";
+
+// =====================================================================
+// TRIGGER RESPONSE
+// =====================================================================
+
+interface LocationInput {
+  gbpLocationId: string;
+  gbpLocationName: string;
+  specialty?: string;
+  marketLocation?: string;
+}
+
+export function formatTriggerResponse(
+  batchId: string,
+  locations: LocationInput[],
+  rankingIds: number[],
+) {
+  return {
+    success: true,
+    message: `Batch ranking analysis started for ${locations.length} locations`,
+    batchId: batchId,
+    totalLocations: locations.length,
+    rankingIds: rankingIds,
+    locations: locations.map((l) => ({
+      gbpLocationId: l.gbpLocationId,
+      gbpLocationName: l.gbpLocationName,
+      specialty: l.specialty || "auto-detecting...",
+      marketLocation: l.marketLocation || "auto-detecting...",
+    })),
+  };
+}
+
+export function formatLegacyTriggerResponse(batchId: string) {
+  return {
+    success: true,
+    message: "Ranking analysis started",
+    batchId: batchId,
+    totalLocations: 1,
+  };
+}
+
+// =====================================================================
+// BATCH STATUS RESPONSE
+// =====================================================================
+
+export function formatInMemoryBatchStatus(inMemoryStatus: any) {
+  return {
+    success: true,
+    batchId: inMemoryStatus.batchId,
+    status: inMemoryStatus.status,
+    totalLocations: inMemoryStatus.totalLocations,
+    completedLocations: inMemoryStatus.completedLocations,
+    failedLocations: inMemoryStatus.failedLocations,
+    currentLocationIndex: inMemoryStatus.currentLocationIndex,
+    currentLocationName: inMemoryStatus.currentLocationName,
+    rankingIds: inMemoryStatus.rankingIds,
+    errors: inMemoryStatus.errors,
+    startedAt: inMemoryStatus.startedAt,
+    completedAt: inMemoryStatus.completedAt,
+    progress: Math.round(
+      (inMemoryStatus.completedLocations / inMemoryStatus.totalLocations) *
+        100,
+    ),
+  };
+}
+
+export function formatDbBatchStatus(batchId: string, rankings: any[]) {
+  const completed = rankings.filter((r) => r.status === "completed").length;
+  const failed = rankings.filter((r) => r.status === "failed").length;
+  const pending = rankings.filter(
+    (r) => r.status === "pending" || r.status === "processing",
+  ).length;
+
+  let batchStatus: "processing" | "completed" | "failed" = "processing";
+  if (failed > 0) {
+    batchStatus = "failed";
+  } else if (pending === 0) {
+    batchStatus = "completed";
+  }
+
+  return {
+    success: true,
+    batchId: batchId,
+    status: batchStatus,
+    totalLocations: rankings.length,
+    completedLocations: completed,
+    failedLocations: failed,
+    pendingLocations: pending,
+    rankings: rankings.map((r) => ({
+      id: r.id,
+      gbpLocationId: r.gbp_location_id,
+      gbpLocationName: r.gbp_location_name,
+      status: r.status,
+      rankScore: r.rank_score,
+      rankPosition: r.rank_position,
+      errorMessage: r.error_message,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    })),
+    progress: Math.round((completed / rankings.length) * 100),
+  };
+}
+
+// =====================================================================
+// RANKING STATUS RESPONSE
+// =====================================================================
+
+export function formatRankingStatus(ranking: any) {
+  const statusDetail = parseJsonField(ranking.status_detail);
+
+  return {
+    success: true,
+    rankingId: ranking.id,
+    status: ranking.status,
+    statusDetail: statusDetail,
+    rankScore: ranking.rank_score,
+    rankPosition: ranking.rank_position,
+    totalCompetitors: ranking.total_competitors,
+    gbpLocationId: ranking.gbp_location_id,
+    gbpLocationName: ranking.gbp_location_name,
+    batchId: ranking.batch_id,
+    createdAt: ranking.created_at,
+    updatedAt: ranking.updated_at,
+  };
+}
+
+// =====================================================================
+// FULL RESULTS RESPONSE
+// =====================================================================
+
+export function formatFullResults(ranking: any) {
+  return {
+    success: true,
+    ranking: {
+      id: ranking.id,
+      googleAccountId: ranking.google_account_id,
+      domain: ranking.domain,
+      specialty: ranking.specialty,
+      location: ranking.location,
+      rankKeywords: ranking.rank_keywords,
+      gbpAccountId: ranking.gbp_account_id,
+      gbpLocationId: ranking.gbp_location_id,
+      gbpLocationName: ranking.gbp_location_name,
+      batchId: ranking.batch_id,
+      observedAt: ranking.observed_at,
+      status: ranking.status,
+      rankScore: ranking.rank_score,
+      rankPosition: ranking.rank_position,
+      totalCompetitors: ranking.total_competitors,
+      rankingFactors: parseJsonField(ranking.ranking_factors),
+      rawData: parseJsonField(ranking.raw_data),
+      llmAnalysis: parseJsonField(ranking.llm_analysis),
+      statusDetail: parseJsonField(ranking.status_detail),
+      errorMessage: ranking.error_message,
+      // Location params used for Apify search (for debugging)
+      searchParams: {
+        city: ranking.search_city,
+        state: ranking.search_state,
+        county: ranking.search_county,
+        postalCode: ranking.search_postal_code,
+      },
+      createdAt: ranking.created_at,
+      updatedAt: ranking.updated_at,
+    },
+  };
+}
+
+// =====================================================================
+// LIST RESPONSE
+// =====================================================================
+
+export function formatRankingsList(rankings: any[]) {
+  return {
+    success: true,
+    count: rankings.length,
+    rankings: rankings.map((r) => ({
+      id: r.id,
+      googleAccountId: r.google_account_id,
+      domain: r.domain,
+      specialty: r.specialty,
+      location: r.location,
+      rankKeywords: r.rank_keywords,
+      gbpLocationId: r.gbp_location_id,
+      gbpLocationName: r.gbp_location_name,
+      batchId: r.batch_id,
+      status: r.status,
+      rankScore: r.rank_score,
+      rankPosition: r.rank_position,
+      totalCompetitors: r.total_competitors,
+      // Location params used for Apify search (for debugging)
+      searchParams: {
+        city: r.search_city,
+        state: r.search_state,
+        county: r.search_county,
+        postalCode: r.search_postal_code,
+      },
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    })),
+  };
+}
+
+// =====================================================================
+// ACCOUNTS RESPONSE
+// =====================================================================
+
+export function formatAccountsList(accounts: any[]) {
+  return {
+    success: true,
+    accounts: accounts,
+  };
+}
+
+// =====================================================================
+// LATEST RANKINGS RESPONSE
+// =====================================================================
+
+export function formatLatestRanking(ranking: any, previous: any | null) {
+  return {
+    id: ranking.id,
+    googleAccountId: ranking.google_account_id,
+    domain: ranking.domain,
+    specialty: ranking.specialty,
+    location: ranking.location,
+    gbpAccountId: ranking.gbp_account_id,
+    gbpLocationId: ranking.gbp_location_id,
+    gbpLocationName: ranking.gbp_location_name,
+    batchId: ranking.batch_id,
+    observedAt: ranking.observed_at,
+    status: ranking.status,
+    rankScore: ranking.rank_score,
+    rankPosition: ranking.rank_position,
+    totalCompetitors: ranking.total_competitors,
+    rankingFactors: parseJsonField(ranking.ranking_factors),
+    rawData: parseJsonField(ranking.raw_data),
+    llmAnalysis: parseJsonField(ranking.llm_analysis),
+    statusDetail: parseJsonField(ranking.status_detail),
+    errorMessage: ranking.error_message,
+    createdAt: ranking.created_at,
+    updatedAt: ranking.updated_at,
+    // Include previous ranking data for trend comparison (from any previous batch)
+    previousAnalysis: previous
+      ? {
+          id: previous.id,
+          observedAt: previous.observed_at,
+          rankScore: previous.rank_score,
+          rankPosition: previous.rank_position,
+          totalCompetitors: previous.total_competitors,
+          rawData: parseJsonField(previous.raw_data),
+        }
+      : null,
+  };
+}
+
+export function formatLegacyLatestRanking(ranking: any) {
+  return {
+    id: ranking.id,
+    googleAccountId: ranking.google_account_id,
+    domain: ranking.domain,
+    specialty: ranking.specialty,
+    location: ranking.location,
+    gbpAccountId: null,
+    gbpLocationId: null,
+    gbpLocationName: null,
+    batchId: null,
+    observedAt: ranking.observed_at,
+    status: ranking.status,
+    rankScore: ranking.rank_score,
+    rankPosition: ranking.rank_position,
+    totalCompetitors: ranking.total_competitors,
+    rankingFactors: parseJsonField(ranking.ranking_factors),
+    rawData: parseJsonField(ranking.raw_data),
+    llmAnalysis: parseJsonField(ranking.llm_analysis),
+    statusDetail: parseJsonField(ranking.status_detail),
+    errorMessage: ranking.error_message,
+    createdAt: ranking.created_at,
+    updatedAt: ranking.updated_at,
+    previousAnalysis: null,
+  };
+}
+
+// =====================================================================
+// TASKS RESPONSE
+// =====================================================================
+
+export function formatTask(task: any) {
+  let metadata = null;
+  try {
+    metadata =
+      typeof task.metadata === "string"
+        ? JSON.parse(task.metadata)
+        : task.metadata;
+  } catch (e) {
+    // Ignore JSON parse errors
+  }
+
+  return {
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    category: task.category,
+    agentType: task.agent_type,
+    isApproved: task.is_approved,
+    dueDate: task.due_date,
+    createdAt: task.created_at,
+    updatedAt: task.updated_at,
+    completedAt: task.completed_at,
+    metadata: {
+      practiceRankingId: metadata?.practice_ranking_id || null,
+      gbpLocationId: metadata?.gbp_location_id || null,
+      gbpLocationName: metadata?.gbp_location_name || null,
+      priority: metadata?.priority || null,
+      impact: metadata?.impact || null,
+      effort: metadata?.effort || null,
+      timeline: metadata?.timeline || null,
+    },
+  };
+}
+
+export function formatTasksList(tasks: any[]) {
+  const formattedTasks = tasks.map(formatTask);
+  return {
+    success: true,
+    tasks: formattedTasks,
+    total: formattedTasks.length,
+  };
+}

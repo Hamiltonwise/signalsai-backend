@@ -1,0 +1,1776 @@
+/**
+ * AgentsController
+ *
+ * HTTP handler layer for agent processing endpoints.
+ * Named function exports (not class-based) per project convention.
+ *
+ * Thin controller that handles:
+ * - Request parsing and validation
+ * - Delegating business logic to feature services
+ * - Response formatting
+ * - Error handling
+ *
+ * 10 endpoints:
+ * - POST /proofline-run          - Daily proofline agent for all clients
+ * - POST /monthly-agents-run     - Monthly agents for a specific account
+ * - POST /monthly-agents-run-test - Test endpoint (no DB writes)
+ * - POST /gbp-optimizer-run      - Monthly GBP Copy Optimizer for all clients
+ * - POST /ranking-run            - Automated practice ranking agent
+ * - POST /guardian-governance-agents-run - Monthly Guardian & Governance agents
+ * - POST /process-all            - DEPRECATED: use /proofline-run
+ * - GET  /latest/:googleAccountId - Latest agent outputs for dashboard
+ * - GET  /getLatestReferralEngineOutput/:googleAccountId - Latest Referral Engine output
+ * - GET  /health                 - Health check
+ */
+
+import { Request, Response } from "express";
+import { v4 as uuidv4 } from "uuid";
+import { db } from "../../database/connection";
+import { getValidOAuth2Client } from "../../auth/oauth2Helper";
+import {
+  fetchAllServiceData,
+  GooglePropertyIds,
+  fetchGBPDataForRange,
+} from "../../utils/dataAggregation/dataAggregator";
+import { aggregatePmsData } from "../../utils/pms/pmsAggregator";
+import {
+  createNotification,
+  notifyAdminsMonthlyAgentComplete,
+} from "../../utils/core/notificationHelper";
+import {
+  processLocationRanking,
+  MAX_RETRIES,
+  RETRY_DELAY_MS,
+} from "../practice-ranking/feature-services/service.ranking-pipeline";
+import {
+  updateAutomationStatus,
+  completeAutomation,
+  failAutomation,
+  AutomationSummary,
+  MonthlyAgentKey,
+} from "../../utils/pms/pmsAutomationStatus";
+
+import { log, logError, delay, isValidAgentOutput, logAgentOutput } from "./feature-utils/agentLogger";
+import { getDailyDates, getPreviousMonthRange, formatDate } from "./feature-utils/dateHelpers";
+import {
+  processDailyAgent,
+  processMonthlyAgents,
+  processGBPOptimizerAgent,
+  processClient,
+} from "./feature-services/service.agent-orchestrator";
+import {
+  callAgentWebhook,
+  PROOFLINE_WEBHOOK,
+  SUMMARY_WEBHOOK,
+  REFERRAL_ENGINE_WEBHOOK,
+  OPPORTUNITY_WEBHOOK,
+  CRO_OPTIMIZER_WEBHOOK,
+  COPY_COMPANION_WEBHOOK,
+  GUARDIAN_AGENT_WEBHOOK,
+  GOVERNANCE_AGENT_WEBHOOK,
+  identifyLocationMeta,
+} from "./feature-services/service.webhook-orchestrator";
+import {
+  buildSummaryPayload,
+  buildReferralEnginePayload,
+  buildOpportunityPayload,
+  buildCroOptimizerPayload,
+} from "./feature-services/service.agent-input-builder";
+import {
+  createTasksFromCopyRecommendations,
+  simulateTaskCreation,
+} from "./feature-services/service.task-creator";
+import { runGuardianGovernanceAgents } from "./feature-services/service.governance-validator";
+
+// =====================================================================
+// POST /proofline-run
+// =====================================================================
+
+export async function runProoflineAgent(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  const startTime = Date.now();
+  const { referenceDate } = req.body || {};
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/proofline-run - STARTING");
+  log("=".repeat(70));
+  if (referenceDate) log(`Reference Date: ${referenceDate}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+
+  try {
+    // Fetch all onboarded Google accounts
+    log("\n[SETUP] Fetching all onboarded Google accounts...");
+    const accounts = await db("google_accounts")
+      .where("onboarding_completed", true)
+      .select("*");
+
+    if (!accounts || accounts.length === 0) {
+      log("[SETUP] No onboarded accounts found");
+      return res.json({
+        success: true,
+        message: "No accounts to process",
+        processed: 0,
+        results: [],
+      });
+    }
+
+    log(`[SETUP] Found ${accounts.length} account(s) to process`);
+
+    // Process each client sequentially
+    const results: any[] = [];
+
+    for (const account of accounts) {
+      const { id: googleAccountId, domain_name: domain } = account;
+
+      log(`\n[${"=".repeat(60)}]`);
+      log(
+        `[CLIENT] Processing Proofline: ${domain} (ID: ${googleAccountId})`,
+      );
+      log(`[${"=".repeat(60)}]`);
+
+      try {
+        // Get valid OAuth2 client
+        log(`[CLIENT] Getting valid OAuth2 client`);
+        const oauth2Client = await getValidOAuth2Client(googleAccountId);
+
+        // Get date range
+        const dailyDates = getDailyDates(referenceDate);
+
+        // Run proofline agent
+        log(`[CLIENT] Running Proofline agent`);
+        const dailyResult = await processDailyAgent(
+          account,
+          oauth2Client,
+          dailyDates,
+        );
+
+        if (!dailyResult.success) {
+          throw new Error(dailyResult.error || "Proofline agent failed");
+        }
+
+        // Save raw data
+        await db("google_data_store").insert(dailyResult.rawData);
+
+        // Save agent result
+        const [result] = await db("agent_results")
+          .insert({
+            google_account_id: googleAccountId,
+            domain,
+            agent_type: "proofline",
+            date_start: dailyDates.dayBeforeYesterday,
+            date_end: dailyDates.yesterday,
+            agent_input: JSON.stringify(dailyResult.payload),
+            agent_output: JSON.stringify(dailyResult.output),
+            status: "success",
+            created_at: new Date(),
+            updated_at: new Date(),
+          })
+          .returning("id");
+
+        const resultId = result.id;
+        log(`[CLIENT] \u2713 Proofline result saved (ID: ${resultId})`);
+
+        results.push({
+          googleAccountId,
+          domain,
+          success: true,
+        });
+
+        log(`[CLIENT] \u2713 ${domain} completed successfully`);
+      } catch (error: any) {
+        logError(`Proofline for ${domain}`, error);
+        results.push({
+          googleAccountId,
+          domain,
+          success: false,
+          error: error?.message || String(error),
+        });
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    const successfulClients = results.filter((r) => r.success).length;
+
+    log("\n" + "=".repeat(70));
+    log(`[COMPLETE] \u2713 Proofline run completed`);
+    log(`  - Total clients: ${accounts.length}`);
+    log(`  - Successful: ${successfulClients}`);
+    log(`  - Failed: ${accounts.length - successfulClients}`);
+    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      message: `Processed ${accounts.length} account(s)`,
+      processed: accounts.length,
+      successful: successfulClients,
+      duration: `${duration}ms`,
+      results,
+    });
+  } catch (error: any) {
+    logError("proofline-run", error);
+    const duration = Date.now() - startTime;
+    log(`\n[FAILED] \u274c Proofline run failed after ${duration}ms`);
+    log("=".repeat(70) + "\n");
+
+    return res.status(500).json({
+      success: false,
+      error: "PROOFLINE_RUN_ERROR",
+      message: error?.message || "Failed to run proofline agent",
+      duration: `${duration}ms`,
+    });
+  }
+}
+
+// =====================================================================
+// POST /monthly-agents-run
+// =====================================================================
+
+export async function runMonthlyAgents(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  const startTime = Date.now();
+  const { googleAccountId, domain, force = false, pmsJobId } = req.body;
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/monthly-agents-run - STARTING");
+  log("=".repeat(70));
+  log(`Account ID: ${googleAccountId}`);
+  log(`Domain: ${domain}`);
+  log(`Force run: ${force}`);
+  log(`PMS Job ID: ${pmsJobId || "N/A"}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+
+  // Helper to update PMS automation status if pmsJobId is provided
+  const updatePmsStatus = async (
+    subStep: MonthlyAgentKey,
+    customMessage?: string,
+    agentCompleted?: MonthlyAgentKey,
+  ) => {
+    if (pmsJobId) {
+      await updateAutomationStatus(pmsJobId, {
+        step: "monthly_agents",
+        stepStatus: "processing",
+        subStep,
+        customMessage,
+        agentCompleted,
+      });
+    }
+  };
+
+  try {
+    // Validate input
+    if (!googleAccountId || !domain) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PARAMETERS",
+        message: "googleAccountId and domain are required",
+      });
+    }
+
+    // Fetch account
+    log(`\n[SETUP] Fetching account ${googleAccountId}...`);
+    const account = await db("google_accounts")
+      .where({ id: googleAccountId })
+      .first();
+
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        error: "ACCOUNT_NOT_FOUND",
+        message: `Account ${googleAccountId} not found`,
+      });
+    }
+
+    log(`[SETUP] Account found: ${account.domain_name}`);
+
+    // Get month range
+    const monthRange = getPreviousMonthRange();
+    log(
+      `[SETUP] Month range: ${monthRange.startDate} to ${monthRange.endDate}`,
+    );
+
+    // Removed duplicate check - always run monthly agents when called
+    log(`[SETUP] Proceeding with monthly agents run`);
+
+    // Get valid OAuth2 client
+    log(`[CLIENT] Getting valid OAuth2 client`);
+    const oauth2Client = await getValidOAuth2Client(googleAccountId);
+
+    // Update status: data fetching
+    await updatePmsStatus(
+      "data_fetch",
+      "Fetching GA4, GBP, GSC, PMS, and Clarity data...",
+    );
+
+    // Run monthly agents
+    log(`[CLIENT] Running monthly agents (Summary + Opportunity)`);
+    const monthlyResult = await processMonthlyAgents(
+      account,
+      oauth2Client,
+      monthRange,
+    );
+
+    if (!monthlyResult.success) {
+      // Update PMS status on failure
+      if (pmsJobId) {
+        await failAutomation(
+          pmsJobId,
+          "monthly_agents",
+          monthlyResult.error || "Monthly agents failed",
+        );
+      }
+      throw new Error(monthlyResult.error || "Monthly agents failed");
+    }
+
+    // Save results
+    log(`[CLIENT] Saving results to database...`);
+
+    // Update status: Summary agent completed, starting Referral Engine
+    await updatePmsStatus(
+      "summary_agent",
+      "Summary Agent completed",
+      "summary_agent",
+    );
+
+    // Save raw data
+    await db("google_data_store").insert(monthlyResult.rawData);
+
+    // Save Summary result
+    const [summaryResult] = await db("agent_results")
+      .insert({
+        google_account_id: googleAccountId,
+        domain,
+        agent_type: "summary",
+        date_start: monthRange.startDate,
+        date_end: monthRange.endDate,
+        agent_input: JSON.stringify(monthlyResult.summaryPayload),
+        agent_output: JSON.stringify(monthlyResult.summaryOutput),
+        status: "success",
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning("id");
+
+    const summaryId = summaryResult.id;
+    log(`[CLIENT] \u2713 Summary result saved (ID: ${summaryId})`);
+
+    // Update status: Referral Engine completed
+    await updatePmsStatus(
+      "referral_engine",
+      "Referral Engine Agent completed",
+      "referral_engine",
+    );
+
+    // Save Opportunity result
+    const [opportunityResult] = await db("agent_results")
+      .insert({
+        google_account_id: googleAccountId,
+        domain,
+        agent_type: "opportunity",
+        date_start: monthRange.startDate,
+        date_end: monthRange.endDate,
+        agent_input: JSON.stringify(monthlyResult.opportunityPayload),
+        agent_output: JSON.stringify(monthlyResult.opportunityOutput),
+        status: "success",
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning("id");
+
+    const opportunityId = opportunityResult.id;
+    log(`[CLIENT] \u2713 Opportunity result saved (ID: ${opportunityId})`);
+
+    // Update status: Opportunity agent completed
+    await updatePmsStatus(
+      "opportunity_agent",
+      "Opportunity Agent completed",
+      "opportunity_agent",
+    );
+
+    // Save Referral Engine result
+    const [referralEngineResult] = await db("agent_results")
+      .insert({
+        google_account_id: googleAccountId,
+        domain,
+        agent_type: "referral_engine",
+        date_start: monthRange.startDate,
+        date_end: monthRange.endDate,
+        agent_input: JSON.stringify(monthlyResult.referralEnginePayload),
+        agent_output: JSON.stringify(monthlyResult.referralEngineOutput),
+        status: "success",
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning("id");
+
+    const referralEngineId = referralEngineResult.id;
+    log(`[CLIENT] \u2713 Referral Engine result saved (ID: ${referralEngineId})`);
+
+    // Update status: CRO Optimizer completed
+    await updatePmsStatus(
+      "cro_optimizer",
+      "CRO Optimizer Agent completed",
+      "cro_optimizer",
+    );
+
+    // Save CRO Optimizer result
+    const [croOptimizerResult] = await db("agent_results")
+      .insert({
+        google_account_id: googleAccountId,
+        domain,
+        agent_type: "cro_optimizer",
+        date_start: monthRange.startDate,
+        date_end: monthRange.endDate,
+        agent_input: JSON.stringify(monthlyResult.croOptimizerPayload),
+        agent_output: JSON.stringify(monthlyResult.croOptimizerOutput),
+        status: "success",
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning("id");
+
+    const croOptimizerId = croOptimizerResult.id;
+    log(`[CLIENT] \u2713 CRO Optimizer result saved (ID: ${croOptimizerId})`);
+
+    // Update status: Task creation
+    if (pmsJobId) {
+      await updateAutomationStatus(pmsJobId, {
+        step: "task_creation",
+        stepStatus: "processing",
+        customMessage: "Creating tasks from agent recommendations...",
+      });
+    }
+
+    // Create notification for completed monthly agents (also sends user email)
+    try {
+      await createNotification(
+        domain,
+        "Monthly Insights Ready",
+        "Your monthly summary and opportunities are now available for review",
+        "agent",
+        {
+          summaryId,
+          referralEngineId,
+          opportunityId,
+          croOptimizerId,
+          dateRange: `${monthRange.startDate} to ${monthRange.endDate}`,
+        },
+      );
+      log(`[CLIENT] \u2713 Notification created for completed monthly agents`);
+    } catch (notificationError: any) {
+      log(
+        `[CLIENT] \u26a0 Failed to create notification: ${notificationError.message}`,
+      );
+      // Don't fail the entire operation if notification creation fails
+    }
+
+    const duration = Date.now() - startTime;
+
+    // Count tasks created from database for this domain created during this run
+    const tasksCreated = {
+      user: 0,
+      alloro: 0,
+      total: 0,
+    };
+
+    try {
+      const recentTasks = await db("tasks")
+        .where("domain_name", domain)
+        .where("created_at", ">=", new Date(startTime))
+        .select("category");
+
+      tasksCreated.total = recentTasks.length;
+      tasksCreated.user = recentTasks.filter(
+        (t: any) => t.category === "USER",
+      ).length;
+      tasksCreated.alloro = recentTasks.filter(
+        (t: any) => t.category === "ALLORO",
+      ).length;
+    } catch (e) {
+      log(`[CLIENT] Could not count tasks: ${e}`);
+    }
+
+    // Send admin email notification about monthly agent completion (after tasksCreated is populated)
+    try {
+      await notifyAdminsMonthlyAgentComplete(
+        domain,
+        { summaryId, referralEngineId, opportunityId, croOptimizerId },
+        tasksCreated,
+      );
+      log(`[CLIENT] \u2713 Admin email sent for monthly agents completion`);
+    } catch (adminEmailError: any) {
+      log(
+        `[CLIENT] \u26a0 Failed to send admin email: ${adminEmailError.message}`,
+      );
+      // Don't fail the entire operation if admin email fails
+    }
+
+    // Complete the PMS automation status
+    if (pmsJobId) {
+      const automationSummary: AutomationSummary = {
+        tasksCreated,
+        agentResults: {
+          summary: { success: true, resultId: summaryId },
+          referral_engine: { success: true, resultId: referralEngineId },
+          opportunity: { success: true, resultId: opportunityId },
+          cro_optimizer: { success: true, resultId: croOptimizerId },
+        },
+        duration: `${(duration / 1000).toFixed(1)}s`,
+      };
+
+      await completeAutomation(pmsJobId, automationSummary);
+      log(`[CLIENT] \u2713 PMS automation status marked as complete`);
+    }
+
+    log("\n" + "=".repeat(70));
+    log(`[COMPLETE] \u2713 Monthly agents completed successfully`);
+    log(`  - Summary ID: ${summaryId}`);
+    log(`  - Referral Engine ID: ${referralEngineId}`);
+    log(`  - Opportunity ID: ${opportunityId}`);
+    log(`  - CRO Optimizer ID: ${croOptimizerId}`);
+    log(
+      `  - Tasks created: ${tasksCreated.total} (${tasksCreated.user} USER, ${tasksCreated.alloro} ALLORO)`,
+    );
+    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      message: "Monthly agents completed successfully",
+      summaryId,
+      referralEngineId,
+      opportunityId,
+      croOptimizerId,
+      duration: `${duration}ms`,
+    });
+  } catch (error: any) {
+    logError("monthly-agents-run", error);
+    const duration = Date.now() - startTime;
+    log(`\n[FAILED] \u274c Monthly agents failed after ${duration}ms`);
+    log("=".repeat(70) + "\n");
+
+    // Mark PMS automation as failed
+    if (pmsJobId) {
+      await failAutomation(
+        pmsJobId,
+        "monthly_agents",
+        error?.message || "Monthly agents failed",
+      );
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: "MONTHLY_AGENTS_ERROR",
+      message: error?.message || "Failed to run monthly agents",
+      duration: `${duration}ms`,
+    });
+  }
+}
+
+// =====================================================================
+// POST /monthly-agents-run-test
+// =====================================================================
+
+export async function runMonthlyAgentsTest(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  const startTime = Date.now();
+  const { googleAccountId, domain } = req.body;
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/monthly-agents-run-test - STARTING");
+  log("=".repeat(70));
+  log(`[TEST MODE] Account ID: ${googleAccountId}`);
+  log(`[TEST MODE] Domain: ${domain}`);
+  log(`[TEST MODE] Timestamp: ${new Date().toISOString()}`);
+
+  try {
+    // Validate input
+    if (!googleAccountId || !domain) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PARAMETERS",
+        message: "googleAccountId and domain are required",
+      });
+    }
+
+    // Fetch account
+    log(`\n[TEST-SETUP] Fetching account ${googleAccountId}...`);
+    const account = await db("google_accounts")
+      .where({ id: googleAccountId })
+      .first();
+
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        error: "ACCOUNT_NOT_FOUND",
+        message: `Account ${googleAccountId} not found`,
+      });
+    }
+
+    // Get OAuth2 client
+    log(`[TEST-SETUP] Setting up OAuth2 client...`);
+    let oauth2Client;
+    try {
+      oauth2Client = await getValidOAuth2Client(googleAccountId);
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: "OAUTH_ERROR",
+        message: error.message,
+      });
+    }
+
+    // Calculate month range (use provided dates or default to previous month)
+    const monthRange =
+      req.body.startDate && req.body.endDate
+        ? { startDate: req.body.startDate, endDate: req.body.endDate }
+        : getPreviousMonthRange();
+
+    const { startDate, endDate } = monthRange;
+
+    log(
+      `[TEST-AGENTS] Running all monthly agents for ${startDate} to ${endDate}...`,
+    );
+    log(
+      `[TEST-AGENTS] NOTE: This is a TEST run - NO data will be persisted to database`,
+    );
+
+    // === FETCH DATA (read-only) ===
+    log(`[TEST-DATA] Fetching GA4/GBP/GSC/Clarity data...`);
+    // Parse property IDs from the stored JSON structure
+    const propertyIds: GooglePropertyIds =
+      typeof account.google_property_ids === "string"
+        ? JSON.parse(account.google_property_ids)
+        : (account.google_property_ids || {});
+
+    const monthData = await fetchAllServiceData(
+      oauth2Client,
+      googleAccountId,
+      domain,
+      propertyIds,
+      startDate,
+      endDate,
+    );
+
+    // Fetch aggregated PMS data (read-only)
+    log(`[TEST-DATA] Fetching aggregated PMS data for ${domain}...`);
+    let pmsData = null;
+    try {
+      const aggregated = await aggregatePmsData(domain);
+
+      if (aggregated.months.length > 0) {
+        pmsData = {
+          monthly_rollup: aggregated.months.map((month) => ({
+            month: month.month,
+            self_referrals: month.selfReferrals,
+            doctor_referrals: month.doctorReferrals,
+            total_referrals: month.totalReferrals,
+            production_total: month.productionTotal,
+            sources: month.sources,
+          })),
+          sources_summary: aggregated.sources,
+          totals: aggregated.totals,
+          patient_records: aggregated.patientRecords,
+        };
+        log(
+          `[TEST-DATA] \u2713 PMS data found (${aggregated.months.length} months)`,
+        );
+      } else {
+        log(`[TEST-DATA] \u26a0 No approved PMS data found`);
+      }
+    } catch (pmsError: any) {
+      log(`[TEST-DATA] \u26a0 Error fetching PMS data: ${pmsError.message}`);
+    }
+
+    // === STEP 1: Run Summary Agent (webhook only, NO DB) ===
+    log(`[TEST-SUMMARY] Calling Summary agent webhook...`);
+    const summaryPayload = buildSummaryPayload({
+      domain,
+      googleAccountId,
+      startDate,
+      endDate,
+      monthData,
+      pmsData,
+      clarityData: monthData.clarityData,
+    });
+
+    const summaryOutput = await callAgentWebhook(
+      SUMMARY_WEBHOOK,
+      summaryPayload,
+      "Summary",
+    );
+
+    logAgentOutput("Summary", summaryOutput);
+    if (!isValidAgentOutput(summaryOutput, "Summary")) {
+      return res.status(500).json({
+        success: false,
+        error: "SUMMARY_INVALID",
+        message: "Summary agent returned invalid output",
+      });
+    }
+    log(`[TEST-SUMMARY] \u2713 Summary completed`);
+
+    // === STEP 2: Run Referral Engine Agent (webhook only, NO DB) ===
+    log(`[TEST-REFERRAL] Calling Referral Engine agent webhook...`);
+    const referralEnginePayload = buildReferralEnginePayload({
+      domain,
+      googleAccountId,
+      startDate,
+      endDate,
+      monthData,
+      pmsData,
+      clarityData: monthData.clarityData,
+    });
+
+    const referralEngineOutput = await callAgentWebhook(
+      REFERRAL_ENGINE_WEBHOOK,
+      referralEnginePayload,
+      "Referral Engine",
+    );
+
+    logAgentOutput("Referral Engine", referralEngineOutput);
+    if (!isValidAgentOutput(referralEngineOutput, "Referral Engine")) {
+      return res.status(500).json({
+        success: false,
+        error: "REFERRAL_ENGINE_INVALID",
+        message: "Referral Engine agent returned invalid output",
+      });
+    }
+    log(`[TEST-REFERRAL] \u2713 Referral Engine completed`);
+
+    // === STEP 3: Run Opportunity Agent (webhook only, NO DB) ===
+    log(`[TEST-OPPORTUNITY] Calling Opportunity agent webhook...`);
+    const opportunityPayload = buildOpportunityPayload({
+      domain,
+      googleAccountId,
+      startDate,
+      endDate,
+      summaryOutput,
+    });
+
+    const opportunityOutput = await callAgentWebhook(
+      OPPORTUNITY_WEBHOOK,
+      opportunityPayload,
+      "Opportunity",
+    );
+
+    logAgentOutput("Opportunity", opportunityOutput);
+    if (!isValidAgentOutput(opportunityOutput, "Opportunity")) {
+      return res.status(500).json({
+        success: false,
+        error: "OPPORTUNITY_INVALID",
+        message: "Opportunity agent returned invalid output",
+      });
+    }
+    log(`[TEST-OPPORTUNITY] \u2713 Opportunity completed`);
+
+    // === STEP 4: Run CRO Optimizer Agent (webhook only, NO DB) ===
+    log(`[TEST-CRO] Calling CRO Optimizer agent webhook...`);
+    const croOptimizerPayload = buildCroOptimizerPayload({
+      domain,
+      googleAccountId,
+      startDate,
+      endDate,
+      summaryOutput,
+    });
+
+    const croOptimizerOutput = await callAgentWebhook(
+      CRO_OPTIMIZER_WEBHOOK,
+      croOptimizerPayload,
+      "CRO Optimizer",
+    );
+
+    logAgentOutput("CRO Optimizer", croOptimizerOutput);
+    if (!isValidAgentOutput(croOptimizerOutput, "CRO Optimizer")) {
+      return res.status(500).json({
+        success: false,
+        error: "CRO_OPTIMIZER_INVALID",
+        message: "CRO Optimizer agent returned invalid output",
+      });
+    }
+    log(`[TEST-CRO] \u2713 CRO Optimizer completed`);
+
+    // === SIMULATE TASK CREATION (NO DB INSERTS) ===
+    log(`[TEST-TASKS] Simulating task creation (NO database writes)...`);
+    const tasksToBeCreated = simulateTaskCreation({
+      opportunityOutput,
+      croOptimizerOutput,
+      referralEngineOutput,
+    });
+
+    const duration = Date.now() - startTime;
+
+    log("\n" + "=".repeat(70));
+    log(`[TEST-COMPLETE] \u2713 Test run completed successfully`);
+    log(`  - NO data was persisted to database`);
+    log(`  - NO emails were sent`);
+    log(`  - NO notifications were created`);
+    log(
+      `  - Opportunity tasks (simulated): ${tasksToBeCreated.from_opportunity.length}`,
+    );
+    log(
+      `  - CRO Optimizer tasks (simulated): ${tasksToBeCreated.from_cro_optimizer.length}`,
+    );
+    log(
+      `  - Referral Engine tasks (simulated): ${tasksToBeCreated.from_referral_engine.alloro.length} ALLORO, ${tasksToBeCreated.from_referral_engine.user.length} USER`,
+    );
+    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      duration: `${duration}ms`,
+      testMode: true,
+      note: "This was a TEST run - no data was persisted, no emails sent, no tasks created",
+      agents: {
+        summary: {
+          input: summaryPayload,
+          output: summaryOutput,
+        },
+        opportunity: {
+          input: opportunityPayload,
+          output: opportunityOutput,
+        },
+        referral_engine: {
+          input: referralEnginePayload,
+          output: referralEngineOutput,
+        },
+        cro_optimizer: {
+          input: croOptimizerPayload,
+          output: croOptimizerOutput,
+        },
+      },
+      tasksToBeCreated,
+    });
+  } catch (error: any) {
+    logError("monthly-agents-run-test", error);
+    const duration = Date.now() - startTime;
+    log(`\n[TEST-FAILED] \u274c Test run failed after ${duration}ms`);
+    log("=".repeat(70) + "\n");
+
+    return res.status(500).json({
+      success: false,
+      error: "TEST_RUN_ERROR",
+      message: error?.message || "Test run failed",
+      duration: `${duration}ms`,
+    });
+  }
+}
+
+// =====================================================================
+// POST /gbp-optimizer-run
+// =====================================================================
+
+export async function runGbpOptimizer(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  const startTime = Date.now();
+  const { referenceDate } = req.body || {};
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/gbp-optimizer-run - STARTING");
+  log("=".repeat(70));
+  if (referenceDate) log(`Reference Date: ${referenceDate}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+  log(`Webhook: ${COPY_COMPANION_WEBHOOK || "NOT CONFIGURED"}`);
+
+  try {
+    // Validate webhook configuration
+    if (!COPY_COMPANION_WEBHOOK) {
+      throw new Error(
+        "COPY_COMPANION_AGENT_WEBHOOK not configured in environment",
+      );
+    }
+
+    // Fetch all onboarded Google accounts
+    log("\n[SETUP] Fetching all onboarded Google accounts...");
+    const accounts = await db("google_accounts")
+      .where("onboarding_completed", true)
+      .select("*");
+
+    if (!accounts || accounts.length === 0) {
+      log("[SETUP] No onboarded accounts found");
+      return res.json({
+        success: true,
+        message: "No accounts to process",
+        processed: 0,
+        results: [],
+      });
+    }
+
+    log(`[SETUP] Found ${accounts.length} total account(s)`);
+
+    // Filter accounts that have GBP configured
+    log("[SETUP] Filtering accounts with GBP configured...");
+    const gbpAccounts = accounts.filter((account: any) => {
+      const propertyIds =
+        typeof account.google_property_ids === "string"
+          ? JSON.parse(account.google_property_ids)
+          : account.google_property_ids;
+      return (
+        propertyIds?.gbp &&
+        Array.isArray(propertyIds.gbp) &&
+        propertyIds.gbp.length > 0
+      );
+    });
+
+    if (gbpAccounts.length === 0) {
+      log("[SETUP] \u26a0 No accounts with GBP configured");
+      return res.json({
+        success: true,
+        message: "No accounts with GBP to process",
+        processed: 0,
+        results: [],
+      });
+    }
+
+    log(
+      `[SETUP] \u2713 Found ${gbpAccounts.length} account(s) with GBP configured`,
+    );
+
+    // Log account details
+    gbpAccounts.forEach((acc: any, idx: number) => {
+      const propertyIds =
+        typeof acc.google_property_ids === "string"
+          ? JSON.parse(acc.google_property_ids)
+          : acc.google_property_ids;
+      const locationCount = propertyIds?.gbp?.length || 0;
+      log(
+        `  [${idx + 1}] ${acc.domain_name} (${locationCount} location${
+          locationCount !== 1 ? "s" : ""
+        })`,
+      );
+    });
+
+    // Get previous month date range
+    const monthRange = getPreviousMonthRange(referenceDate);
+    log(
+      `\n[SETUP] Month range: ${monthRange.startDate} to ${monthRange.endDate}`,
+    );
+
+    // Process each client sequentially
+    const results: any[] = [];
+
+    for (const account of gbpAccounts) {
+      const { id: googleAccountId, domain_name: domain } = account;
+      const accountIndex = gbpAccounts.indexOf(account) + 1;
+
+      log(`\n[${"=".repeat(60)}]`);
+      log(
+        `[CLIENT ${accountIndex}/${gbpAccounts.length}] Processing: ${domain} (ID: ${googleAccountId})`,
+      );
+      log(`[${"=".repeat(60)}]`);
+
+      try {
+        // Check for duplicate before running
+        log(`[CLIENT] Checking for existing results...`);
+        const existingResult = await db("agent_results")
+          .where({
+            google_account_id: googleAccountId,
+            domain,
+            agent_type: "gbp_optimizer",
+            date_start: monthRange.startDate,
+            date_end: monthRange.endDate,
+          })
+          .whereIn("status", ["success", "pending"])
+          .first();
+
+        if (existingResult) {
+          log(
+            `[CLIENT] \u2139 GBP Optimizer already run for this period (Result ID: ${existingResult.id})`,
+          );
+          log(`[CLIENT] Skipping ${domain}`);
+          results.push({
+            googleAccountId,
+            domain,
+            success: true,
+            skipped: true,
+            reason: "already_exists",
+            existingResultId: existingResult.id,
+          });
+          continue;
+        }
+
+        log(`[CLIENT] No existing results found - proceeding`);
+
+        // Get valid OAuth2 client
+        log(
+          `[CLIENT] Getting valid OAuth2 client for account ${googleAccountId}`,
+        );
+        const oauth2Client = await getValidOAuth2Client(googleAccountId);
+
+        // Run GBP Optimizer agent
+        log(`\n[CLIENT] Running GBP Optimizer agent...`);
+        const result = await processGBPOptimizerAgent(
+          account,
+          oauth2Client,
+          monthRange,
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || "GBP Optimizer agent failed");
+        }
+
+        // Save agent result to database
+        log(`\n[CLIENT] Saving results to database...`);
+        const [agentResultRecord] = await db("agent_results")
+          .insert({
+            google_account_id: googleAccountId,
+            domain,
+            agent_type: "gbp_optimizer",
+            date_start: monthRange.startDate,
+            date_end: monthRange.endDate,
+            agent_input: JSON.stringify(result.payload),
+            agent_output: JSON.stringify(result.output),
+            status: "success",
+            created_at: new Date(),
+            updated_at: new Date(),
+          })
+          .returning("id");
+
+        const resultId = agentResultRecord.id;
+        log(`[CLIENT] \u2713 Agent result saved (ID: ${resultId})`);
+
+        // Create tasks from recommendations
+        await createTasksFromCopyRecommendations(
+          result.output,
+          googleAccountId,
+          domain,
+        );
+
+        results.push({
+          googleAccountId,
+          domain,
+          success: true,
+          resultId,
+          recommendationCount: Object.keys(result.output[0] || {}).length,
+        });
+
+        log(`\n[CLIENT] \u2713 ${domain} completed successfully`);
+      } catch (error: any) {
+        logError(`GBP Optimizer for ${domain}`, error);
+        log(
+          `[CLIENT] \u2717 ${domain} failed: ${error?.message || String(error)}`,
+        );
+
+        results.push({
+          googleAccountId,
+          domain,
+          success: false,
+          error: error?.message || String(error),
+        });
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    const successfulClients = results.filter(
+      (r) => r.success && !r.skipped,
+    ).length;
+    const skippedClients = results.filter((r) => r.skipped).length;
+    const failedClients = results.filter((r) => !r.success).length;
+
+    log("\n" + "=".repeat(70));
+    log(`[COMPLETE] \u2713 GBP Optimizer run completed`);
+    log(`  - Total accounts: ${gbpAccounts.length}`);
+    log(`  - Successful: ${successfulClients}`);
+    log(`  - Skipped: ${skippedClients}`);
+    log(`  - Failed: ${failedClients}`);
+    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      message: `Processed ${gbpAccounts.length} account(s)`,
+      processed: gbpAccounts.length,
+      successful: successfulClients,
+      skipped: skippedClients,
+      failed: failedClients,
+      duration: `${duration}ms`,
+      results,
+    });
+  } catch (error: any) {
+    logError("gbp-optimizer-run", error);
+    const duration = Date.now() - startTime;
+    log(`\n[FAILED] \u274c GBP Optimizer run failed after ${duration}ms`);
+    log(`  Error: ${error?.message || String(error)}`);
+    log("=".repeat(70) + "\n");
+
+    return res.status(500).json({
+      success: false,
+      error: "GBP_OPTIMIZER_RUN_ERROR",
+      message: error?.message || "Failed to run GBP optimizer agent",
+      duration: `${duration}ms`,
+    });
+  }
+}
+
+// =====================================================================
+// POST /ranking-run
+// =====================================================================
+
+export async function runRankingAgent(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  const startTime = Date.now();
+  const { googleAccountId } = req.body || {};
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/ranking-run - STARTING");
+  log("=".repeat(70));
+  if (googleAccountId) log(`Account ID: ${googleAccountId}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+
+  try {
+    // 1. Fetch accounts to process
+    let accounts = [];
+    if (googleAccountId) {
+      const account = await db("google_accounts")
+        .where({ id: googleAccountId, onboarding_completed: true })
+        .first();
+      if (!account)
+        throw new Error(`Onboarded account ${googleAccountId} not found`);
+      accounts = [account];
+    } else {
+      accounts = await db("google_accounts")
+        .where("onboarding_completed", true)
+        .select("*");
+    }
+
+    if (!accounts || accounts.length === 0) {
+      log("[SETUP] No accounts to process");
+      return res.json({ success: true, message: "No accounts found" });
+    }
+
+    log(`[SETUP] Found ${accounts.length} account(s) to process`);
+
+    // 2. Process each account sequentially
+    const results: any[] = [];
+    for (const account of accounts) {
+      const { id: accId, domain_name: domain } = account;
+      log(`\n[${"=".repeat(60)}]`);
+      log(`[ACCOUNT] Processing: ${domain} (ID: ${accId})`);
+      log(`[${"=".repeat(60)}]`);
+
+      try {
+        const propertyIds: GooglePropertyIds =
+          typeof account.google_property_ids === "string"
+            ? JSON.parse(account.google_property_ids)
+            : account.google_property_ids;
+
+        const gbpLocations = propertyIds?.gbp || [];
+        if (gbpLocations.length === 0) {
+          log(`  [ACCOUNT] No GBP locations found for ${domain}, skipping`);
+          continue;
+        }
+
+        const oauth2Client = await getValidOAuth2Client(accId);
+        const batchId = uuidv4();
+        log(`  [ACCOUNT] Batch ID: ${batchId}`);
+        log(
+          `  [ACCOUNT] Performing upfront identification for ${gbpLocations.length} locations...`,
+        );
+
+        // === UPFRONT IDENTIFICATION AND RECORD CREATION ===
+        const locationMetaMap = new Map<
+          string,
+          { specialty: string; marketLocation: string }
+        >();
+        const locationRankingMap = new Map<string, number>();
+
+        for (const loc of gbpLocations) {
+          log(`    \u2192 Identifying: ${loc.displayName || loc.locationId}`);
+          try {
+            const gbpProfile = await fetchGBPDataForRange(
+              oauth2Client,
+              [loc],
+              new Date().toISOString().split("T")[0],
+              new Date().toISOString().split("T")[0],
+            );
+
+            const locationData = gbpProfile?.locations?.[0]?.data || {};
+            const meta = await identifyLocationMeta(locationData, domain);
+            locationMetaMap.set(loc.locationId, meta);
+          } catch (identErr: any) {
+            log(
+              `    \u2717 Identification failed for ${loc.locationId}, using fallback`,
+            );
+            locationMetaMap.set(loc.locationId, {
+              specialty: "orthodontist",
+              marketLocation: "Unknown, US",
+            });
+          }
+        }
+
+        // Create ALL ranking records upfront with "pending" status
+        // This ensures the dashboard shows all locations (e.g. 1/3, 2/3) immediately
+        for (let i = 0; i < gbpLocations.length; i++) {
+          const loc = gbpLocations[i];
+          const meta = locationMetaMap.get(loc.locationId)!;
+
+          const [rankingRecord] = await db("practice_rankings")
+            .insert({
+              google_account_id: accId,
+              domain,
+              specialty: meta.specialty,
+              location: meta.marketLocation,
+              gbp_account_id: loc.accountId,
+              gbp_location_id: loc.locationId,
+              gbp_location_name: loc.displayName || domain,
+              batch_id: batchId,
+              observed_at: new Date(),
+              status: "pending",
+              status_detail: JSON.stringify({
+                currentStep: "queued",
+                message: `Waiting in queue (${i + 1}/${
+                  gbpLocations.length
+                })...`,
+                progress: 0,
+                stepsCompleted: [],
+                timestamps: { created_at: new Date().toISOString() },
+              }),
+              created_at: new Date(),
+              updated_at: new Date(),
+            })
+            .returning("id");
+
+          locationRankingMap.set(loc.locationId, rankingRecord.id);
+        }
+
+        log(`    \u2713 Created ${gbpLocations.length} records upfront`);
+
+        // === SEQUENTIAL ANALYSIS PHASE ===
+        const accResults = [];
+        for (let i = 0; i < gbpLocations.length; i++) {
+          const loc = gbpLocations[i];
+          const rankingId = locationRankingMap.get(loc.locationId)!;
+          const meta = locationMetaMap.get(loc.locationId)!;
+
+          log(
+            `\n  [LOCATION] Processing ${i + 1}/${gbpLocations.length}: ${
+              loc.displayName || loc.locationId
+            }`,
+          );
+
+          // Update status to processing with progress context
+          await db("practice_rankings")
+            .where({ id: rankingId })
+            .update({
+              status: "processing",
+              status_detail: JSON.stringify({
+                currentStep: "starting",
+                message: `Starting analysis ${i + 1}/${gbpLocations.length}...`,
+                progress: 5,
+                stepsCompleted: ["queued"],
+                timestamps: { started_at: new Date().toISOString() },
+              }),
+            });
+
+          // Process the ranking with retry logic
+          let success = false;
+          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+              if (attempt > 1) {
+                log(
+                  `    \ud83d\udd04 Retry ${attempt}/${MAX_RETRIES} for ID ${rankingId}`,
+                );
+                await delay(RETRY_DELAY_MS);
+              }
+
+              const result = await processLocationRanking(
+                rankingId,
+                accId,
+                loc.accountId,
+                loc.locationId,
+                loc.displayName || domain,
+                meta.specialty,
+                meta.marketLocation,
+                domain,
+                batchId,
+                log,
+              );
+
+              accResults.push(result);
+              success = true;
+              break;
+            } catch (err: any) {
+              log(`    \u2717 Attempt ${attempt} failed: ${err.message}`);
+              if (attempt === MAX_RETRIES) {
+                await db("practice_rankings")
+                  .where({ id: rankingId })
+                  .update({ status: "failed", error_message: err.message });
+              }
+            }
+          }
+
+          if (!success) {
+            log(`    \u2717 FAILED: Exhausted retries for ${loc.locationId}`);
+          }
+        }
+
+        results.push({
+          domain,
+          batchId,
+          processed: accResults.length,
+          total: gbpLocations.length,
+        });
+      } catch (accErr: any) {
+        logError(`Account ${domain} failed`, accErr);
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    log("\n" + "=".repeat(70));
+    log(
+      `[COMPLETE] \u2713 Ranking run completed in ${(duration / 1000).toFixed(1)}s`,
+    );
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      message: `Processed ${accounts.length} account(s)`,
+      duration: `${duration}ms`,
+      results,
+    });
+  } catch (error: any) {
+    logError("ranking-run", error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+// =====================================================================
+// POST /guardian-governance-agents-run
+// =====================================================================
+
+export async function runGuardianGovernance(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  const startTime = Date.now();
+  const { month, referenceDate } = req.body || {};
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/guardian-governance-agents-run - STARTING");
+  log("=".repeat(70));
+  if (month) log(`Month: ${month}`);
+  if (referenceDate) log(`Reference Date: ${referenceDate}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+
+  try {
+    const result = await runGuardianGovernanceAgents(month, referenceDate);
+
+    if (result.skipped) {
+      return res.json({
+        success: true,
+        message: result.message,
+        skipped: true,
+        existingResultId: result.existingResultId,
+      });
+    }
+
+    if (result.processed === 0 && !result.guardianResultId) {
+      return res.json({
+        success: true,
+        message: result.message || "No agent results to process",
+        processed: 0,
+        guardianResultId: null,
+        governanceResultId: null,
+      });
+    }
+
+    const duration = Date.now() - startTime;
+
+    log("\n" + "=".repeat(70));
+    log(`[GUARDIAN-GOV] \u2713 COMPLETED SUCCESSFULLY`);
+    log(`  - Total groups: ${result.groupsProcessed}`);
+    log(`  - Successful: ${result.successfulGroups}`);
+    log(`  - Failed: ${result.failedGroups}`);
+    log(`  - Guardian ID: ${result.guardianResultId}`);
+    log(`  - Governance ID: ${result.governanceResultId}`);
+    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      message: "Guardian and Governance agents completed",
+      guardianResultId: result.guardianResultId,
+      governanceResultId: result.governanceResultId,
+      groupsProcessed: result.groupsProcessed,
+      successfulGroups: result.successfulGroups,
+      failedGroups: result.failedGroups,
+      groupDetails: result.groupDetails,
+      duration: `${duration}ms`,
+    });
+  } catch (error: any) {
+    logError("guardian-governance-agents-run", error);
+    const duration = Date.now() - startTime;
+    log(
+      `\n[GUARDIAN-GOV] \u274c Guardian/Governance run failed after ${duration}ms`,
+    );
+    log(`  Error: ${error?.message || String(error)}`);
+    log("=".repeat(70) + "\n");
+
+    return res.status(500).json({
+      success: false,
+      error: "GUARDIAN_GOVERNANCE_RUN_ERROR",
+      message: error?.message || "Failed to run guardian/governance agents",
+      duration: `${duration}ms`,
+    });
+  }
+}
+
+// =====================================================================
+// POST /process-all (DEPRECATED)
+// =====================================================================
+
+export async function processAllDeprecated(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  const startTime = Date.now();
+  const { referenceDate } = req.body || {};
+
+  log("\n" + "=".repeat(70));
+  log("POST /api/agents/process-all - STARTING");
+  log("=".repeat(70));
+  if (referenceDate) log(`Reference Date: ${referenceDate}`);
+  log(`Timestamp: ${new Date().toISOString()}`);
+  log(`Max retries per client: 3`);
+
+  try {
+    // Fetch all onboarded Google accounts
+    log("\n[SETUP] Fetching all onboarded Google accounts...");
+    const accounts = await db("google_accounts")
+      .where("onboarding_completed", true)
+      .select("*");
+
+    if (!accounts || accounts.length === 0) {
+      log("[SETUP] No onboarded accounts found");
+      return res.json({
+        success: true,
+        message: "No accounts to process",
+        processed: 0,
+        results: [],
+      });
+    }
+
+    log(`[SETUP] Found ${accounts.length} account(s) to process`);
+
+    // Process each client sequentially with retry mechanism
+    const results: any[] = [];
+    let totalRetries = 0;
+
+    for (const account of accounts) {
+      const result = await processClient(account, referenceDate);
+
+      // Track retry statistics
+      if (result.attempts && result.attempts > 1) {
+        totalRetries += result.attempts - 1;
+        log(
+          `[STATS] Client ${account.domain_name} required ${result.attempts} attempt(s)`,
+        );
+      }
+
+      results.push({
+        googleAccountId: account.id,
+        domain: account.domain_name,
+        ...result,
+      });
+
+      // Stop on first error after all retries exhausted
+      if (!result.success) {
+        log(
+          `\n[ERROR] \u274c Stopping processing - ${account.domain_name} failed after ${result.attempts} attempts`,
+        );
+        throw new Error(
+          `Processing failed for ${account.domain_name} after ${result.attempts} attempts: ${result.error}`,
+        );
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    const successfulClients = results.filter((r) => r.success).length;
+
+    log("\n" + "=".repeat(70));
+    log(`[COMPLETE] \u2713 All clients processed successfully`);
+    log(`  - Total clients: ${accounts.length}`);
+    log(`  - Successful: ${successfulClients}`);
+    log(`  - Total retries: ${totalRetries}`);
+    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+    log("=".repeat(70) + "\n");
+
+    return res.json({
+      success: true,
+      message: `Processed ${accounts.length} account(s) successfully`,
+      processed: accounts.length,
+      successful: successfulClients,
+      totalRetries,
+      duration: `${duration}ms`,
+      results,
+    });
+  } catch (error: any) {
+    logError("process-all", error);
+    const duration = Date.now() - startTime;
+    log(`\n[FAILED] \u274c Processing failed after ${duration}ms`);
+    log("=".repeat(70) + "\n");
+
+    return res.status(500).json({
+      success: false,
+      error: "PROCESSING_ERROR",
+      message: error?.message || "Failed to process agents",
+      duration: `${duration}ms`,
+    });
+  }
+}
+
+// =====================================================================
+// GET /latest/:googleAccountId
+// =====================================================================
+
+export async function getLatestOutputs(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  const { googleAccountId } = req.params;
+
+  try {
+    log(`\n[GET /latest/${googleAccountId}] Fetching latest agent outputs`);
+
+    // Validate googleAccountId
+    const accountId = parseInt(googleAccountId, 10);
+    if (isNaN(accountId)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_ACCOUNT_ID",
+        message: "Invalid google account ID provided",
+      });
+    }
+
+    // Fetch account details
+    const account = await db("google_accounts").where("id", accountId).first();
+
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        error: "ACCOUNT_NOT_FOUND",
+        message: "Google account not found",
+      });
+    }
+
+    // Fetch latest successful result for each agent type
+    const agentTypes = ["proofline", "summary", "opportunity"];
+    const agents: any = {};
+
+    for (const agentType of agentTypes) {
+      const result = await db("agent_results")
+        .where({
+          google_account_id: accountId,
+          agent_type: agentType,
+          status: "success",
+        })
+        .orderBy("created_at", "desc")
+        .first();
+
+      if (result) {
+        // Parse agent_output from JSON string to object
+        let parsedOutput = null;
+        try {
+          parsedOutput =
+            typeof result.agent_output === "string"
+              ? JSON.parse(result.agent_output)
+              : result.agent_output;
+        } catch (parseError) {
+          log(
+            `  [WARNING] Failed to parse agent_output for ${agentType}: ${parseError}`,
+          );
+          parsedOutput = result.agent_output;
+        }
+
+        agents[agentType] = {
+          results: parsedOutput,
+          lastUpdated: result.created_at,
+          dateStart: result.date_start,
+          dateEnd: result.date_end,
+          resultId: result.id,
+        };
+      } else {
+        agents[agentType] = null;
+      }
+    }
+
+    log(
+      `  [SUCCESS] Retrieved latest outputs for account ${accountId} (${account.domain_name})`,
+    );
+
+    return res.json({
+      success: true,
+      googleAccountId: accountId,
+      domain: account.domain_name,
+      agents,
+    });
+  } catch (error: any) {
+    logError(`GET /latest/${googleAccountId}`, error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch latest agent outputs",
+    });
+  }
+}
+
+// =====================================================================
+// GET /getLatestReferralEngineOutput/:googleAccountId
+// =====================================================================
+
+export async function getLatestReferralEngineOutput(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  const { googleAccountId } = req.params;
+
+  try {
+    log(
+      `\n[GET /getLatestReferralEngineOutput/${googleAccountId}] Fetching latest referral engine output`,
+    );
+
+    // Validate googleAccountId
+    const accountId = parseInt(googleAccountId, 10);
+    if (isNaN(accountId)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_ACCOUNT_ID",
+        message: "Invalid google account ID provided",
+      });
+    }
+
+    // Fetch account details
+    const account = await db("google_accounts")
+      .where("id", accountId)
+      .first();
+
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        error: "ACCOUNT_NOT_FOUND",
+        message: "Google account not found",
+      });
+    }
+
+    // Check for active automation (monthly agents processing)
+    // This prevents showing stale data while new referral engine output is being generated
+    const activeAutomation = await db("pms_jobs")
+      .where({ domain: account.domain_name })
+      .whereRaw(
+        `automation_status_detail::jsonb->>'status' = 'processing'
+         AND automation_status_detail::jsonb->>'currentStep' = 'monthly_agents'`,
+      )
+      .first();
+
+    if (activeAutomation) {
+      log(
+        `  [PENDING] Active automation found for ${account.domain_name} - PMS Job ID: ${activeAutomation.id}`,
+      );
+      return res.json({
+        success: true,
+        pending: true,
+        message: "Monthly insights are being generated...",
+        googleAccountId: accountId,
+        domain: account.domain_name,
+        data: null,
+        metadata: {
+          pmsJobId: activeAutomation.id,
+          automationStatus: "processing",
+        },
+      });
+    }
+
+    // Fetch latest successful referral_engine result
+    const result = await db("agent_results")
+      .where({
+        google_account_id: accountId,
+        agent_type: "referral_engine",
+        status: "success",
+      })
+      .orderBy("created_at", "desc")
+      .first();
+
+    if (!result) {
+      log(
+        `  [NO DATA] No referral engine results found for account ${accountId}`,
+      );
+      return res.status(404).json({
+        success: false,
+        error: "NO_DATA",
+        message: "No referral engine data available yet",
+      });
+    }
+
+    // Parse agent_output from JSON string to object
+    let parsedOutput = null;
+    try {
+      parsedOutput =
+        typeof result.agent_output === "string"
+          ? JSON.parse(result.agent_output)
+          : result.agent_output;
+    } catch (parseError) {
+      log(`  [WARNING] Failed to parse agent_output: ${parseError}`);
+      parsedOutput = result.agent_output;
+    }
+
+    log(
+      `  [SUCCESS] Retrieved referral engine output for account ${accountId} (${account.domain_name})`,
+    );
+    log(`  - Result ID: ${result.id}`);
+    log(`  - Date range: ${result.date_start} to ${result.date_end}`);
+    log(`  - Created: ${result.created_at}`);
+
+    return res.json({
+      success: true,
+      pending: false,
+      googleAccountId: accountId,
+      domain: account.domain_name,
+      data: parsedOutput,
+      metadata: {
+        resultId: result.id,
+        dateStart: result.date_start,
+        dateEnd: result.date_end,
+        lastUpdated: result.created_at,
+      },
+    });
+  } catch (error: any) {
+    logError(`GET /getLatestReferralEngineOutput/${googleAccountId}`, error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch referral engine output",
+    });
+  }
+}
+
+// =====================================================================
+// GET /health
+// =====================================================================
+
+export function healthCheck(_req: Request, res: Response): void {
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    webhooks: {
+      proofline: !!PROOFLINE_WEBHOOK,
+      summary: !!SUMMARY_WEBHOOK,
+      referral_engine: !!REFERRAL_ENGINE_WEBHOOK,
+      opportunity: !!OPPORTUNITY_WEBHOOK,
+      cro_optimizer: !!CRO_OPTIMIZER_WEBHOOK,
+      copy_companion: !!COPY_COMPANION_WEBHOOK,
+      guardian: !!GUARDIAN_AGENT_WEBHOOK,
+      governance: !!GOVERNANCE_AGENT_WEBHOOK,
+    },
+  });
+}

@@ -1,0 +1,83 @@
+import { Knex } from "knex";
+import { BaseModel, PaginatedResult, PaginationParams, QueryContext } from "../BaseModel";
+
+export interface IProject {
+  id: string;
+  organization_id: number | null;
+  name: string;
+  hostname: string | null;
+  custom_domain: string | null;
+  template_id: string | null;
+  status: string;
+  settings: Record<string, unknown> | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ProjectFilters {
+  organization_id?: number;
+  status?: string;
+  search?: string;
+}
+
+export class ProjectModel extends BaseModel {
+  protected static tableName = "website_builder.projects";
+
+  static async findById(
+    id: string,
+    trx?: QueryContext
+  ): Promise<IProject | undefined> {
+    return super.findById(id, trx);
+  }
+
+  static async findByOrganizationId(
+    orgId: number,
+    trx?: QueryContext
+  ): Promise<IProject | undefined> {
+    return this.table(trx).where({ organization_id: orgId }).first();
+  }
+
+  static async create(
+    data: Partial<IProject>,
+    trx?: QueryContext
+  ): Promise<IProject> {
+    return super.create(data as Record<string, unknown>, trx);
+  }
+
+  static async updateById(
+    id: string,
+    data: Partial<IProject>,
+    trx?: QueryContext
+  ): Promise<number> {
+    return super.updateById(id, data as Record<string, unknown>, trx);
+  }
+
+  static async setReadOnly(
+    orgId: number,
+    trx?: QueryContext
+  ): Promise<number> {
+    return this.table(trx)
+      .where({ organization_id: orgId })
+      .update({ is_read_only: true });
+  }
+
+  static async listAdmin(
+    filters: ProjectFilters,
+    pagination: PaginationParams,
+    trx?: QueryContext
+  ): Promise<PaginatedResult<IProject>> {
+    const buildQuery = (qb: Knex.QueryBuilder) => {
+      if (filters.organization_id) {
+        qb = qb.where("organization_id", filters.organization_id);
+      }
+      if (filters.status) {
+        qb = qb.where("status", filters.status);
+      }
+      if (filters.search) {
+        qb = qb.where("name", "ilike", `%${filters.search}%`);
+      }
+      return qb.orderBy("created_at", "desc");
+    };
+    return this.paginate<IProject>(buildQuery, pagination, trx);
+  }
+}

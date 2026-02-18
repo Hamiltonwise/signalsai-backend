@@ -1,0 +1,54 @@
+import { getValidOAuth2Client } from "../../../auth/oauth2Helper";
+import { GoogleAccountModel, IGoogleAccount } from "../../../models/GoogleAccountModel";
+
+/**
+ * Required OAuth scopes (used as fallback when account has no stored scopes)
+ */
+const REQUIRED_SCOPES = [
+  "openid",
+  "email",
+  "profile",
+  "https://www.googleapis.com/auth/analytics.readonly",
+  "https://www.googleapis.com/auth/webmasters.readonly",
+  "https://www.googleapis.com/auth/business.manage",
+] as const;
+
+/**
+ * Validates and refreshes an OAuth access token for a Google account.
+ * Delegates to the oauth2Helper which handles expiry check and DB update,
+ * then fetches the updated account record.
+ *
+ * @param googleAccountId Google account database ID
+ * @returns Updated Google account with fresh token data
+ */
+export async function validateAndRefreshToken(
+  googleAccountId: number,
+): Promise<IGoogleAccount> {
+  try {
+    // Use the safe helper which handles expiry check and DB update
+    await getValidOAuth2Client(googleAccountId);
+
+    // Fetch the updated account
+    const googleAccount = await GoogleAccountModel.findById(googleAccountId);
+
+    if (!googleAccount) {
+      throw new Error("Google account not found after refresh");
+    }
+
+    return googleAccount;
+  } catch (error) {
+    console.error("[AUTH] Error refreshing access token:", error);
+    throw error;
+  }
+}
+
+/**
+ * Returns the parsed scopes array for a Google account,
+ * falling back to REQUIRED_SCOPES if none are stored.
+ *
+ * @param googleAccount The Google account record
+ * @returns Array of scope strings
+ */
+export function getAccountScopes(googleAccount: IGoogleAccount): string[] {
+  return googleAccount.scopes?.split(",") || [...REQUIRED_SCOPES];
+}
