@@ -131,36 +131,45 @@ router.get("/", async (req: Request, res: Response) => {
     const total = parseInt(count as string, 10);
     const totalPages = Math.ceil(total / limitNum);
 
-    // Build data query
-    let dataQuery = db(PROJECTS_TABLE).select(
-      "id",
-      "user_id",
-      "generated_hostname",
-      "status",
-      "selected_place_id",
-      "selected_website_url",
-      "template_id",
-      "step_gbp_scrape",
-      "created_at",
-      "updated_at"
-    );
+    // Build data query with organization LEFT JOIN
+    let dataQuery = db(PROJECTS_TABLE)
+      .leftJoin("organizations", `${PROJECTS_TABLE}.organization_id`, "organizations.id")
+      .select(
+        `${PROJECTS_TABLE}.id`,
+        `${PROJECTS_TABLE}.user_id`,
+        `${PROJECTS_TABLE}.generated_hostname`,
+        `${PROJECTS_TABLE}.status`,
+        `${PROJECTS_TABLE}.selected_place_id`,
+        `${PROJECTS_TABLE}.selected_website_url`,
+        `${PROJECTS_TABLE}.template_id`,
+        `${PROJECTS_TABLE}.step_gbp_scrape`,
+        `${PROJECTS_TABLE}.created_at`,
+        `${PROJECTS_TABLE}.updated_at`,
+        db.raw("json_build_object('id', organizations.id, 'name', organizations.name, 'subscription_tier', organizations.subscription_tier) as organization")
+      );
 
     if (status) {
-      dataQuery = dataQuery.where("status", status);
+      dataQuery = dataQuery.where(`${PROJECTS_TABLE}.status`, status);
     }
 
     const projects = await dataQuery
-      .orderBy("created_at", "desc")
+      .orderBy(`${PROJECTS_TABLE}.created_at`, "desc")
       .limit(limitNum)
       .offset(offset);
 
+    // Parse organization JSON (will be null if not linked)
+    const projectsWithOrg = projects.map((p) => ({
+      ...p,
+      organization: p.organization && p.organization.id ? p.organization : null,
+    }));
+
     console.log(
-      `[Admin Websites] Found ${projects.length} of ${total} projects (page ${pageNum})`
+      `[Admin Websites] Found ${projectsWithOrg.length} of ${total} projects (page ${pageNum})`
     );
 
     return res.json({
       success: true,
-      data: projects,
+      data: projectsWithOrg,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -289,6 +298,117 @@ router.get("/:id/status", async (req: Request, res: Response) => {
       success: false,
       error: "FETCH_ERROR",
       message: error?.message || "Failed to fetch project status",
+    });
+  }
+});
+
+// =====================================================================
+// ORGANIZATION LINKING
+// =====================================================================
+
+/**
+ * PATCH /api/admin/websites/:id/link-organization
+ * Link or unlink a website to/from an organization
+ * Body: { organizationId: number | null }
+ */
+router.patch("/:id/link-organization", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { organizationId } = req.body;
+
+    console.log(`[Admin Websites] Linking/unlinking project ${id} to organization ${organizationId}`);
+
+    // Validate project exists
+    const project = await db(PROJECTS_TABLE).where("id", id).first();
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Project not found",
+      });
+    }
+
+    // If unlinking (organizationId is null)
+    if (organizationId === null) {
+      console.log(`[Admin Websites] Unlinking project ${id}`);
+      await db(PROJECTS_TABLE)
+        .where("id", id)
+        .update({ organization_id: null, updated_at: db.fn.now() });
+
+      const [updatedProject] = await db(PROJECTS_TABLE)
+        .where("id", id)
+        .returning("*");
+
+      console.log(`[Admin Websites] ✓ Unlinked project ${id}`);
+      return res.json({
+        success: true,
+        data: updatedProject,
+      });
+    }
+
+    // If linking (organizationId is provided)
+    if (typeof organizationId !== "number") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "organizationId must be a number or null",
+      });
+    }
+
+    // Validate organization exists
+    const organization = await db("organizations").where("id", organizationId).first();
+    if (!organization) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: "Organization not found",
+      });
+    }
+
+    // Validate organization is DFY tier
+    if (organization.subscription_tier !== "DFY") {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_TIER",
+        message: "Only DFY organizations can have websites",
+      });
+    }
+
+    // Check if organization is already linked to another website
+    const existingLink = await db(PROJECTS_TABLE)
+      .where("organization_id", organizationId)
+      .whereNot("id", id)
+      .first();
+
+    if (existingLink) {
+      return res.status(400).json({
+        success: false,
+        error: "ALREADY_LINKED",
+        message: "Organization already linked to another website",
+      });
+    }
+
+    // Link the website to the organization
+    console.log(`[Admin Websites] Linking project ${id} to organization ${organizationId}`);
+    await db(PROJECTS_TABLE)
+      .where("id", id)
+      .update({ organization_id: organizationId, updated_at: db.fn.now() });
+
+    const [updatedProject] = await db(PROJECTS_TABLE)
+      .where("id", id)
+      .returning("*");
+
+    console.log(`[Admin Websites] ✓ Linked project ${id} to organization ${organizationId}`);
+    return res.json({
+      success: true,
+      data: updatedProject,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error linking organization:", error);
+    return res.status(500).json({
+      success: false,
+      error: "LINK_ERROR",
+      message: error?.message || "Failed to link organization",
     });
   }
 });
@@ -1251,7 +1371,14 @@ router.get("/:id", async (req: Request, res: Response) => {
 
     console.log(`[Admin Websites] Fetching project ID: ${id}`);
 
-    const project = await db(PROJECTS_TABLE).where("id", id).first();
+    const project = await db(PROJECTS_TABLE)
+      .leftJoin("organizations", `${PROJECTS_TABLE}.organization_id`, "organizations.id")
+      .select(
+        `${PROJECTS_TABLE}.*`,
+        db.raw("json_build_object('id', organizations.id, 'name', organizations.name, 'subscription_tier', organizations.subscription_tier) as organization")
+      )
+      .where(`${PROJECTS_TABLE}.id`, id)
+      .first();
 
     if (!project) {
       return res.status(404).json({
@@ -1260,6 +1387,9 @@ router.get("/:id", async (req: Request, res: Response) => {
         message: "Project not found",
       });
     }
+
+    // Parse organization JSON (will be null if not linked)
+    const organization = project.organization && project.organization.id ? project.organization : null;
 
     // Get pages for this project
     const pages = await db(PAGES_TABLE)
@@ -1273,6 +1403,7 @@ router.get("/:id", async (req: Request, res: Response) => {
       success: true,
       data: {
         ...project,
+        organization,
         pages,
       },
     });

@@ -147,11 +147,18 @@ organizationsRoutes.get(
         };
       });
 
+      // Fetch linked website
+      const website = await db("website_builder.projects")
+        .where({ organization_id: orgId })
+        .select("id", "generated_hostname", "status", "created_at")
+        .first();
+
       return res.json({
         success: true,
         organization,
         users,
         connections,
+        website: website || null,
       });
     } catch (error) {
       return handleError(res, error, "Fetch organization details");
