@@ -246,8 +246,8 @@ export async function discoverCompetitors(
       name: item.title || item.name,
       address: item.address,
       category: item.categoryName || item.categories?.[0] || "Unknown",
-      totalScore: item.totalScore || 0,
-      reviewsCount: item.reviewsCount || 0,
+      totalScore: item.totalScore ?? 0,
+      reviewsCount: item.reviewsCount ?? 0,
       url: item.url,
       website: item.website,
       phone: item.phone,
@@ -371,8 +371,8 @@ export async function getCompetitorDetails(
         address: item.address || "",
         categories: item.categories || [],
         primaryCategory: item.categoryName || item.categories?.[0] || "Unknown",
-        totalReviews: item.reviewsCount || 0,
-        averageRating: item.totalScore || 0,
+        totalReviews: item.reviewsCount ?? 0,
+        averageRating: item.totalScore ?? 0,
         reviewsLast30d,
         reviewsLast90d,
         photosCount: photosCount,
@@ -411,6 +411,95 @@ export async function getCompetitorDetails(
     log(`Error getting competitor details: ${error.message}`);
     throw error;
   }
+}
+
+// Google Places API configuration (for enriching review counts when Apify returns null)
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API;
+const PLACES_API_BASE = "https://places.googleapis.com/v1";
+const REVIEW_COUNT_FIELD_MASK = "rating,userRatingCount";
+
+/**
+ * Enrich competitor data with accurate review counts from Google Places API.
+ * Called when Apify returns reviewsCount: null (actor regression).
+ * Only fetches for competitors missing review data to minimize API calls.
+ */
+export async function enrichCompetitorReviewCounts(
+  competitors: CompetitorDetailedData[],
+): Promise<CompetitorDetailedData[]> {
+  if (!GOOGLE_PLACES_API_KEY) {
+    log("Google Places API key not configured, skipping review count enrichment");
+    return competitors;
+  }
+
+  const needsEnrichment = competitors.filter(
+    (c) => c.placeId && c.totalReviews === 0,
+  );
+
+  if (needsEnrichment.length === 0) {
+    log("All competitors have review data, skipping enrichment");
+    return competitors;
+  }
+
+  log(
+    `Enriching ${needsEnrichment.length} competitors with Google Places API review counts`,
+  );
+
+  const enriched = await Promise.allSettled(
+    needsEnrichment.map(async (comp) => {
+      try {
+        const response = await axios.get(
+          `${PLACES_API_BASE}/places/${comp.placeId}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+              "X-Goog-FieldMask": REVIEW_COUNT_FIELD_MASK,
+            },
+          },
+        );
+
+        const data = response.data;
+        return {
+          placeId: comp.placeId,
+          userRatingCount: data.userRatingCount ?? null,
+          rating: data.rating ?? null,
+        };
+      } catch (error: any) {
+        log(
+          `[${comp.name}] Google Places API lookup failed: ${error.message}`,
+        );
+        return { placeId: comp.placeId, userRatingCount: null, rating: null };
+      }
+    }),
+  );
+
+  // Patch competitors with enriched data
+  let enrichedCount = 0;
+  for (const result of enriched) {
+    if (result.status !== "fulfilled") continue;
+    const { placeId, userRatingCount, rating } = result.value;
+    if (userRatingCount === null && rating === null) continue;
+
+    const comp = competitors.find((c) => c.placeId === placeId);
+    if (!comp) continue;
+
+    if (userRatingCount !== null) {
+      comp.totalReviews = userRatingCount;
+    }
+    if (rating !== null) {
+      comp.averageRating = rating;
+    }
+    enrichedCount++;
+    log(
+      `Enriched: ${comp.name} — ${comp.totalReviews} reviews, ${comp.averageRating} rating`,
+    );
+  }
+
+  log(
+    `Enrichment complete: ${enrichedCount}/${needsEnrichment.length} competitors updated`,
+  );
+
+  return competitors;
 }
 
 /**

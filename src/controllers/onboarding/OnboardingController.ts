@@ -16,6 +16,12 @@ import {
   updateSetupProgress as updateSetupProgressService,
 } from "./feature-services/SetupProgressService";
 import { GoogleAccountModel } from "../../models/GoogleAccountModel";
+import { checkDomain as checkDomainService } from "./feature-services/DomainCheckService";
+import {
+  getAvailableGBPLocations,
+  saveGBPSelection,
+  getGBPLocationWebsite,
+} from "./feature-services/GbpOnboardingService";
 
 /**
  * Consistent error handler preserving the exact response shape
@@ -248,5 +254,136 @@ export async function updateSetupProgress(
     });
   } catch (error) {
     handleError(res, error, "Update setup progress");
+  }
+}
+
+/**
+ * GET /api/onboarding/available-gbp
+ *
+ * Fetch available GBP locations for the authenticated user.
+ * Requires tokenRefreshMiddleware (provides req.oauth2Client).
+ */
+export async function getAvailableGBP(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    if (!req.oauth2Client) {
+      res.status(401).json({ success: false, error: "Authentication failed" });
+      return;
+    }
+
+    const properties = await getAvailableGBPLocations(req.oauth2Client);
+
+    res.json({
+      success: true,
+      properties,
+    });
+  } catch (error) {
+    handleError(res, error, "Fetch available GBP locations");
+  }
+}
+
+/**
+ * POST /api/onboarding/save-gbp
+ *
+ * Save selected GBP locations to google_property_ids.gbp.
+ * Same storage pattern as the settings page.
+ */
+export async function saveGBP(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const googleAccountId = extractGoogleAccountId(req);
+    const { data } = req.body;
+
+    if (!data || !Array.isArray(data)) {
+      const error = new Error("data must be an array of GBP locations");
+      (error as any).statusCode = 400;
+      throw error;
+    }
+
+    const result = await saveGBPSelection(googleAccountId, data);
+
+    res.json({
+      success: true,
+      properties: result.properties,
+      message: result.message,
+    });
+  } catch (error) {
+    handleError(res, error, "Save GBP selection");
+  }
+}
+
+/**
+ * POST /api/onboarding/gbp-website
+ *
+ * Fetch the website URL for a specific GBP location.
+ * Returns the raw websiteUri and a clean domain.
+ */
+export async function getGBPWebsite(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    if (!req.oauth2Client) {
+      res.status(401).json({ success: false, error: "Authentication failed" });
+      return;
+    }
+
+    const { accountId, locationId } = req.body;
+
+    if (!accountId || !locationId) {
+      const error = new Error("accountId and locationId are required");
+      (error as any).statusCode = 400;
+      throw error;
+    }
+
+    const result = await getGBPLocationWebsite(
+      req.oauth2Client,
+      accountId,
+      locationId
+    );
+
+    res.json({
+      success: true,
+      websiteUri: result.websiteUri,
+      domain: result.domain,
+    });
+  } catch (error) {
+    handleError(res, error, "Fetch GBP website");
+  }
+}
+
+/**
+ * POST /api/onboarding/check-domain
+ *
+ * Check if a domain is reachable and not behind a firewall.
+ * Returns valid/warning/unreachable status.
+ * Warning does not block — user can still proceed.
+ */
+export async function checkDomain(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const { domain } = req.body;
+
+    if (!domain || typeof domain !== "string") {
+      const error = new Error("domain is required");
+      (error as any).statusCode = 400;
+      throw error;
+    }
+
+    const result = await checkDomainService(domain);
+
+    res.json({
+      success: true,
+      status: result.status,
+      message: result.message,
+    });
+  } catch (error) {
+    handleError(res, error, "Check domain");
   }
 }

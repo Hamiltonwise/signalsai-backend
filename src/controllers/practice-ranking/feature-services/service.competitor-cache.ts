@@ -22,6 +22,8 @@ interface CachedCompetitor {
   name: string;
   address?: string;
   category?: string;
+  totalScore?: number;
+  reviewsCount?: number;
 }
 
 interface CompetitorCacheEntry {

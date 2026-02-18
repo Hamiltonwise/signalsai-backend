@@ -16,6 +16,7 @@ import {
 import {
   discoverCompetitors,
   getCompetitorDetails,
+  enrichCompetitorReviewCounts,
   auditWebsite,
   getSpecialtyKeywords,
 } from "./service.apify";
@@ -309,8 +310,8 @@ export async function processLocationRanking(
       name: c.name,
       address: c.address || "",
       category: c.category || "Unknown",
-      totalScore: 0,
-      reviewsCount: 0,
+      totalScore: c.totalScore ?? 0,
+      reviewsCount: c.reviewsCount ?? 0,
       url: "",
       website: undefined,
       phone: undefined,
@@ -353,6 +354,8 @@ export async function processLocationRanking(
         name: c.name,
         address: c.address,
         category: c.category,
+        totalScore: c.totalScore ?? 0,
+        reviewsCount: c.reviewsCount ?? 0,
       }));
       await setCachedCompetitors(specialty, marketLocation, competitorsToCache);
     }
@@ -385,6 +388,11 @@ export async function processLocationRanking(
       competitorPlaceIds,
       specialtyKeywords,
     );
+    const withReviews = competitorDetails.filter((c) => c.totalReviews > 0).length;
+    const withRatings = competitorDetails.filter((c) => c.averageRating > 0).length;
+    log(
+      `[RANKING] [${rankingId}] Deep scrape: ${competitorDetails.length} competitors, ${withReviews} with review data, ${withRatings} with ratings`,
+    );
   } catch (error: any) {
     log(
       `[RANKING] [${rankingId}] Detailed scrape failed, using discovery fallback: ${error.message}`,
@@ -415,6 +423,16 @@ export async function processLocationRanking(
         phone: comp.phone,
       };
     });
+  }
+
+  // Enrich competitors with accurate review counts from Google Places API
+  // (Apify actor regression: reviewsCount returns null, reviews array capped at maxReviews=10)
+  try {
+    competitorDetails = await enrichCompetitorReviewCounts(competitorDetails);
+  } catch (error: any) {
+    log(
+      `[RANKING] [${rankingId}] Review count enrichment failed, continuing with Apify data: ${error.message}`,
+    );
   }
 
   // Filter client out of competitors
