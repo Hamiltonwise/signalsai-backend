@@ -177,8 +177,13 @@ export async function processFileUpload(
     customMessage: "Sending to PMS parser agent...",
   });
 
+  const PMS_PARSER_WEBHOOK = process.env.PMS_PARSER_WEBHOOK;
+  if (!PMS_PARSER_WEBHOOK) {
+    throw new Error("PMS_PARSER_WEBHOOK not configured in environment");
+  }
+
   const response = await axios.post(
-    "https://n8napp.getalloro.com/webhook/parse-csv",
+    PMS_PARSER_WEBHOOK,
     {
       report_data: jsonData,
       jobId,

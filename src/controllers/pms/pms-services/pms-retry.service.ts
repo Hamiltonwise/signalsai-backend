@@ -101,8 +101,13 @@ async function retryPmsParser(jobId: number, job: any) {
 
   // Resend to n8n webhook
   try {
+    const PMS_PARSER_WEBHOOK = process.env.PMS_PARSER_WEBHOOK;
+    if (!PMS_PARSER_WEBHOOK) {
+      throw new Error("PMS_PARSER_WEBHOOK not configured in environment");
+    }
+
     await axios.post(
-      "https://n8napp.getalloro.com/webhook/parse-csv",
+      PMS_PARSER_WEBHOOK,
       {
         report_data: rawData,
         jobId,
