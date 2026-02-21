@@ -1,32 +1,29 @@
-import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
+import { OrganizationModel } from "../../../models/OrganizationModel";
 
 /**
  * Get the product tour wizard completion status.
  *
- * Throws with statusCode 404 if the google account is not found.
- * Returns the boolean flag for onboarding_wizard_completed.
+ * Reads from organizations.onboarding_wizard_completed.
  */
 export async function getWizardStatus(
-  googleAccountId: number
+  organizationId: number
 ): Promise<boolean> {
-  const googleAccount = await GoogleConnectionModel.findById(googleAccountId);
+  const org = await OrganizationModel.findById(organizationId);
 
-  if (!googleAccount) {
-    const error = new Error("Google account not found");
-    (error as any).statusCode = 404;
-    throw error;
+  if (!org) {
+    return false;
   }
 
-  return !!googleAccount.onboarding_wizard_completed;
+  return !!org.onboarding_wizard_completed;
 }
 
 /**
  * Mark the product tour wizard as completed.
  */
 export async function markWizardComplete(
-  googleAccountId: number
+  organizationId: number
 ): Promise<void> {
-  await GoogleConnectionModel.updateById(googleAccountId, {
+  await OrganizationModel.updateById(organizationId, {
     onboarding_wizard_completed: true,
   });
 }
@@ -35,9 +32,9 @@ export async function markWizardComplete(
  * Reset the product tour wizard completion flag.
  */
 export async function resetWizard(
-  googleAccountId: number
+  organizationId: number
 ): Promise<void> {
-  await GoogleConnectionModel.updateById(googleAccountId, {
+  await OrganizationModel.updateById(organizationId, {
     onboarding_wizard_completed: false,
   });
 }

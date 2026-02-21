@@ -10,6 +10,11 @@ export interface ProfileCompletionResult {
   profile: ProfileData;
 }
 
+export interface SaveProfileResult {
+  organizationId: number;
+  profile: ProfileData;
+}
+
 /**
  * Complete onboarding by saving profile data and creating/updating the organization.
  *
@@ -52,14 +57,18 @@ export async function completeOnboardingWithProfile(
       orgId = newOrg.id;
 
       // Link user to organization as admin
-      await OrganizationUserModel.create(
-        {
-          organization_id: orgId,
-          user_id: googleAccount.user_id,
-          role: "admin",
-        },
-        trx
-      );
+      // Look up user via email since user_id was dropped from google_connections
+      const user = await UserModel.findByEmail(googleAccount.email);
+      if (user) {
+        await OrganizationUserModel.create(
+          {
+            organization_id: orgId,
+            user_id: user.id,
+            role: "admin",
+          },
+          trx
+        );
+      }
     } else {
       // Update existing organization name/domain
       await OrganizationModel.updateById(
@@ -72,21 +81,41 @@ export async function completeOnboardingWithProfile(
       );
     }
 
-    // Update google account with profile fields and mark onboarding complete
-    await GoogleConnectionModel.updateById(
-      googleAccountId,
+    // Profile fields and onboarding_completed now live on organizations/users
+    // (google_connections only stores OAuth tokens + google_property_ids)
+    await OrganizationModel.updateById(
+      orgId,
       {
-        first_name: profileData.firstName,
-        last_name: profileData.lastName,
-        phone: profileData.phone,
-        practice_name: profileData.practiceName,
+        name: profileData.practiceName,
+        domain: profileData.domainName,
         operational_jurisdiction: profileData.operationalJurisdiction,
-        domain_name: profileData.domainName,
-        organization_id: orgId,
         onboarding_completed: true,
       },
       trx
     );
+
+    // Update user profile fields
+    const user = await UserModel.findByEmail(googleAccount.email);
+    if (user) {
+      await UserModel.updateProfile(
+        user.id,
+        {
+          first_name: profileData.firstName,
+          last_name: profileData.lastName,
+          phone: profileData.phone,
+        },
+        trx
+      );
+    }
+
+    // Ensure google_connection is linked to the org
+    if (!googleAccount.organization_id) {
+      await GoogleConnectionModel.updateById(
+        googleAccountId,
+        { organization_id: orgId },
+        trx
+      );
+    }
   });
 
   console.log(
@@ -167,4 +196,97 @@ export async function completeOnboardingForPasswordUser(
       domainName: profileData.domainName,
     },
   };
+}
+
+/**
+ * Save profile data and bootstrap organization — Step 2 of the restructured flow.
+ *
+ * Creates the organization (or updates it if it already exists) and saves the
+ * user's profile fields. Does NOT mark onboarding as complete — that happens
+ * in Step 3 after GBP connection.
+ *
+ * Works for both password-only and OAuth users.
+ */
+export async function saveProfileAndBootstrapOrg(
+  userId: number,
+  organizationId: number | undefined,
+  profileData: ProfileData
+): Promise<SaveProfileResult> {
+  let orgId: number;
+
+  await db.transaction(async (trx) => {
+    if (organizationId) {
+      // Org already exists — update it
+      orgId = organizationId;
+      await OrganizationModel.updateById(
+        orgId,
+        {
+          name: profileData.practiceName,
+          domain: profileData.domainName,
+          operational_jurisdiction: profileData.operationalJurisdiction,
+        },
+        trx
+      );
+    } else {
+      // No org yet — bootstrap one
+      const result = await bootstrapOrganization(
+        userId,
+        profileData.practiceName,
+        profileData.domainName,
+        trx
+      );
+      orgId = result.organizationId;
+
+      // Update the newly created org with remaining fields
+      await OrganizationModel.updateById(
+        orgId,
+        {
+          operational_jurisdiction: profileData.operationalJurisdiction,
+        },
+        trx
+      );
+    }
+
+    // Update user profile fields
+    await UserModel.updateProfile(
+      userId,
+      {
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        phone: profileData.phone,
+      },
+      trx
+    );
+  });
+
+  console.log(
+    `[Onboarding] Saved profile for user ${userId}, org ${orgId!}`
+  );
+
+  return {
+    organizationId: orgId!,
+    profile: {
+      firstName: profileData.firstName,
+      lastName: profileData.lastName,
+      phone: profileData.phone,
+      practiceName: profileData.practiceName,
+      operationalJurisdiction: profileData.operationalJurisdiction,
+      domainName: profileData.domainName,
+    },
+  };
+}
+
+/**
+ * Mark onboarding as complete on the organization — Step 3 finalization.
+ *
+ * Called after GBP connection (or skip). Only sets the flag; profile data
+ * was already saved in Step 2 via saveProfileAndBootstrapOrg.
+ */
+export async function markOnboardingComplete(
+  organizationId: number
+): Promise<void> {
+  await OrganizationModel.completeOnboarding(organizationId);
+  console.log(
+    `[Onboarding] Marked onboarding complete for org ${organizationId}`
+  );
 }

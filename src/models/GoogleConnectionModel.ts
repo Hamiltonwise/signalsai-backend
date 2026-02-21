@@ -16,19 +16,18 @@ export interface IGoogleConnection {
 
   // ---------------------------------------------------------------
   // Transitional fields (carried over from IGoogleAccount)
-  // These fields still exist on the google_connections table during
-  // migration. Plans 04+ will move them to Organization or remove them.
+  // These fields were dropped in migration 20260221000004.
+  // Keeping in interface temporarily for callers that still reference them.
   // ---------------------------------------------------------------
-  user_id: number;
-  domain_name: string | null;
-  practice_name: string | null;
-  phone: string | null;
-  operational_jurisdiction: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  onboarding_completed: boolean;
-  onboarding_wizard_completed: boolean;
-  setup_progress: Record<string, unknown> | null;
+  domain_name?: string | null;
+  practice_name?: string | null;
+  phone?: string | null;
+  operational_jurisdiction?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  onboarding_completed?: boolean;
+  onboarding_wizard_completed?: boolean;
+  setup_progress?: Record<string, unknown> | null;
 }
 
 export class GoogleConnectionModel extends BaseModel {
@@ -43,29 +42,22 @@ export class GoogleConnectionModel extends BaseModel {
   }
 
   /**
-   * Find a connection by Google user ID and a secondary key.
-   * During migration, the second parameter can be either a userId or an organizationId.
-   * The method tries organization_id first, then falls back to user_id for backward compat.
-   *
-   * @deprecated Plan 04 will standardize this to organization_id only.
+   * Find a connection by Google user ID.
+   * The user_id column was dropped in migration 20260221000004.
+   * Looks up by google_user_id only; optionally narrows by organization_id.
    */
   static async findByGoogleUserId(
     googleUserId: string,
-    userOrOrgId: number,
+    organizationId?: number,
     trx?: QueryContext
   ): Promise<IGoogleConnection | undefined> {
-    // Try organization_id first (new pattern)
-    let row = await this.table(trx)
-      .where({ google_user_id: googleUserId, organization_id: userOrOrgId })
-      .first();
+    const query = this.table(trx).where({ google_user_id: googleUserId });
 
-    // Fall back to user_id (old pattern) if not found
-    if (!row) {
-      row = await this.table(trx)
-        .where({ google_user_id: googleUserId, user_id: userOrOrgId })
-        .first();
+    if (organizationId) {
+      query.andWhere({ organization_id: organizationId });
     }
 
+    const row = await query.first();
     return row ? this.deserializeJsonFields(row) : undefined;
   }
 
@@ -136,17 +128,6 @@ export class GoogleConnectionModel extends BaseModel {
   // These methods preserve the old GoogleAccountModel signatures so that
   // callers compile while migration Plans 04+ refactor them away.
   // =====================================================================
-
-  /**
-   * @deprecated Plan 04 will refactor callers to use organization-based lookups.
-   */
-  static async findByUserId(
-    userId: number,
-    trx?: QueryContext
-  ): Promise<IGoogleConnection | undefined> {
-    const row = await this.table(trx).where({ user_id: userId }).first();
-    return row ? this.deserializeJsonFields(row) : undefined;
-  }
 
   /**
    * @deprecated Plan 04 will remove this. Old google_accounts had onboarding_completed.

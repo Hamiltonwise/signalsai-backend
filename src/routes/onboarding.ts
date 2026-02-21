@@ -8,6 +8,8 @@ const onboardingRoutes = express.Router();
 
 // All onboarding endpoints require JWT auth + RBAC
 onboardingRoutes.get("/status", authenticateToken, rbacMiddleware, onboardingController.getOnboardingStatus);
+onboardingRoutes.post("/save-profile", authenticateToken, rbacMiddleware, onboardingController.saveProfile);
+onboardingRoutes.post("/complete", authenticateToken, rbacMiddleware, onboardingController.completeOnboardingFinal);
 onboardingRoutes.post("/save-properties", authenticateToken, rbacMiddleware, onboardingController.completeOnboarding);
 onboardingRoutes.get("/wizard/status", authenticateToken, rbacMiddleware, onboardingController.getWizardStatus);
 onboardingRoutes.put("/wizard/complete", authenticateToken, rbacMiddleware, onboardingController.completeWizard);

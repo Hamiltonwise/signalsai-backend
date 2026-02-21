@@ -9,6 +9,8 @@ import {
 import {
   completeOnboardingWithProfile,
   completeOnboardingForPasswordUser,
+  saveProfileAndBootstrapOrg,
+  markOnboardingComplete,
 } from "./feature-services/ProfileCompletionService";
 import {
   getWizardStatus as getWizardStatusService,
@@ -115,8 +117,12 @@ export async function getOnboardingStatus(
     const googleAccount = await GoogleConnectionModel.findOneByOrganization(organizationId);
     const org = await OrganizationModel.findById(organizationId);
 
-    // User has org but no Google connection (password user who completed onboarding)
+    // User has org but no Google connection
     if (!googleAccount) {
+      // Fetch user profile from users table
+      const userId = req.userId;
+      const user = userId ? await UserModel.findById(userId) : null;
+
       res.json({
         success: true,
         onboardingCompleted: !!org?.onboarding_completed,
@@ -125,34 +131,38 @@ export async function getOnboardingStatus(
         organizationId,
         hasGoogleConnection: false,
         profile: {
-          firstName: null,
-          lastName: null,
-          phone: null,
+          firstName: user?.first_name || null,
+          lastName: user?.last_name || null,
+          phone: user?.phone || null,
           practiceName: org?.name || null,
           operationalJurisdiction: org?.operational_jurisdiction || null,
           domainName: org?.domain || null,
-          email: null,
+          email: user?.email || null,
         },
       });
       return;
     }
 
+    // Profile fields and onboarding_completed now live on organizations/users
+    // (google_connections only stores OAuth tokens + google_property_ids)
+    const userId = req.userId;
+    const user = userId ? await UserModel.findById(userId) : null;
+
     res.json({
       success: true,
-      onboardingCompleted: !!googleAccount.onboarding_completed,
+      onboardingCompleted: !!org?.onboarding_completed,
       hasPropertyIds: !!googleAccount.google_property_ids,
       propertyIds: googleAccount.google_property_ids || null,
       organizationId,
       hasGoogleConnection: true,
       profile: {
-        firstName: googleAccount.first_name || null,
-        lastName: googleAccount.last_name || null,
-        phone: googleAccount.phone || null,
-        practiceName: googleAccount.practice_name || null,
-        operationalJurisdiction:
-          googleAccount.operational_jurisdiction || null,
-        domainName: googleAccount.domain_name || null,
-        email: googleAccount.email || null,
+        firstName: user?.first_name || null,
+        lastName: user?.last_name || null,
+        phone: user?.phone || null,
+        practiceName: org?.name || null,
+        operationalJurisdiction: org?.operational_jurisdiction || null,
+        domainName: org?.domain || null,
+        email: user?.email || null,
       },
     });
   } catch (error) {
@@ -218,6 +228,80 @@ export async function completeOnboarding(
     }
   } catch (error) {
     handleError(res, error, "Save properties");
+  }
+}
+
+/**
+ * POST /api/onboarding/save-profile
+ *
+ * Save profile data and create/update the organization (Step 2).
+ * Does NOT mark onboarding as complete — that happens in Step 3.
+ */
+export async function saveProfile(
+  req: RBACRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const { profile } = req.body;
+    const profileData = validateProfileData(profile);
+
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: "Authentication required",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const result = await saveProfileAndBootstrapOrg(
+      userId,
+      req.organizationId,
+      profileData
+    );
+
+    res.json({
+      success: true,
+      message: "Profile saved successfully",
+      organizationId: result.organizationId,
+      profile: result.profile,
+    });
+  } catch (error) {
+    handleError(res, error, "Save profile");
+  }
+}
+
+/**
+ * POST /api/onboarding/complete
+ *
+ * Mark onboarding as complete (Step 3 finalization).
+ * Profile data was already saved in Step 2. This just flips the flag.
+ */
+export async function completeOnboardingFinal(
+  req: RBACRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const organizationId = req.organizationId;
+
+    if (!organizationId) {
+      res.status(400).json({
+        success: false,
+        error: "Organization must be created before completing onboarding",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    await markOnboardingComplete(organizationId);
+
+    res.json({
+      success: true,
+      message: "Onboarding completed successfully",
+    });
+  } catch (error) {
+    handleError(res, error, "Complete onboarding");
   }
 }
 

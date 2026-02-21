@@ -1,4 +1,4 @@
-import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
+import { OrganizationModel } from "../../../models/OrganizationModel";
 import { SetupProgress } from "../feature-utils/onboardingValidation";
 
 const DEFAULT_PROGRESS: SetupProgress = {
@@ -9,34 +9,29 @@ const DEFAULT_PROGRESS: SetupProgress = {
 };
 
 /**
- * Get the setup wizard progress for a google account.
+ * Get the setup wizard progress for an organization.
  *
- * Fetches the account and parses the setup_progress JSON field.
- * BaseModel's jsonFields deserialization handles parsing automatically,
- * but we also handle the edge case where the value is a string (e.g. double-encoded)
- * and merge with defaults to ensure all keys exist.
- *
- * Throws with statusCode 404 if the google account is not found.
+ * Reads from organizations.setup_progress JSON column.
  */
 export async function getSetupProgress(
-  googleAccountId: number
+  organizationId: number
 ): Promise<SetupProgress> {
-  const googleAccount = await GoogleConnectionModel.findById(googleAccountId);
+  const org = await OrganizationModel.findById(organizationId);
 
-  if (!googleAccount) {
-    const error = new Error("Google account not found");
+  if (!org) {
+    const error = new Error("Organization not found");
     (error as any).statusCode = 404;
     throw error;
   }
 
   let progress: SetupProgress = { ...DEFAULT_PROGRESS };
 
-  if (googleAccount.setup_progress) {
+  if (org.setup_progress) {
     try {
       const stored =
-        typeof googleAccount.setup_progress === "string"
-          ? JSON.parse(googleAccount.setup_progress)
-          : googleAccount.setup_progress;
+        typeof org.setup_progress === "string"
+          ? JSON.parse(org.setup_progress)
+          : org.setup_progress;
       progress = { ...DEFAULT_PROGRESS, ...stored };
     } catch {
       // Use default if parse fails
@@ -47,16 +42,13 @@ export async function getSetupProgress(
 }
 
 /**
- * Update the setup wizard progress for a google account.
- *
- * BaseModel's serializeJsonFields handles JSON.stringify automatically
- * because setup_progress is declared in GoogleConnectionModel.jsonFields.
+ * Update the setup wizard progress for an organization.
  */
 export async function updateSetupProgress(
-  googleAccountId: number,
+  organizationId: number,
   progress: SetupProgress
 ): Promise<void> {
-  await GoogleConnectionModel.updateById(googleAccountId, {
+  await OrganizationModel.updateById(organizationId, {
     setup_progress: progress as any,
   });
 }
