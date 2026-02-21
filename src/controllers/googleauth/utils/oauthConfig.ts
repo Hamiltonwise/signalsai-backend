@@ -6,7 +6,7 @@ export const OAUTH2_CONFIG = {
   redirectUri:
     process.env.GOOGLE_REDIRECT_URI ||
     "http://localhost:3000/api/auth/web-callback",
-  email: "info@hamiltonwise.com",
+  email: "info@getalloro.com",
 };
 
 // Validates all required OAuth2 environment variables are present

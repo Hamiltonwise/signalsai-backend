@@ -11,6 +11,8 @@ export interface IUser {
   email_verified: boolean;
   email_verification_code: string | null;
   email_verification_expires_at: Date | null;
+  password_reset_code: string | null;
+  password_reset_expires_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -118,5 +120,58 @@ export class UserModel extends BaseModel {
       })
       .where("email_verification_expires_at", ">", new Date())
       .first();
+  }
+
+  static async setPasswordResetCode(
+    id: number,
+    code: string,
+    expiresAt: Date,
+    trx?: QueryContext
+  ): Promise<number> {
+    return super.updateById(
+      id,
+      {
+        password_reset_code: code,
+        password_reset_expires_at: expiresAt,
+      },
+      trx
+    );
+  }
+
+  static async findByPasswordResetCode(
+    email: string,
+    code: string,
+    trx?: QueryContext
+  ): Promise<IUser | undefined> {
+    const normalizedEmail = email.toLowerCase();
+    return this.table(trx)
+      .where({
+        email: normalizedEmail,
+        password_reset_code: code,
+      })
+      .where("password_reset_expires_at", ">", new Date())
+      .first();
+  }
+
+  static async clearPasswordResetCode(
+    id: number,
+    trx?: QueryContext
+  ): Promise<number> {
+    return super.updateById(
+      id,
+      {
+        password_reset_code: null,
+        password_reset_expires_at: null,
+      },
+      trx
+    );
+  }
+
+  static async updatePasswordHash(
+    id: number,
+    passwordHash: string,
+    trx?: QueryContext
+  ): Promise<number> {
+    return super.updateById(id, { password_hash: passwordHash }, trx);
   }
 }

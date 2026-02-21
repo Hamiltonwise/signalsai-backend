@@ -13,7 +13,7 @@ export const domainMappings: DomainMapping[] = [
   {
     displayName: "Artful Orthodontics", //
     domain: "artfulorthodontics.com", //  domain identifier -- will be used by front-end for filtered fetching
-    gbp_accountId: "114810842911950437772", // google business profile -- constant; relates to parent info@hamiltonwise account
+    gbp_accountId: "114810842911950437772", // google business profile -- constant; relates to parent info@getalloro.com account
     gbp_locationId: "10282052848626216313", // google business profile -- retrievable via its api diag routes
     clarity_projectId: "r9qqoq5h01", // microsoft clarity identifier --
     clarity_apiToken:

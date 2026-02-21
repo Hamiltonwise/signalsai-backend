@@ -1,7 +1,7 @@
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
 import { InvitationModel } from "../../../models/InvitationModel";
 import { OrganizationModel } from "../../../models/OrganizationModel";
-import { sendInvitation } from "../../../utils/core/mail";
+import { sendEmail } from "../../../emails/emailService";
 import {
   generateInvitationToken,
   calculateTokenExpiry,
@@ -97,13 +97,46 @@ export async function inviteUserToOrganization(
   const organizationName = organization?.name || "the organization";
 
   // Send invitation email
-  const emailSent = await sendInvitation(
-    email.toLowerCase(),
-    organizationName,
-    role || "viewer"
-  );
+  const loginUrl =
+    process.env.NODE_ENV === "production"
+      ? "https://app.getalloro.com/signin"
+      : "http://localhost:5174/signin";
 
-  if (!emailSent) {
+  const assignedRole = role || "viewer";
+
+  const emailResult = await sendEmail({
+    subject: `You've been invited to join ${organizationName} on Alloro`,
+    body: `
+      <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
+        <h2 style="color: #1a1a1a;">You've been invited to Alloro</h2>
+        <p style="color: #4a5568; font-size: 16px;">
+          You've been invited to join <strong>${organizationName}</strong> on Alloro with the role of <strong>${assignedRole}</strong>.
+        </p>
+        <p style="color: #4a5568; font-size: 16px;">
+          Alloro helps you track and optimize your online presence with data-driven insights.
+        </p>
+        <div style="margin: 30px 0;">
+          <a href="${loginUrl}"
+             style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 500;">
+            Sign In to Get Started
+          </a>
+        </div>
+        <p style="color: #718096; font-size: 14px;">
+          To access your account, visit the sign-in page and use the "Sign in with Email" option. You'll receive a verification code to complete the login process.
+        </p>
+        <p style="color: #718096; font-size: 14px; margin-top: 20px;">
+          If you didn't expect this invitation, you can safely ignore this email.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+        <p style="color: #a0aec0; font-size: 12px;">
+          This invitation was sent by Alloro on behalf of ${organizationName}.
+        </p>
+      </div>
+    `,
+    recipients: [email.toLowerCase()],
+  });
+
+  if (!emailResult.success) {
     console.warn(`[Settings] Failed to send invitation email to ${email}`);
   } else {
     console.log(`[Settings] Invitation email sent to ${email}`);

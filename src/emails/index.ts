@@ -2,7 +2,7 @@
  * Email Service Module
  *
  * Central module for all email functionality in Alloro.
- * Uses n8n webhook integration with Mailgun for email delivery.
+ * Uses n8n webhook integration for email delivery.
  *
  * Environment Variables Required:
  * - ALLORO_EMAIL_SERVICE_WEBHOOK: n8n webhook URL for email sending

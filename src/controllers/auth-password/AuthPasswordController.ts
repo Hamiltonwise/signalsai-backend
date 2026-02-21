@@ -2,10 +2,12 @@
  * Auth Password Controller
  *
  * Handles email/password authentication:
- * - POST /register           — Register with email + password
- * - POST /verify-email       — Verify email with 6-digit code
- * - POST /login              — Login with email + password
+ * - POST /register            — Register with email + password
+ * - POST /verify-email        — Verify email with 6-digit code
+ * - POST /login               — Login with email + password
  * - POST /resend-verification — Resend verification code
+ * - POST /forgot-password     — Request password reset code
+ * - POST /reset-password      — Reset password with code
  */
 
 import { Request, Response } from "express";
@@ -16,10 +18,11 @@ import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { generateToken } from "../auth-otp/feature-services/service.jwt-management";
 import { generateSixDigitCode } from "../auth-otp/feature-services/service.otp-generation";
 import { buildAuthCookieOptions } from "../auth-otp/feature-utils/util.cookie-config";
-import { sendVerificationCode } from "../../utils/core/mail";
+import { sendEmail } from "../../emails/emailService";
 
 const BCRYPT_SALT_ROUNDS = 12;
 const VERIFICATION_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+const PASSWORD_RESET_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 const PASSWORD_MIN_LENGTH = 8;
 
 function isValidEmail(email: string): boolean {
@@ -88,10 +91,22 @@ export async function register(req: Request, res: Response) {
       email_verification_expires_at: expiresAt,
     });
 
-    // Send verification email
-    const sent = await sendVerificationCode(normalizedEmail, code);
-    if (!sent) {
-      console.error(`[AUTH] Failed to send verification email to ${normalizedEmail}`);
+    // Send verification email via n8n webhook
+    const emailResult = await sendEmail({
+      subject: "Verify your Alloro account",
+      body: `
+        <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
+          <h2 style="color: #1a1a1a;">Verify your email</h2>
+          <p style="color: #4a5568; font-size: 16px;">Enter this code to verify your Alloro account:</p>
+          <h1 style="letter-spacing: 5px; background: #f4f4f4; padding: 10px; display: inline-block; border-radius: 5px;">${code}</h1>
+          <p style="color: #718096; font-size: 14px;">This code will expire in 10 minutes.</p>
+          <p style="color: #718096; font-size: 14px;">If you didn't create an account, please ignore this email.</p>
+        </div>
+      `,
+      recipients: [normalizedEmail],
+    });
+    if (!emailResult.success) {
+      console.error(`[AUTH] Failed to send verification email to ${normalizedEmail}:`, emailResult.error);
     }
 
     console.log(`[AUTH] User registered: ${normalizedEmail}`);
@@ -248,9 +263,21 @@ export async function resendVerification(req: Request, res: Response) {
 
     await UserModel.setVerificationCode(user.id, code, expiresAt);
 
-    const sent = await sendVerificationCode(normalizedEmail, code);
-    if (!sent) {
-      console.error(`[AUTH] Failed to resend verification email to ${normalizedEmail}`);
+    const emailResult = await sendEmail({
+      subject: "Verify your Alloro account",
+      body: `
+        <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
+          <h2 style="color: #1a1a1a;">Verify your email</h2>
+          <p style="color: #4a5568; font-size: 16px;">Enter this code to verify your Alloro account:</p>
+          <h1 style="letter-spacing: 5px; background: #f4f4f4; padding: 10px; display: inline-block; border-radius: 5px;">${code}</h1>
+          <p style="color: #718096; font-size: 14px;">This code will expire in 10 minutes.</p>
+          <p style="color: #718096; font-size: 14px;">If you didn't create an account, please ignore this email.</p>
+        </div>
+      `,
+      recipients: [normalizedEmail],
+    });
+    if (!emailResult.success) {
+      console.error(`[AUTH] Failed to resend verification email to ${normalizedEmail}:`, emailResult.error);
     }
 
     console.log(`[AUTH] Verification code resent: ${normalizedEmail}`);
@@ -261,6 +288,142 @@ export async function resendVerification(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("[AUTH] Resend verification error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+/**
+ * POST /api/auth/forgot-password
+ */
+export async function forgotPassword(req: Request, res: Response) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await UserModel.findByEmail(normalizedEmail);
+
+    if (!user) {
+      // Don't reveal whether email exists
+      return res.json({
+        success: true,
+        message: "If an account exists, a reset code has been sent",
+      });
+    }
+
+    // Generate reset code
+    const code = generateSixDigitCode();
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
+
+    await UserModel.setPasswordResetCode(user.id, code, expiresAt);
+
+    const emailResult = await sendEmail({
+      subject: "Reset your Alloro password",
+      body: `
+        <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
+          <h2 style="color: #1a1a1a;">Reset your password</h2>
+          <p style="color: #4a5568; font-size: 16px;">Enter this code to reset your Alloro password:</p>
+          <h1 style="letter-spacing: 5px; background: #f4f4f4; padding: 10px; display: inline-block; border-radius: 5px;">${code}</h1>
+          <p style="color: #718096; font-size: 14px;">This code will expire in 30 minutes.</p>
+          <p style="color: #718096; font-size: 14px;">If you didn't request a password reset, please ignore this email.</p>
+        </div>
+      `,
+      recipients: [normalizedEmail],
+    });
+    if (!emailResult.success) {
+      console.error(`[AUTH] Failed to send password reset email to ${normalizedEmail}:`, emailResult.error);
+    }
+
+    console.log(`[AUTH] Password reset code sent: ${normalizedEmail}`);
+
+    return res.json({
+      success: true,
+      message: "If an account exists, a reset code has been sent",
+    });
+  } catch (error) {
+    console.error("[AUTH] Forgot password error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+/**
+ * POST /api/auth/reset-password
+ */
+export async function resetPassword(req: Request, res: Response) {
+  try {
+    const { email, code, password, confirmPassword } = req.body;
+
+    if (!email || !code || !password || !confirmPassword) {
+      return res
+        .status(400)
+        .json({ error: "Email, code, password, and confirmPassword are required" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: "Passwords do not match" });
+    }
+
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({
+        error:
+          "Password must be at least 8 characters with 1 uppercase letter and 1 number",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Find user by email + valid reset code
+    const user = await UserModel.findByPasswordResetCode(normalizedEmail, code);
+
+    if (!user) {
+      return res.status(400).json({ error: "Invalid or expired reset code" });
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+
+    // Update password + clear reset code
+    await UserModel.updatePasswordHash(user.id, passwordHash);
+    await UserModel.clearPasswordResetCode(user.id);
+
+    // Also mark email as verified (in case user came from old Google-only account)
+    if (!user.email_verified) {
+      await UserModel.setEmailVerified(user.id);
+    }
+
+    // Auto-login: generate JWT
+    const orgUser = await OrganizationUserModel.findByUserId(user.id);
+    const token = generateToken(user.id, user.email);
+
+    res.cookie("auth_token", token, buildAuthCookieOptions());
+
+    console.log(`[AUTH] Password reset: ${normalizedEmail}`);
+
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        organizationId: orgUser?.organization_id || null,
+        role: orgUser?.role || "viewer",
+      },
+    });
+  } catch (error) {
+    console.error("[AUTH] Reset password error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 }
