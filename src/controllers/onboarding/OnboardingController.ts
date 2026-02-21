@@ -6,7 +6,10 @@ import {
   validateProfileData,
   validateProgressData,
 } from "./feature-utils/onboardingValidation";
-import { completeOnboardingWithProfile } from "./feature-services/ProfileCompletionService";
+import {
+  completeOnboardingWithProfile,
+  completeOnboardingForPasswordUser,
+} from "./feature-services/ProfileCompletionService";
 import {
   getWizardStatus as getWizardStatusService,
   markWizardComplete,
@@ -17,6 +20,8 @@ import {
   updateSetupProgress as updateSetupProgressService,
 } from "./feature-services/SetupProgressService";
 import { GoogleConnectionModel } from "../../models/GoogleConnectionModel";
+import { OrganizationModel } from "../../models/OrganizationModel";
+import { UserModel } from "../../models/UserModel";
 import { checkDomain as checkDomainService } from "./feature-services/DomainCheckService";
 import {
   getAvailableGBPLocations,
@@ -73,20 +78,63 @@ function handleError(res: Response, error: any, operation: string): void {
  * GET /api/onboarding/status
  *
  * Check if user has completed onboarding and return profile data.
+ * Handles both OAuth users (have google_connections) and password-only users (no org yet).
  */
 export async function getOnboardingStatus(
   req: RBACRequest,
   res: Response
 ): Promise<void> {
   try {
-    const organizationId = extractOrganizationId(req);
+    const organizationId = req.organizationId;
+
+    // Password-only user with no organization yet — return "not started" status
+    if (!organizationId) {
+      const userId = req.userId;
+      const user = userId ? await UserModel.findById(userId) : null;
+
+      res.json({
+        success: true,
+        onboardingCompleted: false,
+        hasPropertyIds: false,
+        propertyIds: null,
+        organizationId: null,
+        hasGoogleConnection: false,
+        profile: {
+          firstName: user?.first_name || null,
+          lastName: user?.last_name || null,
+          phone: user?.phone || null,
+          practiceName: null,
+          operationalJurisdiction: null,
+          domainName: null,
+          email: user?.email || null,
+        },
+      });
+      return;
+    }
 
     const googleAccount = await GoogleConnectionModel.findOneByOrganization(organizationId);
+    const org = await OrganizationModel.findById(organizationId);
 
+    // User has org but no Google connection (password user who completed onboarding)
     if (!googleAccount) {
-      const error = new Error("Google account not found");
-      (error as any).statusCode = 404;
-      throw error;
+      res.json({
+        success: true,
+        onboardingCompleted: !!org?.onboarding_completed,
+        hasPropertyIds: false,
+        propertyIds: null,
+        organizationId,
+        hasGoogleConnection: false,
+        profile: {
+          firstName: null,
+          lastName: null,
+          phone: null,
+          practiceName: org?.name || null,
+          operationalJurisdiction: org?.operational_jurisdiction || null,
+          domainName: org?.domain || null,
+          email: null,
+        },
+      });
+      return;
     }
 
     res.json({
@@ -95,6 +143,7 @@ export async function getOnboardingStatus(
       hasPropertyIds: !!googleAccount.google_property_ids,
       propertyIds: googleAccount.google_property_ids || null,
       organizationId,
+      hasGoogleConnection: true,
       profile: {
         firstName: googleAccount.first_name || null,
         lastName: googleAccount.last_name || null,
@@ -116,27 +165,57 @@ export async function getOnboardingStatus(
  *
  * Save user's profile information and mark onboarding as complete.
  * Creates or updates the organization within a transaction.
+ *
+ * Supports two paths:
+ * - OAuth users: req.organizationId exists → use completeOnboardingWithProfile
+ * - Password users: no org yet → use completeOnboardingForPasswordUser to bootstrap
  */
 export async function completeOnboarding(
   req: RBACRequest,
   res: Response
 ): Promise<void> {
   try {
-    const organizationId = extractOrganizationId(req);
-
     const { profile } = req.body;
     const profileData = validateProfileData(profile);
 
-    const result = await completeOnboardingWithProfile(
-      organizationId,
-      profileData
-    );
+    const organizationId = req.organizationId;
 
-    res.json({
-      success: true,
-      message: "Onboarding completed successfully",
-      profile: result.profile,
-    });
+    if (organizationId) {
+      // OAuth user path — org already exists
+      const result = await completeOnboardingWithProfile(
+        organizationId,
+        profileData
+      );
+
+      res.json({
+        success: true,
+        message: "Onboarding completed successfully",
+        profile: result.profile,
+      });
+    } else {
+      // Password user path — no org yet, bootstrap one
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: "Authentication required",
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const result = await completeOnboardingForPasswordUser(
+        userId,
+        profileData
+      );
+
+      res.json({
+        success: true,
+        message: "Onboarding completed successfully",
+        organizationId: result.organizationId,
+        profile: result.profile,
+      });
+    }
   } catch (error) {
     handleError(res, error, "Save properties");
   }

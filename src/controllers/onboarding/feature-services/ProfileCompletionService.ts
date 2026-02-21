@@ -2,7 +2,9 @@ import { db } from "../../../database/connection";
 import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import { OrganizationModel } from "../../../models/OrganizationModel";
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
+import { UserModel } from "../../../models/UserModel";
 import { ProfileData } from "../feature-utils/onboardingValidation";
+import { bootstrapOrganization } from "./OrganizationBootstrapService";
 
 export interface ProfileCompletionResult {
   profile: ProfileData;
@@ -92,6 +94,70 @@ export async function completeOnboardingWithProfile(
   );
 
   return {
+    profile: {
+      firstName: profileData.firstName,
+      lastName: profileData.lastName,
+      phone: profileData.phone,
+      practiceName: profileData.practiceName,
+      operationalJurisdiction: profileData.operationalJurisdiction,
+      domainName: profileData.domainName,
+    },
+  };
+}
+
+/**
+ * Complete onboarding for a password-only user who has no google_connections row.
+ *
+ * Creates the organization + org_user link, updates the user profile,
+ * and marks onboarding complete on the organization — all in one transaction.
+ *
+ * Returns the new organizationId so the caller can attach it to the response.
+ */
+export async function completeOnboardingForPasswordUser(
+  userId: number,
+  profileData: ProfileData
+): Promise<ProfileCompletionResult & { organizationId: number }> {
+  let orgId: number;
+
+  await db.transaction(async (trx) => {
+    const result = await bootstrapOrganization(
+      userId,
+      profileData.practiceName,
+      profileData.domainName,
+      trx
+    );
+    orgId = result.organizationId;
+
+    // Update organization with full profile data
+    await OrganizationModel.updateById(
+      orgId,
+      {
+        name: profileData.practiceName,
+        domain: profileData.domainName,
+        operational_jurisdiction: profileData.operationalJurisdiction,
+        onboarding_completed: true,
+      },
+      trx
+    );
+
+    // Update user profile fields
+    await UserModel.updateProfile(
+      userId,
+      {
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        phone: profileData.phone,
+      },
+      trx
+    );
+  });
+
+  console.log(
+    `[Onboarding] Completed onboarding for password user ${userId}, org ${orgId!}`
+  );
+
+  return {
+    organizationId: orgId!,
     profile: {
       firstName: profileData.firstName,
       lastName: profileData.lastName,
