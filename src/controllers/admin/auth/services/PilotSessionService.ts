@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { UserModel } from "../../../../models/UserModel";
-import { GoogleAccountModel } from "../../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../../models/GoogleConnectionModel";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-key-change-in-prod";
 
@@ -34,7 +34,7 @@ export class PilotSessionService {
       throw error;
     }
 
-    const googleAccount = await GoogleAccountModel.findByUserId(userIdNum);
+    const googleAccount = await GoogleConnectionModel.findByUserId(userIdNum);
 
     const pilotToken = jwt.sign(
       {

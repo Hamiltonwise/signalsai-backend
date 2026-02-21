@@ -22,6 +22,7 @@ export async function createTasksFromOpportunityOutput(
   opportunityOutput: any,
   googleAccountId: number,
   domain: string,
+  organizationId?: number | null,
 ): Promise<void> {
   try {
     const actionItems = opportunityOutput[0]?.opportunities || [];
@@ -39,7 +40,7 @@ export async function createTasksFromOpportunityOutput(
 
         const taskData = {
           domain_name: domain,
-          google_account_id: googleAccountId,
+          organization_id: organizationId ?? googleAccountId,
           title: item.title || item.name || "Untitled Task",
           description:
             item.explanation || item.description || item.details || null,
@@ -94,6 +95,7 @@ export async function createTasksFromCroOptimizerOutput(
   croOptimizerOutput: any,
   googleAccountId: number,
   domain: string,
+  organizationId?: number | null,
 ): Promise<void> {
   try {
     const croActionItems = croOptimizerOutput[0]?.opportunities || [];
@@ -109,7 +111,7 @@ export async function createTasksFromCroOptimizerOutput(
 
         const taskData = {
           domain_name: domain,
-          google_account_id: googleAccountId,
+          organization_id: organizationId ?? googleAccountId,
           title: item.title || item.name || "Untitled Task",
           description:
             item.explanation || item.description || item.details || null,
@@ -164,6 +166,7 @@ export async function createTasksFromReferralEngineOutput(
   referralEngineOutput: any,
   googleAccountId: number,
   domain: string,
+  organizationId?: number | null,
 ): Promise<void> {
   try {
     // Referral Engine output may be wrapped in array, handle both cases
@@ -210,7 +213,7 @@ export async function createTasksFromReferralEngineOutput(
 
         const taskData = {
           domain_name: domain,
-          google_account_id: googleAccountId,
+          organization_id: organizationId ?? googleAccountId,
           title: titleText,
           description: fullText || null,
           category: "ALLORO",
@@ -272,7 +275,7 @@ export async function createTasksFromReferralEngineOutput(
 
         const taskData = {
           domain_name: domain,
-          google_account_id: googleAccountId,
+          organization_id: organizationId ?? googleAccountId,
           title: titleText,
           description: fullText || null,
           category: "USER",
@@ -329,6 +332,7 @@ export async function createTasksFromCopyRecommendations(
   agentOutput: any,
   googleAccountId: number,
   domain: string,
+  organizationId?: number | null,
 ): Promise<void> {
   log(`\n  [GBP-OPTIMIZER] Creating tasks from recommendations...`);
 
@@ -371,7 +375,7 @@ export async function createTasksFromCopyRecommendations(
 
       const taskData = {
         domain_name: domain,
-        google_account_id: googleAccountId,
+        organization_id: organizationId ?? googleAccountId,
         title: `Update GBP Post ${taskIndex}`,
         description: `
 **Current Text:**

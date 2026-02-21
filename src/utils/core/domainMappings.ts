@@ -1,8 +1,6 @@
 export interface DomainMapping {
   domain: string;
   displayName: string;
-  gsc_domainkey: string;
-  ga4_propertyId: string;
   gbp_accountId?: string;
   gbp_locationId?: string | string[];
   clarity_projectId?: string;
@@ -15,8 +13,6 @@ export const domainMappings: DomainMapping[] = [
   {
     displayName: "Artful Orthodontics", //
     domain: "artfulorthodontics.com", //  domain identifier -- will be used by front-end for filtered fetching
-    gsc_domainkey: "sc-domain:artfulorthodontics.com", // google search console -- ids retrievable via its api diag routes
-    ga4_propertyId: "381278947", // google analytics -- ids retrievable via its api diag routes
     gbp_accountId: "114810842911950437772", // google business profile -- constant; relates to parent info@hamiltonwise account
     gbp_locationId: "10282052848626216313", // google business profile -- retrievable via its api diag routes
     clarity_projectId: "r9qqoq5h01", // microsoft clarity identifier --
@@ -29,8 +25,6 @@ export const domainMappings: DomainMapping[] = [
   {
     displayName: "Garrison Orthodontics",
     domain: "garrisonorthodontics.com",
-    gsc_domainkey: "sc-domain:garrisonorthodontics.com",
-    ga4_propertyId: "485402008",
     gbp_accountId: "114810842911950437772",
     gbp_locationId: "2137647135020773893",
     clarity_projectId: "r9diusipt9",
@@ -43,8 +37,6 @@ export const domainMappings: DomainMapping[] = [
   {
     displayName: "PopUp Smiles",
     domain: "popupsmiles.com",
-    gsc_domainkey: "sc-domain:popupsmiles.com",
-    ga4_propertyId: "493224130",
     gbp_accountId: "114810842911950437772",
     gbp_locationId: [
       "109980361235418474", // Orange
@@ -62,8 +54,6 @@ export const domainMappings: DomainMapping[] = [
   {
     displayName: "San Diego Center for Endodontics",
     domain: "sdcendo.com",
-    gsc_domainkey: "sc-domain:sdcendo.com",
-    ga4_propertyId: "479214529",
     gbp_accountId: "114810842911950437772",
     gbp_locationId: "5912015385303248759",
     clarity_projectId: "r9dek9uzos",
@@ -76,8 +66,6 @@ export const domainMappings: DomainMapping[] = [
   {
     displayName: "Surf City Endodontics",
     domain: "surfcityendo.com",
-    gsc_domainkey: "sc-domain:surfcityendo.com",
-    ga4_propertyId: "376941141",
     gbp_accountId: "114810842911950437772",
     gbp_locationId: "17129961858390020882",
     clarity_projectId: "r9quk55sy8",
@@ -90,8 +78,6 @@ export const domainMappings: DomainMapping[] = [
   {
     displayName: "HamiltonWise",
     domain: "hamiltonwise.com",
-    gsc_domainkey: "sc-domain:hamiltonwise.com",
-    ga4_propertyId: "348149125",
     gbp_accountId: "114810842911950437772",
     gbp_locationId: "10763524725470331855",
     clarity_projectId: "r9qvm1skrr",
@@ -104,8 +90,6 @@ export const domainMappings: DomainMapping[] = [
   {
     displayName: "DentalEMR",
     domain: "dentalemr.com",
-    gsc_domainkey: "sc-domain:dentalemr.com",
-    ga4_propertyId: "394259846",
     gbp_accountId: "114810842911950437772",
     gbp_locationId: "9121627934732959111",
     clarity_projectId: "rbqa7tqrl5",
@@ -118,8 +102,6 @@ export const domainMappings: DomainMapping[] = [
   {
     displayName: "Caswell Orthodontics",
     domain: "caswellorthodontics.com",
-    gsc_domainkey: "sc-domain:caswellorthodontics.com",
-    ga4_propertyId: "341429616",
     gbp_accountId: "",
     gbp_locationId: "",
     clarity_projectId: "r9qtvdfcgo",
@@ -128,12 +110,10 @@ export const domainMappings: DomainMapping[] = [
       "eyJhbGciOiJSUzI1NiIsImtpZCI6IjQ4M0FCMDhFNUYwRDMxNjdEOTRFMTQ3M0FEQTk2RTcyRDkwRUYwRkYiLCJ0eXAiOiJKV1QifQ.eyJqdGkiOiJmYTAzZmFkMC02ZGIzLTQwM2MtYjE4OS0zNTZlZmU4MjQ0ODkiLCJzdWIiOiIyNzY5NjExMzExMTcxMDMyIiwic2NvcGUiOiJEYXRhLkV4cG9ydCIsIm5iZiI6MTc1ODAxNTgxMSwiZXhwIjo0OTExNjE1ODExLCJpYXQiOjE3NTgwMTU4MTEsImlzcyI6ImNsYXJpdHkiLCJhdWQiOiJjbGFyaXR5LmRhdGEtZXhwb3J0ZXIifQ.d1uQnTjJvb22Bp22gflxReppCNQK6r0KdamIn2mvqlvRMVnsitt1vT_zGIg4b5Yt8_RgZxPreIZ67QWm5slpqdrhnxS8R_d-UpA1GPR68RcXw64mY253kZQ8Wn-_MaX1ytUnQdRjn5rkkSVRac7z3l9wI_uH3c276hzyCl_E0sZkrlm7ZjysC5yPx8IoIl9yCHzB20aIgXX7QR_3OuWp5yB1bElm9hJhiESjqyXR-hhNcJJ5rXmHe2oZwMuG5c8bwfdsL6seqnUt_QzfqL7nk-MqidnKUJDTVQjHM62Z-5lEmFaWTJGGyk1TGiAUFxacTigiiOPaFNMkMZJdKC8YMg",
   },
 
-  // Kent Morris -- missing GSC, GA4, Clarity
+  // Kent Morris -- missing Clarity
   {
     displayName: "Kent Morris Orthodontics",
     domain: "kentmorrisorthodontics.com",
-    gsc_domainkey: "",
-    ga4_propertyId: "",
     gbp_accountId: "114810842911950437772",
     gbp_locationId: "18158491820874104161",
     clarity_projectId: "",

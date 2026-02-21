@@ -3,7 +3,7 @@ import { BaseModel, PaginatedResult, PaginationParams, QueryContext } from "./Ba
 
 export interface IAgentResult {
   id: number;
-  google_account_id: number;
+  organization_id: number;
   domain: string;
   agent_type: string;
   date_start: string | null;

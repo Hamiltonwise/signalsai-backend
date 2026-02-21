@@ -19,7 +19,7 @@ export interface ListAgentOutputsResult {
 /** Columns selected for the list view (excludes heavy JSON fields) */
 const LIST_COLUMNS = [
   "id",
-  "google_account_id",
+  "organization_id",
   "domain",
   "agent_type",
   "date_start",

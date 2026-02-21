@@ -1,47 +1,47 @@
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import {
   parsePropertyIds,
   updatePropertyByType,
 } from "../feature-utils/util.property-parser";
 
-export async function getConnectedProperties(googleAccountId: number) {
-  if (!googleAccountId) {
-    const error = new Error("Missing google account ID") as any;
+export async function getConnectedProperties(organizationId: number) {
+  if (!organizationId) {
+    const error = new Error("Missing organization ID") as any;
     error.statusCode = 400;
-    error.body = { error: "Missing google account ID" };
+    error.body = { error: "Missing organization ID" };
     throw error;
   }
 
-  const googleAccount = await GoogleAccountModel.findById(googleAccountId);
+  const googleConnection = await GoogleConnectionModel.findOneByOrganization(organizationId);
 
-  if (!googleAccount || !googleAccount.organization_id) {
+  if (!googleConnection) {
     const error = new Error("Organization not found") as any;
     error.statusCode = 404;
     error.body = { error: "Organization not found" };
     throw error;
   }
 
-  const properties = parsePropertyIds(googleAccount.google_property_ids as any);
+  const properties = parsePropertyIds(googleConnection.google_property_ids as any);
 
   return properties;
 }
 
 export async function updateProperty(
-  googleAccountId: number,
+  organizationId: number,
   type: string,
   data: any,
   action: string
 ) {
-  if (!googleAccountId) {
-    const error = new Error("Missing google account ID") as any;
+  if (!organizationId) {
+    const error = new Error("Missing organization ID") as any;
     error.statusCode = 400;
-    error.body = { error: "Missing google account ID" };
+    error.body = { error: "Missing organization ID" };
     throw error;
   }
 
-  const googleAccount = await GoogleAccountModel.findById(googleAccountId);
+  const googleConnection = await GoogleConnectionModel.findOneByOrganization(organizationId);
 
-  if (!googleAccount) {
+  if (!googleConnection) {
     const error = new Error("Account not found") as any;
     error.statusCode = 404;
     error.body = { error: "Account not found" };
@@ -49,7 +49,7 @@ export async function updateProperty(
   }
 
   const currentProperties = parsePropertyIds(
-    googleAccount.google_property_ids as any
+    googleConnection.google_property_ids as any
   );
   const updatedProperties = updatePropertyByType(
     currentProperties,
@@ -58,8 +58,8 @@ export async function updateProperty(
     action
   );
 
-  await GoogleAccountModel.updatePropertyIds(
-    googleAccountId,
+  await GoogleConnectionModel.updatePropertyIds(
+    googleConnection.id,
     updatedProperties as unknown as Record<string, unknown>
   );
 

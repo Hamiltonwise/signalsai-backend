@@ -108,7 +108,7 @@ export function buildReferralEnginePayload(params: {
     },
     additional_data: {
       // TODO: Revert this when needed
-      // ...params.monthData,  // Contains ga4Data, gbpData, gscData, clarityData
+      // ...params.monthData,  // Contains gbpData, clarityData
       pms: params.pmsData || null,
       // clarity: params.clarityData || null,  // Temporarily disabled for testing
     },

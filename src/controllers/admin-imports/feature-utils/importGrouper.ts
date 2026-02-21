@@ -10,7 +10,7 @@ export interface GroupedImport {
   status: string;
   updated_at: Date;
   created_at: Date;
-  id: number;
+  id: string;
 }
 
 /** Group imports by filename for the list view */

@@ -1,5 +1,5 @@
 import { getValidOAuth2Client } from "../../../auth/oauth2Helper";
-import { GoogleAccountModel, IGoogleAccount } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel, IGoogleConnection } from "../../../models/GoogleConnectionModel";
 
 /**
  * Required OAuth scopes (used as fallback when account has no stored scopes)
@@ -8,8 +8,6 @@ const REQUIRED_SCOPES = [
   "openid",
   "email",
   "profile",
-  "https://www.googleapis.com/auth/analytics.readonly",
-  "https://www.googleapis.com/auth/webmasters.readonly",
   "https://www.googleapis.com/auth/business.manage",
 ] as const;
 
@@ -23,13 +21,13 @@ const REQUIRED_SCOPES = [
  */
 export async function validateAndRefreshToken(
   googleAccountId: number,
-): Promise<IGoogleAccount> {
+): Promise<IGoogleConnection> {
   try {
     // Use the safe helper which handles expiry check and DB update
     await getValidOAuth2Client(googleAccountId);
 
     // Fetch the updated account
-    const googleAccount = await GoogleAccountModel.findById(googleAccountId);
+    const googleAccount = await GoogleConnectionModel.findById(googleAccountId);
 
     if (!googleAccount) {
       throw new Error("Google account not found after refresh");
@@ -49,6 +47,6 @@ export async function validateAndRefreshToken(
  * @param googleAccount The Google account record
  * @returns Array of scope strings
  */
-export function getAccountScopes(googleAccount: IGoogleAccount): string[] {
+export function getAccountScopes(googleAccount: IGoogleConnection): string[] {
   return googleAccount.scopes?.split(",") || [...REQUIRED_SCOPES];
 }

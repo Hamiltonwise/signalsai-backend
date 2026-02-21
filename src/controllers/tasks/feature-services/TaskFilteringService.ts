@@ -4,7 +4,7 @@ import type { ActionItemCategory, ActionItemStatus } from "../feature-utils/task
 interface ActionItem {
   id: number;
   domain_name: string;
-  google_account_id?: number;
+  organization_id?: number;
   title: string;
   description?: string;
   category: ActionItemCategory;

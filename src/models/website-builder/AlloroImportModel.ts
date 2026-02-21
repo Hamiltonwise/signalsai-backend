@@ -2,7 +2,7 @@ import { BaseModel, QueryContext } from "../BaseModel";
 import { db } from "../../database/connection";
 
 export interface IAlloroImport {
-  id: number;
+  id: string;
   filename: string;
   display_name: string;
   type: string;
@@ -28,7 +28,7 @@ export class AlloroImportModel extends BaseModel {
   protected static tableName = "website_builder.alloro_imports";
 
   static async findById(
-    id: number,
+    id: string,
     trx?: QueryContext
   ): Promise<IAlloroImport | undefined> {
     return super.findById(id, trx);
@@ -67,7 +67,7 @@ export class AlloroImportModel extends BaseModel {
   }
 
   static async updateStatus(
-    id: number,
+    id: string,
     status: string,
     trx?: QueryContext
   ): Promise<number> {
@@ -143,7 +143,7 @@ export class AlloroImportModel extends BaseModel {
   static async findVersionsForDeletion(
     filename: string,
     trx?: QueryContext
-  ): Promise<Array<{ id: number; s3_key: string | null; version: number }>> {
+  ): Promise<Array<{ id: string; s3_key: string | null; version: number }>> {
     return this.table(trx)
       .where("filename", filename)
       .select("id", "s3_key", "version");
@@ -151,7 +151,7 @@ export class AlloroImportModel extends BaseModel {
 
   static async findPublishedVersionExcludingId(
     filename: string,
-    excludeId: number,
+    excludeId: string,
     trx?: QueryContext
   ): Promise<IAlloroImport | undefined> {
     return this.table(trx)
@@ -161,7 +161,7 @@ export class AlloroImportModel extends BaseModel {
   }
 
   static async updateStatusReturning(
-    id: number,
+    id: string,
     status: string,
     trx?: QueryContext
   ): Promise<IAlloroImport> {

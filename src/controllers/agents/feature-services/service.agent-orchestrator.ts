@@ -98,22 +98,14 @@ export async function processDailyAgent(
 
     // Prepare raw data for potential DB storage
     const rawData = {
-      google_account_id: googleAccountId,
+      organization_id: account.organization_id,
       domain,
       date_start: dates.dayBeforeYesterday,
       date_end: dates.yesterday,
       run_type: "daily",
-      ga4_data: {
-        yesterday: yesterdayData.ga4Data,
-        dayBeforeYesterday: dayBeforeYesterdayData.ga4Data,
-      },
       gbp_data: {
         yesterday: yesterdayData.gbpData,
         dayBeforeYesterday: dayBeforeYesterdayData.gbpData,
-      },
-      gsc_data: {
-        yesterday: yesterdayData.gscData,
-        dayBeforeYesterday: dayBeforeYesterdayData.gscData,
       },
       created_at: new Date(),
       updated_at: new Date(),
@@ -185,7 +177,7 @@ export async function processMonthlyAgents(
   skipped?: boolean;
   error?: string;
 }> {
-  const { id: googleAccountId, domain_name: domain } = account;
+  const { id: googleAccountId, domain_name: domain, organization_id: organizationId } = account;
   const { startDate, endDate } = monthRange;
 
   log(
@@ -199,8 +191,8 @@ export async function processMonthlyAgents(
         ? JSON.parse(account.google_property_ids)
         : (account.google_property_ids || {});
 
-    // Fetch month data (GA4, GBP, GSC)
-    log(`  [MONTHLY] Fetching GA4/GBP/GSC data for ${startDate} to ${endDate}`);
+    // Fetch month data (GBP)
+    log(`  [MONTHLY] Fetching GBP data for ${startDate} to ${endDate}`);
     const monthData = await fetchAllServiceData(
       oauth2Client,
       googleAccountId,
@@ -245,14 +237,12 @@ export async function processMonthlyAgents(
 
     // Prepare raw data for potential DB storage
     const rawData = {
-      google_account_id: googleAccountId,
+      organization_id: account.organization_id,
       domain,
       date_start: startDate,
       date_end: endDate,
       run_type: "monthly",
-      ga4_data: monthData.ga4Data,
       gbp_data: monthData.gbpData,
-      gsc_data: monthData.gscData,
       created_at: new Date(),
       updated_at: new Date(),
     };
@@ -419,13 +409,13 @@ export async function processMonthlyAgents(
     }
 
     // === STEP 5: Create tasks from action items ===
-    await createTasksFromOpportunityOutput(opportunityOutput, googleAccountId, domain);
+    await createTasksFromOpportunityOutput(opportunityOutput, googleAccountId, domain, organizationId);
 
     // === STEP 6: Create tasks from CRO Optimizer action items ===
-    await createTasksFromCroOptimizerOutput(croOptimizerOutput, googleAccountId, domain);
+    await createTasksFromCroOptimizerOutput(croOptimizerOutput, googleAccountId, domain, organizationId);
 
     // === STEP 7: Create tasks from Referral Engine action items ===
-    await createTasksFromReferralEngineOutput(referralEngineOutput, googleAccountId, domain);
+    await createTasksFromReferralEngineOutput(referralEngineOutput, googleAccountId, domain, organizationId);
 
     return {
       success: true,
@@ -618,7 +608,7 @@ export async function processClient(
         // Check for duplicate before running
         const existingSummary = await db("agent_results")
           .where({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id,
             domain,
             agent_type: "summary",
             date_start: monthRange.startDate,
@@ -661,7 +651,7 @@ export async function processClient(
       // Check for duplicate daily result before inserting
       const existingDaily = await db("agent_results")
         .where({
-          google_account_id: googleAccountId,
+          organization_id: account.organization_id,
           domain,
           agent_type: "proofline",
           date_start: dailyDates.dayBeforeYesterday,
@@ -677,7 +667,7 @@ export async function processClient(
         // Save daily agent result
         const [dailyResultId] = await db("agent_results")
           .insert({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id,
             domain,
             agent_type: "proofline",
             date_start: dailyDates.dayBeforeYesterday,
@@ -703,7 +693,7 @@ export async function processClient(
         // Save Summary result
         const [summaryId] = await db("agent_results")
           .insert({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id,
             domain,
             agent_type: "summary",
             date_start: monthRange.startDate,
@@ -721,7 +711,7 @@ export async function processClient(
         // Save Opportunity result
         const [opportunityId] = await db("agent_results")
           .insert({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id,
             domain,
             agent_type: "opportunity",
             date_start: monthRange.startDate,
@@ -739,7 +729,7 @@ export async function processClient(
         // Save Referral Engine result
         const [referralEngineId] = await db("agent_results")
           .insert({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id,
             domain,
             agent_type: "referral_engine",
             date_start: monthRange.startDate,
@@ -759,7 +749,7 @@ export async function processClient(
         // Save CRO Optimizer result
         const [croOptimizerId] = await db("agent_results")
           .insert({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id,
             domain,
             agent_type: "cro_optimizer",
             date_start: monthRange.startDate,
@@ -792,7 +782,7 @@ export async function processClient(
       if (attempt === MAX_ATTEMPTS) {
         try {
           await db("agent_results").insert({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id,
             domain,
             agent_type: "proofline",
             date_start: getDailyDates(referenceDate).dayBeforeYesterday,

@@ -2,8 +2,8 @@ import { BaseModel, QueryContext } from "./BaseModel";
 
 export interface IGoogleProperty {
   id: number;
-  google_account_id: number;
-  type: "ga4" | "gsc" | "gbp";
+  google_connection_id: number;
+  type: "gbp";
   external_id: string;
   display_name: string | null;
   metadata: Record<string, unknown> | null;
@@ -23,12 +23,12 @@ export class GooglePropertyModel extends BaseModel {
     return super.findById(id, trx);
   }
 
-  static async findByAccountId(
-    googleAccountId: number,
+  static async findByConnectionId(
+    googleConnectionId: number,
     trx?: QueryContext
   ): Promise<IGoogleProperty[]> {
     const rows = await this.table(trx)
-      .where({ google_account_id: googleAccountId });
+      .where({ google_connection_id: googleConnectionId });
     return rows.map((row: IGoogleProperty) =>
       this.deserializeJsonFields(row)
     );

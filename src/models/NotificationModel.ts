@@ -2,7 +2,7 @@ import { BaseModel, QueryContext } from "./BaseModel";
 
 export interface INotification {
   id: number;
-  google_account_id: number | null;
+  organization_id: number | null;
   domain_name: string;
   title: string;
   message: string | null;

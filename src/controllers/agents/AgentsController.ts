@@ -102,7 +102,7 @@ export async function runProoflineAgent(
   try {
     // Fetch all onboarded Google accounts
     log("\n[SETUP] Fetching all onboarded Google accounts...");
-    const accounts = await db("google_accounts")
+    const accounts = await db("google_connections")
       .where("onboarding_completed", true)
       .select("*");
 
@@ -156,7 +156,7 @@ export async function runProoflineAgent(
         // Save agent result
         const [result] = await db("agent_results")
           .insert({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id,
             domain,
             agent_type: "proofline",
             date_start: dailyDates.dayBeforeYesterday,
@@ -273,7 +273,7 @@ export async function runMonthlyAgents(
 
     // Fetch account
     log(`\n[SETUP] Fetching account ${googleAccountId}...`);
-    const account = await db("google_accounts")
+    const account = await db("google_connections")
       .where({ id: googleAccountId })
       .first();
 
@@ -303,7 +303,7 @@ export async function runMonthlyAgents(
     // Update status: data fetching
     await updatePmsStatus(
       "data_fetch",
-      "Fetching GA4, GBP, GSC, PMS, and Clarity data...",
+      "Fetching GBP, PMS, and Clarity data...",
     );
 
     // Run monthly agents
@@ -342,7 +342,7 @@ export async function runMonthlyAgents(
     // Save Summary result
     const [summaryResult] = await db("agent_results")
       .insert({
-        google_account_id: googleAccountId,
+        organization_id: account.organization_id,
         domain,
         agent_type: "summary",
         date_start: monthRange.startDate,
@@ -368,7 +368,7 @@ export async function runMonthlyAgents(
     // Save Opportunity result
     const [opportunityResult] = await db("agent_results")
       .insert({
-        google_account_id: googleAccountId,
+        organization_id: account.organization_id,
         domain,
         agent_type: "opportunity",
         date_start: monthRange.startDate,
@@ -394,7 +394,7 @@ export async function runMonthlyAgents(
     // Save Referral Engine result
     const [referralEngineResult] = await db("agent_results")
       .insert({
-        google_account_id: googleAccountId,
+        organization_id: account.organization_id,
         domain,
         agent_type: "referral_engine",
         date_start: monthRange.startDate,
@@ -420,7 +420,7 @@ export async function runMonthlyAgents(
     // Save CRO Optimizer result
     const [croOptimizerResult] = await db("agent_results")
       .insert({
-        google_account_id: googleAccountId,
+        organization_id: account.organization_id,
         domain,
         agent_type: "cro_optimizer",
         date_start: monthRange.startDate,
@@ -601,7 +601,7 @@ export async function runMonthlyAgentsTest(
 
     // Fetch account
     log(`\n[TEST-SETUP] Fetching account ${googleAccountId}...`);
-    const account = await db("google_accounts")
+    const account = await db("google_connections")
       .where({ id: googleAccountId })
       .first();
 
@@ -642,7 +642,7 @@ export async function runMonthlyAgentsTest(
     );
 
     // === FETCH DATA (read-only) ===
-    log(`[TEST-DATA] Fetching GA4/GBP/GSC/Clarity data...`);
+    log(`[TEST-DATA] Fetching GBP/Clarity data...`);
     // Parse property IDs from the stored JSON structure
     const propertyIds: GooglePropertyIds =
       typeof account.google_property_ids === "string"
@@ -891,7 +891,7 @@ export async function runGbpOptimizer(
 
     // Fetch all onboarded Google accounts
     log("\n[SETUP] Fetching all onboarded Google accounts...");
-    const accounts = await db("google_accounts")
+    const accounts = await db("google_connections")
       .where("onboarding_completed", true)
       .select("*");
 
@@ -959,7 +959,7 @@ export async function runGbpOptimizer(
     const results: any[] = [];
 
     for (const account of gbpAccounts) {
-      const { id: googleAccountId, domain_name: domain } = account;
+      const { id: googleAccountId, domain_name: domain, organization_id: organizationId } = account;
       const accountIndex = gbpAccounts.indexOf(account) + 1;
 
       log(`\n[${"=".repeat(60)}]`);
@@ -973,7 +973,7 @@ export async function runGbpOptimizer(
         log(`[CLIENT] Checking for existing results...`);
         const existingResult = await db("agent_results")
           .where({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id,
             domain,
             agent_type: "gbp_optimizer",
             date_start: monthRange.startDate,
@@ -1022,7 +1022,7 @@ export async function runGbpOptimizer(
         log(`\n[CLIENT] Saving results to database...`);
         const [agentResultRecord] = await db("agent_results")
           .insert({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id,
             domain,
             agent_type: "gbp_optimizer",
             date_start: monthRange.startDate,
@@ -1043,6 +1043,7 @@ export async function runGbpOptimizer(
           result.output,
           googleAccountId,
           domain,
+          organizationId,
         );
 
         results.push({
@@ -1132,14 +1133,14 @@ export async function runRankingAgent(
     // 1. Fetch accounts to process
     let accounts = [];
     if (googleAccountId) {
-      const account = await db("google_accounts")
+      const account = await db("google_connections")
         .where({ id: googleAccountId, onboarding_completed: true })
         .first();
       if (!account)
         throw new Error(`Onboarded account ${googleAccountId} not found`);
       accounts = [account];
     } else {
-      accounts = await db("google_accounts")
+      accounts = await db("google_connections")
         .where("onboarding_completed", true)
         .select("*");
     }
@@ -1154,7 +1155,7 @@ export async function runRankingAgent(
     // 2. Process each account sequentially
     const results: any[] = [];
     for (const account of accounts) {
-      const { id: accId, domain_name: domain } = account;
+      const { id: accId, domain_name: domain, organization_id: accOrgId } = account;
       log(`\n[${"=".repeat(60)}]`);
       log(`[ACCOUNT] Processing: ${domain} (ID: ${accId})`);
       log(`[${"=".repeat(60)}]`);
@@ -1217,7 +1218,7 @@ export async function runRankingAgent(
 
           const [rankingRecord] = await db("practice_rankings")
             .insert({
-              google_account_id: accId,
+              organization_id: accOrgId || accId,
               domain,
               specialty: meta.specialty,
               location: meta.marketLocation,
@@ -1447,7 +1448,7 @@ export async function processAllDeprecated(
   try {
     // Fetch all onboarded Google accounts
     log("\n[SETUP] Fetching all onboarded Google accounts...");
-    const accounts = await db("google_accounts")
+    const accounts = await db("google_connections")
       .where("onboarding_completed", true)
       .select("*");
 
@@ -1554,7 +1555,7 @@ export async function getLatestOutputs(
     }
 
     // Fetch account details
-    const account = await db("google_accounts").where("id", accountId).first();
+    const account = await db("google_connections").where("id", accountId).first();
 
     if (!account) {
       return res.status(404).json({
@@ -1571,7 +1572,7 @@ export async function getLatestOutputs(
     for (const agentType of agentTypes) {
       const result = await db("agent_results")
         .where({
-          google_account_id: accountId,
+          organization_id: accountId,
           agent_type: agentType,
           status: "success",
         })
@@ -1651,7 +1652,7 @@ export async function getLatestReferralEngineOutput(
     }
 
     // Fetch account details
-    const account = await db("google_accounts")
+    const account = await db("google_connections")
       .where("id", accountId)
       .first();
 
@@ -1694,7 +1695,7 @@ export async function getLatestReferralEngineOutput(
     // Fetch latest successful referral_engine result
     const result = await db("agent_results")
       .where({
-        google_account_id: accountId,
+        organization_id: accountId,
         agent_type: "referral_engine",
         status: "success",
       })

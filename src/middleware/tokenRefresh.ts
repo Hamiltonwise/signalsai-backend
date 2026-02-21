@@ -1,33 +1,30 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import { db } from "../database/connection";
-import { createOAuth2ClientForAccount } from "../auth/oauth2Helper";
+import { createOAuth2ClientForConnection } from "../auth/oauth2Helper";
 import { OAuth2Client } from "google-auth-library";
+import { RBACRequest } from "./rbac";
 
 /**
- * Extended Express Request type with OAuth2Client
+ * Extended Express Request type with OAuth2Client.
+ * Extends RBACRequest since tokenRefreshMiddleware runs after
+ * authenticateToken + rbacMiddleware.
  */
-export interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends RBACRequest {
   oauth2Client?: OAuth2Client;
-  googleAccountId?: number;
-  user?: {
-    userId: number;
-    email: string;
-  };
+  googleConnectionId?: number;
 }
 
 /**
  * Token Refresh Middleware
  *
- * Automatically refreshes Google OAuth tokens if they're expired or expiring soon.
- * This middleware:
- * 1. Extracts googleAccountId from request header
- * 2. Checks token expiry from database
- * 3. Refreshes token if < 5 minutes remaining
- * 4. Updates database with new token
- * 5. Attaches OAuth2Client to request for route handlers
+ * Optional middleware — only needed on routes that call Google APIs (GBP).
+ * Requires authenticateToken + rbacMiddleware to have run first.
  *
- * Usage:
- *   router.use(tokenRefreshMiddleware);
+ * Flow:
+ * 1. Reads req.organizationId (from rbacMiddleware)
+ * 2. Looks up google_connections by organization_id
+ * 3. Refreshes OAuth token if expiring soon
+ * 4. Attaches req.oauth2Client and req.googleConnectionId
  */
 export const tokenRefreshMiddleware = async (
   req: AuthenticatedRequest,
@@ -35,121 +32,94 @@ export const tokenRefreshMiddleware = async (
   next: NextFunction
 ) => {
   try {
-    // Extract googleAccountId from header
-    const googleAccountIdHeader = req.headers["x-google-account-id"];
+    const organizationId = req.organizationId;
 
-    if (!googleAccountIdHeader) {
-      return res.status(401).json({
-        error: "Missing authentication",
-        message: "x-google-account-id header is required",
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    const googleAccountId = parseInt(googleAccountIdHeader as string, 10);
-
-    if (isNaN(googleAccountId)) {
+    if (!organizationId) {
       return res.status(400).json({
-        error: "Invalid authentication",
-        message: "x-google-account-id must be a valid number",
+        error: "No organization",
+        message: "Organization required for Google API access",
         timestamp: new Date().toISOString(),
       });
     }
 
-    // Fetch Google account from database
-    const googleAccount = await db("google_accounts")
-      .where({ id: googleAccountId })
+    // Fetch Google connection for this organization
+    const googleConnection = await db("google_connections")
+      .where({ organization_id: organizationId })
       .first();
 
-    if (!googleAccount) {
+    if (!googleConnection) {
       return res.status(404).json({
-        error: "Account not found",
-        message: `Google account ${googleAccountId} not found`,
+        error: "No Google account connected",
+        message: "Please connect your Google Business Profile first",
         timestamp: new Date().toISOString(),
       });
     }
 
-    // RBAC Check: Ensure the requesting user (if identified) belongs to the organization
-    // Note: In this architecture, the "user" is identified by the googleAccountId in the header for now.
-    // Ideally, we should have a separate user authentication token (JWT) to identify the user,
-    // and then check if that user belongs to the organization that owns this google account.
-    // However, per the current flow, the googleAccountId IS the session identifier.
-    // So we implicitly trust that if they have the ID, they are that "session".
-    // But for multi-user, we need to know WHO is making the request.
-    // Since we don't have a separate auth token yet, we'll assume the googleAccountId implies access
-    // to that account's organization.
-    // TODO: Implement proper JWT auth for users to distinguish "who" is acting on "which" account.
+    const connectionId = googleConnection.id;
 
-    // Check if token is expired or expiring soon (e.g., in 5 minutes)
-    const expiryDate = googleAccount.expiry_date
-      ? new Date(googleAccount.expiry_date)
+    // Check if token is expired or expiring soon (< 5 minutes)
+    const expiryDate = googleConnection.expiry_date
+      ? new Date(googleConnection.expiry_date)
       : new Date(0);
-    const isExpiringSoon = expiryDate.getTime() - Date.now() < 5 * 60 * 1000; // 5 minutes
+    const isExpiringSoon = expiryDate.getTime() - Date.now() < 5 * 60 * 1000;
 
     try {
       // Create OAuth2 client
-      const oauth2Client = await createOAuth2ClientForAccount(googleAccountId);
+      const oauth2Client = await createOAuth2ClientForConnection(connectionId);
 
       if (isExpiringSoon) {
         console.log(
-          `[Token Refresh] Token expiring soon (or expired), refreshing for account ${googleAccountId}`
+          `[Token Refresh] Token expiring soon, refreshing for connection ${connectionId}`
         );
 
-        // Force refresh to get a fresh access token
         const { credentials } = await oauth2Client.refreshAccessToken();
 
         if (!credentials.access_token) {
           throw new Error("Failed to obtain access token after refresh");
         }
 
-        // Calculate new expiry from credentials or default to 1 hour
         const newExpiry = credentials.expiry_date
           ? new Date(credentials.expiry_date)
           : new Date(Date.now() + 3600000);
 
-        // Update database with fresh token
-        await db("google_accounts").where({ id: googleAccountId }).update({
+        await db("google_connections").where({ id: connectionId }).update({
           access_token: credentials.access_token,
           expiry_date: newExpiry,
           updated_at: new Date(),
         });
 
         console.log(
-          `[Token Refresh] ✓ Token refreshed successfully for account ${googleAccountId}`
+          `[Token Refresh] Token refreshed for connection ${connectionId}`
         );
-        console.log(`  - New expiry: ${newExpiry.toISOString()}`);
 
-        // Ensure credentials are set on the client
         oauth2Client.setCredentials({
           access_token: credentials.access_token,
-          refresh_token: googleAccount.refresh_token,
+          refresh_token: googleConnection.refresh_token,
           expiry_date: credentials.expiry_date,
           scope: credentials.scope,
           token_type: credentials.token_type,
         });
       } else {
         console.log(
-          `[Token Refresh] Token valid for account ${googleAccountId}, skipping refresh`
+          `[Token Refresh] Token valid for connection ${connectionId}, skipping refresh`
         );
-        // Use existing credentials
         oauth2Client.setCredentials({
-          access_token: googleAccount.access_token,
-          refresh_token: googleAccount.refresh_token,
-          expiry_date: googleAccount.expiry_date
-            ? new Date(googleAccount.expiry_date).getTime()
+          access_token: googleConnection.access_token,
+          refresh_token: googleConnection.refresh_token,
+          expiry_date: googleConnection.expiry_date
+            ? new Date(googleConnection.expiry_date).getTime()
             : undefined,
         });
       }
 
       // Attach to request
       req.oauth2Client = oauth2Client;
-      req.googleAccountId = googleAccountId;
+      req.googleConnectionId = connectionId;
     } catch (refreshError: any) {
       console.error(
-        `[Token Refresh] ✗ Failed to refresh token for account ${googleAccountId}:`,
+        `[Token Refresh] Failed to refresh token for connection ${connectionId}:`,
         refreshError.message
       );
-      console.error(`[Token Refresh] Error details:`, refreshError);
 
       return res.status(401).json({
         error: "Token refresh failed",

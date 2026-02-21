@@ -6,12 +6,17 @@ export interface IOrganization {
   domain: string | null;
   subscription_tier: "DWY" | "DFY" | null;
   subscription_updated_at: Date | null;
+  operational_jurisdiction: string | null;
+  onboarding_completed: boolean;
+  onboarding_wizard_completed: boolean;
+  setup_progress: Record<string, unknown> | null;
   created_at: Date;
   updated_at: Date;
 }
 
 export class OrganizationModel extends BaseModel {
   protected static tableName = "organizations";
+  protected static jsonFields = ["setup_progress"];
 
   static async findById(
     id: number,
@@ -58,5 +63,24 @@ export class OrganizationModel extends BaseModel {
     return this.table(trx)
       .select("id", "name", "domain", "subscription_tier", "created_at")
       .orderBy("created_at", "desc");
+  }
+
+  static async completeOnboarding(
+    id: number,
+    trx?: QueryContext
+  ): Promise<number> {
+    return super.updateById(id, { onboarding_completed: true }, trx);
+  }
+
+  static async updateSetupProgress(
+    id: number,
+    progress: Record<string, unknown>,
+    trx?: QueryContext
+  ): Promise<number> {
+    return super.updateById(
+      id,
+      { setup_progress: progress } as Record<string, unknown>,
+      trx
+    );
   }
 }

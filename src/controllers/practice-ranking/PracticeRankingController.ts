@@ -73,7 +73,7 @@ export async function triggerBatchAnalysis(
     }
 
     // Validate account exists
-    const account = await db("google_accounts")
+    const account = await db("google_connections")
       .where({ id: googleAccountId })
       .first();
 
@@ -112,7 +112,7 @@ export async function triggerBatchAnalysis(
         const locationInput = locations[i];
         const [result] = await db("practice_rankings")
           .insert({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id || null,
             domain: account.domain_name,
             specialty: locationInput.specialty || null,
             location: locationInput.marketLocation || null,
@@ -149,6 +149,7 @@ export async function triggerBatchAnalysis(
           account.domain_name,
           rankingIds,
           true, // recordsPreCreated
+          account.organization_id, // actual org ID, not connection row ID
         ).catch((err) => {
           logError(`Background batch process ${batchId}`, err);
         });
@@ -199,6 +200,7 @@ export async function triggerBatchAnalysis(
         account.domain_name,
         [], // no pre-created IDs
         false, // recordsPreCreated = false for legacy
+        account.organization_id, // actual org ID, not connection row ID
       ).catch((err) => {
         logError(`Background batch process ${batchId}`, err);
       });
@@ -350,7 +352,7 @@ export async function listRankings(
     let query = db("practice_rankings")
       .select(
         "id",
-        "google_account_id",
+        "organization_id",
         "domain",
         "specialty",
         "location",
@@ -374,7 +376,7 @@ export async function listRankings(
       .offset(Number(offset));
 
     if (googleAccountId) {
-      query = query.where({ google_account_id: Number(googleAccountId) });
+      query = query.where({ organization_id: Number(googleAccountId) });
     }
 
     const rankings = await query;
@@ -399,7 +401,7 @@ export async function listAccounts(
   res: Response,
 ): Promise<Response> {
   try {
-    const accounts = await db("google_accounts")
+    const accounts = await db("google_connections")
       .where({ onboarding_completed: true })
       .select("id", "domain_name", "practice_name", "google_property_ids")
       .orderBy("practice_name", "asc");
@@ -437,7 +439,6 @@ export async function listAccounts(
         domain: a.domain_name,
         practiceName: a.practice_name || a.domain_name,
         hasGbp: gbpLocations.length > 0,
-        hasGsc: !!propertyIds?.gsc?.siteUrl,
         gbpLocations: gbpLocations,
         gbpCount: gbpLocations.length,
       };
@@ -621,7 +622,7 @@ export async function getLatestRankings(
     // Step 1: Find the most recent batch_id with completed rankings for this account
     const latestBatchRecord = await db("practice_rankings")
       .where({
-        google_account_id: Number(googleAccountId),
+        organization_id: Number(googleAccountId),
         status: "completed",
       })
       .whereNotNull("batch_id")
@@ -633,7 +634,7 @@ export async function getLatestRankings(
       // Fall back to legacy: get latest ranking without batch_id (old format)
       const legacyRanking = await db("practice_rankings")
         .where({
-          google_account_id: Number(googleAccountId),
+          organization_id: Number(googleAccountId),
           status: "completed",
         })
         .whereNull("batch_id")
@@ -663,7 +664,7 @@ export async function getLatestRankings(
     // Step 2: Get all completed rankings from the latest batch
     const batchRankings = await db("practice_rankings")
       .where({
-        google_account_id: Number(googleAccountId),
+        organization_id: Number(googleAccountId),
         batch_id: latestBatchId,
         status: "completed",
       })
@@ -687,7 +688,7 @@ export async function getLatestRankings(
         // Get the previous completed ranking for this location (excluding current batch)
         const previous = await db("practice_rankings")
           .where({
-            google_account_id: Number(googleAccountId),
+            organization_id: Number(googleAccountId),
             gbp_location_id: ranking.gbp_location_id,
             status: "completed",
           })
@@ -755,7 +756,7 @@ export async function getRankingTasks(
       // Find the latest completed ranking for this location
       const latestRanking = await db("practice_rankings")
         .where({
-          google_account_id: Number(googleAccountId),
+          organization_id: Number(googleAccountId),
           gbp_location_id: String(gbpLocationId),
           status: "completed",
         })
@@ -780,7 +781,7 @@ export async function getRankingTasks(
       // Fetch all approved ranking tasks for this account (across all locations)
       tasks = await db("tasks")
         .where({
-          google_account_id: Number(googleAccountId),
+          organization_id: Number(googleAccountId),
           agent_type: "RANKING",
           is_approved: true,
         })

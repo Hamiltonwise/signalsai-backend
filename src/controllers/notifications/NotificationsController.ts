@@ -51,12 +51,11 @@ export class NotificationsController {
   /**
    * GET /api/notifications
    * Fetch latest 10 notifications for the logged-in client.
-   * Query params: googleAccountId (required) or x-google-account-id header
+   * Query params: googleAccountId (required)
    */
   static async getNotifications(req: Request, res: Response): Promise<Response> {
     try {
-      const googleAccountId =
-        req.query.googleAccountId || req.headers["x-google-account-id"];
+      const googleAccountId = req.query.googleAccountId;
 
       const accountValidation = validateGoogleAccountId(googleAccountId);
       if (!accountValidation.valid) {

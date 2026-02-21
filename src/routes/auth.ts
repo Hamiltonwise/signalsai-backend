@@ -14,7 +14,7 @@ router.get("/callback", controller.handleOAuthCallback);
 router.get("/google/callback", controller.handleOAuthCallback);
 
 // Token management
-router.get("/google/validate/:googleAccountId", controller.validateToken);
+router.get("/google/validate/:connectionId", controller.validateToken);
 
 // Scope management
 router.get("/google/scopes", controller.getScopeInfo);

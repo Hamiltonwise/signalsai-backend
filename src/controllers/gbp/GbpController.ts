@@ -20,7 +20,7 @@ import { handleError } from "./gbp-utils/error-handler.util";
 /**
  * POST /gbp/getKeyData
  * Body: { accountId: string, locationId: string }
- * Returns: GA4-style structured response with trend score analysis
+ * Returns: Structured response with trend score analysis
  */
 export async function getKeyData(req: AuthenticatedRequest, res: express.Response): Promise<express.Response> {
   try {
@@ -89,7 +89,7 @@ export async function getKeyData(req: AuthenticatedRequest, res: express.Respons
     // Calculate trend score
     const trendScore = calculateGBPTrendScore(currentData, previousData);
 
-    // Return GA4-style structured response
+    // Return structured response
     return res.json({
       newReviews: {
         prevMonth: previousData.newReviews,
@@ -270,7 +270,7 @@ export async function getGBPTextSources(
   );
 
   // Query database for property IDs
-  const account = await db("google_accounts")
+  const account = await db("google_connections")
     .where({ id: googleAccountId })
     .first();
 
@@ -452,7 +452,7 @@ export async function getTextSources(req: AuthenticatedRequest, res: express.Res
     const { db } = await import("../../database/connection");
 
     // Query database for property IDs
-    const account = await db("google_accounts")
+    const account = await db("google_connections")
       .where({ id: googleAccountId })
       .first();
 

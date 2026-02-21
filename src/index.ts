@@ -1,14 +1,19 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import * as Sentry from "@sentry/node";
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  sendDefaultPii: true,
+});
+
 import express from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import path from "path";
 
 import { Router } from "express";
 
-import ga4Routes from "./routes/ga4";
-import gscRoutes from "./routes/gsc";
 import googleAuthRoutes from "./routes/googleauth";
 import gbpRoutes from "./routes/gbp";
 import {
@@ -20,6 +25,7 @@ import clarityRoutes from "./routes/clarity";
 import taskRoutes from "./routes/tasks";
 import authRoutes from "./routes/auth";
 import otpRoutes from "./routes/auth-otp";
+import authPasswordRoutes from "./routes/auth-password";
 import pmsRoutes from "./routes/pms";
 import onboardingRoutes from "./routes/onboarding";
 import ragRoutes from "./routes/rag";
@@ -90,7 +96,7 @@ app.use((req, res, next) => {
   );
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With, x-scraper-key, googleaccountid",
+    "Content-Type, Authorization, X-Requested-With, x-scraper-key",
   );
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
@@ -112,14 +118,18 @@ app.get("/api/health/db", async (req, res) => {
   res.status(health.status === "healthy" ? 200 : 500).json(health);
 });
 
+// Sentry test endpoint — throws an error to verify Sentry is capturing
+app.get("/api/sentry-test", () => {
+  throw new Error("Sentry backend test error!");
+});
+
 app.use(router);
-app.use("/api/ga4", ga4Routes);
-app.use("/api/gsc", gscRoutes);
 app.use("/api/gbp", gbpRoutes);
 app.use("/api/clarity", clarityRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/auth/otp", otpRoutes);
+app.use("/api/auth", authPasswordRoutes);
 app.use("/api/pms", pmsRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/rag", ragRoutes);
@@ -144,6 +154,9 @@ app.use("/api/audit", auditRoutes); // Audit process tracking for leadgen tool
 app.use("/api/imports", importsRoutes); // Public file serving for self-hosted imports
 app.use("/api/websites", websiteContactRoutes); // Public contact form for rendered sites
 app.use("/api/user/website", userWebsiteRoutes); // User website management (DFY tier)
+
+// Sentry error handler — must be after all routes and before other error handlers
+Sentry.setupExpressErrorHandler(app);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));

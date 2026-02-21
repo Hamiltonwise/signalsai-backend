@@ -128,7 +128,7 @@ export async function getImport(
 
     console.log(`[Admin Imports] Fetching import ID: ${id}`);
 
-    const record = await AlloroImportModel.findById(Number(id));
+    const record = await AlloroImportModel.findById(id);
 
     if (!record) {
       return res.status(404).json({
@@ -177,7 +177,7 @@ export async function createNewVersion(
     }
 
     // Get the existing import to know the filename
-    const existing = await AlloroImportModel.findById(Number(id));
+    const existing = await AlloroImportModel.findById(id);
     if (!existing) {
       return res.status(404).json({
         success: false,
@@ -255,7 +255,7 @@ export async function updateStatus(
       });
     }
 
-    const result = await importStatusService.changeStatus(Number(id), status);
+    const result = await importStatusService.changeStatus(id, status);
 
     console.log(
       `[Admin Imports] Updated status of ${result.updated.filename} v${result.updated.version} to ${status}`
@@ -294,7 +294,7 @@ export async function deleteImport(
   try {
     const { id } = req.params;
 
-    const record = await AlloroImportModel.findById(Number(id));
+    const record = await AlloroImportModel.findById(id);
     if (!record) {
       return res.status(404).json({
         success: false,

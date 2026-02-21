@@ -7,7 +7,7 @@ const VALID_STATUSES = ["published", "active", "deprecated"];
 
 export interface StatusChangeResult {
   updated: IAlloroImport;
-  previouslyPublished: { id: number; version: number } | null;
+  previouslyPublished: { id: string; version: number } | null;
 }
 
 /** Validate that a status value is one of: published, active, deprecated */
@@ -20,7 +20,7 @@ export function validateStatus(status: string): boolean {
  * If publishing, demotes any existing published version for the same filename.
  */
 export async function changeStatus(
-  id: number,
+  id: string,
   newStatus: string
 ): Promise<StatusChangeResult> {
   const record = await AlloroImportModel.findById(id);
@@ -32,7 +32,7 @@ export async function changeStatus(
     throw error;
   }
 
-  let previouslyPublished: { id: number; version: number } | null = null;
+  let previouslyPublished: { id: string; version: number } | null = null;
 
   if (newStatus === "published") {
     const existing = await AlloroImportModel.findPublishedVersionExcludingId(

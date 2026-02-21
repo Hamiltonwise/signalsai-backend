@@ -1,5 +1,6 @@
 import { Response } from "express";
 import { RBACRequest } from "../../middleware/rbac";
+import { AuthenticatedRequest } from "../../middleware/tokenRefresh";
 import { handleSettingsError } from "./feature-utils/util.error-handler";
 import { getUserProfileWithRole } from "./feature-services/service.profile";
 import { getGrantedScopes } from "./feature-services/service.scopes";
@@ -17,8 +18,8 @@ import {
 
 export async function getUserProfile(req: RBACRequest, res: Response) {
   try {
-    const googleAccountId = req.googleAccountId!;
-    const user = await getUserProfileWithRole(googleAccountId, req.userRole);
+    const organizationId = req.organizationId!;
+    const user = await getUserProfileWithRole(organizationId, req.userRole);
 
     return res.json({
       success: true,
@@ -31,8 +32,8 @@ export async function getUserProfile(req: RBACRequest, res: Response) {
 
 export async function getScopes(req: RBACRequest, res: Response) {
   try {
-    const googleAccountId = req.googleAccountId!;
-    const result = await getGrantedScopes(googleAccountId);
+    const organizationId = req.organizationId!;
+    const result = await getGrantedScopes(organizationId);
 
     return res.json({
       success: true,
@@ -45,8 +46,8 @@ export async function getScopes(req: RBACRequest, res: Response) {
 
 export async function getProperties(req: RBACRequest, res: Response) {
   try {
-    const googleAccountId = req.googleAccountId!;
-    const properties = await getConnectedProperties(googleAccountId);
+    const organizationId = req.organizationId!;
+    const properties = await getConnectedProperties(organizationId);
 
     return res.json({
       success: true,
@@ -59,10 +60,10 @@ export async function getProperties(req: RBACRequest, res: Response) {
 
 export async function updateProperties(req: RBACRequest, res: Response) {
   try {
-    const googleAccountId = req.googleAccountId!;
+    const organizationId = req.organizationId!;
     const { type, data, action } = req.body;
 
-    const result = await updateProperty(googleAccountId, type, data, action);
+    const result = await updateProperty(organizationId, type, data, action);
 
     return res.json({
       success: true,
@@ -74,7 +75,7 @@ export async function updateProperties(req: RBACRequest, res: Response) {
   }
 }
 
-export async function getAvailableProperties(req: RBACRequest, res: Response) {
+export async function getAvailableProperties(req: AuthenticatedRequest, res: Response) {
   try {
     const { type } = req.params;
     const oauth2Client = req.oauth2Client;
@@ -100,8 +101,8 @@ export async function getAvailableProperties(req: RBACRequest, res: Response) {
 
 export async function listUsers(req: RBACRequest, res: Response) {
   try {
-    const googleAccountId = req.googleAccountId!;
-    const result = await listOrganizationUsers(googleAccountId);
+    const organizationId = req.organizationId!;
+    const result = await listOrganizationUsers(organizationId);
 
     return res.json({
       success: true,
@@ -115,11 +116,11 @@ export async function listUsers(req: RBACRequest, res: Response) {
 
 export async function inviteUser(req: RBACRequest, res: Response) {
   try {
-    const googleAccountId = req.googleAccountId!;
+    const organizationId = req.organizationId!;
     const { email, role } = req.body;
 
     const result = await inviteUserToOrganization(
-      googleAccountId,
+      organizationId,
       email,
       role,
       req.userRole
@@ -136,11 +137,11 @@ export async function inviteUser(req: RBACRequest, res: Response) {
 
 export async function removeUser(req: RBACRequest, res: Response) {
   try {
-    const googleAccountId = req.googleAccountId!;
+    const organizationId = req.organizationId!;
     const userIdToRemove = parseInt(req.params.userId);
 
     const result = await removeUserFromOrganization(
-      googleAccountId,
+      organizationId,
       userIdToRemove,
       req.userId!
     );
@@ -158,10 +159,10 @@ export async function changeUserRole(req: RBACRequest, res: Response) {
   try {
     const userIdToUpdate = parseInt(req.params.userId);
     const { role } = req.body;
-    const googleAccountId = req.googleAccountId!;
+    const organizationId = req.organizationId!;
 
     const result = await updateUserRole(
-      googleAccountId,
+      organizationId,
       userIdToUpdate,
       role,
       req.userId

@@ -26,10 +26,10 @@ export async function getAvailableGBPLocations(
  * Delegates to the shared settings service (same flow as settings page).
  */
 export async function saveGBPSelection(
-  googleAccountId: number,
+  organizationId: number,
   data: GBPLocationItem[]
 ): Promise<any> {
-  return updateProperty(googleAccountId, "gbp", data, "connect");
+  return updateProperty(organizationId, "gbp", data, "connect");
 }
 
 /**

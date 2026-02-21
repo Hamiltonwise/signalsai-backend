@@ -4,6 +4,7 @@ export { BaseModel, QueryContext, PaginationParams, PaginatedResult } from "./Ba
 // Main schema models
 export { UserModel, IUser } from "./UserModel";
 export { GoogleAccountModel, IGoogleAccount } from "./GoogleAccountModel";
+export { GoogleConnectionModel, IGoogleConnection } from "./GoogleConnectionModel";
 export { OrganizationModel, IOrganization } from "./OrganizationModel";
 export { OrganizationUserModel, IOrganizationUser, IOrganizationUserWithUser } from "./OrganizationUserModel";
 export { InvitationModel, IInvitation } from "./InvitationModel";

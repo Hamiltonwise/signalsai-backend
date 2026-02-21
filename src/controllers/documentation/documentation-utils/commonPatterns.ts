@@ -22,9 +22,9 @@ export const COMMON_PATTERNS = {
   },
 
   authentication: {
-    type: "OAuth2",
-    handler: "oauth2Helper",
-    note: "All routes require OAuth2 authentication. Authentication is handled automatically via the oauth2Helper. No additional headers or tokens needed in requests.",
+    type: "JWT + OAuth2",
+    handler: "authenticateToken + tokenRefreshMiddleware",
+    note: "All routes require JWT authentication via Authorization header. GBP routes additionally use OAuth2 via tokenRefreshMiddleware for Google API access. The OAuth2 client is resolved from the organization's google_connection.",
   },
 
   trendScores: {
@@ -35,17 +35,9 @@ export const COMMON_PATTERNS = {
   },
 
   identifiers: {
-    ga4: {
-      field: "propertyId",
-      note: 'With or without "properties/" prefix',
-    },
     gbp: {
       fields: ["accountId", "locationId"],
       note: "accountId + locationId combination",
-    },
-    gsc: {
-      field: "domainProperty",
-      note: "URL or domain format",
     },
   },
 } as const;

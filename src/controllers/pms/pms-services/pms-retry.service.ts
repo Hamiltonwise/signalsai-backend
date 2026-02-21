@@ -1,6 +1,6 @@
 import axios from "axios";
 import db from "../../../database/connection";
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import {
   resetToStep,
   updateAutomationStatus,
@@ -174,7 +174,7 @@ async function retryMonthlyAgents(jobId: number, job: any) {
   }
 
   // Get google account for this domain
-  const account = await GoogleAccountModel.findByDomain(job.domain);
+  const account = await GoogleConnectionModel.findByDomain(job.domain);
 
   if (!account) {
     throw Object.assign(

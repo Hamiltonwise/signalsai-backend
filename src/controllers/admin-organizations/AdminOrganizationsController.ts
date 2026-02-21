@@ -10,7 +10,7 @@ import { AuthRequest } from "../../middleware/auth";
 import { db } from "../../database/connection";
 import { OrganizationModel } from "../../models/OrganizationModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
-import { GoogleAccountModel } from "../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../models/GoogleConnectionModel";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import * as OrganizationEnrichmentService from "./feature-services/OrganizationEnrichmentService";
 import * as ConnectionDetectionService from "./feature-services/ConnectionDetectionService";
@@ -88,7 +88,7 @@ export async function getById(
     }));
 
     // Fetch connection details
-    const linkedAccounts = await GoogleAccountModel.findByOrganization(orgId);
+    const linkedAccounts = await GoogleConnectionModel.findByOrganization(orgId);
     const connections =
       ConnectionDetectionService.formatConnectionDetails(linkedAccounts);
 

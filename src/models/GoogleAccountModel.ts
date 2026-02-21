@@ -25,8 +25,11 @@ export interface IGoogleAccount {
   updated_at: Date;
 }
 
+/**
+ * @deprecated Use GoogleConnectionModel instead. This class is kept for backward compatibility.
+ */
 export class GoogleAccountModel extends BaseModel {
-  protected static tableName = "google_accounts";
+  protected static tableName = "google_connections";
   protected static jsonFields = ["google_property_ids", "setup_progress"];
 
   static async findById(

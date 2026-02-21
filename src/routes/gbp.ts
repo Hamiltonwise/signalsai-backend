@@ -1,4 +1,6 @@
 import express from "express";
+import { authenticateToken } from "../middleware/auth";
+import { rbacMiddleware } from "../middleware/rbac";
 import {
   tokenRefreshMiddleware,
   AuthenticatedRequest,
@@ -7,8 +9,8 @@ import * as controller from "../controllers/gbp/GbpController";
 
 const gbpRoutes = express.Router();
 
-// Apply token refresh middleware to all GBP routes
-gbpRoutes.use(tokenRefreshMiddleware);
+// All GBP routes require JWT auth + RBAC + Google OAuth token refresh
+gbpRoutes.use(authenticateToken, rbacMiddleware, tokenRefreshMiddleware);
 
 // Main data endpoints
 gbpRoutes.post("/getKeyData", (req: AuthenticatedRequest, res) => controller.getKeyData(req, res));

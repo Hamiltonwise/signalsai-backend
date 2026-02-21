@@ -4,7 +4,7 @@ import { BaseModel, PaginatedResult, PaginationParams, QueryContext } from "./Ba
 export interface ITask {
   id: number;
   domain_name: string;
-  google_account_id: number | null;
+  organization_id: number | null;
   title: string;
   description: string | null;
   category: "ALLORO" | "USER";

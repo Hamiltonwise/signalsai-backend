@@ -1,4 +1,4 @@
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import { SetupProgress } from "../feature-utils/onboardingValidation";
 
 const DEFAULT_PROGRESS: SetupProgress = {
@@ -21,7 +21,7 @@ const DEFAULT_PROGRESS: SetupProgress = {
 export async function getSetupProgress(
   googleAccountId: number
 ): Promise<SetupProgress> {
-  const googleAccount = await GoogleAccountModel.findById(googleAccountId);
+  const googleAccount = await GoogleConnectionModel.findById(googleAccountId);
 
   if (!googleAccount) {
     const error = new Error("Google account not found");
@@ -50,13 +50,13 @@ export async function getSetupProgress(
  * Update the setup wizard progress for a google account.
  *
  * BaseModel's serializeJsonFields handles JSON.stringify automatically
- * because setup_progress is declared in GoogleAccountModel.jsonFields.
+ * because setup_progress is declared in GoogleConnectionModel.jsonFields.
  */
 export async function updateSetupProgress(
   googleAccountId: number,
   progress: SetupProgress
 ): Promise<void> {
-  await GoogleAccountModel.updateById(googleAccountId, {
+  await GoogleConnectionModel.updateById(googleAccountId, {
     setup_progress: progress as any,
   });
 }

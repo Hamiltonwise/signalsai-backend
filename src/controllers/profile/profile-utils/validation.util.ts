@@ -1,8 +1,8 @@
-export function validateGoogleAccountId(
-  googleAccountId: number | undefined
-): asserts googleAccountId is number {
-  if (!googleAccountId) {
-    const error = new Error("Missing google account ID");
+export function validateOrganizationId(
+  organizationId: number | undefined
+): asserts organizationId is number {
+  if (!organizationId) {
+    const error = new Error("Missing organization ID");
     (error as any).statusCode = 400;
     throw error;
   }

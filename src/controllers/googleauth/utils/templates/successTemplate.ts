@@ -46,8 +46,6 @@ export const generateSuccessPage = (tokens: Credentials): string => {
 
           <div class="api-list">
             <h3>✅ Authorized APIs:</h3>
-            <span class="api-item">Google Analytics 4</span>
-            <span class="api-item">Google Search Console</span>
             <span class="api-item">Google Business Profile</span>
           </div>
 
@@ -84,17 +82,13 @@ export const generateSuccessPage = (tokens: Credentials): string => {
               <li><strong>Restart your server</strong> to load the new token</li>
               <li><strong>Test your APIs:</strong>
                 <ul>
-                  <li>GA4: <code>GET /api/ga4/properties/get</code></li>
-                  <li>GSC: <code>GET /api/gsc/sites/get</code></li>
                   <li>GBP: <code>GET /api/gbp/locations/get</code></li>
                 </ul>
               </li>
             </ol>
 
-            <p><strong>📝 Note:</strong> This token grants access to all three Google APIs with the following scopes:</p>
+            <p><strong>📝 Note:</strong> This token grants access to the Google Business Profile API with the following scope:</p>
             <ul>
-              <li>Analytics (read-only access to GA4 data)</li>
-              <li>Search Console (read-only access to search performance data)</li>
               <li>Business Profile (manage business listings and access insights)</li>
             </ul>
           </div>

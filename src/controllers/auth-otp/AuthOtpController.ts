@@ -24,7 +24,7 @@ import {
 import { UserModel } from "../../models/UserModel";
 import { InvitationModel } from "../../models/InvitationModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
-import { GoogleAccountModel } from "../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../models/GoogleConnectionModel";
 
 /**
  * POST /api/auth/otp/request
@@ -147,7 +147,7 @@ export async function verifyOtp(req: Request, res: Response) {
     let googleAccountId: number | null = null;
     if (orgUser) {
       // Find the primary google account for this organization
-      const googleAccount = await GoogleAccountModel.findOne({
+      const googleAccount = await GoogleConnectionModel.findOne({
         organization_id: orgUser.organization_id,
       });
 

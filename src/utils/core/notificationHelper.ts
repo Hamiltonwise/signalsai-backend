@@ -59,14 +59,14 @@ export async function createNotification(
   }
 ): Promise<number | null> {
   try {
-    // Get google_account_id and user email from domain
-    const account = await db("google_accounts")
+    // Get organization_id and user email from domain
+    const account = await db("google_connections")
       .where({ domain_name: domain })
       .first();
 
     const [result] = await db("notifications")
       .insert({
-        google_account_id: account?.id || null,
+        organization_id: account?.organization_id || null,
         domain_name: domain,
         title,
         message: message || null,

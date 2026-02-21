@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { TaskModel } from "../../models/TaskModel";
-import { GoogleAccountModel } from "../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../models/GoogleConnectionModel";
 import * as TaskFilteringService from "./feature-services/TaskFilteringService";
 import * as TaskBulkOperationsService from "./feature-services/TaskBulkOperationsService";
 import * as TaskApprovalService from "./feature-services/TaskApprovalService";
@@ -50,8 +50,7 @@ export async function getTasksForClient(
   res: Response
 ): Promise<Response> {
   try {
-    const googleAccountId =
-      req.query.googleAccountId || req.headers["x-google-account-id"];
+    const googleAccountId = req.query.googleAccountId;
 
     if (!googleAccountId) {
       return res.status(400).json({
@@ -62,7 +61,7 @@ export async function getTasksForClient(
     }
 
     // Get domain from account ID
-    const domain = await GoogleAccountModel.getDomainFromAccountId(
+    const domain = await GoogleConnectionModel.getDomainFromAccountId(
       Number(googleAccountId)
     );
     if (!domain) {
@@ -124,7 +123,7 @@ export async function completeTask(
     }
 
     // Get domain from account ID
-    const domain = await GoogleAccountModel.getDomainFromAccountId(
+    const domain = await GoogleConnectionModel.getDomainFromAccountId(
       googleAccountId
     );
     if (!domain) {
@@ -194,7 +193,6 @@ export async function createTask(
   try {
     const {
       domain_name,
-      google_account_id,
       title,
       description,
       category,
@@ -219,7 +217,7 @@ export async function createTask(
     }
 
     // Verify domain exists
-    const account = await GoogleAccountModel.findByDomain(domain_name);
+    const account = await GoogleConnectionModel.findByDomain(domain_name);
 
     if (!account) {
       return res.status(404).json({
@@ -232,7 +230,7 @@ export async function createTask(
     // Create task via model (handles timestamps and JSON serialization)
     const createdTask = await TaskModel.create({
       domain_name,
-      google_account_id: google_account_id || account.id,
+      organization_id: account.organization_id || null,
       title,
       description: description || null,
       category,
@@ -473,7 +471,7 @@ export async function getClients(
   try {
     console.log("[TASKS] Fetching available clients");
 
-    const accounts = await GoogleAccountModel.findOnboardedClients();
+    const accounts = await GoogleConnectionModel.findOnboardedClients();
 
     console.log(`[TASKS] Found ${accounts.length} onboarded clients`);
 

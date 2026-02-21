@@ -3,7 +3,7 @@ import { BaseModel, PaginatedResult, PaginationParams, QueryContext } from "./Ba
 
 export interface IPracticeRanking {
   id: number;
-  google_account_id: number;
+  organization_id: number;
   domain: string;
   specialty: string | null;
   location: string | null;
@@ -107,14 +107,14 @@ export class PracticeRankingModel extends BaseModel {
     return this.table(trx).where({ batch_id: batchId }).del();
   }
 
-  static async listByAccount(
-    googleAccountId: number,
+  static async listByOrganization(
+    organizationId: number,
     filters: RankingFilters,
     pagination: PaginationParams,
     trx?: QueryContext
   ): Promise<PaginatedResult<IPracticeRanking>> {
     const buildQuery = (qb: Knex.QueryBuilder) => {
-      qb = qb.where("google_account_id", googleAccountId);
+      qb = qb.where("organization_id", organizationId);
       if (filters.status) {
         qb = qb.where("status", filters.status);
       }
@@ -129,14 +129,14 @@ export class PracticeRankingModel extends BaseModel {
     return this.paginate<IPracticeRanking>(buildQuery, pagination, trx);
   }
 
-  static async findLatestByAccountAndLocation(
-    googleAccountId: number,
+  static async findLatestByOrganizationAndLocation(
+    organizationId: number,
     gbpLocationId: string,
     trx?: QueryContext
   ): Promise<IPracticeRanking | undefined> {
     const row = await this.table(trx)
       .where({
-        google_account_id: googleAccountId,
+        organization_id: organizationId,
         gbp_location_id: gbpLocationId,
         status: "completed",
       })
@@ -147,12 +147,12 @@ export class PracticeRankingModel extends BaseModel {
       : undefined;
   }
 
-  static async findLatestBatchByAccount(
-    googleAccountId: number,
+  static async findLatestBatchByOrganization(
+    organizationId: number,
     trx?: QueryContext
   ): Promise<IPracticeRanking | undefined> {
     const row = await this.table(trx)
-      .where({ google_account_id: googleAccountId })
+      .where({ organization_id: organizationId })
       .orderBy("created_at", "desc")
       .first();
     return row
@@ -160,13 +160,13 @@ export class PracticeRankingModel extends BaseModel {
       : undefined;
   }
 
-  static async findLatestCompletedByLocations(
-    googleAccountId: number,
+  static async findLatestCompletedByOrganizationLocations(
+    organizationId: number,
     trx?: QueryContext
   ): Promise<IPracticeRanking[]> {
     const rows = await this.table(trx)
       .where({
-        google_account_id: googleAccountId,
+        organization_id: organizationId,
         status: "completed",
       })
       .orderBy("created_at", "desc");
@@ -175,15 +175,15 @@ export class PracticeRankingModel extends BaseModel {
     );
   }
 
-  static async findPreviousByLocation(
-    googleAccountId: number,
+  static async findPreviousByOrganizationLocation(
+    organizationId: number,
     gbpLocationId: string,
     beforeDate: Date,
     trx?: QueryContext
   ): Promise<IPracticeRanking[]> {
     const rows = await this.table(trx)
       .where({
-        google_account_id: googleAccountId,
+        organization_id: organizationId,
         gbp_location_id: gbpLocationId,
         status: "completed",
       })

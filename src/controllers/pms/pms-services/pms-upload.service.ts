@@ -1,6 +1,6 @@
 import axios from "axios";
 import { PmsJobModel } from "../../../models/PmsJobModel";
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import { convertFileToJson } from "../pms-utils/file-converter.util";
 import {
   initializeAutomationStatus,
@@ -77,7 +77,7 @@ export async function processManualEntry(
 
   // Trigger monthly agents immediately
   try {
-    const account = await GoogleAccountModel.findByDomain(domain);
+    const account = await GoogleConnectionModel.findByDomain(domain);
 
     if (account) {
       console.log(

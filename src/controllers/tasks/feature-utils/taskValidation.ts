@@ -7,7 +7,7 @@ export type ActionItemStatus =
 
 export interface CreateActionItemRequest {
   domain_name: string;
-  google_account_id?: number;
+  organization_id?: number;
   title: string;
   description?: string;
   category: ActionItemCategory;

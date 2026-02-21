@@ -129,11 +129,11 @@ export async function handleOAuthCallback(req: Request, res: Response): Promise<
     const response = {
       success: true,
       user: result.user,
-      googleAccount: result.googleAccount,
+      googleConnection: result.googleAccount,
       message: `OAuth authorization successful for ${googleProfile.email}`,
       accessToken: tokens.access_token || undefined,
       expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : undefined,
-      googleAccountId: result.googleAccount.id,
+      googleConnectionId: result.googleAccount.id,
       role: userRole,
     };
 
@@ -153,30 +153,30 @@ export async function handleOAuthCallback(req: Request, res: Response): Promise<
 }
 
 /**
- * GET /auth/google/validate/:googleAccountId
- * Validates and potentially refreshes OAuth tokens for a Google account.
+ * GET /auth/google/validate/:connectionId
+ * Validates and potentially refreshes OAuth tokens for a Google connection.
  */
 export async function validateToken(req: Request, res: Response): Promise<Response | void> {
   try {
-    const { googleAccountId } = req.params;
+    const { connectionId } = req.params;
 
-    if (!googleAccountId || isNaN(Number(googleAccountId))) {
+    if (!connectionId || isNaN(Number(connectionId))) {
       return res.status(400).json({
         success: false,
-        error: "Invalid Google account ID",
+        error: "Invalid connection ID",
         timestamp: new Date().toISOString(),
       });
     }
 
-    const googleAccount = await TokenManagementService.validateAndRefreshToken(
-      Number(googleAccountId),
+    const googleConnection = await TokenManagementService.validateAndRefreshToken(
+      Number(connectionId),
     );
-    const scopes = TokenManagementService.getAccountScopes(googleAccount);
+    const scopes = TokenManagementService.getAccountScopes(googleConnection);
 
     res.json({
       success: true,
       message: "Token validated and refreshed successfully",
-      expiresAt: googleAccount.expiry_date,
+      expiresAt: googleConnection.expiry_date,
       scopes,
     });
   } catch (error) {
@@ -210,7 +210,7 @@ export async function getReconnectUrl(req: Request, res: Response): Promise<Resp
         success: false,
         error: "Missing scopes parameter",
         message:
-          "Please specify which scopes to request (e.g., scopes=ga4,gbp or scopes=all)",
+          "Please specify which scopes to request (e.g., scopes=gbp or scopes=all)",
         timestamp: new Date().toISOString(),
       });
     }
@@ -227,8 +227,8 @@ export async function getReconnectUrl(req: Request, res: Response): Promise<Resp
         success: false,
         error: resolveResult.error,
         message: isInvalidKey
-          ? "Valid scope keys are: ga4, gsc, gbp, or 'all'"
-          : "Please specify at least one valid scope (ga4, gsc, gbp, or all)",
+          ? "Valid scope keys are: gbp, or 'all'"
+          : "Please specify at least one valid scope (gbp or all)",
         timestamp: new Date().toISOString(),
       });
     }

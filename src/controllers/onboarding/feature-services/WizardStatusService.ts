@@ -1,4 +1,4 @@
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 
 /**
  * Get the product tour wizard completion status.
@@ -9,7 +9,7 @@ import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
 export async function getWizardStatus(
   googleAccountId: number
 ): Promise<boolean> {
-  const googleAccount = await GoogleAccountModel.findById(googleAccountId);
+  const googleAccount = await GoogleConnectionModel.findById(googleAccountId);
 
   if (!googleAccount) {
     const error = new Error("Google account not found");
@@ -26,7 +26,7 @@ export async function getWizardStatus(
 export async function markWizardComplete(
   googleAccountId: number
 ): Promise<void> {
-  await GoogleAccountModel.updateById(googleAccountId, {
+  await GoogleConnectionModel.updateById(googleAccountId, {
     onboarding_wizard_completed: true,
   });
 }
@@ -37,7 +37,7 @@ export async function markWizardComplete(
 export async function resetWizard(
   googleAccountId: number
 ): Promise<void> {
-  await GoogleAccountModel.updateById(googleAccountId, {
+  await GoogleConnectionModel.updateById(googleAccountId, {
     onboarding_wizard_completed: false,
   });
 }

@@ -68,7 +68,7 @@ export async function identifyAndUpdate(
         });
 
       const oauth2Client = await googleDataFetcher.getOAuth2Client(googleAccountId);
-      const account = await db("google_accounts")
+      const account = await db("google_connections")
         .where({ id: googleAccountId })
         .first();
       const propertyIds = parseJsonField(account.google_property_ids);

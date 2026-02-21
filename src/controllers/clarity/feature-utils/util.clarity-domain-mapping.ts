@@ -5,12 +5,12 @@ import { domainMappings, type DomainMapping } from "../../../utils/core/domainMa
 
 /**
  * Find a domain mapping by clientId.
- * Searches both `domain` and `gsc_domainkey` fields.
+ * Searches by `domain` field.
  */
 export const findMappingByClientId = (
   clientId: string
 ): DomainMapping | undefined => {
   return domainMappings.find(
-    (m) => m.domain === clientId || m.gsc_domainkey === clientId
+    (m) => m.domain === clientId
   );
 };

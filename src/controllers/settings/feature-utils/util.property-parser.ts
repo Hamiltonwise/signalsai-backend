@@ -1,10 +1,8 @@
 export interface PropertyIds {
-  ga4: any;
-  gsc: any;
   gbp: any[];
 }
 
-const DEFAULT_PROPERTIES: PropertyIds = { ga4: null, gsc: null, gbp: [] };
+const DEFAULT_PROPERTIES: PropertyIds = { gbp: [] };
 
 export function parsePropertyIds(
   raw: string | Record<string, unknown> | null | undefined
@@ -33,11 +31,7 @@ export function updatePropertyByType(
 ): PropertyIds {
   const updated = { ...currentProperties };
 
-  if (type === "ga4") {
-    updated.ga4 = action === "connect" ? data : null;
-  } else if (type === "gsc") {
-    updated.gsc = action === "connect" ? data : null;
-  } else if (type === "gbp") {
+  if (type === "gbp") {
     if (action === "connect") {
       updated.gbp = data;
     } else {

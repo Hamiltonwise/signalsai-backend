@@ -65,6 +65,22 @@ export const sendOTP = async (email: string, code: string) => {
   return sendEmail(email, subject, text, html);
 };
 
+export const sendVerificationCode = async (email: string, code: string) => {
+  const subject = "Verify your Alloro account";
+  const text = `Your verification code is: ${code}. It expires in 10 minutes.`;
+  const html = `
+    <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
+      <h2 style="color: #1a1a1a;">Verify your email</h2>
+      <p style="color: #4a5568; font-size: 16px;">Enter this code to verify your Alloro account:</p>
+      <h1 style="letter-spacing: 5px; background: #f4f4f4; padding: 10px; display: inline-block; border-radius: 5px;">${code}</h1>
+      <p style="color: #718096; font-size: 14px;">This code will expire in 10 minutes.</p>
+      <p style="color: #718096; font-size: 14px;">If you didn't create an account, please ignore this email.</p>
+    </div>
+  `;
+
+  return sendEmail(email, subject, text, html);
+};
+
 export const sendInvitation = async (
   email: string,
   organizationName: string,

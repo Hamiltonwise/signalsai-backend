@@ -1,7 +1,7 @@
 import { OAuth2Client } from "google-auth-library";
 import { db } from "../../../database/connection";
 import { UserModel, IUser } from "../../../models/UserModel";
-import { GoogleAccountModel, IGoogleAccount } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel, IGoogleConnection } from "../../../models/GoogleConnectionModel";
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
 import { QueryContext } from "../../../models/BaseModel";
 
@@ -17,14 +17,12 @@ export interface GoogleUserProfile {
 }
 
 /**
- * Required OAuth scopes for all Google APIs
+ * Required OAuth scopes for GBP API
  */
 const REQUIRED_SCOPES = [
   "openid",
   "email",
   "profile",
-  "https://www.googleapis.com/auth/analytics.readonly",
-  "https://www.googleapis.com/auth/webmasters.readonly",
   "https://www.googleapis.com/auth/business.manage",
 ] as const;
 
@@ -33,7 +31,7 @@ const REQUIRED_SCOPES = [
  */
 export interface OAuthFlowResult {
   user: IUser;
-  googleAccount: IGoogleAccount;
+  googleAccount: IGoogleConnection;
 }
 
 /**
@@ -144,7 +142,7 @@ function buildAccountData(
   userId: number,
   googleProfile: GoogleUserProfile,
   tokens: any,
-): Partial<IGoogleAccount> {
+): Partial<IGoogleConnection> {
   return {
     user_id: userId,
     google_user_id: googleProfile.id,
@@ -222,19 +220,19 @@ export async function completeOAuthFlow(
     const accountData = buildAccountData(user.id, googleProfile, tokens);
 
     // Find or upsert Google account within transaction
-    const existingAccount = await GoogleAccountModel.findByGoogleUserId(
+    const existingAccount = await GoogleConnectionModel.findByGoogleUserId(
       googleProfile.id,
       user.id,
       trx,
     );
 
-    let googleAccount: IGoogleAccount;
+    let googleAccount: IGoogleConnection;
     if (existingAccount) {
-      await GoogleAccountModel.updateById(existingAccount.id, accountData, trx);
-      googleAccount = { ...existingAccount, ...accountData } as IGoogleAccount;
+      await GoogleConnectionModel.updateById(existingAccount.id, accountData, trx);
+      googleAccount = { ...existingAccount, ...accountData } as IGoogleConnection;
       console.log(`[AUTH] Updated Google account for user ${user.id}`);
     } else {
-      googleAccount = await GoogleAccountModel.create(accountData, trx);
+      googleAccount = await GoogleConnectionModel.create(accountData, trx);
       console.log(`[AUTH] Created new Google account for user ${user.id}`);
     }
 
@@ -274,17 +272,17 @@ export async function handleFallbackAuth(
   const accountData = buildAccountData(user.id, googleProfile, tokens);
 
   // Find or upsert Google account without transaction
-  const existingAccount = await GoogleAccountModel.findByGoogleUserId(
+  const existingAccount = await GoogleConnectionModel.findByGoogleUserId(
     googleProfile.id,
     user.id,
   );
 
-  let googleAccount: IGoogleAccount;
+  let googleAccount: IGoogleConnection;
   if (existingAccount) {
-    await GoogleAccountModel.updateById(existingAccount.id, accountData);
-    googleAccount = { ...existingAccount, ...accountData } as IGoogleAccount;
+    await GoogleConnectionModel.updateById(existingAccount.id, accountData);
+    googleAccount = { ...existingAccount, ...accountData } as IGoogleConnection;
   } else {
-    googleAccount = await GoogleAccountModel.create(accountData);
+    googleAccount = await GoogleConnectionModel.create(accountData);
   }
 
   console.log("[AUTH] Fallback non-transactional save completed");

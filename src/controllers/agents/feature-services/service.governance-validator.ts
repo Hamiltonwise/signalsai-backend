@@ -357,7 +357,7 @@ export async function runGuardianGovernanceAgents(
   // Save Guardian result
   const [guardianRecord] = await db("agent_results")
     .insert({
-      google_account_id: null,
+      organization_id: null,
       domain: "SYSTEM",
       agent_type: "guardian",
       date_start: monthRange.startDate,
@@ -381,7 +381,7 @@ export async function runGuardianGovernanceAgents(
   // Save Governance Sentinel result
   const [governanceRecord] = await db("agent_results")
     .insert({
-      google_account_id: null,
+      organization_id: null,
       domain: "SYSTEM",
       agent_type: "governance_sentinel",
       date_start: monthRange.startDate,

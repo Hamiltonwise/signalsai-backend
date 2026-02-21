@@ -1,6 +1,7 @@
 import { Response } from "express";
+import { RBACRequest } from "../../middleware/rbac";
 import { AuthenticatedRequest } from "../../middleware/tokenRefresh";
-import { extractGoogleAccountId } from "./feature-utils/onboardingHelpers";
+import { extractOrganizationId } from "./feature-utils/onboardingHelpers";
 import {
   validateProfileData,
   validateProgressData,
@@ -15,7 +16,7 @@ import {
   getSetupProgress as getSetupProgressService,
   updateSetupProgress as updateSetupProgressService,
 } from "./feature-services/SetupProgressService";
-import { GoogleAccountModel } from "../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../models/GoogleConnectionModel";
 import { checkDomain as checkDomainService } from "./feature-services/DomainCheckService";
 import {
   getAvailableGBPLocations,
@@ -74,13 +75,13 @@ function handleError(res: Response, error: any, operation: string): void {
  * Check if user has completed onboarding and return profile data.
  */
 export async function getOnboardingStatus(
-  req: AuthenticatedRequest,
+  req: RBACRequest,
   res: Response
 ): Promise<void> {
   try {
-    const googleAccountId = extractGoogleAccountId(req);
+    const organizationId = extractOrganizationId(req);
 
-    const googleAccount = await GoogleAccountModel.findById(googleAccountId);
+    const googleAccount = await GoogleConnectionModel.findOneByOrganization(organizationId);
 
     if (!googleAccount) {
       const error = new Error("Google account not found");
@@ -93,6 +94,7 @@ export async function getOnboardingStatus(
       onboardingCompleted: !!googleAccount.onboarding_completed,
       hasPropertyIds: !!googleAccount.google_property_ids,
       propertyIds: googleAccount.google_property_ids || null,
+      organizationId,
       profile: {
         firstName: googleAccount.first_name || null,
         lastName: googleAccount.last_name || null,
@@ -116,17 +118,17 @@ export async function getOnboardingStatus(
  * Creates or updates the organization within a transaction.
  */
 export async function completeOnboarding(
-  req: AuthenticatedRequest,
+  req: RBACRequest,
   res: Response
 ): Promise<void> {
   try {
-    const googleAccountId = extractGoogleAccountId(req);
+    const organizationId = extractOrganizationId(req);
 
     const { profile } = req.body;
     const profileData = validateProfileData(profile);
 
     const result = await completeOnboardingWithProfile(
-      googleAccountId,
+      organizationId,
       profileData
     );
 
@@ -146,13 +148,13 @@ export async function completeOnboarding(
  * Check if user has completed the product tour wizard.
  */
 export async function getWizardStatus(
-  req: AuthenticatedRequest,
+  req: RBACRequest,
   res: Response
 ): Promise<void> {
   try {
-    const googleAccountId = extractGoogleAccountId(req);
+    const organizationId = extractOrganizationId(req);
 
-    const wizardCompleted = await getWizardStatusService(googleAccountId);
+    const wizardCompleted = await getWizardStatusService(organizationId);
 
     res.json({
       onboarding_wizard_completed: wizardCompleted,
@@ -168,13 +170,13 @@ export async function getWizardStatus(
  * Mark the product tour wizard as completed.
  */
 export async function completeWizard(
-  req: AuthenticatedRequest,
+  req: RBACRequest,
   res: Response
 ): Promise<void> {
   try {
-    const googleAccountId = extractGoogleAccountId(req);
+    const organizationId = extractOrganizationId(req);
 
-    await markWizardComplete(googleAccountId);
+    await markWizardComplete(organizationId);
 
     res.json({
       success: true,
@@ -191,13 +193,13 @@ export async function completeWizard(
  * Reset the product tour wizard completion flag.
  */
 export async function restartWizard(
-  req: AuthenticatedRequest,
+  req: RBACRequest,
   res: Response
 ): Promise<void> {
   try {
-    const googleAccountId = extractGoogleAccountId(req);
+    const organizationId = extractOrganizationId(req);
 
-    await resetWizard(googleAccountId);
+    await resetWizard(organizationId);
 
     res.json({
       success: true,
@@ -214,13 +216,13 @@ export async function restartWizard(
  * Get the setup progress wizard state.
  */
 export async function getSetupProgress(
-  req: AuthenticatedRequest,
+  req: RBACRequest,
   res: Response
 ): Promise<void> {
   try {
-    const googleAccountId = extractGoogleAccountId(req);
+    const organizationId = extractOrganizationId(req);
 
-    const progress = await getSetupProgressService(googleAccountId);
+    const progress = await getSetupProgressService(organizationId);
 
     res.json({
       success: true,
@@ -237,16 +239,16 @@ export async function getSetupProgress(
  * Update the setup progress wizard state.
  */
 export async function updateSetupProgress(
-  req: AuthenticatedRequest,
+  req: RBACRequest,
   res: Response
 ): Promise<void> {
   try {
-    const googleAccountId = extractGoogleAccountId(req);
+    const organizationId = extractOrganizationId(req);
 
     const { progress } = req.body;
     const validatedProgress = validateProgressData(progress);
 
-    await updateSetupProgressService(googleAccountId, validatedProgress);
+    await updateSetupProgressService(organizationId, validatedProgress);
 
     res.json({
       success: true,
@@ -295,7 +297,7 @@ export async function saveGBP(
   res: Response
 ): Promise<void> {
   try {
-    const googleAccountId = extractGoogleAccountId(req);
+    const organizationId = extractOrganizationId(req);
     const { data } = req.body;
 
     if (!data || !Array.isArray(data)) {
@@ -304,7 +306,7 @@ export async function saveGBP(
       throw error;
     }
 
-    const result = await saveGBPSelection(googleAccountId, data);
+    const result = await saveGBPSelection(organizationId, data);
 
     res.json({
       success: true,

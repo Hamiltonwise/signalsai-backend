@@ -1,26 +1,26 @@
 import express from "express";
+import { authenticateToken } from "../middleware/auth";
+import { rbacMiddleware } from "../middleware/rbac";
 import { tokenRefreshMiddleware } from "../middleware/tokenRefresh";
 import * as onboardingController from "../controllers/onboarding/OnboardingController";
 
 const onboardingRoutes = express.Router();
 
-// Do NOT apply token middleware globally; only to routes that need Google APIs.
-// These onboarding endpoints read the google account ID from the header directly.
+// All onboarding endpoints require JWT auth + RBAC
+onboardingRoutes.get("/status", authenticateToken, rbacMiddleware, onboardingController.getOnboardingStatus);
+onboardingRoutes.post("/save-properties", authenticateToken, rbacMiddleware, onboardingController.completeOnboarding);
+onboardingRoutes.get("/wizard/status", authenticateToken, rbacMiddleware, onboardingController.getWizardStatus);
+onboardingRoutes.put("/wizard/complete", authenticateToken, rbacMiddleware, onboardingController.completeWizard);
+onboardingRoutes.post("/wizard/restart", authenticateToken, rbacMiddleware, onboardingController.restartWizard);
+onboardingRoutes.get("/setup-progress", authenticateToken, rbacMiddleware, onboardingController.getSetupProgress);
+onboardingRoutes.put("/setup-progress", authenticateToken, rbacMiddleware, onboardingController.updateSetupProgress);
 
-onboardingRoutes.get("/status", onboardingController.getOnboardingStatus);
-onboardingRoutes.post("/save-properties", onboardingController.completeOnboarding);
-onboardingRoutes.get("/wizard/status", onboardingController.getWizardStatus);
-onboardingRoutes.put("/wizard/complete", onboardingController.completeWizard);
-onboardingRoutes.post("/wizard/restart", onboardingController.restartWizard);
-onboardingRoutes.get("/setup-progress", onboardingController.getSetupProgress);
-onboardingRoutes.put("/setup-progress", onboardingController.updateSetupProgress);
+// GBP onboarding endpoints — also require tokenRefreshMiddleware for OAuth2 client
+onboardingRoutes.get("/available-gbp", authenticateToken, rbacMiddleware, tokenRefreshMiddleware, onboardingController.getAvailableGBP);
+onboardingRoutes.post("/save-gbp", authenticateToken, rbacMiddleware, tokenRefreshMiddleware, onboardingController.saveGBP);
+onboardingRoutes.post("/gbp-website", authenticateToken, rbacMiddleware, tokenRefreshMiddleware, onboardingController.getGBPWebsite);
 
-// GBP onboarding endpoints — require tokenRefreshMiddleware for OAuth2 client
-onboardingRoutes.get("/available-gbp", tokenRefreshMiddleware, onboardingController.getAvailableGBP);
-onboardingRoutes.post("/save-gbp", tokenRefreshMiddleware, onboardingController.saveGBP);
-onboardingRoutes.post("/gbp-website", tokenRefreshMiddleware, onboardingController.getGBPWebsite);
-
-// Domain validation — no token middleware needed
+// Domain validation — public endpoint, no auth needed
 onboardingRoutes.post("/check-domain", onboardingController.checkDomain);
 
 export default onboardingRoutes;

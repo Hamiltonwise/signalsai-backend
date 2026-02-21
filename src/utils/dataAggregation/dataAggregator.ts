@@ -4,9 +4,7 @@
  * for agent processing with multiple clients
  */
 
-import { getGA4AIReadyData } from "../../routes/ga4";
 import { getGBPAIReadyData } from "../../routes/gbp";
-import { getGSCAIReadyData } from "../../routes/gsc";
 import { db } from "../../database/connection";
 
 // =====================================================================
@@ -14,22 +12,12 @@ import { db } from "../../database/connection";
 // =====================================================================
 
 export interface ServiceDataResult {
-  ga4Data: any;
   gbpData: any;
-  gscData: any;
   clarityData: any;
   pmsData: any;
 }
 
 export interface GooglePropertyIds {
-  ga4?: {
-    propertyId: string;
-    displayName: string;
-  };
-  gsc?: {
-    siteUrl: string;
-    displayName: string;
-  };
   gbp?: Array<{
     accountId: string;
     locationId: string;
@@ -40,80 +28,6 @@ export interface GooglePropertyIds {
 // =====================================================================
 // GOOGLE SERVICES DATA AGGREGATION
 // =====================================================================
-
-/**
- * Fetch GA4 data for a specific date range
- * @param oauth2Client - Authenticated OAuth2 client
- * @param propertyId - GA4 property ID (e.g., "properties/12345")
- * @param startDate - Start date in YYYY-MM-DD format
- * @param endDate - End date in YYYY-MM-DD format
- */
-export async function fetchGA4DataForRange(
-  oauth2Client: any,
-  propertyId: string,
-  startDate: string,
-  endDate: string
-): Promise<any> {
-  try {
-    console.log(
-      `[GA4] Attempting to fetch data for property: ${propertyId} (${startDate} to ${endDate})`
-    );
-
-    // Log credential status (without exposing sensitive data)
-    const credentials = oauth2Client.credentials;
-    console.log(`[GA4] OAuth credentials status:`, {
-      hasAccessToken: !!credentials?.access_token,
-      hasRefreshToken: !!credentials?.refresh_token,
-      tokenExpiry: credentials?.expiry_date
-        ? new Date(credentials.expiry_date).toISOString()
-        : "unknown",
-      scopes: credentials?.scope || "not available",
-    });
-
-    const data = await getGA4AIReadyData(
-      oauth2Client,
-      propertyId,
-      startDate,
-      endDate
-    );
-    console.log(
-      `[GA4] ✓ Successfully fetched data for property: ${propertyId}`
-    );
-    return data;
-  } catch (error: any) {
-    console.error(
-      `[GA4 ERROR] Failed to fetch data for property: ${propertyId}`
-    );
-    console.error(`[GA4 ERROR] Date range: ${startDate} to ${endDate}`);
-    console.error(
-      `[GA4 ERROR] Error type: ${error?.constructor?.name || "Unknown"}`
-    );
-    console.error(
-      `[GA4 ERROR] Error message: ${error?.message || String(error)}`
-    );
-
-    // Log additional error details if available
-    if (error?.response) {
-      console.error(`[GA4 ERROR] HTTP Status: ${error.response?.status}`);
-      console.error(
-        `[GA4 ERROR] Response data:`,
-        JSON.stringify(error.response?.data, null, 2)
-      );
-    }
-    if (error?.code) {
-      console.error(`[GA4 ERROR] Error code: ${error.code}`);
-    }
-    if (error?.errors) {
-      console.error(
-        `[GA4 ERROR] Detailed errors:`,
-        JSON.stringify(error.errors, null, 2)
-      );
-    }
-
-    console.error(`Error fetching GA4 data: ${error}`);
-    return null;
-  }
-}
 
 /**
  * Fetch GBP data for all locations in a date range
@@ -175,33 +89,6 @@ export async function fetchGBPDataForRange(
   } catch (error: any) {
     console.error(`Error fetching GBP data: ${error}`);
     return { locations: [], error: error?.message || String(error) };
-  }
-}
-
-/**
- * Fetch GSC data for a specific date range
- * @param oauth2Client - Authenticated OAuth2 client
- * @param siteUrl - GSC site URL (e.g., "sc-domain:example.com")
- * @param startDate - Start date in YYYY-MM-DD format
- * @param endDate - End date in YYYY-MM-DD format
- */
-export async function fetchGSCDataForRange(
-  oauth2Client: any,
-  siteUrl: string,
-  startDate: string,
-  endDate: string
-): Promise<any> {
-  try {
-    const data = await getGSCAIReadyData(
-      oauth2Client,
-      siteUrl,
-      startDate,
-      endDate
-    );
-    return data;
-  } catch (error) {
-    console.error(`Error fetching GSC data: ${error}`);
-    return null;
   }
 }
 
@@ -361,11 +248,11 @@ export async function fetchPMSDataForRange(
 
 /**
  * Fetch all service data for a specific date range
- * Combines GA4, GBP, GSC, Clarity, and PMS data
+ * Combines GBP, Clarity, and PMS data
  * @param oauth2Client - Authenticated OAuth2 client
- * @param googleAccountId - Google account ID
+ * @param googleAccountId - Google account ID (legacy param name, will be org ID)
  * @param domain - Domain name
- * @param propertyIds - Google property IDs (GA4, GBP, GSC)
+ * @param propertyIds - Google property IDs (GBP)
  * @param startDate - Start date in YYYY-MM-DD format
  * @param endDate - End date in YYYY-MM-DD format
  */
@@ -382,30 +269,10 @@ export async function fetchAllServiceData(
   );
 
   // Fetch all services in parallel
-  const [ga4Data, gbpData, gscData, clarityData, pmsData] = await Promise.all([
-    // GA4
-    propertyIds.ga4?.propertyId
-      ? fetchGA4DataForRange(
-          oauth2Client,
-          propertyIds.ga4.propertyId,
-          startDate,
-          endDate
-        )
-      : Promise.resolve(null),
-
+  const [gbpData, clarityData, pmsData] = await Promise.all([
     // GBP (all locations)
     propertyIds.gbp && propertyIds.gbp.length > 0
       ? fetchGBPDataForRange(oauth2Client, propertyIds.gbp, startDate, endDate)
-      : Promise.resolve(null),
-
-    // GSC
-    propertyIds.gsc?.siteUrl
-      ? fetchGSCDataForRange(
-          oauth2Client,
-          propertyIds.gsc.siteUrl,
-          startDate,
-          endDate
-        )
       : Promise.resolve(null),
 
     // Clarity (from database)
@@ -416,9 +283,7 @@ export async function fetchAllServiceData(
   ]);
 
   return {
-    ga4Data,
     gbpData,
-    gscData,
     clarityData,
     pmsData,
   };

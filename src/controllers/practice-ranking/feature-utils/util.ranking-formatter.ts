@@ -142,7 +142,7 @@ export function formatFullResults(ranking: any) {
     success: true,
     ranking: {
       id: ranking.id,
-      googleAccountId: ranking.google_account_id,
+      googleAccountId: ranking.organization_id,
       domain: ranking.domain,
       specialty: ranking.specialty,
       location: ranking.location,
@@ -184,7 +184,7 @@ export function formatRankingsList(rankings: any[]) {
     count: rankings.length,
     rankings: rankings.map((r) => ({
       id: r.id,
-      googleAccountId: r.google_account_id,
+      googleAccountId: r.organization_id,
       domain: r.domain,
       specialty: r.specialty,
       location: r.location,
@@ -227,7 +227,7 @@ export function formatAccountsList(accounts: any[]) {
 export function formatLatestRanking(ranking: any, previous: any | null) {
   return {
     id: ranking.id,
-    googleAccountId: ranking.google_account_id,
+    googleAccountId: ranking.organization_id,
     domain: ranking.domain,
     specialty: ranking.specialty,
     location: ranking.location,
@@ -264,7 +264,7 @@ export function formatLatestRanking(ranking: any, previous: any | null) {
 export function formatLegacyLatestRanking(ranking: any) {
   return {
     id: ranking.id,
-    googleAccountId: ranking.google_account_id,
+    googleAccountId: ranking.organization_id,
     domain: ranking.domain,
     specialty: ranking.specialty,
     location: ranking.location,

@@ -2,12 +2,12 @@
  * Organization Enrichment Service
  *
  * Enriches a list of organizations with user counts and connection status.
- * Orchestrates calls to OrganizationUserModel and GoogleAccountModel.
+ * Orchestrates calls to OrganizationUserModel and GoogleConnectionModel.
  */
 
 import { IOrganization } from "../../../models/OrganizationModel";
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import * as ConnectionDetectionService from "./ConnectionDetectionService";
 import type { ConnectionStatus } from "./ConnectionDetectionService";
 
@@ -27,7 +27,7 @@ export async function enrichWithMetadata(
     orgs.map(async (org) => {
       const userCount = await OrganizationUserModel.countByOrg(org.id);
 
-      const linkedAccounts = await GoogleAccountModel.findByOrganization(
+      const linkedAccounts = await GoogleConnectionModel.findByOrganization(
         org.id
       );
 

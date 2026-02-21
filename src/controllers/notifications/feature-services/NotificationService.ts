@@ -7,12 +7,12 @@
  * - Domain ownership verification
  * - Account lookup for notification creation
  *
- * All database access goes through NotificationModel and GoogleAccountModel.
+ * All database access goes through NotificationModel and GoogleConnectionModel.
  * No direct db() calls.
  */
 
 import { NotificationModel, INotification } from "../../../models/NotificationModel";
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 
 interface DomainResolutionResult {
   domain: string | null;
@@ -38,7 +38,7 @@ interface DeleteNotificationResult {
 export class NotificationService {
   /**
    * Resolve a domain name from a google account ID.
-   * Wraps GoogleAccountModel.getDomainFromAccountId with error handling.
+   * Wraps GoogleConnectionModel.getDomainFromAccountId with error handling.
    *
    * @param googleAccountId - The google account ID to look up
    * @returns Domain string if found, null with optional error if not
@@ -47,7 +47,7 @@ export class NotificationService {
     googleAccountId: number
   ): Promise<DomainResolutionResult> {
     try {
-      const domain = await GoogleAccountModel.getDomainFromAccountId(googleAccountId);
+      const domain = await GoogleConnectionModel.getDomainFromAccountId(googleAccountId);
       return { domain };
     } catch (error) {
       console.error("Error fetching domain from account ID:", error);
@@ -139,7 +139,7 @@ export class NotificationService {
     metadata?: unknown;
   }): Promise<CreateNotificationResult> {
     // Look up google account by domain
-    const account = await GoogleAccountModel.findByDomain(data.domain_name);
+    const account = await GoogleConnectionModel.findByDomain(data.domain_name);
 
     if (!account) {
       return {
@@ -150,7 +150,7 @@ export class NotificationService {
 
     // Create notification
     const notificationData: Partial<INotification> = {
-      google_account_id: account.id,
+      organization_id: account.organization_id || null,
       domain_name: data.domain_name,
       title: data.title,
       message: data.message || null,

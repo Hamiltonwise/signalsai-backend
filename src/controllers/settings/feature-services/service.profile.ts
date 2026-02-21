@@ -1,20 +1,20 @@
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import { UserModel } from "../../../models/UserModel";
 
 export async function getUserProfileWithRole(
-  googleAccountId: number,
+  organizationId: number,
   userRole: string | undefined
 ) {
-  const googleAccount = await GoogleAccountModel.findById(googleAccountId);
+  const googleConnection = await GoogleConnectionModel.findOneByOrganization(organizationId);
 
-  if (!googleAccount) {
+  if (!googleConnection) {
     const error = new Error("Account not found") as any;
     error.statusCode = 404;
     error.body = { error: "Account not found" };
     throw error;
   }
 
-  const user = await UserModel.findById(googleAccount.user_id);
+  const user = await UserModel.findById(googleConnection.user_id);
 
   if (!user) {
     const error = new Error("User not found") as any;
@@ -28,6 +28,6 @@ export async function getUserProfileWithRole(
     email: user.email,
     name: user.name,
     role: userRole,
-    organizationId: googleAccount.organization_id,
+    organizationId,
   };
 }

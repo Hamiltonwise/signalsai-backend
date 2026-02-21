@@ -39,7 +39,6 @@ export async function handleErrorResponse(
         stepsCompleted: [
           "queued",
           "fetching_client_gbp",
-          "fetching_client_gsc",
           "discovering_competitors",
           "scraping_competitors",
           "auditing_website",
@@ -70,7 +69,7 @@ export async function archiveAndCreateTasks(
       // Find previous ranking IDs for this location (excluding current)
       const previousRankings = await trx("practice_rankings")
         .where({
-          google_account_id: ranking.google_account_id,
+          organization_id: ranking.organization_id,
           gbp_location_id: ranking.gbp_location_id,
         })
         .whereNot({ id: practiceRankingId })
@@ -108,7 +107,7 @@ export async function archiveAndCreateTasks(
       if (topRecommendations.length > 0) {
         const tasksToInsert = topRecommendations.map((item: any) => ({
           domain_name: ranking.domain,
-          google_account_id: ranking.google_account_id,
+          organization_id: ranking.organization_id,
           title: item.title || "Ranking Improvement Action",
           description: item.expected_outcome
             ? `${item.description || ""}\n\n**Expected Outcome:**\n${
@@ -167,7 +166,6 @@ export async function saveLlmAnalysis(
         stepsCompleted: [
           "queued",
           "fetching_client_gbp",
-          "fetching_client_gsc",
           "discovering_competitors",
           "scraping_competitors",
           "auditing_website",

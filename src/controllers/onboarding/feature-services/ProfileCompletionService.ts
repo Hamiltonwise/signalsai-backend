@@ -1,5 +1,5 @@
 import { db } from "../../../database/connection";
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import { OrganizationModel } from "../../../models/OrganizationModel";
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
 import { ProfileData } from "../feature-utils/onboardingValidation";
@@ -24,7 +24,7 @@ export async function completeOnboardingWithProfile(
   profileData: ProfileData
 ): Promise<ProfileCompletionResult> {
   await db.transaction(async (trx) => {
-    const googleAccount = await GoogleAccountModel.findById(
+    const googleAccount = await GoogleConnectionModel.findById(
       googleAccountId,
       trx
     );
@@ -71,7 +71,7 @@ export async function completeOnboardingWithProfile(
     }
 
     // Update google account with profile fields and mark onboarding complete
-    await GoogleAccountModel.updateById(
+    await GoogleConnectionModel.updateById(
       googleAccountId,
       {
         first_name: profileData.firstName,

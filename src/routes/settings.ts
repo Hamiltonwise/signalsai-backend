@@ -1,4 +1,5 @@
 import express from "express";
+import { authenticateToken } from "../middleware/auth";
 import { tokenRefreshMiddleware } from "../middleware/tokenRefresh";
 import { rbacMiddleware, requireRole } from "../middleware/rbac";
 import * as controller from "../controllers/settings/SettingsController";
@@ -6,20 +7,20 @@ import * as controller from "../controllers/settings/SettingsController";
 const settingsRoutes = express.Router();
 
 // User Profile & Role
-settingsRoutes.get("/me", tokenRefreshMiddleware, rbacMiddleware, controller.getUserProfile);
+settingsRoutes.get("/me", authenticateToken, rbacMiddleware, controller.getUserProfile);
 
 // Scopes Management
-settingsRoutes.get("/scopes", tokenRefreshMiddleware, rbacMiddleware, controller.getScopes);
+settingsRoutes.get("/scopes", authenticateToken, rbacMiddleware, controller.getScopes);
 
 // Properties Management
-settingsRoutes.get("/properties", tokenRefreshMiddleware, rbacMiddleware, controller.getProperties);
-settingsRoutes.post("/properties/update", tokenRefreshMiddleware, rbacMiddleware, requireRole("admin"), controller.updateProperties);
-settingsRoutes.get("/properties/available/:type", tokenRefreshMiddleware, rbacMiddleware, controller.getAvailableProperties);
+settingsRoutes.get("/properties", authenticateToken, rbacMiddleware, controller.getProperties);
+settingsRoutes.post("/properties/update", authenticateToken, rbacMiddleware, requireRole("admin"), controller.updateProperties);
+settingsRoutes.get("/properties/available/:type", authenticateToken, rbacMiddleware, tokenRefreshMiddleware, controller.getAvailableProperties);
 
 // User Management
-settingsRoutes.get("/users", tokenRefreshMiddleware, rbacMiddleware, controller.listUsers);
-settingsRoutes.post("/users/invite", tokenRefreshMiddleware, rbacMiddleware, requireRole("admin", "manager"), controller.inviteUser);
-settingsRoutes.delete("/users/:userId", tokenRefreshMiddleware, rbacMiddleware, requireRole("admin"), controller.removeUser);
-settingsRoutes.put("/users/:userId/role", tokenRefreshMiddleware, rbacMiddleware, requireRole("admin"), controller.changeUserRole);
+settingsRoutes.get("/users", authenticateToken, rbacMiddleware, controller.listUsers);
+settingsRoutes.post("/users/invite", authenticateToken, rbacMiddleware, requireRole("admin", "manager"), controller.inviteUser);
+settingsRoutes.delete("/users/:userId", authenticateToken, rbacMiddleware, requireRole("admin"), controller.removeUser);
+settingsRoutes.put("/users/:userId/role", authenticateToken, rbacMiddleware, requireRole("admin"), controller.changeUserRole);
 
 export default settingsRoutes;

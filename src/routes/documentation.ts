@@ -1,7 +1,7 @@
 /**
  * Documentation Routes
  *
- * Serves API documentation for all available routes across GA4, GBP, and GSC services.
+ * Serves API documentation for all available GBP routes.
  * - GET /api/documentation - Returns full API documentation as JSON
  */
 

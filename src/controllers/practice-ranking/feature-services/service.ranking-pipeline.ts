@@ -9,10 +9,7 @@
 
 import { db } from "../../../database/connection";
 import { getValidOAuth2Client } from "../../../auth/oauth2Helper";
-import {
-  fetchGBPDataForRange,
-  fetchGSCDataForRange,
-} from "../../../utils/dataAggregation/dataAggregator";
+import { fetchGBPDataForRange } from "../../../utils/dataAggregation/dataAggregator";
 import {
   discoverCompetitors,
   getCompetitorDetails,
@@ -139,7 +136,6 @@ export async function updateStatus(
     const steps = [
       "queued",
       "fetching_client_gbp",
-      "fetching_client_gsc",
       "discovering_competitors",
       "scraping_competitors",
       "auditing_website",
@@ -213,7 +209,7 @@ export async function processLocationRanking(
   };
 
   // Get account details
-  const account = await db("google_accounts")
+  const account = await db("google_connections")
     .where({ id: googleAccountId })
     .first();
 
@@ -265,28 +261,7 @@ export async function processLocationRanking(
     endDateStr,
   );
 
-  // ========== STEP 2: Fetch GSC Data ==========
-  await updateStatus(
-    rankingId,
-    "processing",
-    "fetching_client_gsc",
-    "Fetching GSC data...",
-    20,
-    statusDetail,
-    log,
-  );
-
-  let clientGscData: any = null;
-  if (propertyIds?.gsc?.siteUrl) {
-    clientGscData = await fetchGSCDataForRange(
-      oauth2Client,
-      propertyIds.gsc.siteUrl,
-      startDateStr,
-      endDateStr,
-    );
-  }
-
-  // ========== STEP 3: Discover Competitors ==========
+  // ========== STEP 2: Discover Competitors ==========
   await updateStatus(
     rankingId,
     "processing",
@@ -361,7 +336,7 @@ export async function processLocationRanking(
     }
   }
 
-  // ========== STEP 4: Deep Scrape Competitors ==========
+  // ========== STEP 3: Deep Scrape Competitors ==========
   await updateStatus(
     rankingId,
     "processing",
@@ -457,7 +432,7 @@ export async function processLocationRanking(
     return true;
   });
 
-  // ========== STEP 5: Website Audit ==========
+  // ========== STEP 4: Website Audit ==========
   await updateStatus(
     rankingId,
     "processing",
@@ -476,7 +451,7 @@ export async function processLocationRanking(
     log(`[RANKING] [${rankingId}] Website audit failed: ${error.message}`);
   }
 
-  // ========== STEP 6: Calculate Scores ==========
+  // ========== STEP 5: Calculate Scores ==========
   await updateStatus(
     rankingId,
     "processing",
@@ -662,7 +637,6 @@ export async function processLocationRanking(
       gbpLocationName,
       _raw: clientGbpData,
     },
-    client_gsc: clientGscData,
     competitors: rankedPractices
       .filter((p) => p.id !== "client")
       .slice(0, 20)
@@ -770,7 +744,7 @@ export async function processLocationRanking(
       updated_at: new Date(),
     });
 
-  // ========== STEP 7: Send to LLM ==========
+  // ========== STEP 6: Send to LLM ==========
   await updateStatus(
     rankingId,
     "processing",
@@ -831,7 +805,7 @@ export async function processLocationRanking(
         // Archive old tasks
         const previousRankings = await db("practice_rankings")
           .where({
-            google_account_id: googleAccountId,
+            organization_id: account.organization_id ?? googleAccountId,
             gbp_location_id: gbpLocationId,
           })
           .whereNot({ id: rankingId })
@@ -849,7 +823,7 @@ export async function processLocationRanking(
 
         const tasksToInsert = topRecommendations.map((item: any) => ({
           domain_name: domain,
-          google_account_id: googleAccountId,
+          organization_id: account.organization_id ?? googleAccountId,
           title: item.title || "Ranking Improvement Action",
           description: item.expected_outcome
             ? `${item.description || ""}\n\n**Expected Outcome:**\n${
@@ -889,7 +863,6 @@ export async function processLocationRanking(
             stepsCompleted: [
               "queued",
               "fetching_client_gbp",
-              "fetching_client_gsc",
               "discovering_competitors",
               "scraping_competitors",
               "auditing_website",

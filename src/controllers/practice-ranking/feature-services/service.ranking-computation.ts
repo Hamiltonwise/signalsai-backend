@@ -45,6 +45,7 @@ export interface LocationInput {
  * @param domain - Domain name for the account
  * @param rankingIds - Pre-created ranking record IDs (required when recordsPreCreated=true)
  * @param recordsPreCreated - Whether ranking records were already created by the trigger
+ * @param organizationId - The actual organization ID (not the google_connections row ID)
  */
 export async function processBatch(
   batchId: string,
@@ -53,6 +54,7 @@ export async function processBatch(
   domain: string,
   rankingIds: number[],
   recordsPreCreated: boolean = true,
+  organizationId?: number | null,
 ): Promise<void> {
   const headerLabel = recordsPreCreated
     ? "BATCH ANALYSIS STARTED (WITH PRE-CREATED RECORDS)"
@@ -85,7 +87,7 @@ export async function processBatch(
       const locationInput = locations[i];
       const [result] = await db("practice_rankings")
         .insert({
-          google_account_id: googleAccountId,
+          organization_id: organizationId ?? googleAccountId,
           domain: domain,
           specialty: locationInput.specialty || null,
           location: locationInput.marketLocation || null,

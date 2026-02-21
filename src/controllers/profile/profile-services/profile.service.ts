@@ -1,7 +1,7 @@
 import {
-  GoogleAccountModel,
-  IGoogleAccount,
-} from "../../../models/GoogleAccountModel";
+  GoogleConnectionModel,
+  IGoogleConnection,
+} from "../../../models/GoogleConnectionModel";
 
 export interface ProfileFields {
   phone: string | null;
@@ -9,7 +9,7 @@ export interface ProfileFields {
 }
 
 function extractProfileFields(
-  account: IGoogleAccount | undefined
+  account: IGoogleConnection | undefined
 ): ProfileFields | null {
   if (!account) {
     return null;
@@ -21,9 +21,9 @@ function extractProfileFields(
 }
 
 export async function getProfileData(
-  googleAccountId: number
+  organizationId: number
 ): Promise<ProfileFields> {
-  const account = await GoogleAccountModel.findById(googleAccountId);
+  const account = await GoogleConnectionModel.findOneByOrganization(organizationId);
 
   if (!account) {
     const error = new Error("Account not found");
@@ -35,21 +35,20 @@ export async function getProfileData(
 }
 
 export async function updateProfileData(
-  googleAccountId: number,
+  organizationId: number,
   updates: { phone?: string; operational_jurisdiction?: string }
 ): Promise<ProfileFields> {
-  const updated = await GoogleAccountModel.updateById(
-    googleAccountId,
-    updates
-  );
+  const account = await GoogleConnectionModel.findOneByOrganization(organizationId);
 
-  if (!updated) {
+  if (!account) {
     const error = new Error("Account not found");
     (error as any).statusCode = 404;
     throw error;
   }
 
-  const account = await GoogleAccountModel.findById(googleAccountId);
+  await GoogleConnectionModel.updateById(account.id, updates);
 
-  return extractProfileFields(account)!;
+  const updated = await GoogleConnectionModel.findById(account.id);
+
+  return extractProfileFields(updated)!;
 }

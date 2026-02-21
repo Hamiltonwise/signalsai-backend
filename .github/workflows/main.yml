@@ -39,6 +39,7 @@ jobs:
         run: |
           git clone https://github.com/Hamiltonwise/signalsai.git frontend
           cd frontend
+          echo "VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}" > .env
           npm ci
           npm run build
           cd ..

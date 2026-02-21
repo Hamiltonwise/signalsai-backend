@@ -21,7 +21,7 @@ export async function generateAuthUrl(req: Request, res: Response) {
       authUrl,
       scopes: REQUIRED_SCOPES,
       message:
-        "Visit the authUrl to authorize access for GA4, GSC, and GBP APIs",
+        "Visit the authUrl to authorize access for GBP API",
     });
   } catch (error: any) {
     return formatOAuthError(res, error, "Generate OAuth URL");
@@ -51,14 +51,12 @@ export async function handleCallback(req: Request, res: Response) {
 
     res.json({
       message:
-        "Authorization successful - tokens obtained for GA4, GSC, and GBP",
+        "Authorization successful - tokens obtained for GBP",
       refreshToken: tokens.refresh_token,
       accessToken: tokens.access_token,
       expiryDate: tokens.expiry_date,
       scope: tokens.scope,
       apis: [
-        "Google Analytics 4",
-        "Google Search Console",
         "Google Business Profile",
       ],
     });

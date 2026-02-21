@@ -1,6 +1,6 @@
 import axios from "axios";
 import db from "../../../database/connection";
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import {
   createNotification,
 } from "../../../utils/core/notificationHelper";
@@ -177,7 +177,7 @@ export async function approveByClient(jobId: number, clientApproval: boolean) {
 
     try {
       // Get google account ID from domain
-      const account = await GoogleAccountModel.findByDomain(updatedJob.domain);
+      const account = await GoogleConnectionModel.findByDomain(updatedJob.domain);
 
       if (account) {
         // Trigger monthly agents asynchronously (don't wait for response)

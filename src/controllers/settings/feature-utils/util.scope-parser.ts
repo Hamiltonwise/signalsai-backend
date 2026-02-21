@@ -1,6 +1,4 @@
 export const SCOPE_MAP = {
-  ga4: "https://www.googleapis.com/auth/analytics.readonly",
-  gsc: "https://www.googleapis.com/auth/webmasters.readonly",
   gbp: "https://www.googleapis.com/auth/business.manage",
 } as const;
 
@@ -23,18 +21,6 @@ export function parseScopes(scopeString: string | null | undefined): string[] {
 
 export function buildScopeStatus(normalizedScopes: string[]) {
   return {
-    ga4: {
-      granted: normalizedScopes.includes(SCOPE_MAP.ga4),
-      scope: SCOPE_MAP.ga4,
-      name: "Google Analytics 4",
-      description: "Read-only access to analytics data and reports",
-    },
-    gsc: {
-      granted: normalizedScopes.includes(SCOPE_MAP.gsc),
-      scope: SCOPE_MAP.gsc,
-      name: "Google Search Console",
-      description: "Read-only access to search performance data",
-    },
     gbp: {
       granted: normalizedScopes.includes(SCOPE_MAP.gbp),
       scope: SCOPE_MAP.gbp,

@@ -7,22 +7,24 @@
  */
 
 import express from "express";
-import { tokenRefreshMiddleware } from "../../middleware/tokenRefresh";
-import { requireRole } from "../../middleware/rbac";
+import { authenticateToken } from "../../middleware/auth";
+import { rbacMiddleware, requireRole } from "../../middleware/rbac";
 import * as controller from "../../controllers/user-website/UserWebsiteController";
 
 const userWebsiteRoutes = express.Router();
 
 userWebsiteRoutes.get(
   "/",
-  tokenRefreshMiddleware,
+  authenticateToken,
+  rbacMiddleware,
   requireRole("admin", "manager"),
   controller.getUserWebsite
 );
 
 userWebsiteRoutes.post(
   "/pages/:pageId/edit",
-  tokenRefreshMiddleware,
+  authenticateToken,
+  rbacMiddleware,
   requireRole("admin", "manager"),
   controller.editPageComponent
 );

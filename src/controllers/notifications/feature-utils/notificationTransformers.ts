@@ -11,7 +11,7 @@ import type { NotificationType } from "../../../utils/core/notificationHelper";
 
 interface Notification {
   id: number;
-  google_account_id?: number;
+  organization_id?: number;
   domain_name: string;
   title: string;
   message?: string;

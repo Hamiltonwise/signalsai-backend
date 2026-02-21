@@ -1,18 +1,18 @@
 import { Response, NextFunction } from "express";
 import { db } from "../database/connection";
-import { AuthenticatedRequest } from "./tokenRefresh";
+import { AuthRequest } from "./auth";
 
 export type UserRole = "admin" | "manager" | "viewer";
 
-export interface RBACRequest extends AuthenticatedRequest {
+export interface RBACRequest extends AuthRequest {
   userRole?: UserRole;
   userId?: number;
   organizationId?: number;
 }
 
 /**
- * RBAC Middleware - Checks user role from database on each request
- * This ensures role changes are immediately effective
+ * RBAC Middleware - Checks user role from database on each request.
+ * Requires authenticateToken to run first (populates req.user).
  */
 export const rbacMiddleware = async (
   req: RBACRequest,
@@ -20,37 +20,29 @@ export const rbacMiddleware = async (
   next: NextFunction
 ) => {
   try {
-    const googleAccountId = req.googleAccountId;
+    const userId = req.user?.userId;
 
-    if (!googleAccountId) {
+    if (!userId) {
       return res.status(401).json({ error: "Authentication required" });
-    }
-
-    // Get user from google account
-    const googleAccount = await db("google_accounts")
-      .where({ id: googleAccountId })
-      .first();
-
-    if (!googleAccount || !googleAccount.user_id) {
-      return res.status(404).json({ error: "User not found" });
     }
 
     // Get user role from organization_users
     const orgUser = await db("organization_users")
-      .where({
-        user_id: googleAccount.user_id,
-        organization_id: googleAccount.organization_id,
-      })
+      .where({ user_id: userId })
       .first();
 
     if (!orgUser) {
-      return res.status(403).json({ error: "User not in organization" });
+      // User has no organization yet (onboarding not complete)
+      req.userRole = "viewer";
+      req.userId = userId;
+      req.organizationId = undefined;
+      return next();
     }
 
     // Attach role, userId, and organizationId to request
     req.userRole = orgUser.role as UserRole;
-    req.userId = googleAccount.user_id;
-    req.organizationId = googleAccount.organization_id;
+    req.userId = userId;
+    req.organizationId = orgUser.organization_id;
 
     next();
   } catch (error) {

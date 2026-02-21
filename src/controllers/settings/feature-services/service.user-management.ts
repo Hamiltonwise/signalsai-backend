@@ -1,4 +1,3 @@
-import { GoogleAccountModel } from "../../../models/GoogleAccountModel";
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
 import { InvitationModel } from "../../../models/InvitationModel";
 import { OrganizationModel } from "../../../models/OrganizationModel";
@@ -8,26 +7,22 @@ import {
   calculateTokenExpiry,
 } from "../feature-utils/util.invitation-token";
 
-export async function listOrganizationUsers(googleAccountId: number) {
-  const googleAccount = await GoogleAccountModel.findById(googleAccountId);
-
-  if (!googleAccount || !googleAccount.organization_id) {
-    const error = new Error("Organization not found") as any;
-    error.statusCode = 404;
-    error.body = { error: "Organization not found" };
+export async function listOrganizationUsers(organizationId: number) {
+  if (!organizationId) {
+    const error = new Error("Missing organization ID") as any;
+    error.statusCode = 400;
+    error.body = { error: "Missing organization ID" };
     throw error;
   }
 
-  const orgId = googleAccount.organization_id;
-
-  const users = await OrganizationUserModel.listUsersForOrg(orgId);
-  const invitations = await InvitationModel.listPendingByOrgWithSelect(orgId);
+  const users = await OrganizationUserModel.listUsersForOrg(organizationId);
+  const invitations = await InvitationModel.listPendingByOrgWithSelect(organizationId);
 
   return { users, invitations };
 }
 
 export async function inviteUserToOrganization(
-  googleAccountId: number,
+  organizationId: number,
   email: string,
   role: string | undefined,
   inviterRole: string | undefined
@@ -47,20 +42,16 @@ export async function inviteUserToOrganization(
     throw error;
   }
 
-  const googleAccount = await GoogleAccountModel.findById(googleAccountId);
-
-  if (!googleAccount || !googleAccount.organization_id) {
+  if (!organizationId) {
     const error = new Error("Organization not found") as any;
     error.statusCode = 404;
     error.body = { error: "Organization not found" };
     throw error;
   }
 
-  const orgId = googleAccount.organization_id;
-
   // Check if user is already in the organization
   const existingMember = await OrganizationUserModel.findByOrgAndEmail(
-    orgId,
+    organizationId,
     email
   );
 
@@ -75,7 +66,7 @@ export async function inviteUserToOrganization(
 
   // Check if invitation already exists
   const existingInvite = await InvitationModel.findPendingByOrgAndEmail(
-    orgId,
+    organizationId,
     email
   );
 
@@ -92,7 +83,7 @@ export async function inviteUserToOrganization(
 
   await InvitationModel.create({
     email: email.toLowerCase(),
-    organization_id: orgId,
+    organization_id: organizationId,
     role: role || "viewer",
     token,
     expires_at: expiresAt,
@@ -102,7 +93,7 @@ export async function inviteUserToOrganization(
   });
 
   // Get organization name for email
-  const organization = await OrganizationModel.findById(orgId);
+  const organization = await OrganizationModel.findById(organizationId);
   const organizationName = organization?.name || "the organization";
 
   // Send invitation email
@@ -122,7 +113,7 @@ export async function inviteUserToOrganization(
 }
 
 export async function removeUserFromOrganization(
-  googleAccountId: number,
+  organizationId: number,
   userIdToRemove: number,
   requesterId: number
 ) {
@@ -133,22 +124,17 @@ export async function removeUserFromOrganization(
     throw error;
   }
 
-  const googleAccount = await GoogleAccountModel.findById(googleAccountId);
-
-  if (!googleAccount || !googleAccount.organization_id) {
+  if (!organizationId) {
     const error = new Error("Organization not found") as any;
     error.statusCode = 404;
     error.body = { error: "Organization not found" };
     throw error;
   }
 
-  const orgId = googleAccount.organization_id;
-  const userId = googleAccount.user_id;
-
   // Check requester's role
   const requester = await OrganizationUserModel.findByUserAndOrg(
-    userId,
-    orgId
+    requesterId,
+    organizationId
   );
 
   if (!requester || requester.role !== "admin") {
@@ -159,7 +145,7 @@ export async function removeUserFromOrganization(
   }
 
   // Prevent removing yourself
-  if (userId === userIdToRemove) {
+  if (requesterId === userIdToRemove) {
     const error = new Error("You cannot remove yourself") as any;
     error.statusCode = 400;
     error.body = { error: "You cannot remove yourself" };
@@ -167,13 +153,13 @@ export async function removeUserFromOrganization(
   }
 
   // Remove user
-  await OrganizationUserModel.deleteByUserAndOrg(userIdToRemove, orgId);
+  await OrganizationUserModel.deleteByUserAndOrg(userIdToRemove, organizationId);
 
   return { message: "User removed from organization" };
 }
 
 export async function updateUserRole(
-  googleAccountId: number,
+  organizationId: number,
   userIdToUpdate: number,
   newRole: string,
   requesterId: number | undefined
@@ -192,16 +178,12 @@ export async function updateUserRole(
     throw error;
   }
 
-  const googleAccount = await GoogleAccountModel.findById(googleAccountId);
-
-  if (!googleAccount || !googleAccount.organization_id) {
+  if (!organizationId) {
     const error = new Error("Organization not found") as any;
     error.statusCode = 404;
     error.body = { error: "Organization not found" };
     throw error;
   }
-
-  const orgId = googleAccount.organization_id;
 
   // Prevent changing own role
   if (requesterId === userIdToUpdate) {
@@ -214,7 +196,7 @@ export async function updateUserRole(
   // Update role
   const updated = await OrganizationUserModel.updateRole(
     userIdToUpdate,
-    orgId,
+    organizationId,
     newRole
   );
 

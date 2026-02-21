@@ -1,16 +1,16 @@
 import { Response } from "express";
 import { RBACRequest } from "../../middleware/rbac";
-import { validateGoogleAccountId, validateUpdateFields } from "./profile-utils/validation.util";
+import { validateOrganizationId, validateUpdateFields } from "./profile-utils/validation.util";
 import { formatProfileDataResponse, formatProfileUpdateResponse, formatErrorResponse } from "./profile-utils/response.util";
 import { getProfileData, updateProfileData } from "./profile-services/profile.service";
 
 export async function getProfile(req: RBACRequest, res: Response) {
   try {
-    const googleAccountId = req.googleAccountId;
+    const organizationId = req.organizationId;
 
-    validateGoogleAccountId(googleAccountId);
+    validateOrganizationId(organizationId);
 
-    const profileData = await getProfileData(googleAccountId);
+    const profileData = await getProfileData(organizationId);
 
     return res.json(formatProfileDataResponse(profileData));
   } catch (error: any) {
@@ -21,14 +21,14 @@ export async function getProfile(req: RBACRequest, res: Response) {
 
 export async function updateProfile(req: RBACRequest, res: Response) {
   try {
-    const googleAccountId = req.googleAccountId;
+    const organizationId = req.organizationId;
     const { phone, operational_jurisdiction } = req.body;
 
-    validateGoogleAccountId(googleAccountId);
+    validateOrganizationId(organizationId);
 
     const updates = validateUpdateFields(phone, operational_jurisdiction);
 
-    const profileData = await updateProfileData(googleAccountId, updates);
+    const profileData = await updateProfileData(organizationId, updates);
 
     return res.json(formatProfileUpdateResponse(profileData));
   } catch (error: any) {

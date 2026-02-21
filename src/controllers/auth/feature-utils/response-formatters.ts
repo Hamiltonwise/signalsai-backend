@@ -51,11 +51,11 @@ export function handleError(res: Response, error: any, operation: string): Respo
 interface CallbackResponsePayload {
   success: boolean;
   user: any;
-  googleAccount: any;
+  googleConnection: any;
   message: string;
   accessToken?: string;
   expiresAt?: Date;
-  googleAccountId?: number;
+  googleConnectionId?: number;
   role?: string;
 }
 
