@@ -32,12 +32,12 @@ export async function approveTasks(
   );
 
   // If approving, find USER tasks not yet approved (for notifications)
-  let userTasksToNotify: Array<{ domain_name: string; count: number }> = [];
+  let userTasksToNotify: Array<{ organization_id: number; count: number }> = [];
   if (isApproved) {
     const tasksForNotification =
       await TaskModel.findUserTasksForApproval(taskIds);
     userTasksToNotify =
-      TaskApprovalService.groupTasksByDomain(tasksForNotification);
+      TaskApprovalService.groupTasksByOrganization(tasksForNotification);
   }
 
   // Perform the bulk update

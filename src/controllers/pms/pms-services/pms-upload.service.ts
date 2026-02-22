@@ -7,6 +7,8 @@ import {
   updateAutomationStatus,
   completeStep,
 } from "../../../utils/pms/pmsAutomationStatus";
+import { resolveLocationId } from "../../../utils/locationResolver";
+import { OrganizationModel } from "../../../models/OrganizationModel";
 
 /**
  * Process a manual PMS data entry.
@@ -20,6 +22,11 @@ export async function processManualEntry(
     `[PMS] Manual entry received for domain: ${domain}, months: ${parsedManualData.length}`
   );
 
+  // Resolve organization and location for this domain
+  const org = await OrganizationModel.findByDomain(domain);
+  const organizationId = org?.id ?? null;
+  const locationId = await resolveLocationId(organizationId);
+
   // Create job record with manual entry data
   const job = await PmsJobModel.create({
     time_elapsed: 0,
@@ -28,7 +35,8 @@ export async function processManualEntry(
       monthly_rollup: parsedManualData,
       entry_type: "manual",
     },
-    domain: domain,
+    organization_id: organizationId,
+    location_id: locationId,
     is_approved: true,
     is_client_approved: true,
   } as any);
@@ -138,12 +146,18 @@ export async function processFileUpload(
   const jsonData = await convertFileToJson(file);
   const recordsProcessed = jsonData.length;
 
+  // Resolve organization and location for this domain
+  const org = await OrganizationModel.findByDomain(domain);
+  const organizationId = org?.id ?? null;
+  const locationId = await resolveLocationId(organizationId);
+
   // Create the job record
   const job = await PmsJobModel.create({
     time_elapsed: 0,
     status: "pending",
     response_log: null,
-    domain: domain,
+    organization_id: organizationId,
+    location_id: locationId,
   } as any);
 
   const jobId = job.id;

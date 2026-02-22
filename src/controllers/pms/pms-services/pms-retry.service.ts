@@ -1,6 +1,7 @@
 import axios from "axios";
 import db from "../../../database/connection";
 import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
+import { OrganizationModel } from "../../../models/OrganizationModel";
 import {
   resetToStep,
   updateAutomationStatus,
@@ -27,7 +28,7 @@ export async function retryFailedStep(
     .where({ id: jobId })
     .select(
       "id",
-      "domain",
+      "organization_id",
       "status",
       "raw_input_data",
       "response_log",
@@ -153,11 +154,11 @@ async function retryPmsParser(jobId: number, job: any) {
  * Resets automation, triggers monthly agents via internal API.
  */
 async function retryMonthlyAgents(jobId: number, job: any) {
-  // Monthly agents need: domain, google account, and parsed PMS data (response_log)
-  if (!job.domain) {
+  // Monthly agents need: organization, google account, and parsed PMS data (response_log)
+  if (!job.organization_id) {
     throw Object.assign(
       new Error(
-        "Cannot retry monthly agents - no domain associated with this job"
+        "Cannot retry monthly agents - no organization associated with this job"
       ),
       { statusCode: 400 }
     );
@@ -173,13 +174,13 @@ async function retryMonthlyAgents(jobId: number, job: any) {
     );
   }
 
-  // Get google account for this domain
-  const account = await GoogleConnectionModel.findByDomain(job.domain);
+  // Get google connection for this organization
+  const account = await GoogleConnectionModel.findOneByOrganization(job.organization_id);
 
   if (!account) {
     throw Object.assign(
       new Error(
-        `Cannot retry monthly agents - no Google account found for domain ${job.domain}`
+        `Cannot retry monthly agents - no Google connection found for org ${job.organization_id}`
       ),
       { statusCode: 400 }
     );
@@ -199,6 +200,11 @@ async function retryMonthlyAgents(jobId: number, job: any) {
 
   // Trigger monthly agents
   try {
+    // Resolve domain from organization
+    const org = job.organization_id
+      ? await OrganizationModel.findById(job.organization_id)
+      : null;
+
     axios
       .post(
         `http://localhost:${
@@ -206,14 +212,14 @@ async function retryMonthlyAgents(jobId: number, job: any) {
         }/api/agents/monthly-agents-run`,
         {
           googleAccountId: account.id,
-          domain: job.domain,
+          domain: org?.domain || "",
           force: true,
           pmsJobId: jobId,
         }
       )
       .then(() => {
         console.log(
-          `[PMS] Monthly agents retry triggered successfully for ${job.domain}`
+          `[PMS] Monthly agents retry triggered successfully for org ${job.organization_id}`
         );
       })
       .catch((error) => {
@@ -225,7 +231,7 @@ async function retryMonthlyAgents(jobId: number, job: any) {
     return {
       jobId,
       stepRetried: "monthly_agents",
-      domain: job.domain,
+      organization_id: job.organization_id,
     };
   } catch (triggerError: any) {
     console.error(

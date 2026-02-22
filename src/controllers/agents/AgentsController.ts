@@ -81,6 +81,8 @@ import {
   simulateTaskCreation,
 } from "./feature-services/service.task-creator";
 import { runGuardianGovernanceAgents } from "./feature-services/service.governance-validator";
+import { resolveLocationId } from "../../utils/locationResolver";
+import { AgentResultModel } from "../../models/AgentResultModel";
 
 // =====================================================================
 // POST /proofline-run
@@ -100,11 +102,12 @@ export async function runProoflineAgent(
   log(`Timestamp: ${new Date().toISOString()}`);
 
   try {
-    // Fetch all onboarded Google accounts
+    // Fetch all onboarded Google accounts (join with organizations for name/domain)
     log("\n[SETUP] Fetching all onboarded Google accounts...");
-    const accounts = await db("google_connections")
-      .where("onboarding_completed", true)
-      .select("*");
+    const accounts = await db("google_connections as gc")
+      .join("organizations as o", "gc.organization_id", "o.id")
+      .where("o.onboarding_completed", true)
+      .select("gc.*", "o.domain as domain_name", "o.name as practice_name");
 
     if (!accounts || accounts.length === 0) {
       log("[SETUP] No onboarded accounts found");
@@ -131,6 +134,9 @@ export async function runProoflineAgent(
       log(`[${"=".repeat(60)}]`);
 
       try {
+        // Resolve location for this account
+        const locationId = await resolveLocationId(account.organization_id);
+
         // Get valid OAuth2 client
         log(`[CLIENT] Getting valid OAuth2 client`);
         const oauth2Client = await getValidOAuth2Client(googleAccountId);
@@ -157,7 +163,7 @@ export async function runProoflineAgent(
         const [result] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
-            domain,
+            location_id: locationId,
             agent_type: "proofline",
             date_start: dailyDates.dayBeforeYesterday,
             date_end: dailyDates.yesterday,
@@ -271,10 +277,12 @@ export async function runMonthlyAgents(
       });
     }
 
-    // Fetch account
+    // Fetch account (join with org for name/domain)
     log(`\n[SETUP] Fetching account ${googleAccountId}...`);
-    const account = await db("google_connections")
-      .where({ id: googleAccountId })
+    const account = await db("google_connections as gc")
+      .leftJoin("organizations as o", "gc.organization_id", "o.id")
+      .where("gc.id", googleAccountId)
+      .select("gc.*", "o.domain as domain_name", "o.name as practice_name")
       .first();
 
     if (!account) {
@@ -286,6 +294,9 @@ export async function runMonthlyAgents(
     }
 
     log(`[SETUP] Account found: ${account.domain_name}`);
+
+    // Resolve location for this account
+    const locationId = await resolveLocationId(account.organization_id);
 
     // Get month range
     const monthRange = getPreviousMonthRange();
@@ -343,7 +354,7 @@ export async function runMonthlyAgents(
     const [summaryResult] = await db("agent_results")
       .insert({
         organization_id: account.organization_id,
-        domain,
+        location_id: locationId,
         agent_type: "summary",
         date_start: monthRange.startDate,
         date_end: monthRange.endDate,
@@ -369,7 +380,7 @@ export async function runMonthlyAgents(
     const [opportunityResult] = await db("agent_results")
       .insert({
         organization_id: account.organization_id,
-        domain,
+        location_id: locationId,
         agent_type: "opportunity",
         date_start: monthRange.startDate,
         date_end: monthRange.endDate,
@@ -395,7 +406,7 @@ export async function runMonthlyAgents(
     const [referralEngineResult] = await db("agent_results")
       .insert({
         organization_id: account.organization_id,
-        domain,
+        location_id: locationId,
         agent_type: "referral_engine",
         date_start: monthRange.startDate,
         date_end: monthRange.endDate,
@@ -421,7 +432,7 @@ export async function runMonthlyAgents(
     const [croOptimizerResult] = await db("agent_results")
       .insert({
         organization_id: account.organization_id,
-        domain,
+        location_id: locationId,
         agent_type: "cro_optimizer",
         date_start: monthRange.startDate,
         date_end: monthRange.endDate,
@@ -448,7 +459,7 @@ export async function runMonthlyAgents(
     // Create notification for completed monthly agents (also sends user email)
     try {
       await createNotification(
-        domain,
+        account.organization_id,
         "Monthly Insights Ready",
         "Your monthly summary and opportunities are now available for review",
         "agent",
@@ -479,7 +490,7 @@ export async function runMonthlyAgents(
 
     try {
       const recentTasks = await db("tasks")
-        .where("domain_name", domain)
+        .where("organization_id", account.organization_id)
         .where("created_at", ">=", new Date(startTime))
         .select("category");
 
@@ -889,11 +900,12 @@ export async function runGbpOptimizer(
       );
     }
 
-    // Fetch all onboarded Google accounts
+    // Fetch all onboarded Google accounts (join with organizations for name/domain)
     log("\n[SETUP] Fetching all onboarded Google accounts...");
-    const accounts = await db("google_connections")
-      .where("onboarding_completed", true)
-      .select("*");
+    const accounts = await db("google_connections as gc")
+      .join("organizations as o", "gc.organization_id", "o.id")
+      .where("o.onboarding_completed", true)
+      .select("gc.*", "o.domain as domain_name", "o.name as practice_name");
 
     if (!accounts || accounts.length === 0) {
       log("[SETUP] No onboarded accounts found");
@@ -969,12 +981,14 @@ export async function runGbpOptimizer(
       log(`[${"=".repeat(60)}]`);
 
       try {
+        // Resolve location for this account
+        const locationId = await resolveLocationId(organizationId);
+
         // Check for duplicate before running
         log(`[CLIENT] Checking for existing results...`);
         const existingResult = await db("agent_results")
           .where({
             organization_id: account.organization_id,
-            domain,
             agent_type: "gbp_optimizer",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -1023,7 +1037,7 @@ export async function runGbpOptimizer(
         const [agentResultRecord] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
-            domain,
+            location_id: locationId,
             agent_type: "gbp_optimizer",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -1044,6 +1058,7 @@ export async function runGbpOptimizer(
           googleAccountId,
           domain,
           organizationId,
+          locationId,
         );
 
         results.push({
@@ -1130,19 +1145,23 @@ export async function runRankingAgent(
   log(`Timestamp: ${new Date().toISOString()}`);
 
   try {
-    // 1. Fetch accounts to process
-    let accounts = [];
+    // 1. Fetch accounts to process (join with organizations for name/domain)
+    let accounts: any[] = [];
     if (googleAccountId) {
-      const account = await db("google_connections")
-        .where({ id: googleAccountId, onboarding_completed: true })
+      const account = await db("google_connections as gc")
+        .join("organizations as o", "gc.organization_id", "o.id")
+        .where("gc.id", googleAccountId)
+        .where("o.onboarding_completed", true)
+        .select("gc.*", "o.domain as domain_name", "o.name as practice_name")
         .first();
       if (!account)
         throw new Error(`Onboarded account ${googleAccountId} not found`);
       accounts = [account];
     } else {
-      accounts = await db("google_connections")
-        .where("onboarding_completed", true)
-        .select("*");
+      accounts = await db("google_connections as gc")
+        .join("organizations as o", "gc.organization_id", "o.id")
+        .where("o.onboarding_completed", true)
+        .select("gc.*", "o.domain as domain_name", "o.name as practice_name");
     }
 
     if (!accounts || accounts.length === 0) {
@@ -1172,6 +1191,7 @@ export async function runRankingAgent(
           continue;
         }
 
+        // Resolve location for each GBP entry during the loop below
         const oauth2Client = await getValidOAuth2Client(accId);
         const batchId = uuidv4();
         log(`  [ACCOUNT] Batch ID: ${batchId}`);
@@ -1215,11 +1235,12 @@ export async function runRankingAgent(
         for (let i = 0; i < gbpLocations.length; i++) {
           const loc = gbpLocations[i];
           const meta = locationMetaMap.get(loc.locationId)!;
+          const locationId = await resolveLocationId(accOrgId, loc.locationId);
 
           const [rankingRecord] = await db("practice_rankings")
             .insert({
-              organization_id: accOrgId || accId,
-              domain,
+              organization_id: accOrgId ?? null,
+              location_id: locationId,
               specialty: meta.specialty,
               location: meta.marketLocation,
               gbp_account_id: loc.accountId,
@@ -1446,11 +1467,12 @@ export async function processAllDeprecated(
   log(`Max retries per client: 3`);
 
   try {
-    // Fetch all onboarded Google accounts
+    // Fetch all onboarded Google accounts (join with organizations for name/domain)
     log("\n[SETUP] Fetching all onboarded Google accounts...");
-    const accounts = await db("google_connections")
-      .where("onboarding_completed", true)
-      .select("*");
+    const accounts = await db("google_connections as gc")
+      .join("organizations as o", "gc.organization_id", "o.id")
+      .where("o.onboarding_completed", true)
+      .select("gc.*", "o.domain as domain_name", "o.name as practice_name");
 
     if (!accounts || accounts.length === 0) {
       log("[SETUP] No onboarded accounts found");
@@ -1540,28 +1562,20 @@ export async function getLatestOutputs(
   res: Response,
 ): Promise<any> {
   const { googleAccountId } = req.params;
+  const scopedReq = req as any;
 
   try {
-    log(`\n[GET /latest/${googleAccountId}] Fetching latest agent outputs`);
+    // Prefer organizationId from RBAC middleware
+    const organizationId = scopedReq.organizationId || parseInt(googleAccountId, 10);
+    const locationId = scopedReq.locationId || (req.query.locationId ? parseInt(req.query.locationId as string, 10) : null);
 
-    // Validate googleAccountId
-    const accountId = parseInt(googleAccountId, 10);
-    if (isNaN(accountId)) {
+    log(`\n[GET /latest] Fetching latest agent outputs for org: ${organizationId}, location: ${locationId || "all"}`);
+
+    if (isNaN(organizationId)) {
       return res.status(400).json({
         success: false,
         error: "INVALID_ACCOUNT_ID",
-        message: "Invalid google account ID provided",
-      });
-    }
-
-    // Fetch account details
-    const account = await db("google_connections").where("id", accountId).first();
-
-    if (!account) {
-      return res.status(404).json({
-        success: false,
-        error: "ACCOUNT_NOT_FOUND",
-        message: "Google account not found",
+        message: "Invalid account ID provided",
       });
     }
 
@@ -1570,29 +1584,14 @@ export async function getLatestOutputs(
     const agents: any = {};
 
     for (const agentType of agentTypes) {
-      const result = await db("agent_results")
-        .where({
-          organization_id: accountId,
-          agent_type: agentType,
-          status: "success",
-        })
-        .orderBy("created_at", "desc")
-        .first();
+      const result = await AgentResultModel.findLatestByOrganizationAndAgent(
+        organizationId,
+        agentType,
+        locationId,
+      );
 
       if (result) {
-        // Parse agent_output from JSON string to object
-        let parsedOutput = null;
-        try {
-          parsedOutput =
-            typeof result.agent_output === "string"
-              ? JSON.parse(result.agent_output)
-              : result.agent_output;
-        } catch (parseError) {
-          log(
-            `  [WARNING] Failed to parse agent_output for ${agentType}: ${parseError}`,
-          );
-          parsedOutput = result.agent_output;
-        }
+        let parsedOutput = result.agent_output;
 
         agents[agentType] = {
           results: parsedOutput,
@@ -1607,13 +1606,13 @@ export async function getLatestOutputs(
     }
 
     log(
-      `  [SUCCESS] Retrieved latest outputs for account ${accountId} (${account.domain_name})`,
+      `  [SUCCESS] Retrieved latest outputs for org ${organizationId}`,
     );
 
     return res.json({
       success: true,
-      googleAccountId: accountId,
-      domain: account.domain_name,
+      googleAccountId: organizationId,
+      organizationId,
       agents,
     });
   } catch (error: any) {
@@ -1635,39 +1634,28 @@ export async function getLatestReferralEngineOutput(
   res: Response,
 ): Promise<any> {
   const { googleAccountId } = req.params;
+  const scopedReq = req as any;
 
   try {
+    // Prefer organizationId from RBAC middleware
+    const organizationId = scopedReq.organizationId || parseInt(googleAccountId, 10);
+    const locationId = scopedReq.locationId || (req.query.locationId ? parseInt(req.query.locationId as string, 10) : null);
+
     log(
-      `\n[GET /getLatestReferralEngineOutput/${googleAccountId}] Fetching latest referral engine output`,
+      `\n[GET /getLatestReferralEngineOutput] Fetching for org: ${organizationId}, location: ${locationId || "all"}`,
     );
 
-    // Validate googleAccountId
-    const accountId = parseInt(googleAccountId, 10);
-    if (isNaN(accountId)) {
+    if (isNaN(organizationId)) {
       return res.status(400).json({
         success: false,
         error: "INVALID_ACCOUNT_ID",
-        message: "Invalid google account ID provided",
-      });
-    }
-
-    // Fetch account details
-    const account = await db("google_connections")
-      .where("id", accountId)
-      .first();
-
-    if (!account) {
-      return res.status(404).json({
-        success: false,
-        error: "ACCOUNT_NOT_FOUND",
-        message: "Google account not found",
+        message: "Invalid account ID provided",
       });
     }
 
     // Check for active automation (monthly agents processing)
-    // This prevents showing stale data while new referral engine output is being generated
     const activeAutomation = await db("pms_jobs")
-      .where({ domain: account.domain_name })
+      .where({ organization_id: organizationId })
       .whereRaw(
         `automation_status_detail::jsonb->>'status' = 'processing'
          AND automation_status_detail::jsonb->>'currentStep' = 'monthly_agents'`,
@@ -1676,14 +1664,14 @@ export async function getLatestReferralEngineOutput(
 
     if (activeAutomation) {
       log(
-        `  [PENDING] Active automation found for ${account.domain_name} - PMS Job ID: ${activeAutomation.id}`,
+        `  [PENDING] Active automation found for org ${organizationId} - PMS Job ID: ${activeAutomation.id}`,
       );
       return res.json({
         success: true,
         pending: true,
         message: "Monthly insights are being generated...",
-        googleAccountId: accountId,
-        domain: account.domain_name,
+        googleAccountId: organizationId,
+        organizationId,
         data: null,
         metadata: {
           pmsJobId: activeAutomation.id,
@@ -1693,18 +1681,15 @@ export async function getLatestReferralEngineOutput(
     }
 
     // Fetch latest successful referral_engine result
-    const result = await db("agent_results")
-      .where({
-        organization_id: accountId,
-        agent_type: "referral_engine",
-        status: "success",
-      })
-      .orderBy("created_at", "desc")
-      .first();
+    const result = await AgentResultModel.findLatestByOrganizationAndAgent(
+      organizationId,
+      "referral_engine",
+      locationId,
+    );
 
     if (!result) {
       log(
-        `  [NO DATA] No referral engine results found for account ${accountId}`,
+        `  [NO DATA] No referral engine results found for org ${organizationId}`,
       );
       return res.status(404).json({
         success: false,
@@ -1713,20 +1698,8 @@ export async function getLatestReferralEngineOutput(
       });
     }
 
-    // Parse agent_output from JSON string to object
-    let parsedOutput = null;
-    try {
-      parsedOutput =
-        typeof result.agent_output === "string"
-          ? JSON.parse(result.agent_output)
-          : result.agent_output;
-    } catch (parseError) {
-      log(`  [WARNING] Failed to parse agent_output: ${parseError}`);
-      parsedOutput = result.agent_output;
-    }
-
     log(
-      `  [SUCCESS] Retrieved referral engine output for account ${accountId} (${account.domain_name})`,
+      `  [SUCCESS] Retrieved referral engine output for org ${organizationId}`,
     );
     log(`  - Result ID: ${result.id}`);
     log(`  - Date range: ${result.date_start} to ${result.date_end}`);
@@ -1735,9 +1708,9 @@ export async function getLatestReferralEngineOutput(
     return res.json({
       success: true,
       pending: false,
-      googleAccountId: accountId,
-      domain: account.domain_name,
-      data: parsedOutput,
+      googleAccountId: organizationId,
+      organizationId,
+      data: result.agent_output,
       metadata: {
         resultId: result.id,
         dateStart: result.date_start,

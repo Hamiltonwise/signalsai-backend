@@ -23,6 +23,7 @@ export async function createTasksFromOpportunityOutput(
   googleAccountId: number,
   domain: string,
   organizationId?: number | null,
+  locationId?: number | null,
 ): Promise<void> {
   try {
     const actionItems = opportunityOutput[0]?.opportunities || [];
@@ -39,8 +40,8 @@ export async function createTasksFromOpportunityOutput(
           item.type?.toUpperCase() === "ALLORO" ? "ALLORO" : "USER";
 
         const taskData = {
-          domain_name: domain,
-          organization_id: organizationId ?? googleAccountId,
+          organization_id: organizationId ?? null,
+          location_id: locationId ?? null,
           title: item.title || item.name || "Untitled Task",
           description:
             item.explanation || item.description || item.details || null,
@@ -96,6 +97,7 @@ export async function createTasksFromCroOptimizerOutput(
   googleAccountId: number,
   domain: string,
   organizationId?: number | null,
+  locationId?: number | null,
 ): Promise<void> {
   try {
     const croActionItems = croOptimizerOutput[0]?.opportunities || [];
@@ -110,8 +112,8 @@ export async function createTasksFromCroOptimizerOutput(
         const type = item.type?.toUpperCase() === "USER" ? "USER" : "ALLORO";
 
         const taskData = {
-          domain_name: domain,
-          organization_id: organizationId ?? googleAccountId,
+          organization_id: organizationId ?? null,
+          location_id: locationId ?? null,
           title: item.title || item.name || "Untitled Task",
           description:
             item.explanation || item.description || item.details || null,
@@ -167,6 +169,7 @@ export async function createTasksFromReferralEngineOutput(
   googleAccountId: number,
   domain: string,
   organizationId?: number | null,
+  locationId?: number | null,
 ): Promise<void> {
   try {
     // Referral Engine output may be wrapped in array, handle both cases
@@ -212,8 +215,8 @@ export async function createTasksFromReferralEngineOutput(
             "Untitled Referral Engine Task";
 
         const taskData = {
-          domain_name: domain,
-          organization_id: organizationId ?? googleAccountId,
+          organization_id: organizationId ?? null,
+          location_id: locationId ?? null,
           title: titleText,
           description: fullText || null,
           category: "ALLORO",
@@ -274,8 +277,8 @@ export async function createTasksFromReferralEngineOutput(
             "Untitled Practice Action";
 
         const taskData = {
-          domain_name: domain,
-          organization_id: organizationId ?? googleAccountId,
+          organization_id: organizationId ?? null,
+          location_id: locationId ?? null,
           title: titleText,
           description: fullText || null,
           category: "USER",
@@ -333,6 +336,7 @@ export async function createTasksFromCopyRecommendations(
   googleAccountId: number,
   domain: string,
   organizationId?: number | null,
+  locationId?: number | null,
 ): Promise<void> {
   log(`\n  [GBP-OPTIMIZER] Creating tasks from recommendations...`);
 
@@ -374,8 +378,8 @@ export async function createTasksFromCopyRecommendations(
       taskIndex++;
 
       const taskData = {
-        domain_name: domain,
-        organization_id: organizationId ?? googleAccountId,
+        organization_id: organizationId ?? null,
+        location_id: locationId ?? null,
         title: `Update GBP Post ${taskIndex}`,
         description: `
 **Current Text:**

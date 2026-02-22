@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { TaskModel } from "../../models/TaskModel";
 import { GoogleConnectionModel } from "../../models/GoogleConnectionModel";
+import { resolveLocationId } from "../../utils/locationResolver";
+import { LocationScopedRequest } from "../../middleware/rbac";
 import * as TaskFilteringService from "./feature-services/TaskFilteringService";
 import * as TaskBulkOperationsService from "./feature-services/TaskBulkOperationsService";
 import * as TaskApprovalService from "./feature-services/TaskApprovalService";
@@ -50,7 +52,31 @@ export async function getTasksForClient(
   res: Response
 ): Promise<Response> {
   try {
-    const googleAccountId = req.query.googleAccountId;
+    const scopedReq = req as LocationScopedRequest;
+    const organizationId = scopedReq.organizationId;
+
+    // Prefer org-based query if available (from RBAC middleware)
+    if (organizationId) {
+      const locationId = scopedReq.locationId || null;
+      const accessibleLocationIds = scopedReq.accessibleLocationIds;
+
+      console.log(`[TASKS] Fetching tasks for org: ${organizationId}, location: ${locationId || "all"}`);
+
+      const tasks = await TaskModel.findByOrganizationApproved(
+        organizationId,
+        { locationId, accessibleLocationIds }
+      );
+
+      const response = formatGroupedTasks(tasks);
+      const alloroCount = response.tasks.ALLORO.length;
+      const userCount = response.tasks.USER.length;
+      console.log(`[TASKS] Fetched ${alloroCount} ALLORO tasks and ${userCount} USER tasks for org ${organizationId}`);
+
+      return res.json(response);
+    }
+
+    // Backward compat: fall back to googleAccountId → organization lookup
+    const googleAccountId = req.query.googleAccountId || req.query.organizationId;
 
     if (!googleAccountId) {
       return res.status(400).json({
@@ -60,30 +86,24 @@ export async function getTasksForClient(
       });
     }
 
-    // Get domain from account ID
-    const domain = await GoogleConnectionModel.getDomainFromAccountId(
-      Number(googleAccountId)
-    );
-    if (!domain) {
+    const connection = await GoogleConnectionModel.findById(Number(googleAccountId));
+    if (!connection || !connection.organization_id) {
       return res.status(404).json({
         success: false,
         error: "Account not found",
-        message: "Google account not found or has no domain",
+        message: "Google account not found or has no organization",
       });
     }
 
-    console.log(`[TASKS] Fetching tasks for domain: ${domain}`);
+    console.log(`[TASKS] Fetching tasks for org: ${connection.organization_id} (via legacy googleAccountId)`);
 
-    // Fetch approved tasks for this domain (exclude archived)
-    const tasks = await TaskModel.findByDomainApproved(domain);
-
-    // Group by category and format response
+    const tasks = await TaskModel.findByOrganizationApproved(connection.organization_id);
     const response = formatGroupedTasks(tasks);
 
     const alloroCount = response.tasks.ALLORO.length;
     const userCount = response.tasks.USER.length;
     console.log(
-      `[TASKS] Fetched ${alloroCount} ALLORO tasks and ${userCount} USER tasks for ${domain}`
+      `[TASKS] Fetched ${alloroCount} ALLORO tasks and ${userCount} USER tasks for org ${connection.organization_id}`
     );
 
     return res.json(response);
@@ -111,6 +131,34 @@ export async function completeTask(
     }
 
     const taskId = parseInt(req.params.id, 10);
+    const scopedReq = req as LocationScopedRequest;
+    const organizationId = scopedReq.organizationId;
+
+    // Prefer org-based ownership check
+    if (organizationId) {
+      const task = await TaskModel.findByIdAndOrganization(taskId, organizationId);
+      if (!task) {
+        return res.status(404).json({
+          success: false,
+          error: "Task not found",
+          message: "Task does not exist or does not belong to your organization",
+        });
+      }
+
+      if (task.category !== "USER") {
+        return res.status(403).json({
+          success: false,
+          error: "Cannot complete task",
+          message: "Only USER category tasks can be marked complete by clients",
+        });
+      }
+
+      const updatedTask = await TaskModel.markComplete(taskId);
+      console.log(`[TASKS] Task ${taskId} marked complete for org ${organizationId}`);
+      return res.json({ success: true, task: updatedTask, message: "Task marked as complete" });
+    }
+
+    // Backward compat: fall back to googleAccountId → organization lookup
     const { googleAccountId } = req.body;
 
     const accountValidation = validateGoogleAccountId(googleAccountId);
@@ -122,21 +170,16 @@ export async function completeTask(
       });
     }
 
-    // Get domain from account ID
-    const domain = await GoogleConnectionModel.getDomainFromAccountId(
-      googleAccountId
-    );
-    if (!domain) {
+    const connection = await GoogleConnectionModel.findById(googleAccountId);
+    if (!connection || !connection.organization_id) {
       return res.status(404).json({
         success: false,
         error: "Account not found",
-        message: "Google account not found",
+        message: "Google account not found or has no organization",
       });
     }
 
-    // Fetch the task
     const task = await TaskModel.findById(taskId);
-
     if (!task) {
       return res.status(404).json({
         success: false,
@@ -145,16 +188,14 @@ export async function completeTask(
       });
     }
 
-    // Validate ownership
-    if (task.domain_name !== domain) {
+    if (task.organization_id !== connection.organization_id) {
       return res.status(403).json({
         success: false,
         error: "Access denied",
-        message: "Task does not belong to your domain",
+        message: "Task does not belong to your organization",
       });
     }
 
-    // Only USER category tasks can be completed by clients
     if (task.category !== "USER") {
       return res.status(403).json({
         success: false,
@@ -163,10 +204,8 @@ export async function completeTask(
       });
     }
 
-    // Mark task complete (sets status, completed_at, updated_at)
     const updatedTask = await TaskModel.markComplete(taskId);
-
-    console.log(`[TASKS] Task ${taskId} marked complete for domain ${domain}`);
+    console.log(`[TASKS] Task ${taskId} marked complete for org ${connection.organization_id}`);
 
     return res.json({
       success: true,
@@ -192,6 +231,7 @@ export async function createTask(
 ): Promise<Response> {
   try {
     const {
+      organization_id,
       domain_name,
       title,
       description,
@@ -206,7 +246,7 @@ export async function createTask(
     if (!createValidation.isValid) {
       // Determine the right error key based on what's missing
       const errorKey =
-        !domain_name || !title || !category
+        !title || !category
           ? "Missing required fields"
           : "Invalid category";
       return res.status(400).json({
@@ -216,21 +256,28 @@ export async function createTask(
       });
     }
 
-    // Verify domain exists
-    const account = await GoogleConnectionModel.findByDomain(domain_name);
+    // Resolve organization_id: prefer explicit org_id, fallback to domain lookup
+    let resolvedOrgId = organization_id || null;
+    if (!resolvedOrgId && domain_name) {
+      const account = await GoogleConnectionModel.findByDomain(domain_name);
+      resolvedOrgId = account?.organization_id || null;
+    }
 
-    if (!account) {
-      return res.status(404).json({
+    if (!resolvedOrgId) {
+      return res.status(400).json({
         success: false,
-        error: "Domain not found",
-        message: `No account found for domain: ${domain_name}`,
+        error: "Missing organization",
+        message: "organization_id or domain_name is required",
       });
     }
 
+    // Resolve location for this organization
+    const locationId = await resolveLocationId(resolvedOrgId);
+
     // Create task via model (handles timestamps and JSON serialization)
     const createdTask = await TaskModel.create({
-      domain_name,
-      organization_id: account.organization_id || null,
+      organization_id: resolvedOrgId,
+      location_id: locationId,
       title,
       description: description || null,
       category,
@@ -242,7 +289,7 @@ export async function createTask(
     });
 
     console.log(
-      `[TASKS] Created task ${createdTask.id} for domain ${domain_name}`
+      `[TASKS] Created task ${createdTask.id} for org ${resolvedOrgId}`
     );
 
     return res.status(201).json({
@@ -338,7 +385,7 @@ export async function updateTask(
     const updatedTask = await TaskModel.findById(taskId);
 
     // Handle approval notification for USER tasks
-    if (updates.is_approved === true && task.domain_name) {
+    if (updates.is_approved === true && task.organization_id) {
       await TaskApprovalService.handleApprovalNotification(
         task,
         wasApprovedBefore

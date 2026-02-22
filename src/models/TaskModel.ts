@@ -3,8 +3,8 @@ import { BaseModel, PaginatedResult, PaginationParams, QueryContext } from "./Ba
 
 export interface ITask {
   id: number;
-  domain_name: string;
   organization_id: number | null;
+  location_id: number | null;
   title: string;
   description: string | null;
   category: "ALLORO" | "USER";
@@ -20,7 +20,8 @@ export interface ITask {
 }
 
 export interface TaskAdminFilters {
-  domain_name?: string;
+  organization_id?: number;
+  location_id?: number;
   status?: string;
   category?: string;
   agent_type?: string;
@@ -38,29 +39,6 @@ export class TaskModel extends BaseModel {
     trx?: QueryContext
   ): Promise<ITask | undefined> {
     return super.findById(id, trx);
-  }
-
-  static async findByIdAndDomain(
-    id: number,
-    domainName: string,
-    trx?: QueryContext
-  ): Promise<ITask | undefined> {
-    const row = await this.table(trx)
-      .where({ id, domain_name: domainName })
-      .first();
-    return row ? this.deserializeJsonFields(row) : undefined;
-  }
-
-  static async findByDomainApproved(
-    domainName: string,
-    trx?: QueryContext
-  ): Promise<ITask[]> {
-    const rows = await this.table(trx)
-      .where({ domain_name: domainName, is_approved: true })
-      .whereNot("status", "archived")
-      .orderBy("created_at", "desc")
-      .select("*");
-    return rows.map((row: ITask) => this.deserializeJsonFields(row));
   }
 
   static async findByMetadataField(
@@ -104,12 +82,12 @@ export class TaskModel extends BaseModel {
   static async findUserTasksForApproval(
     taskIds: number[],
     trx?: QueryContext
-  ): Promise<Array<{ domain_name: string }>> {
+  ): Promise<Array<{ organization_id: number | null }>> {
     return this.table(trx)
       .whereIn("id", taskIds)
       .where("is_approved", false)
       .where("category", "USER")
-      .select("domain_name");
+      .select("organization_id");
   }
 
   static async archive(
@@ -178,8 +156,11 @@ export class TaskModel extends BaseModel {
     trx?: QueryContext
   ): Promise<PaginatedResult<ITask>> {
     const buildQuery = (qb: Knex.QueryBuilder) => {
-      if (filters.domain_name) {
-        qb = qb.where("domain_name", filters.domain_name);
+      if (filters.organization_id) {
+        qb = qb.where("organization_id", filters.organization_id);
+      }
+      if (filters.location_id) {
+        qb = qb.where("location_id", filters.location_id);
       }
       if (filters.status) {
         qb = qb.where("status", filters.status);
@@ -207,16 +188,46 @@ export class TaskModel extends BaseModel {
     return this.paginate<ITask>(buildQuery, pagination, trx);
   }
 
-  static async findRecentByDomain(
-    domainName: string,
-    agentType: string,
-    limit: number,
+  /**
+   * Find approved tasks for an organization, optionally filtered by location.
+   * Excludes archived tasks.
+   */
+  static async findByOrganizationApproved(
+    organizationId: number,
+    options?: {
+      locationId?: number | null;
+      accessibleLocationIds?: number[];
+    },
     trx?: QueryContext
   ): Promise<ITask[]> {
-    const rows = await this.table(trx)
-      .where({ domain_name: domainName, agent_type: agentType })
-      .orderBy("created_at", "desc")
-      .limit(limit);
+    let query = this.table(trx)
+      .where({ organization_id: organizationId, is_approved: true })
+      .whereNot("status", "archived")
+      .orderBy("created_at", "desc");
+
+    if (options?.locationId) {
+      query = query.where("location_id", options.locationId);
+    } else if (options?.accessibleLocationIds && options.accessibleLocationIds.length > 0) {
+      query = query.where(function () {
+        this.whereIn("location_id", options!.accessibleLocationIds!).orWhereNull("location_id");
+      });
+    }
+
+    const rows = await query.select("*");
     return rows.map((row: ITask) => this.deserializeJsonFields(row));
+  }
+
+  /**
+   * Find a task by ID and verify organization ownership.
+   */
+  static async findByIdAndOrganization(
+    id: number,
+    organizationId: number,
+    trx?: QueryContext
+  ): Promise<ITask | undefined> {
+    const row = await this.table(trx)
+      .where({ id, organization_id: organizationId })
+      .first();
+    return row ? this.deserializeJsonFields(row) : undefined;
   }
 }

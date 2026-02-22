@@ -1,7 +1,7 @@
 import { AgentResultFilters } from "../../../models/AgentResultModel";
 
 export interface AgentOutputQueryParams {
-  domain?: string;
+  organization_id?: string;
   agent_type?: string;
   status?: string;
   date_from?: string;
@@ -13,8 +13,8 @@ export function buildAgentOutputFilters(
 ): AgentResultFilters {
   const filters: AgentResultFilters = {};
 
-  if (queryParams.domain) {
-    filters.domain = queryParams.domain as string;
+  if (queryParams.organization_id) {
+    filters.organization_id = parseInt(queryParams.organization_id as string, 10);
   }
 
   if (queryParams.agent_type && queryParams.agent_type !== "all") {

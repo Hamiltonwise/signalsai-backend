@@ -1,4 +1,5 @@
 import { db } from "../../database/connection";
+import { resolveLocationId } from "../locationResolver";
 
 export type NotificationType = "task" | "pms" | "agent" | "system" | "ranking";
 import {
@@ -36,9 +37,9 @@ const notificationTypeToEmailType: Record<
 };
 
 /**
- * Create a notification for a domain/client
- * Also sends an email notification in parallel if user email is available
- * @param domain - The domain to notify
+ * Create a notification for an organization.
+ * Also sends an email notification in parallel if user email is available.
+ * @param organizationId - The organization to notify
  * @param title - Notification title
  * @param message - Notification message/body
  * @param type - Notification type (default: 'system')
@@ -47,7 +48,7 @@ const notificationTypeToEmailType: Record<
  * @returns The notification ID or null if failed
  */
 export async function createNotification(
-  domain: string,
+  organizationId: number,
   title: string,
   message?: string,
   type: NotificationType = "system",
@@ -59,15 +60,17 @@ export async function createNotification(
   }
 ): Promise<number | null> {
   try {
-    // Get organization_id and user email from domain
+    const locationId = await resolveLocationId(organizationId);
+
+    // Look up account email for email notification
     const account = await db("google_connections")
-      .where({ domain_name: domain })
+      .where({ organization_id: organizationId })
       .first();
 
     const [result] = await db("notifications")
       .insert({
-        organization_id: account?.organization_id || null,
-        domain_name: domain,
+        organization_id: organizationId,
+        location_id: locationId,
         title,
         message: message || null,
         type,
@@ -115,7 +118,7 @@ export async function createNotification(
       // Fire and forget - don't await, don't block
       sendUserNotification({
         recipientEmail: account.email,
-        recipientName: account.practice_name || domain,
+        recipientName: account.practice_name || account.domain_name || "Practice",
         notificationType: emailType,
         title,
         message: message || "",
@@ -124,7 +127,7 @@ export async function createNotification(
         metadata: metadata || {},
       }).catch((err) => {
         console.error(
-          `[NotificationHelper] Failed to send user email for ${domain}: ${err.message}`
+          `[NotificationHelper] Failed to send user email for org ${organizationId}: ${err.message}`
         );
       });
     }

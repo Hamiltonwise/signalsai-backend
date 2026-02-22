@@ -20,7 +20,6 @@ export interface ListAgentOutputsResult {
 const LIST_COLUMNS = [
   "id",
   "organization_id",
-  "domain",
   "agent_type",
   "date_start",
   "date_end",

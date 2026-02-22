@@ -8,18 +8,18 @@
  * - HTTP response formatting (status codes, response shapes)
  * - Error handling
  *
- * 7 endpoints total:
- * - 4 client endpoints (domain-filtered via google account ID)
- * - 2 admin endpoints (unrestricted)
+ * 6 endpoints total:
+ * - 4 client endpoints (organization-scoped via RBAC middleware)
+ * - 1 admin endpoint (unrestricted)
  * - 1 health check
  */
 
 import { Request, Response } from "express";
 import { NotificationService } from "./feature-services";
+import { NotificationModel } from "../../models/NotificationModel";
+import { LocationScopedRequest } from "../../middleware/rbac";
 import {
   validateNotificationId,
-  validateGoogleAccountId,
-  validateCreateNotificationRequest,
   parseNotifications,
   formatNotificationsResponse,
 } from "./feature-utils";
@@ -51,41 +51,34 @@ export class NotificationsController {
   /**
    * GET /api/notifications
    * Fetch latest 10 notifications for the logged-in client.
-   * Query params: googleAccountId (required)
    */
   static async getNotifications(req: Request, res: Response): Promise<Response> {
     try {
-      const googleAccountId = req.query.googleAccountId;
+      const scopedReq = req as LocationScopedRequest;
+      const organizationId = scopedReq.organizationId;
 
-      const accountValidation = validateGoogleAccountId(googleAccountId);
-      if (!accountValidation.valid) {
+      if (!organizationId) {
         return res.status(400).json({
           success: false,
-          error: "Missing google account ID",
-          message: accountValidation.error,
+          error: "Missing organization context",
+          message: "Organization ID is required",
         });
       }
 
-      // Resolve domain from account ID
-      const { domain } = await NotificationService.resolveDomainFromAccountId(
-        Number(googleAccountId)
+      const locationId = scopedReq.locationId || null;
+      const accessibleLocationIds = scopedReq.accessibleLocationIds;
+
+      const notifications = await NotificationModel.findByOrganization(
+        organizationId,
+        { locationId, accessibleLocationIds, limit: 10 }
       );
-      if (!domain) {
-        return res.status(404).json({
-          success: false,
-          error: "Account not found",
-          message: "Google account not found or has no domain",
-        });
-      }
+      const unreadCount = await NotificationModel.countUnreadByOrganization(
+        organizationId,
+        accessibleLocationIds
+      );
 
-      // Fetch notifications and unread count
-      const { notifications, unreadCount } =
-        await NotificationService.getNotificationsForDomain(domain, 10);
-
-      // Transform and format response
       const parsedNotifications = parseNotifications(notifications);
       const response = formatNotificationsResponse(parsedNotifications, unreadCount);
-
       return res.json(response);
     } catch (error: unknown) {
       return handleError(res, error, "Fetch notifications");
@@ -95,7 +88,6 @@ export class NotificationsController {
   /**
    * PATCH /api/notifications/:id/read
    * Mark a notification as read.
-   * Body: { googleAccountId: number }
    */
   static async markAsRead(req: Request, res: Response): Promise<Response> {
     try {
@@ -108,45 +100,30 @@ export class NotificationsController {
         });
       }
 
-      const { googleAccountId } = req.body;
-      const accountValidation = validateGoogleAccountId(googleAccountId);
-      if (!accountValidation.valid) {
+      const scopedReq = req as LocationScopedRequest;
+      const organizationId = scopedReq.organizationId;
+
+      if (!organizationId) {
         return res.status(400).json({
           success: false,
-          error: "Missing google account ID",
-          message: accountValidation.error,
+          error: "Missing organization context",
+          message: "Organization ID is required",
         });
       }
 
-      // Resolve domain from account ID
-      const { domain } = await NotificationService.resolveDomainFromAccountId(
-        googleAccountId
-      );
-      if (!domain) {
-        return res.status(404).json({
-          success: false,
-          error: "Account not found",
-          message: "Google account not found",
-        });
-      }
-
-      // Mark as read with domain ownership verification
-      const result = await NotificationService.markNotificationRead(
+      const notification = await NotificationModel.findByIdAndOrganization(
         idValidation.notificationId!,
-        domain
+        organizationId
       );
-      if (!result.success) {
+      if (!notification) {
         return res.status(404).json({
           success: false,
           error: "Notification not found",
-          message: result.error,
+          message: "Notification does not exist or does not belong to your organization",
         });
       }
-
-      return res.json({
-        success: true,
-        message: "Notification marked as read",
-      });
+      await NotificationModel.markRead(idValidation.notificationId!);
+      return res.json({ success: true, message: "Notification marked as read" });
     } catch (error: unknown) {
       return handleError(res, error, "Mark notification as read");
     }
@@ -154,37 +131,25 @@ export class NotificationsController {
 
   /**
    * PATCH /api/notifications/mark-all-read
-   * Mark all notifications as read for a domain.
-   * Body: { googleAccountId: number }
+   * Mark all notifications as read for the organization.
    */
   static async markAllAsRead(req: Request, res: Response): Promise<Response> {
     try {
-      const { googleAccountId } = req.body;
+      const scopedReq = req as LocationScopedRequest;
+      const organizationId = scopedReq.organizationId;
 
-      const accountValidation = validateGoogleAccountId(googleAccountId);
-      if (!accountValidation.valid) {
+      if (!organizationId) {
         return res.status(400).json({
           success: false,
-          error: "Missing google account ID",
-          message: accountValidation.error,
+          error: "Missing organization context",
+          message: "Organization ID is required",
         });
       }
 
-      // Resolve domain from account ID
-      const { domain } = await NotificationService.resolveDomainFromAccountId(
-        googleAccountId
+      const updated = await NotificationModel.markAllReadByOrganization(
+        organizationId,
+        scopedReq.accessibleLocationIds
       );
-      if (!domain) {
-        return res.status(404).json({
-          success: false,
-          error: "Account not found",
-          message: "Google account not found",
-        });
-      }
-
-      // Mark all as read
-      const updated = await NotificationService.markAllNotificationsRead(domain);
-
       return res.json({
         success: true,
         message: `${updated} notification(s) marked as read`,
@@ -197,39 +162,25 @@ export class NotificationsController {
 
   /**
    * DELETE /api/notifications/delete-all
-   * Delete all notifications for a domain.
-   * Body: { googleAccountId: number }
+   * Delete all notifications for the organization.
    */
   static async deleteAll(req: Request, res: Response): Promise<Response> {
     try {
-      const { googleAccountId } = req.body;
+      const scopedReq = req as LocationScopedRequest;
+      const organizationId = scopedReq.organizationId;
 
-      const accountValidation = validateGoogleAccountId(googleAccountId);
-      if (!accountValidation.valid) {
+      if (!organizationId) {
         return res.status(400).json({
           success: false,
-          error: "Missing google account ID",
-          message: accountValidation.error,
+          error: "Missing organization context",
+          message: "Organization ID is required",
         });
       }
 
-      // Resolve domain from account ID
-      const { domain } = await NotificationService.resolveDomainFromAccountId(
-        googleAccountId
+      const deleted = await NotificationModel.deleteAllByOrganization(
+        organizationId,
+        scopedReq.accessibleLocationIds
       );
-      if (!domain) {
-        return res.status(404).json({
-          success: false,
-          error: "Account not found",
-          message: "Google account not found",
-        });
-      }
-
-      // Delete all notifications for this domain
-      const deleted = await NotificationService.deleteAllNotificationsForDomain(
-        domain
-      );
-
       return res.json({
         success: true,
         message: `${deleted} notification(s) deleted`,
@@ -243,24 +194,22 @@ export class NotificationsController {
   /**
    * POST /api/notifications
    * Create a notification (admin/system).
-   * Body: { domain_name, title, message?, type?, metadata? }
+   * Body: { organization_id, title, message?, type?, metadata? }
    */
   static async createNotification(req: Request, res: Response): Promise<Response> {
     try {
-      const { domain_name, title, message, type, metadata } = req.body;
+      const { organization_id, title, message, type, metadata } = req.body;
 
-      const validation = validateCreateNotificationRequest({ domain_name, title });
-      if (!validation.valid) {
+      if (!organization_id || !title) {
         return res.status(400).json({
           success: false,
           error: "Missing required fields",
-          message: validation.errors?.[0] || "domain_name and title are required",
+          message: "organization_id and title are required",
         });
       }
 
-      // Create notification with account lookup
-      const result = await NotificationService.createNotificationForDomain({
-        domain_name,
+      const result = await NotificationService.createNotificationForOrganization({
+        organization_id: parseInt(String(organization_id), 10),
         title,
         message,
         type,
@@ -268,9 +217,9 @@ export class NotificationsController {
       });
 
       if (!result.success) {
-        return res.status(404).json({
+        return res.status(400).json({
           success: false,
-          error: "Domain not found",
+          error: "Failed to create notification",
           message: result.error,
         });
       }

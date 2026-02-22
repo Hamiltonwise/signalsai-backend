@@ -140,19 +140,19 @@ const extractAdditionalDataFromResponse = (responseLog: unknown): any[] => {
 };
 
 /**
- * Aggregate PMS data across all approved jobs for a domain
- * This function implements smart deduplication - keeps only the latest data for each month
+ * Aggregate PMS data across all approved jobs for an organization.
+ * This function implements smart deduplication - keeps only the latest data for each month.
  *
- * @param domain - The domain to fetch PMS data for
+ * @param organizationId - The organization to fetch PMS data for
  * @returns Aggregated PMS data with unique months (latest wins) and aggregated sources
  */
 export async function aggregatePmsData(
-  domain: string
+  organizationId: number
 ): Promise<AggregatedPmsData> {
-  // Fetch all approved jobs for this domain
+  // Fetch all approved jobs for this organization
   const approvedJobs = await db("pms_jobs")
     .select("id", "timestamp", "response_log")
-    .where({ domain, is_approved: 1 })
+    .where({ organization_id: organizationId, is_approved: 1 })
     .orderBy("timestamp", "asc");
 
   if (!approvedJobs.length) {

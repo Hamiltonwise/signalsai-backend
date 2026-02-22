@@ -1,4 +1,5 @@
 import { PmsJobModel } from "../../../models/PmsJobModel";
+import { OrganizationModel } from "../../../models/OrganizationModel";
 import { notifyAdmins } from "../../../utils/core/notificationHelper";
 import {
   completeStep,
@@ -17,7 +18,7 @@ export async function getJobAutomationStatus(jobId: number) {
     .where({ id: jobId })
     .select(
       "id",
-      "domain",
+      "organization_id",
       "status",
       "is_approved",
       "is_client_approved",
@@ -52,9 +53,13 @@ export async function getJobAutomationStatus(jobId: number) {
 
     // Send admin email notification that PMS output is ready for review
     try {
-      const domain = job.domain || "Unknown";
+      let orgLabel = "Unknown";
+      if (job.organization_id) {
+        const org = await OrganizationModel.findById(job.organization_id);
+        orgLabel = org?.name || `Org #${job.organization_id}`;
+      }
       await notifyAdmins({
-        summary: `PMS parser output is ready for admin review for ${domain}`,
+        summary: `PMS parser output is ready for admin review for ${orgLabel}`,
         newActionItems: 1,
         practiceRankingsCompleted: [],
         monthlyAgentsCompleted: [],
@@ -85,7 +90,7 @@ export async function getJobAutomationStatus(jobId: number) {
 
   return {
     jobId: job.id,
-    domain: job.domain,
+    organization_id: job.organization_id,
     jobStatus: job.status,
     isAdminApproved: job.is_approved === 1 || job.is_approved === true,
     isClientApproved:
@@ -97,10 +102,10 @@ export async function getJobAutomationStatus(jobId: number) {
 
 /**
  * Get all active (non-completed) PMS automation jobs.
- * Optionally filtered by domain.
+ * Optionally filtered by organization.
  */
-export async function getActiveJobs(domain?: string) {
-  const jobs = await PmsJobModel.findActiveAutomationJobs(domain);
+export async function getActiveJobs(organizationId?: number) {
+  const jobs = await PmsJobModel.findActiveAutomationJobs(organizationId);
 
   const formattedJobs = jobs.map((job: any) => {
     let automationStatus: AutomationStatusDetail | null = null;
@@ -113,7 +118,7 @@ export async function getActiveJobs(domain?: string) {
 
     return {
       jobId: job.id,
-      domain: job.domain,
+      organization_id: job.organization_id,
       jobStatus: job.status,
       isAdminApproved: job.is_approved === 1 || job.is_approved === true,
       isClientApproved:

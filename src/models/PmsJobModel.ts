@@ -3,7 +3,8 @@ import { BaseModel, PaginatedResult, PaginationParams, QueryContext } from "./Ba
 
 export interface IPmsJob {
   id: number;
-  domain: string;
+  organization_id: number | null;
+  location_id: number | null;
   status: string;
   time_elapsed: number | null;
   is_approved: boolean;
@@ -16,7 +17,7 @@ export interface IPmsJob {
 }
 
 export interface PmsJobFilters {
-  domain?: string;
+  organization_id?: number;
   status?: string;
   statuses?: string[];
   is_approved?: boolean;
@@ -59,51 +60,14 @@ export class PmsJobModel extends BaseModel {
     return super.deleteById(id, trx);
   }
 
-  static async findLatestByDomain(
-    domain: string,
-    trx?: QueryContext
-  ): Promise<IPmsJob | undefined> {
-    const row = await this.table(trx)
-      .where({ domain })
-      .orderBy("created_at", "desc")
-      .first();
-    return row ? this.deserializeJsonFields(row) : undefined;
-  }
-
-  static async findActiveAutomation(
-    domain: string,
-    trx?: QueryContext
-  ): Promise<IPmsJob | undefined> {
-    const row = await this.table(trx)
-      .where({ domain })
-      .whereNotNull("automation_status_detail")
-      .whereRaw(
-        "automation_status_detail::jsonb->>'status' IN ('pending', 'processing', 'awaiting_approval')"
-      )
-      .orderBy("created_at", "desc")
-      .first();
-    return row ? this.deserializeJsonFields(row) : undefined;
-  }
-
-  static async listByDomain(
-    domain: string,
-    pagination: PaginationParams,
-    trx?: QueryContext
-  ): Promise<PaginatedResult<IPmsJob>> {
-    const buildQuery = (qb: Knex.QueryBuilder) => {
-      return qb.where({ domain }).orderBy("created_at", "desc");
-    };
-    return this.paginate<IPmsJob>(buildQuery, pagination, trx);
-  }
-
   static async listAdmin(
     filters: PmsJobFilters,
     pagination: PaginationParams,
     trx?: QueryContext
   ): Promise<PaginatedResult<IPmsJob>> {
     const buildQuery = (qb: Knex.QueryBuilder) => {
-      if (filters.domain) {
-        qb = qb.where("domain", filters.domain);
+      if (filters.organization_id) {
+        qb = qb.where("organization_id", filters.organization_id);
       }
       if (filters.status) {
         qb = qb.where("status", filters.status);
@@ -149,10 +113,10 @@ export class PmsJobModel extends BaseModel {
 
   /**
    * Find all active automation jobs (status is pending, processing, or awaiting_approval).
-   * Optionally filter by domain.
+   * Optionally filter by organization.
    */
   static async findActiveAutomationJobs(
-    domain?: string,
+    organizationId?: number,
     trx?: QueryContext
   ): Promise<IPmsJob[]> {
     let query = this.table(trx)
@@ -162,17 +126,17 @@ export class PmsJobModel extends BaseModel {
       )
       .select(
         "id",
-        "domain",
+        "organization_id",
         "status",
         "is_approved",
         "is_client_approved",
         "automation_status_detail",
-        "timestamp"
+        "created_at"
       )
-      .orderBy("timestamp", "desc");
+      .orderBy("created_at", "desc");
 
-    if (domain) {
-      query = query.where("domain", domain);
+    if (organizationId) {
+      query = query.where("organization_id", organizationId);
     }
 
     const rows = await query;
@@ -180,44 +144,58 @@ export class PmsJobModel extends BaseModel {
   }
 
   /**
-   * Fetch all jobs for a domain with specific columns for key data aggregation.
+   * List jobs for an organization, optionally filtered by location.
    */
-  static async findJobsForKeyData(
-    domain: string,
+  static async listByOrganization(
+    organizationId: number,
+    pagination: PaginationParams,
+    options?: {
+      locationId?: number | null;
+      status?: string;
+      isApproved?: boolean;
+    },
+    trx?: QueryContext
+  ): Promise<PaginatedResult<IPmsJob>> {
+    const buildQuery = (qb: Knex.QueryBuilder) => {
+      qb = qb.where("organization_id", organizationId);
+      if (options?.locationId) {
+        qb = qb.where("location_id", options.locationId);
+      }
+      if (options?.status) {
+        qb = qb.where("status", options.status);
+      }
+      if (options?.isApproved !== undefined) {
+        qb = qb.where("is_approved", options.isApproved);
+      }
+      return qb.orderBy("created_at", "desc");
+    };
+    return this.paginate<IPmsJob>(buildQuery, pagination, trx);
+  }
+
+  /**
+   * Fetch jobs for key data aggregation by organization.
+   */
+  static async findJobsForKeyDataByOrganization(
+    organizationId: number,
+    locationId?: number | null,
     trx?: QueryContext
   ): Promise<IPmsJob[]> {
-    const rows = await this.table(trx)
+    let query = this.table(trx)
       .select(
         "id",
-        "timestamp",
+        "created_at",
         "response_log",
         "is_approved",
         "is_client_approved"
       )
-      .where("domain", domain)
-      .orderBy("timestamp", "asc");
-    return rows.map((row: IPmsJob) => this.deserializeJsonFields(row));
-  }
+      .where("organization_id", organizationId)
+      .orderBy("created_at", "asc");
 
-  /**
-   * Fetch the latest job for a domain with key data fields.
-   */
-  static async findLatestJobForKeyData(
-    domain: string,
-    trx?: QueryContext
-  ): Promise<IPmsJob | undefined> {
-    const row = await this.table(trx)
-      .select(
-        "id",
-        "timestamp",
-        "status",
-        "is_approved",
-        "is_client_approved",
-        "response_log"
-      )
-      .where("domain", domain)
-      .orderBy("timestamp", "desc")
-      .first();
-    return row ? this.deserializeJsonFields(row) : undefined;
+    if (locationId) {
+      query = query.where("location_id", locationId);
+    }
+
+    const rows = await query;
+    return rows.map((row: IPmsJob) => this.deserializeJsonFields(row));
   }
 }

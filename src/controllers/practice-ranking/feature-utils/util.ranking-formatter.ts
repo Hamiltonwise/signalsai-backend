@@ -142,8 +142,7 @@ export function formatFullResults(ranking: any) {
     success: true,
     ranking: {
       id: ranking.id,
-      googleAccountId: ranking.organization_id,
-      domain: ranking.domain,
+      organizationId: ranking.organization_id,
       specialty: ranking.specialty,
       location: ranking.location,
       rankKeywords: ranking.rank_keywords,
@@ -184,8 +183,7 @@ export function formatRankingsList(rankings: any[]) {
     count: rankings.length,
     rankings: rankings.map((r) => ({
       id: r.id,
-      googleAccountId: r.organization_id,
-      domain: r.domain,
+      organizationId: r.organization_id,
       specialty: r.specialty,
       location: r.location,
       rankKeywords: r.rank_keywords,
@@ -196,7 +194,6 @@ export function formatRankingsList(rankings: any[]) {
       rankScore: r.rank_score,
       rankPosition: r.rank_position,
       totalCompetitors: r.total_competitors,
-      // Location params used for Apify search (for debugging)
       searchParams: {
         city: r.search_city,
         state: r.search_state,
@@ -227,8 +224,7 @@ export function formatAccountsList(accounts: any[]) {
 export function formatLatestRanking(ranking: any, previous: any | null) {
   return {
     id: ranking.id,
-    googleAccountId: ranking.organization_id,
-    domain: ranking.domain,
+    organizationId: ranking.organization_id,
     specialty: ranking.specialty,
     location: ranking.location,
     gbpAccountId: ranking.gbp_account_id,
@@ -264,8 +260,7 @@ export function formatLatestRanking(ranking: any, previous: any | null) {
 export function formatLegacyLatestRanking(ranking: any) {
   return {
     id: ranking.id,
-    googleAccountId: ranking.organization_id,
-    domain: ranking.domain,
+    organizationId: ranking.organization_id,
     specialty: ranking.specialty,
     location: ranking.location,
     gbpAccountId: null,

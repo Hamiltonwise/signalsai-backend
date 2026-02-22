@@ -1,6 +1,7 @@
 import axios from "axios";
 import db from "../../../database/connection";
 import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
+import { OrganizationModel } from "../../../models/OrganizationModel";
 import {
   createNotification,
 } from "../../../utils/core/notificationHelper";
@@ -24,7 +25,7 @@ export async function approveByAdmin(jobId: number, requestedApproval: boolean) 
       "response_log",
       "timestamp",
       "is_approved",
-      "domain"
+      "organization_id"
     )
     .where({ id: jobId })
     .first();
@@ -81,9 +82,9 @@ export async function approveByAdmin(jobId: number, requestedApproval: boolean) 
   }
 
   // Create notification for PMS approval
-  if (nextApprovalValue === 1 && existingJob.domain) {
+  if (nextApprovalValue === 1 && existingJob.organization_id) {
     await createNotification(
-      existingJob.domain,
+      existingJob.organization_id,
       "PMS Data Approved",
       "PMS data is now ingested and ready for your review",
       "pms",
@@ -164,7 +165,7 @@ export async function approveByClient(jobId: number, clientApproval: boolean) {
       "timestamp",
       "is_approved",
       "is_client_approved",
-      "domain"
+      "organization_id"
     )
     .where({ id: jobId })
     .first();
@@ -176,10 +177,17 @@ export async function approveByClient(jobId: number, clientApproval: boolean) {
     );
 
     try {
-      // Get google account ID from domain
-      const account = await GoogleConnectionModel.findByDomain(updatedJob.domain);
+      // Get google connection via organization
+      const account = updatedJob.organization_id
+        ? await GoogleConnectionModel.findOneByOrganization(updatedJob.organization_id)
+        : null;
 
       if (account) {
+        // Resolve domain from organization
+        const org = updatedJob.organization_id
+          ? await OrganizationModel.findById(updatedJob.organization_id)
+          : null;
+
         // Trigger monthly agents asynchronously (don't wait for response)
         axios
           .post(
@@ -188,14 +196,14 @@ export async function approveByClient(jobId: number, clientApproval: boolean) {
             }/api/agents/monthly-agents-run`,
             {
               googleAccountId: account.id,
-              domain: updatedJob.domain,
+              domain: org?.domain || "",
               force: true,
               pmsJobId: jobId,
             }
           )
           .then(() => {
             console.log(
-              `[PMS] Monthly agents triggered successfully for ${updatedJob.domain}`
+              `[PMS] Monthly agents triggered successfully for org ${updatedJob.organization_id}`
             );
           })
           .catch((error) => {
@@ -205,7 +213,7 @@ export async function approveByClient(jobId: number, clientApproval: boolean) {
           });
       } else {
         console.warn(
-          `[PMS] No account found for domain ${updatedJob.domain}`
+          `[PMS] No google connection found for org ${updatedJob.organization_id}`
         );
       }
     } catch (triggerError: any) {

@@ -2,9 +2,11 @@ import { BaseModel, QueryContext } from "./BaseModel";
 
 export interface IGoogleProperty {
   id: number;
+  location_id: number;
   google_connection_id: number;
   type: "gbp";
   external_id: string;
+  account_id: string | null;
   display_name: string | null;
   metadata: Record<string, unknown> | null;
   selected: boolean;
@@ -27,20 +29,34 @@ export class GooglePropertyModel extends BaseModel {
     googleConnectionId: number,
     trx?: QueryContext
   ): Promise<IGoogleProperty[]> {
-    const rows = await this.table(trx)
-      .where({ google_connection_id: googleConnectionId });
-    return rows.map((row: IGoogleProperty) =>
-      this.deserializeJsonFields(row)
-    );
+    const rows = await this.table(trx).where({
+      google_connection_id: googleConnectionId,
+    });
+    return rows.map((row: IGoogleProperty) => this.deserializeJsonFields(row));
+  }
+
+  static async findByLocationId(
+    locationId: number,
+    trx?: QueryContext
+  ): Promise<IGoogleProperty[]> {
+    const rows = await this.table(trx).where({ location_id: locationId });
+    return rows.map((row: IGoogleProperty) => this.deserializeJsonFields(row));
+  }
+
+  static async findByExternalId(
+    externalId: string,
+    trx?: QueryContext
+  ): Promise<IGoogleProperty | undefined> {
+    const row = await this.table(trx)
+      .where({ external_id: externalId })
+      .first();
+    return row ? this.deserializeJsonFields(row) : undefined;
   }
 
   static async create(
-    data: Partial<IGoogleProperty>,
+    data: Omit<IGoogleProperty, "id" | "created_at" | "updated_at">,
     trx?: QueryContext
   ): Promise<IGoogleProperty> {
-    return super.create(
-      data as Record<string, unknown>,
-      trx
-    );
+    return super.create(data as Record<string, unknown>, trx);
   }
 }

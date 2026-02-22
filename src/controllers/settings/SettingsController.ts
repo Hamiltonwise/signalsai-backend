@@ -176,3 +176,4 @@ export async function changeUserRole(req: RBACRequest, res: Response) {
     return handleSettingsError(res, error, "Update role");
   }
 }
+

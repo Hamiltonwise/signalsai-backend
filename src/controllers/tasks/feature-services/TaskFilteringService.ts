@@ -3,7 +3,6 @@ import type { ActionItemCategory, ActionItemStatus } from "../feature-utils/task
 
 interface ActionItem {
   id: number;
-  domain_name: string;
   organization_id?: number;
   title: string;
   description?: string;
@@ -25,8 +24,8 @@ interface ActionItem {
 export function parseAdminFilters(query: Record<string, any>): TaskAdminFilters {
   const filters: TaskAdminFilters = {};
 
-  if (query.domain_name) {
-    filters.domain_name = query.domain_name;
+  if (query.organization_id) {
+    filters.organization_id = parseInt(query.organization_id, 10);
   }
 
   if (query.status && query.status !== "all") {

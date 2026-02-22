@@ -37,4 +37,12 @@ organizationsRoutes.patch(
   controller.updateTier
 );
 
+// DELETE /api/admin/organizations/:id — Permanently delete organization
+organizationsRoutes.delete(
+  "/:id",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.deleteOrg
+);
+
 export default organizationsRoutes;

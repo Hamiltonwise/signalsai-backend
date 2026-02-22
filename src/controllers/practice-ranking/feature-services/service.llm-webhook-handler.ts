@@ -9,6 +9,7 @@
  */
 
 import { db } from "../../../database/connection";
+import { resolveLocationId } from "../../../utils/locationResolver";
 import { log, logDebug, logWarn } from "../feature-utils/util.ranking-logger";
 
 interface WebhookBody {
@@ -103,11 +104,17 @@ export async function archiveAndCreateTasks(
         `  [Webhook] Found ${topRecommendations.length} top recommendations to create as tasks`,
       );
 
+      // Resolve location_id for task creation
+      const taskLocationId = await resolveLocationId(
+        ranking.organization_id,
+        ranking.gbp_location_id,
+      );
+
       // Create task records for each recommendation
       if (topRecommendations.length > 0) {
         const tasksToInsert = topRecommendations.map((item: any) => ({
-          domain_name: ranking.domain,
           organization_id: ranking.organization_id,
+          location_id: taskLocationId,
           title: item.title || "Ranking Improvement Action",
           description: item.expected_outcome
             ? `${item.description || ""}\n\n**Expected Outcome:**\n${

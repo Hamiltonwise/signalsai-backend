@@ -8,6 +8,7 @@
 
 import { Request, Response } from "express";
 import { AgentResultModel } from "../../models/AgentResultModel";
+import { OrganizationModel } from "../../models/OrganizationModel";
 import * as listService from "./feature-services/AgentOutputListService";
 import * as archiveService from "./feature-services/AgentOutputArchiveService";
 import * as deleteService from "./feature-services/AgentOutputDeleteService";
@@ -47,29 +48,32 @@ export async function listOutputs(req: Request, res: Response): Promise<Response
 }
 
 // =====================================================================
-// GET /domains — List unique domains
+// GET /organizations — List organizations for filter dropdown
 // =====================================================================
 
-export async function getDomains(_req: Request, res: Response): Promise<Response> {
+export async function getOrganizations(_req: Request, res: Response): Promise<Response> {
   try {
-    console.log("[Admin Agent Outputs] Fetching unique domains");
+    console.log("[Admin Agent Outputs] Fetching organizations for filter");
 
-    const domains = await AgentResultModel.listDomains(["SYSTEM"]);
+    const organizations = await OrganizationModel.listAll();
 
     console.log(
-      `[Admin Agent Outputs] Found ${domains.length} unique domains`
+      `[Admin Agent Outputs] Found ${organizations.length} organizations`
     );
 
     return res.json({
       success: true,
-      domains,
+      organizations: organizations.map((org) => ({
+        id: org.id,
+        name: org.name,
+      })),
     });
   } catch (error: any) {
-    console.error("[Admin Agent Outputs] Error fetching domains:", error);
+    console.error("[Admin Agent Outputs] Error fetching organizations:", error);
     return res.status(500).json({
       success: false,
       error: "FETCH_ERROR",
-      message: error?.message || "Failed to fetch domains",
+      message: error?.message || "Failed to fetch organizations",
     });
   }
 }

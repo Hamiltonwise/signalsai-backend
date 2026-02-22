@@ -4,7 +4,7 @@ import { BaseModel, PaginatedResult, PaginationParams, QueryContext } from "./Ba
 export interface IPracticeRanking {
   id: number;
   organization_id: number;
-  domain: string;
+  location_id: number | null;
   specialty: string | null;
   location: string | null;
   gbp_account_id: string | null;
@@ -34,6 +34,7 @@ export interface RankingFilters {
   status?: string;
   gbp_location_id?: string;
   batch_id?: string;
+  location_id?: number;
 }
 
 export class PracticeRankingModel extends BaseModel {
@@ -123,6 +124,9 @@ export class PracticeRankingModel extends BaseModel {
       }
       if (filters.batch_id) {
         qb = qb.where("batch_id", filters.batch_id);
+      }
+      if (filters.location_id) {
+        qb = qb.where("location_id", filters.location_id);
       }
       return qb.orderBy("created_at", "desc");
     };

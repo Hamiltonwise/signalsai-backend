@@ -41,6 +41,7 @@ import {
   createTasksFromCroOptimizerOutput,
   createTasksFromReferralEngineOutput,
 } from "./service.task-creator";
+import { resolveLocationId } from "../../../utils/locationResolver";
 
 // =====================================================================
 // DAILY AGENT PROCESSING
@@ -183,6 +184,9 @@ export async function processMonthlyAgents(
   log(
     `  [MONTHLY] Processing Summary + Referral Engine + Opportunity + CRO Optimizer for ${domain} (${startDate} to ${endDate})`,
   );
+
+  // Resolve location for this account
+  const locationId = await resolveLocationId(organizationId);
 
   try {
     // Parse property IDs
@@ -409,13 +413,13 @@ export async function processMonthlyAgents(
     }
 
     // === STEP 5: Create tasks from action items ===
-    await createTasksFromOpportunityOutput(opportunityOutput, googleAccountId, domain, organizationId);
+    await createTasksFromOpportunityOutput(opportunityOutput, googleAccountId, domain, organizationId, locationId);
 
     // === STEP 6: Create tasks from CRO Optimizer action items ===
-    await createTasksFromCroOptimizerOutput(croOptimizerOutput, googleAccountId, domain, organizationId);
+    await createTasksFromCroOptimizerOutput(croOptimizerOutput, googleAccountId, domain, organizationId, locationId);
 
     // === STEP 7: Create tasks from Referral Engine action items ===
-    await createTasksFromReferralEngineOutput(referralEngineOutput, googleAccountId, domain, organizationId);
+    await createTasksFromReferralEngineOutput(referralEngineOutput, googleAccountId, domain, organizationId, locationId);
 
     return {
       success: true,
@@ -609,7 +613,6 @@ export async function processClient(
         const existingSummary = await db("agent_results")
           .where({
             organization_id: account.organization_id,
-            domain,
             agent_type: "summary",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -652,7 +655,6 @@ export async function processClient(
       const existingDaily = await db("agent_results")
         .where({
           organization_id: account.organization_id,
-          domain,
           agent_type: "proofline",
           date_start: dailyDates.dayBeforeYesterday,
           date_end: dailyDates.yesterday,
@@ -668,7 +670,6 @@ export async function processClient(
         const [dailyResultId] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
-            domain,
             agent_type: "proofline",
             date_start: dailyDates.dayBeforeYesterday,
             date_end: dailyDates.yesterday,
@@ -694,7 +695,6 @@ export async function processClient(
         const [summaryId] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
-            domain,
             agent_type: "summary",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -712,7 +712,6 @@ export async function processClient(
         const [opportunityId] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
-            domain,
             agent_type: "opportunity",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -730,7 +729,6 @@ export async function processClient(
         const [referralEngineId] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
-            domain,
             agent_type: "referral_engine",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -750,7 +748,6 @@ export async function processClient(
         const [croOptimizerId] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
-            domain,
             agent_type: "cro_optimizer",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -783,7 +780,6 @@ export async function processClient(
         try {
           await db("agent_results").insert({
             organization_id: account.organization_id,
-            domain,
             agent_type: "proofline",
             date_start: getDailyDates(referenceDate).dayBeforeYesterday,
             date_end: getDailyDates(referenceDate).yesterday,

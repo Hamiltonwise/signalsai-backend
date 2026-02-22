@@ -15,13 +15,13 @@ export async function handleApprovalNotification(
   const isApprovingUserTask =
     !wasApprovedBefore && task.category === "USER";
 
-  if (!isApprovingUserTask || !task.domain_name) {
+  if (!isApprovingUserTask || !task.organization_id) {
     return;
   }
 
   try {
     await createNotification(
-      task.domain_name,
+      task.organization_id,
       "New Task Approved",
       "A new opportunity awaits your action! Visit the tasks tab to see more",
       "task",
@@ -40,15 +40,15 @@ export async function handleApprovalNotification(
 
 /**
  * Create notifications for bulk-approved USER tasks.
- * Groups by domain and sends one notification per domain.
+ * Groups by organization and sends one notification per org.
  * Handles singular/plural messaging.
  *
- * Notification failure for any domain does NOT fail the parent operation.
+ * Notification failure for any org does NOT fail the parent operation.
  */
 export async function createBulkApprovalNotifications(
-  userTasksByDomain: Array<{ domain_name: string; count: number }>
+  userTasksByOrg: Array<{ organization_id: number; count: number }>
 ): Promise<void> {
-  for (const { domain_name, count } of userTasksByDomain) {
+  for (const { organization_id, count } of userTasksByOrg) {
     try {
       const message =
         count === 1
@@ -56,18 +56,18 @@ export async function createBulkApprovalNotifications(
           : `${count} new opportunities awaiting your action! Visit tasks to see more`;
 
       await createNotification(
-        domain_name,
+        organization_id,
         count === 1 ? "New Task Approved" : "New Tasks Approved",
         message,
         "task",
         { taskCount: count }
       );
       console.log(
-        `[TASKS] Created notification for ${count} approved USER task(s) for ${domain_name}`
+        `[TASKS] Created notification for ${count} approved USER task(s) for org ${organization_id}`
       );
     } catch (notificationError: any) {
       console.error(
-        `[TASKS] Failed to create notification for ${domain_name}: ${notificationError.message}`
+        `[TASKS] Failed to create notification for org ${organization_id}: ${notificationError.message}`
       );
       // Don't fail the approval if notification creation fails
     }
@@ -75,22 +75,24 @@ export async function createBulkApprovalNotifications(
 }
 
 /**
- * Group an array of tasks by domain_name and return counts per domain.
- * Used by bulk approval to determine how many notifications to send per domain.
+ * Group an array of tasks by organization_id and return counts per org.
+ * Used by bulk approval to determine how many notifications to send per org.
  */
-export function groupTasksByDomain(
-  tasks: Array<{ domain_name: string }>
-): Array<{ domain_name: string; count: number }> {
-  const domainCounts = tasks.reduce(
-    (acc: Record<string, number>, task) => {
-      acc[task.domain_name] = (acc[task.domain_name] || 0) + 1;
+export function groupTasksByOrganization(
+  tasks: Array<{ organization_id: number | null }>
+): Array<{ organization_id: number; count: number }> {
+  const orgCounts = tasks.reduce(
+    (acc: Record<number, number>, task) => {
+      if (task.organization_id) {
+        acc[task.organization_id] = (acc[task.organization_id] || 0) + 1;
+      }
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<number, number>
   );
 
-  return Object.entries(domainCounts).map(([domain, count]) => ({
-    domain_name: domain,
+  return Object.entries(orgCounts).map(([orgId, count]) => ({
+    organization_id: parseInt(orgId, 10),
     count: count as number,
   }));
 }

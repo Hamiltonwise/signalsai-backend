@@ -9,9 +9,9 @@ import { coerceBoolean } from "../pms-utils/pms-validator.util";
 import { PAGE_SIZE, PmsStatus } from "../pms-utils/pms-constants";
 
 /**
- * Aggregate PMS key metrics for a given domain across all processed jobs.
+ * Aggregate PMS key metrics for an organization across all processed jobs.
  */
-export async function aggregateKeyData(domain: string) {
+export async function aggregateKeyData(organizationId: number) {
   // Build and execute jobs query directly
   const jobsRaw = await db("pms_jobs")
     .select(
@@ -21,7 +21,7 @@ export async function aggregateKeyData(domain: string) {
       "is_approved",
       "is_client_approved"
     )
-    .where("domain", domain)
+    .where("organization_id", organizationId)
     .orderBy("timestamp", "asc");
 
   // Build and execute latest job query directly
@@ -34,7 +34,7 @@ export async function aggregateKeyData(domain: string) {
       "is_client_approved",
       "response_log"
     )
-    .where("domain", domain)
+    .where("organization_id", organizationId)
     .orderBy("timestamp", "desc")
     .first();
 
@@ -44,7 +44,7 @@ export async function aggregateKeyData(domain: string) {
 
   if (!approvedJobs.length) {
     return {
-      domain,
+      organizationId,
       months: [],
       sources: [],
       totals: {
@@ -72,7 +72,7 @@ export async function aggregateKeyData(domain: string) {
   }
 
   // Use shared aggregation function for consistent PMS data handling
-  const aggregatedData = await aggregatePmsData(domain);
+  const aggregatedData = await aggregatePmsData(organizationId);
   const { months, sources, totals } = aggregatedData;
 
   const stats = {
@@ -90,7 +90,7 @@ export async function aggregateKeyData(domain: string) {
   };
 
   return {
-    domain,
+    organizationId,
     months,
     sources,
     totals,
@@ -110,11 +110,11 @@ export async function listJobsPaginated(
   filters: {
     statuses: PmsStatus[];
     approvedFilter: boolean | undefined;
-    domainFilter: string | undefined;
+    organizationFilter: number | undefined;
   },
   page: number
 ) {
-  const { statuses, approvedFilter, domainFilter } = filters;
+  const { statuses, approvedFilter, organizationFilter } = filters;
 
   // Build count query with filters
   let countQuery = db("pms_jobs");
@@ -124,8 +124,8 @@ export async function listJobsPaginated(
   if (approvedFilter !== undefined) {
     countQuery = countQuery.where("is_approved", approvedFilter ? 1 : 0);
   }
-  if (domainFilter) {
-    countQuery = countQuery.where("domain", domainFilter);
+  if (organizationFilter) {
+    countQuery = countQuery.where("organization_id", organizationFilter);
   }
   const totalResult = await countQuery.count({ total: "*" });
   const total = Number(totalResult?.[0]?.total ?? 0);
@@ -138,8 +138,8 @@ export async function listJobsPaginated(
   if (approvedFilter !== undefined) {
     dataQuery = dataQuery.where("is_approved", approvedFilter ? 1 : 0);
   }
-  if (domainFilter) {
-    dataQuery = dataQuery.where("domain", domainFilter);
+  if (organizationFilter) {
+    dataQuery = dataQuery.where("organization_id", organizationFilter);
   }
   const jobsRaw = await dataQuery
     .orderBy("timestamp", "desc")
@@ -171,7 +171,7 @@ export async function listJobsPaginated(
       is_approved: job.is_approved === 1 || job.is_approved === true,
       is_client_approved:
         job.is_client_approved === 1 || job.is_client_approved === true,
-      domain: job.domain ?? null,
+      organization_id: job.organization_id ?? null,
       automation_status_detail: automationStatusDetail,
     };
   });
@@ -190,7 +190,7 @@ export async function listJobsPaginated(
     filters: {
       statuses,
       isApproved: approvedFilter,
-      domain: domainFilter,
+      organization_id: organizationFilter,
     },
   };
 }

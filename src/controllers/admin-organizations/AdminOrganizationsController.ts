@@ -15,6 +15,7 @@ import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import * as OrganizationEnrichmentService from "./feature-services/OrganizationEnrichmentService";
 import * as ConnectionDetectionService from "./feature-services/ConnectionDetectionService";
 import * as TierManagementService from "./feature-services/TierManagementService";
+import { deleteOrganization } from "../settings/feature-services/service.delete-organization";
 
 // =====================================================================
 // Error handler (preserves original handleError response shape)
@@ -151,6 +152,42 @@ export async function updateName(
     });
   } catch (error) {
     return handleError(res, error, "Update organization");
+  }
+}
+
+/**
+ * DELETE /api/admin/organizations/:id
+ * Permanently delete an organization and all related data.
+ * Super-admin only. Requires { confirmDelete: true } in request body.
+ */
+export async function deleteOrg(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const { confirmDelete } = req.body;
+    if (confirmDelete !== true) {
+      return res.status(400).json({
+        success: false,
+        error: "Confirmation required. Send { confirmDelete: true } to proceed.",
+      });
+    }
+
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    await deleteOrganization(orgId);
+
+    return res.status(204).send();
+  } catch (error) {
+    return handleError(res, error, "Delete organization");
   }
 }
 

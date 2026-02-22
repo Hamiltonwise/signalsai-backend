@@ -143,20 +143,20 @@ export async function getPmsSummary(req: Request, res: Response) {
 
 /**
  * GET /pms/keyData
- * Aggregate PMS key metrics for a given domain across all processed jobs.
+ * Aggregate PMS key metrics for an organization across all processed jobs.
  */
 export async function getKeyData(req: Request, res: Response) {
   try {
-    const domainParam = Array.isArray(req.query.domain)
-      ? req.query.domain[0]
-      : req.query.domain;
+    const organizationId = parseInt(String(req.query.organization_id), 10);
 
-    const domain =
-      typeof domainParam === "string" && domainParam.trim().length > 0
-        ? domainParam.trim()
-        : "artfulorthodontics.com";
+    if (!organizationId || isNaN(organizationId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing or invalid organization_id parameter",
+      });
+    }
 
-    const data = await dataService.aggregateKeyData(domain);
+    const data = await dataService.aggregateKeyData(organizationId);
 
     return res.json({
       success: true,
@@ -181,7 +181,7 @@ export async function listJobs(req: Request, res: Response) {
       page: pageParam,
       status: statusParam,
       isApproved,
-      domain,
+      organization_id,
     } = req.query;
 
     const page = Math.max(parseInt(String(pageParam || "1"), 10) || 1, 1);
@@ -195,13 +195,13 @@ export async function listJobs(req: Request, res: Response) {
       : [];
 
     const approvedFilter = coerceBoolean(isApproved);
-    const domainFilter =
-      typeof domain === "string" && domain.trim().length > 0
-        ? domain.trim()
+    const organizationFilter =
+      typeof organization_id === "string" && organization_id.trim().length > 0
+        ? parseInt(organization_id.trim(), 10)
         : undefined;
 
     const data = await dataService.listJobsPaginated(
-      { statuses, approvedFilter, domainFilter },
+      { statuses, approvedFilter, organizationFilter },
       page
     );
 
@@ -403,11 +403,13 @@ export async function getAutomationStatus(req: Request, res: Response) {
  */
 export async function getActiveAutomations(req: Request, res: Response) {
   try {
-    const { domain } = req.query;
-    const domainFilter =
-      domain && typeof domain === "string" ? domain : undefined;
+    const { organization_id } = req.query;
+    const organizationFilter =
+      organization_id && typeof organization_id === "string"
+        ? parseInt(organization_id, 10)
+        : undefined;
 
-    const data = await automationService.getActiveJobs(domainFilter);
+    const data = await automationService.getActiveJobs(organizationFilter);
 
     return res.json({
       success: true,

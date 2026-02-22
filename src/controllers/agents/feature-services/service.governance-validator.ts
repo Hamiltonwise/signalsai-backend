@@ -135,14 +135,14 @@ export async function runGuardianGovernanceAgents(
       .join(", ")}`,
   );
 
-  // Check for duplicates
+  // Check for duplicates (system-level results have organization_id = NULL)
   const existingGuardian = await db("agent_results")
     .where({
       agent_type: "guardian",
-      domain: "SYSTEM",
       date_start: monthRange.startDate,
       date_end: monthRange.endDate,
     })
+    .whereNull("organization_id")
     .whereIn("status", ["success", "pending"])
     .first();
 
@@ -354,11 +354,11 @@ export async function runGuardianGovernanceAgents(
     `[GUARDIAN-GOV] Governance results collected: ${governanceResults.length} groups`,
   );
 
-  // Save Guardian result
+  // Save Guardian result (system-level: organization_id = null)
   const [guardianRecord] = await db("agent_results")
     .insert({
       organization_id: null,
-      domain: "SYSTEM",
+      location_id: null,
       agent_type: "guardian",
       date_start: monthRange.startDate,
       date_end: monthRange.endDate,
@@ -378,11 +378,11 @@ export async function runGuardianGovernanceAgents(
   const guardianId = guardianRecord.id;
   log(`[GUARDIAN-GOV] \u2713 Guardian result saved (ID: ${guardianId})`);
 
-  // Save Governance Sentinel result
+  // Save Governance Sentinel result (system-level: organization_id = null)
   const [governanceRecord] = await db("agent_results")
     .insert({
       organization_id: null,
-      domain: "SYSTEM",
+      location_id: null,
       agent_type: "governance_sentinel",
       date_start: monthRange.startDate,
       date_end: monthRange.endDate,

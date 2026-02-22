@@ -3,7 +3,6 @@ import type { ActionItemCategory, ActionItemStatus } from "./taskValidation";
 
 interface ActionItem {
   id: number;
-  domain_name: string;
   organization_id?: number;
   title: string;
   description?: string;

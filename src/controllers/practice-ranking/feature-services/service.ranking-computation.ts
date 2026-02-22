@@ -18,6 +18,7 @@ import {
   LocationParams,
 } from "./service.ranking-pipeline";
 import { notifyAdminsRankingComplete } from "../../../utils/core/notificationHelper";
+import { resolveLocationId } from "../../../utils/locationResolver";
 import * as batchTracker from "./service.batch-status-tracker";
 import * as specialtyIdentifier from "./service.specialty-identifier";
 import { log, logDebug, logWarn, logError } from "../feature-utils/util.ranking-logger";
@@ -85,10 +86,11 @@ export async function processBatch(
     rankingIds = [];
     for (let i = 0; i < locations.length; i++) {
       const locationInput = locations[i];
+      const locationId = await resolveLocationId(organizationId, locationInput.gbpLocationId);
       const [result] = await db("practice_rankings")
         .insert({
-          organization_id: organizationId ?? googleAccountId,
-          domain: domain,
+          organization_id: organizationId ?? null,
+          location_id: locationId,
           specialty: locationInput.specialty || null,
           location: locationInput.marketLocation || null,
           gbp_account_id: locationInput.gbpAccountId,

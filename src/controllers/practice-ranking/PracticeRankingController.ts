@@ -28,6 +28,7 @@
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../../database/connection";
+import { resolveLocationId } from "../../utils/locationResolver";
 import { parseJsonField } from "./feature-utils/util.json-parser";
 import { log, logError } from "./feature-utils/util.ranking-logger";
 import {
@@ -72,9 +73,17 @@ export async function triggerBatchAnalysis(
       return res.status(400).json(validation.error);
     }
 
-    // Validate account exists
-    const account = await db("google_connections")
-      .where({ id: googleAccountId })
+    // Validate account exists and get org domain
+    const account = await db("google_connections as gc")
+      .leftJoin("organizations as o", "gc.organization_id", "o.id")
+      .where("gc.id", googleAccountId)
+      .select(
+        "gc.id",
+        "gc.organization_id",
+        "gc.google_property_ids",
+        "o.domain as org_domain",
+        "o.name as org_name",
+      )
       .first();
 
     if (!account) {
@@ -107,13 +116,15 @@ export async function triggerBatchAnalysis(
       // Create ALL ranking records upfront with "pending" status
       // This ensures the frontend can see all locations immediately when the trigger returns
       // Note: specialty/location will be auto-determined during processing via Identifier Agent
+      const organizationId = account.organization_id || null;
       const rankingIds: number[] = [];
       for (let i = 0; i < locations.length; i++) {
         const locationInput = locations[i];
+        const locationId = await resolveLocationId(organizationId, locationInput.gbpLocationId);
         const [result] = await db("practice_rankings")
           .insert({
-            organization_id: account.organization_id || null,
-            domain: account.domain_name,
+            organization_id: organizationId,
+            location_id: locationId,
             specialty: locationInput.specialty || null,
             location: locationInput.marketLocation || null,
             gbp_account_id: locationInput.gbpAccountId,
@@ -146,7 +157,7 @@ export async function triggerBatchAnalysis(
           batchId,
           googleAccountId,
           locations,
-          account.domain_name,
+          account.org_domain || "",
           rankingIds,
           true, // recordsPreCreated
           account.organization_id, // actual org ID, not connection row ID
@@ -197,7 +208,7 @@ export async function triggerBatchAnalysis(
         batchId,
         googleAccountId,
         legacyLocations,
-        account.domain_name,
+        account.org_domain || "",
         [], // no pre-created IDs
         false, // recordsPreCreated = false for legacy
         account.organization_id, // actual org ID, not connection row ID
@@ -347,13 +358,12 @@ export async function listRankings(
   res: Response,
 ): Promise<Response> {
   try {
-    const { googleAccountId, limit = 20, offset = 0 } = req.query;
+    const { organization_id, limit = 20, offset = 0 } = req.query;
 
     let query = db("practice_rankings")
       .select(
         "id",
         "organization_id",
-        "domain",
         "specialty",
         "location",
         "rank_keywords",
@@ -375,8 +385,8 @@ export async function listRankings(
       .limit(Number(limit))
       .offset(Number(offset));
 
-    if (googleAccountId) {
-      query = query.where({ organization_id: Number(googleAccountId) });
+    if (organization_id) {
+      query = query.where({ organization_id: Number(organization_id) });
     }
 
     const rankings = await query;
@@ -401,20 +411,25 @@ export async function listAccounts(
   res: Response,
 ): Promise<Response> {
   try {
-    const accounts = await db("google_connections")
-      .where({ onboarding_completed: true })
-      .select("id", "domain_name", "practice_name", "google_property_ids")
-      .orderBy("practice_name", "asc");
+    const accounts = await db("google_connections as gc")
+      .join("organizations as o", "gc.organization_id", "o.id")
+      .where("o.onboarding_completed", true)
+      .select(
+        "gc.id",
+        "gc.google_property_ids",
+        "o.name as org_name",
+        "o.domain as org_domain",
+      )
+      .orderBy("o.name", "asc");
 
     const formattedAccounts = accounts.map((a) => {
       const propertyIds = parseJsonField(a.google_property_ids);
 
-      // Debug: Log the raw GBP data to understand structure
       const rawGbp = propertyIds?.gbp || [];
       if (rawGbp.length > 0) {
         log(
           `Account ${a.id} (${
-            a.domain_name
+            a.org_name
           }) GBP locations raw structure: ${JSON.stringify(rawGbp[0])}`,
         );
       }
@@ -427,17 +442,15 @@ export async function listAccounts(
       }> = (propertyIds?.gbp || []).map((gbp: any) => ({
         accountId: gbp.accountId,
         locationId: gbp.locationId,
-        // Handle both 'displayName' (new format) and 'name' (old format from settings)
         displayName:
           gbp.displayName || gbp.name || gbp.title || "Unknown Location",
-        // Extract address from GBP if available for suggested market location
         address: gbp.address || gbp.storefrontAddress?.addressLines?.[0],
       }));
 
       return {
         id: a.id,
-        domain: a.domain_name,
-        practiceName: a.practice_name || a.domain_name,
+        domain: a.org_domain,
+        practiceName: a.org_name,
         hasGbp: gbpLocations.length > 0,
         gbpLocations: gbpLocations,
         gbpCount: gbpLocations.length,

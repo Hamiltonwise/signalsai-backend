@@ -29,6 +29,7 @@ import {
   FACTOR_WEIGHTS,
 } from "./service.ranking-algorithm";
 import { createNotification } from "../../../utils/core/notificationHelper";
+import { resolveLocationId } from "../../../utils/locationResolver";
 import axios from "axios";
 import { listLocalPostsInRange } from "../../../routes/gbp";
 
@@ -802,10 +803,13 @@ export async function processLocationRanking(
       // Create tasks from recommendations
       const topRecommendations = llmAnalysis.top_recommendations || [];
       if (topRecommendations.length > 0) {
+        const taskOrgId = account.organization_id ?? null;
+        const taskLocationId = await resolveLocationId(taskOrgId, gbpLocationId);
+
         // Archive old tasks
         const previousRankings = await db("practice_rankings")
           .where({
-            organization_id: account.organization_id ?? googleAccountId,
+            organization_id: taskOrgId,
             gbp_location_id: gbpLocationId,
           })
           .whereNot({ id: rankingId })
@@ -822,8 +826,8 @@ export async function processLocationRanking(
         }
 
         const tasksToInsert = topRecommendations.map((item: any) => ({
-          domain_name: domain,
-          organization_id: account.organization_id ?? googleAccountId,
+          organization_id: taskOrgId,
+          location_id: taskLocationId,
           title: item.title || "Ranking Improvement Action",
           description: item.expected_outcome
             ? `${item.description || ""}\n\n**Expected Outcome:**\n${

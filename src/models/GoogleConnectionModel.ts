@@ -130,7 +130,7 @@ export class GoogleConnectionModel extends BaseModel {
   // =====================================================================
 
   /**
-   * @deprecated Plan 04 will remove this. Old google_accounts had onboarding_completed.
+   * @deprecated Use organizations table directly. Kept for backward compat during migration.
    */
   static async findOnboardedAccounts(
     trx?: QueryContext
@@ -145,7 +145,7 @@ export class GoogleConnectionModel extends BaseModel {
   }
 
   /**
-   * @deprecated Plan 04 will remove this. Old google_accounts had onboarding_completed.
+   * @deprecated Use organizations table directly. Kept for backward compat during migration.
    */
   static async findOnboardedClients(
     trx?: QueryContext
@@ -157,7 +157,7 @@ export class GoogleConnectionModel extends BaseModel {
   }
 
   /**
-   * @deprecated Plan 04 will remove this. Domain will live on Organization.
+   * @deprecated Use LocationModel/OrganizationModel. Kept for backward compat during migration.
    */
   static async getDomainFromAccountId(
     accountId: number,
@@ -171,7 +171,7 @@ export class GoogleConnectionModel extends BaseModel {
   }
 
   /**
-   * @deprecated Plan 04 will remove this. Domain will live on Organization.
+   * @deprecated Use LocationModel/OrganizationModel. Kept for backward compat during migration.
    */
   static async findByDomain(
     domainName: string,

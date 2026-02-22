@@ -12,7 +12,7 @@ const router = express.Router();
 
 // List & Filters
 router.get("/", controller.listOutputs);
-router.get("/domains", controller.getDomains);
+router.get("/organizations", controller.getOrganizations);
 router.get("/agent-types", controller.getAgentTypes);
 
 // Statistics (before /:id to avoid route conflict)

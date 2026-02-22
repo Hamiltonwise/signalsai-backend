@@ -49,6 +49,7 @@ import auditRoutes from "./routes/audit";
 import importsRoutes from "./routes/imports";
 import websiteContactRoutes from "./routes/websiteContact";
 import userWebsiteRoutes from "./routes/user/website";
+import locationRoutes from "./routes/locations";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -154,6 +155,7 @@ app.use("/api/audit", auditRoutes); // Audit process tracking for leadgen tool
 app.use("/api/imports", importsRoutes); // Public file serving for self-hosted imports
 app.use("/api/websites", websiteContactRoutes); // Public contact form for rendered sites
 app.use("/api/user/website", userWebsiteRoutes); // User website management (DFY tier)
+app.use("/api/locations", locationRoutes); // Location management for multi-location orgs
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);
