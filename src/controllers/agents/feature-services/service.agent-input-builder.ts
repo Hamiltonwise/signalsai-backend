@@ -44,7 +44,6 @@ export function buildSummaryPayload(params: {
   endDate: string;
   monthData: any;
   pmsData?: any;
-  clarityData?: any;
 }): any {
   return {
     agent: "summary",
@@ -57,7 +56,6 @@ export function buildSummaryPayload(params: {
     additional_data: {
       ...params.monthData,
       pms: params.pmsData || null,
-      // clarity: params.clarityData || null,  // Temporarily disabled for testing
     },
   };
 }
@@ -94,9 +92,7 @@ export function buildReferralEnginePayload(params: {
   googleAccountId: number;
   startDate: string;
   endDate: string;
-  monthData: any;
   pmsData?: any;
-  clarityData?: any;
 }): any {
   return {
     agent: "referral_engine",
@@ -107,10 +103,7 @@ export function buildReferralEnginePayload(params: {
       end: params.endDate,
     },
     additional_data: {
-      // TODO: Revert this when needed
-      // ...params.monthData,  // Contains gbpData, clarityData
       pms: params.pmsData || null,
-      // clarity: params.clarityData || null,  // Temporarily disabled for testing
     },
   };
 }

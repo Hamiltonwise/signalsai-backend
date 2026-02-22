@@ -42,6 +42,7 @@ import {
   createTasksFromReferralEngineOutput,
 } from "./service.task-creator";
 import { resolveLocationId } from "../../../utils/locationResolver";
+import { GooglePropertyModel } from "../../../models/GooglePropertyModel";
 
 // =====================================================================
 // DAILY AGENT PROCESSING
@@ -62,16 +63,36 @@ export async function processDailyAgent(
   rawData?: any;
   error?: string;
 }> {
-  const { id: googleAccountId, domain_name: domain } = account;
+  const { id: googleAccountId, domain_name: domain, organization_id: organizationId } = account;
 
   log(`  [DAILY] Processing Proofline agent for ${domain}`);
 
+  // Resolve location for this account
+  const locationId = await resolveLocationId(organizationId);
+
   try {
-    // Parse property IDs
-    const propertyIds: GooglePropertyIds =
-      typeof account.google_property_ids === "string"
+    // Scope GBP data to the active location only
+    let propertyIds: GooglePropertyIds = {};
+    if (locationId) {
+      const gbpProps = await GooglePropertyModel.findByLocationId(locationId);
+      if (gbpProps.length > 0) {
+        propertyIds = {
+          gbp: gbpProps.map((p) => ({
+            accountId: p.account_id || "",
+            locationId: p.external_id,
+            displayName: p.display_name || "",
+          })),
+        };
+        log(`  [DAILY] Scoped GBP to location ${locationId} (${gbpProps.length} properties)`);
+      }
+    }
+    // Fallback: if no location-scoped properties, parse from JSON blob
+    if (!propertyIds.gbp || propertyIds.gbp.length === 0) {
+      propertyIds = typeof account.google_property_ids === "string"
         ? JSON.parse(account.google_property_ids)
-        : account.google_property_ids;
+        : (account.google_property_ids || {});
+      log(`  [DAILY] Using full JSON blob for GBP (${propertyIds.gbp?.length || 0} properties)`);
+    }
 
     // Fetch data for day before yesterday (single day)
     log(
@@ -98,8 +119,8 @@ export async function processDailyAgent(
     );
 
     // Prepare raw data for potential DB storage
+    // Note: google_data_store does not have organization_id column
     const rawData = {
-      organization_id: account.organization_id,
       domain,
       date_start: dates.dayBeforeYesterday,
       date_end: dates.yesterday,
@@ -164,6 +185,7 @@ export async function processMonthlyAgents(
   account: any,
   oauth2Client: any,
   monthRange: ReturnType<typeof getPreviousMonthRange>,
+  passedLocationId?: number | null,
 ): Promise<{
   success: boolean;
   summaryOutput?: any;
@@ -185,15 +207,33 @@ export async function processMonthlyAgents(
     `  [MONTHLY] Processing Summary + Referral Engine + Opportunity + CRO Optimizer for ${domain} (${startDate} to ${endDate})`,
   );
 
-  // Resolve location for this account
-  const locationId = await resolveLocationId(organizationId);
+  // Use passed locationId if available, otherwise resolve from org
+  const locationId = passedLocationId ?? await resolveLocationId(organizationId);
+  log(`  [MONTHLY] Using locationId: ${locationId}${passedLocationId ? ' (from request)' : ' (resolved from org)'}`);
 
   try {
-    // Parse property IDs
-    const propertyIds: GooglePropertyIds =
-      typeof account.google_property_ids === "string"
+    // Scope GBP data to the active location only
+    let propertyIds: GooglePropertyIds = {};
+    if (locationId) {
+      const gbpProps = await GooglePropertyModel.findByLocationId(locationId);
+      if (gbpProps.length > 0) {
+        propertyIds = {
+          gbp: gbpProps.map((p) => ({
+            accountId: p.account_id || "",
+            locationId: p.external_id,
+            displayName: p.display_name || "",
+          })),
+        };
+        log(`  [MONTHLY] Scoped GBP to location ${locationId} (${gbpProps.length} properties)`);
+      }
+    }
+    // Fallback: if no location-scoped properties, parse from JSON blob
+    if (!propertyIds.gbp || propertyIds.gbp.length === 0) {
+      propertyIds = typeof account.google_property_ids === "string"
         ? JSON.parse(account.google_property_ids)
         : (account.google_property_ids || {});
+      log(`  [MONTHLY] Using full JSON blob for GBP (${propertyIds.gbp?.length || 0} properties)`);
+    }
 
     // Fetch month data (GBP)
     log(`  [MONTHLY] Fetching GBP data for ${startDate} to ${endDate}`);
@@ -207,10 +247,10 @@ export async function processMonthlyAgents(
     );
 
     // Fetch aggregated PMS data across all approved submissions
-    log(`  [MONTHLY] Fetching aggregated PMS data for ${domain}`);
+    log(`  [MONTHLY] Fetching aggregated PMS data for org ${organizationId}`);
     let pmsData = null;
     try {
-      const aggregated = await aggregatePmsData(domain);
+      const aggregated = await aggregatePmsData(organizationId, locationId ?? undefined);
 
       if (aggregated.months.length > 0) {
         // Use aggregated data structure for Summary agent
@@ -240,8 +280,8 @@ export async function processMonthlyAgents(
     }
 
     // Prepare raw data for potential DB storage
+    // Note: google_data_store does not have organization_id column
     const rawData = {
-      organization_id: account.organization_id,
       domain,
       date_start: startDate,
       date_end: endDate,
@@ -260,7 +300,6 @@ export async function processMonthlyAgents(
       endDate,
       monthData,
       pmsData,
-      clarityData: monthData.clarityData,
     });
 
     const summaryOutput = await callAgentWebhook(
@@ -289,9 +328,7 @@ export async function processMonthlyAgents(
       googleAccountId,
       startDate,
       endDate,
-      monthData,
       pmsData,
-      clarityData: monthData.clarityData,
     });
 
     const referralEngineOutput = await callAgentWebhook(
@@ -413,13 +450,13 @@ export async function processMonthlyAgents(
     }
 
     // === STEP 5: Create tasks from action items ===
-    await createTasksFromOpportunityOutput(opportunityOutput, googleAccountId, domain, organizationId, locationId);
+    await createTasksFromOpportunityOutput(opportunityOutput, googleAccountId, organizationId, locationId);
 
     // === STEP 6: Create tasks from CRO Optimizer action items ===
-    await createTasksFromCroOptimizerOutput(croOptimizerOutput, googleAccountId, domain, organizationId, locationId);
+    await createTasksFromCroOptimizerOutput(croOptimizerOutput, googleAccountId, organizationId, locationId);
 
     // === STEP 7: Create tasks from Referral Engine action items ===
-    await createTasksFromReferralEngineOutput(referralEngineOutput, googleAccountId, domain, organizationId, locationId);
+    await createTasksFromReferralEngineOutput(referralEngineOutput, googleAccountId, organizationId, locationId);
 
     return {
       success: true,
@@ -587,6 +624,9 @@ export async function processClient(
       const dailyDates = getDailyDates(referenceDate);
       const monthRange = getPreviousMonthRange(referenceDate);
 
+      // Resolve location_id for this organization
+      const locationId = await resolveLocationId(account.organization_id);
+
       // === STEP 1: Always run daily agent (collect in memory) ===
       log(`[CLIENT] Running daily agent (attempt ${attempt}/${MAX_ATTEMPTS})`);
       const dailyResult = await processDailyAgent(
@@ -631,6 +671,7 @@ export async function processClient(
             account,
             oauth2Client,
             monthRange,
+            locationId,
           );
 
           if (!monthlyResult.success && !monthlyResult.skipped) {
@@ -670,6 +711,7 @@ export async function processClient(
         const [dailyResultId] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
+            location_id: locationId,
             agent_type: "proofline",
             date_start: dailyDates.dayBeforeYesterday,
             date_end: dailyDates.yesterday,
@@ -695,6 +737,7 @@ export async function processClient(
         const [summaryId] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
+            location_id: locationId,
             agent_type: "summary",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -712,6 +755,7 @@ export async function processClient(
         const [opportunityId] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
+            location_id: locationId,
             agent_type: "opportunity",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -729,6 +773,7 @@ export async function processClient(
         const [referralEngineId] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
+            location_id: locationId,
             agent_type: "referral_engine",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -748,6 +793,7 @@ export async function processClient(
         const [croOptimizerId] = await db("agent_results")
           .insert({
             organization_id: account.organization_id,
+            location_id: locationId,
             agent_type: "cro_optimizer",
             date_start: monthRange.startDate,
             date_end: monthRange.endDate,
@@ -778,8 +824,12 @@ export async function processClient(
       // If this was the last attempt, save error to database
       if (attempt === MAX_ATTEMPTS) {
         try {
+          const errorLocationId = await resolveLocationId(
+            account.organization_id
+          );
           await db("agent_results").insert({
             organization_id: account.organization_id,
+            location_id: errorLocationId,
             agent_type: "proofline",
             date_start: getDailyDates(referenceDate).dayBeforeYesterday,
             date_end: getDailyDates(referenceDate).yesterday,

@@ -6,8 +6,7 @@ export type ActionItemStatus =
   | "archived";
 
 export interface CreateActionItemRequest {
-  domain_name: string;
-  organization_id?: number;
+  organization_id: number;
   title: string;
   description?: string;
   category: ActionItemCategory;
@@ -78,14 +77,13 @@ export function validateStatus(status: unknown): ValidationResult {
  * Validate required fields for task creation
  */
 export function validateCreateRequest(body: {
-  domain_name?: string;
   title?: string;
   category?: string;
 }): ValidationResult {
-  if (!body.domain_name || !body.title || !body.category) {
+  if (!body.title || !body.category) {
     return {
       isValid: false,
-      error: "domain_name, title, and category are required",
+      error: "title and category are required",
     };
   }
 

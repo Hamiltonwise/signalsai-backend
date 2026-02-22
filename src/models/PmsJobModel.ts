@@ -12,8 +12,7 @@ export interface IPmsJob {
   response_log: Record<string, unknown> | null;
   raw_input_data: Record<string, unknown> | null;
   automation_status_detail: Record<string, unknown> | null;
-  created_at: Date;
-  updated_at: Date;
+  timestamp: Date;
 }
 
 export interface PmsJobFilters {
@@ -38,19 +37,31 @@ export class PmsJobModel extends BaseModel {
     return super.findById(id, trx);
   }
 
+  /**
+   * Override BaseModel.create() — pms_jobs uses `timestamp` column, not created_at/updated_at.
+   */
   static async create(
     data: Partial<IPmsJob>,
     trx?: QueryContext
   ): Promise<IPmsJob> {
-    return super.create(data as Record<string, unknown>, trx);
+    const serialized = this.serializeJsonFields({
+      ...data,
+      timestamp: new Date(),
+    } as Record<string, unknown>);
+    const [result] = await this.table(trx).insert(serialized).returning("*");
+    return this.deserializeJsonFields(result);
   }
 
+  /**
+   * Override BaseModel.updateById() — pms_jobs has no updated_at column.
+   */
   static async updateById(
     id: number,
     data: Partial<IPmsJob>,
     trx?: QueryContext
   ): Promise<number> {
-    return super.updateById(id, data as Record<string, unknown>, trx);
+    const serialized = this.serializeJsonFields(data as Record<string, unknown>);
+    return this.table(trx).where({ id }).update(serialized);
   }
 
   static async deleteById(
@@ -78,7 +89,7 @@ export class PmsJobModel extends BaseModel {
       if (filters.is_approved !== undefined) {
         qb = qb.where("is_approved", filters.is_approved);
       }
-      return qb.orderBy("created_at", "desc");
+      return qb.orderBy("timestamp", "desc");
     };
     return this.paginate<IPmsJob>(buildQuery, pagination, trx);
   }
@@ -88,7 +99,7 @@ export class PmsJobModel extends BaseModel {
     isApproved: boolean,
     trx?: QueryContext
   ): Promise<number> {
-    return super.updateById(id, { is_approved: isApproved }, trx);
+    return this.updateById(id, { is_approved: isApproved } as Partial<IPmsJob>, trx);
   }
 
   static async updateClientApproval(
@@ -96,7 +107,7 @@ export class PmsJobModel extends BaseModel {
     isClientApproved: boolean,
     trx?: QueryContext
   ): Promise<number> {
-    return super.updateById(id, { is_client_approved: isClientApproved }, trx);
+    return this.updateById(id, { is_client_approved: isClientApproved } as Partial<IPmsJob>, trx);
   }
 
   static async updateAutomationStatus(
@@ -104,9 +115,9 @@ export class PmsJobModel extends BaseModel {
     statusDetail: Record<string, unknown>,
     trx?: QueryContext
   ): Promise<number> {
-    return super.updateById(
+    return this.updateById(
       id,
-      { automation_status_detail: statusDetail },
+      { automation_status_detail: statusDetail } as Partial<IPmsJob>,
       trx
     );
   }
@@ -117,6 +128,7 @@ export class PmsJobModel extends BaseModel {
    */
   static async findActiveAutomationJobs(
     organizationId?: number,
+    locationId?: number,
     trx?: QueryContext
   ): Promise<IPmsJob[]> {
     let query = this.table(trx)
@@ -131,12 +143,15 @@ export class PmsJobModel extends BaseModel {
         "is_approved",
         "is_client_approved",
         "automation_status_detail",
-        "created_at"
+        "timestamp"
       )
-      .orderBy("created_at", "desc");
+      .orderBy("timestamp", "desc");
 
     if (organizationId) {
       query = query.where("organization_id", organizationId);
+    }
+    if (locationId) {
+      query = query.where("location_id", locationId);
     }
 
     const rows = await query;
@@ -167,7 +182,7 @@ export class PmsJobModel extends BaseModel {
       if (options?.isApproved !== undefined) {
         qb = qb.where("is_approved", options.isApproved);
       }
-      return qb.orderBy("created_at", "desc");
+      return qb.orderBy("timestamp", "desc");
     };
     return this.paginate<IPmsJob>(buildQuery, pagination, trx);
   }
@@ -183,13 +198,13 @@ export class PmsJobModel extends BaseModel {
     let query = this.table(trx)
       .select(
         "id",
-        "created_at",
+        "timestamp",
         "response_log",
         "is_approved",
         "is_client_approved"
       )
       .where("organization_id", organizationId)
-      .orderBy("created_at", "asc");
+      .orderBy("timestamp", "asc");
 
     if (locationId) {
       query = query.where("location_id", locationId);

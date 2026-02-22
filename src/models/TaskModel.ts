@@ -156,33 +156,36 @@ export class TaskModel extends BaseModel {
     trx?: QueryContext
   ): Promise<PaginatedResult<ITask>> {
     const buildQuery = (qb: Knex.QueryBuilder) => {
+      qb = qb
+        .leftJoin("locations", "tasks.location_id", "locations.id")
+        .select("tasks.*", "locations.name as location_name");
       if (filters.organization_id) {
-        qb = qb.where("organization_id", filters.organization_id);
+        qb = qb.where("tasks.organization_id", filters.organization_id);
       }
       if (filters.location_id) {
-        qb = qb.where("location_id", filters.location_id);
+        qb = qb.where("tasks.location_id", filters.location_id);
       }
       if (filters.status) {
-        qb = qb.where("status", filters.status);
+        qb = qb.where("tasks.status", filters.status);
       } else {
-        qb = qb.whereNot("status", "archived");
+        qb = qb.whereNot("tasks.status", "archived");
       }
       if (filters.category) {
-        qb = qb.where("category", filters.category);
+        qb = qb.where("tasks.category", filters.category);
       }
       if (filters.agent_type) {
-        qb = qb.where("agent_type", filters.agent_type);
+        qb = qb.where("tasks.agent_type", filters.agent_type);
       }
       if (filters.is_approved !== undefined) {
-        qb = qb.where("is_approved", filters.is_approved);
+        qb = qb.where("tasks.is_approved", filters.is_approved);
       }
       if (filters.date_from) {
-        qb = qb.where("created_at", ">=", filters.date_from);
+        qb = qb.where("tasks.created_at", ">=", filters.date_from);
       }
       if (filters.date_to) {
-        qb = qb.where("created_at", "<=", filters.date_to);
+        qb = qb.where("tasks.created_at", "<=", filters.date_to);
       }
-      return qb.orderBy("created_at", "desc");
+      return qb.orderBy("tasks.created_at", "desc");
     };
 
     return this.paginate<ITask>(buildQuery, pagination, trx);

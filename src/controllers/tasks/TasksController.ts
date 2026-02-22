@@ -232,7 +232,6 @@ export async function createTask(
   try {
     const {
       organization_id,
-      domain_name,
       title,
       description,
       category,
@@ -256,18 +255,13 @@ export async function createTask(
       });
     }
 
-    // Resolve organization_id: prefer explicit org_id, fallback to domain lookup
-    let resolvedOrgId = organization_id || null;
-    if (!resolvedOrgId && domain_name) {
-      const account = await GoogleConnectionModel.findByDomain(domain_name);
-      resolvedOrgId = account?.organization_id || null;
-    }
+    const resolvedOrgId = organization_id || null;
 
     if (!resolvedOrgId) {
       return res.status(400).json({
         success: false,
         error: "Missing organization",
-        message: "organization_id or domain_name is required",
+        message: "organization_id is required",
       });
     }
 

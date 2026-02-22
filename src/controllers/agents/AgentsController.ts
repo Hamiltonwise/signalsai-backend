@@ -83,6 +83,7 @@ import {
 import { runGuardianGovernanceAgents } from "./feature-services/service.governance-validator";
 import { resolveLocationId } from "../../utils/locationResolver";
 import { AgentResultModel } from "../../models/AgentResultModel";
+import { GooglePropertyModel } from "../../models/GooglePropertyModel";
 
 // =====================================================================
 // POST /proofline-run
@@ -239,7 +240,7 @@ export async function runMonthlyAgents(
   res: Response,
 ): Promise<any> {
   const startTime = Date.now();
-  const { googleAccountId, domain, force = false, pmsJobId } = req.body;
+  const { googleAccountId, domain, force = false, pmsJobId, locationId: requestLocationId } = req.body;
 
   log("\n" + "=".repeat(70));
   log("POST /api/agents/monthly-agents-run - STARTING");
@@ -248,6 +249,7 @@ export async function runMonthlyAgents(
   log(`Domain: ${domain}`);
   log(`Force run: ${force}`);
   log(`PMS Job ID: ${pmsJobId || "N/A"}`);
+  log(`Location ID: ${requestLocationId || "N/A (will resolve from org)"}`);
   log(`Timestamp: ${new Date().toISOString()}`);
 
   // Helper to update PMS automation status if pmsJobId is provided
@@ -295,8 +297,11 @@ export async function runMonthlyAgents(
 
     log(`[SETUP] Account found: ${account.domain_name}`);
 
-    // Resolve location for this account
-    const locationId = await resolveLocationId(account.organization_id);
+    // Use passed locationId if available, otherwise resolve from org
+    const locationId = requestLocationId
+      ? Number(requestLocationId)
+      : await resolveLocationId(account.organization_id);
+    log(`[SETUP] Using locationId: ${locationId}${requestLocationId ? ' (from request)' : ' (resolved from org)'}`);
 
     // Get month range
     const monthRange = getPreviousMonthRange();
@@ -323,6 +328,7 @@ export async function runMonthlyAgents(
       account,
       oauth2Client,
       monthRange,
+      locationId,
     );
 
     if (!monthlyResult.success) {
@@ -653,13 +659,33 @@ export async function runMonthlyAgentsTest(
     );
 
     // === FETCH DATA (read-only) ===
-    log(`[TEST-DATA] Fetching GBP/Clarity data...`);
-    // Parse property IDs from the stored JSON structure
-    const propertyIds: GooglePropertyIds =
-      typeof account.google_property_ids === "string"
+    // Resolve location for this account
+    const locationId = await resolveLocationId(account.organization_id);
+
+    // Scope GBP data to the active location only
+    let propertyIds: GooglePropertyIds = {};
+    if (locationId) {
+      const gbpProps = await GooglePropertyModel.findByLocationId(locationId);
+      if (gbpProps.length > 0) {
+        propertyIds = {
+          gbp: gbpProps.map((p) => ({
+            accountId: p.account_id || "",
+            locationId: p.external_id,
+            displayName: p.display_name || "",
+          })),
+        };
+        log(`[TEST-DATA] Scoped GBP to location ${locationId} (${gbpProps.length} properties)`);
+      }
+    }
+    // Fallback: if no location-scoped properties, parse from JSON blob
+    if (!propertyIds.gbp || propertyIds.gbp.length === 0) {
+      propertyIds = typeof account.google_property_ids === "string"
         ? JSON.parse(account.google_property_ids)
         : (account.google_property_ids || {});
+      log(`[TEST-DATA] Using full JSON blob for GBP (${propertyIds.gbp?.length || 0} properties)`);
+    }
 
+    log(`[TEST-DATA] Fetching GBP data...`);
     const monthData = await fetchAllServiceData(
       oauth2Client,
       googleAccountId,
@@ -670,10 +696,10 @@ export async function runMonthlyAgentsTest(
     );
 
     // Fetch aggregated PMS data (read-only)
-    log(`[TEST-DATA] Fetching aggregated PMS data for ${domain}...`);
+    log(`[TEST-DATA] Fetching aggregated PMS data for org ${account.organization_id}...`);
     let pmsData = null;
     try {
-      const aggregated = await aggregatePmsData(domain);
+      const aggregated = await aggregatePmsData(account.organization_id);
 
       if (aggregated.months.length > 0) {
         pmsData = {
@@ -708,7 +734,6 @@ export async function runMonthlyAgentsTest(
       endDate,
       monthData,
       pmsData,
-      clarityData: monthData.clarityData,
     });
 
     const summaryOutput = await callAgentWebhook(
@@ -734,9 +759,7 @@ export async function runMonthlyAgentsTest(
       googleAccountId,
       startDate,
       endDate,
-      monthData,
       pmsData,
-      clarityData: monthData.clarityData,
     });
 
     const referralEngineOutput = await callAgentWebhook(
@@ -1056,7 +1079,6 @@ export async function runGbpOptimizer(
         await createTasksFromCopyRecommendations(
           result.output,
           googleAccountId,
-          domain,
           organizationId,
           locationId,
         );

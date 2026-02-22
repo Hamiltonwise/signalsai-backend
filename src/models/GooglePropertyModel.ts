@@ -53,6 +53,31 @@ export class GooglePropertyModel extends BaseModel {
     return row ? this.deserializeJsonFields(row) : undefined;
   }
 
+  static async findByConnectionAndExternalId(
+    connectionId: number,
+    externalId: string,
+    trx?: QueryContext
+  ): Promise<IGoogleProperty | undefined> {
+    const row = await this.table(trx)
+      .where({ google_connection_id: connectionId, external_id: externalId })
+      .first();
+    return row ? this.deserializeJsonFields(row) : undefined;
+  }
+
+  static async deleteByConnectionId(
+    connectionId: number,
+    trx?: QueryContext
+  ): Promise<number> {
+    return this.table(trx).where({ google_connection_id: connectionId }).del();
+  }
+
+  static async deleteByLocationId(
+    locationId: number,
+    trx?: QueryContext
+  ): Promise<number> {
+    return this.table(trx).where({ location_id: locationId }).del();
+  }
+
   static async create(
     data: Omit<IGoogleProperty, "id" | "created_at" | "updated_at">,
     trx?: QueryContext

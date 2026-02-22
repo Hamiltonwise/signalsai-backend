@@ -28,6 +28,10 @@ export function parseAdminFilters(query: Record<string, any>): TaskAdminFilters 
     filters.organization_id = parseInt(query.organization_id, 10);
   }
 
+  if (query.location_id) {
+    filters.location_id = parseInt(query.location_id, 10);
+  }
+
   if (query.status && query.status !== "all") {
     filters.status = query.status;
   }

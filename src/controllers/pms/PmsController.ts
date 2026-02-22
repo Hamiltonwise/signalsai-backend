@@ -7,6 +7,7 @@ import * as retryService from "./pms-services/pms-retry.service";
 import { coerceBoolean } from "./pms-utils/pms-validator.util";
 import { validateJobId } from "./pms-utils/pms-validator.util";
 import { PmsStatus } from "./pms-utils/pms-constants";
+import { RBACRequest } from "../../middleware/rbac";
 
 function handleError(res: Response, error: any, operation: string): Response {
   const statusCode = error.statusCode || 500;
@@ -25,7 +26,10 @@ function handleError(res: Response, error: any, operation: string): Response {
  */
 export async function uploadPmsData(req: Request, res: Response) {
   try {
-    const { domain, pmsType, manualData, entryType } = req.body;
+    const { domain, pmsType, manualData, entryType, locationId: reqLocationId } = req.body;
+    const rbacReq = req as RBACRequest;
+    const organizationId = rbacReq.organizationId ?? null;
+    const locationId = reqLocationId ? Number(reqLocationId) : null;
 
     if (!domain) {
       return res.status(400).json({
@@ -58,7 +62,9 @@ export async function uploadPmsData(req: Request, res: Response) {
 
       const result = await uploadService.processManualEntry(
         domain,
-        parsedManualData
+        parsedManualData,
+        organizationId,
+        locationId
       );
 
       return res.json({
@@ -81,7 +87,7 @@ export async function uploadPmsData(req: Request, res: Response) {
       });
     }
 
-    const result = await uploadService.processFileUpload(req.file, domain);
+    const result = await uploadService.processFileUpload(req.file, domain, organizationId, locationId);
 
     return res.json({
       success: true,
@@ -156,7 +162,15 @@ export async function getKeyData(req: Request, res: Response) {
       });
     }
 
-    const data = await dataService.aggregateKeyData(organizationId);
+    const locationIdRaw = req.query.location_id
+      ? parseInt(String(req.query.location_id), 10)
+      : undefined;
+    const locationId =
+      locationIdRaw !== undefined && !isNaN(locationIdRaw)
+        ? locationIdRaw
+        : undefined;
+
+    const data = await dataService.aggregateKeyData(organizationId, locationId);
 
     return res.json({
       success: true,
@@ -403,13 +417,20 @@ export async function getAutomationStatus(req: Request, res: Response) {
  */
 export async function getActiveAutomations(req: Request, res: Response) {
   try {
-    const { organization_id } = req.query;
+    const { organization_id, location_id } = req.query;
     const organizationFilter =
       organization_id && typeof organization_id === "string"
         ? parseInt(organization_id, 10)
         : undefined;
+    const locationFilter =
+      location_id && typeof location_id === "string"
+        ? parseInt(location_id, 10)
+        : undefined;
 
-    const data = await automationService.getActiveJobs(organizationFilter);
+    const data = await automationService.getActiveJobs(
+      organizationFilter,
+      !isNaN(locationFilter as number) ? locationFilter : undefined
+    );
 
     return res.json({
       success: true,

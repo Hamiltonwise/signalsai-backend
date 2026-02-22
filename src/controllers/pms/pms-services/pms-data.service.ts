@@ -10,10 +10,14 @@ import { PAGE_SIZE, PmsStatus } from "../pms-utils/pms-constants";
 
 /**
  * Aggregate PMS key metrics for an organization across all processed jobs.
+ * Optionally scoped to a specific location.
  */
-export async function aggregateKeyData(organizationId: number) {
+export async function aggregateKeyData(
+  organizationId: number,
+  locationId?: number
+) {
   // Build and execute jobs query directly
-  const jobsRaw = await db("pms_jobs")
+  let jobsQuery = db("pms_jobs")
     .select(
       "id",
       "timestamp",
@@ -21,11 +25,12 @@ export async function aggregateKeyData(organizationId: number) {
       "is_approved",
       "is_client_approved"
     )
-    .where("organization_id", organizationId)
-    .orderBy("timestamp", "asc");
+    .where("organization_id", organizationId);
+  if (locationId) jobsQuery = jobsQuery.where("location_id", locationId);
+  const jobsRaw = await jobsQuery.orderBy("timestamp", "asc");
 
   // Build and execute latest job query directly
-  const latestJob = await db("pms_jobs")
+  let latestQuery = db("pms_jobs")
     .select(
       "id",
       "timestamp",
@@ -34,9 +39,9 @@ export async function aggregateKeyData(organizationId: number) {
       "is_client_approved",
       "response_log"
     )
-    .where("organization_id", organizationId)
-    .orderBy("timestamp", "desc")
-    .first();
+    .where("organization_id", organizationId);
+  if (locationId) latestQuery = latestQuery.where("location_id", locationId);
+  const latestJob = await latestQuery.orderBy("timestamp", "desc").first();
 
   const approvedJobs = jobsRaw.filter(
     (job: any) => normalizeApproval(job.is_approved) === true
@@ -72,7 +77,7 @@ export async function aggregateKeyData(organizationId: number) {
   }
 
   // Use shared aggregation function for consistent PMS data handling
-  const aggregatedData = await aggregatePmsData(organizationId);
+  const aggregatedData = await aggregatePmsData(organizationId, locationId);
   const { months, sources, totals } = aggregatedData;
 
   const stats = {
@@ -131,18 +136,20 @@ export async function listJobsPaginated(
   const total = Number(totalResult?.[0]?.total ?? 0);
 
   // Build data query with same filters
-  let dataQuery = db("pms_jobs");
+  let dataQuery = db("pms_jobs")
+    .leftJoin("locations", "pms_jobs.location_id", "locations.id")
+    .select("pms_jobs.*", "locations.name as location_name");
   if (statuses.length > 0) {
-    dataQuery = dataQuery.whereIn("status", statuses);
+    dataQuery = dataQuery.whereIn("pms_jobs.status", statuses);
   }
   if (approvedFilter !== undefined) {
-    dataQuery = dataQuery.where("is_approved", approvedFilter ? 1 : 0);
+    dataQuery = dataQuery.where("pms_jobs.is_approved", approvedFilter ? 1 : 0);
   }
   if (organizationFilter) {
-    dataQuery = dataQuery.where("organization_id", organizationFilter);
+    dataQuery = dataQuery.where("pms_jobs.organization_id", organizationFilter);
   }
   const jobsRaw = await dataQuery
-    .orderBy("timestamp", "desc")
+    .orderBy("pms_jobs.timestamp", "desc")
     .limit(PAGE_SIZE)
     .offset((page - 1) * PAGE_SIZE);
 
@@ -172,6 +179,7 @@ export async function listJobsPaginated(
       is_client_approved:
         job.is_client_approved === 1 || job.is_client_approved === true,
       organization_id: job.organization_id ?? null,
+      location_name: job.location_name || null,
       automation_status_detail: automationStatusDetail,
     };
   });

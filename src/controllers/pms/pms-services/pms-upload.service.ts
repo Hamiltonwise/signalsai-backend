@@ -13,19 +13,27 @@ import { OrganizationModel } from "../../../models/OrganizationModel";
 /**
  * Process a manual PMS data entry.
  * Skips parsing and approvals, auto-triggers monthly agents.
+ * @param authOrganizationId - Organization ID from JWT/RBAC (authoritative). Falls back to domain lookup if null.
  */
 export async function processManualEntry(
   domain: string,
-  parsedManualData: any[]
+  parsedManualData: any[],
+  authOrganizationId?: number | null,
+  passedLocationId?: number | null
 ) {
+  // Use authenticated org ID if available, fall back to domain lookup for backward compat
+  let organizationId = authOrganizationId ?? null;
+  if (!organizationId) {
+    const org = await OrganizationModel.findByDomain(domain);
+    organizationId = org?.id ?? null;
+  }
+
   console.log(
-    `[PMS] Manual entry received for domain: ${domain}, months: ${parsedManualData.length}`
+    `[PMS] Manual entry received for domain: ${domain}, orgId: ${organizationId}, months: ${parsedManualData.length}`
   );
 
-  // Resolve organization and location for this domain
-  const org = await OrganizationModel.findByDomain(domain);
-  const organizationId = org?.id ?? null;
-  const locationId = await resolveLocationId(organizationId);
+  // Use passed locationId if available, otherwise resolve from org
+  const locationId = passedLocationId ?? await resolveLocationId(organizationId);
 
   // Create job record with manual entry data
   const job = await PmsJobModel.create({
@@ -103,6 +111,7 @@ export async function processManualEntry(
             domain: domain,
             force: true,
             pmsJobId: jobId,
+            locationId: locationId,
           }
         )
         .then(() => {
@@ -138,18 +147,25 @@ export async function processManualEntry(
 /**
  * Process a file upload (CSV, XLS, XLSX, TXT).
  * Converts to JSON, creates job, sends to n8n parser webhook.
+ * @param authOrganizationId - Organization ID from JWT/RBAC (authoritative). Falls back to domain lookup if null.
  */
 export async function processFileUpload(
   file: Express.Multer.File,
-  domain: string
+  domain: string,
+  authOrganizationId?: number | null,
+  passedLocationId?: number | null
 ) {
   const jsonData = await convertFileToJson(file);
   const recordsProcessed = jsonData.length;
 
-  // Resolve organization and location for this domain
-  const org = await OrganizationModel.findByDomain(domain);
-  const organizationId = org?.id ?? null;
-  const locationId = await resolveLocationId(organizationId);
+  // Use authenticated org ID if available, fall back to domain lookup for backward compat
+  let organizationId = authOrganizationId ?? null;
+  if (!organizationId) {
+    const org = await OrganizationModel.findByDomain(domain);
+    organizationId = org?.id ?? null;
+  }
+  // Use passed locationId if available, otherwise resolve from org
+  const locationId = passedLocationId ?? await resolveLocationId(organizationId);
 
   // Create the job record
   const job = await PmsJobModel.create({

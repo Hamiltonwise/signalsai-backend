@@ -147,13 +147,15 @@ const extractAdditionalDataFromResponse = (responseLog: unknown): any[] => {
  * @returns Aggregated PMS data with unique months (latest wins) and aggregated sources
  */
 export async function aggregatePmsData(
-  organizationId: number
+  organizationId: number,
+  locationId?: number
 ): Promise<AggregatedPmsData> {
-  // Fetch all approved jobs for this organization
-  const approvedJobs = await db("pms_jobs")
+  // Fetch all approved jobs for this organization (optionally scoped by location)
+  let query = db("pms_jobs")
     .select("id", "timestamp", "response_log")
-    .where({ organization_id: organizationId, is_approved: 1 })
-    .orderBy("timestamp", "asc");
+    .where({ organization_id: organizationId, is_approved: 1 });
+  if (locationId) query = query.where("location_id", locationId);
+  const approvedJobs = await query.orderBy("timestamp", "asc");
 
   if (!approvedJobs.length) {
     return {

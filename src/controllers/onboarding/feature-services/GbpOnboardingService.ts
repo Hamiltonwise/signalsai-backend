@@ -1,6 +1,7 @@
 import { OAuth2Client } from "google-auth-library";
 import { fetchAvailableGBPProperties } from "../../settings/feature-services/service.google-properties";
-import { updateProperty } from "../../settings/feature-services/service.properties";
+import { syncLocationsFromGBP } from "../../locations/LocationService";
+import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import { buildAuthHeaders } from "../../gbp/gbp-services/gbp-api.service";
 import { extractDomainFromUrl } from "../../places/feature-utils/domainExtractor";
 import axios from "axios";
@@ -22,14 +23,31 @@ export async function getAvailableGBPLocations(
 }
 
 /**
- * Save selected GBP locations to google_property_ids.gbp.
- * Delegates to the shared settings service (same flow as settings page).
+ * Save selected GBP locations.
+ * Creates/syncs locations + google_properties rows (source of truth),
+ * and also updates the JSON blob on google_connections for backward compat.
  */
 export async function saveGBPSelection(
   organizationId: number,
   data: GBPLocationItem[]
 ): Promise<any> {
-  return updateProperty(organizationId, "gbp", data, "connect");
+  const connection =
+    await GoogleConnectionModel.findOneByOrganization(organizationId);
+  if (!connection) {
+    throw new Error("No Google connection found for organization");
+  }
+
+  const locations = await syncLocationsFromGBP(
+    organizationId,
+    connection.id,
+    data
+  );
+
+  return {
+    properties: { gbp: data },
+    locations,
+    message: "Successfully saved GBP locations",
+  };
 }
 
 /**

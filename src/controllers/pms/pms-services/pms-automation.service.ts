@@ -102,10 +102,16 @@ export async function getJobAutomationStatus(jobId: number) {
 
 /**
  * Get all active (non-completed) PMS automation jobs.
- * Optionally filtered by organization.
+ * Optionally filtered by organization and/or location.
  */
-export async function getActiveJobs(organizationId?: number) {
-  const jobs = await PmsJobModel.findActiveAutomationJobs(organizationId);
+export async function getActiveJobs(
+  organizationId?: number,
+  locationId?: number
+) {
+  const jobs = await PmsJobModel.findActiveAutomationJobs(
+    organizationId,
+    locationId
+  );
 
   const formattedJobs = jobs.map((job: any) => {
     let automationStatus: AutomationStatusDetail | null = null;

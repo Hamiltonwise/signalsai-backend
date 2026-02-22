@@ -1,25 +1,25 @@
 import express from "express";
 import * as TasksController from "../controllers/tasks/TasksController";
+import { authenticateToken } from "../middleware/auth";
+import { rbacMiddleware } from "../middleware/rbac";
 
 const router = express.Router();
 
 // =====================================================================
-// CLIENT ENDPOINTS (Domain-Filtered)
+// CLIENT ENDPOINTS (Organization-scoped via JWT + RBAC)
 // =====================================================================
 
 /**
  * GET /api/tasks
  * Fetch tasks for logged-in client (grouped by category)
- * Query params: googleAccountId (required)
  */
-router.get("/", TasksController.getTasksForClient);
+router.get("/", authenticateToken, rbacMiddleware, TasksController.getTasksForClient);
 
 /**
  * PATCH /api/tasks/:id/complete
  * Mark a USER category task as complete (clients only)
- * Body: { googleAccountId: number }
  */
-router.patch("/:id/complete", TasksController.completeTask);
+router.patch("/:id/complete", authenticateToken, rbacMiddleware, TasksController.completeTask);
 
 // =====================================================================
 // ADMIN ENDPOINTS (Unrestricted Access)
@@ -35,7 +35,7 @@ router.post("/", TasksController.createTask);
 /**
  * GET /api/tasks/admin/all
  * Fetch all tasks with filtering (admin dashboard)
- * Query params: domain_name, status, category, is_approved, date_from, date_to, limit, offset
+ * Query params: status, category, is_approved, date_from, date_to, limit, offset
  */
 router.get("/admin/all", TasksController.getAdminTasks);
 

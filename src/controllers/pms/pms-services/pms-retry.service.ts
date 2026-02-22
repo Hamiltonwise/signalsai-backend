@@ -29,6 +29,7 @@ export async function retryFailedStep(
     .select(
       "id",
       "organization_id",
+      "location_id",
       "status",
       "raw_input_data",
       "response_log",
@@ -215,6 +216,7 @@ async function retryMonthlyAgents(jobId: number, job: any) {
           domain: org?.domain || "",
           force: true,
           pmsJobId: jobId,
+          locationId: job.location_id,
         }
       )
       .then(() => {

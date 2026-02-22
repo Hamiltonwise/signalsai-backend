@@ -21,7 +21,6 @@ import { log, logError } from "../feature-utils/agentLogger";
 export async function createTasksFromOpportunityOutput(
   opportunityOutput: any,
   googleAccountId: number,
-  domain: string,
   organizationId?: number | null,
   locationId?: number | null,
 ): Promise<void> {
@@ -95,7 +94,6 @@ export async function createTasksFromOpportunityOutput(
 export async function createTasksFromCroOptimizerOutput(
   croOptimizerOutput: any,
   googleAccountId: number,
-  domain: string,
   organizationId?: number | null,
   locationId?: number | null,
 ): Promise<void> {
@@ -167,7 +165,6 @@ export async function createTasksFromCroOptimizerOutput(
 export async function createTasksFromReferralEngineOutput(
   referralEngineOutput: any,
   googleAccountId: number,
-  domain: string,
   organizationId?: number | null,
   locationId?: number | null,
 ): Promise<void> {
@@ -334,7 +331,6 @@ export async function createTasksFromReferralEngineOutput(
 export async function createTasksFromCopyRecommendations(
   agentOutput: any,
   googleAccountId: number,
-  domain: string,
   organizationId?: number | null,
   locationId?: number | null,
 ): Promise<void> {

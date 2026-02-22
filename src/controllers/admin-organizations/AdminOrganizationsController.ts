@@ -11,6 +11,8 @@ import { db } from "../../database/connection";
 import { OrganizationModel } from "../../models/OrganizationModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { GoogleConnectionModel } from "../../models/GoogleConnectionModel";
+import { LocationModel } from "../../models/LocationModel";
+import { GooglePropertyModel } from "../../models/GooglePropertyModel";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import * as OrganizationEnrichmentService from "./feature-services/OrganizationEnrichmentService";
 import * as ConnectionDetectionService from "./feature-services/ConnectionDetectionService";
@@ -234,5 +236,48 @@ export async function updateTier(
   } catch (error) {
     await trx.rollback();
     return handleError(res, error, "Update organization tier");
+  }
+}
+
+/**
+ * GET /api/admin/organizations/:id/locations
+ * Fetch all locations for an organization with their Google Properties
+ */
+export async function getOrgLocations(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    // Fetch all locations for this organization
+    const locations = await LocationModel.findByOrganizationId(orgId);
+
+    // Fetch google properties for each location in parallel
+    const locationsWithProperties = await Promise.all(
+      locations.map(async (location) => {
+        const properties = await GooglePropertyModel.findByLocationId(location.id);
+        return {
+          ...location,
+          googleProperties: properties,
+        };
+      })
+    );
+
+    return res.json({
+      success: true,
+      locations: locationsWithProperties,
+      total: locationsWithProperties.length,
+    });
+  } catch (error) {
+    return handleError(res, error, "Fetch organization locations");
   }
 }

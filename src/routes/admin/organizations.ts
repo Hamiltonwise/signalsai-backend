@@ -13,6 +13,15 @@ organizationsRoutes.get(
   controller.listAll
 );
 
+// GET /api/admin/organizations/:id/locations — Organization locations with properties
+// MUST be before /:id to avoid matching "locations" as the :id param
+organizationsRoutes.get(
+  "/:id/locations",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.getOrgLocations
+);
+
 // GET /api/admin/organizations/:id — Organization details
 organizationsRoutes.get(
   "/:id",

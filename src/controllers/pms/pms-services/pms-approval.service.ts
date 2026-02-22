@@ -165,7 +165,8 @@ export async function approveByClient(jobId: number, clientApproval: boolean) {
       "timestamp",
       "is_approved",
       "is_client_approved",
-      "organization_id"
+      "organization_id",
+      "location_id"
     )
     .where({ id: jobId })
     .first();
@@ -199,6 +200,7 @@ export async function approveByClient(jobId: number, clientApproval: boolean) {
               domain: org?.domain || "",
               force: true,
               pmsJobId: jobId,
+              locationId: updatedJob.location_id,
             }
           )
           .then(() => {
