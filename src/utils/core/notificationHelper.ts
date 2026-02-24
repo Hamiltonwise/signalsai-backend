@@ -57,10 +57,11 @@ export async function createNotification(
     skipEmail?: boolean;
     actionUrl?: string;
     actionLabel?: string;
+    locationId?: number | null;
   }
 ): Promise<number | null> {
   try {
-    const locationId = await resolveLocationId(organizationId);
+    const locationId = options?.locationId ?? await resolveLocationId(organizationId);
 
     // Look up account email for email notification
     const account = await db("google_connections")

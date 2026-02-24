@@ -133,6 +133,10 @@ export async function getGBPAIReadyData(
     "CALL_CLICKS",
     "WEBSITE_CLICKS",
     "BUSINESS_DIRECTION_REQUESTS",
+    "BUSINESS_IMPRESSIONS_DESKTOP_MAPS",
+    "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH",
+    "BUSINESS_IMPRESSIONS_MOBILE_MAPS",
+    "BUSINESS_IMPRESSIONS_MOBILE_SEARCH",
   ];
 
   // Fetch all data in parallel for better performance
@@ -185,6 +189,7 @@ export async function getGBPAIReadyData(
       window: {
         averageRating: windowStats.avgRatingWindow,
         newReviews: windowStats.newReviewsCount,
+        reviewDetails: windowStats.reviewDetails,
       },
     },
     performance: {

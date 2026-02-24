@@ -93,15 +93,22 @@ export class NotificationModel extends BaseModel {
    */
   static async countUnreadByOrganization(
     organizationId: number,
-    accessibleLocationIds?: number[],
+    options?: {
+      locationId?: number | null;
+      accessibleLocationIds?: number[];
+    },
     trx?: QueryContext
   ): Promise<number> {
     let query = this.table(trx)
       .where({ organization_id: organizationId, read: false });
 
-    if (accessibleLocationIds && accessibleLocationIds.length > 0) {
+    if (options?.locationId) {
       query = query.where(function () {
-        this.whereIn("location_id", accessibleLocationIds!).orWhereNull("location_id");
+        this.where("location_id", options.locationId!).orWhereNull("location_id");
+      });
+    } else if (options?.accessibleLocationIds && options.accessibleLocationIds.length > 0) {
+      query = query.where(function () {
+        this.whereIn("location_id", options!.accessibleLocationIds!).orWhereNull("location_id");
       });
     }
 
@@ -114,15 +121,22 @@ export class NotificationModel extends BaseModel {
    */
   static async markAllReadByOrganization(
     organizationId: number,
-    accessibleLocationIds?: number[],
+    options?: {
+      locationId?: number | null;
+      accessibleLocationIds?: number[];
+    },
     trx?: QueryContext
   ): Promise<number> {
     let query = this.table(trx)
       .where({ organization_id: organizationId, read: false });
 
-    if (accessibleLocationIds && accessibleLocationIds.length > 0) {
+    if (options?.locationId) {
       query = query.where(function () {
-        this.whereIn("location_id", accessibleLocationIds!).orWhereNull("location_id");
+        this.where("location_id", options.locationId!).orWhereNull("location_id");
+      });
+    } else if (options?.accessibleLocationIds && options.accessibleLocationIds.length > 0) {
+      query = query.where(function () {
+        this.whereIn("location_id", options!.accessibleLocationIds!).orWhereNull("location_id");
       });
     }
 
@@ -138,19 +152,63 @@ export class NotificationModel extends BaseModel {
    */
   static async deleteAllByOrganization(
     organizationId: number,
-    accessibleLocationIds?: number[],
+    options?: {
+      locationId?: number | null;
+      accessibleLocationIds?: number[];
+    },
     trx?: QueryContext
   ): Promise<number> {
     let query = this.table(trx)
       .where({ organization_id: organizationId });
 
-    if (accessibleLocationIds && accessibleLocationIds.length > 0) {
+    if (options?.locationId) {
       query = query.where(function () {
-        this.whereIn("location_id", accessibleLocationIds!).orWhereNull("location_id");
+        this.where("location_id", options.locationId!).orWhereNull("location_id");
+      });
+    } else if (options?.accessibleLocationIds && options.accessibleLocationIds.length > 0) {
+      query = query.where(function () {
+        this.whereIn("location_id", options!.accessibleLocationIds!).orWhereNull("location_id");
       });
     }
 
     return query.del();
+  }
+
+  /**
+   * List notifications for admin with org + location filters.
+   */
+  static async listAdmin(
+    filters: {
+      organization_id: number;
+      location_id?: number;
+      limit?: number;
+      offset?: number;
+    },
+    trx?: QueryContext
+  ): Promise<{ notifications: INotification[]; total: number }> {
+    const limit = filters.limit || 50;
+    const offset = filters.offset || 0;
+
+    let baseQuery = this.table(trx)
+      .where("notifications.organization_id", filters.organization_id);
+
+    if (filters.location_id) {
+      baseQuery = baseQuery.where("notifications.location_id", filters.location_id);
+    }
+
+    const countResult = await baseQuery.clone().count("* as count").first();
+    const total = parseInt(countResult?.count as string, 10) || 0;
+
+    const rows = await baseQuery
+      .clone()
+      .leftJoin("locations", "notifications.location_id", "locations.id")
+      .select("notifications.*", "locations.name as location_name")
+      .orderBy("notifications.created_at", "desc")
+      .limit(limit)
+      .offset(offset);
+
+    const notifications = rows.map((row: INotification) => this.deserializeJsonFields(row));
+    return { notifications, total };
   }
 
   /**

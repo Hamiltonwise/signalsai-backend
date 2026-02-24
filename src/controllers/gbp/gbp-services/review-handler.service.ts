@@ -61,5 +61,23 @@ export async function listAllReviewsInRangeREST(
     ? Number((stars.reduce((a, b) => a + b, 0) / stars.length).toFixed(2))
     : null;
 
-  return { newReviewsCount: reviews.length, avgRatingWindow };
+  // Build structured review details for agent consumption
+  const reviewDetails = reviews.map((r: any) => {
+    const numericRating = typeof r.starRating === "number"
+      ? r.starRating
+      : (STAR_TO_NUM[r.starRating] ?? null);
+
+    return {
+      stars: numericRating,
+      text: r.comment || null,
+      reviewerName: r.reviewer?.displayName || null,
+      isAnonymous: r.reviewer?.isAnonymous || false,
+      createdAt: r.createTime || null,
+      hasReply: !!(r.reviewReply?.comment),
+      replyText: r.reviewReply?.comment || null,
+      replyDate: r.reviewReply?.updateTime || null,
+    };
+  });
+
+  return { newReviewsCount: reviews.length, avgRatingWindow, reviewDetails };
 }

@@ -37,9 +37,10 @@ export class NotificationService {
     message?: string;
     type?: string;
     metadata?: unknown;
+    location_id?: number | null;
   }): Promise<CreateNotificationResult> {
-    // Resolve location for this organization
-    const locationId = await resolveLocationId(data.organization_id);
+    // Use provided location_id or resolve from organization
+    const locationId = data.location_id ?? await resolveLocationId(data.organization_id);
 
     // Create notification
     const notificationData: Partial<INotification> = {

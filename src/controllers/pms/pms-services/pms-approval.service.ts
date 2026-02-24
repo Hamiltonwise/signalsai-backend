@@ -25,7 +25,8 @@ export async function approveByAdmin(jobId: number, requestedApproval: boolean) 
       "response_log",
       "timestamp",
       "is_approved",
-      "organization_id"
+      "organization_id",
+      "location_id"
     )
     .where({ id: jobId })
     .first();
@@ -88,7 +89,8 @@ export async function approveByAdmin(jobId: number, requestedApproval: boolean) 
       "PMS Data Approved",
       "PMS data is now ingested and ready for your review",
       "pms",
-      { jobId, timestamp: new Date() }
+      { jobId, timestamp: new Date() },
+      { locationId: existingJob.location_id }
     );
   }
 

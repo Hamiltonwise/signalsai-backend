@@ -84,6 +84,7 @@ import { runGuardianGovernanceAgents } from "./feature-services/service.governan
 import { resolveLocationId } from "../../utils/locationResolver";
 import { AgentResultModel } from "../../models/AgentResultModel";
 import { GooglePropertyModel } from "../../models/GooglePropertyModel";
+import { LocationModel } from "../../models/LocationModel";
 
 // =====================================================================
 // POST /proofline-run
@@ -122,8 +123,9 @@ export async function runProoflineAgent(
 
     log(`[SETUP] Found ${accounts.length} account(s) to process`);
 
-    // Process each client sequentially
+    // Process each client sequentially, running all locations per client
     const results: any[] = [];
+    let totalLocationsProcessed = 0;
 
     for (const account of accounts) {
       const { id: googleAccountId, domain_name: domain } = account;
@@ -135,57 +137,103 @@ export async function runProoflineAgent(
       log(`[${"=".repeat(60)}]`);
 
       try {
-        // Resolve location for this account
-        const locationId = await resolveLocationId(account.organization_id);
+        // Get ALL locations for this organization
+        const locations = await LocationModel.findByOrganizationId(account.organization_id);
 
-        // Get valid OAuth2 client
+        if (locations.length === 0) {
+          // Fallback: resolve primary location (legacy orgs without location rows)
+          const fallbackLocationId = await resolveLocationId(account.organization_id);
+          if (fallbackLocationId) {
+            log(`[CLIENT] No location rows found, using resolved primary: ${fallbackLocationId}`);
+            locations.push({ id: fallbackLocationId, name: domain } as any);
+          } else {
+            log(`[CLIENT] No locations found for org ${account.organization_id}, skipping`);
+            results.push({ googleAccountId, domain, success: false, error: "No locations found" });
+            continue;
+          }
+        }
+
+        log(`[CLIENT] Found ${locations.length} location(s) for org ${account.organization_id}`);
+
+        // Get valid OAuth2 client (shared across locations — same GBP connection)
         log(`[CLIENT] Getting valid OAuth2 client`);
         const oauth2Client = await getValidOAuth2Client(googleAccountId);
 
         // Get date range
         const dailyDates = getDailyDates(referenceDate);
 
-        // Run proofline agent
-        log(`[CLIENT] Running Proofline agent`);
-        const dailyResult = await processDailyAgent(
-          account,
-          oauth2Client,
-          dailyDates,
-        );
+        // Run proofline agent for EACH location
+        for (const location of locations) {
+          const locationId = location.id;
+          const locationName = (location as any).name || `Location ${locationId}`;
 
-        if (!dailyResult.success) {
-          throw new Error(dailyResult.error || "Proofline agent failed");
+          log(`  [LOCATION] Running Proofline for "${locationName}" (location_id: ${locationId})`);
+
+          try {
+            const dailyResult = await processDailyAgent(
+              account,
+              oauth2Client,
+              dailyDates,
+              locationId,
+            );
+
+            if (!dailyResult.success) {
+              log(`  [LOCATION] \u2717 Proofline failed for "${locationName}": ${dailyResult.error}`);
+              results.push({
+                googleAccountId,
+                domain,
+                locationId,
+                locationName,
+                success: false,
+                error: dailyResult.error || "Proofline agent failed",
+              });
+              continue;
+            }
+
+            // Save raw data
+            await db("google_data_store").insert(dailyResult.rawData);
+
+            // Save agent result scoped to this location
+            const [result] = await db("agent_results")
+              .insert({
+                organization_id: account.organization_id,
+                location_id: locationId,
+                agent_type: "proofline",
+                date_start: dailyDates.dayBeforeYesterday,
+                date_end: dailyDates.yesterday,
+                agent_input: JSON.stringify(dailyResult.payload),
+                agent_output: JSON.stringify(dailyResult.output),
+                status: "success",
+                created_at: new Date(),
+                updated_at: new Date(),
+              })
+              .returning("id");
+
+            const resultId = result.id;
+            log(`  [LOCATION] \u2713 Proofline result saved for "${locationName}" (ID: ${resultId})`);
+            totalLocationsProcessed++;
+
+            results.push({
+              googleAccountId,
+              domain,
+              locationId,
+              locationName,
+              success: true,
+            });
+          } catch (locError: any) {
+            logError(`Proofline for ${domain} / ${locationName}`, locError);
+            results.push({
+              googleAccountId,
+              domain,
+              locationId,
+              locationName,
+              success: false,
+              error: locError?.message || String(locError),
+            });
+          }
         }
 
-        // Save raw data
-        await db("google_data_store").insert(dailyResult.rawData);
-
-        // Save agent result
-        const [result] = await db("agent_results")
-          .insert({
-            organization_id: account.organization_id,
-            location_id: locationId,
-            agent_type: "proofline",
-            date_start: dailyDates.dayBeforeYesterday,
-            date_end: dailyDates.yesterday,
-            agent_input: JSON.stringify(dailyResult.payload),
-            agent_output: JSON.stringify(dailyResult.output),
-            status: "success",
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .returning("id");
-
-        const resultId = result.id;
-        log(`[CLIENT] \u2713 Proofline result saved (ID: ${resultId})`);
-
-        results.push({
-          googleAccountId,
-          domain,
-          success: true,
-        });
-
-        log(`[CLIENT] \u2713 ${domain} completed successfully`);
+        log(`[CLIENT] \u2713 ${domain} completed (${locations.length} location(s))`);
       } catch (error: any) {
         logError(`Proofline for ${domain}`, error);
         results.push({
@@ -198,21 +246,23 @@ export async function runProoflineAgent(
     }
 
     const duration = Date.now() - startTime;
-    const successfulClients = results.filter((r) => r.success).length;
+    const successfulResults = results.filter((r) => r.success).length;
 
     log("\n" + "=".repeat(70));
     log(`[COMPLETE] \u2713 Proofline run completed`);
     log(`  - Total clients: ${accounts.length}`);
-    log(`  - Successful: ${successfulClients}`);
-    log(`  - Failed: ${accounts.length - successfulClients}`);
+    log(`  - Total locations processed: ${totalLocationsProcessed}`);
+    log(`  - Successful: ${successfulResults}`);
+    log(`  - Failed: ${results.length - successfulResults}`);
     log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
     log("=".repeat(70) + "\n");
 
     return res.json({
       success: true,
-      message: `Processed ${accounts.length} account(s)`,
+      message: `Processed ${accounts.length} account(s), ${totalLocationsProcessed} location(s)`,
       processed: accounts.length,
-      successful: successfulClients,
+      locationsProcessed: totalLocationsProcessed,
+      successful: successfulResults,
       duration: `${duration}ms`,
       results,
     });
@@ -476,6 +526,7 @@ export async function runMonthlyAgents(
           croOptimizerId,
           dateRange: `${monthRange.startDate} to ${monthRange.endDate}`,
         },
+        { locationId },
       );
       log(`[CLIENT] \u2713 Notification created for completed monthly agents`);
     } catch (notificationError: any) {

@@ -232,6 +232,7 @@ export async function createTask(
   try {
     const {
       organization_id,
+      location_id,
       title,
       description,
       category,
@@ -265,8 +266,8 @@ export async function createTask(
       });
     }
 
-    // Resolve location for this organization
-    const locationId = await resolveLocationId(resolvedOrgId);
+    // Use provided location_id or resolve from organization
+    const locationId = location_id ? Number(location_id) : await resolveLocationId(resolvedOrgId);
 
     // Create task via model (handles timestamps and JSON serialization)
     const createdTask = await TaskModel.create({

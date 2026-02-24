@@ -1,7 +1,7 @@
 import express from "express";
 import * as TasksController from "../controllers/tasks/TasksController";
 import { authenticateToken } from "../middleware/auth";
-import { rbacMiddleware } from "../middleware/rbac";
+import { rbacMiddleware, locationScopeMiddleware } from "../middleware/rbac";
 
 const router = express.Router();
 
@@ -13,13 +13,13 @@ const router = express.Router();
  * GET /api/tasks
  * Fetch tasks for logged-in client (grouped by category)
  */
-router.get("/", authenticateToken, rbacMiddleware, TasksController.getTasksForClient);
+router.get("/", authenticateToken, rbacMiddleware, locationScopeMiddleware, TasksController.getTasksForClient);
 
 /**
  * PATCH /api/tasks/:id/complete
  * Mark a USER category task as complete (clients only)
  */
-router.patch("/:id/complete", authenticateToken, rbacMiddleware, TasksController.completeTask);
+router.patch("/:id/complete", authenticateToken, rbacMiddleware, locationScopeMiddleware, TasksController.completeTask);
 
 // =====================================================================
 // ADMIN ENDPOINTS (Unrestricted Access)

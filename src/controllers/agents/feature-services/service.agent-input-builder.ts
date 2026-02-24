@@ -11,25 +11,175 @@ import { log } from "../feature-utils/agentLogger";
 // PROOFLINE (DAILY)
 // =====================================================================
 
+/**
+ * Extract a single metric's total value from the nested GBP performance series.
+ * Path: data.gbpData.locations[0].data.performance.series[0].dailyMetricTimeSeries[]
+ * When Google returns no interactions, datedValues[].value is undefined (= 0).
+ */
+function extractMetricTotal(data: any, metricName: string): number {
+  const performanceSeries =
+    data?.gbpData?.locations?.[0]?.data?.performance?.series || [];
+  for (const multiSeries of performanceSeries) {
+    const dailyMetricList = multiSeries?.dailyMetricTimeSeries || [];
+    for (const series of dailyMetricList) {
+      if (series.dailyMetric === metricName) {
+        const datedValues = series?.timeSeries?.datedValues || [];
+        return datedValues.reduce((sum: number, dv: any) => {
+          const v = dv?.value !== undefined ? parseInt(dv.value, 10) : 0;
+          return sum + (isNaN(v) ? 0 : v);
+        }, 0);
+      }
+    }
+  }
+  return 0;
+}
+
+/** Extract profile data from the first location in GBP response */
+function extractProfile(data: any): any {
+  return data?.gbpData?.locations?.[0]?.data?.profile || {};
+}
+
+/** Extract reviews data from the first location in GBP response */
+function extractReviews(data: any): any {
+  return data?.gbpData?.locations?.[0]?.data?.reviews || {};
+}
+
+/** Build a human-readable address string from storefrontAddress */
+function buildAddressString(storefrontAddress: any): string | null {
+  if (!storefrontAddress) return null;
+  const lines = storefrontAddress.addressLines || [];
+  const parts = [
+    lines[0],
+    storefrontAddress.locality,
+    storefrontAddress.administrativeArea,
+    storefrontAddress.postalCode,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 export function buildProoflinePayload(params: {
   domain: string;
   googleAccountId: number;
   dates: { yesterday: string; dayBeforeYesterday: string };
   dayBeforeYesterdayData: any;
   yesterdayData: any;
+  locationName?: string | null;
 }): any {
+  const { domain, dates, yesterdayData, dayBeforeYesterdayData, locationName } = params;
+
+  // Profile: extract once from yesterday (fallback to dayBefore)
+  const profile = extractProfile(yesterdayData) || extractProfile(dayBeforeYesterdayData) || {};
+
+  // Reviews: combine new reviews from both days (2-day window)
+  const yesterdayReviews = extractReviews(yesterdayData);
+  const dayBeforeReviews = extractReviews(dayBeforeYesterdayData);
+  const allNewReviews = [
+    ...(yesterdayReviews?.window?.reviewDetails || []),
+    ...(dayBeforeReviews?.window?.reviewDetails || []),
+  ];
+  const allTimeCount = yesterdayReviews?.allTime?.totalReviewCount
+    ?? dayBeforeReviews?.allTime?.totalReviewCount ?? 0;
+  const allTimeAvg = yesterdayReviews?.allTime?.averageRating
+    ?? dayBeforeReviews?.allTime?.averageRating ?? 0;
+
   return {
     agent: "proofline",
-    domain: params.domain,
-    googleAccountId: params.googleAccountId,
-    dateRange: {
-      yesterday: params.dates.yesterday,
-      dayBeforeYesterday: params.dates.dayBeforeYesterday,
-    },
+    domain,
     additional_data: {
-      yesterday: params.yesterdayData,
-      dayBeforeYesterday: params.dayBeforeYesterdayData,
+      location: {
+        name: locationName || profile.title || null,
+        category: profile.primaryCategory || null,
+        address: buildAddressString(profile.storefrontAddress),
+      },
+      period: {
+        yesterday: dates.yesterday,
+        dayBefore: dates.dayBeforeYesterday,
+      },
+      visibility: {
+        yesterday: {
+          impressions_search_desktop: extractMetricTotal(yesterdayData, "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH"),
+          impressions_search_mobile: extractMetricTotal(yesterdayData, "BUSINESS_IMPRESSIONS_MOBILE_SEARCH"),
+          impressions_maps_desktop: extractMetricTotal(yesterdayData, "BUSINESS_IMPRESSIONS_DESKTOP_MAPS"),
+          impressions_maps_mobile: extractMetricTotal(yesterdayData, "BUSINESS_IMPRESSIONS_MOBILE_MAPS"),
+        },
+        dayBefore: {
+          impressions_search_desktop: extractMetricTotal(dayBeforeYesterdayData, "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH"),
+          impressions_search_mobile: extractMetricTotal(dayBeforeYesterdayData, "BUSINESS_IMPRESSIONS_MOBILE_SEARCH"),
+          impressions_maps_desktop: extractMetricTotal(dayBeforeYesterdayData, "BUSINESS_IMPRESSIONS_DESKTOP_MAPS"),
+          impressions_maps_mobile: extractMetricTotal(dayBeforeYesterdayData, "BUSINESS_IMPRESSIONS_MOBILE_MAPS"),
+        },
+      },
+      engagement: {
+        yesterday: {
+          call_clicks: extractMetricTotal(yesterdayData, "CALL_CLICKS"),
+          website_clicks: extractMetricTotal(yesterdayData, "WEBSITE_CLICKS"),
+          direction_requests: extractMetricTotal(yesterdayData, "BUSINESS_DIRECTION_REQUESTS"),
+        },
+        dayBefore: {
+          call_clicks: extractMetricTotal(dayBeforeYesterdayData, "CALL_CLICKS"),
+          website_clicks: extractMetricTotal(dayBeforeYesterdayData, "WEBSITE_CLICKS"),
+          direction_requests: extractMetricTotal(dayBeforeYesterdayData, "BUSINESS_DIRECTION_REQUESTS"),
+        },
+      },
+      reviews: {
+        allTime: {
+          count: allTimeCount,
+          average: typeof allTimeAvg === "number" ? Number(allTimeAvg.toFixed(2)) : 0,
+        },
+        newReviews: allNewReviews,
+      },
     },
+  };
+}
+
+// =====================================================================
+// DAILY GBP DATA FLATTENER (for google_data_store)
+// =====================================================================
+
+/** Flatten a single day's raw GBP response into a compact storage format */
+function flattenSingleDayGbp(data: any): any {
+  const profile = extractProfile(data) || {};
+  const reviews = extractReviews(data) || {};
+
+  return {
+    visibility: {
+      impressions_search_desktop: extractMetricTotal(data, "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH"),
+      impressions_search_mobile: extractMetricTotal(data, "BUSINESS_IMPRESSIONS_MOBILE_SEARCH"),
+      impressions_maps_desktop: extractMetricTotal(data, "BUSINESS_IMPRESSIONS_DESKTOP_MAPS"),
+      impressions_maps_mobile: extractMetricTotal(data, "BUSINESS_IMPRESSIONS_MOBILE_MAPS"),
+    },
+    engagement: {
+      call_clicks: extractMetricTotal(data, "CALL_CLICKS"),
+      website_clicks: extractMetricTotal(data, "WEBSITE_CLICKS"),
+      direction_requests: extractMetricTotal(data, "BUSINESS_DIRECTION_REQUESTS"),
+    },
+    reviews: {
+      allTime: {
+        count: reviews?.allTime?.totalReviewCount ?? 0,
+        average: typeof reviews?.allTime?.averageRating === "number"
+          ? Number(reviews.allTime.averageRating.toFixed(2))
+          : 0,
+      },
+      newReviews: reviews?.window?.reviewDetails || [],
+    },
+    profile: {
+      title: profile.title || null,
+      category: profile.primaryCategory || null,
+      address: buildAddressString(profile.storefrontAddress),
+      phone: profile.phoneNumber || null,
+      website: profile.websiteUri || null,
+    },
+  };
+}
+
+/**
+ * Flatten daily GBP data for storage in google_data_store.
+ * Converts deeply nested Google API response into compact format.
+ */
+export function flattenDailyGbpData(yesterdayData: any, dayBeforeData: any): any {
+  return {
+    yesterday: flattenSingleDayGbp(yesterdayData),
+    dayBefore: flattenSingleDayGbp(dayBeforeData),
   };
 }
 

@@ -358,35 +358,44 @@ export async function listRankings(
   res: Response,
 ): Promise<Response> {
   try {
-    const { organization_id, limit = 20, offset = 0 } = req.query;
+    const { organization_id, location_id, limit = 20, offset = 0 } = req.query;
 
-    let query = db("practice_rankings")
+    let query = db("practice_rankings as pr")
+      .leftJoin("organizations as o", "pr.organization_id", "o.id")
+      .leftJoin("locations as l", "pr.location_id", "l.id")
       .select(
-        "id",
-        "organization_id",
-        "specialty",
-        "location",
-        "rank_keywords",
-        "gbp_location_id",
-        "gbp_location_name",
-        "batch_id",
-        "status",
-        "rank_score",
-        "rank_position",
-        "total_competitors",
-        "search_city",
-        "search_state",
-        "search_county",
-        "search_postal_code",
-        "created_at",
-        "updated_at",
+        "pr.id",
+        "pr.organization_id",
+        "pr.location_id",
+        "o.name as organization_name",
+        "l.name as location_name",
+        "pr.specialty",
+        "pr.location",
+        "pr.rank_keywords",
+        "pr.gbp_location_id",
+        "pr.gbp_location_name",
+        "pr.batch_id",
+        "pr.status",
+        "pr.rank_score",
+        "pr.rank_position",
+        "pr.total_competitors",
+        "pr.search_city",
+        "pr.search_state",
+        "pr.search_county",
+        "pr.search_postal_code",
+        "pr.created_at",
+        "pr.updated_at",
       )
-      .orderBy("created_at", "desc")
+      .orderBy("pr.created_at", "desc")
       .limit(Number(limit))
       .offset(Number(offset));
 
     if (organization_id) {
-      query = query.where({ organization_id: Number(organization_id) });
+      query = query.where({ "pr.organization_id": Number(organization_id) });
+    }
+
+    if (location_id) {
+      query = query.where({ "pr.location_id": Number(location_id) });
     }
 
     const rankings = await query;
@@ -622,7 +631,7 @@ export async function getLatestRankings(
   res: Response,
 ): Promise<Response> {
   try {
-    const { googleAccountId } = req.query;
+    const { googleAccountId, locationId } = req.query;
 
     if (!googleAccountId) {
       return res.status(400).json({
@@ -632,12 +641,18 @@ export async function getLatestRankings(
       });
     }
 
+    // Build base filters for location scoping
+    const baseFilters: Record<string, unknown> = {
+      organization_id: Number(googleAccountId),
+      status: "completed",
+    };
+    if (locationId) {
+      baseFilters.location_id = Number(locationId);
+    }
+
     // Step 1: Find the most recent batch_id with completed rankings for this account
     const latestBatchRecord = await db("practice_rankings")
-      .where({
-        organization_id: Number(googleAccountId),
-        status: "completed",
-      })
+      .where(baseFilters)
       .whereNotNull("batch_id")
       .orderBy("created_at", "desc")
       .first()
@@ -646,10 +661,7 @@ export async function getLatestRankings(
     if (!latestBatchRecord || !latestBatchRecord.batch_id) {
       // Fall back to legacy: get latest ranking without batch_id (old format)
       const legacyRanking = await db("practice_rankings")
-        .where({
-          organization_id: Number(googleAccountId),
-          status: "completed",
-        })
+        .where(baseFilters)
         .whereNull("batch_id")
         .orderBy("created_at", "desc")
         .first();
@@ -671,15 +683,14 @@ export async function getLatestRankings(
 
     const latestBatchId = latestBatchRecord.batch_id;
     log(
-      `[GET /latest] Found latest batch: ${latestBatchId} for account ${googleAccountId}`,
+      `[GET /latest] Found latest batch: ${latestBatchId} for account ${googleAccountId}${locationId ? ` location ${locationId}` : ""}`,
     );
 
-    // Step 2: Get all completed rankings from the latest batch
+    // Step 2: Get completed rankings from the latest batch (optionally filtered by location)
     const batchRankings = await db("practice_rankings")
       .where({
-        organization_id: Number(googleAccountId),
+        ...baseFilters,
         batch_id: latestBatchId,
-        status: "completed",
       })
       .orderBy("created_at", "asc");
 

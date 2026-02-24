@@ -35,6 +35,7 @@ import {
   buildOpportunityPayload,
   buildCroOptimizerPayload,
   buildCopyCompanionPayload,
+  flattenDailyGbpData,
 } from "./service.agent-input-builder";
 import {
   createTasksFromOpportunityOutput,
@@ -56,6 +57,7 @@ export async function processDailyAgent(
   account: any,
   oauth2Client: any,
   dates: ReturnType<typeof getDailyDates>,
+  locationId?: number | null,
 ): Promise<{
   success: boolean;
   output?: any;
@@ -65,10 +67,7 @@ export async function processDailyAgent(
 }> {
   const { id: googleAccountId, domain_name: domain, organization_id: organizationId } = account;
 
-  log(`  [DAILY] Processing Proofline agent for ${domain}`);
-
-  // Resolve location for this account
-  const locationId = await resolveLocationId(organizationId);
+  log(`  [DAILY] Processing Proofline agent for ${domain} (location: ${locationId || "primary"})`);
 
   try {
     // Scope GBP data to the active location only
@@ -118,28 +117,15 @@ export async function processDailyAgent(
       dates.yesterday,
     );
 
-    // Prepare raw data for potential DB storage
-    // Note: google_data_store does not have organization_id column
-    const rawData = {
-      domain,
-      date_start: dates.dayBeforeYesterday,
-      date_end: dates.yesterday,
-      run_type: "daily",
-      gbp_data: {
-        yesterday: yesterdayData.gbpData,
-        dayBeforeYesterday: dayBeforeYesterdayData.gbpData,
-      },
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
-
     // Build payload and call Proofline agent
+    const locationDisplayName = propertyIds.gbp?.[0]?.displayName || null;
     const payload = buildProoflinePayload({
       domain,
       googleAccountId,
       dates,
       dayBeforeYesterdayData,
       yesterdayData,
+      locationName: locationDisplayName,
     });
 
     log(`  [DAILY] Calling Proofline agent webhook`);
@@ -159,6 +145,19 @@ export async function processDailyAgent(
         error: "Agent returned empty or invalid output",
       };
     }
+
+    // Prepare flat raw data for google_data_store
+    const rawData = {
+      organization_id: organizationId,
+      location_id: locationId || null,
+      domain,
+      date_start: dates.dayBeforeYesterday,
+      date_end: dates.yesterday,
+      run_type: "daily",
+      gbp_data: flattenDailyGbpData(yesterdayData, dayBeforeYesterdayData),
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
 
     log(`  [DAILY] \u2713 Proofline completed successfully`);
     return {
@@ -280,8 +279,9 @@ export async function processMonthlyAgents(
     }
 
     // Prepare raw data for potential DB storage
-    // Note: google_data_store does not have organization_id column
     const rawData = {
+      organization_id: organizationId,
+      location_id: locationId || null,
       domain,
       date_start: startDate,
       date_end: endDate,

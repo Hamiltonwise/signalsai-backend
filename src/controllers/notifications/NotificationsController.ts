@@ -74,7 +74,7 @@ export class NotificationsController {
       );
       const unreadCount = await NotificationModel.countUnreadByOrganization(
         organizationId,
-        accessibleLocationIds
+        { locationId, accessibleLocationIds }
       );
 
       const parsedNotifications = parseNotifications(notifications);
@@ -146,9 +146,10 @@ export class NotificationsController {
         });
       }
 
+      const locationId = scopedReq.locationId || null;
       const updated = await NotificationModel.markAllReadByOrganization(
         organizationId,
-        scopedReq.accessibleLocationIds
+        { locationId, accessibleLocationIds: scopedReq.accessibleLocationIds }
       );
       return res.json({
         success: true,
@@ -177,9 +178,10 @@ export class NotificationsController {
         });
       }
 
+      const locationId = scopedReq.locationId || null;
       const deleted = await NotificationModel.deleteAllByOrganization(
         organizationId,
-        scopedReq.accessibleLocationIds
+        { locationId, accessibleLocationIds: scopedReq.accessibleLocationIds }
       );
       return res.json({
         success: true,
@@ -192,13 +194,47 @@ export class NotificationsController {
   }
 
   /**
+   * GET /api/notifications/admin/list
+   * Fetch notifications for an organization (admin).
+   * Query params: organization_id (required), location_id, limit, offset
+   */
+  static async getAdminNotifications(req: Request, res: Response): Promise<Response> {
+    try {
+      const { organization_id, location_id, limit, offset } = req.query;
+
+      if (!organization_id) {
+        return res.status(400).json({
+          success: false,
+          error: "Missing required fields",
+          message: "organization_id is required",
+        });
+      }
+
+      const result = await NotificationModel.listAdmin({
+        organization_id: parseInt(String(organization_id), 10),
+        location_id: location_id ? parseInt(String(location_id), 10) : undefined,
+        limit: limit ? parseInt(String(limit), 10) : 50,
+        offset: offset ? parseInt(String(offset), 10) : 0,
+      });
+
+      return res.json({
+        success: true,
+        notifications: result.notifications,
+        total: result.total,
+      });
+    } catch (error: unknown) {
+      return handleError(res, error, "Fetch admin notifications");
+    }
+  }
+
+  /**
    * POST /api/notifications
    * Create a notification (admin/system).
-   * Body: { organization_id, title, message?, type?, metadata? }
+   * Body: { organization_id, title, message?, type?, metadata?, location_id? }
    */
   static async createNotification(req: Request, res: Response): Promise<Response> {
     try {
-      const { organization_id, title, message, type, metadata } = req.body;
+      const { organization_id, location_id, title, message, type, metadata } = req.body;
 
       if (!organization_id || !title) {
         return res.status(400).json({
@@ -210,6 +246,7 @@ export class NotificationsController {
 
       const result = await NotificationService.createNotificationForOrganization({
         organization_id: parseInt(String(organization_id), 10),
+        location_id: location_id ? parseInt(String(location_id), 10) : undefined,
         title,
         message,
         type,

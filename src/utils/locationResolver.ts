@@ -23,7 +23,15 @@ export async function resolveLocationId(
   if (gbpLocationId) {
     const property = await GooglePropertyModel.findByExternalId(gbpLocationId);
     if (property?.location_id) {
-      return property.location_id;
+      // Verify the matched property belongs to this organization's locations
+      const location = await LocationModel.findById(property.location_id);
+      if (location && location.organization_id === organizationId) {
+        return property.location_id;
+      }
+      // Property belongs to a different org — fall through to primary
+      console.warn(
+        `[locationResolver] Property ${gbpLocationId} resolved to location ${property.location_id} but it belongs to org ${location?.organization_id}, not ${organizationId}. Falling through to primary.`
+      );
     }
   }
 

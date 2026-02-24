@@ -25,7 +25,8 @@ export async function handleApprovalNotification(
       "New Task Approved",
       "A new opportunity awaits your action! Visit the tasks tab to see more",
       "task",
-      { taskId: task.id, taskTitle: task.title }
+      { taskId: task.id, taskTitle: task.title },
+      { locationId: task.location_id }
     );
     console.log(
       `[TASKS] Created notification for approved USER task ${task.id}`

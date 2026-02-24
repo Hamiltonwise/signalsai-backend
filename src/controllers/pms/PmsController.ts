@@ -196,6 +196,7 @@ export async function listJobs(req: Request, res: Response) {
       status: statusParam,
       isApproved,
       organization_id,
+      location_id,
     } = req.query;
 
     const page = Math.max(parseInt(String(pageParam || "1"), 10) || 1, 1);
@@ -213,9 +214,13 @@ export async function listJobs(req: Request, res: Response) {
       typeof organization_id === "string" && organization_id.trim().length > 0
         ? parseInt(organization_id.trim(), 10)
         : undefined;
+    const locationFilter =
+      typeof location_id === "string" && location_id.trim().length > 0
+        ? parseInt(location_id.trim(), 10)
+        : undefined;
 
     const data = await dataService.listJobsPaginated(
-      { statuses, approvedFilter, organizationFilter },
+      { statuses, approvedFilter, organizationFilter, locationFilter },
       page
     );
 

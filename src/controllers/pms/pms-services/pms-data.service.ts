@@ -116,10 +116,11 @@ export async function listJobsPaginated(
     statuses: PmsStatus[];
     approvedFilter: boolean | undefined;
     organizationFilter: number | undefined;
+    locationFilter: number | undefined;
   },
   page: number
 ) {
-  const { statuses, approvedFilter, organizationFilter } = filters;
+  const { statuses, approvedFilter, organizationFilter, locationFilter } = filters;
 
   // Build count query with filters
   let countQuery = db("pms_jobs");
@@ -131,6 +132,9 @@ export async function listJobsPaginated(
   }
   if (organizationFilter) {
     countQuery = countQuery.where("organization_id", organizationFilter);
+  }
+  if (locationFilter) {
+    countQuery = countQuery.where("location_id", locationFilter);
   }
   const totalResult = await countQuery.count({ total: "*" });
   const total = Number(totalResult?.[0]?.total ?? 0);
@@ -147,6 +151,9 @@ export async function listJobsPaginated(
   }
   if (organizationFilter) {
     dataQuery = dataQuery.where("pms_jobs.organization_id", organizationFilter);
+  }
+  if (locationFilter) {
+    dataQuery = dataQuery.where("pms_jobs.location_id", locationFilter);
   }
   const jobsRaw = await dataQuery
     .orderBy("pms_jobs.timestamp", "desc")

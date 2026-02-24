@@ -7,6 +7,7 @@ export type ActionItemStatus =
 
 export interface CreateActionItemRequest {
   organization_id: number;
+  location_id?: number;
   title: string;
   description?: string;
   category: ActionItemCategory;
