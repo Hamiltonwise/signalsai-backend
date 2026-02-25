@@ -1,5 +1,10 @@
 import { Knex } from "knex";
-import { BaseModel, PaginatedResult, PaginationParams, QueryContext } from "../BaseModel";
+import {
+  BaseModel,
+  PaginatedResult,
+  PaginationParams,
+  QueryContext,
+} from "../BaseModel";
 
 export interface IProject {
   id: string;
@@ -10,6 +15,8 @@ export interface IProject {
   template_id: string | null;
   status: string;
   settings: Record<string, unknown> | null;
+  primary_color: string | null;
+  accent_color: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -25,21 +32,21 @@ export class ProjectModel extends BaseModel {
 
   static async findById(
     id: string,
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<IProject | undefined> {
     return super.findById(id, trx);
   }
 
   static async findByOrganizationId(
     orgId: number,
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<IProject | undefined> {
     return this.table(trx).where({ organization_id: orgId }).first();
   }
 
   static async create(
     data: Partial<IProject>,
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<IProject> {
     return super.create(data as Record<string, unknown>, trx);
   }
@@ -47,15 +54,12 @@ export class ProjectModel extends BaseModel {
   static async updateById(
     id: string,
     data: Partial<IProject>,
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<number> {
     return super.updateById(id, data as Record<string, unknown>, trx);
   }
 
-  static async setReadOnly(
-    orgId: number,
-    trx?: QueryContext
-  ): Promise<number> {
+  static async setReadOnly(orgId: number, trx?: QueryContext): Promise<number> {
     return this.table(trx)
       .where({ organization_id: orgId })
       .update({ is_read_only: true });
@@ -64,7 +68,7 @@ export class ProjectModel extends BaseModel {
   static async listAdmin(
     filters: ProjectFilters,
     pagination: PaginationParams,
-    trx?: QueryContext
+    trx?: QueryContext,
   ): Promise<PaginatedResult<IProject>> {
     const buildQuery = (qb: Knex.QueryBuilder) => {
       if (filters.organization_id) {

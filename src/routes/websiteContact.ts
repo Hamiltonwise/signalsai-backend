@@ -7,9 +7,11 @@
 
 import express from "express";
 import { handleContactSubmission } from "../controllers/websiteContact/websiteContactController";
+import { handleFormSubmission } from "../controllers/websiteContact/formSubmissionController";
 
 const router = express.Router();
 
 router.post("/contact", handleContactSubmission);
+router.post("/form-submission", handleFormSubmission);
 
 export default router;

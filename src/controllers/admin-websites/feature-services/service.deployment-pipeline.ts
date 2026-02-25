@@ -28,6 +28,8 @@ export interface PipelineStartParams {
   category?: string;
   rating?: number;
   reviewCount?: number;
+  primaryColor?: string;
+  accentColor?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,7 +37,7 @@ export interface PipelineStartParams {
 // ---------------------------------------------------------------------------
 
 export async function startPipeline(
-  params: PipelineStartParams
+  params: PipelineStartParams,
 ): Promise<{ error?: { status: number; code: string; message: string } }> {
   const {
     projectId,
@@ -54,6 +56,8 @@ export async function startPipeline(
     category,
     rating,
     reviewCount,
+    primaryColor,
+    accentColor,
   } = params;
 
   if (!projectId || !placeId) {
@@ -67,7 +71,7 @@ export async function startPipeline(
   }
 
   console.log(
-    `[Admin Websites] Starting pipeline for project ID: ${projectId}`
+    `[Admin Websites] Starting pipeline for project ID: ${projectId}`,
   );
 
   // Resolve template ID
@@ -79,7 +83,7 @@ export async function startPipeline(
     if (activeTemplate) {
       finalTemplateId = activeTemplate.id;
       console.log(
-        `[Admin Websites] Using active template ID: ${finalTemplateId}`
+        `[Admin Websites] Using active template ID: ${finalTemplateId}`,
       );
     } else {
       // Fallback to first published template
@@ -89,7 +93,7 @@ export async function startPipeline(
       if (firstTemplate) {
         finalTemplateId = firstTemplate.id;
         console.log(
-          `[Admin Websites] Using first published template ID: ${finalTemplateId}`
+          `[Admin Websites] Using first published template ID: ${finalTemplateId}`,
         );
       }
     }
@@ -110,9 +114,7 @@ export async function startPipeline(
   const n8nWebhookUrl = process.env.N8N_WEBHOOK_START_PIPELINE;
 
   if (!n8nWebhookUrl) {
-    console.warn(
-      "[Admin Websites] N8N_WEBHOOK_START_PIPELINE not configured"
-    );
+    console.warn("[Admin Websites] N8N_WEBHOOK_START_PIPELINE not configured");
     return {
       error: {
         status: 500,
@@ -172,6 +174,8 @@ export async function startPipeline(
       category,
       rating,
       reviewCount,
+      primaryColor,
+      accentColor,
     }),
   });
 
@@ -179,7 +183,7 @@ export async function startPipeline(
     const errorText = await webhookResponse.text();
     console.error(
       `[Admin Websites] Pipeline webhook failed: ${webhookResponse.status} ${webhookResponse.statusText}`,
-      errorText
+      errorText,
     );
     return {
       error: {
@@ -191,7 +195,7 @@ export async function startPipeline(
   }
 
   console.log(
-    `[Admin Websites] \u2713 Pipeline triggered for project ID: ${projectId}`
+    `[Admin Websites] \u2713 Pipeline triggered for project ID: ${projectId}`,
   );
 
   return {};

@@ -21,7 +21,12 @@ export async function listProjects(filters: {
   limit: number;
 }): Promise<{
   data: any[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }> {
   const { status, page, limit } = filters;
   const offset = (page - 1) * limit;
@@ -42,7 +47,7 @@ export async function listProjects(filters: {
     .leftJoin(
       "organizations",
       `${PROJECTS_TABLE}.organization_id`,
-      "organizations.id"
+      "organizations.id",
     )
     .select(
       `${PROJECTS_TABLE}.id`,
@@ -53,11 +58,13 @@ export async function listProjects(filters: {
       `${PROJECTS_TABLE}.selected_website_url`,
       `${PROJECTS_TABLE}.template_id`,
       `${PROJECTS_TABLE}.step_gbp_scrape`,
+      `${PROJECTS_TABLE}.primary_color`,
+      `${PROJECTS_TABLE}.accent_color`,
       `${PROJECTS_TABLE}.created_at`,
       `${PROJECTS_TABLE}.updated_at`,
       db.raw(
-        "json_build_object('id', organizations.id, 'name', organizations.name, 'subscription_tier', organizations.subscription_tier) as organization"
-      )
+        "json_build_object('id', organizations.id, 'name', organizations.name, 'subscription_tier', organizations.subscription_tier) as organization",
+      ),
     );
 
   if (status) {
@@ -76,7 +83,7 @@ export async function listProjects(filters: {
   }));
 
   console.log(
-    `[Admin Websites] Found ${projectsWithOrg.length} of ${total} projects (page ${page})`
+    `[Admin Websites] Found ${projectsWithOrg.length} of ${total} projects (page ${page})`,
   );
 
   return {
@@ -97,7 +104,7 @@ export async function createProject(data: {
   const userId = data.user_id || "admin-portal";
 
   console.log(
-    `[Admin Websites] Creating project with hostname: ${generatedHostname}`
+    `[Admin Websites] Creating project with hostname: ${generatedHostname}`,
   );
 
   const [project] = await db(PROJECTS_TABLE)
@@ -146,7 +153,7 @@ export async function getProjectStatus(id: string): Promise<any> {
       "step_gbp_scrape",
       "step_website_scrape",
       "step_image_analysis",
-      "updated_at"
+      "updated_at",
     )
     .where("id", id)
     .first();
@@ -160,10 +167,13 @@ export async function getProjectStatus(id: string): Promise<any> {
 
 export async function linkOrganization(
   projectId: string,
-  organizationId: number | null
-): Promise<{ project: any; error?: { status: number; code: string; message: string } }> {
+  organizationId: number | null,
+): Promise<{
+  project: any;
+  error?: { status: number; code: string; message: string };
+}> {
   console.log(
-    `[Admin Websites] Linking/unlinking project ${projectId} to organization ${organizationId}`
+    `[Admin Websites] Linking/unlinking project ${projectId} to organization ${organizationId}`,
   );
 
   // Validate project exists
@@ -248,7 +258,7 @@ export async function linkOrganization(
 
   // Link the website to the organization
   console.log(
-    `[Admin Websites] Linking project ${projectId} to organization ${organizationId}`
+    `[Admin Websites] Linking project ${projectId} to organization ${organizationId}`,
   );
   await db(PROJECTS_TABLE)
     .where("id", projectId)
@@ -259,7 +269,7 @@ export async function linkOrganization(
     .returning("*");
 
   console.log(
-    `[Admin Websites] \u2713 Linked project ${projectId} to organization ${organizationId}`
+    `[Admin Websites] \u2713 Linked project ${projectId} to organization ${organizationId}`,
   );
   return { project: updatedProject };
 }
@@ -275,13 +285,13 @@ export async function getProjectById(id: string): Promise<any> {
     .leftJoin(
       "organizations",
       `${PROJECTS_TABLE}.organization_id`,
-      "organizations.id"
+      "organizations.id",
     )
     .select(
       `${PROJECTS_TABLE}.*`,
       db.raw(
-        "json_build_object('id', organizations.id, 'name', organizations.name, 'subscription_tier', organizations.subscription_tier) as organization"
-      )
+        "json_build_object('id', organizations.id, 'name', organizations.name, 'subscription_tier', organizations.subscription_tier) as organization",
+      ),
     )
     .where(`${PROJECTS_TABLE}.id`, id)
     .first();
@@ -315,8 +325,11 @@ export async function getProjectById(id: string): Promise<any> {
 
 export async function updateProject(
   id: string,
-  updates: Record<string, any>
-): Promise<{ project: any; error?: { status: number; code: string; message: string } }> {
+  updates: Record<string, any>,
+): Promise<{
+  project: any;
+  error?: { status: number; code: string; message: string };
+}> {
   console.log(`[Admin Websites] Updating project ID: ${id}`, updates);
 
   const existing = await db(PROJECTS_TABLE).where("id", id).first();
@@ -362,7 +375,7 @@ export async function updateProject(
 // ---------------------------------------------------------------------------
 
 export async function deleteProject(
-  id: string
+  id: string,
 ): Promise<{ error?: { status: number; code: string; message: string } }> {
   console.log(`[Admin Websites] Deleting project ID: ${id}`);
 
