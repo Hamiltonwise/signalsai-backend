@@ -21,6 +21,7 @@ export async function autocomplete(
     {
       input,
       includedPrimaryTypes: ["establishment"],
+      includePureServiceAreaBusinesses: true,
       ...(sessionToken ? { sessionToken } : {}),
     },
     {

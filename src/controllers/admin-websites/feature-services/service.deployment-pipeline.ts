@@ -30,6 +30,7 @@ export interface PipelineStartParams {
   reviewCount?: number;
   primaryColor?: string;
   accentColor?: string;
+  scrapedData?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,6 +59,7 @@ export async function startPipeline(
     reviewCount,
     primaryColor,
     accentColor,
+    scrapedData,
   } = params;
 
   if (!projectId || !placeId) {
@@ -176,6 +178,7 @@ export async function startPipeline(
       reviewCount,
       primaryColor,
       accentColor,
+      scrapedData,
     }),
   });
 

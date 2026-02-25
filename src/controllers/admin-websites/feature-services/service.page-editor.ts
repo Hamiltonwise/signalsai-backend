@@ -396,6 +396,28 @@ export async function createDraft(
     .first();
 
   if (existingDraft) {
+    // Check if the published page has been updated since this draft was created.
+    // If so, the draft is stale — refresh its sections from the published version.
+    const publishedUpdated = new Date(sourcePage.updated_at).getTime();
+    const draftCreated = new Date(existingDraft.created_at).getTime();
+
+    if (publishedUpdated > draftCreated) {
+      console.log(
+        `[Admin Websites] Stale draft detected (draft created: ${existingDraft.created_at}, published updated: ${sourcePage.updated_at}). Refreshing sections.`
+      );
+
+      const [refreshedDraft] = await db(PAGES_TABLE)
+        .where("id", existingDraft.id)
+        .update({
+          sections: JSON.stringify(normalizeSections(sourcePage.sections)),
+          edit_chat_history: JSON.stringify({}),
+          updated_at: db.fn.now(),
+        })
+        .returning("*");
+
+      return { page: refreshedDraft, isExisting: true };
+    }
+
     console.log(
       `[Admin Websites] Returning existing draft ID: ${existingDraft.id}`
     );
