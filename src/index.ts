@@ -50,6 +50,8 @@ import importsRoutes from "./routes/imports";
 import websiteContactRoutes from "./routes/websiteContact";
 import userWebsiteRoutes from "./routes/user/website";
 import locationRoutes from "./routes/locations";
+import mindsRoutes from "./routes/minds";
+import mindsPublicApiRoutes from "./routes/mindsPublicApi";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -156,6 +158,8 @@ app.use("/api/imports", importsRoutes); // Public file serving for self-hosted i
 app.use("/api/websites", websiteContactRoutes); // Public contact form for rendered sites
 app.use("/api/user/website", userWebsiteRoutes); // User website management (DFY tier)
 app.use("/api/locations", locationRoutes); // Location management for multi-location orgs
+app.use("/api/admin/minds", mindsRoutes); // Minds MVP — AI chatbot profiles with knowledge sync
+app.use("/api/minds", mindsPublicApiRoutes); // Public skill execution API
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);
