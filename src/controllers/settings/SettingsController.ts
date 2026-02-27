@@ -1,4 +1,5 @@
 import { Response } from "express";
+import bcrypt from "bcrypt";
 import { RBACRequest } from "../../middleware/rbac";
 import { AuthenticatedRequest } from "../../middleware/tokenRefresh";
 import { handleSettingsError } from "./feature-utils/util.error-handler";
@@ -15,6 +16,10 @@ import {
   removeUserFromOrganization,
   updateUserRole,
 } from "./feature-services/service.user-management";
+import { UserModel } from "../../models/UserModel";
+
+const BCRYPT_SALT_ROUNDS = 12;
+const PASSWORD_MIN_LENGTH = 8;
 
 export async function getUserProfile(req: RBACRequest, res: Response) {
   try {
@@ -174,6 +179,99 @@ export async function changeUserRole(req: RBACRequest, res: Response) {
     });
   } catch (error: any) {
     return handleSettingsError(res, error, "Update role");
+  }
+}
+
+// =====================================================================
+// Password Management (user self-service)
+// =====================================================================
+
+function isStrongPassword(password: string): boolean {
+  return (
+    password.length >= PASSWORD_MIN_LENGTH &&
+    /[A-Z]/.test(password) &&
+    /[0-9]/.test(password)
+  );
+}
+
+/**
+ * GET /api/settings/password-status
+ * Returns whether the current user has a password set
+ */
+export async function getPasswordStatus(req: RBACRequest, res: Response) {
+  try {
+    const userId = req.userId!;
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.json({
+      success: true,
+      hasPassword: !!user.password_hash,
+    });
+  } catch (error: any) {
+    return handleSettingsError(res, error, "Get password status");
+  }
+}
+
+/**
+ * PUT /api/settings/password
+ * Change or set password for the current user
+ */
+export async function changePassword(req: RBACRequest, res: Response) {
+  try {
+    const userId = req.userId!;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ error: "New password and confirmation are required" });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: "Passwords do not match" });
+    }
+
+    if (!isStrongPassword(newPassword)) {
+      return res.status(400).json({
+        error: "Password must be at least 8 characters with 1 uppercase letter and 1 number",
+      });
+    }
+
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // If user already has a password, require current password
+    if (user.password_hash) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: "Current password is required" });
+      }
+
+      const passwordMatch = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!passwordMatch) {
+        return res.status(401).json({ error: "Current password is incorrect" });
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+    await UserModel.updatePasswordHash(userId, passwordHash);
+
+    // Ensure email is verified
+    if (!user.email_verified) {
+      await UserModel.setEmailVerified(userId);
+    }
+
+    console.log(`[Settings] Password ${user.password_hash ? "changed" : "set"} for user ${userId} (${user.email})`);
+
+    return res.json({
+      success: true,
+      message: user.password_hash ? "Password changed successfully" : "Password set successfully",
+    });
+  } catch (error: any) {
+    return handleSettingsError(res, error, "Change password");
   }
 }
 

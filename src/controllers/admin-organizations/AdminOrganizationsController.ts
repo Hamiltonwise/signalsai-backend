@@ -8,8 +8,10 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth";
 import { db } from "../../database/connection";
+import bcrypt from "bcrypt";
 import { OrganizationModel } from "../../models/OrganizationModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
+import { UserModel } from "../../models/UserModel";
 import { GoogleConnectionModel } from "../../models/GoogleConnectionModel";
 import { LocationModel } from "../../models/LocationModel";
 import { GooglePropertyModel } from "../../models/GooglePropertyModel";
@@ -20,8 +22,11 @@ import * as TierManagementService from "./feature-services/TierManagementService
 import * as AdminOrgCreationService from "./feature-services/AdminOrgCreationService";
 import * as hostnameGenerator from "./feature-utils/hostnameGenerator";
 import { deleteOrganization } from "../settings/feature-services/service.delete-organization";
+import { sendEmail } from "../../emails/emailService";
 import { getStripe, isStripeConfigured } from "../../config/stripe";
 import { v4 as uuid } from "uuid";
+
+const BCRYPT_SALT_ROUNDS = 12;
 
 // =====================================================================
 // Error handler (preserves original handleError response shape)
@@ -92,6 +97,7 @@ export async function getById(
       email: u.email,
       role: u.role,
       joined_at: u.created_at,
+      has_password: !!u.password_hash,
     }));
 
     // Fetch connection details
@@ -530,5 +536,111 @@ export async function createProject(
     });
   } catch (error) {
     return handleError(res, error, "Create project for organization");
+  }
+}
+
+// =====================================================================
+// Admin Set Password
+// =====================================================================
+
+function generateTempPassword(): string {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghjkmnpqrstuvwxyz";
+  const digits = "23456789";
+  const all = upper + lower + digits;
+
+  // Ensure at least 1 uppercase, 1 lowercase, 1 digit
+  let password = "";
+  password += upper[Math.floor(Math.random() * upper.length)];
+  password += lower[Math.floor(Math.random() * lower.length)];
+  password += digits[Math.floor(Math.random() * digits.length)];
+
+  for (let i = 3; i < 12; i++) {
+    password += all[Math.floor(Math.random() * all.length)];
+  }
+
+  // Shuffle
+  return password
+    .split("")
+    .sort(() => Math.random() - 0.5)
+    .join("");
+}
+
+/**
+ * POST /api/admin/users/:userId/set-password
+ * Admin sets a temporary password for a user
+ */
+export async function setUserPassword(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const userId = parseInt(req.params.userId);
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: "Invalid user ID" });
+    }
+
+    const { notifyUser } = req.body;
+
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, BCRYPT_SALT_ROUNDS);
+
+    await UserModel.updatePasswordHash(userId, passwordHash);
+
+    // Ensure email is verified so user can log in
+    if (!user.email_verified) {
+      await UserModel.setEmailVerified(userId);
+    }
+
+    if (notifyUser) {
+      const appUrl = process.env.NODE_ENV === "production"
+        ? "https://app.getalloro.com"
+        : "http://localhost:5173";
+
+      const emailResult = await sendEmail({
+        subject: "Your Alloro password has been set",
+        body: `
+          <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
+            <h2 style="color: #1a1a1a;">Hello${user.name ? `, ${user.name}` : ""}!</h2>
+            <p style="color: #4a5568; font-size: 16px;">
+              Alloro has set a temporary password for your account. You can now sign in using your email and the password below.
+            </p>
+            <div style="background: #f7f7f7; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+              <p style="color: #718096; font-size: 12px; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 1px;">Your temporary password</p>
+              <p style="font-size: 20px; font-weight: bold; letter-spacing: 2px; margin: 0; color: #1a1a1a; font-family: monospace;">${tempPassword}</p>
+            </div>
+            <p style="color: #4a5568; font-size: 16px;">
+              We recommend changing your password as soon as possible. You can do this from your
+              <a href="${appUrl}/settings" style="color: #F97316; text-decoration: underline;">Account Settings</a>.
+            </p>
+            <p style="color: #718096; font-size: 14px; margin-top: 24px;">
+              If you have any questions, please contact our team.
+            </p>
+          </div>
+        `,
+        recipients: [user.email],
+      });
+
+      if (!emailResult.success) {
+        console.error(`[Admin] Failed to send password notification to ${user.email}:`, emailResult.error);
+      }
+    }
+
+    console.log(`[Admin] Temporary password set for user ${userId} (${user.email}) by admin ${req.user?.email}`);
+
+    return res.json({
+      success: true,
+      temporaryPassword: tempPassword,
+      message: notifyUser
+        ? `Password set and notification sent to ${user.email}`
+        : `Password set for ${user.email}`,
+    });
+  } catch (error) {
+    return handleError(res, error, "Set user password");
   }
 }

@@ -94,4 +94,12 @@ organizationsRoutes.delete(
   controller.deleteOrg
 );
 
+// POST /api/admin/organizations/users/:userId/set-password — Admin sets temp password for a user
+organizationsRoutes.post(
+  "/users/:userId/set-password",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.setUserPassword
+);
+
 export default organizationsRoutes;

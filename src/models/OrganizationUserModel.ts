@@ -13,6 +13,7 @@ export interface IOrganizationUser {
 export interface IOrganizationUserWithUser extends IOrganizationUser {
   name: string;
   email: string;
+  password_hash?: string | null;
 }
 
 export class OrganizationUserModel extends BaseModel {
@@ -84,7 +85,8 @@ export class OrganizationUserModel extends BaseModel {
         "organization_users.created_at",
         "organization_users.updated_at",
         "users.name",
-        "users.email"
+        "users.email",
+        "users.password_hash"
       );
   }
 

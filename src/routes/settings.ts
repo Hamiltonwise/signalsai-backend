@@ -23,4 +23,8 @@ settingsRoutes.post("/users/invite", authenticateToken, rbacMiddleware, requireR
 settingsRoutes.delete("/users/:userId", authenticateToken, rbacMiddleware, requireRole("admin"), controller.removeUser);
 settingsRoutes.put("/users/:userId/role", authenticateToken, rbacMiddleware, requireRole("admin"), controller.changeUserRole);
 
+// Password Management (user self-service)
+settingsRoutes.get("/password-status", authenticateToken, rbacMiddleware, controller.getPasswordStatus);
+settingsRoutes.put("/password", authenticateToken, rbacMiddleware, controller.changePassword);
+
 export default settingsRoutes;
