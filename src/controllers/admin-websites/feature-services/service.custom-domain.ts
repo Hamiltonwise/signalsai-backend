@@ -10,6 +10,7 @@
 import dns from "dns";
 import { promisify } from "util";
 import { db } from "../../../database/connection";
+import { refreshCustomDomainCache } from "../../../middleware/corsCustomDomains";
 
 const resolve4 = promisify(dns.resolve4);
 const PROJECTS_TABLE = "website_builder.projects";
@@ -169,6 +170,9 @@ export async function verifyDomain(
     });
 
     console.log(`[Custom Domain] Verified ${project.custom_domain} for project ${projectId}`);
+
+    // Immediately update the CORS cache so the new domain is allowed
+    refreshCustomDomainCache();
   }
 
   return {

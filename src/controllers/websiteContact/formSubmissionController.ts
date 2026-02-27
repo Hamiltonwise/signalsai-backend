@@ -1,9 +1,13 @@
 /**
  * Generic Form Submission Controller
  *
- * Handles form submissions from rendered sites at *.sites.getalloro.com.
- * Accepts dynamic field contents, resolves the project owner's email,
- * and dispatches a plain-text-style HTML email via the n8n webhook.
+ * Handles form submissions from rendered sites at *.sites.getalloro.com
+ * and verified custom domains.
+ *
+ * - Accepts dynamic field contents as key-value pairs
+ * - Saves every submission to the form_submissions table
+ * - Resolves recipients: project.recipients → org admins → fallback
+ * - Dispatches HTML email via the n8n webhook
  */
 
 import { Request, Response } from "express";
@@ -11,6 +15,7 @@ import { sanitize } from "./websiteContact-utils/sanitization";
 import { sendEmailWebhook, WebhookError } from "./websiteContact-services/emailWebhookService";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
+import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 
 const FALLBACK_RECIPIENT = "laggy80@gmail.com";
 
@@ -37,11 +42,19 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       sanitizedContents[sanitize(String(key))] = sanitize(String(value));
     }
 
-    // Resolve recipients from project → organization → admin users
+    // Resolve recipients: project.recipients → org admins → fallback
     let recipients: string[] = [];
     try {
       const project = await ProjectModel.findById(String(projectId));
-      if (project?.organization_id) {
+
+      // 1. Use project-level configured recipients if set
+      const projectRecipients = (project as any)?.recipients;
+      if (Array.isArray(projectRecipients) && projectRecipients.length > 0) {
+        recipients = projectRecipients.filter(Boolean);
+      }
+
+      // 2. Fall back to org admin emails
+      if (recipients.length === 0 && project?.organization_id) {
         const orgUsers = await OrganizationUserModel.listByOrgWithUsers(project.organization_id);
         const adminEmails = orgUsers
           .filter((u) => u.role === "admin")
@@ -55,8 +68,22 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       console.error("[Form Submission] Recipient lookup failed:", lookupErr);
     }
 
+    // 3. Last-resort fallback
     if (recipients.length === 0) {
       recipients = [FALLBACK_RECIPIENT];
+    }
+
+    // Save submission to database (before email — always persist)
+    try {
+      await FormSubmissionModel.create({
+        project_id: String(projectId),
+        form_name: sanitizedFormName,
+        contents: sanitizedContents,
+        recipients_sent_to: recipients,
+      });
+    } catch (saveErr) {
+      console.error("[Form Submission] Failed to save submission:", saveErr);
+      // Continue to send email even if DB save fails
     }
 
     // Build plain-text-style HTML email body

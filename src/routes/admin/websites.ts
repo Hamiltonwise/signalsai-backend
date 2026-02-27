@@ -136,6 +136,32 @@ router.post("/:id/verify-domain", controller.verifyDomainHandler);
 router.delete("/:id/disconnect-domain", controller.disconnectDomainHandler);
 
 // =====================================================================
+// RECIPIENTS
+// =====================================================================
+
+// GET  /:id/recipients — Get configured recipients + org users
+router.get("/:id/recipients", controller.getRecipients);
+
+// PUT  /:id/recipients — Update recipients list
+router.put("/:id/recipients", controller.updateRecipients);
+
+// =====================================================================
+// FORM SUBMISSIONS
+// =====================================================================
+
+// GET  /:id/form-submissions — List submissions with pagination
+router.get("/:id/form-submissions", controller.listFormSubmissions);
+
+// GET  /:id/form-submissions/:submissionId — Get single submission
+router.get("/:id/form-submissions/:submissionId", controller.getFormSubmission);
+
+// PATCH /:id/form-submissions/:submissionId/read — Toggle read status
+router.patch("/:id/form-submissions/:submissionId/read", controller.toggleFormSubmissionRead);
+
+// DELETE /:id/form-submissions/:submissionId — Delete a submission
+router.delete("/:id/form-submissions/:submissionId", controller.deleteFormSubmission);
+
+// =====================================================================
 // PROJECT PAGES
 // =====================================================================
 

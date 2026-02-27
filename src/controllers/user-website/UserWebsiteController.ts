@@ -14,6 +14,9 @@ import { RBACRequest } from "../../middleware/rbac";
 import * as userWebsiteService from "./user-website-services/userWebsite.service";
 import * as customDomainService from "../admin-websites/feature-services/service.custom-domain";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
+import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
+import { OrganizationUserModel } from "../../models/OrganizationUserModel";
+import { db } from "../../database/connection";
 
 // =====================================================================
 // Error handler
@@ -253,5 +256,217 @@ export async function disconnectDomain(
     return res.json({ success: true, data });
   } catch (error) {
     return handleError(res, error, "Disconnect domain");
+  }
+}
+
+// =====================================================================
+// RECIPIENTS
+// =====================================================================
+
+/** GET /api/user/website/recipients */
+export async function getRecipients(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const project = await ProjectModel.findByOrganizationId(orgId);
+    if (!project) return res.status(404).json({ error: "No website found" });
+
+    let orgUsers: { name: string; email: string; role: string }[] = [];
+    const users = await OrganizationUserModel.listByOrgWithUsers(orgId);
+    orgUsers = users.map((u) => ({ name: u.name, email: u.email, role: u.role }));
+
+    return res.json({
+      success: true,
+      data: {
+        recipients: (project as any).recipients || [],
+        orgUsers,
+      },
+    });
+  } catch (error) {
+    return handleError(res, error, "Fetch recipients");
+  }
+}
+
+/** PUT /api/user/website/recipients */
+export async function updateRecipients(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const project = await ProjectModel.findByOrganizationId(orgId);
+    if (!project) return res.status(404).json({ error: "No website found" });
+
+    const { recipients } = req.body;
+    if (!Array.isArray(recipients)) {
+      return res.status(400).json({ error: "recipients must be an array of email strings" });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalid = recipients.filter((e: string) => !emailRegex.test(e));
+    if (invalid.length > 0) {
+      return res.status(400).json({ error: `Invalid email(s): ${invalid.join(", ")}` });
+    }
+
+    await db("website_builder.projects")
+      .where("id", project.id)
+      .update({ recipients: JSON.stringify(recipients), updated_at: db.fn.now() });
+
+    return res.json({ success: true, data: { recipients } });
+  } catch (error) {
+    return handleError(res, error, "Update recipients");
+  }
+}
+
+// =====================================================================
+// FORM SUBMISSIONS
+// =====================================================================
+
+/** GET /api/user/website/form-submissions */
+export async function listFormSubmissions(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const project = await ProjectModel.findByOrganizationId(orgId);
+    if (!project) return res.status(404).json({ error: "No website found" });
+
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+    const readFilter = req.query.read;
+
+    const filters: { is_read?: boolean } = {};
+    if (readFilter === "true") filters.is_read = true;
+    if (readFilter === "false") filters.is_read = false;
+
+    const result = await FormSubmissionModel.findByProjectId(
+      project.id,
+      { page, limit },
+      filters,
+    );
+
+    const unreadCount = await FormSubmissionModel.countUnreadByProjectId(project.id);
+
+    return res.json({ success: true, data: result.data, pagination: result.pagination, unreadCount });
+  } catch (error) {
+    return handleError(res, error, "Fetch form submissions");
+  }
+}
+
+/** GET /api/user/website/form-submissions/:id */
+export async function getFormSubmission(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const submission = await FormSubmissionModel.findById(id);
+
+    if (!submission) {
+      return res.status(404).json({ error: "Submission not found" });
+    }
+
+    return res.json({ success: true, data: submission });
+  } catch (error) {
+    return handleError(res, error, "Fetch form submission");
+  }
+}
+
+// =====================================================================
+// VERSION HISTORY
+// =====================================================================
+
+/** GET /api/user/website/pages/:pageId/versions */
+export async function getPageVersions(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId)
+      return res.status(400).json({ error: "No organization found" });
+
+    const { pageId } = req.params;
+    const result = await userWebsiteService.listPageVersions(orgId, pageId);
+
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return handleError(res, error, "Fetch page versions");
+  }
+}
+
+/** GET /api/user/website/pages/:pageId/versions/:versionId */
+export async function getPageVersionContent(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId)
+      return res.status(400).json({ error: "No organization found" });
+
+    const { pageId, versionId } = req.params;
+    const version = await userWebsiteService.getPageVersionContent(
+      orgId,
+      pageId,
+      versionId
+    );
+
+    return res.json({ success: true, data: version });
+  } catch (error) {
+    return handleError(res, error, "Fetch page version content");
+  }
+}
+
+/** POST /api/user/website/pages/:pageId/versions/:versionId/restore */
+export async function restorePageVersion(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId)
+      return res.status(400).json({ error: "No organization found" });
+
+    const { pageId, versionId } = req.params;
+    const result = await userWebsiteService.restorePageVersion(
+      orgId,
+      pageId,
+      versionId
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    return handleError(res, error, "Restore page version");
+  }
+}
+
+/** PATCH /api/user/website/form-submissions/:id/read */
+export async function toggleFormSubmissionRead(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { is_read } = req.body;
+
+    if (is_read) {
+      await FormSubmissionModel.markAsRead(id);
+    } else {
+      await FormSubmissionModel.markAsUnread(id);
+    }
+
+    return res.json({ success: true, data: { is_read } });
+  } catch (error) {
+    return handleError(res, error, "Toggle submission read");
   }
 }

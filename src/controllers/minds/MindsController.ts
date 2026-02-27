@@ -41,6 +41,23 @@ export async function createMind(req: Request, res: Response): Promise<any> {
   }
 }
 
+export async function deleteMind(req: Request, res: Response): Promise<any> {
+  try {
+    const { mindId } = req.params;
+    await mindsCrud.deleteMind(mindId);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[MINDS] Error deleting mind:", error);
+    if (error.message === "Mind not found") {
+      return res.status(404).json({ error: "Mind not found" });
+    }
+    if (error.message?.includes("sync run is in progress")) {
+      return res.status(409).json({ error: error.message });
+    }
+    return res.status(500).json({ error: "Failed to delete mind" });
+  }
+}
+
 export async function updateMind(req: Request, res: Response): Promise<any> {
   try {
     const { mindId } = req.params;

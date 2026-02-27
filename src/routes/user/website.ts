@@ -29,6 +29,73 @@ userWebsiteRoutes.post(
   controller.editPageComponent
 );
 
+// Version history
+userWebsiteRoutes.get(
+  "/pages/:pageId/versions",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.getPageVersions
+);
+
+userWebsiteRoutes.get(
+  "/pages/:pageId/versions/:versionId",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.getPageVersionContent
+);
+
+userWebsiteRoutes.post(
+  "/pages/:pageId/versions/:versionId/restore",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.restorePageVersion
+);
+
+// Recipients
+userWebsiteRoutes.get(
+  "/recipients",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.getRecipients
+);
+
+userWebsiteRoutes.put(
+  "/recipients",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin"),
+  controller.updateRecipients
+);
+
+// Form submissions
+userWebsiteRoutes.get(
+  "/form-submissions",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.listFormSubmissions
+);
+
+userWebsiteRoutes.get(
+  "/form-submissions/:id",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.getFormSubmission
+);
+
+userWebsiteRoutes.patch(
+  "/form-submissions/:id/read",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.toggleFormSubmissionRead
+);
+
 // Custom domain
 userWebsiteRoutes.post(
   "/domain/connect",

@@ -8,6 +8,7 @@ import * as discoveryController from "../controllers/minds/MindsDiscoveryControl
 import * as syncController from "../controllers/minds/MindsSyncController";
 import * as proposalsController from "../controllers/minds/MindsProposalsController";
 import * as skillsController from "../controllers/minds/MindsSkillsController";
+import * as parentingController from "../controllers/minds/MindsParentingController";
 
 const mindsRoutes = express.Router();
 
@@ -18,6 +19,7 @@ mindsRoutes.use(authenticateToken, superAdminMiddleware);
 mindsRoutes.get("/", mindsController.listMinds);
 mindsRoutes.post("/", mindsController.createMind);
 mindsRoutes.get("/:mindId", mindsController.getMind);
+mindsRoutes.delete("/:mindId", mindsController.deleteMind);
 mindsRoutes.put("/:mindId", mindsController.updateMind);
 mindsRoutes.put("/:mindId/brain", mindsController.updateBrain);
 mindsRoutes.get("/:mindId/versions", mindsController.listVersions);
@@ -63,6 +65,19 @@ mindsRoutes.delete("/:mindId/skills/:skillId", skillsController.deleteSkill);
 mindsRoutes.post("/:mindId/skills/:skillId/generate", skillsController.generateNeuron);
 mindsRoutes.get("/:mindId/skills/:skillId/neuron", skillsController.getSkillNeuron);
 mindsRoutes.get("/:mindId/skills/:skillId/analytics", skillsController.getSkillAnalytics);
+
+// Parenting
+mindsRoutes.post("/:mindId/parenting/sessions", parentingController.createSession);
+mindsRoutes.get("/:mindId/parenting/sessions", parentingController.listSessions);
+mindsRoutes.get("/:mindId/parenting/sessions/:sessionId", parentingController.getSession);
+mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/chat/stream", parentingController.chatStream);
+mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/trigger-reading", parentingController.triggerReading);
+mindsRoutes.get("/:mindId/parenting/sessions/:sessionId/proposals", parentingController.getProposals);
+mindsRoutes.patch("/:mindId/parenting/sessions/:sessionId/proposals/:proposalId", parentingController.updateProposal);
+mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/compile", parentingController.startCompile);
+mindsRoutes.get("/:mindId/parenting/sessions/:sessionId/compile-status", parentingController.getCompileStatus);
+mindsRoutes.delete("/:mindId/parenting/sessions/:sessionId", parentingController.deleteSession);
+mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/abandon", parentingController.abandonSession);
 
 // Status
 mindsRoutes.get("/:mindId/status", syncController.getMindStatus);

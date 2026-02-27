@@ -26,6 +26,7 @@ import { UserEditModel } from "../../../models/website-builder/UserEditModel";
 
 const DAILY_EDIT_LIMIT = 50;
 const USER_STORAGE_LIMIT = 1 * 1024 * 1024 * 1024; // 1 GB
+const PAGES_TABLE = "website_builder.pages";
 
 // =====================================================================
 // Types
@@ -241,6 +242,170 @@ export async function editPageComponent(
     rejected: result.rejected,
     edits_remaining: DAILY_EDIT_LIMIT - currentCount - 1,
   };
+}
+
+// =====================================================================
+// Media context builder
+// =====================================================================
+
+// =====================================================================
+// GET /api/user/website/pages/:pageId/versions — List page versions
+// =====================================================================
+
+export async function listPageVersions(orgId: number, pageId: string) {
+  await getOrgAndValidateTier(orgId);
+
+  const project = await getProjectForOrg(orgId);
+  if (!project) {
+    const err: any = new Error("Website not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const page = await PageModel.findByIdAndProject(pageId, project.id);
+  if (!page) {
+    const err: any = new Error("Page not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const versions = await db(PAGES_TABLE)
+    .where({ project_id: project.id, path: page.path })
+    .orderBy("version", "desc")
+    .select("id", "version", "status", "created_at", "updated_at");
+
+  return { versions, path: page.path };
+}
+
+// =====================================================================
+// GET /api/user/website/pages/:pageId/versions/:versionId — Version content
+// =====================================================================
+
+export async function getPageVersionContent(
+  orgId: number,
+  pageId: string,
+  versionId: string
+) {
+  await getOrgAndValidateTier(orgId);
+
+  const project = await getProjectForOrg(orgId);
+  if (!project) {
+    const err: any = new Error("Website not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const version = await db(PAGES_TABLE)
+    .where({ id: versionId, project_id: project.id })
+    .first();
+
+  if (!version) {
+    const err: any = new Error("Version not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return version;
+}
+
+// =====================================================================
+// POST /api/user/website/pages/:pageId/versions/:versionId/restore
+// =====================================================================
+
+export async function restorePageVersion(
+  orgId: number,
+  pageId: string,
+  versionId: string
+) {
+  await getOrgAndValidateTier(orgId);
+
+  const project = await getProjectForOrg(orgId);
+  if (!project) {
+    const err: any = new Error("Website not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if ((project as any).is_read_only) {
+    const err: any = new Error(
+      "Your website is in read-only mode. Please upgrade to continue editing."
+    );
+    err.statusCode = 403;
+    err.errorCode = "READ_ONLY";
+    throw err;
+  }
+
+  const targetVersion = await db(PAGES_TABLE)
+    .where({ id: versionId, project_id: project.id })
+    .first();
+
+  if (!targetVersion) {
+    const err: any = new Error("Version not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const latestPage = await db(PAGES_TABLE)
+    .where({ project_id: project.id, path: targetVersion.path })
+    .orderBy("version", "desc")
+    .first();
+
+  const latestVersionNum = latestPage ? latestPage.version : 0;
+
+  const sectionsData =
+    typeof targetVersion.sections === "string"
+      ? targetVersion.sections
+      : JSON.stringify(targetVersion.sections);
+
+  const result = await db.transaction(async (trx) => {
+    // Mark current draft(s) as inactive
+    await trx(PAGES_TABLE)
+      .where({
+        project_id: project.id,
+        path: targetVersion.path,
+        status: "draft",
+      })
+      .update({ status: "inactive", updated_at: trx.fn.now() });
+
+    // Mark current published as inactive
+    await trx(PAGES_TABLE)
+      .where({
+        project_id: project.id,
+        path: targetVersion.path,
+        status: "published",
+      })
+      .update({ status: "inactive", updated_at: trx.fn.now() });
+
+    // Create new published version (copy of target's sections)
+    const [publishedPage] = await trx(PAGES_TABLE)
+      .insert({
+        project_id: project.id,
+        path: targetVersion.path,
+        version: latestVersionNum + 1,
+        status: "published",
+        sections: sectionsData,
+      })
+      .returning("*");
+
+    // Create new draft version (based on published)
+    const [draftPage] = await trx(PAGES_TABLE)
+      .insert({
+        project_id: project.id,
+        path: targetVersion.path,
+        version: latestVersionNum + 2,
+        status: "draft",
+        sections: sectionsData,
+      })
+      .returning("*");
+
+    return { publishedPage, draftPage };
+  });
+
+  console.log(
+    `[User/Website] ✓ Restored version ${targetVersion.version} → published v${latestVersionNum + 1}, draft v${latestVersionNum + 2}`
+  );
+
+  return result;
 }
 
 // =====================================================================

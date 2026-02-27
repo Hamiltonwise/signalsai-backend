@@ -1,5 +1,6 @@
 import { MindModel, IMind } from "../../../models/MindModel";
 import { MindVersionModel, IMindVersion } from "../../../models/MindVersionModel";
+import { MindSyncRunModel } from "../../../models/MindSyncRunModel";
 import { db } from "../../../database/connection";
 import { regenerateEmbeddings } from "./service.minds-embedding";
 import { shouldUseRag } from "./service.minds-retrieval";
@@ -33,7 +34,26 @@ export async function createMind(
   const existing = await MindModel.findByName(name);
   if (existing) throw new Error("A mind with this name already exists");
 
-  return MindModel.create({ name, personality_prompt: personalityPrompt });
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return MindModel.create({ name, slug, personality_prompt: personalityPrompt });
+}
+
+export async function deleteMind(mindId: string): Promise<void> {
+  const mind = await MindModel.findById(mindId);
+  if (!mind) throw new Error("Mind not found");
+
+  const hasActive = await MindSyncRunModel.hasActiveRun(mindId);
+  if (hasActive) {
+    throw new Error("Cannot delete mind while a sync run is in progress");
+  }
+
+  // All child tables have ON DELETE CASCADE
+  await MindModel.deleteById(mindId);
+  console.log(`[MINDS] Deleted mind ${mind.name} (${mindId})`);
 }
 
 export async function updateMind(

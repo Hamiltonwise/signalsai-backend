@@ -21,6 +21,9 @@ import * as hfcmManager from "./feature-services/service.hfcm-manager";
 import * as websiteScraper from "./feature-services/service.website-scraper";
 import * as deploymentPipeline from "./feature-services/service.deployment-pipeline";
 import * as customDomain from "./feature-services/service.custom-domain";
+import { db } from "../../database/connection";
+import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
+import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 
 // =====================================================================
 // PROJECTS
@@ -1524,5 +1527,167 @@ export async function reorderProjectSnippets(
       error: "REORDER_ERROR",
       message: error?.message || "Failed to reorder code snippets",
     });
+  }
+}
+
+// =====================================================================
+// RECIPIENTS
+// =====================================================================
+
+/** GET /:id/recipients — Get configured recipients + org users */
+export async function getRecipients(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("id", "recipients", "organization_id")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Project not found" });
+    }
+
+    // Fetch org users so the UI can offer them as options
+    let orgUsers: { name: string; email: string; role: string }[] = [];
+    if (project.organization_id) {
+      const users = await OrganizationUserModel.listByOrgWithUsers(project.organization_id);
+      orgUsers = users.map((u) => ({ name: u.name, email: u.email, role: u.role }));
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        recipients: project.recipients || [],
+        orgUsers,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching recipients:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message || "Failed to fetch recipients" });
+  }
+}
+
+/** PUT /:id/recipients — Update recipients list */
+export async function updateRecipients(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { recipients } = req.body;
+
+    if (!Array.isArray(recipients)) {
+      return res.status(400).json({ success: false, error: "VALIDATION_ERROR", message: "recipients must be an array of email strings" });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalid = recipients.filter((e: string) => !emailRegex.test(e));
+    if (invalid.length > 0) {
+      return res.status(400).json({ success: false, error: "VALIDATION_ERROR", message: `Invalid email(s): ${invalid.join(", ")}` });
+    }
+
+    await db("website_builder.projects")
+      .where("id", id)
+      .update({ recipients: JSON.stringify(recipients), updated_at: db.fn.now() });
+
+    return res.json({ success: true, data: { recipients } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating recipients:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message || "Failed to update recipients" });
+  }
+}
+
+// =====================================================================
+// FORM SUBMISSIONS
+// =====================================================================
+
+/** GET /:id/form-submissions — List submissions with pagination */
+export async function listFormSubmissions(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+    const readFilter = req.query.read;
+
+    const filters: { is_read?: boolean } = {};
+    if (readFilter === "true") filters.is_read = true;
+    if (readFilter === "false") filters.is_read = false;
+
+    const result = await FormSubmissionModel.findByProjectId(
+      id,
+      { page, limit },
+      filters,
+    );
+
+    const unreadCount = await FormSubmissionModel.countUnreadByProjectId(id);
+
+    return res.json({ success: true, data: result.data, pagination: result.pagination, unreadCount });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing form submissions:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message || "Failed to fetch submissions" });
+  }
+}
+
+/** GET /:id/form-submissions/:submissionId — Get single submission */
+export async function getFormSubmission(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { submissionId } = req.params;
+    const submission = await FormSubmissionModel.findById(submissionId);
+
+    if (!submission) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Submission not found" });
+    }
+
+    return res.json({ success: true, data: submission });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching submission:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message || "Failed to fetch submission" });
+  }
+}
+
+/** PATCH /:id/form-submissions/:submissionId/read — Toggle read status */
+export async function toggleFormSubmissionRead(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { submissionId } = req.params;
+    const { is_read } = req.body;
+
+    if (is_read) {
+      await FormSubmissionModel.markAsRead(submissionId);
+    } else {
+      await FormSubmissionModel.markAsUnread(submissionId);
+    }
+
+    return res.json({ success: true, data: { is_read } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error toggling submission read:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message || "Failed to update submission" });
+  }
+}
+
+/** DELETE /:id/form-submissions/:submissionId — Delete a submission */
+export async function deleteFormSubmission(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { submissionId } = req.params;
+    await FormSubmissionModel.deleteById(submissionId);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting submission:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message || "Failed to delete submission" });
   }
 }

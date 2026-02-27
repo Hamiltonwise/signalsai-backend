@@ -86,6 +86,7 @@ export async function getMindStatus(mindId: string): Promise<{
   compileBlockingReasons: string[];
   openBatchId: string | null;
   activeSyncRunId: string | null;
+  activeSyncRunType: "scrape_compare" | "compile_publish" | null;
   latestScrapeRunId: string | null;
 }> {
   const scrapeGating = await canStartScrapeCompare(mindId);
@@ -112,6 +113,7 @@ export async function getMindStatus(mindId: string): Promise<{
     compileBlockingReasons: compileGating.reasons,
     openBatchId: batch?.id || null,
     activeSyncRunId: activeRun?.id || null,
+    activeSyncRunType: (activeRun?.type as "scrape_compare" | "compile_publish") || null,
     latestScrapeRunId,
   };
 }

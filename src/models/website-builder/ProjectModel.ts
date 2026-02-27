@@ -17,6 +17,7 @@ export interface IProject {
   settings: Record<string, unknown> | null;
   primary_color: string | null;
   accent_color: string | null;
+  recipients: string[];
   created_at: Date;
   updated_at: Date;
 }
@@ -63,6 +64,15 @@ export class ProjectModel extends BaseModel {
     return this.table(trx)
       .where({ organization_id: orgId })
       .update({ is_read_only: true });
+  }
+
+  static async findAllVerifiedDomains(
+    trx?: QueryContext,
+  ): Promise<{ custom_domain: string; custom_domain_alt: string | null }[]> {
+    return this.table(trx)
+      .select("custom_domain", "custom_domain_alt")
+      .whereNotNull("domain_verified_at")
+      .whereNotNull("custom_domain");
   }
 
   static async listAdmin(

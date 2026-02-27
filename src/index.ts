@@ -54,6 +54,10 @@ import mindsRoutes from "./routes/minds";
 import mindsPublicApiRoutes from "./routes/mindsPublicApi";
 import billingRoutes from "./routes/billing";
 import { billingGateMiddleware } from "./middleware/billingGate";
+import {
+  isAllowedCustomDomain,
+  startCustomDomainCacheRefresh,
+} from "./middleware/corsCustomDomains";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -92,6 +96,9 @@ app.use((req, res, next) => {
     /\.sites\.(getalloro\.com|localhost:7777)$/.test(origin)
   ) {
     // Allow rendered site subdomains (e.g. bright-dental.sites.getalloro.com)
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  } else if (origin && isAllowedCustomDomain(origin)) {
+    // Allow verified custom domains (e.g. www.brightdental.com)
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
 
@@ -195,6 +202,9 @@ const startServer = async () => {
   try {
     // Test database connection on startup
     await testConnection();
+
+    // Start custom domain CORS cache (refreshes every 5 min)
+    startCustomDomainCacheRefresh();
 
     app.listen(port, () => {
       console.log(
