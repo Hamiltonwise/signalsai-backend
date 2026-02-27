@@ -1622,13 +1622,13 @@ export async function listFormSubmissions(
 
     const result = await FormSubmissionModel.findByProjectId(
       id,
-      { page, limit },
+      { offset: (page - 1) * limit, limit },
       filters,
     );
 
     const unreadCount = await FormSubmissionModel.countUnreadByProjectId(id);
 
-    return res.json({ success: true, data: result.data, pagination: result.pagination, unreadCount });
+    return res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total }, unreadCount });
   } catch (error: any) {
     console.error("[Admin Websites] Error listing form submissions:", error);
     return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message || "Failed to fetch submissions" });

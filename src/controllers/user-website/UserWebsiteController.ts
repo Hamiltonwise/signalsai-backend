@@ -350,13 +350,13 @@ export async function listFormSubmissions(
 
     const result = await FormSubmissionModel.findByProjectId(
       project.id,
-      { page, limit },
+      { offset: (page - 1) * limit, limit },
       filters,
     );
 
     const unreadCount = await FormSubmissionModel.countUnreadByProjectId(project.id);
 
-    return res.json({ success: true, data: result.data, pagination: result.pagination, unreadCount });
+    return res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total }, unreadCount });
   } catch (error) {
     return handleError(res, error, "Fetch form submissions");
   }
