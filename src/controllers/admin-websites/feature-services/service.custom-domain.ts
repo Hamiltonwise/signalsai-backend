@@ -3,6 +3,8 @@
  *
  * Business logic for connecting, verifying, and disconnecting
  * custom domains on website projects.
+ *
+ * Auto-populates www/non-www counterpart as custom_domain_alt.
  */
 
 import dns from "dns";
@@ -16,6 +18,14 @@ const RENDERER_IP = process.env.SITE_RENDERER_IP || "";
 type ServiceError = { status: number; code: string; message: string };
 type Result<T> = { data: T; error?: undefined } | { data?: undefined; error: ServiceError };
 
+/** Given a domain, return its www/non-www counterpart */
+function getAltDomain(domain: string): string {
+  if (domain.startsWith("www.")) {
+    return domain.slice(4); // www.example.com → example.com
+  }
+  return `www.${domain}`; // example.com → www.example.com
+}
+
 // ---------------------------------------------------------------------------
 // Connect domain (save to DB, clear verification)
 // ---------------------------------------------------------------------------
@@ -23,7 +33,7 @@ type Result<T> = { data: T; error?: undefined } | { data?: undefined; error: Ser
 export async function connectDomain(
   projectId: string,
   domain: string
-): Promise<Result<{ custom_domain: string; server_ip: string }>> {
+): Promise<Result<{ custom_domain: string; custom_domain_alt: string; server_ip: string }>> {
   // Validate domain format
   const cleaned = domain.trim().toLowerCase();
   if (!/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(cleaned)) {
@@ -36,6 +46,8 @@ export async function connectDomain(
     };
   }
 
+  const alt = getAltDomain(cleaned);
+
   // Check project exists
   const project = await db(PROJECTS_TABLE).where("id", projectId).first();
   if (!project) {
@@ -44,9 +56,14 @@ export async function connectDomain(
     };
   }
 
-  // Check domain is not already used by another project
+  // Check neither domain is used by another project
   const existing = await db(PROJECTS_TABLE)
-    .where("custom_domain", cleaned)
+    .where(function () {
+      this.where("custom_domain", cleaned)
+        .orWhere("custom_domain", alt)
+        .orWhere("custom_domain_alt", cleaned)
+        .orWhere("custom_domain_alt", alt);
+    })
     .whereNot("id", projectId)
     .first();
 
@@ -60,30 +77,32 @@ export async function connectDomain(
     };
   }
 
-  // Save domain, clear verification
+  // Save both domains, clear verification
   await db(PROJECTS_TABLE).where("id", projectId).update({
     custom_domain: cleaned,
+    custom_domain_alt: alt,
     domain_verified_at: null,
     updated_at: db.fn.now(),
   });
 
-  console.log(`[Custom Domain] Connected ${cleaned} to project ${projectId}`);
+  console.log(`[Custom Domain] Connected ${cleaned} + ${alt} to project ${projectId}`);
 
   return {
     data: {
       custom_domain: cleaned,
+      custom_domain_alt: alt,
       server_ip: RENDERER_IP,
     },
   };
 }
 
 // ---------------------------------------------------------------------------
-// Verify domain (DNS A record check)
+// Verify domain (DNS A record check — checks primary domain)
 // ---------------------------------------------------------------------------
 
 export async function verifyDomain(
   projectId: string
-): Promise<Result<{ verified: boolean; custom_domain: string; resolved_ips?: string[] }>> {
+): Promise<Result<{ verified: boolean; custom_domain: string; custom_domain_alt: string | null; resolved_ips?: string[] }>> {
   if (!RENDERER_IP) {
     return {
       error: {
@@ -95,7 +114,7 @@ export async function verifyDomain(
   }
 
   const project = await db(PROJECTS_TABLE)
-    .select("id", "custom_domain", "domain_verified_at")
+    .select("id", "custom_domain", "custom_domain_alt", "domain_verified_at")
     .where("id", projectId)
     .first();
 
@@ -121,11 +140,12 @@ export async function verifyDomain(
       data: {
         verified: true,
         custom_domain: project.custom_domain,
+        custom_domain_alt: project.custom_domain_alt,
       },
     };
   }
 
-  // DNS lookup
+  // DNS lookup on primary domain
   let resolvedIps: string[];
   try {
     resolvedIps = await resolve4(project.custom_domain);
@@ -134,6 +154,7 @@ export async function verifyDomain(
       data: {
         verified: false,
         custom_domain: project.custom_domain,
+        custom_domain_alt: project.custom_domain_alt,
         resolved_ips: [],
       },
     };
@@ -154,6 +175,7 @@ export async function verifyDomain(
     data: {
       verified: matches,
       custom_domain: project.custom_domain,
+      custom_domain_alt: project.custom_domain_alt,
       resolved_ips: resolvedIps,
     },
   };
@@ -175,6 +197,7 @@ export async function disconnectDomain(
 
   await db(PROJECTS_TABLE).where("id", projectId).update({
     custom_domain: null,
+    custom_domain_alt: null,
     domain_verified_at: null,
     updated_at: db.fn.now(),
   });
@@ -192,11 +215,12 @@ export async function getDomainStatus(
   projectId: string
 ): Promise<Result<{
   custom_domain: string | null;
+  custom_domain_alt: string | null;
   domain_verified_at: string | null;
   server_ip: string;
 }>> {
   const project = await db(PROJECTS_TABLE)
-    .select("id", "custom_domain", "domain_verified_at")
+    .select("id", "custom_domain", "custom_domain_alt", "domain_verified_at")
     .where("id", projectId)
     .first();
 
@@ -209,6 +233,7 @@ export async function getDomainStatus(
   return {
     data: {
       custom_domain: project.custom_domain,
+      custom_domain_alt: project.custom_domain_alt,
       domain_verified_at: project.domain_verified_at,
       server_ip: RENDERER_IP,
     },
