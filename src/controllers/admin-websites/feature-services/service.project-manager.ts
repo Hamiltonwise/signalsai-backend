@@ -227,18 +227,6 @@ export async function linkOrganization(
     };
   }
 
-  // Validate organization is DFY tier
-  if (organization.subscription_tier !== "DFY") {
-    return {
-      project: null,
-      error: {
-        status: 400,
-        code: "INVALID_TIER",
-        message: "Only DFY organizations can have websites",
-      },
-    };
-  }
-
   // Check if organization is already linked to another website
   const existingLink = await db(PROJECTS_TABLE)
     .where("organization_id", organizationId)

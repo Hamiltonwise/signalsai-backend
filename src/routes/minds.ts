@@ -25,6 +25,7 @@ mindsRoutes.post("/:mindId/versions/:versionId/publish", mindsController.publish
 
 // Chat & Conversations
 mindsRoutes.post("/:mindId/chat", chatController.chat);
+mindsRoutes.post("/:mindId/chat/stream", chatController.chatStream);
 mindsRoutes.get("/:mindId/conversations", chatController.listConversations);
 mindsRoutes.get("/:mindId/conversations/:conversationId", chatController.getConversation);
 mindsRoutes.delete("/:mindId/conversations/:conversationId", chatController.deleteConversation);

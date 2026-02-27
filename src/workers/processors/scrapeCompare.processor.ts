@@ -169,7 +169,7 @@ export async function processScrapeCompare(job: Job<ScrapeCompareJobData>): Prom
     let proposals: any[] = [];
     await runStep(runId, "RUN_LLM_COMPARISON", async (step) => {
       await MindSyncStepModel.appendLog(step.id, "Calling LLM for comparison...");
-      proposals = await compareContent(currentBrain, compiledMarkdown);
+      proposals = await compareContent(mindId, currentBrain, compiledMarkdown);
       await MindSyncStepModel.appendLog(
         step.id,
         `LLM returned ${proposals.length} proposals`

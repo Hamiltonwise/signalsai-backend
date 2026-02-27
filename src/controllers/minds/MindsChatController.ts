@@ -19,6 +19,44 @@ export async function chat(req: Request, res: Response): Promise<any> {
   }
 }
 
+export async function chatStream(req: Request, res: Response): Promise<any> {
+  const { mindId } = req.params;
+  const { message, conversationId } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: "message is required" });
+  }
+
+  // Set SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // Nginx hint
+  res.flushHeaders();
+
+  try {
+    await chatService.chatStream(
+      mindId,
+      message,
+      (chunk: string) => {
+        res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+      },
+      (convId: string) => {
+        res.write(`data: ${JSON.stringify({ conversationId: convId })}\n\n`);
+      },
+      conversationId
+    );
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (error: any) {
+    console.error("[MINDS] Error in streaming chat:", error);
+    res.write(`data: ${JSON.stringify({ error: error.message || "Chat failed" })}\n\n`);
+    res.end();
+  }
+}
+
 export async function getConversation(req: Request, res: Response): Promise<any> {
   try {
     const { mindId, conversationId } = req.params;

@@ -1,9 +1,11 @@
 import { MindModel, IMind } from "../../../models/MindModel";
 import { MindVersionModel, IMindVersion } from "../../../models/MindVersionModel";
 import { db } from "../../../database/connection";
+import { regenerateEmbeddings } from "./service.minds-embedding";
+import { shouldUseRag } from "./service.minds-retrieval";
 
 const MAX_BRAIN_CHARACTERS = parseInt(
-  process.env.MINDS_MAX_BRAIN_CHARACTERS || "50000",
+  process.env.MINDS_MAX_BRAIN_CHARACTERS || "500000",
   10
 );
 const BRAIN_WARN_THRESHOLD = MAX_BRAIN_CHARACTERS * 0.8;
@@ -79,6 +81,16 @@ export async function updateBrain(
     `[MINDS] Brain updated for mind ${mindId}: version ${version.version_number}, ${brainMarkdown.length} chars`
   );
 
+  // Regenerate RAG embeddings if brain is large enough
+  if (shouldUseRag(brainMarkdown.length)) {
+    try {
+      await regenerateEmbeddings(mindId, version.id, brainMarkdown, mind.name);
+    } catch (err) {
+      console.error("[MINDS] Embedding regeneration failed (non-blocking):", err);
+      // Non-blocking — brain update still succeeds, RAG will fall back to full brain
+    }
+  }
+
   return { version, warning };
 }
 
@@ -99,4 +111,14 @@ export async function publishVersion(
 
   await MindModel.setPublishedVersion(mindId, versionId);
   console.log(`[MINDS] Published version ${version.version_number} for mind ${mindId}`);
+
+  // Regenerate RAG embeddings for the published version
+  if (shouldUseRag(version.brain_markdown.length)) {
+    try {
+      const mind = await MindModel.findById(mindId);
+      await regenerateEmbeddings(mindId, versionId, version.brain_markdown, mind?.name || "Unknown");
+    } catch (err) {
+      console.error("[MINDS] Embedding regeneration failed (non-blocking):", err);
+    }
+  }
 }

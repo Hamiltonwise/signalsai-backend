@@ -7,10 +7,12 @@ import { MindSyncProposalModel } from "../../models/MindSyncProposalModel";
 import { MindDiscoveryBatchModel } from "../../models/MindDiscoveryBatchModel";
 import { MindDiscoveredPostModel } from "../../models/MindDiscoveredPostModel";
 import { applyProposals } from "../../controllers/minds/feature-services/service.minds-compiler";
+import { regenerateEmbeddings } from "../../controllers/minds/feature-services/service.minds-embedding";
+import { shouldUseRag } from "../../controllers/minds/feature-services/service.minds-retrieval";
 import { db } from "../../database/connection";
 
 const MAX_BRAIN_CHARACTERS = parseInt(
-  process.env.MINDS_MAX_BRAIN_CHARACTERS || "50000",
+  process.env.MINDS_MAX_BRAIN_CHARACTERS || "500000",
   10
 );
 
@@ -132,7 +134,37 @@ export async function processCompilePublish(job: Job<CompilePublishJobData>): Pr
       await MindSyncStepModel.appendLog(step.id, `Published version ${newVersion.version_number}`);
     });
 
-    // Step 7: FINALIZE_PROPOSALS
+    // Step 7: GENERATE_EMBEDDINGS
+    await runStep(runId, "GENERATE_EMBEDDINGS", async (step) => {
+      const brainSize = compileResult!.newBrain.length;
+
+      if (shouldUseRag(brainSize)) {
+        const mind = await MindModel.findById(mindId);
+        await MindSyncStepModel.appendLog(
+          step.id,
+          `Brain size ${brainSize} chars — generating RAG embeddings`
+        );
+
+        const result = await regenerateEmbeddings(
+          mindId,
+          newVersion.id,
+          compileResult!.newBrain,
+          mind?.name || "Unknown"
+        );
+
+        await MindSyncStepModel.appendLog(
+          step.id,
+          `Generated ${result.chunksCreated} chunks (including summary)`
+        );
+      } else {
+        await MindSyncStepModel.appendLog(
+          step.id,
+          `Brain size ${brainSize} chars — below RAG threshold, skipping embeddings`
+        );
+      }
+    });
+
+    // Step 8: FINALIZE_PROPOSALS (was step 7)
     await runStep(runId, "FINALIZE_PROPOSALS", async (step) => {
       const finalized = await MindSyncProposalModel.finalizeApproved(mindId);
       await MindSyncStepModel.appendLog(step.id, `Finalized ${finalized} proposals`);
@@ -149,7 +181,7 @@ export async function processCompilePublish(job: Job<CompilePublishJobData>): Pr
       }
     });
 
-    // Step 8: COMPLETE
+    // Step 9: COMPLETE (was step 8)
     await runStep(runId, "COMPLETE", async (step) => {
       await MindSyncStepModel.appendLog(step.id, "Compile & Publish run completed successfully");
     });

@@ -4,6 +4,7 @@ import { MindVersionModel } from "../../../models/MindVersionModel";
 import { MindConversationModel, IMindConversation } from "../../../models/MindConversationModel";
 import { MindMessageModel, IMindMessage } from "../../../models/MindMessageModel";
 import { shouldCompact, compactConversation } from "./service.minds-compaction";
+import { shouldUseRag, retrieveForChat, buildRetrievedContext } from "./service.minds-retrieval";
 
 const MODEL = process.env.MINDS_LLM_MODEL || "claude-sonnet-4-6";
 const MAX_HISTORY_MESSAGES = 30;
@@ -20,7 +21,7 @@ function getClient(): Anthropic {
 function buildSystemPrompt(
   mindName: string,
   personalityPrompt: string,
-  brainMarkdown: string
+  brainContext: string
 ): string {
   return `You are ${mindName}.
 
@@ -28,7 +29,7 @@ PERSONALITY:
 ${personalityPrompt}
 
 KNOWLEDGE BASE (MARKDOWN):
-${brainMarkdown}
+${brainContext}
 
 RULES:
 - Prefer the knowledge base. Quote/anchor to it where helpful.
@@ -78,14 +79,45 @@ function buildApiMessages(
   return apiMessages;
 }
 
-export async function chat(
+/**
+ * Resolves brain context: uses RAG retrieval for large brains,
+ * falls back to full brain for small brains or on error.
+ */
+async function resolveBrainContext(
+  mindId: string,
+  brainMarkdown: string,
+  userMessage: string
+): Promise<string> {
+  if (!brainMarkdown) return "";
+
+  if (!shouldUseRag(brainMarkdown.length)) {
+    return brainMarkdown;
+  }
+
+  try {
+    const retrieval = await retrieveForChat(mindId, userMessage);
+    return buildRetrievedContext(retrieval.chunks, retrieval.summary);
+  } catch (err) {
+    console.error("[MINDS] RAG retrieval failed, falling back to full brain:", err);
+    return brainMarkdown;
+  }
+}
+
+/**
+ * Shared setup for both chat and chatStream:
+ * loads mind, brain, conversation, stores user message, runs compaction.
+ */
+async function prepareChatContext(
   mindId: string,
   message: string,
   conversationId?: string,
   adminId?: string
 ): Promise<{
-  conversationId: string;
-  reply: string;
+  mind: any;
+  brainMarkdown: string;
+  convId: string;
+  apiMessages: Array<{ role: "user" | "assistant"; content: string }>;
+  systemPrompt: string;
 }> {
   const mind = await MindModel.findById(mindId);
   if (!mind) throw new Error("Mind not found");
@@ -125,21 +157,42 @@ export async function chat(
     }
   } catch (err) {
     console.error("[MINDS] Compaction failed, skipping:", err);
-    // Continue without compaction — conversation still works
   }
 
   // Load recent history
   const history = await MindMessageModel.getRecentMessages(convId, MAX_HISTORY_MESSAGES);
   const apiMessages = buildApiMessages(history);
 
-  const systemPrompt = buildSystemPrompt(
-    mind.name,
-    mind.personality_prompt,
-    brainMarkdown
-  );
+  // Resolve brain context (RAG or full)
+  const brainContext = await resolveBrainContext(mindId, brainMarkdown, message);
+
+  const systemPrompt = buildSystemPrompt(mind.name, mind.personality_prompt, brainContext);
 
   console.log(
-    `[MINDS] Chat request for mind ${mind.name}, conversation ${convId}, ${apiMessages.length} messages in history`
+    `[MINDS] Chat request for mind ${mind.name}, conversation ${convId}, ${apiMessages.length} messages, brain context: ${brainContext.length} chars (original: ${brainMarkdown.length} chars)`
+  );
+
+  return { mind, brainMarkdown, convId, apiMessages, systemPrompt };
+}
+
+// =====================================================================
+// NON-STREAMING CHAT (kept for backwards compatibility)
+// =====================================================================
+
+export async function chat(
+  mindId: string,
+  message: string,
+  conversationId?: string,
+  adminId?: string
+): Promise<{
+  conversationId: string;
+  reply: string;
+}> {
+  const { convId, apiMessages, systemPrompt } = await prepareChatContext(
+    mindId,
+    message,
+    conversationId,
+    adminId
   );
 
   const client = getClient();
@@ -159,6 +212,59 @@ export async function chat(
 
   return { conversationId: convId, reply };
 }
+
+// =====================================================================
+// STREAMING CHAT (SSE)
+// =====================================================================
+
+export async function chatStream(
+  mindId: string,
+  message: string,
+  onChunk: (chunk: string) => void,
+  onConversationId: (convId: string) => void,
+  conversationId?: string,
+  adminId?: string
+): Promise<{ conversationId: string }> {
+  const { convId, apiMessages, systemPrompt } = await prepareChatContext(
+    mindId,
+    message,
+    conversationId,
+    adminId
+  );
+
+  // Send conversationId immediately so the frontend can track it
+  onConversationId(convId);
+
+  const client = getClient();
+  const stream = client.messages.stream({
+    model: MODEL,
+    max_tokens: 4096,
+    system: systemPrompt,
+    messages: apiMessages,
+  });
+
+  let fullReply = "";
+
+  for await (const event of stream) {
+    if (
+      event.type === "content_block_delta" &&
+      event.delta.type === "text_delta"
+    ) {
+      fullReply += event.delta.text;
+      onChunk(event.delta.text);
+    }
+  }
+
+  // Persist complete assistant message AFTER stream ends
+  await MindMessageModel.addMessage(convId, "assistant", fullReply);
+  await MindConversationModel.incrementMessageCount(convId);
+
+  return { conversationId: convId };
+}
+
+// =====================================================================
+// EXISTING EXPORTS (unchanged)
+// =====================================================================
 
 export async function getConversationMessages(
   mindId: string,
