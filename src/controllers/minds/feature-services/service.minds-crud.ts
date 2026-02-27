@@ -5,12 +5,6 @@ import { db } from "../../../database/connection";
 import { regenerateEmbeddings } from "./service.minds-embedding";
 import { shouldUseRag } from "./service.minds-retrieval";
 
-const MAX_BRAIN_CHARACTERS = parseInt(
-  process.env.MINDS_MAX_BRAIN_CHARACTERS || "500000",
-  10
-);
-const BRAIN_WARN_THRESHOLD = MAX_BRAIN_CHARACTERS * 0.8;
-
 export async function listMinds(): Promise<IMind[]> {
   return MindModel.listAll();
 }
@@ -80,17 +74,6 @@ export async function updateBrain(
   const mind = await MindModel.findById(mindId);
   if (!mind) throw new Error("Mind not found");
 
-  if (brainMarkdown.length > MAX_BRAIN_CHARACTERS) {
-    throw new Error(
-      `Brain content exceeds maximum size of ${MAX_BRAIN_CHARACTERS} characters (current: ${brainMarkdown.length}).`
-    );
-  }
-
-  let warning: string | undefined;
-  if (brainMarkdown.length > BRAIN_WARN_THRESHOLD) {
-    warning = `Brain content is ${brainMarkdown.length} characters — approaching the ${MAX_BRAIN_CHARACTERS} limit.`;
-  }
-
   const version = await db.transaction(async (trx) => {
     const v = await MindVersionModel.createVersion(mindId, brainMarkdown, adminId, trx);
     await MindModel.setPublishedVersion(mindId, v.id, trx);
@@ -111,7 +94,7 @@ export async function updateBrain(
     }
   }
 
-  return { version, warning };
+  return { version };
 }
 
 export async function listVersions(mindId: string): Promise<IMindVersion[]> {

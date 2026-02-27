@@ -5,11 +5,6 @@ import { MindDiscoveryBatchModel } from "../../../models/MindDiscoveryBatchModel
 import { MindDiscoveredPostModel } from "../../../models/MindDiscoveredPostModel";
 import { db } from "../../../database/connection";
 
-const MAX_BRAIN_CHARACTERS = parseInt(
-  process.env.MINDS_MAX_BRAIN_CHARACTERS || "50000",
-  10
-);
-
 const DEFAULT_BRAIN_SCAFFOLD = `# Knowledge Base
 
 ## Core Concepts
@@ -109,13 +104,6 @@ export async function compileAndPublish(
     currentBrain,
     proposals
   );
-
-  // Validate brain size
-  if (newBrain.length > MAX_BRAIN_CHARACTERS) {
-    throw new Error(
-      `Compiled brain exceeds maximum size of ${MAX_BRAIN_CHARACTERS} characters (result: ${newBrain.length}). Reject some proposals and retry.`
-    );
-  }
 
   // Create version and publish in transaction
   const version = await db.transaction(async (trx) => {

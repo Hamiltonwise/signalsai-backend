@@ -11,11 +11,6 @@ import { regenerateEmbeddings } from "../../controllers/minds/feature-services/s
 import { shouldUseRag } from "../../controllers/minds/feature-services/service.minds-retrieval";
 import { db } from "../../database/connection";
 
-const MAX_BRAIN_CHARACTERS = parseInt(
-  process.env.MINDS_MAX_BRAIN_CHARACTERS || "500000",
-  10
-);
-
 interface CompilePublishJobData {
   mindId: string;
   runId: string;
@@ -109,13 +104,7 @@ export async function processCompilePublish(job: Job<CompilePublishJobData>): Pr
     // Step 4: VALIDATE_BRAIN_SIZE
     await runStep(runId, "VALIDATE_BRAIN_SIZE", async (step) => {
       const newSize = compileResult!.newBrain.length;
-      await MindSyncStepModel.appendLog(step.id, `New brain size: ${newSize} chars (limit: ${MAX_BRAIN_CHARACTERS})`);
-
-      if (newSize > MAX_BRAIN_CHARACTERS) {
-        throw new Error(
-          `Compiled brain exceeds maximum size (${newSize} > ${MAX_BRAIN_CHARACTERS}). Reject some proposals and retry.`
-        );
-      }
+      await MindSyncStepModel.appendLog(step.id, `New brain size: ${newSize} chars`);
     });
 
     // Step 5: CREATE_NEW_VERSION
