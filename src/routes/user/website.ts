@@ -29,4 +29,29 @@ userWebsiteRoutes.post(
   controller.editPageComponent
 );
 
+// Custom domain
+userWebsiteRoutes.post(
+  "/domain/connect",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.connectDomain
+);
+
+userWebsiteRoutes.post(
+  "/domain/verify",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.verifyDomain
+);
+
+userWebsiteRoutes.delete(
+  "/domain/disconnect",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.disconnectDomain
+);
+
 export default userWebsiteRoutes;

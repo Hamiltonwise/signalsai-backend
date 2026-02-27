@@ -52,6 +52,8 @@ import userWebsiteRoutes from "./routes/user/website";
 import locationRoutes from "./routes/locations";
 import mindsRoutes from "./routes/minds";
 import mindsPublicApiRoutes from "./routes/mindsPublicApi";
+import billingRoutes from "./routes/billing";
+import { billingGateMiddleware } from "./middleware/billingGate";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -111,6 +113,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Stripe webhook needs raw body for signature verification — mount BEFORE JSON parser
+app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
+
 // Add JSON body parser middleware with increased limit for large PMS data
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -125,6 +130,9 @@ app.get("/api/health/db", async (req, res) => {
 app.get("/api/sentry-test", () => {
   throw new Error("Sentry backend test error!");
 });
+
+// Billing gate — blocks locked-out orgs from protected routes (self-sufficient JWT parsing)
+app.use(billingGateMiddleware);
 
 app.use(router);
 app.use("/api/gbp", gbpRoutes);
@@ -160,6 +168,7 @@ app.use("/api/user/website", userWebsiteRoutes); // User website management (DFY
 app.use("/api/locations", locationRoutes); // Location management for multi-location orgs
 app.use("/api/admin/minds", mindsRoutes); // Minds MVP — AI chatbot profiles with knowledge sync
 app.use("/api/minds", mindsPublicApiRoutes); // Public skill execution API
+app.use("/api/billing", billingRoutes); // Stripe billing & subscription management
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);

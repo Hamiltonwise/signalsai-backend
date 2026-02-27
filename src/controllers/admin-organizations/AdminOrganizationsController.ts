@@ -17,7 +17,11 @@ import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import * as OrganizationEnrichmentService from "./feature-services/OrganizationEnrichmentService";
 import * as ConnectionDetectionService from "./feature-services/ConnectionDetectionService";
 import * as TierManagementService from "./feature-services/TierManagementService";
+import * as AdminOrgCreationService from "./feature-services/AdminOrgCreationService";
+import * as hostnameGenerator from "./feature-utils/hostnameGenerator";
 import { deleteOrganization } from "../settings/feature-services/service.delete-organization";
+import { getStripe, isStripeConfigured } from "../../config/stripe";
+import { v4 as uuid } from "uuid";
 
 // =====================================================================
 // Error handler (preserves original handleError response shape)
@@ -172,8 +176,8 @@ export async function deleteOrg(
       return res.status(400).json({ error: "Invalid organization ID" });
     }
 
-    const { confirmDelete } = req.body;
-    if (confirmDelete !== true) {
+    const confirmDelete = req.body?.confirmDelete === true || req.query?.confirmDelete === "true";
+    if (!confirmDelete) {
       return res.status(400).json({
         success: false,
         error: "Confirmation required. Send { confirmDelete: true } to proceed.",
@@ -279,5 +283,252 @@ export async function getOrgLocations(
     });
   } catch (error) {
     return handleError(res, error, "Fetch organization locations");
+  }
+}
+
+/**
+ * POST /api/admin/organizations
+ * Create a new organization with an initial admin user.
+ * Super-admin only.
+ */
+export async function createOrganization(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const { organization, user, location } = req.body;
+
+    if (!organization || !user || !location) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Request body must include 'organization', 'user', and 'location' objects.",
+      });
+    }
+
+    const result =
+      await AdminOrgCreationService.createOrganizationWithUser({
+        organization,
+        user,
+        location,
+      });
+
+    return res.status(201).json(result);
+  } catch (error: any) {
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        error: error.message,
+      });
+    }
+    return handleError(res, error, "Create organization");
+  }
+}
+
+/**
+ * PATCH /api/admin/organizations/:id/lockout
+ * Lock out an organization (sets subscription_status to inactive).
+ * Cannot lockout orgs with an active Stripe subscription.
+ */
+export async function lockoutOrganization(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    // Cannot lock out paying customers
+    if (organization.stripe_customer_id) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Cannot lock out an organization with an active Stripe subscription. Cancel their subscription first.",
+      });
+    }
+
+    await OrganizationModel.updateById(orgId, {
+      subscription_status: "inactive",
+      updated_at: new Date(),
+    } as any);
+
+    return res.json({
+      success: true,
+      message: `Organization "${organization.name}" has been locked out.`,
+    });
+  } catch (error) {
+    return handleError(res, error, "Lockout organization");
+  }
+}
+
+/**
+ * PATCH /api/admin/organizations/:id/unlock
+ * Unlock an organization (sets subscription_status back to active).
+ */
+export async function unlockOrganization(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    await OrganizationModel.updateById(orgId, {
+      subscription_status: "active",
+      updated_at: new Date(),
+    } as any);
+
+    return res.json({
+      success: true,
+      message: `Organization "${organization.name}" has been unlocked.`,
+    });
+  } catch (error) {
+    return handleError(res, error, "Unlock organization");
+  }
+}
+
+/**
+ * POST /api/admin/organizations/:id/remove-payment-method
+ * Cancel the Stripe subscription and clear Stripe IDs from the organization.
+ * Reverts the org to admin-granted state (active, DFY, no billing).
+ * Super-admin only.
+ */
+export async function removePaymentMethod(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    // If no Stripe info, nothing to remove
+    if (!organization.stripe_customer_id && !organization.stripe_subscription_id) {
+      return res.status(400).json({
+        success: false,
+        error: "This organization has no payment method to remove.",
+      });
+    }
+
+    // Cancel the Stripe subscription if it exists
+    if (organization.stripe_subscription_id && isStripeConfigured()) {
+      try {
+        const stripe = getStripe();
+        await stripe.subscriptions.cancel(organization.stripe_subscription_id);
+        console.log(
+          `[Admin] Cancelled Stripe subscription ${organization.stripe_subscription_id} for org ${orgId}`
+        );
+      } catch (stripeErr: any) {
+        // Best-effort — if it fails (already cancelled, etc.), log and continue
+        console.warn(
+          `[Admin] Failed to cancel Stripe subscription for org ${orgId}:`,
+          stripeErr?.message || stripeErr
+        );
+      }
+    }
+
+    // Clear Stripe fields and revert to admin-granted state
+    await OrganizationModel.updateById(orgId, {
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      subscription_status: "active",
+      subscription_updated_at: new Date(),
+      updated_at: new Date(),
+    } as any);
+
+    console.log(
+      `[Admin] Payment method removed for org ${orgId} (${organization.name}). Reverted to admin-granted state.`
+    );
+
+    return res.json({
+      success: true,
+      message: `Payment method removed for "${organization.name}". Organization reverted to admin-granted state.`,
+    });
+  } catch (error) {
+    return handleError(res, error, "Remove payment method");
+  }
+}
+
+/**
+ * POST /api/admin/organizations/:id/create-project
+ * Create a website project for an organization.
+ * Extracts project creation logic from TierManagementService.handleDfyUpgrade().
+ * Only creates if no project already exists.
+ */
+export async function createProject(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    // Check if project already exists
+    const existingProject = await ProjectModel.findByOrganizationId(orgId);
+    if (existingProject) {
+      return res.status(409).json({
+        success: false,
+        error: "This organization already has a website project.",
+        project: {
+          id: existingProject.id,
+          generated_hostname: (existingProject as any).generated_hostname,
+          status: existingProject.status,
+        },
+      });
+    }
+
+    // Generate hostname and create project (same logic as TierManagementService.handleDfyUpgrade)
+    const hostname = hostnameGenerator.generate(organization.name);
+
+    await ProjectModel.create({
+      id: uuid(),
+      organization_id: orgId,
+      generated_hostname: hostname,
+      status: "CREATED",
+      created_at: new Date(),
+      updated_at: new Date(),
+    } as any);
+
+    console.log(
+      `[Admin] Website project created for org ${orgId} (${organization.name}) — hostname: ${hostname}`
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: `Website project created for "${organization.name}".`,
+      project: {
+        generated_hostname: hostname,
+        status: "CREATED",
+      },
+    });
+  } catch (error) {
+    return handleError(res, error, "Create project for organization");
   }
 }

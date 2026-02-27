@@ -126,6 +126,15 @@ router.get("/:id/status", controller.getProjectStatus);
 // PATCH /:id/link-organization — Link/unlink org
 router.patch("/:id/link-organization", controller.linkOrganization);
 
+// POST /:id/connect-domain — Connect a custom domain
+router.post("/:id/connect-domain", controller.connectDomainHandler);
+
+// POST /:id/verify-domain — Verify DNS for custom domain
+router.post("/:id/verify-domain", controller.verifyDomainHandler);
+
+// DELETE /:id/disconnect-domain — Disconnect custom domain
+router.delete("/:id/disconnect-domain", controller.disconnectDomainHandler);
+
 // =====================================================================
 // PROJECT PAGES
 // =====================================================================

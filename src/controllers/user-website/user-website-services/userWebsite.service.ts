@@ -116,6 +116,7 @@ export async function fetchUserWebsiteData(orgId: number) {
       status: project.status,
       is_read_only: (project as any).is_read_only,
       custom_domain: project.custom_domain,
+      domain_verified_at: (project as any).domain_verified_at,
       wrapper: (project as any).wrapper,
       header: (project as any).header,
       footer: (project as any).footer,

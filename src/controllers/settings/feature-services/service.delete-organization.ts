@@ -3,12 +3,14 @@
  *
  * Permanently deletes an organization and all related data.
  * FK CASCADE handles most cleanup; this service handles:
- * 1. Google OAuth token revocation
- * 2. Orphaned user cleanup
+ * 1. Stripe subscription cancellation
+ * 2. Google OAuth token revocation
+ * 3. Orphaned user cleanup
  */
 import { db } from "../../../database/connection";
 import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
 import { OrganizationModel } from "../../../models/OrganizationModel";
+import { getStripe, isStripeConfigured } from "../../../config/stripe";
 import axios from "axios";
 
 export async function deleteOrganization(organizationId: number): Promise<void> {
@@ -19,7 +21,23 @@ export async function deleteOrganization(organizationId: number): Promise<void> 
     throw err;
   }
 
-  // 1. Revoke Google OAuth tokens (best-effort, don't block on failure)
+  // 1. Cancel Stripe subscription (best-effort, don't block on failure)
+  if (org.stripe_subscription_id && isStripeConfigured()) {
+    try {
+      const stripe = getStripe();
+      await stripe.subscriptions.cancel(org.stripe_subscription_id);
+      console.log(
+        `[DeleteOrg] Cancelled Stripe subscription ${org.stripe_subscription_id} for org ${organizationId}`
+      );
+    } catch (stripeErr) {
+      console.warn(
+        `[DeleteOrg] Failed to cancel Stripe subscription for org ${organizationId}:`,
+        (stripeErr as Error).message
+      );
+    }
+  }
+
+  // 2. Revoke Google OAuth tokens (best-effort, don't block on failure)
   const connections = await GoogleConnectionModel.findByOrganization(organizationId);
   for (const conn of connections) {
     try {
@@ -36,7 +54,7 @@ export async function deleteOrganization(organizationId: number): Promise<void> 
     }
   }
 
-  // 2. Delete the organization — CASCADE handles all FK-linked tables
+  // 3. Delete the organization — CASCADE handles all FK-linked tables
   const trx = await db.transaction();
   try {
     // Delete the organization — CASCADE handles all FK-linked tables:
@@ -46,7 +64,7 @@ export async function deleteOrganization(organizationId: number): Promise<void> 
     //    website_builder.user_edits
     await trx("organizations").where({ id: organizationId }).del();
 
-    // 3. Clean up orphaned users (users who no longer belong to any organization)
+    // 4. Clean up orphaned users (users who no longer belong to any organization)
     await trx.raw(`
       DELETE FROM users u
       WHERE NOT EXISTS (

@@ -20,6 +20,7 @@ import * as pageEditor from "./feature-services/service.page-editor";
 import * as hfcmManager from "./feature-services/service.hfcm-manager";
 import * as websiteScraper from "./feature-services/service.website-scraper";
 import * as deploymentPipeline from "./feature-services/service.deployment-pipeline";
+import * as customDomain from "./feature-services/service.custom-domain";
 
 // =====================================================================
 // PROJECTS
@@ -285,6 +286,104 @@ export async function startPipeline(
       success: false,
       error: "PIPELINE_ERROR",
       message: error?.message || "Failed to start pipeline",
+    });
+  }
+}
+
+// =====================================================================
+// CUSTOM DOMAIN
+// =====================================================================
+
+/** POST /:id/connect-domain — Connect a custom domain */
+export async function connectDomainHandler(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { domain } = req.body;
+
+    if (!domain) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "domain is required",
+      });
+    }
+
+    const { data, error } = await customDomain.connectDomain(id, domain);
+
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        error: error.code,
+        message: error.message,
+      });
+    }
+
+    return res.json({ success: true, data });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error connecting domain:", error);
+    return res.status(500).json({
+      success: false,
+      error: "DOMAIN_ERROR",
+      message: error?.message || "Failed to connect domain",
+    });
+  }
+}
+
+/** POST /:id/verify-domain — Verify DNS for custom domain */
+export async function verifyDomainHandler(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { data, error } = await customDomain.verifyDomain(id);
+
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        error: error.code,
+        message: error.message,
+      });
+    }
+
+    return res.json({ success: true, data });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error verifying domain:", error);
+    return res.status(500).json({
+      success: false,
+      error: "VERIFY_ERROR",
+      message: error?.message || "Failed to verify domain",
+    });
+  }
+}
+
+/** DELETE /:id/disconnect-domain — Disconnect custom domain */
+export async function disconnectDomainHandler(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { data, error } = await customDomain.disconnectDomain(id);
+
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        error: error.code,
+        message: error.message,
+      });
+    }
+
+    return res.json({ success: true, data });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error disconnecting domain:", error);
+    return res.status(500).json({
+      success: false,
+      error: "DOMAIN_ERROR",
+      message: error?.message || "Failed to disconnect domain",
     });
   }
 }

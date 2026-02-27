@@ -5,11 +5,17 @@ export interface IOrganization {
   name: string;
   domain: string | null;
   subscription_tier: "DWY" | "DFY" | null;
+  subscription_status: "active" | "inactive" | "trial" | "cancelled";
+  subscription_started_at: Date | null;
   subscription_updated_at: Date | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
   operational_jurisdiction: string | null;
   onboarding_completed: boolean;
   onboarding_wizard_completed: boolean;
   setup_progress: Record<string, unknown> | null;
+  website_edits_this_month: number;
+  website_edits_reset_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }

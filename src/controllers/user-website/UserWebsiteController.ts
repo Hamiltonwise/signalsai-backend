@@ -12,6 +12,8 @@
 import { Response } from "express";
 import { RBACRequest } from "../../middleware/rbac";
 import * as userWebsiteService from "./user-website-services/userWebsite.service";
+import * as customDomainService from "../admin-websites/feature-services/service.custom-domain";
+import { ProjectModel } from "../../models/website-builder/ProjectModel";
 
 // =====================================================================
 // Error handler
@@ -159,5 +161,97 @@ export async function editPageComponent(
       error: "EDIT_ERROR",
       message: error?.message || "Failed to edit component",
     });
+  }
+}
+
+// =====================================================================
+// Custom Domain — helpers
+// =====================================================================
+
+async function getProjectIdForOrg(orgId: number): Promise<string | null> {
+  const project = await ProjectModel.findByOrganizationId(orgId);
+  return project?.id || null;
+}
+
+// =====================================================================
+// POST /api/user/website/domain/connect
+// =====================================================================
+
+export async function connectDomain(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const { domain } = req.body;
+    if (!domain) {
+      return res.status(400).json({ error: "domain is required" });
+    }
+
+    const { data, error } = await customDomainService.connectDomain(projectId, domain);
+    if (error) {
+      return res.status(error.status).json({ error: error.code, message: error.message });
+    }
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    return handleError(res, error, "Connect domain");
+  }
+}
+
+// =====================================================================
+// POST /api/user/website/domain/verify
+// =====================================================================
+
+export async function verifyDomain(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const { data, error } = await customDomainService.verifyDomain(projectId);
+    if (error) {
+      return res.status(error.status).json({ error: error.code, message: error.message });
+    }
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    return handleError(res, error, "Verify domain");
+  }
+}
+
+// =====================================================================
+// DELETE /api/user/website/domain/disconnect
+// =====================================================================
+
+export async function disconnectDomain(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const { data, error } = await customDomainService.disconnectDomain(projectId);
+    if (error) {
+      return res.status(error.status).json({ error: error.code, message: error.message });
+    }
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    return handleError(res, error, "Disconnect domain");
   }
 }
