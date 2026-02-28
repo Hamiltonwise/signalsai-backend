@@ -15,6 +15,7 @@ export interface IMindParentingSession {
   mind_id: string;
   status: ParentingSessionStatus;
   result: ParentingSessionResult | null;
+  title: string | null;
   knowledge_buffer: string;
   sync_run_id: string | null;
   created_by_admin_id: string | null;
@@ -103,6 +104,16 @@ export class MindParentingSessionModel extends BaseModel {
     return this.table(trx)
       .where({ id: sessionId })
       .update({ sync_run_id: syncRunId, updated_at: new Date() });
+  }
+
+  static async updateTitle(
+    sessionId: string,
+    title: string,
+    trx?: QueryContext
+  ): Promise<number> {
+    return this.table(trx)
+      .where({ id: sessionId })
+      .update({ title, updated_at: new Date() });
   }
 
   static async findActiveByMind(
