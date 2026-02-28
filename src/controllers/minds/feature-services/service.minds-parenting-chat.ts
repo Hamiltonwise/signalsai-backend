@@ -198,3 +198,40 @@ export async function chatStream(
 
   return fullReply;
 }
+
+/**
+ * Generate a short title for a parenting session based on what was discussed.
+ * Fire-and-forget — caller should not await this in the critical path.
+ */
+export async function generateSessionTitle(
+  sessionId: string,
+  knowledgeBuffer: string
+): Promise<void> {
+  if (!knowledgeBuffer || knowledgeBuffer.trim().length < 20) return;
+
+  try {
+    const client = getClient();
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 30,
+      system: "Generate a 3-5 word title summarizing what was taught in this session. Output ONLY the title, nothing else. No quotes, no punctuation at the end.",
+      messages: [
+        {
+          role: "user",
+          content: `Session notes:\n${knowledgeBuffer.slice(0, 2000)}`,
+        },
+      ],
+    });
+
+    const title =
+      response.content[0]?.type === "text"
+        ? response.content[0].text.trim()
+        : null;
+
+    if (title && title.length > 0 && title.length < 100) {
+      await MindParentingSessionModel.updateTitle(sessionId, title);
+    }
+  } catch (err) {
+    console.error("[MINDS] Failed to generate session title:", err);
+  }
+}
