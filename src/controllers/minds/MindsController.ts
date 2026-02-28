@@ -61,8 +61,20 @@ export async function deleteMind(req: Request, res: Response): Promise<any> {
 export async function updateMind(req: Request, res: Response): Promise<any> {
   try {
     const { mindId } = req.params;
-    const { name, personality_prompt } = req.body;
-    const mind = await mindsCrud.updateMind(mindId, { name, personality_prompt });
+    const {
+      name,
+      personality_prompt,
+      available_work_types,
+      available_publish_targets,
+      rejection_categories,
+    } = req.body;
+    const updates: Record<string, unknown> = {};
+    if (name !== undefined) updates.name = name;
+    if (personality_prompt !== undefined) updates.personality_prompt = personality_prompt;
+    if (available_work_types !== undefined) updates.available_work_types = JSON.stringify(available_work_types);
+    if (available_publish_targets !== undefined) updates.available_publish_targets = JSON.stringify(available_publish_targets);
+    if (rejection_categories !== undefined) updates.rejection_categories = JSON.stringify(rejection_categories);
+    const mind = await mindsCrud.updateMind(mindId, updates);
     return res.json({ success: true, data: mind });
   } catch (error: any) {
     console.error("[MINDS] Error updating mind:", error);

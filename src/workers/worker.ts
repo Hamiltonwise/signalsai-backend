@@ -6,6 +6,11 @@ import IORedis from "ioredis";
 import { processScrapeCompare } from "./processors/scrapeCompare.processor";
 import { processCompilePublish } from "./processors/compilePublish.processor";
 import { processDiscovery } from "./processors/discovery.processor";
+import {
+  processSkillTrigger,
+  processDeadLetterCheck,
+} from "./processors/skillTrigger.processor";
+import { processWorksDigest } from "./processors/worksDigest.processor";
 import { getMindsQueue } from "./queues";
 
 const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
@@ -56,6 +61,34 @@ const discoveryWorker = new Worker(
   }
 );
 
+// Skill Trigger worker
+const skillTriggerWorker = new Worker(
+  "minds-skill-triggers",
+  async (job) => {
+    if (job.name === "dead-letter-check") {
+      await processDeadLetterCheck(job);
+    } else {
+      await processSkillTrigger(job);
+    }
+  },
+  {
+    connection,
+    concurrency: 1,
+  }
+);
+
+// Works Digest worker
+const worksDigestWorker = new Worker(
+  "minds-works-digest",
+  async (job) => {
+    await processWorksDigest(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+  }
+);
+
 // Set up repeatable discovery job (every 24 hours)
 async function setupDiscoverySchedule(): Promise<void> {
   try {
@@ -77,8 +110,40 @@ async function setupDiscoverySchedule(): Promise<void> {
   }
 }
 
+// Set up skill trigger schedule (every 5 minutes) + dead letter check (every 10 minutes)
+async function setupSkillTriggerSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("skill-triggers");
+    await queue.add(
+      "skill-trigger-check",
+      {},
+      {
+        repeat: {
+          pattern: "*/5 * * * *", // Every 5 minutes
+          tz: "UTC",
+        },
+        jobId: "skill-trigger-check",
+      }
+    );
+    await queue.add(
+      "dead-letter-check",
+      {},
+      {
+        repeat: {
+          pattern: "*/10 * * * *", // Every 10 minutes
+          tz: "UTC",
+        },
+        jobId: "dead-letter-check",
+      }
+    );
+    console.log("[MINDS-WORKER] Skill trigger + dead letter check scheduled");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up skill trigger schedule:", err);
+  }
+}
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -98,6 +163,8 @@ async function shutdown(): Promise<void> {
   await scrapeCompareWorker.close();
   await compilePublishWorker.close();
   await discoveryWorker.close();
+  await skillTriggerWorker.close();
+  await worksDigestWorker.close();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
   process.exit(0);
@@ -106,6 +173,29 @@ async function shutdown(): Promise<void> {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
+// Set up works digest schedule (weekly — 3 AM UTC Sundays)
+async function setupWorksDigestSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("works-digest");
+    await queue.add(
+      "weekly-works-digest",
+      {},
+      {
+        repeat: {
+          pattern: "0 3 * * 0", // 3 AM UTC every Sunday
+          tz: "UTC",
+        },
+        jobId: "weekly-works-digest",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly works digest job scheduled (3 AM UTC Sundays)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up works digest schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
+setupSkillTriggerSchedule();
+setupWorksDigestSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");

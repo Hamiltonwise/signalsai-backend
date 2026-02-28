@@ -52,7 +52,19 @@ export async function createSkill(req: Request, res: Response): Promise<any> {
 export async function updateSkill(req: Request, res: Response): Promise<any> {
   try {
     const { skillId } = req.params;
-    const { name, definition, outputSchema } = req.body;
+    const {
+      name,
+      definition,
+      outputSchema,
+      work_creation_type,
+      output_count,
+      trigger_type,
+      trigger_config,
+      pipeline_mode,
+      work_publish_to,
+      publication_config,
+      status,
+    } = req.body;
 
     const skill = await MindSkillModel.findById(skillId);
     if (!skill) return res.status(404).json({ error: "Skill not found" });
@@ -61,6 +73,14 @@ export async function updateSkill(req: Request, res: Response): Promise<any> {
       name,
       definition,
       output_schema: outputSchema,
+      work_creation_type,
+      output_count,
+      trigger_type,
+      trigger_config,
+      pipeline_mode,
+      work_publish_to,
+      publication_config,
+      status,
     });
 
     const updated = await MindSkillModel.findById(skillId);
@@ -132,6 +152,76 @@ export async function getSkillAnalytics(
   } catch (error: any) {
     console.error("[MINDS] Error getting skill analytics:", error);
     return res.status(500).json({ error: "Failed to get analytics" });
+  }
+}
+
+export async function skillBuilderChat(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const { mindId } = req.params;
+    const { message, messages: priorMessages, resolvedFields } = req.body;
+
+    if (!message?.trim()) {
+      return res.status(400).json({ error: "message is required" });
+    }
+
+    const result = await skillsService.skillBuilderChat(
+      mindId,
+      message.trim(),
+      priorMessages || [],
+      resolvedFields || {},
+    );
+    return res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("[MINDS] Error in skill builder chat:", error);
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: error.message });
+    }
+    return res.status(500).json({ error: "Failed to process skill builder message" });
+  }
+}
+
+export async function skillBuilderChatStream(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const { mindId } = req.params;
+    const { message, messages: priorMessages, resolvedFields } = req.body;
+
+    if (!message?.trim()) {
+      return res.status(400).json({ error: "message is required" });
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    await skillsService.skillBuilderChatStream(
+      mindId,
+      message.trim(),
+      priorMessages || [],
+      resolvedFields || {},
+      (chunk) => {
+        res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+      },
+      (meta) => {
+        res.write(`data: ${JSON.stringify({ ...meta, done: true })}\n\n`);
+      },
+    );
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (error: any) {
+    console.error("[MINDS] Error in skill builder chat stream:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: error.message || "Chat failed" });
+    }
+    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    res.end();
   }
 }
 

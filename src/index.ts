@@ -52,6 +52,8 @@ import userWebsiteRoutes from "./routes/user/website";
 import locationRoutes from "./routes/locations";
 import mindsRoutes from "./routes/minds";
 import mindsPublicApiRoutes from "./routes/mindsPublicApi";
+import skillsPublicApiRoutes from "./routes/skillsPublicApi";
+import internalApiRoutes from "./routes/internalApi";
 import billingRoutes from "./routes/billing";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
@@ -174,7 +176,9 @@ app.use("/api/websites", websiteContactRoutes); // Public contact form for rende
 app.use("/api/user/website", userWebsiteRoutes); // User website management (DFY tier)
 app.use("/api/locations", locationRoutes); // Location management for multi-location orgs
 app.use("/api/admin/minds", mindsRoutes); // Minds MVP — AI chatbot profiles with knowledge sync
-app.use("/api/minds", mindsPublicApiRoutes); // Public skill execution API
+app.use("/api/minds", mindsPublicApiRoutes); // Public skill/portal API
+app.use("/api/skills", skillsPublicApiRoutes); // Public skill portal API
+app.use("/api/internal", internalApiRoutes); // Internal API for n8n workers
 app.use("/api/billing", billingRoutes); // Stripe billing & subscription management
 
 // Sentry error handler — must be after all routes and before other error handlers

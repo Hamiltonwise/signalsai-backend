@@ -63,6 +63,7 @@ mindsRoutes.patch("/:mindId/proposals/:proposalId", proposalsController.updatePr
 mindsRoutes.get("/:mindId/skills", skillsController.listSkills);
 mindsRoutes.post("/:mindId/skills/suggest", skillsController.suggestSkill);
 mindsRoutes.post("/:mindId/skill-builder/chat", skillsController.skillBuilderChat);
+mindsRoutes.post("/:mindId/skill-builder/chat/stream", skillsController.skillBuilderChatStream);
 mindsRoutes.post("/:mindId/skills", skillsController.createSkill);
 mindsRoutes.get("/:mindId/skills/:skillId", skillsController.getSkill);
 mindsRoutes.put("/:mindId/skills/:skillId", skillsController.updateSkill);
@@ -75,6 +76,7 @@ mindsRoutes.get("/:mindId/skills/:skillId/work-runs", workRunsController.listWor
 mindsRoutes.get("/:mindId/skills/:skillId/work-runs/:workRunId", workRunsController.getWorkRun);
 mindsRoutes.post("/:mindId/skills/:skillId/work-runs/:workRunId/approve", workRunsController.approveWorkRun);
 mindsRoutes.post("/:mindId/skills/:skillId/work-runs/:workRunId/reject", workRunsController.rejectWorkRun);
+mindsRoutes.delete("/:mindId/skills/:skillId/work-runs/:workRunId", workRunsController.deleteWorkRun);
 
 // Portal key management (admin)
 mindsRoutes.post("/:mindId/portal-key", portalController.generateMindPortalKey);

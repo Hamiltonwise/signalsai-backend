@@ -239,6 +239,42 @@ export async function streamNarration(
 }
 
 /**
+ * Generate 10-15 short first-person loading messages based on conversation content.
+ * Used during the reading phase so idle messages reflect what was actually discussed.
+ */
+export async function generatePreviewMessages(
+  mindName: string,
+  personalityPrompt: string,
+  conversationMessages: { role: string; content: string }[]
+): Promise<string[]> {
+  const client = getClient();
+
+  const transcript = conversationMessages
+    .map((m) => `${m.role}: ${m.content}`)
+    .join("\n")
+    .slice(0, 3000);
+
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 400,
+    system: `You are ${mindName}. ${personalityPrompt}\n\nYou are reading through a conversation you had with your parent. Generate 12 very short loading messages (5-10 words each) that reflect what you're actually learning from this conversation. Write in first person. Each message should reference a specific topic, fact, or preference from the conversation.\n\nExamples of good messages:\n- "Noting that blue buttons convert better..."\n- "Learning our refund policy details..."\n- "Remembering the brand voice rules..."\n- "Filing away the pricing tiers..."\n\nOutput ONLY the messages, one per line. No numbers, no bullets, no extra text.`,
+    messages: [
+      {
+        role: "user",
+        content: `Conversation transcript:\n${transcript}`,
+      },
+    ],
+  });
+
+  const text =
+    response.content[0].type === "text" ? response.content[0].text : "";
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && line.length < 80);
+}
+
+/**
  * Generate a short title for a parenting session based on what was discussed.
  * Fire-and-forget — caller should not await this in the critical path.
  */

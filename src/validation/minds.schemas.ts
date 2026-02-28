@@ -4,7 +4,7 @@ export const ProposalSchema = z
   .object({
     type: z.enum(["NEW", "UPDATE", "CONFLICT"]),
     summary: z.string().min(1),
-    target_excerpt: z.string().optional(),
+    target_excerpt: z.string().nullable().optional(),
     proposed_text: z.string().min(1),
     reason: z.string().min(1),
   })

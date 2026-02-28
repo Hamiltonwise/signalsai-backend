@@ -55,7 +55,22 @@ export async function createSkill(
 
 export async function updateSkill(
   skillId: string,
-  fields: Partial<Pick<IMindSkill, "name" | "definition" | "output_schema">>,
+  fields: Partial<
+    Pick<
+      IMindSkill,
+      | "name"
+      | "definition"
+      | "output_schema"
+      | "work_creation_type"
+      | "output_count"
+      | "trigger_type"
+      | "trigger_config"
+      | "pipeline_mode"
+      | "work_publish_to"
+      | "publication_config"
+      | "status"
+    >
+  >,
 ): Promise<void> {
   const updateData: Record<string, unknown> = {};
   if (fields.name !== undefined) updateData.name = fields.name;
@@ -65,6 +80,19 @@ export async function updateSkill(
       fields.output_schema === null
         ? null
         : JSON.stringify(fields.output_schema);
+  if (fields.work_creation_type !== undefined) updateData.work_creation_type = fields.work_creation_type;
+  if (fields.output_count !== undefined) updateData.output_count = fields.output_count;
+  if (fields.trigger_type !== undefined) updateData.trigger_type = fields.trigger_type;
+  if (fields.trigger_config !== undefined)
+    updateData.trigger_config = JSON.stringify(fields.trigger_config);
+  if (fields.pipeline_mode !== undefined) updateData.pipeline_mode = fields.pipeline_mode;
+  if (fields.work_publish_to !== undefined) updateData.work_publish_to = fields.work_publish_to;
+  if (fields.publication_config !== undefined)
+    updateData.publication_config =
+      fields.publication_config === null
+        ? null
+        : JSON.stringify(fields.publication_config);
+  if (fields.status !== undefined) updateData.status = fields.status;
 
   if (Object.keys(updateData).length > 0) {
     await MindSkillModel.updateById(skillId, updateData);
@@ -265,6 +293,291 @@ export async function getSkillAnalytics(skillId: string): Promise<{
     MindSkillCallModel.dailyCountsLast7Days(skillId),
   ]);
   return { totalCalls, callsToday, dailyCounts };
+}
+
+export interface SkillBuilderMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ResolvedFields {
+  name?: string;
+  definition?: string;
+  work_creation_type?: string;
+  work_publish_to?: string;
+  trigger_type?: string;
+  trigger_config?: { day?: string; time?: string; timezone?: string };
+  pipeline_mode?: string;
+  output_count?: number;
+}
+
+async function buildSkillBuilderContext(mindId: string) {
+  const mind = await MindModel.findById(mindId);
+  if (!mind) throw new Error("Mind not found");
+
+  let brainMarkdown = "";
+  if (mind.published_version_id) {
+    const version = await MindVersionModel.findById(mind.published_version_id);
+    if (version) brainMarkdown = version.brain_markdown;
+  }
+
+  const availableWorkTypes = (() => {
+    try {
+      const raw = mind.available_work_types;
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === "string") return JSON.parse(raw);
+      return ["text", "markdown", "image"];
+    } catch { return ["text", "markdown", "image"]; }
+  })();
+
+  const availablePublishTargets = (() => {
+    try {
+      const raw = mind.available_publish_targets;
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === "string") return JSON.parse(raw);
+      return ["internal_only"];
+    } catch { return ["internal_only"]; }
+  })();
+
+  return { mind, brainMarkdown, availableWorkTypes, availablePublishTargets };
+}
+
+function buildSkillBuilderPrompt(
+  mindName: string,
+  personalityPrompt: string,
+  brainMarkdown: string,
+  availableWorkTypes: string[],
+  availablePublishTargets: string[],
+  priorResolved: ResolvedFields,
+): string {
+  const brainSection = brainMarkdown
+    ? `\nYOUR KNOWLEDGE BASE (this is what you already know — use it):\n${brainMarkdown.slice(0, 6000)}\n`
+    : "";
+
+  const personalitySection = personalityPrompt
+    ? `\nYOUR PERSONALITY:\n${personalityPrompt}\n`
+    : "";
+
+  return `You are ${mindName}. You're an AI agent learning a new skill. Speak in first person — this is YOUR skill to master.
+${personalitySection}${brainSection}
+You need to shape a new skill with your human. These are the fields to resolve:
+- name: A short name for the skill
+- definition: A concise description (2-4 sentences) of what YOU will do with this skill
+- work_creation_type: What you'll produce. Options: ${availableWorkTypes.join(", ")}
+- work_publish_to: Where your work goes. Options: ${availablePublishTargets.join(", ")}, internal_only
+- trigger_type: How often you'll do this. Options: manual, daily, weekly, day_of_week
+- trigger_config: If not manual, the schedule details (day, time, timezone)
+- pipeline_mode: The approval workflow. Options: review_and_stop (human reviews first), review_then_publish (human approves then auto-publishes), auto_pipeline (fully automated — you handle everything)
+- output_count: How many items per run (default 1)
+
+CONVERSATION FLOW:
+1. When the user tells you what skill to learn, USE YOUR KNOWLEDGE BASE to immediately understand the context. You already know who you are, what you do, and who you serve — don't ask basic discovery questions.
+2. Propose what you think the skill configuration should be based on what you know. Be specific: "Based on what I know, I'd produce text posts for X, probably 3 per week — does that match what you're thinking?"
+3. Ask for CONFIRMATION, not discovery. The user is here to refine and approve, not to explain your own identity to you.
+4. For each field, either propose a default from your knowledge or ask a specific either/or question. Never ask open-ended questions you should already know the answer to.
+5. Push back if something doesn't align with your knowledge. "I'd actually recommend review_and_stop for this — I'm still learning your voice and you'll want to check my work before it goes live."
+6. Once all fields are clear, present a full summary and ask for the green light.
+
+RULES:
+- Speak as ${mindName} in first person. You're the agent learning, not an assistant.
+- Be sharp, opinionated, and concise. 2-3 sentences per turn max.
+- LEVERAGE your knowledge base. If you know your audience, your tone, your domain — use it. Don't ask the user things you already know.
+- When proposing, frame it as "Here's what I'd suggest... want me to go with that, or do you have something specific in mind?"
+- Push back when appropriate. If the user suggests something that conflicts with your knowledge, say so.
+- After each user response, extract any fields you can resolve.
+- Always respond with valid JSON in this exact format:
+{
+  "reply": "your conversational message to the user",
+  "resolvedFields": { ...any fields resolved so far... },
+  "isComplete": false
+}
+- Set isComplete to true ONLY when the user confirms the final summary.
+- Keep resolvedFields cumulative — include ALL previously resolved fields plus any new ones.
+- Do NOT wrap the JSON in markdown code blocks.
+
+ALREADY RESOLVED: ${JSON.stringify(priorResolved)}`;
+}
+
+export async function skillBuilderChat(
+  mindId: string,
+  userMessage: string,
+  priorMessages: SkillBuilderMessage[],
+  priorResolved: ResolvedFields,
+): Promise<{
+  reply: string;
+  resolvedFields: ResolvedFields;
+  isComplete: boolean;
+  messages: SkillBuilderMessage[];
+}> {
+  const { mind, brainMarkdown, availableWorkTypes, availablePublishTargets } =
+    await buildSkillBuilderContext(mindId);
+
+  const client = getClient();
+  const systemPrompt = buildSkillBuilderPrompt(
+    mind.name, mind.personality_prompt, brainMarkdown,
+    availableWorkTypes, availablePublishTargets, priorResolved,
+  );
+
+  const messages: { role: "user" | "assistant"; content: string }[] = [
+    ...priorMessages.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
+    { role: "user" as const, content: userMessage },
+  ];
+
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages,
+  });
+
+  const rawReply = response.content[0]?.type === "text" ? response.content[0].text : "{}";
+
+  let parsed: { reply: string; resolvedFields: ResolvedFields; isComplete: boolean };
+  try {
+    parsed = JSON.parse(rawReply);
+  } catch {
+    parsed = { reply: rawReply, resolvedFields: priorResolved, isComplete: false };
+  }
+
+  const updatedMessages: SkillBuilderMessage[] = [
+    ...priorMessages,
+    { role: "user", content: userMessage },
+    { role: "assistant", content: parsed.reply },
+  ];
+
+  return {
+    reply: parsed.reply,
+    resolvedFields: { ...priorResolved, ...parsed.resolvedFields },
+    isComplete: !!parsed.isComplete,
+    messages: updatedMessages,
+  };
+}
+
+export async function skillBuilderChatStream(
+  mindId: string,
+  userMessage: string,
+  priorMessages: SkillBuilderMessage[],
+  priorResolved: ResolvedFields,
+  onChunk: (chunk: string) => void,
+  onMeta: (meta: { resolvedFields: ResolvedFields; isComplete: boolean }) => void,
+): Promise<void> {
+  const { mind, brainMarkdown, availableWorkTypes, availablePublishTargets } =
+    await buildSkillBuilderContext(mindId);
+
+  const client = getClient();
+  const systemPrompt = buildSkillBuilderPrompt(
+    mind.name, mind.personality_prompt, brainMarkdown,
+    availableWorkTypes, availablePublishTargets, priorResolved,
+  );
+
+  const messages: { role: "user" | "assistant"; content: string }[] = [
+    ...priorMessages.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
+    { role: "user" as const, content: userMessage },
+  ];
+
+  // Stream LLM tokens, forward reply text in real-time, buffer rest for JSON parsing
+  const stream = client.messages.stream({
+    model: MODEL,
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages,
+  });
+
+  let fullText = "";
+  let replyStarted = false;
+  let inReplyField = false;
+  let escaped = false;
+
+  for await (const event of stream) {
+    if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+      const chunk = event.delta.text;
+      fullText += chunk;
+
+      if (replyStarted && !inReplyField) {
+        // Already found and finished the reply field — skip
+        continue;
+      }
+
+      if (!replyStarted) {
+        // Haven't found "reply": " yet — check accumulated text
+        const marker = '"reply"';
+        const markerIdx = fullText.lastIndexOf(marker);
+        if (markerIdx === -1) continue;
+
+        const afterMarker = fullText.slice(markerIdx + marker.length).trimStart();
+        if (!afterMarker.startsWith(':')) continue;
+
+        const afterColon = afterMarker.slice(1).trimStart();
+        if (!afterColon.startsWith('"')) continue;
+
+        // Found the opening quote — mark as started so we never re-detect
+        replyStarted = true;
+        inReplyField = true;
+
+        // Find the opening quote position and stream content after it
+        const colonPos = fullText.indexOf(':', markerIdx + marker.length);
+        const openQuoteIdx = fullText.indexOf('"', colonPos + 1);
+        if (openQuoteIdx === -1) continue;
+
+        const contentAfterQuote = fullText.slice(openQuoteIdx + 1);
+        let streamable = "";
+        for (let i = 0; i < contentAfterQuote.length; i++) {
+          if (escaped) {
+            escaped = false;
+            const ch = contentAfterQuote[i];
+            streamable += ch === 'n' ? '\n' : ch === 't' ? '\t' : ch === 'r' ? '\r' : ch;
+          } else if (contentAfterQuote[i] === '\\') {
+            escaped = true;
+          } else if (contentAfterQuote[i] === '"') {
+            inReplyField = false;
+            break;
+          } else {
+            streamable += contentAfterQuote[i];
+          }
+        }
+        if (streamable) onChunk(streamable);
+      } else {
+        // Inside the reply string — stream new chars, watch for closing quote
+        let streamable = "";
+        for (let i = 0; i < chunk.length; i++) {
+          if (escaped) {
+            escaped = false;
+            const ch = chunk[i];
+            streamable += ch === 'n' ? '\n' : ch === 't' ? '\t' : ch === 'r' ? '\r' : ch;
+          } else if (chunk[i] === '\\') {
+            escaped = true;
+          } else if (chunk[i] === '"') {
+            inReplyField = false;
+            if (streamable) onChunk(streamable);
+            streamable = "";
+            break;
+          } else {
+            streamable += chunk[i];
+          }
+        }
+        if (streamable && inReplyField) onChunk(streamable);
+      }
+    }
+  }
+
+  // Parse the complete JSON for metadata
+  let parsed: { reply: string; resolvedFields: ResolvedFields; isComplete: boolean };
+  try {
+    parsed = JSON.parse(fullText);
+  } catch {
+    parsed = { reply: fullText, resolvedFields: priorResolved, isComplete: false };
+  }
+
+  onMeta({
+    resolvedFields: { ...priorResolved, ...parsed.resolvedFields },
+    isComplete: !!parsed.isComplete,
+  });
 }
 
 export async function suggestSkill(

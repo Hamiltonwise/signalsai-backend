@@ -7,7 +7,7 @@ import { MindSyncRunModel } from "../../../models/MindSyncRunModel";
 import { MindSyncStepModel } from "../../../models/MindSyncStepModel";
 import { extractKnowledgeFromTranscript } from "./service.minds-extraction";
 import { compareContent } from "./service.minds-comparison";
-import { generateGreeting, generateSessionTitle, streamNarration } from "./service.minds-parenting-chat";
+import { generateGreeting, generateSessionTitle, generatePreviewMessages } from "./service.minds-parenting-chat";
 import { getMindsQueue } from "../../../workers/queues";
 
 const COMPILE_PUBLISH_STEPS = [
@@ -199,13 +199,16 @@ export async function triggerReadingStream(
 
   const messages = await MindParentingMessageModel.listBySession(sessionId);
 
-  // --- Narration 1: About to read ---
-  await streamNarration(
-    mind.name,
-    mind.personality_prompt,
-    "You're about to read through a conversation you just had with your parent to extract what they taught you. Narrate what you're about to do.",
-    (chunk) => onEvent({ type: "narration", text: chunk })
-  );
+  // --- Generate conversation-derived preview messages ---
+  const conversationMsgs = messages.map((m) => ({ role: m.role, content: m.content }));
+  try {
+    const previewMsgs = await generatePreviewMessages(
+      mind.name,
+      mind.personality_prompt,
+      conversationMsgs
+    );
+    onEvent({ type: "preview_messages", messages: previewMsgs });
+  } catch {} // non-critical, fallback idle messages exist on frontend
 
   onEvent({ type: "phase", phase: "extracting" });
 
@@ -233,14 +236,6 @@ export async function triggerReadingStream(
     return;
   }
 
-  // --- Narration 2: Found stuff, comparing ---
-  await streamNarration(
-    mind.name,
-    mind.personality_prompt,
-    "You just finished reading through the conversation and found some new things. Now you're about to compare them against what you already know. Narrate briefly.",
-    (chunk) => onEvent({ type: "narration", text: chunk })
-  );
-
   onEvent({ type: "phase", phase: "comparing" });
 
   // --- Comparison ---
@@ -262,14 +257,6 @@ export async function triggerReadingStream(
     onEvent({ type: "complete", proposalCount: 0, runId: "" });
     return;
   }
-
-  // --- Narration 3: Done, found proposals ---
-  await streamNarration(
-    mind.name,
-    mind.personality_prompt,
-    `You finished comparing and found ${proposals.length} thing${proposals.length === 1 ? "" : "s"} worth updating in your brain. Narrate what you found — keep it to one sentence.`,
-    (chunk) => onEvent({ type: "narration", text: chunk })
-  );
 
   // --- Store proposals ---
   const run = await MindSyncRunModel.createRun(mindId, "scrape_compare");
