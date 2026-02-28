@@ -89,7 +89,6 @@ mindsRoutes.post("/:mindId/parenting/sessions", parentingController.createSessio
 mindsRoutes.get("/:mindId/parenting/sessions", parentingController.listSessions);
 mindsRoutes.get("/:mindId/parenting/sessions/:sessionId", parentingController.getSession);
 mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/chat/stream", parentingController.chatStream);
-mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/trigger-reading", parentingController.triggerReading);
 mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/trigger-reading/stream", parentingController.triggerReadingStream);
 mindsRoutes.get("/:mindId/parenting/sessions/:sessionId/proposals", parentingController.getProposals);
 mindsRoutes.patch("/:mindId/parenting/sessions/:sessionId/proposals/:proposalId", parentingController.updateProposal);

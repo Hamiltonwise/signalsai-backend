@@ -88,17 +88,6 @@ export async function chatStream(req: Request, res: Response): Promise<any> {
   }
 }
 
-export async function triggerReading(req: Request, res: Response): Promise<any> {
-  try {
-    const { mindId, sessionId } = req.params;
-    const result = await parentingService.triggerReading(mindId, sessionId);
-    return res.json({ success: true, data: result });
-  } catch (error: any) {
-    console.error("[MINDS] Error triggering reading:", error);
-    return res.status(500).json({ error: error.message || "Failed to trigger reading" });
-  }
-}
-
 export async function triggerReadingStream(req: Request, res: Response): Promise<any> {
   try {
     const { mindId, sessionId } = req.params;
