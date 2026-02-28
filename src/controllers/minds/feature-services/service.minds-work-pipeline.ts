@@ -14,7 +14,7 @@ function getClient(): Anthropic {
 const N8N_WORK_CREATION_WEBHOOK = process.env.N8N_WORK_CREATION_WEBHOOK;
 const N8N_WORK_PUBLICATION_WEBHOOK = process.env.N8N_WORK_PUBLICATION_WEBHOOK;
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
-const APP_BASE_URL = process.env.APP_BASE_URL || "https://app.alloro.io";
+const APP_BASE_URL = process.env.APP_BASE_URL || "https://app.getalloro.com";
 
 /**
  * Fire the n8n Work Creation webhook for a work run.
