@@ -82,6 +82,26 @@ export async function listConversations(req: Request, res: Response): Promise<an
   }
 }
 
+export async function renameConversation(req: Request, res: Response): Promise<any> {
+  try {
+    const { mindId, conversationId } = req.params;
+    const { title } = req.body;
+
+    if (!title || typeof title !== "string") {
+      return res.status(400).json({ error: "title is required" });
+    }
+
+    await chatService.renameConversation(mindId, conversationId, title.trim());
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[MINDS] Error renaming conversation:", error);
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: error.message });
+    }
+    return res.status(500).json({ error: "Failed to rename conversation" });
+  }
+}
+
 export async function deleteConversation(req: Request, res: Response): Promise<any> {
   try {
     const { mindId, conversationId } = req.params;

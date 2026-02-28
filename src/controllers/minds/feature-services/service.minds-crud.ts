@@ -1,5 +1,8 @@
 import { MindModel, IMind } from "../../../models/MindModel";
-import { MindVersionModel, IMindVersion } from "../../../models/MindVersionModel";
+import {
+  MindVersionModel,
+  IMindVersion,
+} from "../../../models/MindVersionModel";
 import { MindSyncRunModel } from "../../../models/MindSyncRunModel";
 import { db } from "../../../database/connection";
 import { regenerateEmbeddings } from "./service.minds-embedding";
@@ -9,13 +12,17 @@ export async function listMinds(): Promise<IMind[]> {
   return MindModel.listAll();
 }
 
-export async function getMind(mindId: string): Promise<IMind & { published_version?: IMindVersion }> {
+export async function getMind(
+  mindId: string,
+): Promise<IMind & { published_version?: IMindVersion }> {
   const mind = await MindModel.findById(mindId);
   if (!mind) throw new Error("Mind not found");
 
   let published_version: IMindVersion | undefined;
   if (mind.published_version_id) {
-    published_version = await MindVersionModel.findById(mind.published_version_id);
+    published_version = await MindVersionModel.findById(
+      mind.published_version_id,
+    );
   }
 
   return { ...mind, published_version };
@@ -23,7 +30,7 @@ export async function getMind(mindId: string): Promise<IMind & { published_versi
 
 export async function createMind(
   name: string,
-  personalityPrompt: string
+  personalityPrompt: string,
 ): Promise<IMind> {
   const existing = await MindModel.findByName(name);
   if (existing) throw new Error("A mind with this name already exists");
@@ -33,7 +40,11 @@ export async function createMind(
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 
-  return MindModel.create({ name, slug, personality_prompt: personalityPrompt });
+  return MindModel.create({
+    name,
+    slug,
+    personality_prompt: personalityPrompt,
+  });
 }
 
 export async function deleteMind(mindId: string): Promise<void> {
@@ -52,7 +63,7 @@ export async function deleteMind(mindId: string): Promise<void> {
 
 export async function updateMind(
   mindId: string,
-  data: { name?: string; personality_prompt?: string }
+  data: { name?: string; personality_prompt?: string },
 ): Promise<IMind> {
   const mind = await MindModel.findById(mindId);
   if (!mind) throw new Error("Mind not found");
@@ -69,19 +80,24 @@ export async function updateMind(
 export async function updateBrain(
   mindId: string,
   brainMarkdown: string,
-  adminId?: string
+  adminId?: string,
 ): Promise<{ version: IMindVersion; warning?: string }> {
   const mind = await MindModel.findById(mindId);
   if (!mind) throw new Error("Mind not found");
 
   const version = await db.transaction(async (trx) => {
-    const v = await MindVersionModel.createVersion(mindId, brainMarkdown, adminId, trx);
+    const v = await MindVersionModel.createVersion(
+      mindId,
+      brainMarkdown,
+      adminId,
+      trx,
+    );
     await MindModel.setPublishedVersion(mindId, v.id, trx);
     return v;
   });
 
   console.log(
-    `[MINDS] Brain updated for mind ${mindId}: version ${version.version_number}, ${brainMarkdown.length} chars`
+    `[MINDS] Brain updated for mind ${mindId}: version ${version.version_number}, ${brainMarkdown.length} chars`,
   );
 
   // Regenerate RAG embeddings if brain is large enough
@@ -89,7 +105,10 @@ export async function updateBrain(
     try {
       await regenerateEmbeddings(mindId, version.id, brainMarkdown, mind.name);
     } catch (err) {
-      console.error("[MINDS] Embedding regeneration failed (non-blocking):", err);
+      console.error(
+        "[MINDS] Embedding regeneration failed (non-blocking):",
+        err,
+      );
       // Non-blocking — brain update still succeeds, RAG will fall back to full brain
     }
   }
@@ -103,25 +122,36 @@ export async function listVersions(mindId: string): Promise<IMindVersion[]> {
 
 export async function publishVersion(
   mindId: string,
-  versionId: string
+  versionId: string,
 ): Promise<void> {
   const mind = await MindModel.findById(mindId);
   if (!mind) throw new Error("Mind not found");
 
   const version = await MindVersionModel.findById(versionId);
   if (!version) throw new Error("Version not found");
-  if (version.mind_id !== mindId) throw new Error("Version does not belong to this mind");
+  if (version.mind_id !== mindId)
+    throw new Error("Version does not belong to this mind");
 
   await MindModel.setPublishedVersion(mindId, versionId);
-  console.log(`[MINDS] Published version ${version.version_number} for mind ${mindId}`);
+  console.log(
+    `[MINDS] Published version ${version.version_number} for mind ${mindId}`,
+  );
 
   // Regenerate RAG embeddings for the published version
   if (shouldUseRag(version.brain_markdown.length)) {
     try {
       const mind = await MindModel.findById(mindId);
-      await regenerateEmbeddings(mindId, versionId, version.brain_markdown, mind?.name || "Unknown");
+      await regenerateEmbeddings(
+        mindId,
+        versionId,
+        version.brain_markdown,
+        mind?.name || "Unknown",
+      );
     } catch (err) {
-      console.error("[MINDS] Embedding regeneration failed (non-blocking):", err);
+      console.error(
+        "[MINDS] Embedding regeneration failed (non-blocking):",
+        err,
+      );
     }
   }
 }

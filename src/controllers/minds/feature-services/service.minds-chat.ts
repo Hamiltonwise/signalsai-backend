@@ -282,6 +282,17 @@ export async function listConversations(
   return MindConversationModel.listByMind(mindId);
 }
 
+export async function renameConversation(
+  mindId: string,
+  conversationId: string,
+  title: string
+): Promise<void> {
+  const conv = await MindConversationModel.findById(conversationId);
+  if (!conv || conv.mind_id !== mindId) throw new Error("Conversation not found");
+
+  await MindConversationModel.updateTitle(conversationId, title);
+}
+
 export async function deleteConversation(
   mindId: string,
   conversationId: string

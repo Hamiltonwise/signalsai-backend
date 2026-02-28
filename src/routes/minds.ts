@@ -30,6 +30,7 @@ mindsRoutes.post("/:mindId/chat", chatController.chat);
 mindsRoutes.post("/:mindId/chat/stream", chatController.chatStream);
 mindsRoutes.get("/:mindId/conversations", chatController.listConversations);
 mindsRoutes.get("/:mindId/conversations/:conversationId", chatController.getConversation);
+mindsRoutes.patch("/:mindId/conversations/:conversationId", chatController.renameConversation);
 mindsRoutes.delete("/:mindId/conversations/:conversationId", chatController.deleteConversation);
 
 // Sources
