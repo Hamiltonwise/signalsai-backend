@@ -7,7 +7,7 @@ import { MindSyncRunModel } from "../../../models/MindSyncRunModel";
 import { MindSyncStepModel } from "../../../models/MindSyncStepModel";
 import { extractKnowledgeFromTranscript } from "./service.minds-extraction";
 import { compareContent } from "./service.minds-comparison";
-import { generateGreeting } from "./service.minds-parenting-chat";
+import { generateGreeting, generateSessionTitle } from "./service.minds-parenting-chat";
 import { getMindsQueue } from "../../../workers/queues";
 
 const COMPILE_PUBLISH_STEPS = [
@@ -228,6 +228,8 @@ export async function startCompile(
 export async function completeSession(
   sessionId: string
 ): Promise<void> {
+  const session = await MindParentingSessionModel.findById(sessionId);
+
   await MindParentingSessionModel.updateStatus(sessionId, "completed");
   await MindParentingSessionModel.setResult(sessionId, "learned");
 
@@ -236,6 +238,11 @@ export async function completeSession(
     "assistant",
     "All done! My brain just got an upgrade. Thanks for the lesson — I'll put it to good use. Now if you'll excuse me, I have some neurons to reorganize. Session complete! 🧠✨"
   );
+
+  // Fire-and-forget title generation
+  if (session?.knowledge_buffer) {
+    generateSessionTitle(sessionId, session.knowledge_buffer).catch(() => {});
+  }
 }
 
 /**
