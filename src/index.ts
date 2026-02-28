@@ -86,6 +86,7 @@ app.use((req, res, next) => {
     "http://127.0.0.1:5174",
     "http://127.0.0.1:7777",
     "https://audit.getalloro.com",
+    "https://n8n.getalloro.com",
     "https://getalloro.com",
     "https://www.getalloro.com",
   ];
