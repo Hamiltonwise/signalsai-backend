@@ -99,6 +99,58 @@ export async function triggerReading(req: Request, res: Response): Promise<any> 
   }
 }
 
+export async function triggerReadingStream(req: Request, res: Response): Promise<any> {
+  try {
+    const { mindId, sessionId } = req.params;
+
+    // SSE headers
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    await parentingService.triggerReadingStream(
+      mindId,
+      sessionId,
+      (event) => {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+    );
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (error: any) {
+    console.error("[MINDS] Error in reading stream:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: error.message || "Reading failed" });
+    }
+    res.write(`data: ${JSON.stringify({ type: "error", error: error.message })}\n\n`);
+    res.write("data: [DONE]\n\n");
+    res.end();
+  }
+}
+
+export async function updateSession(req: Request, res: Response): Promise<any> {
+  try {
+    const { sessionId } = req.params;
+    const { title } = req.body;
+
+    if (typeof title !== "string" || title.trim().length === 0) {
+      return res.status(400).json({ error: "Title is required" });
+    }
+
+    if (title.length > 100) {
+      return res.status(400).json({ error: "Title must be under 100 characters" });
+    }
+
+    await MindParentingSessionModel.updateTitle(sessionId, title.trim());
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[MINDS] Error updating session:", error);
+    return res.status(500).json({ error: "Failed to update session" });
+  }
+}
+
 export async function getProposals(req: Request, res: Response): Promise<any> {
   try {
     const { sessionId } = req.params;

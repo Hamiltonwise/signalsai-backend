@@ -8,7 +8,10 @@ import * as discoveryController from "../controllers/minds/MindsDiscoveryControl
 import * as syncController from "../controllers/minds/MindsSyncController";
 import * as proposalsController from "../controllers/minds/MindsProposalsController";
 import * as skillsController from "../controllers/minds/MindsSkillsController";
+import * as portalController from "../controllers/minds/MindsPortalController";
+import * as workRunsController from "../controllers/minds/MindsWorkRunsController";
 import * as parentingController from "../controllers/minds/MindsParentingController";
+import * as credentialsController from "../controllers/minds/MindsPlatformCredentialsController";
 
 const mindsRoutes = express.Router();
 
@@ -59,6 +62,7 @@ mindsRoutes.patch("/:mindId/proposals/:proposalId", proposalsController.updatePr
 // Skills
 mindsRoutes.get("/:mindId/skills", skillsController.listSkills);
 mindsRoutes.post("/:mindId/skills/suggest", skillsController.suggestSkill);
+mindsRoutes.post("/:mindId/skill-builder/chat", skillsController.skillBuilderChat);
 mindsRoutes.post("/:mindId/skills", skillsController.createSkill);
 mindsRoutes.get("/:mindId/skills/:skillId", skillsController.getSkill);
 mindsRoutes.put("/:mindId/skills/:skillId", skillsController.updateSkill);
@@ -66,6 +70,19 @@ mindsRoutes.delete("/:mindId/skills/:skillId", skillsController.deleteSkill);
 mindsRoutes.post("/:mindId/skills/:skillId/generate", skillsController.generateNeuron);
 mindsRoutes.get("/:mindId/skills/:skillId/neuron", skillsController.getSkillNeuron);
 mindsRoutes.get("/:mindId/skills/:skillId/analytics", skillsController.getSkillAnalytics);
+mindsRoutes.post("/:mindId/skills/:skillId/run", workRunsController.triggerManualRun);
+mindsRoutes.get("/:mindId/skills/:skillId/work-runs", workRunsController.listWorkRuns);
+mindsRoutes.get("/:mindId/skills/:skillId/work-runs/:workRunId", workRunsController.getWorkRun);
+mindsRoutes.post("/:mindId/skills/:skillId/work-runs/:workRunId/approve", workRunsController.approveWorkRun);
+mindsRoutes.post("/:mindId/skills/:skillId/work-runs/:workRunId/reject", workRunsController.rejectWorkRun);
+
+// Portal key management (admin)
+mindsRoutes.post("/:mindId/portal-key", portalController.generateMindPortalKey);
+mindsRoutes.post("/:mindId/skills/:skillId/portal-key", portalController.generateSkillPortalKey);
+
+// Test portals (admin — skips portal key, uses JWT auth)
+mindsRoutes.post("/:mindId/test-portal", portalController.testMindPortal);
+mindsRoutes.post("/:mindId/skills/:skillId/test-portal", portalController.testSkillPortal);
 
 // Parenting
 mindsRoutes.post("/:mindId/parenting/sessions", parentingController.createSession);
@@ -73,12 +90,21 @@ mindsRoutes.get("/:mindId/parenting/sessions", parentingController.listSessions)
 mindsRoutes.get("/:mindId/parenting/sessions/:sessionId", parentingController.getSession);
 mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/chat/stream", parentingController.chatStream);
 mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/trigger-reading", parentingController.triggerReading);
+mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/trigger-reading/stream", parentingController.triggerReadingStream);
 mindsRoutes.get("/:mindId/parenting/sessions/:sessionId/proposals", parentingController.getProposals);
 mindsRoutes.patch("/:mindId/parenting/sessions/:sessionId/proposals/:proposalId", parentingController.updateProposal);
 mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/compile", parentingController.startCompile);
 mindsRoutes.get("/:mindId/parenting/sessions/:sessionId/compile-status", parentingController.getCompileStatus);
 mindsRoutes.delete("/:mindId/parenting/sessions/:sessionId", parentingController.deleteSession);
 mindsRoutes.post("/:mindId/parenting/sessions/:sessionId/abandon", parentingController.abandonSession);
+mindsRoutes.patch("/:mindId/parenting/sessions/:sessionId", parentingController.updateSession);
+
+// Platform Credentials
+mindsRoutes.get("/:mindId/credentials", credentialsController.listCredentials);
+mindsRoutes.post("/:mindId/credentials", credentialsController.createCredential);
+mindsRoutes.put("/:mindId/credentials/:credentialId", credentialsController.updateCredential);
+mindsRoutes.delete("/:mindId/credentials/:credentialId", credentialsController.deleteCredential);
+mindsRoutes.post("/:mindId/credentials/:credentialId/revoke", credentialsController.revokeCredential);
 
 // Status
 mindsRoutes.get("/:mindId/status", syncController.getMindStatus);

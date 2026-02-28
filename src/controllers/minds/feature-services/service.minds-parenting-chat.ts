@@ -200,6 +200,45 @@ export async function chatStream(
 }
 
 /**
+ * Stream a short in-character narration from the mind.
+ * Used during the reading phase to give the user live feedback.
+ */
+export async function streamNarration(
+  mindName: string,
+  personalityPrompt: string,
+  instruction: string,
+  onChunk: (chunk: string) => void
+): Promise<string> {
+  const client = getClient();
+
+  const stream = client.messages.stream({
+    model: MODEL,
+    max_tokens: 150,
+    system: `You are ${mindName}. ${personalityPrompt}\n\nYou are in the middle of a learning session with your parent. Narrate your thoughts briefly — 1-2 short sentences max. Stay in character. Be warm and playful.`,
+    messages: [
+      {
+        role: "user",
+        content: instruction,
+      },
+    ],
+  });
+
+  let fullText = "";
+
+  for await (const event of stream) {
+    if (
+      event.type === "content_block_delta" &&
+      event.delta.type === "text_delta"
+    ) {
+      fullText += event.delta.text;
+      onChunk(event.delta.text);
+    }
+  }
+
+  return fullText;
+}
+
+/**
  * Generate a short title for a parenting session based on what was discussed.
  * Fire-and-forget — caller should not await this in the critical path.
  */

@@ -7,7 +7,7 @@ import { MindSyncRunModel } from "../../../models/MindSyncRunModel";
 import { MindSyncStepModel } from "../../../models/MindSyncStepModel";
 import { extractKnowledgeFromTranscript } from "./service.minds-extraction";
 import { compareContent } from "./service.minds-comparison";
-import { generateGreeting, generateSessionTitle } from "./service.minds-parenting-chat";
+import { generateGreeting, generateSessionTitle, streamNarration } from "./service.minds-parenting-chat";
 import { getMindsQueue } from "../../../workers/queues";
 
 const COMPILE_PUBLISH_STEPS = [
@@ -168,6 +168,137 @@ export async function triggerReading(
   );
 
   return { proposalCount: proposals.length, runId: run.id };
+}
+
+/**
+ * Streaming version of triggerReading.
+ * Sends SSE events: narration chunks, phase transitions, and completion.
+ */
+export async function triggerReadingStream(
+  mindId: string,
+  sessionId: string,
+  onEvent: (event: { type: string; [key: string]: any }) => void
+): Promise<void> {
+  const session = await MindParentingSessionModel.findById(sessionId);
+  if (!session) throw new Error("Session not found");
+  if (session.status !== "chatting") {
+    throw new Error("Session must be in chatting state to trigger reading");
+  }
+
+  await MindParentingSessionModel.updateStatus(sessionId, "reading");
+
+  const mind = await MindModel.findById(mindId);
+  if (!mind) throw new Error("Mind not found");
+
+  // Load current brain
+  let currentBrain = "";
+  if (mind.published_version_id) {
+    const version = await MindVersionModel.findById(mind.published_version_id);
+    if (version) currentBrain = version.brain_markdown;
+  }
+
+  const messages = await MindParentingMessageModel.listBySession(sessionId);
+
+  // --- Narration 1: About to read ---
+  await streamNarration(
+    mind.name,
+    mind.personality_prompt,
+    "You're about to read through a conversation you just had with your parent to extract what they taught you. Narrate what you're about to do.",
+    (chunk) => onEvent({ type: "narration", text: chunk })
+  );
+
+  onEvent({ type: "phase", phase: "extracting" });
+
+  // --- Extraction ---
+  const extractedKnowledge = await extractKnowledgeFromTranscript(
+    messages.map((m) => ({ role: m.role, content: m.content })),
+    session.knowledge_buffer,
+    { source: "parenting" }
+  );
+
+  if (extractedKnowledge === "EMPTY" || !extractedKnowledge.trim()) {
+    await MindParentingSessionModel.updateStatus(sessionId, "completed");
+    await MindParentingSessionModel.setResult(sessionId, "no_changes");
+    await MindParentingMessageModel.createMessage(
+      sessionId,
+      "assistant",
+      "I went through everything we discussed, and it looks like I already know all of this! Nothing new to add. Session complete — back to my room! 🎮"
+    );
+
+    if (session.knowledge_buffer) {
+      generateSessionTitle(sessionId, session.knowledge_buffer).catch(() => {});
+    }
+
+    onEvent({ type: "complete", proposalCount: 0, runId: "" });
+    return;
+  }
+
+  // --- Narration 2: Found stuff, comparing ---
+  await streamNarration(
+    mind.name,
+    mind.personality_prompt,
+    "You just finished reading through the conversation and found some new things. Now you're about to compare them against what you already know. Narrate briefly.",
+    (chunk) => onEvent({ type: "narration", text: chunk })
+  );
+
+  onEvent({ type: "phase", phase: "comparing" });
+
+  // --- Comparison ---
+  const proposals = await compareContent(mindId, currentBrain, extractedKnowledge, { source: "parenting" });
+
+  if (proposals.length === 0) {
+    await MindParentingSessionModel.updateStatus(sessionId, "completed");
+    await MindParentingSessionModel.setResult(sessionId, "no_changes");
+    await MindParentingMessageModel.createMessage(
+      sessionId,
+      "assistant",
+      "I studied everything you shared, but my brain already has all of this covered. No updates needed! Session complete. ✌️"
+    );
+
+    if (session.knowledge_buffer) {
+      generateSessionTitle(sessionId, session.knowledge_buffer).catch(() => {});
+    }
+
+    onEvent({ type: "complete", proposalCount: 0, runId: "" });
+    return;
+  }
+
+  // --- Narration 3: Done, found proposals ---
+  await streamNarration(
+    mind.name,
+    mind.personality_prompt,
+    `You finished comparing and found ${proposals.length} thing${proposals.length === 1 ? "" : "s"} worth updating in your brain. Narrate what you found — keep it to one sentence.`,
+    (chunk) => onEvent({ type: "narration", text: chunk })
+  );
+
+  // --- Store proposals ---
+  const run = await MindSyncRunModel.createRun(mindId, "scrape_compare");
+  await MindSyncRunModel.markRunning(run.id);
+
+  for (const p of proposals) {
+    await MindSyncProposalModel.create({
+      sync_run_id: run.id,
+      mind_id: mindId,
+      type: p.type,
+      summary: p.summary,
+      target_excerpt: p.target_excerpt || null,
+      proposed_text: p.proposed_text,
+      reason: p.reason,
+      status: "pending",
+    });
+  }
+
+  await MindSyncRunModel.markCompleted(run.id);
+  await MindParentingSessionModel.setSyncRunId(sessionId, run.id);
+  await MindParentingSessionModel.updateStatus(sessionId, "proposals");
+
+  await MindParentingMessageModel.createMessage(
+    sessionId,
+    "assistant",
+    `I've finished reading! Found ${proposals.length} thing${proposals.length === 1 ? "" : "s"} to review. Take a look at what I picked up — approve or reject each one, then hit Submit.`
+  );
+
+  onEvent({ type: "complete", proposalCount: proposals.length, runId: run.id });
 }
 
 /**
