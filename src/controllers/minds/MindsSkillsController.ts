@@ -61,8 +61,7 @@ export async function updateSkill(req: Request, res: Response): Promise<any> {
       trigger_type,
       trigger_config,
       pipeline_mode,
-      work_publish_to,
-      publication_config,
+      publish_channel_id,
       status,
     } = req.body;
 
@@ -78,8 +77,7 @@ export async function updateSkill(req: Request, res: Response): Promise<any> {
       trigger_type,
       trigger_config,
       pipeline_mode,
-      work_publish_to,
-      publication_config,
+      publish_channel_id,
       status,
     });
 

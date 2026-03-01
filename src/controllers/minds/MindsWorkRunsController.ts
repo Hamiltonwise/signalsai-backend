@@ -6,6 +6,7 @@ import {
 } from "../../models/SkillWorkRunModel";
 import { fireWorkCreationWebhook } from "./feature-services/service.minds-work-pipeline";
 import { generateEmbedding } from "./feature-services/service.minds-embedding";
+import { PublishChannelModel } from "../../models/PublishChannelModel";
 
 /**
  * POST /:mindId/skills/:skillId/run — manually trigger a skill work run
@@ -108,22 +109,23 @@ export async function approveWorkRun(
     approved_at: new Date(),
   });
 
-  // Check if publication should be triggered
+  // Check if publication should be triggered via publish channel
   const skill = await MindSkillModel.findById(run.skill_id);
   if (
     skill &&
     (skill.pipeline_mode === "review_then_publish" ||
       skill.pipeline_mode === "auto_pipeline") &&
-    skill.work_publish_to &&
-    skill.work_publish_to !== "internal_only"
+    skill.publish_channel_id
   ) {
-    // Import dynamically to avoid circular deps
-    const { fireWorkPublicationWebhook } = await import(
-      "./feature-services/service.minds-work-pipeline"
-    );
-    fireWorkPublicationWebhook(workRunId, skill, run).catch((err) => {
-      console.error("[WORK-RUNS] Failed to fire publication webhook:", err);
-    });
+    const channel = await PublishChannelModel.findById(skill.publish_channel_id);
+    if (channel && channel.status === "active") {
+      const { fireWorkPublicationWebhook } = await import(
+        "./feature-services/service.minds-work-pipeline"
+      );
+      fireWorkPublicationWebhook(workRunId, skill, run, channel.webhook_url).catch((err) => {
+        console.error("[WORK-RUNS] Failed to fire publication webhook:", err);
+      });
+    }
   }
 
   // Generate embedding for dedup (async, non-blocking)

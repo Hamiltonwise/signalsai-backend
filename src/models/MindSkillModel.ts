@@ -4,14 +4,6 @@ export type SkillStatus = "draft" | "ready" | "active" | "paused" | "generating"
 export type TriggerType = "manual" | "daily" | "weekly" | "day_of_week";
 export type PipelineMode = "review_and_stop" | "review_then_publish" | "auto_pipeline";
 export type WorkCreationType = "text" | "markdown" | "image" | "video" | "pdf" | "docx" | "audio";
-export type PublishTarget =
-  | "post_to_x"
-  | "post_to_instagram"
-  | "post_to_facebook"
-  | "post_to_youtube"
-  | "post_to_gbp"
-  | "internal_only";
-
 export interface TriggerConfig {
   day?: string;
   time?: string;
@@ -31,8 +23,7 @@ export interface IMindSkill {
   trigger_type: TriggerType;
   trigger_config: TriggerConfig;
   pipeline_mode: PipelineMode;
-  work_publish_to: PublishTarget | null;
-  publication_config: object | null;
+  publish_channel_id: string | null;
   portal_key_hash: string | null;
   last_run_at: Date | null;
   next_run_at: Date | null;
@@ -46,7 +37,6 @@ export class MindSkillModel extends BaseModel {
   protected static jsonFields = [
     "output_schema",
     "trigger_config",
-    "publication_config",
   ];
 
   static async listByMind(

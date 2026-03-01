@@ -66,8 +66,7 @@ export async function updateSkill(
       | "trigger_type"
       | "trigger_config"
       | "pipeline_mode"
-      | "work_publish_to"
-      | "publication_config"
+      | "publish_channel_id"
       | "status"
     >
   >,
@@ -86,12 +85,7 @@ export async function updateSkill(
   if (fields.trigger_config !== undefined)
     updateData.trigger_config = JSON.stringify(fields.trigger_config);
   if (fields.pipeline_mode !== undefined) updateData.pipeline_mode = fields.pipeline_mode;
-  if (fields.work_publish_to !== undefined) updateData.work_publish_to = fields.work_publish_to;
-  if (fields.publication_config !== undefined)
-    updateData.publication_config =
-      fields.publication_config === null
-        ? null
-        : JSON.stringify(fields.publication_config);
+  if (fields.publish_channel_id !== undefined) updateData.publish_channel_id = fields.publish_channel_id;
   if (fields.status !== undefined) updateData.status = fields.status;
 
   if (Object.keys(updateData).length > 0) {

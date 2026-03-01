@@ -12,11 +12,18 @@ import * as portalController from "../controllers/minds/MindsPortalController";
 import * as workRunsController from "../controllers/minds/MindsWorkRunsController";
 import * as parentingController from "../controllers/minds/MindsParentingController";
 import * as credentialsController from "../controllers/minds/MindsPlatformCredentialsController";
+import * as publishChannelsController from "../controllers/minds/MindsPublishChannelsController";
 
 const mindsRoutes = express.Router();
 
 // All minds routes require super admin
 mindsRoutes.use(authenticateToken, superAdminMiddleware);
+
+// Publish Channels (global, not per-mind — must be before /:mindId routes)
+mindsRoutes.get("/publish-channels", publishChannelsController.listChannels);
+mindsRoutes.post("/publish-channels", publishChannelsController.createChannel);
+mindsRoutes.put("/publish-channels/:channelId", publishChannelsController.updateChannel);
+mindsRoutes.delete("/publish-channels/:channelId", publishChannelsController.deleteChannel);
 
 // Minds CRUD
 mindsRoutes.get("/", mindsController.listMinds);

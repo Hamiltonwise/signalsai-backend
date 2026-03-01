@@ -3,6 +3,7 @@ import { MindModel } from "../../../models/MindModel";
 import { MindSkillModel, IMindSkill } from "../../../models/MindSkillModel";
 import { SkillWorkRunModel, ISkillWorkRun } from "../../../models/SkillWorkRunModel";
 import { generateEmbedding } from "./service.minds-embedding";
+import { PublishChannelModel } from "../../../models/PublishChannelModel";
 
 const SAFETY_MODEL = process.env.MINDS_LLM_MODEL || "claude-sonnet-4-6";
 let anthropicClient: Anthropic | null = null;
@@ -12,7 +13,6 @@ function getClient(): Anthropic {
 }
 
 const N8N_WORK_CREATION_WEBHOOK = process.env.N8N_WORK_CREATION_WEBHOOK;
-const N8N_WORK_PUBLICATION_WEBHOOK = process.env.N8N_WORK_PUBLICATION_WEBHOOK;
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 const APP_BASE_URL = process.env.APP_BASE_URL || "https://app.getalloro.com";
 
@@ -42,7 +42,6 @@ export async function fireWorkCreationWebhook(
     skill_definition: skill.definition,
     output_count: skill.output_count || 1,
     work_creation_type: skill.work_creation_type,
-    work_publish_to: skill.work_publish_to || "internal_only",
     pipeline_mode: skill.pipeline_mode,
     mind_portal_url: `${APP_BASE_URL}/api/minds/${mind.slug}/portal`,
     skill_portal_url: `${APP_BASE_URL}/api/skills/${skill.slug}/portal`,
@@ -74,12 +73,9 @@ export async function fireWorkCreationWebhook(
 export async function fireWorkPublicationWebhook(
   workRunId: string,
   skill: IMindSkill,
-  workRun: ISkillWorkRun
+  workRun: ISkillWorkRun,
+  webhookUrl: string,
 ): Promise<void> {
-  if (!N8N_WORK_PUBLICATION_WEBHOOK) {
-    throw new Error("N8N_WORK_PUBLICATION_WEBHOOK not configured");
-  }
-
   const payload = {
     work_run_id: workRunId,
     artifact_url: workRun.artifact_url,
@@ -87,13 +83,12 @@ export async function fireWorkPublicationWebhook(
     artifact_type: workRun.artifact_type,
     title: workRun.title,
     description: workRun.description,
-    work_publish_to: skill.work_publish_to,
-    publication_config: skill.publication_config || {},
+    skill_name: skill.name,
     internal_update_url: `${APP_BASE_URL}/api/internal/skill-work-runs/${workRunId}`,
     internal_key: INTERNAL_API_KEY,
   };
 
-  const response = await fetch(N8N_WORK_PUBLICATION_WEBHOOK, {
+  const response = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -101,12 +96,12 @@ export async function fireWorkPublicationWebhook(
 
   if (!response.ok) {
     throw new Error(
-      `n8n publication webhook returned ${response.status}: ${await response.text()}`
+      `Publication webhook to ${webhookUrl} returned ${response.status}: ${await response.text()}`
     );
   }
 
   console.log(
-    `[WORK-PIPELINE] Publication webhook fired for run ${workRunId}`
+    `[WORK-PIPELINE] Publication webhook fired for run ${workRunId} → ${webhookUrl}`
   );
 }
 
@@ -217,22 +212,22 @@ export async function evaluateAutoPipeline(
       .catch((err) => console.error("[AUTO-PIPELINE] Embedding generation failed:", err));
   }
 
-  // If pipeline includes publication, fire publication webhook
-  if (
-    skill.work_publish_to &&
-    skill.work_publish_to !== "internal_only"
-  ) {
-    try {
-      const updatedRun = await SkillWorkRunModel.findById(workRunId);
-      if (updatedRun) {
-        await SkillWorkRunModel.updateStatus(workRunId, "publishing");
-        await fireWorkPublicationWebhook(workRunId, skill, updatedRun);
+  // If pipeline includes publication, fire publish channel webhook
+  if (skill.publish_channel_id) {
+    const channel = await PublishChannelModel.findById(skill.publish_channel_id);
+    if (channel && channel.status === "active") {
+      try {
+        const updatedRun = await SkillWorkRunModel.findById(workRunId);
+        if (updatedRun) {
+          await SkillWorkRunModel.updateStatus(workRunId, "publishing");
+          await fireWorkPublicationWebhook(workRunId, skill, updatedRun, channel.webhook_url);
+        }
+      } catch (err) {
+        console.error(`[AUTO-PIPELINE] Publication webhook failed for run ${workRunId}:`, err);
+        await SkillWorkRunModel.updateStatus(workRunId, "failed", {
+          error: `Auto-publication failed: ${(err as Error).message}`,
+        });
       }
-    } catch (err) {
-      console.error(`[AUTO-PIPELINE] Publication webhook failed for run ${workRunId}:`, err);
-      await SkillWorkRunModel.updateStatus(workRunId, "failed", {
-        error: `Auto-publication failed: ${(err as Error).message}`,
-      });
     }
   }
 }
