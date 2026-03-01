@@ -45,6 +45,14 @@ export class MindSkillNeuronModel extends BaseModel {
     return row;
   }
 
+  static async findBySkillIds(
+    skillIds: string[],
+    trx?: QueryContext,
+  ): Promise<IMindSkillNeuron[]> {
+    if (skillIds.length === 0) return [];
+    return this.table(trx).whereIn("skill_id", skillIds);
+  }
+
   static async deleteBySkill(
     skillId: string,
     trx?: QueryContext,

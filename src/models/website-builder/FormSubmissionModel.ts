@@ -9,6 +9,8 @@ export interface IFormSubmission {
   recipients_sent_to: string[];
   submitted_at: Date;
   is_read: boolean;
+  sender_ip?: string;
+  content_hash?: string;
 }
 
 export class FormSubmissionModel extends BaseModel {
@@ -74,5 +76,33 @@ export class FormSubmissionModel extends BaseModel {
     trx?: QueryContext,
   ): Promise<number> {
     return this.table(trx).where("id", id).del();
+  }
+
+  static async countRecentByIp(
+    senderIp: string,
+    windowMinutes: number,
+    trx?: QueryContext,
+  ): Promise<number> {
+    const result = await this.table(trx)
+      .where("sender_ip", senderIp)
+      .where("submitted_at", ">=", new Date(Date.now() - windowMinutes * 60_000))
+      .count("* as count")
+      .first();
+    return parseInt(result?.count as string, 10) || 0;
+  }
+
+  static async countRecentByContentHash(
+    projectId: string,
+    contentHash: string,
+    windowMinutes: number,
+    trx?: QueryContext,
+  ): Promise<number> {
+    const result = await this.table(trx)
+      .where("project_id", projectId)
+      .where("content_hash", contentHash)
+      .where("submitted_at", ">=", new Date(Date.now() - windowMinutes * 60_000))
+      .count("* as count")
+      .first();
+    return parseInt(result?.count as string, 10) || 0;
   }
 }

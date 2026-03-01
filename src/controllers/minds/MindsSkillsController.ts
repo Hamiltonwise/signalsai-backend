@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { MindModel } from "../../models/MindModel";
 import { MindSkillModel } from "../../models/MindSkillModel";
 import { MindSkillNeuronModel } from "../../models/MindSkillNeuronModel";
 import * as skillsService from "./feature-services/service.minds-skills";
@@ -7,7 +8,24 @@ export async function listSkills(req: Request, res: Response): Promise<any> {
   try {
     const { mindId } = req.params;
     const skills = await MindSkillModel.listByMind(mindId);
-    return res.json({ success: true, data: skills });
+
+    // Enrich with stale status
+    const mind = await MindModel.findById(mindId);
+    const publishedVersionId = mind?.published_version_id || null;
+    const skillIds = skills.map((s: any) => s.id);
+    const neurons = await MindSkillNeuronModel.findBySkillIds(skillIds);
+    const neuronMap = new Map(neurons.map((n) => [n.skill_id, n]));
+
+    const enriched = skills.map((skill: any) => {
+      const neuron = neuronMap.get(skill.id);
+      return {
+        ...skill,
+        has_neuron: !!neuron,
+        is_neuron_stale: !!neuron && !!publishedVersionId && neuron.mind_version_id !== publishedVersionId,
+      };
+    });
+
+    return res.json({ success: true, data: enriched });
   } catch (error: any) {
     console.error("[MINDS] Error listing skills:", error);
     return res.status(500).json({ error: "Failed to list skills" });
@@ -220,6 +238,50 @@ export async function skillBuilderChatStream(
     }
     res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
     res.end();
+  }
+}
+
+export async function regenerateStaleNeurons(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const { mindId } = req.params;
+    const mind = await MindModel.findById(mindId);
+    if (!mind) return res.status(404).json({ error: "Mind not found" });
+    if (!mind.published_version_id) {
+      return res.status(400).json({ error: "Mind has no published brain" });
+    }
+
+    const skills = await MindSkillModel.listByMind(mindId);
+    const skillIds = skills.map((s: any) => s.id);
+    const neurons = await MindSkillNeuronModel.findBySkillIds(skillIds);
+    const staleSkillIds = neurons
+      .filter((n) => n.mind_version_id !== mind.published_version_id)
+      .map((n) => n.skill_id);
+
+    if (staleSkillIds.length === 0) {
+      return res.json({ success: true, data: { regeneratedCount: 0, failedCount: 0, errors: [] } });
+    }
+
+    let regeneratedCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
+    for (const skillId of staleSkillIds) {
+      try {
+        await skillsService.generateNeuron(skillId);
+        regeneratedCount++;
+      } catch (err: any) {
+        failedCount++;
+        errors.push(`${skillId}: ${err.message}`);
+      }
+    }
+
+    return res.json({ success: true, data: { regeneratedCount, failedCount, errors } });
+  } catch (error: any) {
+    console.error("[MINDS] Error regenerating stale neurons:", error);
+    return res.status(500).json({ error: "Failed to regenerate stale neurons" });
   }
 }
 

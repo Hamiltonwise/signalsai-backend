@@ -13,6 +13,7 @@ import * as workRunsController from "../controllers/minds/MindsWorkRunsControlle
 import * as parentingController from "../controllers/minds/MindsParentingController";
 import * as credentialsController from "../controllers/minds/MindsPlatformCredentialsController";
 import * as publishChannelsController from "../controllers/minds/MindsPublishChannelsController";
+import * as skillUpgradeController from "../controllers/minds/MindsSkillUpgradeController";
 
 const mindsRoutes = express.Router();
 
@@ -71,6 +72,7 @@ mindsRoutes.get("/:mindId/skills", skillsController.listSkills);
 mindsRoutes.post("/:mindId/skills/suggest", skillsController.suggestSkill);
 mindsRoutes.post("/:mindId/skill-builder/chat", skillsController.skillBuilderChat);
 mindsRoutes.post("/:mindId/skill-builder/chat/stream", skillsController.skillBuilderChatStream);
+mindsRoutes.post("/:mindId/skills/regenerate-stale", skillsController.regenerateStaleNeurons);
 mindsRoutes.post("/:mindId/skills", skillsController.createSkill);
 mindsRoutes.get("/:mindId/skills/:skillId", skillsController.getSkill);
 mindsRoutes.put("/:mindId/skills/:skillId", skillsController.updateSkill);
@@ -84,6 +86,20 @@ mindsRoutes.get("/:mindId/skills/:skillId/work-runs/:workRunId", workRunsControl
 mindsRoutes.post("/:mindId/skills/:skillId/work-runs/:workRunId/approve", workRunsController.approveWorkRun);
 mindsRoutes.post("/:mindId/skills/:skillId/work-runs/:workRunId/reject", workRunsController.rejectWorkRun);
 mindsRoutes.delete("/:mindId/skills/:skillId/work-runs/:workRunId", workRunsController.deleteWorkRun);
+
+// Skill Upgrade Sessions
+mindsRoutes.post("/:mindId/skills/:skillId/upgrade/sessions", skillUpgradeController.createSession);
+mindsRoutes.get("/:mindId/skills/:skillId/upgrade/sessions", skillUpgradeController.listSessions);
+mindsRoutes.get("/:mindId/skills/:skillId/upgrade/sessions/:sessionId", skillUpgradeController.getSession);
+mindsRoutes.post("/:mindId/skills/:skillId/upgrade/sessions/:sessionId/chat/stream", skillUpgradeController.chatStream);
+mindsRoutes.post("/:mindId/skills/:skillId/upgrade/sessions/:sessionId/trigger-reading/stream", skillUpgradeController.triggerReadingStream);
+mindsRoutes.get("/:mindId/skills/:skillId/upgrade/sessions/:sessionId/proposals", skillUpgradeController.getProposals);
+mindsRoutes.patch("/:mindId/skills/:skillId/upgrade/sessions/:sessionId/proposals/:proposalId", skillUpgradeController.updateProposal);
+mindsRoutes.post("/:mindId/skills/:skillId/upgrade/sessions/:sessionId/compile", skillUpgradeController.startCompile);
+mindsRoutes.get("/:mindId/skills/:skillId/upgrade/sessions/:sessionId/compile-status", skillUpgradeController.getCompileStatus);
+mindsRoutes.delete("/:mindId/skills/:skillId/upgrade/sessions/:sessionId", skillUpgradeController.deleteSession);
+mindsRoutes.post("/:mindId/skills/:skillId/upgrade/sessions/:sessionId/abandon", skillUpgradeController.abandonSession);
+mindsRoutes.patch("/:mindId/skills/:skillId/upgrade/sessions/:sessionId", skillUpgradeController.updateSession);
 
 // Portal key management (admin)
 mindsRoutes.post("/:mindId/portal-key", portalController.generateMindPortalKey);

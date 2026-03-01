@@ -1,8 +1,10 @@
 /**
  * Input sanitization utility for website contact form.
- * Strips HTML tags from user-provided strings.
+ * Uses sanitize-html to strip all HTML tags, attributes, and entities.
  */
 
+import sanitizeHtml from "sanitize-html";
+
 export function sanitize(str: string): string {
-  return str.replace(/<[^>]*>/g, "").trim();
+  return sanitizeHtml(str, { allowedTags: [], allowedAttributes: {} }).trim();
 }
