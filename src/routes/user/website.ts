@@ -73,6 +73,14 @@ userWebsiteRoutes.put(
 
 // Form submissions
 userWebsiteRoutes.get(
+  "/form-submissions/export",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.exportFormSubmissions
+);
+
+userWebsiteRoutes.get(
   "/form-submissions",
   authenticateToken,
   rbacMiddleware,
@@ -94,6 +102,14 @@ userWebsiteRoutes.patch(
   rbacMiddleware,
   requireRole("admin", "manager"),
   controller.toggleFormSubmissionRead
+);
+
+userWebsiteRoutes.delete(
+  "/form-submissions/:id",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.deleteFormSubmission
 );
 
 // Custom domain

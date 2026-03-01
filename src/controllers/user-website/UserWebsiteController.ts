@@ -356,7 +356,9 @@ export async function listFormSubmissions(
 
     const unreadCount = await FormSubmissionModel.countUnreadByProjectId(project.id);
 
-    return res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total }, unreadCount });
+    const totalPages = Math.ceil(result.total / limit);
+
+    return res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total, totalPages }, unreadCount });
   } catch (error) {
     return handleError(res, error, "Fetch form submissions");
   }
@@ -368,10 +370,16 @@ export async function getFormSubmission(
   res: Response
 ): Promise<Response> {
   try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const project = await ProjectModel.findByOrganizationId(orgId);
+    if (!project) return res.status(404).json({ error: "No website found" });
+
     const { id } = req.params;
     const submission = await FormSubmissionModel.findById(id);
 
-    if (!submission) {
+    if (!submission || submission.project_id !== project.id) {
       return res.status(404).json({ error: "Submission not found" });
     }
 
@@ -456,9 +464,19 @@ export async function toggleFormSubmissionRead(
   res: Response
 ): Promise<Response> {
   try {
-    const { id } = req.params;
-    const { is_read } = req.body;
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
 
+    const project = await ProjectModel.findByOrganizationId(orgId);
+    if (!project) return res.status(404).json({ error: "No website found" });
+
+    const { id } = req.params;
+    const submission = await FormSubmissionModel.findById(id);
+    if (!submission || submission.project_id !== project.id) {
+      return res.status(404).json({ error: "Submission not found" });
+    }
+
+    const { is_read } = req.body;
     if (is_read) {
       await FormSubmissionModel.markAsRead(id);
     } else {
@@ -468,5 +486,94 @@ export async function toggleFormSubmissionRead(
     return res.json({ success: true, data: { is_read } });
   } catch (error) {
     return handleError(res, error, "Toggle submission read");
+  }
+}
+
+/** DELETE /api/user/website/form-submissions/:id */
+export async function deleteFormSubmission(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const project = await ProjectModel.findByOrganizationId(orgId);
+    if (!project) return res.status(404).json({ error: "No website found" });
+
+    const { id } = req.params;
+    const submission = await FormSubmissionModel.findById(id);
+    if (!submission || submission.project_id !== project.id) {
+      return res.status(404).json({ error: "Submission not found" });
+    }
+
+    await FormSubmissionModel.deleteById(id);
+
+    return res.json({ success: true });
+  } catch (error) {
+    return handleError(res, error, "Delete form submission");
+  }
+}
+
+/** GET /api/user/website/form-submissions/export */
+export async function exportFormSubmissions(
+  req: RBACRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) {
+      res.status(400).json({ error: "No organization found" });
+      return;
+    }
+
+    const project = await ProjectModel.findByOrganizationId(orgId);
+    if (!project) {
+      res.status(404).json({ error: "No website found" });
+      return;
+    }
+
+    const result = await FormSubmissionModel.findByProjectId(
+      project.id,
+      { offset: 0, limit: 10000 },
+    );
+
+    const submissions = result.data;
+
+    // Collect all unique field keys across all submissions
+    const allKeys = new Set<string>();
+    for (const sub of submissions) {
+      if (sub.contents && typeof sub.contents === "object") {
+        for (const key of Object.keys(sub.contents)) {
+          allKeys.add(key);
+        }
+      }
+    }
+    const fieldKeys = Array.from(allKeys).sort();
+
+    // Build CSV
+    const escCsv = (val: string) => {
+      if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+        return `"${val.replace(/"/g, '""')}"`;
+      }
+      return val;
+    };
+
+    const headers = ["Date", "Form Name", ...fieldKeys, "Read"];
+    const rows = submissions.map((sub) => {
+      const date = new Date(sub.submitted_at).toISOString();
+      const formName = sub.form_name || "";
+      const fields = fieldKeys.map((k) => (sub.contents as Record<string, string>)?.[k] || "");
+      const isRead = sub.is_read ? "Yes" : "No";
+      return [date, formName, ...fields, isRead].map(escCsv).join(",");
+    });
+
+    const csv = [headers.map(escCsv).join(","), ...rows].join("\n");
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=form-submissions.csv");
+    res.send(csv);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to export submissions" });
   }
 }
