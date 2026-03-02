@@ -9,6 +9,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { handleContactSubmission } from "../controllers/websiteContact/websiteContactController";
 import { handleFormSubmission } from "../controllers/websiteContact/formSubmissionController";
+import { handleNewsletterConfirm } from "../controllers/websiteContact/newsletterConfirmController";
 
 const router = express.Router();
 
@@ -22,5 +23,6 @@ const formSubmissionLimiter = rateLimit({
 
 router.post("/contact", handleContactSubmission);
 router.post("/form-submission", formSubmissionLimiter, handleFormSubmission);
+router.get("/confirm-newsletter", handleNewsletterConfirm);
 
 export default router;

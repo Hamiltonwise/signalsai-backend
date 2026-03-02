@@ -25,9 +25,11 @@ import { sendEmailWebhook, WebhookError } from "./websiteContact-services/emailW
 import { isIpFlooding, isDuplicateContent, hashContents } from "./websiteContact-services/floodDetectionService";
 import { analyzePatterns, SPAM_THRESHOLD } from "./websiteContact-services/contentPatternService";
 import { analyzeContent } from "./websiteContact-services/aiContentAnalysisService";
+import { getSiteUrl, sendConfirmationEmail } from "./websiteContact-services/newsletterConfirmationService";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
+import { NewsletterSignupModel } from "../../models/website-builder/NewsletterSignupModel";
 
 const FALLBACK_RECIPIENT = "laggy80@gmail.com";
 
@@ -61,9 +63,85 @@ function computeJsChallenge(ts: number): number {
   return jsc;
 }
 
+const NEWSLETTER_DEBOUNCE_MS = 5 * 60 * 1000; // 5 minutes
+const NEWSLETTER_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Extract the first email-like value from form contents.
+ */
+function extractEmail(contents: Record<string, string>): string | null {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  for (const value of Object.values(contents)) {
+    if (emailRegex.test(value.trim())) return value.trim().toLowerCase();
+  }
+  return null;
+}
+
+/**
+ * Get a display name for the business from the project.
+ */
+function getBusinessName(project: any): string | undefined {
+  if (project.step_gbp_scrape && typeof project.step_gbp_scrape === "object") {
+    return (project.step_gbp_scrape as { name?: string }).name;
+  }
+  return undefined;
+}
+
+/**
+ * Handle newsletter signup: debounce, upsert, send confirmation email.
+ */
+async function handleNewsletterSignup(
+  res: Response,
+  project: any,
+  contents: Record<string, string>,
+): Promise<Response> {
+  const email = extractEmail(contents);
+  if (!email) {
+    return silentOk(res); // No valid email found — silent reject
+  }
+
+  // Check if already confirmed
+  const existing = await NewsletterSignupModel.findByProjectAndEmail(project.id, email);
+  if (existing?.confirmed_at) {
+    return res.json({ success: true }); // Already subscribed
+  }
+
+  // Debounce: don't re-send if pending signup created less than 5min ago
+  if (existing && !existing.confirmed_at) {
+    const age = Date.now() - new Date(existing.created_at).getTime();
+    if (age < NEWSLETTER_DEBOUNCE_MS) {
+      return res.json({ success: true }); // Recently sent, don't spam
+    }
+  }
+
+  // Upsert: create or reset token
+  const signup = await NewsletterSignupModel.upsert({
+    project_id: project.id,
+    email,
+  });
+
+  // Send branded confirmation email
+  const siteUrl = getSiteUrl(project.hostname, project.custom_domain);
+  const businessName = getBusinessName(project);
+
+  try {
+    await sendConfirmationEmail({
+      email,
+      token: signup.token,
+      primaryColor: project.primary_color || "#0e8988",
+      businessName,
+      siteUrl,
+    });
+  } catch (err) {
+    console.error("[Newsletter] Failed to send confirmation email:", err);
+  }
+
+  return res.json({ success: true });
+}
+
 export async function handleFormSubmission(req: Request, res: Response): Promise<Response> {
   try {
-    const { projectId, formName, contents, _hp, _ts, _jsc } = req.body;
+    const { projectId, formName, formType, contents, _hp, _ts, _jsc } = req.body;
 
     // ── 1. Honeypot ──
     if (_hp) {
@@ -156,6 +234,11 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
     const sanitizedContents: Record<string, string> = {};
     for (const [key, value] of Object.entries(contents)) {
       sanitizedContents[sanitize(String(key))] = sanitize(String(value));
+    }
+
+    // ── BRANCH: Newsletter double opt-in ──
+    if (formType === "newsletter") {
+      return handleNewsletterSignup(res, project, sanitizedContents);
     }
 
     // ── 8. Content pattern scoring ──
