@@ -11,6 +11,8 @@ export interface IFormSubmission {
   is_read: boolean;
   sender_ip?: string;
   content_hash?: string;
+  is_flagged?: boolean;
+  flag_reason?: string;
 }
 
 export class FormSubmissionModel extends BaseModel {
@@ -20,7 +22,10 @@ export class FormSubmissionModel extends BaseModel {
     data: Omit<IFormSubmission, "id" | "submitted_at" | "is_read">,
     trx?: QueryContext,
   ): Promise<IFormSubmission> {
-    return super.create(data as Record<string, unknown>, trx);
+    const [result] = await this.table(trx)
+      .insert(data as Record<string, unknown>)
+      .returning("*");
+    return result;
   }
 
   static async findById(
@@ -33,13 +38,16 @@ export class FormSubmissionModel extends BaseModel {
   static async findByProjectId(
     projectId: string,
     pagination: PaginationParams,
-    filters?: { is_read?: boolean },
+    filters?: { is_read?: boolean; is_flagged?: boolean },
     trx?: QueryContext,
   ): Promise<PaginatedResult<IFormSubmission>> {
     const buildQuery = (qb: Knex.QueryBuilder) => {
       qb = qb.where("project_id", projectId);
       if (filters?.is_read !== undefined) {
         qb = qb.where("is_read", filters.is_read);
+      }
+      if (filters?.is_flagged !== undefined) {
+        qb = qb.where("is_flagged", filters.is_flagged);
       }
       return qb.orderBy("submitted_at", "desc");
     };
@@ -66,6 +74,17 @@ export class FormSubmissionModel extends BaseModel {
   ): Promise<number> {
     const result = await this.table(trx)
       .where({ project_id: projectId, is_read: false })
+      .count("* as count")
+      .first();
+    return parseInt(result?.count as string, 10) || 0;
+  }
+
+  static async countFlaggedByProjectId(
+    projectId: string,
+    trx?: QueryContext,
+  ): Promise<number> {
+    const result = await this.table(trx)
+      .where({ project_id: projectId, is_flagged: true })
       .count("* as count")
       .first();
     return parseInt(result?.count as string, 10) || 0;

@@ -335,18 +335,27 @@ export async function listFormSubmissions(
 ): Promise<Response> {
   try {
     const orgId = req.organizationId;
-    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    if (!orgId) {
+      return res.status(400).json({ error: "No organization found" });
+    }
 
     const project = await ProjectModel.findByOrganizationId(orgId);
-    if (!project) return res.status(404).json({ error: "No website found" });
+
+    if (!project) {
+      return res.status(404).json({ error: "No website found" });
+    }
 
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
     const readFilter = req.query.read;
+    const flaggedFilter = req.query.flagged;
 
-    const filters: { is_read?: boolean } = {};
+    const filters: { is_read?: boolean; is_flagged?: boolean } = {};
     if (readFilter === "true") filters.is_read = true;
     if (readFilter === "false") filters.is_read = false;
+    if (flaggedFilter === "true") filters.is_flagged = true;
+    if (flaggedFilter === "false") filters.is_flagged = false;
 
     const result = await FormSubmissionModel.findByProjectId(
       project.id,
@@ -355,10 +364,11 @@ export async function listFormSubmissions(
     );
 
     const unreadCount = await FormSubmissionModel.countUnreadByProjectId(project.id);
+    const flaggedCount = await FormSubmissionModel.countFlaggedByProjectId(project.id);
 
     const totalPages = Math.ceil(result.total / limit);
 
-    return res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total, totalPages }, unreadCount });
+    return res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total, totalPages }, unreadCount, flaggedCount });
   } catch (error) {
     return handleError(res, error, "Fetch form submissions");
   }

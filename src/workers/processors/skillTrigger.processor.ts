@@ -73,6 +73,8 @@ export async function processSkillTrigger(job: Job): Promise<void> {
           skill_id: skill.id,
           triggered_by: "schedule",
           status: "pending",
+          artifact_type: skill.work_creation_type,
+          artifact_attachment_type: skill.artifact_attachment_type || null,
         });
 
         console.log(

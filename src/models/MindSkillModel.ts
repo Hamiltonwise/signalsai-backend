@@ -19,6 +19,7 @@ export interface IMindSkill {
   output_schema: object | null;
   status: SkillStatus;
   work_creation_type: WorkCreationType | null;
+  artifact_attachment_type: WorkCreationType | null;
   output_count: number;
   trigger_type: TriggerType;
   trigger_config: TriggerConfig;

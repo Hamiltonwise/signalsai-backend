@@ -33,6 +33,8 @@ export async function triggerManualRun(
       skill_id: skillId,
       triggered_by: "manual",
       status: "pending",
+      artifact_type: skill.work_creation_type,
+      artifact_attachment_type: skill.artifact_attachment_type || null,
     });
 
     // Fire webhook to n8n asynchronously

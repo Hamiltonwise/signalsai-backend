@@ -62,6 +62,7 @@ export async function updateSkill(
       | "definition"
       | "output_schema"
       | "work_creation_type"
+      | "artifact_attachment_type"
       | "output_count"
       | "trigger_type"
       | "trigger_config"
@@ -80,6 +81,7 @@ export async function updateSkill(
         ? null
         : JSON.stringify(fields.output_schema);
   if (fields.work_creation_type !== undefined) updateData.work_creation_type = fields.work_creation_type;
+  if (fields.artifact_attachment_type !== undefined) updateData.artifact_attachment_type = fields.artifact_attachment_type;
   if (fields.output_count !== undefined) updateData.output_count = fields.output_count;
   if (fields.trigger_type !== undefined) updateData.trigger_type = fields.trigger_type;
   if (fields.trigger_config !== undefined)
@@ -298,6 +300,7 @@ export interface ResolvedFields {
   name?: string;
   definition?: string;
   work_creation_type?: string;
+  artifact_attachment_type?: string | null;
   work_publish_to?: string;
   trigger_type?: string;
   trigger_config?: { day?: string; time?: string; timezone?: string };
@@ -356,8 +359,9 @@ function buildSkillBuilderPrompt(
 ${personalitySection}${brainSection}
 You need to shape a new skill with your human. These are the fields to resolve:
 - name: A short name for the skill
-- definition: A concise description (2-4 sentences) of what YOU will do with this skill
-- work_creation_type: What you'll produce. Options: ${availableWorkTypes.join(", ")}
+- definition: A detailed description of what YOU will do with this skill. Include: your purpose, who you serve, what you produce, key constraints or rules discussed, tone/voice guidelines, and any specifics the admin mentioned during the conversation. Aim for a rich, thorough paragraph (6-12 sentences) that captures everything discussed — this becomes the foundation for your neuron generation, so more detail = better results
+- work_creation_type: The final output format for the pipeline. Options: ${availableWorkTypes.join(", ")}. NOTE: This is a pipeline label, not a limitation on what YOU output. You always produce text (prompts, scripts, instructions). The pipeline handles rendering — e.g. if "image" is selected, you produce the image generation prompt and the pipeline renders it. Never push back on a work type because you "can't produce" it.
+- artifact_attachment_type: Optional. If this skill produces BOTH text content AND a media attachment (e.g. text + image), set this to the attachment type. Same options as work_creation_type: ${availableWorkTypes.join(", ")}. Set to null if the skill only produces one type of output. This is a nullable field — only set it when explicitly discussed.
 - work_publish_to: Where your work goes. Options: ${availablePublishTargets.join(", ")}, internal_only
 - trigger_type: How often you'll do this. Options: manual, daily, weekly, day_of_week
 - trigger_config: If not manual, the schedule details (day, time, timezone)

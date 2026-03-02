@@ -3,6 +3,7 @@ import {
   SkillWorkRunModel,
   WorkRunStatus,
 } from "../../models/SkillWorkRunModel";
+import { MindSkillModel } from "../../models/MindSkillModel";
 import { evaluateAutoPipeline } from "./feature-services/service.minds-work-pipeline";
 
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
@@ -41,6 +42,8 @@ export async function updateWorkRunStatus(
     artifact_url,
     artifact_content,
     artifact_type,
+    artifact_attachment_type,
+    artifact_attachment_url,
     n8n_run_id,
     error,
   } = req.body;
@@ -61,14 +64,44 @@ export async function updateWorkRunStatus(
     });
   }
 
+  // Load skill config to default artifact_type when n8n doesn't provide it
+  const skill = await MindSkillModel.findById(workRun.skill_id);
+
   const updateData: Record<string, unknown> = {};
   if (title !== undefined) updateData.title = title;
   if (description !== undefined) updateData.description = description;
   if (artifact_url !== undefined) updateData.artifact_url = artifact_url;
   if (artifact_content !== undefined) updateData.artifact_content = artifact_content;
-  if (artifact_type !== undefined) updateData.artifact_type = artifact_type;
+  if (artifact_type !== undefined) {
+    updateData.artifact_type = artifact_type;
+  } else if ((artifact_url || artifact_content) && !workRun.artifact_type && skill?.work_creation_type) {
+    updateData.artifact_type = skill.work_creation_type;
+  }
+  if (artifact_attachment_type !== undefined) {
+    updateData.artifact_attachment_type = artifact_attachment_type;
+  } else if (artifact_attachment_url && !workRun.artifact_attachment_type && skill?.artifact_attachment_type) {
+    updateData.artifact_attachment_type = skill.artifact_attachment_type;
+  }
+  if (artifact_attachment_url !== undefined) updateData.artifact_attachment_url = artifact_attachment_url;
   if (n8n_run_id !== undefined) updateData.n8n_run_id = n8n_run_id;
   if (error !== undefined) updateData.error = error;
+
+  // Reconcile missing types from skill config using merged state (DB + incoming)
+  // Handles multi-call scenarios where data arrives across separate PATCH requests
+  if (skill) {
+    const mergedArtifactType = updateData.artifact_type ?? workRun.artifact_type;
+    const mergedContent = updateData.artifact_content ?? workRun.artifact_content;
+    const mergedUrl = updateData.artifact_url ?? workRun.artifact_url;
+    if (!mergedArtifactType && (mergedContent || mergedUrl) && skill.work_creation_type) {
+      updateData.artifact_type = skill.work_creation_type;
+    }
+
+    const mergedAttachmentType = updateData.artifact_attachment_type ?? workRun.artifact_attachment_type;
+    const mergedAttachmentUrl = updateData.artifact_attachment_url ?? workRun.artifact_attachment_url;
+    if (!mergedAttachmentType && mergedAttachmentUrl && skill.artifact_attachment_type) {
+      updateData.artifact_attachment_type = skill.artifact_attachment_type;
+    }
+  }
 
   await SkillWorkRunModel.updateStatus(
     workRunId,

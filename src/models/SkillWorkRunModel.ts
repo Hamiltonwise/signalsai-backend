@@ -22,6 +22,8 @@ export interface ISkillWorkRun {
   artifact_type: string | null;
   artifact_url: string | null;
   artifact_content: string | null;
+  artifact_attachment_type: string | null;
+  artifact_attachment_url: string | null;
   title: string | null;
   description: string | null;
   approved_by_admin_id: string | null;
