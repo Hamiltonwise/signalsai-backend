@@ -40,7 +40,7 @@ export async function handleNewsletterConfirm(req: Request, res: Response): Prom
 
   // Already confirmed — redirect to confirmed page
   if (signup.confirmed_at) {
-    res.redirect(`${siteUrl}/confirmed`);
+    res.redirect(`${siteUrl}/opt-in-confirmed`);
     return;
   }
 
@@ -131,5 +131,5 @@ export async function handleNewsletterConfirm(req: Request, res: Response): Prom
   }
 
   // Redirect to confirmed page
-  res.redirect(`${siteUrl}/confirmed`);
+  res.redirect(`${siteUrl}/opt-in-confirmed`);
 }
