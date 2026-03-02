@@ -73,7 +73,7 @@ function buildFormScript(projectId: string): string {
         })
         .then(function(r){if(!r.ok)throw new Error('fail');return r.json();})
         .then(function(){
-          window.location.href='/success';
+          window.location.href=formType==='newsletter'?'/newsletter-success':'/success';
         })
         .catch(function(){
           if(btn){btn.textContent='Error — Try Again';btn.style.backgroundColor='#dc2626';}
