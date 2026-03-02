@@ -349,13 +349,20 @@ export async function listFormSubmissions(
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
     const readFilter = req.query.read;
-    const flaggedFilter = req.query.flagged;
+    const filterParam = req.query.filter as string | undefined;
 
-    const filters: { is_read?: boolean; is_flagged?: boolean } = {};
+    const filters: { is_read?: boolean; is_flagged?: boolean; form_name?: string; form_name_not?: string } = {};
     if (readFilter === "true") filters.is_read = true;
     if (readFilter === "false") filters.is_read = false;
-    if (flaggedFilter === "true") filters.is_flagged = true;
-    if (flaggedFilter === "false") filters.is_flagged = false;
+
+    if (filterParam === "verified") {
+      filters.is_flagged = false;
+      filters.form_name_not = "Newsletter Signup";
+    } else if (filterParam === "flagged") {
+      filters.is_flagged = true;
+    } else if (filterParam === "optins") {
+      filters.form_name = "Newsletter Signup";
+    }
 
     const result = await FormSubmissionModel.findByProjectId(
       project.id,
@@ -363,12 +370,16 @@ export async function listFormSubmissions(
       filters,
     );
 
-    const unreadCount = await FormSubmissionModel.countUnreadByProjectId(project.id);
-    const flaggedCount = await FormSubmissionModel.countFlaggedByProjectId(project.id);
+    const [unreadCount, flaggedCount, verifiedCount, optinsCount] = await Promise.all([
+      FormSubmissionModel.countUnreadByProjectId(project.id),
+      FormSubmissionModel.countFlaggedByProjectId(project.id),
+      FormSubmissionModel.countVerifiedByProjectId(project.id),
+      FormSubmissionModel.countOptinsByProjectId(project.id),
+    ]);
 
     const totalPages = Math.ceil(result.total / limit);
 
-    return res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total, totalPages }, unreadCount, flaggedCount });
+    return res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total, totalPages }, unreadCount, flaggedCount, verifiedCount, optinsCount });
   } catch (error) {
     return handleError(res, error, "Fetch form submissions");
   }

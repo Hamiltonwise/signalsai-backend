@@ -38,7 +38,7 @@ export class FormSubmissionModel extends BaseModel {
   static async findByProjectId(
     projectId: string,
     pagination: PaginationParams,
-    filters?: { is_read?: boolean; is_flagged?: boolean },
+    filters?: { is_read?: boolean; is_flagged?: boolean; form_name?: string; form_name_not?: string },
     trx?: QueryContext,
   ): Promise<PaginatedResult<IFormSubmission>> {
     const buildQuery = (qb: Knex.QueryBuilder) => {
@@ -48,6 +48,12 @@ export class FormSubmissionModel extends BaseModel {
       }
       if (filters?.is_flagged !== undefined) {
         qb = qb.where("is_flagged", filters.is_flagged);
+      }
+      if (filters?.form_name !== undefined) {
+        qb = qb.where("form_name", filters.form_name);
+      }
+      if (filters?.form_name_not !== undefined) {
+        qb = qb.whereNot("form_name", filters.form_name_not);
       }
       return qb.orderBy("submitted_at", "desc");
     };
@@ -85,6 +91,29 @@ export class FormSubmissionModel extends BaseModel {
   ): Promise<number> {
     const result = await this.table(trx)
       .where({ project_id: projectId, is_flagged: true })
+      .count("* as count")
+      .first();
+    return parseInt(result?.count as string, 10) || 0;
+  }
+
+  static async countVerifiedByProjectId(
+    projectId: string,
+    trx?: QueryContext,
+  ): Promise<number> {
+    const result = await this.table(trx)
+      .where({ project_id: projectId, is_flagged: false })
+      .whereNot("form_name", "Newsletter Signup")
+      .count("* as count")
+      .first();
+    return parseInt(result?.count as string, 10) || 0;
+  }
+
+  static async countOptinsByProjectId(
+    projectId: string,
+    trx?: QueryContext,
+  ): Promise<number> {
+    const result = await this.table(trx)
+      .where({ project_id: projectId, form_name: "Newsletter Signup" })
       .count("* as count")
       .first();
     return parseInt(result?.count as string, 10) || 0;

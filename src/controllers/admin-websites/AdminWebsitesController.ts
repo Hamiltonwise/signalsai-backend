@@ -1615,10 +1615,20 @@ export async function listFormSubmissions(
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
     const readFilter = req.query.read;
+    const filterParam = req.query.filter as string | undefined;
 
-    const filters: { is_read?: boolean } = {};
+    const filters: { is_read?: boolean; is_flagged?: boolean; form_name?: string; form_name_not?: string } = {};
     if (readFilter === "true") filters.is_read = true;
     if (readFilter === "false") filters.is_read = false;
+
+    if (filterParam === "verified") {
+      filters.is_flagged = false;
+      filters.form_name_not = "Newsletter Signup";
+    } else if (filterParam === "flagged") {
+      filters.is_flagged = true;
+    } else if (filterParam === "optins") {
+      filters.form_name = "Newsletter Signup";
+    }
 
     const result = await FormSubmissionModel.findByProjectId(
       id,
@@ -1626,9 +1636,16 @@ export async function listFormSubmissions(
       filters,
     );
 
-    const unreadCount = await FormSubmissionModel.countUnreadByProjectId(id);
+    const [unreadCount, flaggedCount, verifiedCount, optinsCount] = await Promise.all([
+      FormSubmissionModel.countUnreadByProjectId(id),
+      FormSubmissionModel.countFlaggedByProjectId(id),
+      FormSubmissionModel.countVerifiedByProjectId(id),
+      FormSubmissionModel.countOptinsByProjectId(id),
+    ]);
 
-    return res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total }, unreadCount });
+    const totalPages = Math.ceil(result.total / limit);
+
+    return res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total, totalPages }, unreadCount, flaggedCount, verifiedCount, optinsCount });
   } catch (error: any) {
     console.error("[Admin Websites] Error listing form submissions:", error);
     return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message || "Failed to fetch submissions" });
