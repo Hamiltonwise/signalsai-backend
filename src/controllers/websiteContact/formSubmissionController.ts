@@ -23,7 +23,7 @@ import { Request, Response } from "express";
 import { sanitize } from "./websiteContact-utils/sanitization";
 import { sendEmailWebhook, WebhookError } from "./websiteContact-services/emailWebhookService";
 import { isIpFlooding, isDuplicateContent, hashContents } from "./websiteContact-services/floodDetectionService";
-import { getSpamScore, SPAM_THRESHOLD } from "./websiteContact-services/contentPatternService";
+import { analyzePatterns, SPAM_THRESHOLD } from "./websiteContact-services/contentPatternService";
 import { analyzeContent } from "./websiteContact-services/aiContentAnalysisService";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
@@ -159,9 +159,13 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
     }
 
     // ── 8. Content pattern scoring ──
-    const spamScore = getSpamScore(sanitizedContents);
-    if (spamScore >= SPAM_THRESHOLD) {
-      return silentOk(res);
+    const patternResult = analyzePatterns(sanitizedContents);
+    let flagged = false;
+    let flagReason = "";
+
+    if (patternResult.score >= SPAM_THRESHOLD) {
+      flagged = true;
+      flagReason = `[content_pattern] Score ${patternResult.score}: ${patternResult.reasons.join("; ")}`;
     }
 
     // ── 9. Flood detection ──
@@ -178,8 +182,14 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       return silentOk(res);
     }
 
-    // ── 10. AI content analysis ──
-    const aiResult = await analyzeContent(sanitizedFormName, sanitizedContents);
+    // ── 10. AI content analysis (skip if already flagged by patterns) ──
+    if (!flagged) {
+      const aiResult = await analyzeContent(sanitizedFormName, sanitizedContents);
+      if (aiResult.flagged) {
+        flagged = true;
+        flagReason = `[${aiResult.category}] ${aiResult.reason}`;
+      }
+    }
 
     // ── 11. Resolve recipients: project.recipients → org admins → fallback ──
     let recipients: string[] = [];
@@ -216,15 +226,15 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
         recipients_sent_to: recipients,
         sender_ip: senderIp,
         content_hash: contentHash,
-        is_flagged: aiResult.flagged,
-        flag_reason: aiResult.flagged ? `[${aiResult.category}] ${aiResult.reason}` : undefined,
+        is_flagged: flagged,
+        flag_reason: flagged ? flagReason : undefined,
       });
     } catch (saveErr) {
       console.error("[Form Submission] Failed to save submission:", saveErr);
     }
 
     // ── 13. Email (only if not flagged) ──
-    if (!aiResult.flagged) {
+    if (!flagged) {
       const rows = Object.entries(sanitizedContents)
         .map(
           ([label, value]) =>

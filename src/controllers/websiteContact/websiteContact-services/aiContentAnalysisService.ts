@@ -16,7 +16,7 @@ function getClient(): Anthropic {
   return anthropicClient;
 }
 
-const MODEL = "claude-haiku-4-5-20251001";
+const MODEL = process.env.FORM_ANALYSIS_MODEL || "claude-haiku-4-5-20251001";
 
 export interface AnalysisResult {
   flagged: boolean;
@@ -57,8 +57,11 @@ export async function analyzeContent(
       messages: [{ role: "user", content: userMessage }],
     });
 
-    const text =
+    let text =
       response.content[0].type === "text" ? response.content[0].text : "";
+
+    // Strip markdown code fences if the model wraps the JSON
+    text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
 
     const parsed = JSON.parse(text);
 
