@@ -38,6 +38,7 @@ function buildFormScript(projectId: string): string {
       form.addEventListener('submit',function(e){
         e.preventDefault();
         var formName=form.getAttribute('data-form-name')||form.getAttribute('name')||'Contact Form';
+        var formType=form.getAttribute('data-form-type')||'contact';
         var contents={};
         var inputs=form.querySelectorAll('input,select,textarea');
         inputs.forEach(function(el){
@@ -68,7 +69,7 @@ function buildFormScript(projectId: string): string {
         fetch(API+'/api/websites/form-submission',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({projectId:PID,formName:formName,contents:contents,_hp:'',_ts:_ts,_jsc:_jsc})
+          body:JSON.stringify({projectId:PID,formName:formName,formType:formType,contents:contents,_hp:'',_ts:_ts,_jsc:_jsc})
         })
         .then(function(r){if(!r.ok)throw new Error('fail');return r.json();})
         .then(function(){
