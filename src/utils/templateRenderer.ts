@@ -28,6 +28,8 @@ function buildFormScript(projectId: string): string {
   return `<script data-alloro-form-handler>
 (function(){
   'use strict';
+  var _ts=Date.now();
+  var _jsc=_ts;for(var i=0;i<1000;i++){_jsc=((_jsc*1103515245+12345)&0x7fffffff);}
   document.addEventListener('DOMContentLoaded',function(){
     var API='${apiBase}';
     var PID='${projectId}';
@@ -66,13 +68,11 @@ function buildFormScript(projectId: string): string {
         fetch(API+'/api/websites/form-submission',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({projectId:PID,formName:formName,contents:contents})
+          body:JSON.stringify({projectId:PID,formName:formName,contents:contents,_hp:'',_ts:_ts,_jsc:_jsc})
         })
         .then(function(r){if(!r.ok)throw new Error('fail');return r.json();})
         .then(function(){
-          if(btn){btn.textContent='Sent!';btn.style.backgroundColor='#16a34a';}
-          form.reset();
-          setTimeout(function(){if(btn){btn.disabled=false;btn.textContent=origText;btn.style.backgroundColor='';}},3000);
+          window.location.href='/success';
         })
         .catch(function(){
           if(btn){btn.textContent='Error — Try Again';btn.style.backgroundColor='#dc2626';}
@@ -193,7 +193,8 @@ export function renderPage(
   }
 
   // Inject form-handler script when a projectId is provided
-  if (projectId) {
+  // Skip if the deployment pipeline already baked it into the wrapper
+  if (projectId && !finalHtml.includes('data-alloro-form-handler')) {
     const formScript = buildFormScript(projectId);
     finalHtml = finalHtml.replace(/<\/body>/i, `${formScript}\n</body>`);
   }

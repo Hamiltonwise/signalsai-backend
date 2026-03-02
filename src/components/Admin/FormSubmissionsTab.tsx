@@ -10,6 +10,7 @@ import {
   Eye,
   X,
   Download,
+  ShieldAlert,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -22,26 +23,31 @@ import type { FormSubmission } from "../../api/websites";
 interface Props {
   projectId: string;
   isAdmin?: boolean;
-  fetchSubmissionsFn?: (projectId: string, page: number, limit: number) => Promise<any>;
+  fetchSubmissionsFn?: (projectId: string, page: number, limit: number, flagged?: boolean) => Promise<any>;
   toggleReadFn?: (projectId: string, submissionId: string, is_read: boolean) => Promise<any>;
   deleteSubmissionFn?: (projectId: string, submissionId: string) => Promise<any>;
   onExport?: () => void;
 }
 
-export default function FormSubmissionsTab({ projectId, isAdmin, fetchSubmissionsFn, toggleReadFn, deleteSubmissionFn, onExport }: Props) {
+type TabFilter = "all" | "flagged";
+
+export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetchSubmissionsFn, toggleReadFn, deleteSubmissionFn, onExport }: Props) {
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [flaggedCount, setFlaggedCount] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabFilter>("all");
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       const fetchFn = fetchSubmissionsFn || fetchFormSubmissions;
-      const res = await fetchFn(projectId, page, 20);
+      const flaggedParam = activeTab === "flagged" ? true : undefined;
+      const res = await fetchFn(projectId, page, 20, flaggedParam);
       if (res.error || res.success === false) {
         toast.error(res.error || res.errorMessage || "Failed to load submissions");
         return;
@@ -50,16 +56,23 @@ export default function FormSubmissionsTab({ projectId, isAdmin, fetchSubmission
       setTotalPages(res.pagination?.totalPages || 1);
       setTotal(res.pagination?.total || 0);
       setUnreadCount(res.unreadCount || 0);
+      setFlaggedCount(res.flaggedCount || 0);
     } catch {
       toast.error("Failed to load submissions");
     } finally {
       setLoading(false);
     }
-  }, [projectId, page]);
+  }, [projectId, page, activeTab]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleTabChange = (tab: TabFilter) => {
+    setActiveTab(tab);
+    setPage(1);
+    setSelectedId(null);
+  };
 
   const handleToggleRead = async (sub: FormSubmission) => {
     try {
@@ -132,13 +145,45 @@ export default function FormSubmissionsTab({ projectId, isAdmin, fetchSubmission
         )}
       </div>
 
+      {/* Tabs */}
+      <div className="border-b border-gray-100 px-5 flex gap-1">
+        <button
+          onClick={() => handleTabChange("all")}
+          className={`px-3 py-2 text-sm font-medium border-b-2 transition ${
+            activeTab === "all"
+              ? "border-gray-900 text-gray-900"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => handleTabChange("flagged")}
+          className={`px-3 py-2 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
+            activeTab === "flagged"
+              ? "border-amber-500 text-amber-600"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          <ShieldAlert size={14} />
+          Flagged
+          {flaggedCount > 0 && (
+            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+              {flaggedCount}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Content */}
       {loading ? (
         <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
       ) : submissions.length === 0 ? (
         <div className="p-8 text-center">
           <Inbox className="mx-auto mb-3 text-gray-300" size={32} />
-          <p className="text-gray-400 text-sm">No form submissions yet</p>
+          <p className="text-gray-400 text-sm">
+            {activeTab === "flagged" ? "No flagged submissions" : "No form submissions yet"}
+          </p>
         </div>
       ) : (
         <>
@@ -149,7 +194,7 @@ export default function FormSubmissionsTab({ projectId, isAdmin, fetchSubmission
                 key={sub.id}
                 className={`px-5 py-3 flex items-center gap-4 hover:bg-gray-50 cursor-pointer transition ${
                   !sub.is_read ? "bg-alloro-orange/5" : ""
-                }`}
+                } ${sub.is_flagged ? "bg-amber-50/50" : ""}`}
                 onClick={() => {
                   setSelectedId(selectedId === sub.id ? null : sub.id);
                   if (!sub.is_read) handleToggleRead(sub);
@@ -157,7 +202,9 @@ export default function FormSubmissionsTab({ projectId, isAdmin, fetchSubmission
               >
                 {/* Read indicator */}
                 <div className="flex-shrink-0">
-                  {sub.is_read ? (
+                  {sub.is_flagged ? (
+                    <ShieldAlert size={16} className="text-amber-500" />
+                  ) : sub.is_read ? (
                     <MailOpen size={16} className="text-gray-300" />
                   ) : (
                     <Mail size={16} className="text-alloro-orange" />
@@ -236,6 +283,18 @@ export default function FormSubmissionsTab({ projectId, isAdmin, fetchSubmission
                       <X size={16} />
                     </button>
                   </div>
+
+                  {/* Flag reason banner */}
+                  {selectedSubmission.is_flagged && selectedSubmission.flag_reason && (
+                    <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 flex items-start gap-2">
+                      <ShieldAlert size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-700">Flagged by AI</p>
+                        <p className="text-xs text-amber-600 mt-0.5">{selectedSubmission.flag_reason}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     {Object.entries(selectedSubmission.contents).map(([key, value]) => (
                       <div key={key} className="flex gap-3">

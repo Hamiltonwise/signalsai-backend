@@ -675,6 +675,8 @@ export interface FormSubmission {
   recipients_sent_to: string[];
   submitted_at: string;
   is_read: boolean;
+  is_flagged?: boolean;
+  flag_reason?: string;
 }
 
 export interface FormSubmissionsResponse {
@@ -682,16 +684,17 @@ export interface FormSubmissionsResponse {
   data: FormSubmission[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
   unreadCount: number;
+  flaggedCount: number;
 }
 
 export const fetchFormSubmissions = async (
   projectId: string,
   page = 1,
   limit = 20,
-  read?: boolean,
+  flagged?: boolean,
 ): Promise<FormSubmissionsResponse> => {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-  if (read !== undefined) params.set("read", String(read));
+  if (flagged !== undefined) params.set("flagged", String(flagged));
   const response = await fetch(`${API_BASE}/${projectId}/form-submissions?${params}`);
   if (!response.ok) throw new Error("Failed to fetch form submissions");
   return response.json();

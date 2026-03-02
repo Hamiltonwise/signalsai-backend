@@ -181,6 +181,7 @@ export function SkillDetailPanel({
 
   // Config state
   const [cfgWorkType, setCfgWorkType] = useState<WorkCreationType | "">(skill.work_creation_type || "");
+  const [cfgAttachmentType, setCfgAttachmentType] = useState<WorkCreationType | "">(skill.artifact_attachment_type || "");
   const [cfgOutputCount, setCfgOutputCount] = useState(skill.output_count || 1);
   const [cfgTriggerType, setCfgTriggerType] = useState<TriggerType>(skill.trigger_type || "manual");
   const [cfgTriggerDay, setCfgTriggerDay] = useState(skill.trigger_config?.day || "");
@@ -346,6 +347,7 @@ export function SkillDetailPanel({
 
     const updated = await updateSkill(mindId, skill.id, {
       work_creation_type: cfgWorkType || null,
+      artifact_attachment_type: cfgAttachmentType || null,
       output_count: cfgOutputCount,
       trigger_type: cfgTriggerType,
       trigger_config: triggerConfig,
@@ -748,6 +750,28 @@ export function SkillDetailPanel({
                 />
                 <p className="text-[10px] text-[#6a6a75] mt-1">How many work items per run</p>
               </div>
+            </div>
+
+            {/* Artifact Attachment */}
+            <div>
+              <label className="block text-xs font-semibold text-[#a0a0a8] mb-1.5">
+                Artifact Attachment
+              </label>
+              <p className="text-xs text-[#6a6a75] mb-2">
+                If this skill produces both content and a media attachment (e.g. text + image), set the attachment type.
+              </p>
+              <select
+                value={cfgAttachmentType}
+                onChange={(e) => setCfgAttachmentType(e.target.value as WorkCreationType | "")}
+                className="w-full rounded-lg border border-white/8 px-3 py-2 text-sm text-[#c2c0b6] focus:border-alloro-orange focus:outline-none focus:ring-1 focus:ring-alloro-orange/50"
+                style={{ backgroundColor: "rgba(255,255,255,0.04)" }}
+              >
+                <option value="">None</option>
+                <option value="image">Image</option>
+                <option value="video">Video</option>
+                <option value="audio">Audio</option>
+                <option value="pdf">PDF</option>
+              </select>
             </div>
 
             {/* Trigger */}

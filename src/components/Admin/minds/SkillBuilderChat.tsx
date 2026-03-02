@@ -15,6 +15,7 @@ import {
   sendSkillBuilderChatStream,
   createSkill,
   updateSkill,
+  listPublishChannels,
   type SkillBuilderMessage,
   type ResolvedFields,
 } from "../../../api/minds";
@@ -238,13 +239,25 @@ export function SkillBuilderChat({
       return;
     }
 
+    // Resolve publish channel name → UUID (LLM resolves name, DB expects UUID)
+    let publishChannelId: string | null = null;
+    const publishTo = resolvedFields.work_publish_to;
+    if (publishTo && publishTo !== "internal_only") {
+      const channels = await listPublishChannels();
+      const match = channels.find(
+        (ch) => ch.name.toLowerCase() === publishTo.toLowerCase() || ch.id === publishTo,
+      );
+      publishChannelId = match?.id || null;
+    }
+
     await updateSkill(mindId, skill.id, {
       work_creation_type: (resolvedFields.work_creation_type as any) || null,
+      artifact_attachment_type: (resolvedFields.artifact_attachment_type as any) || null,
       output_count: resolvedFields.output_count || 1,
       trigger_type: (resolvedFields.trigger_type as any) || "manual",
       trigger_config: resolvedFields.trigger_config || {},
       pipeline_mode: (resolvedFields.pipeline_mode as any) || "review_and_stop",
-      publish_channel_id: (resolvedFields.work_publish_to as any) || null,
+      publish_channel_id: publishChannelId,
     });
 
     toast.success(`Skill "${resolvedFields.name}" created`);

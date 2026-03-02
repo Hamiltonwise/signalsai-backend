@@ -474,6 +474,7 @@ export interface MindSkill {
   output_schema: object | null;
   status: SkillStatus;
   work_creation_type: WorkCreationType | null;
+  artifact_attachment_type: WorkCreationType | null;
   output_count: number;
   trigger_type: TriggerType;
   trigger_config: { day?: string; time?: string; timezone?: string };
@@ -498,6 +499,8 @@ export interface SkillWorkRun {
   artifact_type: string | null;
   artifact_url: string | null;
   artifact_content: string | null;
+  artifact_attachment_type: string | null;
+  artifact_attachment_url: string | null;
   title: string | null;
   description: string | null;
   approved_by_admin_id: string | null;
@@ -564,6 +567,7 @@ export async function updateSkill(
     definition?: string;
     outputSchema?: object | null;
     work_creation_type?: WorkCreationType | null;
+    artifact_attachment_type?: WorkCreationType | null;
     output_count?: number;
     trigger_type?: TriggerType;
     trigger_config?: { day?: string; time?: string; timezone?: string };
@@ -654,6 +658,7 @@ export interface ResolvedFields {
   name?: string;
   definition?: string;
   work_creation_type?: string;
+  artifact_attachment_type?: string;
   work_publish_to?: string;
   trigger_type?: string;
   trigger_config?: { day?: string; time?: string; timezone?: string };

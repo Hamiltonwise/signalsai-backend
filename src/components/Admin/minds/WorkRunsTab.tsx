@@ -294,50 +294,90 @@ function WorkRunDetail({
         </div>
       )}
 
-      {/* Artifact preview */}
-      {run.artifact_url || run.artifact_content ? (
-        <div className="mb-4 rounded-xl border border-white/8 bg-white/[0.04] overflow-hidden">
-          <div className="px-4 py-3 border-b border-white/8 flex items-center gap-2">
-            {artifactIcon(run.artifact_type)}
-            <span className="text-xs font-medium text-[#a0a0a8] capitalize">
-              {run.artifact_type || "Unknown"} Artifact
-            </span>
-            {run.artifact_url && (
-              <a
-                href={run.artifact_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-auto text-xs text-alloro-orange hover:underline flex items-center gap-1"
-              >
-                Open <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
-          </div>
-          <div className="p-4 max-h-[400px] overflow-y-auto">
-            {run.artifact_type === "image" && run.artifact_url ? (
-              <img
-                src={run.artifact_url}
-                alt={run.title || "Artifact"}
-                className="max-w-full rounded-lg"
-              />
-            ) : run.artifact_content ? (
-              run.artifact_type === "markdown" ? (
-                <div className="prose prose-sm prose-invert max-w-none">
-                  <ReactMarkdown>{run.artifact_content}</ReactMarkdown>
-                </div>
-              ) : (
-                <pre className="text-xs text-[#c2c0b6] whitespace-pre-wrap font-mono">
-                  {run.artifact_content}
-                </pre>
-              )
-            ) : (
-              <p className="text-xs text-[#6a6a75] italic">
-                Artifact available at URL only
-              </p>
-            )}
-          </div>
+      {/* Artifacts — side-by-side when both present */}
+      {(run.artifact_url || run.artifact_content || run.artifact_attachment_url) && (
+        <div className={`mb-4 ${run.artifact_attachment_url && (run.artifact_url || run.artifact_content) ? "grid grid-cols-2 gap-3" : ""}`}>
+          {/* Main artifact */}
+          {(run.artifact_url || run.artifact_content) && (
+            <div className="rounded-xl border border-white/8 bg-white/[0.04] overflow-hidden">
+              <div className="px-4 py-3 border-b border-white/8 flex items-center gap-2">
+                {artifactIcon(run.artifact_type)}
+                <span className="text-xs font-medium text-[#a0a0a8] capitalize">
+                  {run.artifact_type || (run.artifact_content ? "text" : "unknown")} Artifact
+                </span>
+                {run.artifact_url && (
+                  <a
+                    href={run.artifact_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto text-xs text-alloro-orange hover:underline flex items-center gap-1"
+                  >
+                    Open <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+              <div className="p-4 max-h-[400px] overflow-y-auto">
+                {run.artifact_type === "image" && run.artifact_url ? (
+                  <img
+                    src={run.artifact_url}
+                    alt={run.title || "Artifact"}
+                    className="w-full h-auto rounded-lg object-contain"
+                  />
+                ) : run.artifact_content ? (
+                  run.artifact_type === "markdown" ? (
+                    <div className="prose prose-sm prose-invert max-w-none">
+                      <ReactMarkdown>{run.artifact_content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <pre className="text-xs text-[#c2c0b6] whitespace-pre-wrap font-mono">
+                      {run.artifact_content}
+                    </pre>
+                  )
+                ) : (
+                  <p className="text-xs text-[#6a6a75] italic">
+                    Artifact available at URL only
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Attachment */}
+          {run.artifact_attachment_url && (
+            <div className="rounded-xl border border-white/8 bg-white/[0.04] overflow-hidden">
+              <div className="px-4 py-3 border-b border-white/8 flex items-center gap-2">
+                {artifactIcon(run.artifact_attachment_type)}
+                <span className="text-xs font-medium text-[#a0a0a8] capitalize">
+                  {run.artifact_attachment_type || "Attachment"} Attachment
+                </span>
+                <a
+                  href={run.artifact_attachment_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto text-xs text-alloro-orange hover:underline flex items-center gap-1"
+                >
+                  Open <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+              <div className="p-4">
+                {run.artifact_attachment_type === "image" ? (
+                  <img
+                    src={run.artifact_attachment_url}
+                    alt={`${run.title || "Work"} attachment`}
+                    className="w-full h-auto rounded-lg object-contain"
+                  />
+                ) : (
+                  <p className="text-xs text-[#6a6a75] italic">
+                    Attachment available at URL
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      ) : ACTIVE_STATUSES.includes(run.status) ? (
+      )}
+
+      {!run.artifact_url && !run.artifact_content && ACTIVE_STATUSES.includes(run.status) ? (
         <div className="mb-4 rounded-xl border border-dashed border-white/8 bg-white/[0.02] p-8 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-alloro-orange mx-auto mb-2" />
           <p className="text-sm text-[#a0a0a8] capitalize">

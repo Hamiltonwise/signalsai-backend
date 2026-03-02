@@ -163,10 +163,14 @@ export function DFYWebsite() {
     _projectId: string,
     page: number,
     limit: number,
-  ) =>
-    apiGet({
-      path: `/user/website/form-submissions?page=${page}&limit=${limit}`,
+    flagged?: boolean,
+  ) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (flagged !== undefined) params.set("flagged", String(flagged));
+    return apiGet({
+      path: `/user/website/form-submissions?${params}`,
     });
+  };
 
   const userToggleRead = async (
     _projectId: string,
