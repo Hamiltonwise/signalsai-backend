@@ -163,10 +163,10 @@ export function DFYWebsite() {
     _projectId: string,
     page: number,
     limit: number,
-    flagged?: boolean,
+    filter?: string,
   ) => {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (flagged !== undefined) params.set("flagged", String(flagged));
+    if (filter) params.set("filter", filter);
     return apiGet({
       path: `/user/website/form-submissions?${params}`,
     });

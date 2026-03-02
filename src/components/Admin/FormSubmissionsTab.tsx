@@ -4,6 +4,7 @@ import {
   Inbox,
   Mail,
   MailOpen,
+  MailCheck,
   Trash2,
   ChevronLeft,
   ChevronRight,
@@ -11,6 +12,7 @@ import {
   X,
   Download,
   ShieldAlert,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -23,13 +25,13 @@ import type { FormSubmission } from "../../api/websites";
 interface Props {
   projectId: string;
   isAdmin?: boolean;
-  fetchSubmissionsFn?: (projectId: string, page: number, limit: number, flagged?: boolean) => Promise<any>;
+  fetchSubmissionsFn?: (projectId: string, page: number, limit: number, filter?: string) => Promise<any>;
   toggleReadFn?: (projectId: string, submissionId: string, is_read: boolean) => Promise<any>;
   deleteSubmissionFn?: (projectId: string, submissionId: string) => Promise<any>;
   onExport?: () => void;
 }
 
-type TabFilter = "all" | "flagged";
+type TabFilter = "all" | "verified" | "flagged" | "optins";
 
 export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetchSubmissionsFn, toggleReadFn, deleteSubmissionFn, onExport }: Props) {
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
@@ -39,6 +41,8 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
   const [total, setTotal] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [flaggedCount, setFlaggedCount] = useState(0);
+  const [verifiedCount, setVerifiedCount] = useState(0);
+  const [optinsCount, setOptinsCount] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
 
@@ -46,8 +50,8 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
     try {
       setLoading(true);
       const fetchFn = fetchSubmissionsFn || fetchFormSubmissions;
-      const flaggedParam = activeTab === "flagged" ? true : undefined;
-      const res = await fetchFn(projectId, page, 20, flaggedParam);
+      const filterParam = activeTab === "all" ? undefined : activeTab;
+      const res = await fetchFn(projectId, page, 20, filterParam);
       if (res.error || res.success === false) {
         toast.error(res.error || res.errorMessage || "Failed to load submissions");
         return;
@@ -57,6 +61,8 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
       setTotal(res.pagination?.total || 0);
       setUnreadCount(res.unreadCount || 0);
       setFlaggedCount(res.flaggedCount || 0);
+      setVerifiedCount(res.verifiedCount || 0);
+      setOptinsCount(res.optinsCount || 0);
     } catch {
       toast.error("Failed to load submissions");
     } finally {
@@ -158,6 +164,22 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
           All
         </button>
         <button
+          onClick={() => handleTabChange("verified")}
+          className={`px-3 py-2 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
+            activeTab === "verified"
+              ? "border-emerald-500 text-emerald-600"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          <CheckCircle2 size={14} />
+          Verified
+          {verifiedCount > 0 && (
+            <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">
+              {verifiedCount}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => handleTabChange("flagged")}
           className={`px-3 py-2 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
             activeTab === "flagged"
@@ -173,6 +195,22 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
             </span>
           )}
         </button>
+        <button
+          onClick={() => handleTabChange("optins")}
+          className={`px-3 py-2 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
+            activeTab === "optins"
+              ? "border-sky-500 text-sky-600"
+              : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}
+        >
+          <MailCheck size={14} />
+          Confirmed Opt-ins
+          {optinsCount > 0 && (
+            <span className="text-xs bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-medium">
+              {optinsCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Content */}
@@ -182,7 +220,13 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
         <div className="p-8 text-center">
           <Inbox className="mx-auto mb-3 text-gray-300" size={32} />
           <p className="text-gray-400 text-sm">
-            {activeTab === "flagged" ? "No flagged submissions" : "No form submissions yet"}
+            {activeTab === "verified"
+              ? "No verified submissions"
+              : activeTab === "flagged"
+                ? "No flagged submissions"
+                : activeTab === "optins"
+                  ? "No confirmed opt-ins yet"
+                  : "No form submissions yet"}
           </p>
         </div>
       ) : (
