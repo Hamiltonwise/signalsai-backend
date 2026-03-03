@@ -1,22 +1,22 @@
 /**
  * Page Editor Service
- * Handles LLM-powered HTML component editing via the Anthropic SDK.
+ * Handles LLM-powered HTML component editing via the Google Gemini SDK.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import { getPageEditorPrompt } from "./pageEditorPrompt";
 
-const MODEL = "claude-haiku-4-5-20251001";
+const MODEL = "gemini-2.5-flash";
 
-let client: Anthropic | null = null;
+let client: GoogleGenAI | null = null;
 
-function getClient(): Anthropic {
+function getClient(): GoogleGenAI {
   if (!client) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+      throw new Error("GEMINI_API_KEY environment variable is not set");
     }
-    client = new Anthropic({ apiKey });
+    client = new GoogleGenAI({ apiKey });
   }
   return client;
 }
@@ -46,18 +46,21 @@ interface EditResponse {
 }
 
 /**
- * Send a component's HTML + edit instruction to Claude and get back modified HTML.
+ * Send a component's HTML + edit instruction to Gemini and get back modified HTML.
  */
 export async function editHtmlComponent(params: EditRequest): Promise<EditResponse> {
   const { alloroClass, currentHtml, instruction, chatHistory = [], mediaContext = "", promptType = "admin" } = params;
-  const anthropic = getClient();
+  const ai = getClient();
 
-  // Build the messages array from chat history + current instruction
-  const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
+  // Build the Gemini contents array from chat history + current instruction
+  // Gemini uses "user" and "model" roles (not "assistant")
+  const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
 
-  // Add chat history (previous turns for this component)
   for (const msg of chatHistory) {
-    messages.push({ role: msg.role, content: msg.content });
+    contents.push({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    });
   }
 
   // Add the current instruction with the component HTML context
@@ -68,68 +71,77 @@ ${currentHtml}
 
 Instruction: ${instruction}${mediaContext}`;
 
-  messages.push({ role: "user", content: userMessage });
+  contents.push({ role: "user", parts: [{ text: userMessage }] });
 
   const systemPrompt = await getPageEditorPrompt(promptType);
 
-  console.log(`[PageEditor] Sending edit request to Claude for class: ${alloroClass}`);
+  console.log(`[PageEditor] Sending edit request to Gemini for class: ${alloroClass}`);
   console.log(`[PageEditor] Instruction: ${instruction}`);
   console.log(`[PageEditor] HTML size: ${currentHtml.length} chars, history: ${chatHistory.length} messages`);
 
-  const response = await anthropic.messages.create({
+  // Build flat messages array for debug info (original format)
+  const debugMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
+  for (const msg of chatHistory) {
+    debugMessages.push({ role: msg.role, content: msg.content });
+  }
+  debugMessages.push({ role: "user", content: userMessage });
+
+  const response = await ai.models.generateContent({
     model: MODEL,
-    max_tokens: 4096,
-    system: systemPrompt,
-    messages,
+    config: {
+      systemInstruction: systemPrompt,
+      maxOutputTokens: 4096,
+    },
+    contents,
   });
 
   // Extract the text response
-  const textBlock = response.content.find((block) => block.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text response from Claude");
+  const text = response.text;
+  if (!text) {
+    throw new Error("No text response from Gemini");
   }
 
   const debugInfo: EditDebugInfo = {
     model: MODEL,
     systemPrompt,
-    messages,
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
+    messages: debugMessages,
+    inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
+    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
   };
 
   // Parse the JSON response from the LLM
   let parsed: { error: boolean; message: string; html?: string };
   try {
-    let text = textBlock.text.trim();
+    let cleaned = text.trim();
     // Strip any markdown fences (```json, ```html, ```, etc.)
-    if (text.startsWith("```")) {
-      text = text.replace(/^```\w*\n?/, "").replace(/\n?```$/, "").trim();
+    if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/^```\w*\n?/, "").replace(/\n?```$/, "").trim();
     }
 
     // Try JSON parse first (happy path)
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(cleaned);
     } catch {
       // If JSON parse fails, check if it looks like raw HTML
-      if (text.startsWith("<")) {
+      if (cleaned.startsWith("<")) {
         console.warn("[PageEditor] LLM returned raw HTML instead of JSON — wrapping automatically");
         parsed = {
           error: false,
           message: "Applied edit",
-          html: text,
+          html: cleaned,
         };
       } else {
         throw new Error("Response is neither valid JSON nor HTML");
       }
     }
   } catch (parseErr) {
-    console.error("[PageEditor] LLM returned invalid response:", textBlock.text.substring(0, 200));
+    console.error("[PageEditor] LLM returned invalid response:", text.substring(0, 200));
     throw new Error("LLM returned invalid response — expected JSON or HTML");
   }
 
   // Log token usage
   console.log(
-    `[PageEditor] ✓ Edit complete. Input tokens: ${response.usage.input_tokens}, Output tokens: ${response.usage.output_tokens}`
+    `[PageEditor] ✓ Edit complete. Input tokens: ${debugInfo.inputTokens}, Output tokens: ${debugInfo.outputTokens}`
   );
 
   // Handle rejection — LLM flagged the instruction as not allowed
