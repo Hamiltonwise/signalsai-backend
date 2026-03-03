@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Loader2, Save, Monitor, Tablet, Smartphone } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Monitor, Tablet, Smartphone, Code } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import {
   fetchWebsiteDetail,
@@ -51,6 +51,9 @@ function LayoutEditorInner() {
 
   // Device preview
   const [device, setDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+
+  // Code view toggle (header/footer visual mode)
+  const [codeView, setCodeView] = useState(false);
 
   // Visual editor state (header/footer only)
   const [previewHtml, setPreviewHtml] = useState("");
@@ -315,6 +318,23 @@ function LayoutEditorInner() {
     }
   }, [toggleHidden]);
 
+  // --- Code view toggle for header/footer ---
+  const handleCodeViewChange = useCallback(
+    (active: boolean) => {
+      if (!active && codeView && project) {
+        // Leaving code view: rebuild preview HTML from updated content
+        const wrapper = project.wrapper || "{{slot}}";
+        const html = wrapper.replace(
+          "{{slot}}",
+          `<div data-layout-content="true">${content}</div>`
+        );
+        setPreviewHtml(html);
+      }
+      setCodeView(active);
+    },
+    [codeView, content, project]
+  );
+
   // Current chat messages for selected element
   const currentChatMessages = selectedInfo
     ? chatMap.get(selectedInfo.alloroClass) || []
@@ -413,7 +433,7 @@ function LayoutEditorInner() {
             <span className="text-[10px] text-gray-400">Unsaved changes</span>
           )}
         </div>
-        {/* Center: Device switcher (header/footer only) */}
+        {/* Center: Device switcher + code toggle (header/footer only) */}
         {isVisualMode && (
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
             {(
@@ -425,9 +445,9 @@ function LayoutEditorInner() {
             ).map(({ key, icon: Icon, title }) => (
               <button
                 key={key}
-                onClick={() => setDevice(key)}
+                onClick={() => { setCodeView(false); setDevice(key); }}
                 className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
-                  device === key
+                  !codeView && device === key
                     ? "bg-white text-gray-900 shadow-sm"
                     : "text-gray-400 hover:text-gray-600"
                 }`}
@@ -436,6 +456,18 @@ function LayoutEditorInner() {
                 <Icon className="w-4 h-4" />
               </button>
             ))}
+            <div className="w-px h-4 bg-gray-300 mx-0.5" />
+            <button
+              onClick={() => handleCodeViewChange(!codeView)}
+              className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
+                codeView
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+              title="Code editor"
+            >
+              <Code className="w-4 h-4" />
+            </button>
           </div>
         )}
 
@@ -468,45 +500,72 @@ function LayoutEditorInner() {
 
       {/* Content area */}
       {isVisualMode ? (
-        /* Header/Footer: iframe preview + AI sidebar */
+        /* Header/Footer: iframe preview + AI sidebar (or code editor) */
         <div className="flex-1 flex overflow-hidden">
-          {/* Iframe preview */}
-          <div className="flex-1 bg-gray-100 p-4 overflow-hidden flex items-start justify-center">
-            <div
-              className="h-full rounded-xl overflow-hidden shadow-lg border border-gray-200 transition-all duration-300 mx-auto bg-white"
-              style={{
-                width:
-                  device === "desktop"
-                    ? "100%"
-                    : device === "tablet"
-                      ? "768px"
-                      : "375px",
-                maxWidth: "100%",
-              }}
-            >
-              <iframe
-                ref={iframeRef}
-                srcDoc={prepareHtmlForPreview(previewHtml)}
-                sandbox="allow-same-origin allow-scripts"
-                onLoad={handleIframeLoad}
-                className="w-full h-full border-0 bg-white"
+          {codeView ? (
+            /* Code editor for header/footer raw HTML */
+            <div className="flex-1 overflow-hidden">
+              <Editor
+                height="100%"
+                defaultLanguage="html"
+                value={content}
+                onChange={(v) => {
+                  setContent(v || "");
+                  setIsDirty(true);
+                }}
+                theme="vs-dark"
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 13,
+                  wordWrap: "on",
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  tabSize: 2,
+                  padding: { top: 12 },
+                }}
               />
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Iframe preview */}
+              <div className="flex-1 bg-gray-100 p-4 overflow-hidden flex items-start justify-center">
+                <div
+                  className="h-full rounded-xl overflow-hidden shadow-lg border border-gray-200 transition-all duration-300 mx-auto bg-white"
+                  style={{
+                    width:
+                      device === "desktop"
+                        ? "100%"
+                        : device === "tablet"
+                          ? "768px"
+                          : "375px",
+                    maxWidth: "100%",
+                  }}
+                >
+                  <iframe
+                    ref={iframeRef}
+                    srcDoc={prepareHtmlForPreview(previewHtml)}
+                    sandbox="allow-same-origin allow-scripts"
+                    onLoad={handleIframeLoad}
+                    className="w-full h-full border-0 bg-white"
+                  />
+                </div>
+              </div>
 
-          {/* AI Editor sidebar */}
-          <EditorSidebar
-            selectedInfo={selectedInfo}
-            chatMessages={currentChatMessages}
-            onSendEdit={handleSendEdit}
-            onToggleHidden={handleToggleHidden}
-            isEditing={isEditing}
-            debugInfo={lastDebugInfo}
-            systemPrompt={systemPrompt}
-            projectId={projectId}
-            externalAction={pendingSidebarAction !== ("__deferred__" as QuickActionType) ? pendingSidebarAction : null}
-            onExternalActionHandled={() => setPendingSidebarAction(null)}
-          />
+              {/* AI Editor sidebar */}
+              <EditorSidebar
+                selectedInfo={selectedInfo}
+                chatMessages={currentChatMessages}
+                onSendEdit={handleSendEdit}
+                onToggleHidden={handleToggleHidden}
+                isEditing={isEditing}
+                debugInfo={lastDebugInfo}
+                systemPrompt={systemPrompt}
+                projectId={projectId}
+                externalAction={pendingSidebarAction !== ("__deferred__" as QuickActionType) ? pendingSidebarAction : null}
+                onExternalActionHandled={() => setPendingSidebarAction(null)}
+              />
+            </>
+          )}
         </div>
       ) : (
         /* Wrapper: Monaco code editor only */

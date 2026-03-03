@@ -27,6 +27,8 @@ import EditorSidebar from "../../components/PageEditor/EditorSidebar";
 import type { ChatMessage } from "../../components/PageEditor/ChatPanel";
 import { ConfirmModal } from "../../components/settings/ConfirmModal";
 import { AlertModal } from "../../components/ui/AlertModal";
+import Editor from "@monaco-editor/react";
+import { serializeSectionsJs, parseSectionsJs } from "../../utils/templateRenderer";
 
 const MAX_CHAT_MESSAGES_PER_COMPONENT = 50;
 
@@ -87,6 +89,10 @@ function PageEditorInner() {
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
+
+  // Code view state
+  const [codeView, setCodeView] = useState(false);
+  const [codeContent, setCodeContent] = useState("");
 
   // Debug info from last LLM edit
   const [lastDebugInfo, setLastDebugInfo] = useState<EditDebugInfo | null>(null);
@@ -481,13 +487,27 @@ function PageEditorInner() {
   const handleSave = useCallback(async () => {
     if (!projectId || !draftPageId || isSaving) return;
 
+    // If in code view, parse sections from code first
+    let sectionsToSave = sections;
+    if (codeView) {
+      try {
+        sectionsToSave = parseSectionsJs(codeContent);
+        setSections(sectionsToSave);
+      } catch (err) {
+        setEditError(
+          `Code parse error: ${err instanceof Error ? err.message : String(err)}`
+        );
+        return;
+      }
+    }
+
     try {
       setIsSaving(true);
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       await updatePageSections(
         projectId,
         draftPageId,
-        sections,
+        sectionsToSave,
         chatMapToObject(chatMap)
       );
       setIsDirty(false);
@@ -499,7 +519,7 @@ function PageEditorInner() {
     } finally {
       setIsSaving(false);
     }
-  }, [projectId, draftPageId, sections, chatMap, isSaving]);
+  }, [projectId, draftPageId, sections, chatMap, isSaving, codeView, codeContent]);
 
   // --- Publish ---
   const handlePublish = useCallback(() => {
@@ -574,6 +594,43 @@ function PageEditorInner() {
       setIsPublishing(false);
     }
   }, [projectId, draftPageId, sections, chatMap, isDirty]);
+
+  // --- Code view toggle ---
+  const handleCodeViewChange = useCallback(
+    (active: boolean) => {
+      if (active) {
+        // Entering code view: serialize current sections
+        setCodeContent(serializeSectionsJs(sections));
+        clearSelection();
+      } else if (codeView) {
+        // Leaving code view: parse code back to sections
+        try {
+          const parsed = parseSectionsJs(codeContent);
+          setSections(parsed);
+          const assembled = renderPage(
+            project?.wrapper || "{{slot}}",
+            project?.header || "",
+            project?.footer || "",
+            parsed,
+            undefined,
+            undefined,
+            undefined,
+            projectId
+          );
+          setHtmlContent(assembled);
+          setIsDirty(true);
+          scheduleSave(assembled);
+        } catch (err) {
+          setEditError(
+            `Code parse error: ${err instanceof Error ? err.message : String(err)}`
+          );
+          return; // Stay in code view on parse error
+        }
+      }
+      setCodeView(active);
+    },
+    [codeView, codeContent, sections, project, projectId, scheduleSave, clearSelection]
+  );
 
   // --- Current chat messages for selected element ---
   const currentChatMessages = selectedInfo
@@ -660,6 +717,8 @@ function PageEditorInner() {
         pageStatus={page.status}
         device={device}
         onDeviceChange={setDevice}
+        codeView={codeView}
+        onCodeViewChange={handleCodeViewChange}
         onUndo={handleUndo}
         onSave={handleSave}
         onPublish={handlePublish}
@@ -688,43 +747,71 @@ function PageEditorInner() {
             Offset below both AdminTopBar (4rem) and EditorToolbar (~41px). */}
         <AdminSidebar topOffset="calc(4rem + 41px)" />
 
-        {/* Iframe preview area */}
-        <div className="flex-1 bg-gray-100 p-4 overflow-hidden flex items-start justify-center">
-          <div
-            className="h-full rounded-xl overflow-hidden shadow-lg border border-gray-200 transition-all duration-300 mx-auto bg-white"
-            style={{
-              width:
-                device === "desktop"
-                  ? "100%"
-                  : device === "tablet"
-                    ? "768px"
-                    : "375px",
-              maxWidth: "100%",
-            }}
-          >
-            <iframe
-              ref={iframeRef}
-              srcDoc={prepareHtmlForPreview(htmlContent)}
-              sandbox="allow-same-origin allow-scripts"
-              onLoad={handleIframeLoad}
-              className="w-full h-full border-0 bg-white"
+        {/* Preview area: iframe or code editor */}
+        {codeView ? (
+          <div className="flex-1 overflow-hidden">
+            <Editor
+              height="100%"
+              defaultLanguage="javascript"
+              value={codeContent}
+              onChange={(v) => {
+                setCodeContent(v || "");
+                setIsDirty(true);
+              }}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 13,
+                wordWrap: "on",
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 2,
+                padding: { top: 12 },
+              }}
             />
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex-1 bg-gray-100 p-4 overflow-hidden flex items-start justify-center">
+              <div
+                className="h-full rounded-xl overflow-hidden shadow-lg border border-gray-200 transition-all duration-300 mx-auto bg-white"
+                style={{
+                  width:
+                    device === "desktop"
+                      ? "100%"
+                      : device === "tablet"
+                        ? "768px"
+                        : "375px",
+                  maxWidth: "100%",
+                }}
+              >
+                <iframe
+                  ref={iframeRef}
+                  srcDoc={prepareHtmlForPreview(htmlContent)}
+                  sandbox="allow-same-origin allow-scripts"
+                  onLoad={handleIframeLoad}
+                  className="w-full h-full border-0 bg-white"
+                />
+              </div>
+            </div>
+          </>
+        )}
 
-        {/* Editor sidebar */}
-        <EditorSidebar
-          selectedInfo={selectedInfo}
-          chatMessages={currentChatMessages}
-          onSendEdit={handleSendEdit}
-          onToggleHidden={handleToggleHidden}
-          isEditing={isEditing}
-          debugInfo={lastDebugInfo}
-          systemPrompt={systemPrompt}
-          projectId={projectId}
-          externalAction={pendingSidebarAction !== ("__deferred__" as QuickActionType) ? pendingSidebarAction : null}
-          onExternalActionHandled={() => setPendingSidebarAction(null)}
-        />
+        {/* Editor sidebar — hidden in code view */}
+        {!codeView && (
+          <EditorSidebar
+            selectedInfo={selectedInfo}
+            chatMessages={currentChatMessages}
+            onSendEdit={handleSendEdit}
+            onToggleHidden={handleToggleHidden}
+            isEditing={isEditing}
+            debugInfo={lastDebugInfo}
+            systemPrompt={systemPrompt}
+            projectId={projectId}
+            externalAction={pendingSidebarAction !== ("__deferred__" as QuickActionType) ? pendingSidebarAction : null}
+            onExternalActionHandled={() => setPendingSidebarAction(null)}
+          />
+        )}
       </div>
 
       {/* Publish Confirmation Modal */}

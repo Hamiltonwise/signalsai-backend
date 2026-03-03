@@ -1,4 +1,4 @@
-import { ArrowLeft, Undo2, Save, Upload, Monitor, Tablet, Smartphone, Loader2 } from "lucide-react";
+import { ArrowLeft, Undo2, Save, Upload, Monitor, Tablet, Smartphone, Loader2, Code } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface EditorToolbarProps {
@@ -8,6 +8,8 @@ interface EditorToolbarProps {
   pageStatus: string;
   device: "desktop" | "tablet" | "mobile";
   onDeviceChange: (device: "desktop" | "tablet" | "mobile") => void;
+  codeView: boolean;
+  onCodeViewChange: (active: boolean) => void;
   onUndo: () => void;
   onSave: () => void;
   onPublish: () => void;
@@ -24,6 +26,8 @@ export default function EditorToolbar({
   pageStatus,
   device,
   onDeviceChange,
+  codeView,
+  onCodeViewChange,
   onUndo,
   onSave,
   onPublish,
@@ -64,7 +68,7 @@ export default function EditorToolbar({
         )}
       </div>
 
-      {/* Center: Device switcher */}
+      {/* Center: Device switcher + code toggle */}
       <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
         {(
           [
@@ -75,9 +79,9 @@ export default function EditorToolbar({
         ).map(({ key, icon: Icon, title }) => (
           <button
             key={key}
-            onClick={() => onDeviceChange(key)}
+            onClick={() => { onCodeViewChange(false); onDeviceChange(key); }}
             className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
-              device === key
+              !codeView && device === key
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-400 hover:text-gray-600"
             }`}
@@ -86,6 +90,18 @@ export default function EditorToolbar({
             <Icon className="w-4 h-4" />
           </button>
         ))}
+        <div className="w-px h-4 bg-gray-300 mx-0.5" />
+        <button
+          onClick={() => onCodeViewChange(!codeView)}
+          className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
+            codeView
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-400 hover:text-gray-600"
+          }`}
+          title="Code editor"
+        >
+          <Code className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Right: Actions */}
