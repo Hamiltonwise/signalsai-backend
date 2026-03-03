@@ -359,6 +359,152 @@ export async function updateProject(
 }
 
 // ---------------------------------------------------------------------------
+// Update page generation status (N8N callback)
+// ---------------------------------------------------------------------------
+
+export async function updatePageGenerationStatus(
+  pageId: string,
+  data: {
+    generation_status: "generating" | "ready" | "failed";
+    html_content?: string;
+    sections?: unknown;
+    wrapper?: string;
+    header?: string;
+    footer?: string;
+  },
+): Promise<{ error?: { status: number; code: string; message: string } }> {
+  const page = await db(PAGES_TABLE).where("id", pageId).first();
+  if (!page) {
+    return { error: { status: 404, code: "NOT_FOUND", message: "Page not found" } };
+  }
+
+  const pageUpdates: Record<string, unknown> = {
+    generation_status: data.generation_status,
+    updated_at: db.fn.now(),
+  };
+
+  if (data.generation_status === "ready") {
+    pageUpdates.status = "draft";
+    if (data.html_content !== undefined) pageUpdates.html_content = data.html_content;
+    if (data.sections !== undefined) pageUpdates.sections = JSON.stringify(data.sections);
+  }
+
+  await db(PAGES_TABLE).where("id", pageId).update(pageUpdates);
+
+  // If ready, propagate layout updates to the project and advance status to LIVE
+  if (data.generation_status === "ready") {
+    const projectUpdates: Record<string, unknown> = { updated_at: db.fn.now() };
+    if (data.wrapper !== undefined) projectUpdates.wrapper = data.wrapper;
+    if (data.header !== undefined) projectUpdates.header = data.header;
+    if (data.footer !== undefined) projectUpdates.footer = data.footer;
+
+    // Advance to LIVE — a page is now ready
+    projectUpdates.status = "LIVE";
+
+    await db(PROJECTS_TABLE).where("id", page.project_id).update(projectUpdates);
+    console.log(`[Admin Websites] Page ${pageId} ready — project ${page.project_id} set to LIVE`);
+  }
+
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Get per-page generation status for a project (polling)
+// ---------------------------------------------------------------------------
+
+export async function getPagesGenerationStatus(projectId: string): Promise<any[]> {
+  const pages = await db(PAGES_TABLE)
+    .leftJoin(
+      "website_builder.template_pages",
+      `${PAGES_TABLE}.template_page_id`,
+      "website_builder.template_pages.id",
+    )
+    .select(
+      `${PAGES_TABLE}.id`,
+      `${PAGES_TABLE}.path`,
+      `${PAGES_TABLE}.status`,
+      `${PAGES_TABLE}.generation_status`,
+      `${PAGES_TABLE}.updated_at`,
+      db.raw(`website_builder.template_pages.name as template_page_name`),
+    )
+    .where(`${PAGES_TABLE}.project_id`, projectId)
+    .whereNotNull(`${PAGES_TABLE}.generation_status`)
+    .orderBy(`${PAGES_TABLE}.path`, "asc");
+
+  return pages;
+}
+
+// ---------------------------------------------------------------------------
+// Create all pages from template (bulk kick-off)
+// ---------------------------------------------------------------------------
+
+export async function createAllFromTemplate(
+  projectId: string,
+  data: {
+    templateId: string;
+    placeId: string;
+    pages: Array<{
+      templatePageId: string;
+      path: string;
+      websiteUrl?: string | null;
+    }>;
+    businessName?: string;
+    formattedAddress?: string;
+    city?: string;
+    state?: string;
+    phone?: string;
+    category?: string;
+    primaryColor?: string;
+    accentColor?: string;
+    practiceSearchString?: string;
+    rating?: number;
+    reviewCount?: number;
+  },
+): Promise<{
+  pages?: Array<{ id: string; path: string; templatePageId: string; generation_status: string }>;
+  error?: { status: number; code: string; message: string };
+}> {
+  const project = await db(PROJECTS_TABLE).where("id", projectId).first();
+  if (!project) {
+    return { error: { status: 404, code: "NOT_FOUND", message: "Project not found" } };
+  }
+
+  if (data.pages.length === 0) {
+    return { error: { status: 400, code: "INVALID_INPUT", message: "No pages provided" } };
+  }
+
+  // Create all page rows as queued
+  const insertedPages = await db(PAGES_TABLE)
+    .insert(
+      data.pages.map((p) => ({
+        project_id: projectId,
+        path: p.path,
+        version: 1,
+        status: "draft",
+        generation_status: "queued",
+        template_page_id: p.templatePageId,
+      })),
+    )
+    .returning(["id", "path", "template_page_id", "generation_status"]);
+
+  // Advance project to IN_PROGRESS
+  await db(PROJECTS_TABLE)
+    .where("id", projectId)
+    .update({ status: "IN_PROGRESS", updated_at: db.fn.now() });
+
+  console.log(`[Admin Websites] Created ${insertedPages.length} queued pages for project ${projectId}`);
+
+  return {
+    pages: insertedPages.map((p: any) => ({
+      id: p.id,
+      path: p.path,
+      templatePageId: p.template_page_id,
+      generation_status: p.generation_status,
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Delete project (cascade pages)
 // ---------------------------------------------------------------------------
 

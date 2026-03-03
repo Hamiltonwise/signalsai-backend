@@ -30,6 +30,13 @@ router.get("/statuses", controller.getStatuses);
 router.post("/start-pipeline", controller.startPipeline);
 
 // =====================================================================
+// PAGE GENERATION STATUS (non-parameterized by project — must be before /:id)
+// =====================================================================
+
+// PATCH /pages/:pageId/generation-status — N8N callback to update page status
+router.patch("/pages/:pageId/generation-status", controller.updatePageGenerationStatus);
+
+// =====================================================================
 // TEMPLATES
 // =====================================================================
 
@@ -122,6 +129,12 @@ router.use("/imports", importsRouter);
 
 // GET  /:id/status — Lightweight status polling
 router.get("/:id/status", controller.getProjectStatus);
+
+// GET  /:id/pages/generation-status — Per-page generation status (before /:id/pages/:pageId)
+router.get("/:id/pages/generation-status", controller.getPagesGenerationStatus);
+
+// POST /:id/create-all-from-template — Bulk create all pages from template
+router.post("/:id/create-all-from-template", controller.createAllFromTemplate);
 
 // PATCH /:id/link-organization — Link/unlink org
 router.patch("/:id/link-organization", controller.linkOrganization);

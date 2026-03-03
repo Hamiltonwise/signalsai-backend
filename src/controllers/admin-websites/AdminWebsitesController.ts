@@ -130,6 +130,177 @@ export async function getProjectStatus(
   }
 }
 
+/** PATCH /pages/:pageId/generation-status — N8N callback to update page generation status */
+export async function updatePageGenerationStatus(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { pageId } = req.params;
+    const { generation_status, html_content, sections, wrapper, header, footer } = req.body;
+
+    if (!["generating", "ready", "failed"].includes(generation_status)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_STATUS",
+        message: "generation_status must be generating, ready, or failed",
+      });
+    }
+
+    const result = await projectManager.updatePageGenerationStatus(pageId, {
+      generation_status,
+      html_content,
+      sections,
+      wrapper,
+      header,
+      footer,
+    });
+
+    if (result.error) {
+      return res.status(result.error.status).json({
+        success: false,
+        error: result.error.code,
+        message: result.error.message,
+      });
+    }
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating page generation status:", error);
+    return res.status(500).json({
+      success: false,
+      error: "UPDATE_ERROR",
+      message: error?.message || "Failed to update page generation status",
+    });
+  }
+}
+
+/** GET /:id/pages/generation-status — Per-page generation status for polling */
+export async function getPagesGenerationStatus(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const pages = await projectManager.getPagesGenerationStatus(id);
+    return res.json({ success: true, data: pages });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching page generation status:", error);
+    return res.status(500).json({
+      success: false,
+      error: "FETCH_ERROR",
+      message: error?.message || "Failed to fetch page generation status",
+    });
+  }
+}
+
+/** POST /:id/create-all-from-template — Bulk create all pages and kick off N8N per page */
+export async function createAllFromTemplate(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const {
+      templateId,
+      placeId,
+      pages,
+      businessName,
+      formattedAddress,
+      city,
+      state,
+      phone,
+      category,
+      primaryColor,
+      accentColor,
+      practiceSearchString,
+      rating,
+      reviewCount,
+    } = req.body;
+
+    if (!placeId) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "placeId is required",
+      });
+    }
+
+    if (!Array.isArray(pages) || pages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_INPUT",
+        message: "pages array is required and must not be empty",
+      });
+    }
+
+    // Create all page rows as queued
+    const createResult = await projectManager.createAllFromTemplate(id, {
+      templateId,
+      placeId,
+      pages,
+      businessName,
+      formattedAddress,
+      city,
+      state,
+      phone,
+      category,
+      primaryColor,
+      accentColor,
+      practiceSearchString,
+      rating,
+      reviewCount,
+    });
+
+    if (createResult.error) {
+      return res.status(createResult.error.status).json({
+        success: false,
+        error: createResult.error.code,
+        message: createResult.error.message,
+      });
+    }
+
+    // Fire N8N webhook per page (fire-and-forget — don't await all)
+    // Pass existingPageId so startPipeline skips pre-creating another row.
+    const createdPages = createResult.pages!;
+    for (let i = 0; i < createdPages.length; i++) {
+      const createdPage = createdPages[i];
+      const pageConfig = pages[i];
+      deploymentPipeline.startPipeline({
+        projectId: id,
+        templateId,
+        templatePageId: createdPage.templatePageId,
+        path: createdPage.path,
+        placeId,
+        websiteUrl: pageConfig?.websiteUrl ?? undefined,
+        businessName,
+        formattedAddress,
+        city,
+        state,
+        phone,
+        category,
+        primaryColor,
+        accentColor,
+        practiceSearchString,
+        rating,
+        reviewCount,
+        existingPageId: createdPage.id,
+      }).catch((err: any) => {
+        console.error(`[Admin Websites] Pipeline fire failed for page ${createdPage.id}:`, err);
+      });
+    }
+
+    return res.status(201).json({ success: true, data: createdPages });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error in create-all-from-template:", error);
+    return res.status(500).json({
+      success: false,
+      error: "CREATE_ERROR",
+      message: error?.message || "Failed to create pages from template",
+    });
+  }
+}
+
 /** PATCH /:id/link-organization — Link or unlink org */
 export async function linkOrganization(
   req: Request,

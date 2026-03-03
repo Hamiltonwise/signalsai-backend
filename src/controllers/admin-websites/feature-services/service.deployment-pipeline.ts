@@ -3,6 +3,7 @@
  *
  * Triggers the N8N webhook for website generation pipeline.
  * Resolves template data and includes it inline in the payload.
+ * Pre-creates the page row before firing the webhook so N8N has a pageId to write back to.
  */
 
 import { db } from "../../../database/connection";
@@ -11,6 +12,8 @@ import { buildFormScript } from "../../../utils/website-utils/formScript";
 
 const TEMPLATES_TABLE = "website_builder.templates";
 const TEMPLATE_PAGES_TABLE = "website_builder.template_pages";
+const PROJECTS_TABLE = "website_builder.projects";
+const PAGES_TABLE = "website_builder.pages";
 
 export interface PipelineStartParams {
   projectId: string;
@@ -32,6 +35,8 @@ export interface PipelineStartParams {
   primaryColor?: string;
   accentColor?: string;
   scrapedData?: string | null;
+  /** If provided, skip pre-creating a page row and use this existing pageId instead. */
+  existingPageId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -40,7 +45,7 @@ export interface PipelineStartParams {
 
 export async function startPipeline(
   params: PipelineStartParams,
-): Promise<{ error?: { status: number; code: string; message: string } }> {
+): Promise<{ pageId?: string; error?: { status: number; code: string; message: string } }> {
   const {
     projectId,
     templateId,
@@ -61,6 +66,7 @@ export async function startPipeline(
     primaryColor,
     accentColor,
     scrapedData,
+    existingPageId,
   } = params;
 
   if (!projectId || !placeId) {
@@ -129,6 +135,35 @@ export async function startPipeline(
 
   const finalPath = pagePath || "/";
 
+  let pageId: string;
+
+  if (existingPageId) {
+    // Page row already created (e.g. by createAllFromTemplate) — just use it
+    pageId = existingPageId;
+    console.log(`[Admin Websites] Using existing page row ID: ${pageId} for path: ${finalPath}`);
+  } else {
+    // Pre-create the page row so N8N has a concrete pageId to write back to.
+    const [page] = await db(PAGES_TABLE)
+      .insert({
+        project_id: projectId,
+        path: finalPath,
+        version: 1,
+        status: "draft",
+        generation_status: "queued",
+        template_page_id: templatePageId || null,
+      })
+      .returning("id");
+
+    pageId = page.id;
+    console.log(`[Admin Websites] Pre-created page row ID: ${pageId} for path: ${finalPath}`);
+
+    // Advance project status to IN_PROGRESS if it's still CREATED
+    await db(PROJECTS_TABLE)
+      .where("id", projectId)
+      .where("status", "CREATED")
+      .update({ status: "IN_PROGRESS", updated_at: db.fn.now() });
+  }
+
   // Fetch template data to include inline so N8N doesn't need to query the DB
   const template = await db(TEMPLATES_TABLE)
     .where("id", finalTemplateId)
@@ -156,6 +191,7 @@ export async function startPipeline(
   console.log(`[Admin Websites] Triggering webhook: ${n8nWebhookUrl}`);
   console.log(`[Admin Websites] Payload:`, {
     projectId,
+    pageId,
     templateId: finalTemplateId,
     templatePageId,
     path: finalPath,
@@ -170,6 +206,7 @@ export async function startPipeline(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       projectId,
+      pageId,
       templateId: finalTemplateId,
       templatePageId,
       templateData,
@@ -198,6 +235,11 @@ export async function startPipeline(
       `[Admin Websites] Pipeline webhook failed: ${webhookResponse.status} ${webhookResponse.statusText}`,
       errorText,
     );
+    // Mark the pre-created page as failed since the webhook didn't fire
+    await db(PAGES_TABLE)
+      .where("id", pageId)
+      .update({ generation_status: "failed", updated_at: db.fn.now() });
+
     return {
       error: {
         status: 500,
@@ -208,8 +250,8 @@ export async function startPipeline(
   }
 
   console.log(
-    `[Admin Websites] \u2713 Pipeline triggered for project ID: ${projectId}`,
+    `[Admin Websites] \u2713 Pipeline triggered for project ID: ${projectId}, page ID: ${pageId}`,
   );
 
-  return {};
+  return { pageId };
 }
