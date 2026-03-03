@@ -17,27 +17,26 @@ import {
   Star,
   Search,
   X,
-  Sparkles,
-  ImageIcon,
   Code,
   Trash2,
   Pencil,
   ChevronDown,
   Hash,
+  Sparkles,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import {
   fetchWebsiteDetail,
   updateWebsite,
   deleteWebsite,
-  startPipeline,
   deletePageByPath,
   linkWebsiteToOrganization,
   connectDomain,
   verifyDomainAdmin,
   disconnectDomain,
+  createAllFromTemplate,
+  fetchPagesGenerationStatus,
 } from "../../api/websites";
-import type { WebsiteProjectWithPages, WebsitePage } from "../../api/websites";
+import type { WebsiteProjectWithPages, WebsitePage, PageGenerationStatusItem } from "../../api/websites";
 import { toast } from "react-hot-toast";
 import { searchPlaces, getPlaceDetails } from "../../api/places";
 import type { PlaceSuggestion, PlaceDetails } from "../../api/places";
@@ -58,64 +57,6 @@ import { fetchProjectCodeSnippets } from "../../api/codeSnippets";
 import type { CodeSnippet } from "../../api/codeSnippets";
 import { useConfirm } from "../../components/ui/ConfirmModal";
 
-// Status step type with icon
-interface StatusStep {
-  key: string;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-}
-
-// Status steps for the progress tracker
-const STATUS_STEPS: StatusStep[] = [
-  {
-    key: "CREATED",
-    label: "Project Created",
-    description: "Waiting for business selection",
-    icon: FileText,
-  },
-  {
-    key: "GBP_SELECTED",
-    label: "Business Selected",
-    description: "Fetching business profile data",
-    icon: Building2,
-  },
-  {
-    key: "GBP_SCRAPED",
-    label: "Profile Scraped",
-    description: "Analyzing business information",
-    icon: Search,
-  },
-  {
-    key: "WEBSITE_SCRAPED",
-    label: "Website Scraped",
-    description: "Extracting content from website",
-    icon: Globe,
-  },
-  {
-    key: "IMAGES_ANALYZED",
-    label: "Images Analyzed",
-    description: "Processing and optimizing images",
-    icon: ImageIcon,
-  },
-  {
-    key: "HTML_GENERATED",
-    label: "HTML Generated",
-    description: "Building your website pages",
-    icon: Code,
-  },
-  {
-    key: "READY",
-    label: "Ready",
-    description: "Your website is live!",
-    icon: Sparkles,
-  },
-];
-
-const getStatusIndex = (status: string): number => {
-  const index = STATUS_STEPS.findIndex((s) => s.key === status);
-  return index >= 0 ? index : 0;
-};
 
 /**
  * Group pages by path for the expandable list.
@@ -204,6 +145,14 @@ export default function WebsiteDetail() {
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const orgDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Per-page generation status polling
+  const [pageGenStatuses, setPageGenStatuses] = useState<PageGenerationStatusItem[]>([]);
+  const [isCreatingAll, setIsCreatingAll] = useState(false);
+  // Per-page websiteUrl overrides: { [templatePageId]: url }
+  const [pageWebsiteUrls, setPageWebsiteUrls] = useState<Record<string, string>>({});
+  // Per-page path inputs: { [templatePageId]: path }
+  const [pagePathInputs, setPagePathInputs] = useState<Record<string, string>>({});
+
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -212,7 +161,7 @@ export default function WebsiteDetail() {
   const expectedPageCountRef = useRef<number>(0);
   const isMountedRef = useRef(true);
 
-  const NON_POLLING_STATUSES = ["CREATED", "READY"];
+  const NON_POLLING_STATUSES = ["CREATED", "LIVE"];
   const POLL_INTERVAL = 3000;
 
   const loadCodeSnippets = useCallback(async () => {
@@ -307,9 +256,9 @@ export default function WebsiteDetail() {
     }
   }, [website?.organization?.id, loadAvailableOrganizations]);
 
-  // Load templates for selector (only when CREATED status)
+  // Load templates for selector (only when CREATED status or no template set yet)
   useEffect(() => {
-    if (!website || website.status !== "CREATED") return;
+    if (!website || (website.status !== "CREATED" && website.template_id)) return;
     const loadTemplates = async () => {
       try {
         setLoadingTemplates(true);
@@ -349,7 +298,7 @@ export default function WebsiteDetail() {
     }
   };
 
-  // Status polling
+  // Project status polling (stops when CREATED or LIVE)
   useEffect(() => {
     if (!website) return;
     if (NON_POLLING_STATUSES.includes(website.status)) {
@@ -381,6 +330,45 @@ export default function WebsiteDetail() {
       if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
     };
   }, [website?.status, id]);
+
+  // Per-page generation status polling — active while any page is queued or generating
+  useEffect(() => {
+    if (!website || !id) return;
+    if (website.status !== "IN_PROGRESS") return;
+
+    const hasActivePages = pageGenStatuses.some(
+      (p) => p.generation_status === "queued" || p.generation_status === "generating",
+    );
+    if (!hasActivePages && pageGenStatuses.length > 0) return;
+
+    const pollPages = async () => {
+      if (!isMountedRef.current) return;
+      try {
+        const response = await fetchPagesGenerationStatus(id);
+        if (!isMountedRef.current) return;
+        setPageGenStatuses(response.data);
+        const stillActive = response.data.some(
+          (p) => p.generation_status === "queued" || p.generation_status === "generating",
+        );
+        if (stillActive) {
+          pageGenPollRef.current = setTimeout(pollPages, POLL_INTERVAL);
+        } else {
+          setIsCreatingAll(false);
+          // Reload website to get updated project status
+          loadWebsite();
+        }
+      } catch (err) {
+        if (!isMountedRef.current) return;
+        console.error("Page gen polling error:", err);
+        pageGenPollRef.current = setTimeout(pollPages, POLL_INTERVAL);
+      }
+    };
+
+    pageGenPollRef.current = setTimeout(pollPages, POLL_INTERVAL);
+    return () => {
+      if (pageGenPollRef.current) clearTimeout(pageGenPollRef.current);
+    };
+  }, [website?.status, id, pageGenStatuses.length]);
 
   // Click outside dropdown
   useEffect(() => {
@@ -490,19 +478,19 @@ export default function WebsiteDetail() {
       );
       return;
     }
-    // Use the first template page as the homepage
-    const homepageTemplatePage = selectedTemplatePages[0];
 
     try {
       setIsConfirming(true);
+      setIsCreatingAll(true);
       setSearchError(null);
+
+      // Save project metadata (place, template, colors) — server sets status to IN_PROGRESS
       await updateWebsite(id, {
         selected_place_id: selectedPlace.placeId,
         selected_website_url: dataSource === "website" ? (websiteUrl || null) : null,
         template_id: selectedTemplateId,
         primary_color: primaryColor,
         accent_color: accentColor,
-        status: "GBP_SELECTED",
         step_gbp_scrape: {
           name: selectedPlace.name,
           formattedAddress: selectedPlace.formattedAddress,
@@ -514,29 +502,44 @@ export default function WebsiteDetail() {
         },
       } as any);
 
+      // Build per-page config using explicit path inputs and websiteUrl overrides
+      const globalWebsiteUrl = dataSource === "website" ? (websiteUrl || null) : null;
+      const pageConfigs = selectedTemplatePages.map((tp) => ({
+        templatePageId: tp.id,
+        path: pagePathInputs[tp.id] ?? "",
+        websiteUrl: pageWebsiteUrls[tp.id] !== undefined ? (pageWebsiteUrls[tp.id] || null) : globalWebsiteUrl,
+      }));
+
       try {
-        await startPipeline({
-          projectId: id,
-          placeId: selectedPlace.placeId,
+        const result = await createAllFromTemplate(id, {
           templateId: selectedTemplateId,
-          templatePageId: homepageTemplatePage.id,
-          path: "/",
-          websiteUrl: dataSource === "website" ? (websiteUrl || null) : null,
-          practiceSearchString: selectedPlace.practiceSearchString,
+          placeId: selectedPlace.placeId,
+          pages: pageConfigs,
           businessName: selectedPlace.name,
           formattedAddress: selectedPlace.formattedAddress,
           city: selectedPlace.city,
           state: selectedPlace.state,
           phone: selectedPlace.phone ?? undefined,
           category: selectedPlace.category,
-          rating: selectedPlace.rating ?? undefined,
-          reviewCount: selectedPlace.reviewCount,
           primaryColor,
           accentColor,
-          scrapedData: dataSource === "pasted" ? (scrapedData.trim() || null) : null,
+          practiceSearchString: selectedPlace.practiceSearchString,
+          rating: selectedPlace.rating ?? undefined,
+          reviewCount: selectedPlace.reviewCount,
         });
+
+        // Seed the polling state with queued items immediately
+        setPageGenStatuses(result.data.map((p) => ({
+          id: p.id,
+          path: p.path,
+          status: "draft",
+          generation_status: "queued" as const,
+          template_page_name: selectedTemplatePages.find((tp) => tp.id === p.templatePageId)?.name ?? null,
+          updated_at: new Date().toISOString(),
+        })));
       } catch (webhookErr) {
-        console.error("Pipeline webhook error:", webhookErr);
+        console.error("Create all pipeline error:", webhookErr);
+        toast.error("Failed to start page generation. Please try again.");
       }
 
       await loadWebsite();
@@ -705,21 +708,29 @@ export default function WebsiteDetail() {
 
   const getStatusStyles = (status: string): string => {
     switch (status) {
-      case "READY":
+      case "LIVE":
         return "border-green-200 bg-green-100 text-green-700";
-      case "HTML_GENERATED":
-        return "border-blue-200 bg-blue-100 text-blue-700";
-      case "GENERATING":
-        return "border-yellow-200 bg-yellow-100 text-yellow-700";
-      case "GBP_SELECTED":
-      case "GBP_SCRAPED":
-      case "WEBSITE_SCRAPED":
-      case "IMAGES_ANALYZED":
+      case "IN_PROGRESS":
         return "border-purple-200 bg-purple-100 text-purple-700";
       case "CREATED":
         return "border-gray-200 bg-gray-100 text-gray-700";
       default:
         return "border-gray-200 bg-gray-100 text-gray-700";
+    }
+  };
+
+  const getGenStatusStyles = (genStatus: string): string => {
+    switch (genStatus) {
+      case "ready":
+        return "border-green-200 bg-green-100 text-green-700";
+      case "generating":
+        return "border-amber-200 bg-amber-100 text-amber-700";
+      case "queued":
+        return "border-gray-200 bg-gray-100 text-gray-500";
+      case "failed":
+        return "border-red-200 bg-red-100 text-red-700";
+      default:
+        return "border-gray-200 bg-gray-100 text-gray-500";
     }
   };
 
@@ -743,7 +754,7 @@ export default function WebsiteDetail() {
   };
 
   const isProcessingStatus = (status: string): boolean =>
-    !["READY", "CREATED"].includes(status);
+    status === "IN_PROGRESS";
 
   const getGbpData = () => {
     if (website?.step_gbp_scrape && typeof website.step_gbp_scrape === "object")
@@ -853,9 +864,9 @@ export default function WebsiteDetail() {
   }
 
   const gbpData = getGbpData();
-  const currentStatusIndex = getStatusIndex(website.status);
   const isCreatedStatus = website.status === "CREATED";
-  const isReady = website.status === "READY";
+  const isLive = website.status === "LIVE";
+  const isInProgress = website.status === "IN_PROGRESS";
   const pageGroups = groupPagesByPath(website.pages);
 
   return (
@@ -894,7 +905,7 @@ export default function WebsiteDetail() {
             <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusStyles(website.status)}`}
             >
-              {website.status === "READY" && (
+              {website.status === "LIVE" && (
                 <CheckCircle className="h-3 w-3" />
               )}
               {isProcessingStatus(website.status) && (
@@ -1024,7 +1035,7 @@ export default function WebsiteDetail() {
                 ? (website as any).custom_domain
                 : "Custom Domain"}
             </button>
-            {(isReady || website.status === "HTML_GENERATED") && (
+            {isLive && (
               <a
                 href={`https://${(website as any).custom_domain && (website as any).domain_verified_at ? (website as any).custom_domain : `${website.generated_hostname}.sites.getalloro.com`}`}
                 target="_blank"
@@ -1052,8 +1063,8 @@ export default function WebsiteDetail() {
         }
       />
 
-      {/* Status Card — horizontal, hidden when READY */}
-      {!isReady && (
+      {/* Status Card — hidden when LIVE */}
+      {!isLive && (
         <motion.div
           className="rounded-xl border border-gray-200 bg-white shadow-sm"
           initial={{ opacity: 0, y: 20 }}
@@ -1249,6 +1260,45 @@ export default function WebsiteDetail() {
                           </div>
                         </div>
                       </div>
+                      {/* Per-page path + URL inputs (merged, side by side) */}
+                      {selectedTemplatePages.length > 0 && (
+                        <div className="px-4 pt-3 pb-2 border-t border-gray-100">
+                          <div className={`grid gap-x-2 mb-1.5 ${dataSource === "website" ? "grid-cols-[5rem_1fr_1fr]" : "grid-cols-[5rem_1fr]"}`}>
+                            <span className="text-xs font-medium text-gray-400">Page</span>
+                            <span className="text-xs font-medium text-gray-400">Path <span className="text-red-400">*</span></span>
+                            {dataSource === "website" && (
+                              <span className="text-xs font-medium text-gray-400">Scrape URL (optional)</span>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            {selectedTemplatePages.map((tp) => (
+                              <div key={tp.id} className={`grid gap-x-2 items-center ${dataSource === "website" ? "grid-cols-[5rem_1fr_1fr]" : "grid-cols-[5rem_1fr]"}`}>
+                                <span className="text-xs text-gray-500 truncate">{tp.name}</span>
+                                <input
+                                  type="text"
+                                  value={pagePathInputs[tp.id] ?? ""}
+                                  onChange={(e) =>
+                                    setPagePathInputs((prev) => ({ ...prev, [tp.id]: e.target.value }))
+                                  }
+                                  placeholder="/your-path"
+                                  className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-1 focus:ring-alloro-orange/20 outline-none font-mono w-full"
+                                />
+                                {dataSource === "website" && (
+                                  <input
+                                    type="url"
+                                    value={pageWebsiteUrls[tp.id] ?? ""}
+                                    onChange={(e) =>
+                                      setPageWebsiteUrls((prev) => ({ ...prev, [tp.id]: e.target.value }))
+                                    }
+                                    placeholder={websiteUrl || "Same as global"}
+                                    className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-1 focus:ring-alloro-orange/20 outline-none w-full"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
                         <button
                           onClick={handleClearSelection}
@@ -1262,19 +1312,20 @@ export default function WebsiteDetail() {
                           disabled={
                             isConfirming ||
                             !selectedTemplateId ||
-                            selectedTemplatePages.length === 0
+                            selectedTemplatePages.length === 0 ||
+                            selectedTemplatePages.some((tp) => !pagePathInputs[tp.id]?.trim())
                           }
                           className="inline-flex items-center gap-2 bg-alloro-orange hover:bg-alloro-orange/90 disabled:bg-alloro-orange/50 text-white rounded-xl px-4 py-2 text-sm font-semibold transition-all disabled:cursor-not-allowed"
                         >
                           {isConfirming ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              Starting...
+                              Creating {selectedTemplatePages.length} pages...
                             </>
                           ) : (
                             <>
-                              <CheckCircle className="w-4 h-4" />
-                              Confirm & Start
+                              <Sparkles className="w-4 h-4" />
+                              Create All {selectedTemplatePages.length} Pages
                             </>
                           )}
                         </button>
@@ -1414,73 +1465,57 @@ export default function WebsiteDetail() {
                 </AnimatePresence>
               </div>
             ) : (
-              // Horizontal progress tracker
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-2 overflow-x-auto">
-                  {STATUS_STEPS.map((step, index) => {
-                    const isCompleted = index < currentStatusIndex;
-                    const isCurrent = index === currentStatusIndex;
-                    const Icon = step.icon;
-                    const isProcessing =
-                      isCurrent && isProcessingStatus(website.status);
-
-                    return (
-                      <div
-                        key={step.key}
-                        className="flex items-center gap-2 flex-1 min-w-0"
-                      >
-                        <div className="flex flex-col items-center gap-1 shrink-0">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
-                              isCompleted
-                                ? "bg-alloro-orange border-alloro-orange"
-                                : isCurrent
-                                  ? "bg-white border-alloro-orange shadow-md shadow-alloro-orange/20"
-                                  : "bg-white border-gray-200"
-                            }`}
-                          >
-                            {isCompleted ? (
-                              <Check className="w-4 h-4 text-white stroke-[3]" />
-                            ) : isProcessing ? (
-                              <Loader2 className="w-4 h-4 text-alloro-orange animate-spin" />
-                            ) : (
-                              <Icon
-                                className={`w-4 h-4 ${isCurrent ? "text-alloro-orange" : "text-gray-400"}`}
-                              />
-                            )}
-                          </div>
-                          <span
-                            className={`text-[10px] font-medium text-center leading-tight max-w-[70px] ${isCompleted ? "text-alloro-orange" : isCurrent ? "text-gray-900" : "text-gray-400"}`}
-                          >
-                            {step.label}
-                          </span>
-                        </div>
-                        {index < STATUS_STEPS.length - 1 && (
-                          <div
-                            className={`flex-1 h-0.5 rounded-full mb-4 ${isCompleted ? "bg-alloro-orange" : "bg-gray-200"}`}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
+              // IN_PROGRESS — per-page generation status list
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 text-alloro-orange animate-spin" />
+                    <span className="text-sm font-medium text-gray-900">
+                      {isCreatingAll ? "Creating pages…" : "Pages in progress"}
+                    </span>
+                  </div>
+                  {gbpData?.name && (
+                    <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                      {String(gbpData.name)}
+                    </span>
+                  )}
                 </div>
 
-                {/* GBP info if available */}
-                {gbpData && gbpData.name && (
-                  <div className="pt-3 border-t border-gray-100 flex items-center gap-3">
-                    <div className="p-1.5 bg-alloro-orange/10 rounded-lg">
-                      <Building2 className="h-3.5 w-3.5 text-alloro-orange" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 truncate">
-                      {String(gbpData.name)}
-                    </p>
-                    {gbpData.rating && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-full shrink-0">
-                        <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                        {String(gbpData.rating)}
-                      </span>
-                    )}
+                {pageGenStatuses.length > 0 ? (
+                  <div className="divide-y divide-gray-100 rounded-lg border border-gray-100 overflow-hidden">
+                    {pageGenStatuses.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between px-4 py-2.5 bg-white">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="h-4 w-4 text-gray-400 shrink-0" />
+                          <span className="text-sm text-gray-700 truncate">
+                            {p.template_page_name || p.path}
+                          </span>
+                          <span className="text-xs text-gray-400">{p.path}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {(p.generation_status === "generating" || p.generation_status === "queued") && (
+                            <Loader2 className="h-3.5 w-3.5 text-amber-500 animate-spin" />
+                          )}
+                          {p.generation_status === "ready" && (
+                            <Check className="h-3.5 w-3.5 text-green-500 stroke-[3]" />
+                          )}
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getGenStatusStyles(p.generation_status)}`}>
+                            {p.generation_status}
+                          </span>
+                          {p.generation_status === "ready" && (
+                            <Link
+                              to={`/admin/websites/${id}/pages/${p.id}/edit`}
+                              className="text-xs text-alloro-orange hover:underline font-medium"
+                            >
+                              View
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                ) : (
+                  <p className="text-sm text-gray-400">Waiting for page generation status…</p>
                 )}
               </div>
             )}
@@ -1526,23 +1561,22 @@ export default function WebsiteDetail() {
                 </span>
               )}
             </div>
-            {(isReady || website.status === "HTML_GENERATED") &&
-              website.template_id && (
-                <ActionButton
-                  label={isGeneratingPage ? "Generating..." : "Create Page"}
-                  icon={
-                    isGeneratingPage ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <FileText className="w-4 h-4" />
-                    )
-                  }
-                  onClick={() => setShowCreatePageModal(true)}
-                  variant="primary"
-                  size="sm"
-                  disabled={isGeneratingPage}
-                />
-              )}
+            {(isLive || isInProgress) && website.template_id && (
+              <ActionButton
+                label={isGeneratingPage ? "Generating..." : "Create Page"}
+                icon={
+                  isGeneratingPage ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4" />
+                  )
+                }
+                onClick={() => setShowCreatePageModal(true)}
+                variant="primary"
+                size="sm"
+                disabled={isGeneratingPage}
+              />
+            )}
           </div>
           <div className="divide-y divide-gray-100">
             {pageGroups.length > 0 ? (

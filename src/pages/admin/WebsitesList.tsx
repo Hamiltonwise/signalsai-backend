@@ -216,17 +216,10 @@ export default function WebsitesList() {
 
   const getStatusStyles = (status: string): string => {
     switch (status) {
-      case "READY":
+      case "LIVE":
         return "border-green-200 bg-green-100 text-green-700";
-      case "HTML_GENERATED":
-        return "border-blue-200 bg-blue-100 text-blue-700";
-      case "GENERATING":
+      case "IN_PROGRESS":
         return "border-yellow-200 bg-yellow-100 text-yellow-700";
-      case "GBP_SELECTED":
-      case "GBP_SCRAPED":
-      case "WEBSITE_SCRAPED":
-      case "IMAGES_ANALYZED":
-        return "border-purple-200 bg-purple-100 text-purple-700";
       case "CREATED":
         return "border-gray-200 bg-gray-100 text-gray-700";
       default:
@@ -237,12 +230,11 @@ export default function WebsitesList() {
   // Get icon background color based on status - subtle backgrounds with glow
   const getIconStyles = (status: string): string => {
     switch (status) {
-      case "READY":
+      case "LIVE":
         return "bg-green-100 shadow-[0_0_12px_rgba(34,197,94,0.4)]";
       case "CREATED":
         return "bg-gray-100";
       default:
-        // All other statuses (processing states) get alloro orange with glow
         return "bg-orange-100 shadow-[0_0_12px_rgba(214,104,83,0.4)]";
     }
   };
@@ -250,7 +242,7 @@ export default function WebsitesList() {
   // Get icon color based on status
   const getIconColor = (status: string): string => {
     switch (status) {
-      case "READY":
+      case "LIVE":
         return "text-green-600";
       case "CREATED":
         return "text-gray-400";
@@ -261,7 +253,7 @@ export default function WebsitesList() {
 
   // Check if status is a processing state (should show spinner)
   const isProcessingStatus = (status: string): boolean => {
-    return !["READY", "CREATED"].includes(status);
+    return !["LIVE", "CREATED"].includes(status);
   };
 
   const formatStatus = (status: string): string => {
@@ -537,8 +529,8 @@ export default function WebsitesList() {
                           <span>{formatRelativeTime(website.created_at)}</span>
                         </div>
 
-                        {/* Subdomain link - only show for ready sites */}
-                        {website.status === "READY" && (
+                        {/* Subdomain link - only show for live sites */}
+                        {website.status === "LIVE" && (
                           <a
                             href={subdomainUrl}
                             target="_blank"
@@ -561,8 +553,7 @@ export default function WebsitesList() {
                       onClick={(e) => e.stopPropagation()}
                     >
                       {/* View Live Site */}
-                      {website.status === "READY" ||
-                      website.status === "HTML_GENERATED" ? (
+                      {website.status === "LIVE" ? (
                         <a
                           href={subdomainUrl}
                           target="_blank"
@@ -648,9 +639,9 @@ export default function WebsitesList() {
               <div className="h-2 w-2 rounded-full bg-alloro-orange" />
               <span className="text-gray-600">
                 <strong className="text-gray-900">
-                  {websites.filter((w) => w.status === "READY").length}
+                  {websites.filter((w) => w.status === "LIVE").length}
                 </strong>{" "}
-                ready
+                live
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -659,7 +650,7 @@ export default function WebsitesList() {
                 <strong className="text-gray-900">
                   {
                     websites.filter(
-                      (w) => !["READY", "CREATED"].includes(w.status)
+                      (w) => !["LIVE", "CREATED"].includes(w.status)
                     ).length
                   }
                 </strong>{" "}

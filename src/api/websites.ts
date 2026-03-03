@@ -274,6 +274,78 @@ export const pollWebsiteStatus = async (
 };
 
 // =====================================================================
+// PAGE GENERATION STATUS
+// =====================================================================
+
+export type PageGenerationStatus = 'queued' | 'generating' | 'ready' | 'failed';
+
+export interface PageGenerationStatusItem {
+  id: string;
+  path: string;
+  status: string;
+  generation_status: PageGenerationStatus;
+  template_page_name: string | null;
+  updated_at: string;
+}
+
+/**
+ * Poll per-page generation status for a project
+ */
+export const fetchPagesGenerationStatus = async (
+  projectId: string,
+): Promise<{ success: boolean; data: PageGenerationStatusItem[] }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/pages/generation-status`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch page generation status: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+// =====================================================================
+// CREATE ALL FROM TEMPLATE
+// =====================================================================
+
+export interface CreateAllFromTemplateRequest {
+  templateId: string;
+  placeId: string;
+  pages: Array<{
+    templatePageId: string;
+    path: string;
+    websiteUrl?: string | null;
+  }>;
+  businessName?: string;
+  formattedAddress?: string;
+  city?: string;
+  state?: string;
+  phone?: string;
+  category?: string;
+  primaryColor?: string;
+  accentColor?: string;
+  practiceSearchString?: string;
+  rating?: number;
+  reviewCount?: number;
+}
+
+/**
+ * Create all pages from a template and kick off N8N pipeline per page
+ */
+export const createAllFromTemplate = async (
+  projectId: string,
+  data: CreateAllFromTemplateRequest,
+): Promise<{ success: boolean; data: Array<{ id: string; path: string; templatePageId: string; generation_status: string }> }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/create-all-from-template`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to create pages from template');
+  }
+  return response.json();
+};
+
+// =====================================================================
 // WEBSITE SCRAPE
 // =====================================================================
 
