@@ -8,7 +8,6 @@
 
 import { db } from "../../../database/connection";
 import { normalizeSections } from "../feature-utils/util.section-normalizer";
-import { buildFormScript } from "../../../utils/website-utils/formScript";
 
 const TEMPLATES_TABLE = "website_builder.templates";
 const TEMPLATE_PAGES_TABLE = "website_builder.template_pages";
@@ -172,17 +171,8 @@ export async function startPipeline(
     ? await db(TEMPLATE_PAGES_TABLE).where("id", templatePageId).first()
     : null;
 
-  // Inject the form-handler script into the wrapper so deployed sites have
-  // functional forms without needing a separate JS file.
-  const apiBase = process.env.APP_URL || "https://app.getalloro.com";
-  const formScript = buildFormScript(projectId, apiBase);
-  const wrapperWithForms = (template.wrapper || "").replace(
-    /<\/body>/i,
-    `${formScript}\n</body>`,
-  );
-
   const templateData = {
-    wrapper: wrapperWithForms,
+    wrapper: template.wrapper || "",
     header: template.header,
     footer: template.footer,
     sections: normalizeSections(templatePage?.sections),

@@ -81,6 +81,7 @@ export async function createCheckoutSession(
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
+    allow_promotion_codes: true,
     line_items: [
       {
         price: priceId,

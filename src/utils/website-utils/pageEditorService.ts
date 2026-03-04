@@ -1,22 +1,22 @@
 /**
  * Page Editor Service
- * Handles LLM-powered HTML component editing via the Google Gemini SDK.
+ * Handles LLM-powered HTML component editing via the Anthropic Claude SDK.
  */
 
-import { GoogleGenAI } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
 import { getPageEditorPrompt } from "./pageEditorPrompt";
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "claude-haiku-4-5-20251001";
 
-let client: GoogleGenAI | null = null;
+let client: Anthropic | null = null;
 
-function getClient(): GoogleGenAI {
+function getClient(): Anthropic {
   if (!client) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is not set");
+      throw new Error("ANTHROPIC_API_KEY environment variable is not set");
     }
-    client = new GoogleGenAI({ apiKey });
+    client = new Anthropic({ apiKey });
   }
   return client;
 }
@@ -46,21 +46,17 @@ interface EditResponse {
 }
 
 /**
- * Send a component's HTML + edit instruction to Gemini and get back modified HTML.
+ * Send a component's HTML + edit instruction to Claude and get back modified HTML.
  */
 export async function editHtmlComponent(params: EditRequest): Promise<EditResponse> {
   const { alloroClass, currentHtml, instruction, chatHistory = [], mediaContext = "", promptType = "admin" } = params;
   const ai = getClient();
 
-  // Build the Gemini contents array from chat history + current instruction
-  // Gemini uses "user" and "model" roles (not "assistant")
-  const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+  // Build the Anthropic messages array from chat history + current instruction
+  const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
 
   for (const msg of chatHistory) {
-    contents.push({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    });
+    messages.push({ role: msg.role, content: msg.content });
   }
 
   // Add the current instruction with the component HTML context
@@ -71,42 +67,34 @@ ${currentHtml}
 
 Instruction: ${instruction}${mediaContext}`;
 
-  contents.push({ role: "user", parts: [{ text: userMessage }] });
+  messages.push({ role: "user", content: userMessage });
 
   const systemPrompt = await getPageEditorPrompt(promptType);
 
-  console.log(`[PageEditor] Sending edit request to Gemini for class: ${alloroClass}`);
+  console.log(`[PageEditor] Sending edit request to Claude for class: ${alloroClass}`);
   console.log(`[PageEditor] Instruction: ${instruction}`);
   console.log(`[PageEditor] HTML size: ${currentHtml.length} chars, history: ${chatHistory.length} messages`);
 
-  // Build flat messages array for debug info (original format)
-  const debugMessages: Array<{ role: "user" | "assistant"; content: string }> = [];
-  for (const msg of chatHistory) {
-    debugMessages.push({ role: msg.role, content: msg.content });
-  }
-  debugMessages.push({ role: "user", content: userMessage });
-
-  const response = await ai.models.generateContent({
+  const response = await ai.messages.create({
     model: MODEL,
-    config: {
-      systemInstruction: systemPrompt,
-      maxOutputTokens: 4096,
-    },
-    contents,
+    max_tokens: 4096,
+    system: systemPrompt,
+    messages,
   });
 
   // Extract the text response
-  const text = response.text;
-  if (!text) {
-    throw new Error("No text response from Gemini");
+  const textBlock = response.content[0];
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("No text response from Claude");
   }
+  const text = textBlock.text;
 
   const debugInfo: EditDebugInfo = {
     model: MODEL,
     systemPrompt,
-    messages: debugMessages,
-    inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    messages,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
   };
 
   // Parse the JSON response from the LLM
