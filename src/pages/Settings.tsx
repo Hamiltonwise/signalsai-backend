@@ -2,17 +2,12 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Globe,
-  MapPin,
   Mail,
   Users,
   Link2,
   Shield,
   Lock,
   Activity,
-  Phone,
-  Edit3,
-  Check,
-  X,
   User,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
@@ -21,9 +16,9 @@ import { UsersTab } from "../components/settings/UsersTab";
 import { PropertiesTab } from "../components/settings/PropertiesTab";
 import { MissingScopeBanner } from "../components/settings/MissingScopeBanner";
 import { PMSUploadBanner } from "../components/settings/PMSUploadBanner";
+import { GoogleConnectButton } from "../components/GoogleConnectButton";
 import { BillingTab } from "../components/settings/BillingTab";
 import { ProfileTab } from "../components/settings/ProfileTab";
-import { getProfile, updateProfile, type ProfileData } from "../api/profile";
 import { fetchPmsKeyData } from "../api/pms";
 import { getPriorityItem } from "../hooks/useLocalStorage";
 import { apiGet } from "../api";
@@ -63,109 +58,9 @@ const InfoRow = ({ icon, label, value }: InfoRowProps) => (
   </div>
 );
 
-interface EditableInfoRowProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string | null;
-  placeholder: string;
-  onSave: (value: string) => Promise<void>;
-  isSaving?: boolean;
-}
-
-const EditableInfoRow = ({
-  icon,
-  label,
-  value,
-  placeholder,
-  onSave,
-  isSaving = false,
-}: EditableInfoRowProps) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value || "");
-
-  const handleSave = async () => {
-    if (editValue.trim()) {
-      await onSave(editValue.trim());
-      setIsEditing(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setEditValue(value || "");
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSave();
-    } else if (e.key === "Escape") {
-      handleCancel();
-    }
-  };
-
-  return (
-    <div className="flex items-start gap-4 group">
-      <div className="p-2.5 bg-alloro-bg text-alloro-navy/40 rounded-xl shrink-0 group-hover:text-alloro-orange group-hover:bg-alloro-orange/5 transition-all duration-500 border border-black/5 shadow-inner-soft group-hover:shadow-premium">
-        {icon}
-      </div>
-      <div className="min-w-0 text-left flex-1">
-        <div className="text-[8px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
-          {label}
-        </div>
-        {isEditing ? (
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="text-base font-black text-alloro-navy tracking-tight bg-white border border-alloro-orange/30 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-alloro-orange/50 w-full"
-              autoFocus
-              disabled={isSaving}
-            />
-            <button
-              onClick={handleSave}
-              disabled={isSaving || !editValue.trim()}
-              className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
-            >
-              <Check size={16} />
-            </button>
-            <button
-              onClick={handleCancel}
-              disabled={isSaving}
-              className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        ) : value ? (
-          <div className="flex items-center gap-2">
-            <div className="text-base font-black text-alloro-navy tracking-tight truncate group-hover:translate-x-1 transition-transform">
-              {value}
-            </div>
-            <button
-              onClick={() => setIsEditing(true)}
-              className="opacity-0 group-hover:opacity-100 p-1.5 text-alloro-navy/30 hover:text-alloro-orange transition-all"
-            >
-              <Edit3 size={14} />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="text-sm font-bold text-alloro-orange hover:text-alloro-orange/80 transition-colors flex items-center gap-2"
-          >
-            <Edit3 size={14} />
-            {placeholder}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
 
 export const Settings: React.FC = () => {
-  const { userProfile, selectedDomain } = useAuth();
+  const { userProfile, selectedDomain, hasProperties, hasGoogleConnection, refreshUserProperties } = useAuth();
   const { isWizardActive, restartWizard } = useOnboardingWizard();
   const [activeTab, setActiveTab] = useState<"profile" | "users" | "billing" | "account">("profile");
   const [isLoading, setIsLoading] = useState(true);
@@ -179,17 +74,9 @@ export const Settings: React.FC = () => {
   // PMS Data State - to check if user has uploaded any PMS data
   const [hasPmsData, setHasPmsData] = useState<boolean | null>(null);
 
-  // Profile State
-  const [profileData, setProfileData] = useState<ProfileData>({
-    phone: null,
-    operational_jurisdiction: null,
-  });
-  const [isProfileSaving, setIsProfileSaving] = useState(false);
-
   useEffect(() => {
     const role = getPriorityItem("user_role") as UserRole | null;
     setUserRole(role);
-    fetchProfile();
     fetchScopes();
     fetchPmsStatus();
     setIsLoading(false);
@@ -236,34 +123,6 @@ export const Settings: React.FC = () => {
 
   const handleGrantAccessComplete = () => {
     fetchScopes();
-  };
-
-  const fetchProfile = async () => {
-    try {
-      const response = await getProfile();
-      if (response.success && response.data) {
-        setProfileData(response.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch profile:", err);
-    }
-  };
-
-  const handleUpdateProfile = async (
-    field: keyof ProfileData,
-    value: string,
-  ) => {
-    setIsProfileSaving(true);
-    try {
-      const response = await updateProfile({ [field]: value });
-      if (response.success) {
-        setProfileData((prev) => ({ ...prev, [field]: value }));
-      }
-    } catch (err) {
-      console.error("Failed to update profile:", err);
-    } finally {
-      setIsProfileSaving(false);
-    }
   };
 
   return (
@@ -434,16 +293,6 @@ export const Settings: React.FC = () => {
                   <div className="absolute top-0 right-0 w-64 h-64 bg-alloro-orange/[0.03] rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none group-hover:bg-alloro-orange/[0.06] transition-all duration-700"></div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-x-8 gap-y-5 relative z-10">
-                    <EditableInfoRow
-                      icon={<MapPin size={18} />}
-                      label="Location"
-                      value={profileData.operational_jurisdiction}
-                      placeholder="Enter your location"
-                      onSave={(value) =>
-                        handleUpdateProfile("operational_jurisdiction", value)
-                      }
-                      isSaving={isProfileSaving}
-                    />
                     <InfoRow
                       icon={<Globe size={18} />}
                       label="Website"
@@ -457,14 +306,6 @@ export const Settings: React.FC = () => {
                       icon={<Mail size={18} />}
                       label="Email"
                       value={userProfile?.email || "Not configured"}
-                    />
-                    <EditableInfoRow
-                      icon={<Phone size={18} />}
-                      label="Phone"
-                      value={profileData.phone}
-                      placeholder="Enter your phone"
-                      onSave={(value) => handleUpdateProfile("phone", value)}
-                      isSaving={isProfileSaving}
                     />
                   </div>
                 </motion.div>
@@ -525,8 +366,37 @@ export const Settings: React.FC = () => {
                   />
                 )}
 
-                {/* PMS Upload Banner */}
-                {hasPmsData === false && <PMSUploadBanner />}
+                {/* Connect Google Banner — show when no Google connection */}
+                {!hasGoogleConnection && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-alloro-orange/20 rounded-2xl p-6 mb-8"
+                  >
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <h3 className="font-black text-alloro-navy text-lg">
+                          Connect Google Account
+                        </h3>
+                        <p className="text-slate-500 text-sm mt-1">
+                          Link your Google Business Profile to manage your locations and start tracking performance.
+                        </p>
+                      </div>
+                      <div className="shrink-0">
+                        <GoogleConnectButton
+                          variant="primary"
+                          size="sm"
+                          onSuccess={async () => {
+                            await refreshUserProperties();
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* PMS Upload Banner — only show when at least one location is configured */}
+                {hasPmsData === false && hasProperties && <PMSUploadBanner />}
 
                 {/* Location-centric properties management */}
                 <PropertiesTab />

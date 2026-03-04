@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Rocket, Loader2, MapPin, Check, X } from "lucide-react";
+import { ChevronLeft, Loader2, MapPin, Check, X } from "lucide-react";
 import { GoogleConnectButton } from "../GoogleConnectButton";
 
 interface GBPSelection {
@@ -342,10 +342,7 @@ export const Step2DomainInfo: React.FC<Step2GbpConnectProps> = ({
               Finishing...
             </>
           ) : (
-            <>
-              <Rocket className="w-4 h-4" />
-              Continue
-            </>
+            "Continue"
           )}
         </button>
       </div>
@@ -355,7 +352,7 @@ export const Step2DomainInfo: React.FC<Step2GbpConnectProps> = ({
         <div className="text-center">
           <button
             onClick={onNext}
-            className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+            className="text-sm text-alloro-orange hover:text-alloro-orange/80 transition-colors"
           >
             Skip for now — I'll connect later
           </button>

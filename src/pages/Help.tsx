@@ -2,45 +2,12 @@ import React, { useState, useContext } from "react";
 import {
   HelpCircle,
   Mail,
-  MessageSquare,
   Send,
   ShieldCheck,
-  Sparkles,
-  Zap,
-  ChevronRight,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
 import { AuthContext } from "../contexts/authContext";
-const SupportCard = ({
-  icon,
-  title,
-  description,
-  delay,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  delay: string;
-}) => (
-  <div
-    className={`group bg-white p-8 rounded-3xl border border-black/5 shadow-premium hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 animate-in fade-in slide-in-from-bottom-4 ${delay}`}
-  >
-    <div className="w-14 h-14 bg-alloro-bg text-alloro-navy/40 rounded-2xl flex items-center justify-center border border-black/5 shadow-inner-soft group-hover:bg-alloro-orange/5 group-hover:text-alloro-orange transition-all duration-500 mb-6">
-      {icon}
-    </div>
-    <h3 className="text-xl font-black font-heading text-alloro-navy mb-3 group-hover:text-alloro-orange transition-colors">
-      {title}
-    </h3>
-    <p className="text-slate-500 font-bold text-sm leading-relaxed tracking-tight">
-      {description}
-    </p>
-    <div className="mt-8 flex items-center gap-3 text-[10px] font-black text-alloro-navy uppercase tracking-[0.2em] group-hover:gap-5 transition-all cursor-pointer">
-      Learn More <ChevronRight size={14} />
-    </div>
-  </div>
-);
-
 const Help = () => {
   const authContext = useContext(AuthContext);
   const userProfile = authContext?.userProfile;
@@ -174,28 +141,6 @@ const Help = () => {
             </span>{" "}
             for help with your practice growth.
           </p>
-        </section>
-
-        {/* Support Cards */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <SupportCard
-            icon={<Zap size={28} />}
-            title="Tech Support"
-            description="Help with data, software links, or using the dashboard."
-            delay="duration-300"
-          />
-          <SupportCard
-            icon={<Sparkles size={28} />}
-            title="Growth Strategy"
-            description="Talk about how to get more patients and reviews."
-            delay="duration-500"
-          />
-          <SupportCard
-            icon={<MessageSquare size={28} />}
-            title="Practice Operations"
-            description="Improve your front desk and daily office tasks."
-            delay="duration-700"
-          />
         </section>
 
         {/* Inquiry Form & Side Panel */}

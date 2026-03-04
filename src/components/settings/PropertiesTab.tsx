@@ -4,8 +4,10 @@ import { apiGet } from "../../api";
 import { MapPin, Plus, Star, Trash2, RefreshCw, Pencil } from "lucide-react";
 import { PropertySelectionModal } from "./PropertySelectionModal";
 import { ConfirmModal } from "./ConfirmModal";
+import { GoogleConnectButton } from "../GoogleConnectButton";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
 import { useLocationContext } from "../../contexts/locationContext";
+import { useAuth } from "../../hooks/useAuth";
 import {
   getLocations,
   deleteLocation,
@@ -22,6 +24,7 @@ export const PropertiesTab: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const { refreshLocations } = useLocationContext();
+  const { hasGoogleConnection, refreshUserProperties } = useAuth();
 
   // GBP selection modal
   const [gbpModalOpen, setGbpModalOpen] = useState(false);
@@ -48,7 +51,7 @@ export const PropertiesTab: React.FC = () => {
     const role = getPriorityItem("user_role") as UserRole | null;
     setUserRole(role);
     loadData();
-  }, []);
+  }, [hasGoogleConnection]);
 
   const canManageConnections = userRole === "admin";
 
@@ -227,7 +230,7 @@ export const PropertiesTab: React.FC = () => {
             Manage your business locations and their Google Business Profiles
           </p>
         </div>
-        {canManageConnections && (
+        {hasGoogleConnection && (
           <button
             onClick={openAddLocation}
             className="flex items-center gap-2 px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-white bg-alloro-orange rounded-xl hover:bg-alloro-orange/90 transition-colors shadow-lg active:scale-95"
@@ -241,11 +244,40 @@ export const PropertiesTab: React.FC = () => {
       {/* Location Cards */}
       {locations.length === 0 ? (
         <div className="bg-white rounded-[28px] border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-12 text-center">
-          <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500 font-semibold">No locations configured</p>
-          <p className="text-slate-400 text-sm mt-1">
-            Add your first location to get started
-          </p>
+          {!hasGoogleConnection ? (
+            <>
+              <MapPin className="w-12 h-12 text-alloro-orange/40 mx-auto mb-4" />
+              <p className="text-alloro-navy font-semibold text-lg mb-1">Connect your Google Account</p>
+              <p className="text-slate-400 text-sm mb-6">
+                Link your Google Business Profile to add and manage your locations
+              </p>
+              <div className="flex justify-center">
+                <GoogleConnectButton
+                  variant="primary"
+                  size="md"
+                  onSuccess={async () => {
+                    await refreshUserProperties();
+                    await loadData();
+                  }}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500 font-semibold">No locations configured</p>
+              <p className="text-slate-400 text-sm mt-1 mb-6">
+                Add your first location to get started
+              </p>
+              <button
+                onClick={openAddLocation}
+                className="inline-flex items-center gap-2 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white bg-alloro-orange rounded-xl hover:bg-alloro-orange/90 transition-colors shadow-lg active:scale-95"
+              >
+                <Plus size={14} />
+                Add Location
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

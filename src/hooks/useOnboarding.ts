@@ -15,12 +15,7 @@ export const useOnboarding = (initialStep: number = 1) => {
   // Profile state
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [businessPhone, setBusinessPhone] = useState("");
   const [practiceName, setPracticeName] = useState("");
-  const [street, setStreet] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zip, setZip] = useState("");
   const [domainName, setDomainName] = useState("");
 
   // GBP state
@@ -74,15 +69,13 @@ export const useOnboarding = (initialStep: number = 1) => {
     setError(null);
 
     try {
-      const formattedAddress = `${street}, ${city}, ${state} ${zip}`;
-
       const response = await onboarding.saveProfile({
         profile: {
           firstName,
           lastName,
-          phone: businessPhone,
+          phone: "",
           practiceName,
-          operationalJurisdiction: formattedAddress,
+          operationalJurisdiction: "",
           domainName,
         },
       });
@@ -100,7 +93,7 @@ export const useOnboarding = (initialStep: number = 1) => {
     } finally {
       setIsSavingProfile(false);
     }
-  }, [firstName, lastName, businessPhone, practiceName, street, city, state, zip, domainName]);
+  }, [firstName, lastName, practiceName, domainName]);
 
   /**
    * Step 3: Mark onboarding as complete.
@@ -183,12 +176,7 @@ export const useOnboarding = (initialStep: number = 1) => {
     setCurrentStep(1);
     setFirstName("");
     setLastName("");
-    setBusinessPhone("");
     setPracticeName("");
-    setStreet("");
-    setCity("");
-    setState("");
-    setZip("");
     setDomainName("");
     setSelectedGbpLocations([]);
     setError(null);
@@ -206,21 +194,11 @@ export const useOnboarding = (initialStep: number = 1) => {
     // Profile state
     firstName,
     lastName,
-    businessPhone,
     practiceName,
-    street,
-    city,
-    state,
-    zip,
     domainName,
     setFirstName,
     setLastName,
-    setBusinessPhone,
     setPracticeName,
-    setStreet,
-    setCity,
-    setState,
-    setZip,
     setDomainName,
 
     // GBP state

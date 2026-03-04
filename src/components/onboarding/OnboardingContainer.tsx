@@ -27,21 +27,11 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
     isSavingProfile,
     firstName,
     lastName,
-    businessPhone,
     practiceName,
-    street,
-    city,
-    state,
-    zip,
     domainName,
     setFirstName,
     setLastName,
-    setBusinessPhone,
     setPracticeName,
-    setStreet,
-    setCity,
-    setState,
-    setZip,
     setDomainName,
     selectedGbpLocations,
     fetchAvailableGBP,
@@ -164,10 +154,8 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
                 <Step0UserInfo
                   firstName={firstName}
                   lastName={lastName}
-                  businessPhone={businessPhone}
                   onFirstNameChange={setFirstName}
                   onLastNameChange={setLastName}
-                  onBusinessPhoneChange={setBusinessPhone}
                   onNext={nextStep}
                 />
               )}
@@ -176,16 +164,8 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
               {currentStep === 2 && (
                 <Step1PracticeInfo
                   practiceName={practiceName}
-                  street={street}
-                  city={city}
-                  state={state}
-                  zip={zip}
                   domainName={domainName}
                   onPracticeNameChange={setPracticeName}
-                  onStreetChange={setStreet}
-                  onCityChange={setCity}
-                  onStateChange={setState}
-                  onZipChange={setZip}
                   onDomainNameChange={setDomainName}
                   onNext={handleSaveProfileAndAdvance}
                   onBack={previousStep}

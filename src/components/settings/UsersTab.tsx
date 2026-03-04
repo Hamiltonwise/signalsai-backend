@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, Shield, Clock, X, Users as UsersIcon } from "lucide-react";
+import { UserPlus, Shield, Clock, X, Users as UsersIcon, RefreshCw } from "lucide-react";
+import { apiGet, apiPost, apiPut, apiDelete } from "../../api";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
 import { ConfirmModal } from "@/components/settings/ConfirmModal";
 import { AlertModal } from "@/components/ui/AlertModal";
@@ -59,11 +59,11 @@ export const UsersTab: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get("/api/settings/users");
+      const data = await apiGet({ path: "/settings/users" });
 
-      if (response.data.success) {
-        setUsers(response.data.users);
-        setInvitations(response.data.invitations);
+      if (data.success) {
+        setUsers(data.users);
+        setInvitations(data.invitations);
       }
     } catch (err) {
       console.error("Failed to fetch users:", err);
@@ -75,10 +75,15 @@ export const UsersTab: React.FC = () => {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(
-        "/api/settings/users/invite",
-        { email: inviteEmail, role: inviteRole }
-      );
+      const data = await apiPost({
+        path: "/settings/users/invite",
+        passedData: { email: inviteEmail, role: inviteRole },
+      });
+
+      if (data.error) {
+        setAlertModal({ isOpen: true, title: "Invite Failed", message: data.error || "Failed to invite user", type: "error" });
+        return;
+      }
 
       setShowInviteModal(false);
       setInviteEmail("");
@@ -86,8 +91,7 @@ export const UsersTab: React.FC = () => {
       fetchUsers(); // Reload
     } catch (err) {
       console.error("Failed to invite user:", err);
-      const error = err as { response?: { data?: { error?: string } } };
-      setAlertModal({ isOpen: true, title: "Invite Failed", message: error.response?.data?.error || "Failed to invite user", type: "error" });
+      setAlertModal({ isOpen: true, title: "Invite Failed", message: "Failed to invite user", type: "error" });
     }
   };
 
@@ -99,13 +103,17 @@ export const UsersTab: React.FC = () => {
       type: "danger",
       onConfirm: async () => {
         try {
-          await axios.delete(`/api/settings/users/${userId}`);
+          const data = await apiDelete({ path: `/settings/users/${userId}` });
+
+          if (data.error) {
+            setAlertModal({ isOpen: true, title: "Remove Failed", message: data.error || "Failed to remove user", type: "error" });
+            return;
+          }
 
           fetchUsers(); // Reload
         } catch (err) {
           console.error("Failed to remove user:", err);
-          const error = err as { response?: { data?: { error?: string } } };
-          setAlertModal({ isOpen: true, title: "Remove Failed", message: error.response?.data?.error || "Failed to remove user", type: "error" });
+          setAlertModal({ isOpen: true, title: "Remove Failed", message: "Failed to remove user", type: "error" });
         }
       },
     });
@@ -113,18 +121,42 @@ export const UsersTab: React.FC = () => {
 
   const handleChangeRole = async (userId: number, role: string) => {
     try {
-      await axios.put(
-        `/api/settings/users/${userId}/role`,
-        { role }
-      );
+      const data = await apiPut({
+        path: `/settings/users/${userId}/role`,
+        passedData: { role },
+      });
+
+      if (data.error) {
+        setAlertModal({ isOpen: true, title: "Role Change Failed", message: data.error || "Failed to change role", type: "error" });
+        return;
+      }
 
       setAlertModal({ isOpen: true, title: "Role Updated", message: "Role updated successfully. The user will need to log in again.", type: "success" });
       setChangingRoleUserId(null);
       fetchUsers(); // Reload
     } catch (err) {
       console.error("Failed to change role:", err);
-      const error = err as { response?: { data?: { error?: string } } };
-      setAlertModal({ isOpen: true, title: "Role Change Failed", message: error.response?.data?.error || "Failed to change role", type: "error" });
+      setAlertModal({ isOpen: true, title: "Role Change Failed", message: "Failed to change role", type: "error" });
+    }
+  };
+
+  const handleResendInvite = async (invitationId: number) => {
+    try {
+      const data = await apiPost({
+        path: `/settings/users/invite/${invitationId}/resend`,
+        passedData: {},
+      });
+
+      if (data.error) {
+        setAlertModal({ isOpen: true, title: "Resend Failed", message: data.error || "Failed to resend invitation", type: "error" });
+        return;
+      }
+
+      setAlertModal({ isOpen: true, title: "Invitation Resent", message: data.message || "Invitation email has been resent", type: "success" });
+      fetchUsers();
+    } catch (err) {
+      console.error("Failed to resend invitation:", err);
+      setAlertModal({ isOpen: true, title: "Resend Failed", message: "Failed to resend invitation", type: "error" });
     }
   };
 
@@ -392,6 +424,17 @@ export const UsersTab: React.FC = () => {
                   </td>
                   <td className="px-6 py-5 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
                     Expires: {new Date(invite.expires_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 sm:px-8 py-5 text-right">
+                    {canInvite && (
+                      <button
+                        onClick={() => handleResendInvite(invite.id)}
+                        className="inline-flex items-center gap-1.5 text-alloro-orange hover:text-blue-700 text-[10px] font-black uppercase tracking-widest"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Resend
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

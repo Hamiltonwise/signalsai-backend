@@ -195,12 +195,14 @@ export function SetupProgressProvider({ children }: { children: ReactNode }) {
     };
   }, [refreshProgress, markStep2Complete]);
 
-  // Auto-detect: mark step 1 complete when Google/GBP is connected
+  // Auto-detect: sync step 1 with actual Google connection state
   useEffect(() => {
     if ((hasGoogleConnection || hasProperties) && !progress.step1_api_connected) {
       markStep1Complete();
+    } else if (!hasGoogleConnection && !hasProperties && progress.step1_api_connected) {
+      markStep1Incomplete();
     }
-  }, [hasGoogleConnection, hasProperties, progress.step1_api_connected, markStep1Complete]);
+  }, [hasGoogleConnection, hasProperties, progress.step1_api_connected, markStep1Complete, markStep1Incomplete]);
 
   // Fire confetti when a step is completed (handled here so it works even if wizard UI is hidden)
   useEffect(() => {

@@ -35,7 +35,7 @@ export const GoogleConnectButton: React.FC<GoogleConnectButtonProps> = ({
     "flex items-center justify-center gap-3 font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2";
 
   const variantClasses = {
-    primary: "bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500",
+    primary: "bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 focus:ring-slate-300",
     outline:
       "border-2 border-gray-300 hover:border-blue-500 bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-600 focus:ring-blue-500",
     minimal:

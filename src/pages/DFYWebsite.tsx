@@ -5,7 +5,6 @@ import {
   ExternalLink,
   AlertCircle,
   Sparkles,
-  FileText,
   Link as LinkIcon,
   Inbox,
   Monitor,
@@ -629,53 +628,45 @@ export function DFYWebsite() {
   if (status === "READY" && pages.length === 0) {
     return (
       <div className="min-h-screen bg-alloro-bg font-body flex items-center justify-center py-16 px-6">
-        <div className="max-w-xl w-full">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 rounded-full mb-4">
-              <Sparkles className="w-4 h-4 text-alloro-orange" />
-              <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">
-                Almost There
-              </span>
-            </div>
-            <h1 className="text-3xl font-black text-alloro-navy font-heading tracking-tight mb-3">
-              Your Website is Being Built
-            </h1>
-            <p className="text-base text-slate-500 font-medium max-w-md mx-auto">
-              Your project has been created and our team is setting up your
-              pages. You'll be able to edit them here once they're ready.
-            </p>
+        <div className="max-w-xl w-full text-center">
+          {/* Animated building blocks */}
+          <div className="flex items-end justify-center gap-2 mb-8 h-20">
+            <div className="w-5 rounded-t-md bg-alloro-orange/60 animate-[grow1_1.5s_ease-in-out_infinite]" />
+            <div className="w-5 rounded-t-md bg-alloro-orange/80 animate-[grow2_1.5s_ease-in-out_infinite_0.2s]" />
+            <div className="w-5 rounded-t-md bg-alloro-orange animate-[grow3_1.5s_ease-in-out_infinite_0.4s]" />
+            <div className="w-5 rounded-t-md bg-alloro-orange/80 animate-[grow2_1.5s_ease-in-out_infinite_0.6s]" />
+            <div className="w-5 rounded-t-md bg-alloro-orange/60 animate-[grow1_1.5s_ease-in-out_infinite_0.8s]" />
           </div>
 
-          <div className="bg-white rounded-3xl border-2 border-alloro-orange/20 shadow-xl shadow-alloro-orange/5 p-8">
-            <div className="flex items-start gap-6">
-              <div className="shrink-0">
-                <div className="w-14 h-14 bg-gradient-to-br from-alloro-orange to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-alloro-orange/30">
-                  <FileText className="w-7 h-7 text-white" />
-                </div>
-              </div>
-              <div className="flex-1 text-left">
-                <h3 className="text-xl font-black text-alloro-navy tracking-tight mb-2">
-                  No Pages Yet
-                </h3>
-                <p className="text-slate-500 font-medium leading-relaxed mb-4">
-                  Pages will appear here once they've been designed and
-                  published. You'll receive a notification when your website is
-                  ready for editing.
-                </p>
-                {project && (
-                  <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <Globe className="w-4 h-4" />
-                    <span>{project.hostname}.sites.getalloro.com</span>
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 rounded-full mb-4">
+            <Sparkles className="w-4 h-4 text-alloro-orange" />
+            <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">
+              Almost There
+            </span>
           </div>
-
-          <p className="text-center text-sm text-slate-400 mt-6">
-            This page will update automatically when pages are available.
+          <h1 className="text-3xl font-black text-alloro-navy font-heading tracking-tight mb-3">
+            Your Website is Being Built
+          </h1>
+          <p className="text-base text-slate-500 font-medium max-w-md mx-auto">
+            Your project has been created and Alloro is setting up your pages.
+            You'll be able to edit them here once they're ready.
           </p>
         </div>
+
+        <style>{`
+          @keyframes grow1 {
+            0%, 100% { height: 24px; }
+            50% { height: 56px; }
+          }
+          @keyframes grow2 {
+            0%, 100% { height: 32px; }
+            50% { height: 72px; }
+          }
+          @keyframes grow3 {
+            0%, 100% { height: 40px; }
+            50% { height: 80px; }
+          }
+        `}</style>
       </div>
     );
   }

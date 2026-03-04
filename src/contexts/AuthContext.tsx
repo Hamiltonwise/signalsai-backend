@@ -64,6 +64,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Track Google connection status
       setHasGoogleConnection(!!status.hasGoogleConnection);
 
+      // Keep user_role in localStorage in sync with the backend
+      if (status.role) {
+        const storage = isPilotSession() ? sessionStorage : localStorage;
+        storage.setItem("user_role", status.role);
+      }
+
       if (status.success) {
         // Always set userProfile when status is available — needed for
         // onboarding resume logic (organizationId) even before completion.

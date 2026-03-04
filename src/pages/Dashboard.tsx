@@ -257,7 +257,7 @@ export default function Dashboard() {
                     {/* Content */}
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-black text-alloro-navy tracking-tight">Connect Your Google Properties</h3>
+                        <h3 className="text-xl font-black text-alloro-navy tracking-tight">Connect Your Google Business Profile</h3>
                         <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg">Required</span>
                       </div>
                       <p className="text-slate-500 font-medium leading-relaxed mb-4">
