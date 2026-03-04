@@ -15,6 +15,7 @@ import bcrypt from "bcrypt";
 
 import { UserModel } from "../../models/UserModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
+import { InvitationModel } from "../../models/InvitationModel";
 import { generateToken } from "../auth-otp/feature-services/service.jwt-management";
 import { generateSixDigitCode } from "../auth-otp/feature-services/service.otp-generation";
 import { buildAuthCookieOptions } from "../auth-otp/feature-utils/util.cookie-config";
@@ -91,25 +92,8 @@ export async function register(req: Request, res: Response) {
       email_verification_expires_at: expiresAt,
     });
 
-    // Send verification email via n8n webhook
-    const emailResult = await sendEmail({
-      subject: "Verify your Alloro account",
-      body: `
-        <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
-          <h2 style="color: #1a1a1a;">Verify your email</h2>
-          <p style="color: #4a5568; font-size: 16px;">Enter this code to verify your Alloro account:</p>
-          <h1 style="letter-spacing: 5px; background: #f4f4f4; padding: 10px; display: inline-block; border-radius: 5px;">${code}</h1>
-          <p style="color: #718096; font-size: 14px;">This code will expire in 10 minutes.</p>
-          <p style="color: #718096; font-size: 14px;">If you didn't create an account, please ignore this email.</p>
-        </div>
-      `,
-      recipients: [normalizedEmail],
-    });
-    if (!emailResult.success) {
-      console.error(`[AUTH] Failed to send verification email to ${normalizedEmail}:`, emailResult.error);
-    }
-
-    console.log(`[AUTH] User registered: ${normalizedEmail}`);
+    // Log verification code (no auto-send — user clicks "Send Code" on verify page)
+    console.log(`[AUTH] User registered: ${normalizedEmail} | verification code: ${code}`);
 
     return res.status(201).json({
       success: true,
@@ -144,11 +128,24 @@ export async function verifyEmail(req: Request, res: Response) {
     // Mark email as verified
     await UserModel.setEmailVerified(user.id);
 
+    // Accept pending invitation if one exists (invited user joins existing org)
+    let orgUser = await OrganizationUserModel.findByUserId(user.id);
+    if (!orgUser) {
+      const invitation = await InvitationModel.findPendingByEmail(normalizedEmail);
+      if (invitation && new Date(invitation.expires_at) > new Date()) {
+        await OrganizationUserModel.create({
+          organization_id: invitation.organization_id,
+          user_id: user.id,
+          role: invitation.role,
+        });
+        await InvitationModel.updateStatus(invitation.id, "accepted");
+        orgUser = await OrganizationUserModel.findByUserId(user.id);
+        console.log(`[AUTH] User ${user.id} joined org ${invitation.organization_id} via invitation (role: ${invitation.role})`);
+      }
+    }
+
     // Generate JWT
     const token = generateToken(user.id, user.email);
-
-    // Get org info if available
-    const orgUser = await OrganizationUserModel.findByUserId(user.id);
 
     // Set cookie for cross-app auth sync
     res.cookie("auth_token", token, buildAuthCookieOptions());
@@ -202,8 +199,21 @@ export async function login(req: Request, res: Response) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    // Get org info
-    const orgUser = await OrganizationUserModel.findByUserId(user.id);
+    // Get org info — accept pending invitation if user has no org yet
+    let orgUser = await OrganizationUserModel.findByUserId(user.id);
+    if (!orgUser) {
+      const invitation = await InvitationModel.findPendingByEmail(normalizedEmail);
+      if (invitation && new Date(invitation.expires_at) > new Date()) {
+        await OrganizationUserModel.create({
+          organization_id: invitation.organization_id,
+          user_id: user.id,
+          role: invitation.role,
+        });
+        await InvitationModel.updateStatus(invitation.id, "accepted");
+        orgUser = await OrganizationUserModel.findByUserId(user.id);
+        console.log(`[AUTH] User ${user.id} joined org ${invitation.organization_id} via invitation (role: ${invitation.role})`);
+      }
+    }
 
     // Generate JWT
     const token = generateToken(user.id, user.email);
@@ -262,6 +272,8 @@ export async function resendVerification(req: Request, res: Response) {
     const expiresAt = new Date(Date.now() + VERIFICATION_EXPIRY_MS);
 
     await UserModel.setVerificationCode(user.id, code, expiresAt);
+
+    console.log(`[AUTH] Verification code for ${normalizedEmail}: ${code}`);
 
     const emailResult = await sendEmail({
       subject: "Verify your Alloro account",

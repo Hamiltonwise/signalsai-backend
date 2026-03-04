@@ -4,9 +4,9 @@
 export interface ProfileData {
   firstName: string;
   lastName: string;
-  phone: string;
+  phone?: string;
   practiceName: string;
-  operationalJurisdiction: string;
+  operationalJurisdiction?: string;
   domainName: string;
 }
 
@@ -31,13 +31,11 @@ export function validateProfileData(profile: any): ProfileData {
     !profile ||
     !profile.firstName ||
     !profile.lastName ||
-    !profile.phone ||
     !profile.practiceName ||
-    !profile.operationalJurisdiction ||
     !profile.domainName
   ) {
     const error = new Error(
-      "Profile information is required (firstName, lastName, phone, practiceName, operationalJurisdiction, domainName)"
+      "Profile information is required (firstName, lastName, practiceName, domainName)"
     );
     (error as any).statusCode = 400;
     throw error;
@@ -46,9 +44,9 @@ export function validateProfileData(profile: any): ProfileData {
   return {
     firstName: profile.firstName,
     lastName: profile.lastName,
-    phone: profile.phone,
+    phone: profile.phone || undefined,
     practiceName: profile.practiceName,
-    operationalJurisdiction: profile.operationalJurisdiction,
+    operationalJurisdiction: profile.operationalJurisdiction || undefined,
     domainName: profile.domainName,
   };
 }

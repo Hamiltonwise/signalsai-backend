@@ -20,6 +20,7 @@ settingsRoutes.get("/properties/available/:type", authenticateToken, rbacMiddlew
 // User Management
 settingsRoutes.get("/users", authenticateToken, rbacMiddleware, controller.listUsers);
 settingsRoutes.post("/users/invite", authenticateToken, rbacMiddleware, requireRole("admin", "manager"), controller.inviteUser);
+settingsRoutes.post("/users/invite/:invitationId/resend", authenticateToken, rbacMiddleware, requireRole("admin", "manager"), controller.resendInvite);
 settingsRoutes.delete("/users/:userId", authenticateToken, rbacMiddleware, requireRole("admin"), controller.removeUser);
 settingsRoutes.put("/users/:userId/role", authenticateToken, rbacMiddleware, requireRole("admin"), controller.changeUserRole);
 

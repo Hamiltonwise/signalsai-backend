@@ -1,13 +1,38 @@
 import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import {
   createOAuth2Client,
   validateEnvironmentVariables,
 } from "./feature-utils/oauth-client-factory";
-import { generateSecureState } from "./feature-utils/security-utils";
+import { generateSecureState, encodeAuthState, decodeAuthState } from "./feature-utils/security-utils";
 import { handleError, generatePopupHtml } from "./feature-utils/response-formatters";
 import * as OAuthFlowService from "./feature-services/OAuthFlowService";
 import * as TokenManagementService from "./feature-services/TokenManagementService";
 import * as ScopeManagementService from "./feature-services/ScopeManagementService";
+import { db } from "../../database/connection";
+
+function getJwtSecret(): string {
+  return process.env.JWT_SECRET || "dev-secret-key-change-in-prod";
+}
+
+/**
+ * Tries to extract userId and orgId from the Authorization header.
+ * Returns null if no valid JWT is present (does not throw).
+ */
+function tryExtractAuthContext(req: Request): { userId: number; orgId: number } | null {
+  try {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+    if (!token) return null;
+
+    const decoded = jwt.verify(token, getJwtSecret()) as { userId?: number; email?: string };
+    if (!decoded?.userId) return null;
+
+    return { userId: decoded.userId, orgId: 0 }; // orgId resolved async below
+  } catch {
+    return null;
+  }
+}
 
 /**
  * GET /auth/google
@@ -20,7 +45,21 @@ export async function getGoogleAuthUrl(req: Request, res: Response): Promise<voi
     validateEnvironmentVariables();
     const oauth2Client = createOAuth2Client();
 
-    const state = (req.query.state as string) || generateSecureState();
+    // If the caller is authenticated, encode their userId/orgId in the state
+    // so the callback can link the Google connection to the correct org.
+    let state = (req.query.state as string) || generateSecureState();
+    const authCtx = tryExtractAuthContext(req);
+    if (authCtx) {
+      // Look up the user's organization
+      const orgUser = await db("organization_users")
+        .where({ user_id: authCtx.userId })
+        .first();
+
+      if (orgUser) {
+        state = encodeAuthState(authCtx.userId, orgUser.organization_id);
+        console.log(`[AUTH] Encoded auth context in state for user ${authCtx.userId}, org ${orgUser.organization_id}`);
+      }
+    }
 
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: "offline",
@@ -101,10 +140,16 @@ export async function handleOAuthCallback(req: Request, res: Response): Promise<
       tokens.access_token,
     );
 
+    // Decode auth context from state (present when user is already logged in)
+    const authenticatedContext = state ? decodeAuthState(state as string) : null;
+    if (authenticatedContext) {
+      console.log(`[AUTH] Authenticated context from state: userId=${authenticatedContext.userId}, orgId=${authenticatedContext.orgId}`);
+    }
+
     // Database transaction for user and account creation/update with fallback
     let result: OAuthFlowService.OAuthFlowResult;
     try {
-      result = await OAuthFlowService.completeOAuthFlow(tokens, googleProfile);
+      result = await OAuthFlowService.completeOAuthFlow(tokens, googleProfile, authenticatedContext);
     } catch (transactionError: any) {
       console.error("[AUTH] Database transaction failed:", {
         error: transactionError.message,
@@ -113,7 +158,7 @@ export async function handleOAuthCallback(req: Request, res: Response): Promise<
       });
 
       try {
-        result = await OAuthFlowService.handleFallbackAuth(tokens, googleProfile);
+        result = await OAuthFlowService.handleFallbackAuth(tokens, googleProfile, authenticatedContext);
       } catch (fallbackError) {
         console.error("[AUTH] Fallback save also failed:", fallbackError);
         throw transactionError; // Throw original transaction error

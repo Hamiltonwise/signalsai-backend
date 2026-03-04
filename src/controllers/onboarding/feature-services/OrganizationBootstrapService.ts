@@ -1,9 +1,12 @@
 import { Knex } from "knex";
 import { OrganizationModel } from "../../../models/OrganizationModel";
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
+import { InvitationModel } from "../../../models/InvitationModel";
+import { UserModel } from "../../../models/UserModel";
 
 export interface BootstrapResult {
   organizationId: number;
+  joinedViaInvitation: boolean;
 }
 
 /**
@@ -23,7 +26,28 @@ export async function bootstrapOrganization(
   // Guard: check if the user already has an org (retry safety)
   const existing = await OrganizationUserModel.findByUserId(userId, trx);
   if (existing) {
-    return { organizationId: existing.organization_id };
+    return { organizationId: existing.organization_id, joinedViaInvitation: false };
+  }
+
+  // Check for a pending invitation — join existing org instead of creating a new one
+  const user = await UserModel.findById(userId, trx);
+  if (user?.email) {
+    const invitation = await InvitationModel.findPendingByEmail(user.email, trx);
+    if (invitation && new Date(invitation.expires_at) > new Date()) {
+      await OrganizationUserModel.create(
+        {
+          organization_id: invitation.organization_id,
+          user_id: userId,
+          role: invitation.role,
+        },
+        trx
+      );
+      await InvitationModel.updateStatus(invitation.id, "accepted", trx);
+      console.log(
+        `[Onboarding] User ${userId} joined org ${invitation.organization_id} via invitation (role: ${invitation.role})`
+      );
+      return { organizationId: invitation.organization_id, joinedViaInvitation: true };
+    }
   }
 
   const newOrg = await OrganizationModel.create(
@@ -43,5 +67,5 @@ export async function bootstrapOrganization(
     trx
   );
 
-  return { organizationId: newOrg.id };
+  return { organizationId: newOrg.id, joinedViaInvitation: false };
 }

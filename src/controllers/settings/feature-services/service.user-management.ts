@@ -97,10 +97,11 @@ export async function inviteUserToOrganization(
   const organizationName = organization?.name || "the organization";
 
   // Send invitation email
-  const loginUrl =
+  const encodedEmail = encodeURIComponent(email.toLowerCase());
+  const signupUrl =
     process.env.NODE_ENV === "production"
-      ? "https://app.getalloro.com/signin"
-      : "http://localhost:5174/signin";
+      ? `https://app.getalloro.com/signup?email=${encodedEmail}`
+      : `http://localhost:5174/signup?email=${encodedEmail}`;
 
   const assignedRole = role || "viewer";
 
@@ -116,13 +117,13 @@ export async function inviteUserToOrganization(
           Alloro helps you track and optimize your online presence with data-driven insights.
         </p>
         <div style="margin: 30px 0;">
-          <a href="${loginUrl}"
+          <a href="${signupUrl}"
              style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 500;">
-            Sign In to Get Started
+            Create Your Account
           </a>
         </div>
         <p style="color: #718096; font-size: 14px;">
-          To access your account, visit the sign-in page and use the "Sign in with Email" option. You'll receive a verification code to complete the login process.
+          Click the button above to create your account and join <strong>${organizationName}</strong>.
         </p>
         <p style="color: #718096; font-size: 14px; margin-top: 20px;">
           If you didn't expect this invitation, you can safely ignore this email.
@@ -143,6 +144,98 @@ export async function inviteUserToOrganization(
   }
 
   return { message: `Invitation sent to ${email}` };
+}
+
+export async function resendInvitation(
+  organizationId: number,
+  invitationId: number
+) {
+  if (!organizationId) {
+    const error = new Error("Organization not found") as any;
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (isNaN(invitationId)) {
+    const error = new Error("Invalid invitation ID") as any;
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Find the invitation and verify it belongs to this org
+  const invite = await InvitationModel.findById(invitationId);
+
+  if (!invite || invite.organization_id !== organizationId) {
+    const error = new Error("Invitation not found") as any;
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (invite.status !== "pending") {
+    const error = new Error("Invitation is no longer pending") as any;
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Regenerate token and extend expiry
+  const token = generateInvitationToken();
+  const expiresAt = calculateTokenExpiry(7);
+
+  await InvitationModel.updateById(invitationId, {
+    token,
+    expires_at: expiresAt,
+    updated_at: new Date(),
+  });
+
+  // Send invitation email
+  const organization = await OrganizationModel.findById(organizationId);
+  const organizationName = organization?.name || "the organization";
+
+  const encodedEmail = encodeURIComponent(invite.email);
+  const signupUrl =
+    process.env.NODE_ENV === "production"
+      ? `https://app.getalloro.com/signup?email=${encodedEmail}`
+      : `http://localhost:5174/signup?email=${encodedEmail}`;
+
+  const emailResult = await sendEmail({
+    subject: `You've been invited to join ${organizationName} on Alloro`,
+    body: `
+      <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
+        <h2 style="color: #1a1a1a;">You've been invited to Alloro</h2>
+        <p style="color: #4a5568; font-size: 16px;">
+          You've been invited to join <strong>${organizationName}</strong> on Alloro with the role of <strong>${invite.role}</strong>.
+        </p>
+        <p style="color: #4a5568; font-size: 16px;">
+          Alloro helps you track and optimize your online presence with data-driven insights.
+        </p>
+        <div style="margin: 30px 0;">
+          <a href="${signupUrl}"
+             style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 500;">
+            Create Your Account
+          </a>
+        </div>
+        <p style="color: #718096; font-size: 14px;">
+          Click the button above to create your account and join <strong>${organizationName}</strong>.
+        </p>
+        <p style="color: #718096; font-size: 14px; margin-top: 20px;">
+          If you didn't expect this invitation, you can safely ignore this email.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+        <p style="color: #a0aec0; font-size: 12px;">
+          This invitation was sent by Alloro on behalf of ${organizationName}.
+        </p>
+      </div>
+    `,
+    recipients: [invite.email],
+  });
+
+  if (!emailResult.success) {
+    console.warn(`[Settings] Failed to resend invitation email to ${invite.email}`);
+  } else {
+    console.log(`[Settings] Invitation email resent to ${invite.email}`);
+  }
+
+  return { message: `Invitation resent to ${invite.email}` };
 }
 
 export async function removeUserFromOrganization(

@@ -33,9 +33,10 @@ export const rbacMiddleware = async (
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    // Get user role from organization_users
+    // Get user role from organization_users — prefer highest privilege when multiple memberships exist
     const orgUser = await db("organization_users")
       .where({ user_id: userId })
+      .orderByRaw("CASE role WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 ELSE 3 END")
       .first();
 
     if (!orgUser) {

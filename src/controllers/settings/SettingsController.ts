@@ -13,6 +13,7 @@ import { getAvailablePropertiesByType } from "./feature-services/service.google-
 import {
   listOrganizationUsers,
   inviteUserToOrganization,
+  resendInvitation,
   removeUserFromOrganization,
   updateUserRole,
 } from "./feature-services/service.user-management";
@@ -137,6 +138,22 @@ export async function inviteUser(req: RBACRequest, res: Response) {
     });
   } catch (error: any) {
     return handleSettingsError(res, error, "Invite user");
+  }
+}
+
+export async function resendInvite(req: RBACRequest, res: Response) {
+  try {
+    const organizationId = req.organizationId!;
+    const invitationId = parseInt(req.params.invitationId);
+
+    const result = await resendInvitation(organizationId, invitationId);
+
+    return res.json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error: any) {
+    return handleSettingsError(res, error, "Resend invitation");
   }
 }
 

@@ -157,17 +157,19 @@ export async function completeOnboardingForPasswordUser(
     );
     orgId = result.organizationId;
 
-    // Update organization with full profile data
-    await OrganizationModel.updateById(
-      orgId,
-      {
-        name: profileData.practiceName,
-        domain: profileData.domainName,
-        operational_jurisdiction: profileData.operationalJurisdiction,
-        onboarding_completed: true,
-      },
-      trx
-    );
+    // Only update org settings if user created a new org (not joining via invitation)
+    if (!result.joinedViaInvitation) {
+      await OrganizationModel.updateById(
+        orgId,
+        {
+          name: profileData.practiceName,
+          domain: profileData.domainName,
+          operational_jurisdiction: profileData.operationalJurisdiction,
+          onboarding_completed: true,
+        },
+        trx
+      );
+    }
 
     // Update user profile fields
     await UserModel.updateProfile(
@@ -228,7 +230,7 @@ export async function saveProfileAndBootstrapOrg(
         trx
       );
     } else {
-      // No org yet — bootstrap one
+      // No org yet — bootstrap one (or join via invitation)
       const result = await bootstrapOrganization(
         userId,
         profileData.practiceName,
@@ -237,14 +239,16 @@ export async function saveProfileAndBootstrapOrg(
       );
       orgId = result.organizationId;
 
-      // Update the newly created org with remaining fields
-      await OrganizationModel.updateById(
-        orgId,
-        {
-          operational_jurisdiction: profileData.operationalJurisdiction,
-        },
-        trx
-      );
+      // Only update org settings if user created a new org (not joining via invitation)
+      if (!result.joinedViaInvitation) {
+        await OrganizationModel.updateById(
+          orgId,
+          {
+            operational_jurisdiction: profileData.operationalJurisdiction,
+          },
+          trx
+        );
+      }
     }
 
     // Update user profile fields

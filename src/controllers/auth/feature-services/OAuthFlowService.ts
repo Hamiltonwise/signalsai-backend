@@ -5,6 +5,7 @@ import { GoogleConnectionModel, IGoogleConnection } from "../../../models/Google
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
 import { OrganizationModel } from "../../../models/OrganizationModel";
 import { QueryContext } from "../../../models/BaseModel";
+import type { AuthenticatedContext } from "../feature-utils/security-utils";
 
 /**
  * Google user profile from OAuth response
@@ -199,21 +200,30 @@ async function ensureOrganizationLink(
 export async function completeOAuthFlow(
   tokens: any,
   googleProfile: GoogleUserProfile,
+  authenticatedContext?: AuthenticatedContext | null,
 ): Promise<OAuthFlowResult> {
   console.log("[AUTH] Starting database transaction");
 
   const result = await db.transaction(async (trx) => {
-    // Find or create user within transaction
-    const user = await UserModel.findOrCreate(
-      googleProfile.email,
-      googleProfile.name,
-      trx,
-    );
+    let user: IUser;
 
-    if (user.created_at && (user.created_at as any) === user.updated_at) {
-      // Newly created -- logged by UserModel
+    if (authenticatedContext) {
+      // Authenticated flow (connecting GBP from settings) — use the known user
+      const existingUser = await UserModel.findById(authenticatedContext.userId, trx);
+      if (!existingUser) {
+        throw new Error(`Authenticated user ${authenticatedContext.userId} not found`);
+      }
+      user = existingUser;
+      console.log(`[AUTH] Using authenticated user: ${user.email} (ID: ${user.id})`);
+    } else {
+      // Unauthenticated flow (sign-up via Google) — find or create by email
+      user = await UserModel.findOrCreate(
+        googleProfile.email,
+        googleProfile.name,
+        trx,
+      );
+      console.log(`[AUTH] User resolved: ${googleProfile.email} (ID: ${user.id})`);
     }
-    console.log(`[AUTH] User resolved: ${googleProfile.email} (ID: ${user.id})`);
 
     // Build account data
     const accountData = buildAccountData(googleProfile, tokens);
@@ -227,28 +237,36 @@ export async function completeOAuthFlow(
 
     let googleAccount: IGoogleConnection;
     if (existingAccount) {
-      await GoogleConnectionModel.updateById(existingAccount.id, accountData, trx);
-      googleAccount = { ...existingAccount, ...accountData } as IGoogleConnection;
-      console.log(`[AUTH] Updated Google account for user ${user.id}`);
+      // If authenticated context provides the correct org, fix the org link too
+      const updateData = authenticatedContext?.orgId && existingAccount.organization_id !== authenticatedContext.orgId
+        ? { ...accountData, organization_id: authenticatedContext.orgId }
+        : accountData;
+      await GoogleConnectionModel.updateById(existingAccount.id, updateData, trx);
+      googleAccount = { ...existingAccount, ...updateData } as IGoogleConnection;
+      console.log(`[AUTH] Updated Google account for user ${user.id}, org ${googleAccount.organization_id}`);
     } else {
-      // organization_id is NOT NULL — resolve the user's org or create one
-      const orgUser = await OrganizationUserModel.findByUserId(user.id, trx);
+      // Determine organization — prefer authenticated context, then existing org, then create new
       let organizationId: number;
 
-      if (orgUser) {
-        organizationId = orgUser.organization_id;
+      if (authenticatedContext?.orgId) {
+        organizationId = authenticatedContext.orgId;
+        console.log(`[AUTH] Using authenticated org ${organizationId}`);
       } else {
-        // No org yet — create one and link the user
-        const newOrg = await OrganizationModel.create(
-          { name: `${googleProfile.name}'s Organization` },
-          trx,
-        );
-        organizationId = newOrg.id;
-        await OrganizationUserModel.create(
-          { user_id: user.id, organization_id: organizationId, role: "admin" },
-          trx,
-        );
-        console.log(`[AUTH] Created organization ${organizationId} for user ${user.id}`);
+        const orgUser = await OrganizationUserModel.findByUserId(user.id, trx);
+        if (orgUser) {
+          organizationId = orgUser.organization_id;
+        } else {
+          const newOrg = await OrganizationModel.create(
+            { name: `${googleProfile.name}'s Organization` },
+            trx,
+          );
+          organizationId = newOrg.id;
+          await OrganizationUserModel.create(
+            { user_id: user.id, organization_id: organizationId, role: "admin" },
+            trx,
+          );
+          console.log(`[AUTH] Created organization ${organizationId} for user ${user.id}`);
+        }
       }
 
       googleAccount = await GoogleConnectionModel.create(
@@ -281,14 +299,23 @@ export async function completeOAuthFlow(
 export async function handleFallbackAuth(
   tokens: any,
   googleProfile: GoogleUserProfile,
+  authenticatedContext?: AuthenticatedContext | null,
 ): Promise<OAuthFlowResult> {
   console.log("[AUTH] Attempting fallback non-transactional save...");
 
-  // Find or create user without transaction
-  const user = await UserModel.findOrCreate(
-    googleProfile.email,
-    googleProfile.name,
-  );
+  let user: IUser;
+  if (authenticatedContext) {
+    const existingUser = await UserModel.findById(authenticatedContext.userId);
+    if (!existingUser) {
+      throw new Error(`Authenticated user ${authenticatedContext.userId} not found`);
+    }
+    user = existingUser;
+  } else {
+    user = await UserModel.findOrCreate(
+      googleProfile.email,
+      googleProfile.name,
+    );
+  }
 
   // Build account data
   const accountData = buildAccountData(googleProfile, tokens);
@@ -300,23 +327,29 @@ export async function handleFallbackAuth(
 
   let googleAccount: IGoogleConnection;
   if (existingAccount) {
-    await GoogleConnectionModel.updateById(existingAccount.id, accountData);
-    googleAccount = { ...existingAccount, ...accountData } as IGoogleConnection;
+    const updateData = authenticatedContext?.orgId && existingAccount.organization_id !== authenticatedContext.orgId
+      ? { ...accountData, organization_id: authenticatedContext.orgId }
+      : accountData;
+    await GoogleConnectionModel.updateById(existingAccount.id, updateData);
+    googleAccount = { ...existingAccount, ...updateData } as IGoogleConnection;
   } else {
-    // organization_id is NOT NULL — resolve the user's org or create one
-    const orgUser = await OrganizationUserModel.findByUserId(user.id);
     let organizationId: number;
 
-    if (orgUser) {
-      organizationId = orgUser.organization_id;
+    if (authenticatedContext?.orgId) {
+      organizationId = authenticatedContext.orgId;
     } else {
-      const newOrg = await OrganizationModel.create(
-        { name: `${googleProfile.name}'s Organization` },
-      );
-      organizationId = newOrg.id;
-      await OrganizationUserModel.create(
-        { user_id: user.id, organization_id: organizationId, role: "admin" },
-      );
+      const orgUser = await OrganizationUserModel.findByUserId(user.id);
+      if (orgUser) {
+        organizationId = orgUser.organization_id;
+      } else {
+        const newOrg = await OrganizationModel.create(
+          { name: `${googleProfile.name}'s Organization` },
+        );
+        organizationId = newOrg.id;
+        await OrganizationUserModel.create(
+          { user_id: user.id, organization_id: organizationId, role: "admin" },
+        );
+      }
     }
 
     googleAccount = await GoogleConnectionModel.create(

@@ -23,6 +23,7 @@ import {
 } from "./feature-services/SetupProgressService";
 import { GoogleConnectionModel } from "../../models/GoogleConnectionModel";
 import { OrganizationModel } from "../../models/OrganizationModel";
+import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { UserModel } from "../../models/UserModel";
 import { checkDomain as checkDomainService } from "./feature-services/DomainCheckService";
 import {
@@ -101,6 +102,7 @@ export async function getOnboardingStatus(
         propertyIds: null,
         organizationId: null,
         hasGoogleConnection: false,
+        role: null,
         profile: {
           firstName: user?.first_name || null,
           lastName: user?.last_name || null,
@@ -117,12 +119,14 @@ export async function getOnboardingStatus(
     const googleAccount = await GoogleConnectionModel.findOneByOrganization(organizationId);
     const org = await OrganizationModel.findById(organizationId);
 
+    // Look up user's role in this organization
+    const userId = req.userId;
+    const user = userId ? await UserModel.findById(userId) : null;
+    const orgUser = userId ? await OrganizationUserModel.findByUserAndOrg(userId, organizationId) : null;
+    const role = orgUser?.role || null;
+
     // User has org but no Google connection
     if (!googleAccount) {
-      // Fetch user profile from users table
-      const userId = req.userId;
-      const user = userId ? await UserModel.findById(userId) : null;
-
       res.json({
         success: true,
         onboardingCompleted: !!org?.onboarding_completed,
@@ -130,6 +134,7 @@ export async function getOnboardingStatus(
         propertyIds: null,
         organizationId,
         hasGoogleConnection: false,
+        role,
         profile: {
           firstName: user?.first_name || null,
           lastName: user?.last_name || null,
@@ -145,9 +150,6 @@ export async function getOnboardingStatus(
 
     // Profile fields and onboarding_completed now live on organizations/users
     // (google_connections only stores OAuth tokens + google_property_ids)
-    const userId = req.userId;
-    const user = userId ? await UserModel.findById(userId) : null;
-
     res.json({
       success: true,
       onboardingCompleted: !!org?.onboarding_completed,
@@ -155,6 +157,7 @@ export async function getOnboardingStatus(
       propertyIds: googleAccount.google_property_ids || null,
       organizationId,
       hasGoogleConnection: true,
+      role,
       profile: {
         firstName: user?.first_name || null,
         lastName: user?.last_name || null,
