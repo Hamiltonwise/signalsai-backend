@@ -101,9 +101,13 @@ Instruction: ${instruction}${mediaContext}`;
   let parsed: { error: boolean; message: string; html?: string };
   try {
     let cleaned = text.trim();
-    // Strip any markdown fences (```json, ```html, ```, etc.)
-    if (cleaned.startsWith("```")) {
-      cleaned = cleaned.replace(/^```\w*\n?/, "").replace(/\n?```$/, "").trim();
+
+    // Extract content from markdown fenced code blocks anywhere in the response.
+    // Handles cases where the LLM wraps its output in ```json, ```html, or ```
+    // with optional text/headers before and after the fence.
+    const fenceMatch = cleaned.match(/```\w*\n([\s\S]*?)```/);
+    if (fenceMatch) {
+      cleaned = fenceMatch[1].trim();
     }
 
     // Try JSON parse first (happy path)
