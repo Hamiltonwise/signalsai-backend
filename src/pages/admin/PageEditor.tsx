@@ -749,27 +749,49 @@ function PageEditorInner() {
 
         {/* Preview area: iframe or code editor */}
         {codeView ? (
-          <div className="flex-1 overflow-hidden">
-            <Editor
-              height="100%"
-              defaultLanguage="javascript"
-              value={codeContent}
-              onChange={(v) => {
-                setCodeContent(v || "");
-                setIsDirty(true);
-              }}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 13,
-                wordWrap: "on",
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                tabSize: 2,
-                padding: { top: 12 },
-              }}
-            />
-          </div>
+          <>
+            <div className="flex-1 overflow-hidden">
+              <Editor
+                height="100%"
+                defaultLanguage="javascript"
+                value={codeContent}
+                onChange={(v) => {
+                  setCodeContent(v || "");
+                  setIsDirty(true);
+                }}
+                theme="vs-dark"
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 13,
+                  wordWrap: "on",
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  tabSize: 2,
+                  padding: { top: 12 },
+                }}
+              />
+            </div>
+            <div className="flex-1 bg-gray-100 p-4 overflow-hidden flex items-start justify-center">
+              <div
+                className="h-full rounded-xl overflow-hidden shadow-lg border border-gray-200 transition-all duration-300 mx-auto bg-white"
+                style={{
+                  width:
+                    device === "desktop"
+                      ? "100%"
+                      : device === "tablet"
+                        ? "768px"
+                        : "375px",
+                  maxWidth: "100%",
+                }}
+              >
+                <iframe
+                  srcDoc={prepareHtmlForPreview(htmlContent)}
+                  sandbox="allow-same-origin allow-scripts"
+                  className="w-full h-full border-0 bg-white"
+                />
+              </div>
+            </div>
+          </>
         ) : (
           <>
             <div className="flex-1 bg-gray-100 p-4 overflow-hidden flex items-start justify-center">

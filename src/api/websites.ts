@@ -41,6 +41,7 @@ export interface WebsitePage {
   path: string;
   version: number;
   status: string;
+  generation_status?: PageGenerationStatus | null;
   sections: Section[];
   edit_chat_history: EditChatHistory | null;
   created_at: string;

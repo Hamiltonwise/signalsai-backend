@@ -1608,21 +1608,36 @@ export default function WebsiteDetail() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getPageStatusStyles(displayPage.status)}`}
-                        >
-                          {displayPage.status}
-                        </span>
-                        {(displayPage.status === "published" ||
-                          displayPage.status === "draft") && (
-                          <Link
-                            to={`/admin/websites/${id}/pages/${displayPage.id}/edit`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 hover:border-gray-300"
-                          >
-                            <Pencil className="h-3 w-3" />
-                            Edit
-                          </Link>
+                        {displayPage.generation_status && displayPage.generation_status !== "ready" ? (
+                          <>
+                            {(displayPage.generation_status === "generating" || displayPage.generation_status === "queued") && (
+                              <Loader2 className="h-3.5 w-3.5 text-amber-500 animate-spin" />
+                            )}
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getGenStatusStyles(displayPage.generation_status)}`}
+                            >
+                              {displayPage.generation_status}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getPageStatusStyles(displayPage.status)}`}
+                            >
+                              {displayPage.status}
+                            </span>
+                            {(displayPage.status === "published" ||
+                              displayPage.status === "draft") && (
+                              <Link
+                                to={`/admin/websites/${id}/pages/${displayPage.id}/edit`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 hover:border-gray-300"
+                              >
+                                <Pencil className="h-3 w-3" />
+                                Edit
+                              </Link>
+                            )}
+                          </>
                         )}
                         <ChevronDown
                           className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
@@ -1655,17 +1670,31 @@ export default function WebsiteDetail() {
                                     <span className="text-sm font-medium text-gray-700">
                                       v{page.version}
                                     </span>
-                                    <span
-                                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getPageStatusStyles(page.status)}`}
-                                    >
-                                      {page.status}
-                                    </span>
+                                    {page.generation_status && page.generation_status !== "ready" ? (
+                                      <>
+                                        {(page.generation_status === "generating" || page.generation_status === "queued") && (
+                                          <Loader2 className="h-3 w-3 text-amber-500 animate-spin" />
+                                        )}
+                                        <span
+                                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getGenStatusStyles(page.generation_status)}`}
+                                        >
+                                          {page.generation_status}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span
+                                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getPageStatusStyles(page.status)}`}
+                                      >
+                                        {page.status}
+                                      </span>
+                                    )}
                                     <span className="text-xs text-gray-400">
                                       {formatDateTime(page.updated_at)}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {(page.status === "published" ||
+                                    {(!page.generation_status || page.generation_status === "ready") &&
+                                      (page.status === "published" ||
                                       page.status === "draft") && (
                                       <Link
                                         to={`/admin/websites/${id}/pages/${page.id}/edit`}

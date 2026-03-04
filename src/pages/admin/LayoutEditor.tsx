@@ -503,28 +503,50 @@ function LayoutEditorInner() {
         /* Header/Footer: iframe preview + AI sidebar (or code editor) */
         <div className="flex-1 flex overflow-hidden">
           {codeView ? (
-            /* Code editor for header/footer raw HTML */
-            <div className="flex-1 overflow-hidden">
-              <Editor
-                height="100%"
-                defaultLanguage="html"
-                value={content}
-                onChange={(v) => {
-                  setContent(v || "");
-                  setIsDirty(true);
-                }}
-                theme="vs-dark"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  wordWrap: "on",
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  tabSize: 2,
-                  padding: { top: 12 },
-                }}
-              />
-            </div>
+            /* Code editor + live preview side by side */
+            <>
+              <div className="flex-1 overflow-hidden">
+                <Editor
+                  height="100%"
+                  defaultLanguage="html"
+                  value={content}
+                  onChange={(v) => {
+                    setContent(v || "");
+                    setIsDirty(true);
+                  }}
+                  theme="vs-dark"
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 13,
+                    wordWrap: "on",
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    tabSize: 2,
+                    padding: { top: 12 },
+                  }}
+                />
+              </div>
+              <div className="flex-1 bg-gray-100 p-4 overflow-hidden flex items-start justify-center">
+                <div
+                  className="h-full rounded-xl overflow-hidden shadow-lg border border-gray-200 transition-all duration-300 mx-auto bg-white"
+                  style={{
+                    width:
+                      device === "desktop"
+                        ? "100%"
+                        : device === "tablet"
+                          ? "768px"
+                          : "375px",
+                    maxWidth: "100%",
+                  }}
+                >
+                  <iframe
+                    srcDoc={prepareHtmlForPreview(previewHtml)}
+                    sandbox="allow-same-origin allow-scripts"
+                    className="w-full h-full border-0 bg-white"
+                  />
+                </div>
+              </div>
+            </>
           ) : (
             <>
               {/* Iframe preview */}

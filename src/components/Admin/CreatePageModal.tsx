@@ -94,6 +94,11 @@ export default function CreatePageModal({
       setSlugError("Slug must start with /");
       return false;
     }
+    // Allow bare "/" for homepage
+    if (value === "/") {
+      setSlugError(null);
+      return true;
+    }
     if (value.length < 2) {
       setSlugError("Slug is too short");
       return false;
@@ -291,7 +296,7 @@ export default function CreatePageModal({
               />
               {slugError && <p className="text-xs text-red-500">{slugError}</p>}
               <p className="text-xs text-gray-400">
-                The URL path for this page (e.g., /services, /about-us)
+                The URL path for this page (e.g., / for homepage, /services, /about-us)
               </p>
             </div>
 
@@ -477,7 +482,7 @@ export default function CreatePageModal({
             <button
               onClick={handleSubmit}
               disabled={
-                submitting || !selectedPageId || slug.length < 2 || !!slugError
+                submitting || !selectedPageId || !slug || !!slugError
               }
               className="inline-flex items-center gap-2 bg-alloro-orange hover:bg-alloro-orange/90 disabled:bg-alloro-orange/50 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed"
             >

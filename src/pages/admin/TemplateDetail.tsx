@@ -36,6 +36,10 @@ import type { CodeSnippet } from "../../api/codeSnippets";
 import CodeManagerTab from "../../components/Admin/CodeManagerTab";
 import { renderPage, parseSectionsJs, serializeSectionsJs, normalizeSections } from "../../utils/templateRenderer";
 import {
+  useIframeSelector,
+  prepareHtmlForPreview,
+} from "../../hooks/useIframeSelector";
+import {
   AdminPageHeader,
   ActionButton,
   Badge,
@@ -88,6 +92,13 @@ export default function TemplateDetail() {
   const [previewContent, setPreviewContent] = useState("");
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile" | "seo">("desktop");
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Iframe selector for hover/click labels on alloro-tpl components
+  const previewIframeRef = useRef<HTMLIFrameElement>(null);
+  const { setupListeners: setupPreviewListeners } = useIframeSelector(previewIframeRef);
+  const handlePreviewIframeLoad = useCallback(() => {
+    setupPreviewListeners();
+  }, [setupPreviewListeners]);
 
   // Settings state
   const [editingName, setEditingName] = useState(false);
@@ -918,7 +929,8 @@ export default function TemplateDetail() {
                           </div>
                           <div className="flex-1 relative overflow-hidden bg-white border-x-2 border-gray-700">
                             <iframe
-                              srcDoc={previewWithScrollbar(previewContent)}
+                              ref={previewIframeRef}
+                              srcDoc={previewWithScrollbar(prepareHtmlForPreview(previewContent))}
                               className="border-0 absolute top-0 left-0"
                               style={{
                                 width: `${100 / 0.45}%`,
@@ -927,6 +939,7 @@ export default function TemplateDetail() {
                                 transformOrigin: "top left",
                               }}
                               sandbox="allow-scripts allow-same-origin"
+                              onLoad={handlePreviewIframeLoad}
                               title="Template Preview"
                             />
                           </div>
@@ -958,9 +971,11 @@ export default function TemplateDetail() {
                           </div>
                           <div className="bg-white border-x-4 border-gray-800 h-full overflow-hidden" style={{ height: 560 }}>
                             <iframe
-                              srcDoc={previewWithScrollbar(previewContent)}
+                              ref={previewIframeRef}
+                              srcDoc={previewWithScrollbar(prepareHtmlForPreview(previewContent))}
                               className="w-full h-full border-0"
                               sandbox="allow-scripts allow-same-origin"
+                              onLoad={handlePreviewIframeLoad}
                               title="Template Preview (Mobile)"
                             />
                           </div>
