@@ -54,6 +54,7 @@ import ConnectDomainModal from "../../components/Admin/ConnectDomainModal";
 import RecipientsConfig from "../../components/Admin/RecipientsConfig";
 import FormSubmissionsTab from "../../components/Admin/FormSubmissionsTab";
 import PostsTab from "../../components/Admin/PostsTab";
+import MenusTab from "../../components/Admin/MenusTab";
 import { fetchProjectCodeSnippets } from "../../api/codeSnippets";
 import type { CodeSnippet } from "../../api/codeSnippets";
 import { useConfirm } from "../../components/ui/ConfirmModal";
@@ -129,7 +130,7 @@ export default function WebsiteDetail() {
 
   // Detail tab: pages vs layouts vs media vs code-manager vs posts
   const [detailTab, setDetailTab] = useState<
-    "pages" | "layouts" | "media" | "code-manager" | "form-submissions" | "posts"
+    "pages" | "layouts" | "media" | "code-manager" | "form-submissions" | "posts" | "menus"
   >("pages");
 
   // Code snippets state
@@ -1526,7 +1527,7 @@ export default function WebsiteDetail() {
 
       {/* Tab bar: Pages | Layouts | Code Manager | Media | Form Submissions */}
       <div className="flex items-stretch gap-1 p-1.5 bg-gray-100 rounded-xl mb-4">
-        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts"] as const).map((tab) => {
+        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus"] as const).map((tab) => {
           const isActive = detailTab === tab;
           return (
             <motion.button
@@ -1881,6 +1882,17 @@ export default function WebsiteDetail() {
           transition={{ delay: 0.2 }}
         >
           <PostsTab projectId={id!} templateId={website.template_id} />
+        </motion.div>
+      )}
+
+      {/* Menus Section */}
+      {detailTab === "menus" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <MenusTab projectId={id!} templateId={website.template_id} />
         </motion.div>
       )}
 

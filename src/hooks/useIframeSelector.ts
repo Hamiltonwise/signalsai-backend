@@ -98,6 +98,13 @@ export function prepareHtmlForPreview(html: string): string {
         const escaped = inner.replace(/</g, "&lt;").replace(/>/g, "&gt;");
         return `<div style="width:100%;height:100px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:8px;font-family:monospace;font-size:13px;color:#6b7280;box-sizing:border-box;margin:8px 0">{{ ${escaped} }}</div>`;
       }
+    )
+    .replace(
+      /\{\{\s*(menu\s+[^}]*)\}\}/g,
+      (_match, inner) => {
+        const escaped = inner.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return `<div style="width:100%;height:60px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;border:1px dashed #d1d5db;border-radius:8px;font-family:monospace;font-size:13px;color:#6b7280;box-sizing:border-box;margin:8px 0">{{ ${escaped} }}</div>`;
+      }
     );
 }
 
