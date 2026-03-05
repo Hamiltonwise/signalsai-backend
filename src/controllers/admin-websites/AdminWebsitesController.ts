@@ -1,7 +1,7 @@
 /**
  * Admin Websites Controller
  *
- * 44 named exports handling request/response for all admin website endpoints.
+ * Named exports handling request/response for all admin website endpoints.
  * Delegates business logic to feature services.
  *
  * Groups:
@@ -11,6 +11,10 @@
  * 4. Project Pages (10 endpoints)
  * 5. Template HFCM (6 endpoints)
  * 6. Project HFCM (6 endpoints)
+ * 7. Post Types (5 endpoints)
+ * 8. Post Blocks (5 endpoints)
+ * 9. Post Taxonomy (8 endpoints)
+ * 10. Posts (5 endpoints)
  */
 
 import { Request, Response } from "express";
@@ -21,6 +25,10 @@ import * as hfcmManager from "./feature-services/service.hfcm-manager";
 import * as websiteScraper from "./feature-services/service.website-scraper";
 import * as deploymentPipeline from "./feature-services/service.deployment-pipeline";
 import * as customDomain from "./feature-services/service.custom-domain";
+import * as postTypeManager from "./feature-services/service.post-type-manager";
+import * as postBlockManager from "./feature-services/service.post-block-manager";
+import * as postTaxonomyManager from "./feature-services/service.post-taxonomy-manager";
+import * as postManager from "./feature-services/service.post-manager";
 import { db } from "../../database/connection";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
@@ -1877,5 +1885,324 @@ export async function deleteFormSubmission(
   } catch (error: any) {
     console.error("[Admin Websites] Error deleting submission:", error);
     return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message || "Failed to delete submission" });
+  }
+}
+
+// =====================================================================
+// POST TYPES
+// =====================================================================
+
+/** GET /templates/:templateId/post-types */
+export async function listPostTypes(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId } = req.params;
+    const result = await postTypeManager.listPostTypes(templateId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.postTypes });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing post types:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** POST /templates/:templateId/post-types */
+export async function createPostType(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId } = req.params;
+    const result = await postTypeManager.createPostType(templateId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.postType });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating post type:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /templates/:templateId/post-types/:postTypeId */
+export async function getPostType(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, postTypeId } = req.params;
+    const postType = await postTypeManager.getPostType(templateId, postTypeId);
+    if (!postType) return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Post type not found" });
+    return res.json({ success: true, data: postType });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error getting post type:", error);
+    return res.status(500).json({ success: false, error: "GET_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /templates/:templateId/post-types/:postTypeId */
+export async function updatePostType(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, postTypeId } = req.params;
+    const result = await postTypeManager.updatePostType(templateId, postTypeId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.postType });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating post type:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /templates/:templateId/post-types/:postTypeId */
+export async function deletePostType(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, postTypeId } = req.params;
+    const result = await postTypeManager.deletePostType(templateId, postTypeId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting post type:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
+// POST BLOCKS
+// =====================================================================
+
+/** GET /templates/:templateId/post-blocks */
+export async function listPostBlocks(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId } = req.params;
+    const result = await postBlockManager.listPostBlocks(templateId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.postBlocks });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing post blocks:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** POST /templates/:templateId/post-blocks */
+export async function createPostBlock(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId } = req.params;
+    const result = await postBlockManager.createPostBlock(templateId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.postBlock });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating post block:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /templates/:templateId/post-blocks/:postBlockId */
+export async function getPostBlock(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, postBlockId } = req.params;
+    const postBlock = await postBlockManager.getPostBlock(templateId, postBlockId);
+    if (!postBlock) return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Post block not found" });
+    return res.json({ success: true, data: postBlock });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error getting post block:", error);
+    return res.status(500).json({ success: false, error: "GET_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /templates/:templateId/post-blocks/:postBlockId */
+export async function updatePostBlock(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, postBlockId } = req.params;
+    const result = await postBlockManager.updatePostBlock(templateId, postBlockId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.postBlock });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating post block:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /templates/:templateId/post-blocks/:postBlockId */
+export async function deletePostBlock(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, postBlockId } = req.params;
+    const result = await postBlockManager.deletePostBlock(templateId, postBlockId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting post block:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
+// POST TAXONOMY (Categories & Tags)
+// =====================================================================
+
+/** GET /post-types/:postTypeId/categories */
+export async function listCategories(req: Request, res: Response): Promise<Response> {
+  try {
+    const { postTypeId } = req.params;
+    const result = await postTaxonomyManager.listCategories(postTypeId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.categories });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing categories:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** POST /post-types/:postTypeId/categories */
+export async function createCategory(req: Request, res: Response): Promise<Response> {
+  try {
+    const { postTypeId } = req.params;
+    const result = await postTaxonomyManager.createCategory(postTypeId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.category });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating category:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /post-types/:postTypeId/categories/:categoryId */
+export async function updateCategory(req: Request, res: Response): Promise<Response> {
+  try {
+    const { postTypeId, categoryId } = req.params;
+    const result = await postTaxonomyManager.updateCategory(postTypeId, categoryId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.category });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating category:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /post-types/:postTypeId/categories/:categoryId */
+export async function deleteCategory(req: Request, res: Response): Promise<Response> {
+  try {
+    const { postTypeId, categoryId } = req.params;
+    const result = await postTaxonomyManager.deleteCategory(postTypeId, categoryId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting category:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /post-types/:postTypeId/tags */
+export async function listTags(req: Request, res: Response): Promise<Response> {
+  try {
+    const { postTypeId } = req.params;
+    const result = await postTaxonomyManager.listTags(postTypeId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.tags });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing tags:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** POST /post-types/:postTypeId/tags */
+export async function createTag(req: Request, res: Response): Promise<Response> {
+  try {
+    const { postTypeId } = req.params;
+    const result = await postTaxonomyManager.createTag(postTypeId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.tag });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating tag:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /post-types/:postTypeId/tags/:tagId */
+export async function updateTag(req: Request, res: Response): Promise<Response> {
+  try {
+    const { postTypeId, tagId } = req.params;
+    const result = await postTaxonomyManager.updateTag(postTypeId, tagId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.tag });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating tag:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /post-types/:postTypeId/tags/:tagId */
+export async function deleteTag(req: Request, res: Response): Promise<Response> {
+  try {
+    const { postTypeId, tagId } = req.params;
+    const result = await postTaxonomyManager.deleteTag(postTypeId, tagId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting tag:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
+// POSTS
+// =====================================================================
+
+/** GET /:id/posts */
+export async function listPosts(req: Request, res: Response): Promise<Response> {
+  try {
+    const projectId = req.params.id;
+    const { post_type_id, status } = req.query;
+    const result = await postManager.listPosts(projectId, {
+      post_type_id: post_type_id as string | undefined,
+      status: status as string | undefined,
+    });
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.posts });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing posts:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/posts */
+export async function createPost(req: Request, res: Response): Promise<Response> {
+  try {
+    const projectId = req.params.id;
+    const result = await postManager.createPost(projectId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.post });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating post:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/posts/:postId */
+export async function getPost(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, postId } = req.params;
+    const post = await postManager.getPost(projectId, postId);
+    if (!post) return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Post not found" });
+    return res.json({ success: true, data: post });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error getting post:", error);
+    return res.status(500).json({ success: false, error: "GET_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /:id/posts/:postId */
+export async function updatePost(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, postId } = req.params;
+    const result = await postManager.updatePost(projectId, postId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.post });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating post:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /:id/posts/:postId */
+export async function deletePost(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, postId } = req.params;
+    const result = await postManager.deletePost(projectId, postId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting post:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
   }
 }

@@ -1,5 +1,4 @@
 export interface ProfileData {
-  phone: string | null;
   operational_jurisdiction: string | null;
 }
 
@@ -7,7 +6,6 @@ export function formatProfileDataResponse(data: ProfileData) {
   return {
     success: true,
     data: {
-      phone: data.phone,
       operational_jurisdiction: data.operational_jurisdiction,
     },
   };
@@ -18,7 +16,6 @@ export function formatProfileUpdateResponse(data: ProfileData) {
     success: true,
     message: "Profile updated successfully",
     data: {
-      phone: data.phone,
       operational_jurisdiction: data.operational_jurisdiction,
     },
   };

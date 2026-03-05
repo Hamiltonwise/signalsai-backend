@@ -47,6 +47,34 @@ router.get("/templates", controller.listTemplates);
 router.post("/templates", controller.createTemplate);
 
 // =====================================================================
+// POST TAXONOMY (non-parameterized by template — before template sub-paths)
+// =====================================================================
+
+// GET  /post-types/:postTypeId/categories — List categories
+router.get("/post-types/:postTypeId/categories", controller.listCategories);
+
+// POST /post-types/:postTypeId/categories — Create category
+router.post("/post-types/:postTypeId/categories", controller.createCategory);
+
+// PATCH /post-types/:postTypeId/categories/:categoryId — Update category
+router.patch("/post-types/:postTypeId/categories/:categoryId", controller.updateCategory);
+
+// DELETE /post-types/:postTypeId/categories/:categoryId — Delete category
+router.delete("/post-types/:postTypeId/categories/:categoryId", controller.deleteCategory);
+
+// GET  /post-types/:postTypeId/tags — List tags
+router.get("/post-types/:postTypeId/tags", controller.listTags);
+
+// POST /post-types/:postTypeId/tags — Create tag
+router.post("/post-types/:postTypeId/tags", controller.createTag);
+
+// PATCH /post-types/:postTypeId/tags/:tagId — Update tag
+router.patch("/post-types/:postTypeId/tags/:tagId", controller.updateTag);
+
+// DELETE /post-types/:postTypeId/tags/:tagId — Delete tag
+router.delete("/post-types/:postTypeId/tags/:tagId", controller.deleteTag);
+
+// =====================================================================
 // TEMPLATE PAGES (must come before /templates/:templateId)
 // =====================================================================
 
@@ -64,6 +92,44 @@ router.patch("/templates/:templateId/pages/:pageId", controller.updateTemplatePa
 
 // DELETE /templates/:templateId/pages/:pageId — Delete template page
 router.delete("/templates/:templateId/pages/:pageId", controller.deleteTemplatePage);
+
+// =====================================================================
+// TEMPLATE POST TYPES (must come before /templates/:templateId)
+// =====================================================================
+
+// GET  /templates/:templateId/post-types — List post types
+router.get("/templates/:templateId/post-types", controller.listPostTypes);
+
+// POST /templates/:templateId/post-types — Create post type
+router.post("/templates/:templateId/post-types", controller.createPostType);
+
+// GET  /templates/:templateId/post-types/:postTypeId — Get post type
+router.get("/templates/:templateId/post-types/:postTypeId", controller.getPostType);
+
+// PATCH /templates/:templateId/post-types/:postTypeId — Update post type
+router.patch("/templates/:templateId/post-types/:postTypeId", controller.updatePostType);
+
+// DELETE /templates/:templateId/post-types/:postTypeId — Delete post type
+router.delete("/templates/:templateId/post-types/:postTypeId", controller.deletePostType);
+
+// =====================================================================
+// TEMPLATE POST BLOCKS (must come before /templates/:templateId)
+// =====================================================================
+
+// GET  /templates/:templateId/post-blocks — List post blocks
+router.get("/templates/:templateId/post-blocks", controller.listPostBlocks);
+
+// POST /templates/:templateId/post-blocks — Create post block
+router.post("/templates/:templateId/post-blocks", controller.createPostBlock);
+
+// GET  /templates/:templateId/post-blocks/:postBlockId — Get post block
+router.get("/templates/:templateId/post-blocks/:postBlockId", controller.getPostBlock);
+
+// PATCH /templates/:templateId/post-blocks/:postBlockId — Update post block
+router.patch("/templates/:templateId/post-blocks/:postBlockId", controller.updatePostBlock);
+
+// DELETE /templates/:templateId/post-blocks/:postBlockId — Delete post block
+router.delete("/templates/:templateId/post-blocks/:postBlockId", controller.deletePostBlock);
 
 // =====================================================================
 // TEMPLATE HFCM (must come before /templates/:templateId)
@@ -173,6 +239,25 @@ router.patch("/:id/form-submissions/:submissionId/read", controller.toggleFormSu
 
 // DELETE /:id/form-submissions/:submissionId — Delete a submission
 router.delete("/:id/form-submissions/:submissionId", controller.deleteFormSubmission);
+
+// =====================================================================
+// PROJECT POSTS
+// =====================================================================
+
+// GET  /:id/posts — List posts for a project
+router.get("/:id/posts", controller.listPosts);
+
+// POST /:id/posts — Create a post
+router.post("/:id/posts", controller.createPost);
+
+// GET  /:id/posts/:postId — Get a post
+router.get("/:id/posts/:postId", controller.getPost);
+
+// PATCH /:id/posts/:postId — Update a post
+router.patch("/:id/posts/:postId", controller.updatePost);
+
+// DELETE /:id/posts/:postId — Delete a post
+router.delete("/:id/posts/:postId", controller.deletePost);
 
 // =====================================================================
 // PROJECT PAGES

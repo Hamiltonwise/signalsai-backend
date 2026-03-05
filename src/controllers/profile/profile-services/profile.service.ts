@@ -1,54 +1,52 @@
 import {
-  GoogleConnectionModel,
-  IGoogleConnection,
-} from "../../../models/GoogleConnectionModel";
+  OrganizationModel,
+  IOrganization,
+} from "../../../models/OrganizationModel";
 
 export interface ProfileFields {
-  phone: string | null;
   operational_jurisdiction: string | null;
 }
 
 function extractProfileFields(
-  account: IGoogleConnection | undefined
+  org: IOrganization | undefined
 ): ProfileFields | null {
-  if (!account) {
+  if (!org) {
     return null;
   }
   return {
-    phone: account.phone || null,
-    operational_jurisdiction: account.operational_jurisdiction || null,
+    operational_jurisdiction: org.operational_jurisdiction || null,
   };
 }
 
 export async function getProfileData(
   organizationId: number
 ): Promise<ProfileFields> {
-  const account = await GoogleConnectionModel.findOneByOrganization(organizationId);
+  const org = await OrganizationModel.findById(organizationId);
 
-  if (!account) {
-    const error = new Error("Account not found");
+  if (!org) {
+    const error = new Error("Organization not found");
     (error as any).statusCode = 404;
     throw error;
   }
 
-  return extractProfileFields(account)!;
+  return extractProfileFields(org)!;
 }
 
 export async function updateProfileData(
   organizationId: number,
-  updates: { phone?: string; operational_jurisdiction?: string }
+  updates: { operational_jurisdiction?: string }
 ): Promise<ProfileFields> {
-  const account = await GoogleConnectionModel.findOneByOrganization(organizationId);
+  const org = await OrganizationModel.findById(organizationId);
 
-  if (!account) {
-    const error = new Error("Account not found");
+  if (!org) {
+    const error = new Error("Organization not found");
     (error as any).statusCode = 404;
     throw error;
   }
 
-  await GoogleConnectionModel.updateById(account.id, updates);
+  await OrganizationModel.updateById(organizationId, updates);
 
-  const updated = await GoogleConnectionModel.findById(account.id);
+  const updated = await OrganizationModel.findById(organizationId);
 
   return extractProfileFields(updated)!;
 }

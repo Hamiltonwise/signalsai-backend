@@ -9,14 +9,9 @@ export function validateOrganizationId(
 }
 
 export function validateUpdateFields(
-  phone?: string,
   operational_jurisdiction?: string
-): { phone?: string; operational_jurisdiction?: string } {
-  const fields: { phone?: string; operational_jurisdiction?: string } = {};
-
-  if (phone !== undefined) {
-    fields.phone = phone;
-  }
+): { operational_jurisdiction?: string } {
+  const fields: { operational_jurisdiction?: string } = {};
 
   if (operational_jurisdiction !== undefined) {
     fields.operational_jurisdiction = operational_jurisdiction;

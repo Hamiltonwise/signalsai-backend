@@ -13,26 +13,11 @@ export interface IGoogleConnection {
   google_property_ids: Record<string, unknown> | null;
   created_at: Date;
   updated_at: Date;
-
-  // ---------------------------------------------------------------
-  // Transitional fields (carried over from IGoogleAccount)
-  // These fields were dropped in migration 20260221000004.
-  // Keeping in interface temporarily for callers that still reference them.
-  // ---------------------------------------------------------------
-  domain_name?: string | null;
-  practice_name?: string | null;
-  phone?: string | null;
-  operational_jurisdiction?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  onboarding_completed?: boolean;
-  onboarding_wizard_completed?: boolean;
-  setup_progress?: Record<string, unknown> | null;
 }
 
 export class GoogleConnectionModel extends BaseModel {
   protected static tableName = "google_connections";
-  protected static jsonFields = ["google_property_ids", "setup_progress"];
+  protected static jsonFields = ["google_property_ids"];
 
   static async findById(
     id: number,
@@ -123,69 +108,8 @@ export class GoogleConnectionModel extends BaseModel {
     return super.updateById(id, tokens as Record<string, unknown>, trx);
   }
 
-  // =====================================================================
-  // Backward-compatible methods (temporary)
-  // These methods preserve the old GoogleAccountModel signatures so that
-  // callers compile while migration Plans 04+ refactor them away.
-  // =====================================================================
-
-  /**
-   * @deprecated Use organizations table directly. Kept for backward compat during migration.
-   */
-  static async findOnboardedAccounts(
-    trx?: QueryContext
-  ): Promise<IGoogleConnection[]> {
-    const rows = await this.table(trx)
-      .where("onboarding_completed", true)
-      .select("id", "domain_name", "practice_name", "google_property_ids")
-      .orderBy("practice_name", "asc");
-    return rows.map((row: IGoogleConnection) =>
-      this.deserializeJsonFields(row)
-    );
-  }
-
-  /**
-   * @deprecated Use organizations table directly. Kept for backward compat during migration.
-   */
-  static async findOnboardedClients(
-    trx?: QueryContext
-  ): Promise<Pick<IGoogleConnection, "id" | "email">[]> {
-    return this.table(trx)
-      .where("onboarding_completed", true)
-      .select("id", "domain_name", "email")
-      .orderBy("domain_name", "asc");
-  }
-
-  /**
-   * @deprecated Use LocationModel/OrganizationModel. Kept for backward compat during migration.
-   */
-  static async getDomainFromAccountId(
-    accountId: number,
-    trx?: QueryContext
-  ): Promise<string | null> {
-    const account = await this.table(trx)
-      .where({ id: accountId })
-      .select("domain_name")
-      .first();
-    return account?.domain_name || null;
-  }
-
-  /**
-   * @deprecated Use LocationModel/OrganizationModel. Kept for backward compat during migration.
-   */
-  static async findByDomain(
-    domainName: string,
-    trx?: QueryContext
-  ): Promise<IGoogleConnection | undefined> {
-    const row = await this.table(trx)
-      .where({ domain_name: domainName })
-      .first();
-    return row ? this.deserializeJsonFields(row) : undefined;
-  }
-
   /**
    * Generic findOne for arbitrary where clauses.
-   * @deprecated Plan 04 will replace callers with specific query methods.
    */
   static async findOne(
     where: Record<string, unknown>,

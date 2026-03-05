@@ -12,6 +12,7 @@ export function getRedisConnection(): IORedis {
       host: REDIS_HOST,
       port: REDIS_PORT,
       maxRetriesPerRequest: null,
+      ...(process.env.REDIS_TLS === "true" && { tls: {} }),
     });
   }
   return connection;

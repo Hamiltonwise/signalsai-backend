@@ -22,11 +22,11 @@ export async function getProfile(req: RBACRequest, res: Response) {
 export async function updateProfile(req: RBACRequest, res: Response) {
   try {
     const organizationId = req.organizationId;
-    const { phone, operational_jurisdiction } = req.body;
+    const { operational_jurisdiction } = req.body;
 
     validateOrganizationId(organizationId);
 
-    const updates = validateUpdateFields(phone, operational_jurisdiction);
+    const updates = validateUpdateFields(operational_jurisdiction);
 
     const profileData = await updateProfileData(organizationId, updates);
 

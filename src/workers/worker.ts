@@ -23,6 +23,7 @@ const connection = new IORedis({
   host: REDIS_HOST,
   port: REDIS_PORT,
   maxRetriesPerRequest: null,
+  ...(process.env.REDIS_TLS === "true" && { tls: {} }),
 });
 
 // Scrape & Compare worker

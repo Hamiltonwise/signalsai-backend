@@ -93,7 +93,9 @@ export async function processManualEntry(
 
   // Trigger monthly agents immediately
   try {
-    const account = await GoogleConnectionModel.findByDomain(domain);
+    const account = organizationId
+      ? await GoogleConnectionModel.findOneByOrganization(organizationId)
+      : undefined;
 
     if (account) {
       console.log(
