@@ -27,8 +27,10 @@ import * as deploymentPipeline from "./feature-services/service.deployment-pipel
 import * as customDomain from "./feature-services/service.custom-domain";
 import * as postTypeManager from "./feature-services/service.post-type-manager";
 import * as postBlockManager from "./feature-services/service.post-block-manager";
+import * as menuTemplateManager from "./feature-services/service.menu-template-manager";
 import * as postTaxonomyManager from "./feature-services/service.post-taxonomy-manager";
 import * as postManager from "./feature-services/service.post-manager";
+import * as menuManager from "./feature-services/service.menu-manager";
 import { db } from "../../database/connection";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
@@ -2027,6 +2029,75 @@ export async function deletePostBlock(req: Request, res: Response): Promise<Resp
 }
 
 // =====================================================================
+// MENU TEMPLATES
+// =====================================================================
+
+/** GET /templates/:templateId/menu-templates */
+export async function listMenuTemplates(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId } = req.params;
+    const result = await menuTemplateManager.listMenuTemplates(templateId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.menuTemplates });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing menu templates:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** POST /templates/:templateId/menu-templates */
+export async function createMenuTemplate(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId } = req.params;
+    const result = await menuTemplateManager.createMenuTemplate(templateId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.menuTemplate });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating menu template:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /templates/:templateId/menu-templates/:menuTemplateId */
+export async function getMenuTemplate(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, menuTemplateId } = req.params;
+    const menuTemplate = await menuTemplateManager.getMenuTemplate(templateId, menuTemplateId);
+    if (!menuTemplate) return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Menu template not found" });
+    return res.json({ success: true, data: menuTemplate });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error getting menu template:", error);
+    return res.status(500).json({ success: false, error: "GET_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /templates/:templateId/menu-templates/:menuTemplateId */
+export async function updateMenuTemplate(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, menuTemplateId } = req.params;
+    const result = await menuTemplateManager.updateMenuTemplate(templateId, menuTemplateId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.menuTemplate });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating menu template:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /templates/:templateId/menu-templates/:menuTemplateId */
+export async function deleteMenuTemplate(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, menuTemplateId } = req.params;
+    const result = await menuTemplateManager.deleteMenuTemplate(templateId, menuTemplateId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting menu template:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
 // POST TAXONOMY (Categories & Tags)
 // =====================================================================
 
@@ -2204,5 +2275,126 @@ export async function deletePost(req: Request, res: Response): Promise<Response>
   } catch (error: any) {
     console.error("[Admin Websites] Error deleting post:", error);
     return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
+// MENUS
+// =====================================================================
+
+/** GET /:id/menus */
+export async function listMenus(req: Request, res: Response): Promise<Response> {
+  try {
+    const projectId = req.params.id;
+    const result = await menuManager.listMenus(projectId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.menus });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing menus:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/menus */
+export async function createMenu(req: Request, res: Response): Promise<Response> {
+  try {
+    const projectId = req.params.id;
+    const result = await menuManager.createMenu(projectId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.menu });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating menu:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/menus/:menuId */
+export async function getMenu(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, menuId } = req.params;
+    const result = await menuManager.getMenu(projectId, menuId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.menu });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error getting menu:", error);
+    return res.status(500).json({ success: false, error: "GET_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /:id/menus/:menuId */
+export async function updateMenu(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, menuId } = req.params;
+    const result = await menuManager.updateMenu(projectId, menuId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.menu });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating menu:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /:id/menus/:menuId */
+export async function deleteMenu(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, menuId } = req.params;
+    const result = await menuManager.deleteMenu(projectId, menuId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting menu:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/menus/:menuId/items */
+export async function createMenuItem(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, menuId } = req.params;
+    const result = await menuManager.createMenuItem(projectId, menuId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.item });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating menu item:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /:id/menus/:menuId/items/:itemId */
+export async function updateMenuItem(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, menuId, itemId } = req.params;
+    const result = await menuManager.updateMenuItem(projectId, menuId, itemId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.item });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating menu item:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /:id/menus/:menuId/items/:itemId */
+export async function deleteMenuItem(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, menuId, itemId } = req.params;
+    const result = await menuManager.deleteMenuItem(projectId, menuId, itemId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting menu item:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /:id/menus/:menuId/items/reorder */
+export async function reorderMenuItems(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, menuId } = req.params;
+    const result = await menuManager.reorderItems(projectId, menuId, req.body.items || []);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error reordering menu items:", error);
+    return res.status(500).json({ success: false, error: "REORDER_ERROR", message: error?.message });
   }
 }

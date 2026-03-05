@@ -132,6 +132,25 @@ router.patch("/templates/:templateId/post-blocks/:postBlockId", controller.updat
 router.delete("/templates/:templateId/post-blocks/:postBlockId", controller.deletePostBlock);
 
 // =====================================================================
+// TEMPLATE MENU TEMPLATES (must come before /templates/:templateId)
+// =====================================================================
+
+// GET  /templates/:templateId/menu-templates — List menu templates
+router.get("/templates/:templateId/menu-templates", controller.listMenuTemplates);
+
+// POST /templates/:templateId/menu-templates — Create menu template
+router.post("/templates/:templateId/menu-templates", controller.createMenuTemplate);
+
+// GET  /templates/:templateId/menu-templates/:menuTemplateId — Get menu template
+router.get("/templates/:templateId/menu-templates/:menuTemplateId", controller.getMenuTemplate);
+
+// PATCH /templates/:templateId/menu-templates/:menuTemplateId — Update menu template
+router.patch("/templates/:templateId/menu-templates/:menuTemplateId", controller.updateMenuTemplate);
+
+// DELETE /templates/:templateId/menu-templates/:menuTemplateId — Delete menu template
+router.delete("/templates/:templateId/menu-templates/:menuTemplateId", controller.deleteMenuTemplate);
+
+// =====================================================================
 // TEMPLATE HFCM (must come before /templates/:templateId)
 // =====================================================================
 
@@ -258,6 +277,37 @@ router.patch("/:id/posts/:postId", controller.updatePost);
 
 // DELETE /:id/posts/:postId — Delete a post
 router.delete("/:id/posts/:postId", controller.deletePost);
+
+// =====================================================================
+// PROJECT MENUS
+// =====================================================================
+
+// PATCH /:id/menus/:menuId/items/reorder — Reorder (before :itemId)
+router.patch("/:id/menus/:menuId/items/reorder", controller.reorderMenuItems);
+
+// GET  /:id/menus — List menus for a project
+router.get("/:id/menus", controller.listMenus);
+
+// POST /:id/menus — Create a menu
+router.post("/:id/menus", controller.createMenu);
+
+// GET  /:id/menus/:menuId — Get a menu with items
+router.get("/:id/menus/:menuId", controller.getMenu);
+
+// PATCH /:id/menus/:menuId — Update a menu
+router.patch("/:id/menus/:menuId", controller.updateMenu);
+
+// DELETE /:id/menus/:menuId — Delete a menu
+router.delete("/:id/menus/:menuId", controller.deleteMenu);
+
+// POST /:id/menus/:menuId/items — Create a menu item
+router.post("/:id/menus/:menuId/items", controller.createMenuItem);
+
+// PATCH /:id/menus/:menuId/items/:itemId — Update a menu item
+router.patch("/:id/menus/:menuId/items/:itemId", controller.updateMenuItem);
+
+// DELETE /:id/menus/:menuId/items/:itemId — Delete a menu item
+router.delete("/:id/menus/:menuId/items/:itemId", controller.deleteMenuItem);
 
 // =====================================================================
 // PROJECT PAGES
