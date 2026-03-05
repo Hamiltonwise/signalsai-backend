@@ -23,6 +23,7 @@ import LayoutEditor from "./admin/LayoutEditor";
 import AdminSettings from "./admin/AdminSettings";
 import MindsList from "./admin/MindsList";
 import MindDetail from "./admin/MindDetail";
+import AlloroPostsDocs from "./admin/AlloroPostsDocs";
 
 function WebDevEngine() {
   return (
@@ -87,6 +88,7 @@ function AdminWithLayout() {
         <Route path="templates/:id" element={<TemplateDetail />} />
         <Route path="minds" element={<MindsList />} />
         <Route path="minds/:mindId" element={<MindDetail />} />
+        <Route path="documentation/alloro-posts" element={<AlloroPostsDocs />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="sentry-test" element={<SentryTest />} />
       </Routes>

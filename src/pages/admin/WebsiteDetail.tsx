@@ -53,6 +53,7 @@ import ColorPicker from "../../components/Admin/ColorPicker";
 import ConnectDomainModal from "../../components/Admin/ConnectDomainModal";
 import RecipientsConfig from "../../components/Admin/RecipientsConfig";
 import FormSubmissionsTab from "../../components/Admin/FormSubmissionsTab";
+import PostsTab from "../../components/Admin/PostsTab";
 import { fetchProjectCodeSnippets } from "../../api/codeSnippets";
 import type { CodeSnippet } from "../../api/codeSnippets";
 import { useConfirm } from "../../components/ui/ConfirmModal";
@@ -126,9 +127,9 @@ export default function WebsiteDetail() {
   const [dataSource, setDataSource] = useState<"website" | "pasted">("website");
   const [scrapedData, setScrapedData] = useState("");
 
-  // Detail tab: pages vs layouts vs media vs code-manager
+  // Detail tab: pages vs layouts vs media vs code-manager vs posts
   const [detailTab, setDetailTab] = useState<
-    "pages" | "layouts" | "media" | "code-manager" | "form-submissions"
+    "pages" | "layouts" | "media" | "code-manager" | "form-submissions" | "posts"
   >("pages");
 
   // Code snippets state
@@ -1524,20 +1525,32 @@ export default function WebsiteDetail() {
       )}
 
       {/* Tab bar: Pages | Layouts | Code Manager | Media | Form Submissions */}
-      <div className="flex items-center gap-1 mb-4">
-        {(["pages", "layouts", "code-manager", "media", "form-submissions"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setDetailTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${
-              detailTab === tab
-                ? "bg-white text-gray-900 shadow-sm border border-gray-200"
-                : "text-gray-400 hover:text-gray-600"
-            }`}
-          >
-            {tab === "form-submissions" ? "Form Submissions" : tab}
-          </button>
-        ))}
+      <div className="flex items-stretch gap-1 p-1.5 bg-gray-100 rounded-xl mb-4">
+        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts"] as const).map((tab) => {
+          const isActive = detailTab === tab;
+          return (
+            <motion.button
+              key={tab}
+              onClick={() => setDetailTab(tab)}
+              className={`group relative flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors capitalize ${
+                isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-700"
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {isActive && (
+                <motion.div
+                  className="absolute inset-0 bg-white rounded-lg shadow-sm"
+                  layoutId="websiteDetailTab"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">
+                {tab === "form-submissions" ? "Form Submissions" : tab === "code-manager" ? "Code Manager" : tab}
+              </span>
+            </motion.button>
+          );
+        })}
       </div>
 
       {/* Pages Section — grouped by path, expandable versions */}
@@ -1857,6 +1870,17 @@ export default function WebsiteDetail() {
 
           {/* Submissions table */}
           <FormSubmissionsTab projectId={id!} isAdmin />
+        </motion.div>
+      )}
+
+      {/* Posts Section */}
+      {detailTab === "posts" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <PostsTab projectId={id!} templateId={website.template_id} />
         </motion.div>
       )}
 

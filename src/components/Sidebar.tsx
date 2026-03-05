@@ -17,8 +17,8 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { useSidebar } from "./Admin/SidebarContext";
+import { apiGet } from "../api/index";
 import { fetchClientTasks } from "../api/tasks";
 import { fetchNotifications } from "../api/notifications";
 import { useIsWizardActive } from "../contexts/OnboardingWizardContext";
@@ -216,18 +216,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [loadNotificationCount]);
 
   // Check if org has a website project (determines whether Websites nav shows).
-  // Uses direct axios call to silently handle 401/403 (role mismatch in pilot mode).
   useEffect(() => {
     const checkWebsite = async () => {
       const organizationId = userProfile?.organizationId;
       if (!organizationId) return;
 
       try {
-        const jwt = getPriorityItem("auth_token") || getPriorityItem("token");
-        const headers: Record<string, string> = {};
-        if (jwt) headers.Authorization = `Bearer ${jwt}`;
-
-        const { data } = await axios.get("/api/user/website", { headers });
+        const data = await apiGet({ path: "/user/website" });
         if (data && !data.error) {
           setHasWebsite(true);
         }

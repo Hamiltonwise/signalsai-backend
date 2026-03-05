@@ -632,6 +632,30 @@ function PageEditorInner() {
     [codeView, codeContent, sections, project, projectId, scheduleSave, clearSelection]
   );
 
+  // --- Live preview update while in code view (debounced) ---
+  useEffect(() => {
+    if (!codeView) return;
+    const timer = setTimeout(() => {
+      try {
+        const parsed = parseSectionsJs(codeContent);
+        const assembled = renderPage(
+          project?.wrapper || "{{slot}}",
+          project?.header || "",
+          project?.footer || "",
+          parsed,
+          undefined,
+          undefined,
+          undefined,
+          projectId
+        );
+        setHtmlContent(assembled);
+      } catch {
+        // Ignore parse errors while typing — preview stays at last good state
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [codeView, codeContent, project, projectId]);
+
   // --- Current chat messages for selected element ---
   const currentChatMessages = selectedInfo
     ? chatMap.get(selectedInfo.alloroClass) || []

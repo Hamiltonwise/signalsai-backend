@@ -20,6 +20,7 @@ import {
   ArrowLeft,
   FileText,
   Pencil,
+  Layers,
 } from "lucide-react";
 import {
   fetchTemplate,
@@ -34,6 +35,7 @@ import type { Template, TemplatePage, Section } from "../../api/templates";
 import { fetchTemplateCodeSnippets } from "../../api/codeSnippets";
 import type { CodeSnippet } from "../../api/codeSnippets";
 import CodeManagerTab from "../../components/Admin/CodeManagerTab";
+import PostBlocksTab from "../../components/Admin/PostBlocksTab";
 import { renderPage, parseSectionsJs, serializeSectionsJs, normalizeSections } from "../../utils/templateRenderer";
 import {
   useIframeSelector,
@@ -531,6 +533,7 @@ export default function TemplateDetail() {
     { id: "layouts", label: "Layouts", icon: <FileCode className="w-4 h-4" /> },
     { id: "pages", label: "Pages", icon: <FileText className="w-4 h-4" /> },
     { id: "code-manager", label: "Code Manager", icon: <FileCode className="w-4 h-4" /> },
+    { id: "post-blocks", label: "Post Blocks", icon: <Layers className="w-4 h-4" /> },
     {
       id: "settings",
       label: "Settings",
@@ -1265,6 +1268,22 @@ export default function TemplateDetail() {
               onSnippetsChange={loadCodeSnippets}
             />
           )}
+        </motion.div>
+      )}
+
+      {/* Post Blocks Tab */}
+      {activeTab === "post-blocks" && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <PostBlocksTab
+            templateId={id!}
+            wrapper={wrapperContent}
+            header={headerContent}
+            footer={footerContent}
+          />
         </motion.div>
       )}
 

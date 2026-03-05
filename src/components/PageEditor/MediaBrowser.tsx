@@ -13,9 +13,10 @@ interface MediaBrowserProps {
   projectId: string;
   onSelect: (media: MediaItem) => void;
   onClose: () => void;
+  compact?: boolean;
 }
 
-export default function MediaBrowser({ projectId, onSelect, onClose }: MediaBrowserProps) {
+export default function MediaBrowser({ projectId, onSelect, onClose, compact }: MediaBrowserProps) {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,7 +43,7 @@ export default function MediaBrowser({ projectId, onSelect, onClose }: MediaBrow
   }, [projectId]);
 
   return (
-    <div className="border border-gray-200 rounded-lg bg-white shadow-lg max-h-[300px] overflow-y-auto">
+    <div className={`border border-gray-200 rounded-lg bg-white shadow-lg overflow-y-auto ${compact ? "max-h-[180px]" : "max-h-[300px]"}`}>
       <div className="sticky top-0 bg-white border-b border-gray-200 px-3 py-2 flex items-center justify-between">
         <span className="text-xs font-medium text-gray-700">Media Library</span>
         <button
@@ -62,7 +63,7 @@ export default function MediaBrowser({ projectId, onSelect, onClose }: MediaBrow
           No media uploaded yet
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2 p-2">
+        <div className={`grid p-2 ${compact ? "grid-cols-4 gap-1.5" : "grid-cols-3 gap-2"}`}>
           {mediaItems.map((item) => (
             <button
               key={item.id}
