@@ -25,7 +25,12 @@ RULES:
 - Keep proposed_text concise and suitable for direct insertion into a system prompt.
 - Generate at most 20 proposals.
 - You MUST generate at least one proposal if the teaching content contains any preference, rule, fact, or directive.
-- If the teaching content truly contains zero actionable knowledge, only then return an empty array: []`;
+- If the teaching content truly contains zero actionable knowledge, only then return an empty array: []
+
+JSON FORMATTING:
+- Properly escape all special characters in string values: double quotes (\"), newlines (\\n), backslashes (\\\\), tabs (\\t).
+- Do NOT use actual line breaks inside JSON string values — use \\n instead.
+- Verify your JSON is complete and well-formed before outputting.`;
 
 /**
  * Create a new skill upgrade session and generate the greeting.
@@ -85,108 +90,142 @@ export async function triggerReadingStream(
 
   await SkillUpgradeSessionModel.updateStatus(sessionId, "reading");
 
-  const mind = await MindModel.findById(mindId);
-  if (!mind) throw new Error("Mind not found");
+  // Track sync run ID for rollback if needed
+  let createdRunId: string | null = null;
 
-  const skill = await MindSkillModel.findById(skillId);
-  if (!skill) throw new Error("Skill not found");
-
-  const neuron = await MindSkillNeuronModel.findBySkill(skillId);
-  const currentNeuron = neuron?.neuron_markdown || "";
-
-  const messages = await SkillUpgradeMessageModel.listBySession(sessionId);
-
-  // Generate preview messages
-  const conversationMsgs = messages.map((m) => ({ role: m.role, content: m.content }));
   try {
-    const previewMsgs = await generatePreviewMessages(
-      mind.name,
-      skill.name,
-      conversationMsgs
+    const mind = await MindModel.findById(mindId);
+    if (!mind) throw new Error("Mind not found");
+
+    const skill = await MindSkillModel.findById(skillId);
+    if (!skill) throw new Error("Skill not found");
+
+    // Fail-safe: clean up any orphaned active runs for this mind before creating a new one
+    const orphanedRun = await MindSyncRunModel.findActiveByMind(mindId);
+    if (orphanedRun) {
+      console.log(`[MINDS] Cleaning up orphaned sync run ${orphanedRun.id} (status: ${orphanedRun.status}) for mind ${mindId}`);
+      await MindSyncRunModel.markFailed(orphanedRun.id, "Cleaned up: orphaned by previous failed reading");
+    }
+
+    const neuron = await MindSkillNeuronModel.findBySkill(skillId);
+    const currentNeuron = neuron?.neuron_markdown || "";
+
+    const messages = await SkillUpgradeMessageModel.listBySession(sessionId);
+
+    // Generate preview messages
+    const conversationMsgs = messages.map((m) => ({ role: m.role, content: m.content }));
+    try {
+      const previewMsgs = await generatePreviewMessages(
+        mind.name,
+        skill.name,
+        conversationMsgs
+      );
+      onEvent({ type: "preview_messages", messages: previewMsgs });
+    } catch {} // non-critical
+
+    onEvent({ type: "phase", phase: "extracting" });
+
+    // Extract knowledge from transcript
+    const extractedKnowledge = await extractKnowledgeFromTranscript(
+      messages.map((m) => ({ role: m.role, content: m.content })),
+      session.knowledge_buffer,
+      { source: "parenting" }
     );
-    onEvent({ type: "preview_messages", messages: previewMsgs });
-  } catch {} // non-critical
 
-  onEvent({ type: "phase", phase: "extracting" });
+    if (extractedKnowledge === "EMPTY" || !extractedKnowledge.trim()) {
+      await SkillUpgradeSessionModel.updateStatus(sessionId, "completed");
+      await SkillUpgradeSessionModel.setResult(sessionId, "no_changes");
+      await SkillUpgradeMessageModel.createMessage(
+        sessionId,
+        "assistant",
+        "I went through everything we discussed, and my neuron already covers all of this! Nothing new to update. Session complete."
+      );
 
-  // Extract knowledge from transcript
-  const extractedKnowledge = await extractKnowledgeFromTranscript(
-    messages.map((m) => ({ role: m.role, content: m.content })),
-    session.knowledge_buffer,
-    { source: "parenting" }
-  );
+      if (session.knowledge_buffer) {
+        generateSessionTitle(sessionId, session.knowledge_buffer).catch(() => {});
+      }
 
-  if (extractedKnowledge === "EMPTY" || !extractedKnowledge.trim()) {
-    await SkillUpgradeSessionModel.updateStatus(sessionId, "completed");
-    await SkillUpgradeSessionModel.setResult(sessionId, "no_changes");
+      onEvent({ type: "complete", proposalCount: 0, runId: "" });
+      return;
+    }
+
+    onEvent({ type: "phase", phase: "comparing" });
+
+    // Compare against neuron (not brain) using skill-specific prompt
+    const neuronDisplay = currentNeuron.trim()
+      ? currentNeuron
+      : "(EMPTY — the skill has no neuron yet. ALL content should be proposed as NEW entries.)";
+
+    const proposals = await compareContentForNeuron(mindId, neuronDisplay, extractedKnowledge);
+
+    if (proposals.length === 0) {
+      await SkillUpgradeSessionModel.updateStatus(sessionId, "completed");
+      await SkillUpgradeSessionModel.setResult(sessionId, "no_changes");
+      await SkillUpgradeMessageModel.createMessage(
+        sessionId,
+        "assistant",
+        "I studied everything you shared, but my neuron already covers it all. No updates needed! Session complete."
+      );
+
+      if (session.knowledge_buffer) {
+        generateSessionTitle(sessionId, session.knowledge_buffer).catch(() => {});
+      }
+
+      onEvent({ type: "complete", proposalCount: 0, runId: "" });
+      return;
+    }
+
+    // Store proposals
+    const run = await MindSyncRunModel.createRun(mindId, "scrape_compare");
+    createdRunId = run.id;
+    await MindSyncRunModel.markRunning(run.id);
+
+    for (const p of proposals) {
+      await MindSyncProposalModel.create({
+        sync_run_id: run.id,
+        mind_id: mindId,
+        type: p.type,
+        summary: p.summary,
+        target_excerpt: p.target_excerpt || null,
+        proposed_text: p.proposed_text,
+        reason: p.reason,
+        status: "pending",
+      });
+    }
+
+    await MindSyncRunModel.markCompleted(run.id);
+    await SkillUpgradeSessionModel.setSyncRunId(sessionId, run.id);
+    await SkillUpgradeSessionModel.updateStatus(sessionId, "proposals");
+
     await SkillUpgradeMessageModel.createMessage(
       sessionId,
       "assistant",
-      "I went through everything we discussed, and my neuron already covers all of this! Nothing new to update. Session complete."
+      `I've finished reading! Found ${proposals.length} thing${proposals.length === 1 ? "" : "s"} to review. Take a look at what I picked up — approve or reject each one, then hit Submit.`
     );
 
-    if (session.knowledge_buffer) {
-      generateSessionTitle(sessionId, session.knowledge_buffer).catch(() => {});
+    onEvent({ type: "complete", proposalCount: proposals.length, runId: run.id });
+  } catch (err: any) {
+    console.error(`[MINDS] Skill upgrade reading failed for session ${sessionId}, rolling back to chatting:`, err.message);
+
+    // Roll back session to chatting so user can retry
+    await SkillUpgradeSessionModel.updateStatus(sessionId, "chatting").catch(() => {});
+
+    // Mark any orphaned sync run as failed
+    if (createdRunId) {
+      await MindSyncRunModel.markFailed(createdRunId, `Reading failed: ${err.message}`).catch(() => {});
     }
 
-    onEvent({ type: "complete", proposalCount: 0, runId: "" });
-    return;
-  }
-
-  onEvent({ type: "phase", phase: "comparing" });
-
-  // Compare against neuron (not brain) using skill-specific prompt
-  const neuronDisplay = currentNeuron.trim()
-    ? currentNeuron
-    : "(EMPTY — the skill has no neuron yet. ALL content should be proposed as NEW entries.)";
-
-  const proposals = await compareContentForNeuron(mindId, neuronDisplay, extractedKnowledge);
-
-  if (proposals.length === 0) {
-    await SkillUpgradeSessionModel.updateStatus(sessionId, "completed");
-    await SkillUpgradeSessionModel.setResult(sessionId, "no_changes");
+    // Add system message so user sees what happened
     await SkillUpgradeMessageModel.createMessage(
       sessionId,
       "assistant",
-      "I studied everything you shared, but my neuron already covers it all. No updates needed! Session complete."
-    );
+      "Something went wrong while I was reading. Let's try that again — hit the button when you're ready."
+    ).catch(() => {});
 
-    if (session.knowledge_buffer) {
-      generateSessionTitle(sessionId, session.knowledge_buffer).catch(() => {});
-    }
-
-    onEvent({ type: "complete", proposalCount: 0, runId: "" });
-    return;
+    // Send error event and re-throw for the controller's catch block
+    onEvent({ type: "error", error: err.message || "Reading failed" });
+    throw err;
   }
-
-  // Store proposals
-  const run = await MindSyncRunModel.createRun(mindId, "scrape_compare");
-  await MindSyncRunModel.markRunning(run.id);
-
-  for (const p of proposals) {
-    await MindSyncProposalModel.create({
-      sync_run_id: run.id,
-      mind_id: mindId,
-      type: p.type,
-      summary: p.summary,
-      target_excerpt: p.target_excerpt || null,
-      proposed_text: p.proposed_text,
-      reason: p.reason,
-      status: "pending",
-    });
-  }
-
-  await MindSyncRunModel.markCompleted(run.id);
-  await SkillUpgradeSessionModel.setSyncRunId(sessionId, run.id);
-  await SkillUpgradeSessionModel.updateStatus(sessionId, "proposals");
-
-  await SkillUpgradeMessageModel.createMessage(
-    sessionId,
-    "assistant",
-    `I've finished reading! Found ${proposals.length} thing${proposals.length === 1 ? "" : "s"} to review. Take a look at what I picked up — approve or reject each one, then hit Submit.`
-  );
-
-  onEvent({ type: "complete", proposalCount: proposals.length, runId: run.id });
 }
 
 /**
