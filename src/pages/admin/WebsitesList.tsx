@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,13 +18,12 @@ import {
   X,
 } from "lucide-react";
 import {
-  fetchWebsites,
-  fetchStatuses,
   deleteWebsite,
   createWebsite,
   updateWebsite,
 } from "../../api/websites";
 import type { WebsiteProject, FetchWebsitesRequest } from "../../api/websites";
+import { useAdminWebsites, useAdminStatuses, useInvalidateAdminWebsites } from "../../hooks/queries/useAdminQueries";
 import {
   AdminPageHeader,
   FilterBar,
@@ -42,12 +41,6 @@ import { useConfirm } from "../../components/ui/ConfirmModal";
 export default function WebsitesList() {
   const navigate = useNavigate();
   const confirm = useConfirm();
-  const [websites, setWebsites] = useState<WebsiteProject[]>([]);
-  const [statuses, setStatuses] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
 
   // Multi-select state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -68,43 +61,16 @@ export default function WebsitesList() {
   });
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
-  useEffect(() => {
-    loadStatuses();
-    // Trigger loading indicator
-    window.dispatchEvent(new Event('navigation-start'));
-    loadWebsites();
-  }, []);
+  // TanStack Query hooks
+  const { data: websitesResponse, isLoading: loading, error: queryError, isFetching } = useAdminWebsites(filters);
+  const { data: statusesResponse } = useAdminStatuses();
+  const { invalidateAll: refetchWebsites } = useInvalidateAdminWebsites();
 
-  useEffect(() => {
-    loadWebsites();
-  }, [filters]);
-
-  const loadStatuses = async () => {
-    try {
-      const response = await fetchStatuses();
-      setStatuses(response.statuses);
-    } catch (err) {
-      console.error("Failed to load statuses:", err);
-    }
-  };
-
-  const loadWebsites = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetchWebsites(filters);
-      setWebsites(response.data);
-      setTotalPages(response.pagination.totalPages);
-      setTotal(response.pagination.total);
-    } catch (err) {
-      console.error("Failed to fetch websites:", err);
-      setError(err instanceof Error ? err.message : "Failed to load websites");
-    } finally {
-      setLoading(false);
-      // Manually complete loading indicator
-      window.dispatchEvent(new Event('navigation-complete'));
-    }
-  };
+  const websites = websitesResponse?.data ?? [];
+  const totalPages = websitesResponse?.pagination?.totalPages ?? 1;
+  const total = websitesResponse?.pagination?.total ?? 0;
+  const statuses = statusesResponse?.statuses ?? [];
+  const error = queryError?.message ?? null;
 
   const applyFilters = () => {
     const newFilters: FetchWebsitesRequest = {
@@ -138,7 +104,7 @@ export default function WebsitesList() {
         next.delete(id);
         return next;
       });
-      await loadWebsites();
+      await refetchWebsites();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete website");
     } finally {
@@ -157,7 +123,7 @@ export default function WebsitesList() {
         await deleteWebsite(id);
       }
       setSelectedIds(new Set());
-      await loadWebsites();
+      await refetchWebsites();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete websites");
     } finally {
@@ -171,7 +137,7 @@ export default function WebsitesList() {
     try {
       setCreating(true);
       const response = await createWebsite({});
-      await loadWebsites();
+      await refetchWebsites();
       // After 1 second, navigate to the new website detail page
       setTimeout(() => {
         navigate(`/admin/websites/${response.data.id}`);
@@ -222,9 +188,7 @@ export default function WebsitesList() {
 
     try {
       await updateWebsite(id, { display_name: trimmed } as Partial<WebsiteProject>);
-      setWebsites((prev) =>
-        prev.map((w) => (w.id === id ? { ...w, display_name: trimmed } : w))
-      );
+      await refetchWebsites();
     } catch (err) {
       console.error("Failed to update display name:", err);
     } finally {
@@ -337,16 +301,16 @@ export default function WebsitesList() {
               disabled={creating}
             />
             <ActionButton
-              label={loading ? "Loading" : "Refresh"}
+              label={isFetching ? "Loading" : "Refresh"}
               icon={
                 <RefreshCw
-                  className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                  className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`}
                 />
               }
-              onClick={() => loadWebsites()}
+              onClick={() => refetchWebsites()}
               variant="secondary"
-              disabled={loading}
-              loading={loading}
+              disabled={isFetching}
+              loading={isFetching}
             />
           </div>
         }
@@ -449,7 +413,7 @@ export default function WebsitesList() {
             </div>
             <ActionButton
               label="Retry"
-              onClick={() => loadWebsites()}
+              onClick={() => refetchWebsites()}
               variant="danger"
               size="sm"
             />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Globe,
@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
+import { useSettingsScopes, usePmsStatus } from "../hooks/queries/useSettingsQueries";
 import { useOnboardingWizard } from "../contexts/OnboardingWizardContext";
 import { UsersTab } from "../components/settings/UsersTab";
 import { PropertiesTab } from "../components/settings/PropertiesTab";
@@ -19,22 +20,6 @@ import { PMSUploadBanner } from "../components/settings/PMSUploadBanner";
 import { GoogleConnectButton } from "../components/GoogleConnectButton";
 import { BillingTab } from "../components/settings/BillingTab";
 import { ProfileTab } from "../components/settings/ProfileTab";
-import { fetchPmsKeyData } from "../api/pms";
-import { getPriorityItem } from "../hooks/useLocalStorage";
-import { apiGet } from "../api";
-
-type UserRole = "admin" | "manager" | "viewer";
-
-interface ScopeStatus {
-  granted: boolean;
-  scope: string;
-  name: string;
-  description: string;
-}
-
-interface ScopesState {
-  gbp: ScopeStatus;
-}
 
 interface InfoRowProps {
   icon: React.ReactNode;
@@ -63,66 +48,18 @@ export const Settings: React.FC = () => {
   const { userProfile, selectedDomain, hasProperties, hasGoogleConnection, refreshUserProperties } = useAuth();
   const { isWizardActive, restartWizard } = useOnboardingWizard();
   const [activeTab, setActiveTab] = useState<"profile" | "users" | "billing" | "account">("profile");
-  const [isLoading, setIsLoading] = useState(true);
-  const [_userRole, setUserRole] = useState<UserRole | null>(null);
 
-  // Scopes State
-  const [_scopesStatus, setScopesStatus] = useState<ScopesState | null>(null);
-  const [missingScopes, setMissingScopes] = useState<string[]>([]);
-  const [missingScopeCount, setMissingScopeCount] = useState(0);
+  const orgId = userProfile?.organizationId;
+  const { data: scopesData, isLoading: scopesLoading, refetch: refetchScopes } = useSettingsScopes();
+  const { data: pmsData, isLoading: pmsLoading } = usePmsStatus(orgId);
 
-  // PMS Data State - to check if user has uploaded any PMS data
-  const [hasPmsData, setHasPmsData] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const role = getPriorityItem("user_role") as UserRole | null;
-    setUserRole(role);
-    fetchScopes();
-    fetchPmsStatus();
-    setIsLoading(false);
-  }, []);
-
-  // Fetch PMS data status to check if user has uploaded any data
-  const fetchPmsStatus = async () => {
-    try {
-      const orgId = userProfile?.organizationId;
-      if (!orgId) {
-        setHasPmsData(false);
-        return;
-      }
-
-      const response = await fetchPmsKeyData(orgId);
-      if (
-        response?.success &&
-        response.data?.months &&
-        response.data.months.length > 0
-      ) {
-        setHasPmsData(true);
-      } else {
-        setHasPmsData(false);
-      }
-    } catch (err) {
-      console.error("Failed to fetch PMS status:", err);
-      setHasPmsData(false);
-    }
-  };
-
-  const fetchScopes = async () => {
-    try {
-      const response = await apiGet({ path: "/settings/scopes" });
-
-      if (response.success) {
-        setScopesStatus(response.scopes);
-        setMissingScopes(response.missingScopes || []);
-        setMissingScopeCount(response.missingCount || 0);
-      }
-    } catch (err) {
-      console.error("Failed to fetch scopes:", err);
-    }
-  };
+  const missingScopes = (scopesData?.missingScopes ?? []) as string[];
+  const missingScopeCount = scopesData?.missingCount ?? 0;
+  const hasPmsData = pmsData?.success && pmsData?.data?.months?.length > 0 ? true : false;
+  const isLoading = scopesLoading || pmsLoading;
 
   const handleGrantAccessComplete = () => {
-    fetchScopes();
+    refetchScopes();
   };
 
   return (

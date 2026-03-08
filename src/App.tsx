@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { queryClient, persistOptions } from "./lib/queryClient";
 import SignIn from "./pages/Signin";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -71,6 +74,10 @@ function AdminLayout() {
 
 function App() {
   return (
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={persistOptions}
+    >
     <BrowserRouter>
       <PilotHandler />
       <AuthProvider>
@@ -168,6 +175,8 @@ function App() {
         </OnboardingWizardProvider>
       </AuthProvider>
     </BrowserRouter>
+    <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+    </PersistQueryClientProvider>
   );
 }
 

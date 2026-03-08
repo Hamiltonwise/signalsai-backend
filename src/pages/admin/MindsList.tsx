@@ -16,7 +16,8 @@ import {
   ActionButton,
   EmptyState,
 } from "../../components/ui/DesignSystem";
-import { listMinds, createMind, type Mind } from "../../api/minds";
+import { createMind, type Mind } from "../../api/minds";
+import { useAdminMinds } from "../../hooks/queries/useAdminQueries";
 import { MindPublishChannelsTab } from "../../components/Admin/minds/MindPublishChannelsTab";
 
 function MindsEntryTransition() {
@@ -45,9 +46,8 @@ function MindsEntryTransition() {
 
 export default function MindsList() {
   const navigate = useNavigate();
-  const [minds, setMinds] = useState<Mind[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: minds = [], isLoading: loading, error: queryError, refetch } = useAdminMinds();
+  const error = queryError?.message ?? null;
 
   // Full-dark body when on minds page
   useEffect(() => {
@@ -61,23 +61,6 @@ export default function MindsList() {
   const [createPersonality, setCreatePersonality] = useState("");
   const [creating, setCreating] = useState(false);
   const [showChannels, setShowChannels] = useState(false);
-
-  const fetchMinds = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await listMinds();
-      setMinds(data);
-    } catch {
-      setError("Failed to load minds");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMinds();
-  }, []);
 
   const handleCreate = async () => {
     if (!createName.trim()) return;
@@ -220,7 +203,7 @@ export default function MindsList() {
             <AlertCircle className="h-8 w-8 text-red-400 mb-2" />
             <p className="text-sm text-red-600">{error}</p>
             <button
-              onClick={fetchMinds}
+              onClick={() => refetch()}
               className="mt-3 text-sm text-alloro-orange hover:underline"
             >
               Retry

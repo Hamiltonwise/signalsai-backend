@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,12 +13,15 @@ import {
   Upload,
 } from "lucide-react";
 import {
-  fetchTemplates,
   deleteTemplate,
   createTemplate,
   activateTemplate,
 } from "../../api/templates";
 import type { Template } from "../../api/templates";
+import {
+  useAdminTemplates,
+  useInvalidateAdminTemplates,
+} from "../../hooks/queries/useAdminQueries";
 import {
   AdminPageHeader,
   FilterBar,
@@ -42,10 +45,12 @@ export default function TemplatesList() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "templates");
 
-  // Template state
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Template state (TanStack Query)
+  const { data: templatesResponse, isLoading: loading, error: queryError, isFetching, refetch: refetchTemplates } = useAdminTemplates();
+  const { invalidateAll: invalidateTemplates } = useInvalidateAdminTemplates();
+
+  const templates = templatesResponse?.data ?? [];
+  const error = queryError?.message ?? null;
 
   // Action loading states
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -69,28 +74,6 @@ export default function TemplatesList() {
     message: string;
     type?: "error" | "success" | "info";
   }>({ isOpen: false, title: "", message: "" });
-
-  const loadTemplates = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetchTemplates();
-      setTemplates(response.data);
-    } catch (err) {
-      console.error("Failed to fetch templates:", err);
-      setError(err instanceof Error ? err.message : "Failed to load templates");
-    } finally {
-      setLoading(false);
-      // Manually complete loading indicator
-      window.dispatchEvent(new Event('navigation-complete'));
-    }
-  }, []);
-
-  useEffect(() => {
-    // Trigger loading indicator
-    window.dispatchEvent(new Event('navigation-start'));
-    loadTemplates();
-  }, [loadTemplates]);
 
   const handleCreate = async () => {
     if (creating) return;
@@ -125,7 +108,7 @@ export default function TemplatesList() {
         try {
           setDeletingId(id);
           await deleteTemplate(id);
-          await loadTemplates();
+          await invalidateTemplates();
         } catch (err) {
           setAlertModal({
             isOpen: true,
@@ -147,7 +130,7 @@ export default function TemplatesList() {
     try {
       setActivatingId(id);
       await activateTemplate(id);
-      await loadTemplates();
+      await invalidateTemplates();
     } catch (err) {
       setAlertModal({
         isOpen: true,
@@ -239,7 +222,7 @@ export default function TemplatesList() {
                     className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                   />
                 }
-                onClick={() => loadTemplates()}
+                onClick={() => invalidateTemplates()}
                 variant="secondary"
                 disabled={loading}
                 loading={loading}
@@ -290,7 +273,7 @@ export default function TemplatesList() {
                 </div>
                 <ActionButton
                   label="Retry"
-                  onClick={() => loadTemplates()}
+                  onClick={() => invalidateTemplates()}
                   variant="danger"
                   size="sm"
                 />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useAdminOrganization, useAdminOrganizationLocations, useInvalidateOrganizations } from "../../hooks/queries/useAdminQueries";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -39,8 +40,6 @@ import { OrgAgentOutputsTab } from "../../components/Admin/OrgAgentOutputsTab";
 import { OrgRankingsTab } from "../../components/Admin/OrgRankingsTab";
 import { OrgNotificationsTab } from "../../components/Admin/OrgNotificationsTab";
 import {
-  adminGetOrganization,
-  adminGetOrganizationLocations,
   adminDeleteOrganization,
   adminStartPilotSession,
   adminLockoutOrganization,
@@ -48,7 +47,6 @@ import {
   adminCreateProject,
   adminRemovePaymentMethod,
   adminSetUserPassword,
-  type AdminOrganizationDetail,
   type AdminLocation,
   type AdminUser,
 } from "../../api/admin-organizations";
@@ -86,11 +84,14 @@ export default function OrganizationDetail() {
   const confirm = useConfirm();
   const activeTab = (searchParams.get("tab") || "tasks") as TabKey;
 
-  const [org, setOrg] = useState<AdminOrganizationDetail | null>(null);
-  const [locations, setLocations] = useState<AdminLocation[]>([]);
+  const orgId = parseInt(id || "0", 10);
+  const { data: org, isLoading: orgLoading, error: orgError } = useAdminOrganization(orgId);
+  const { data: locations = [], isLoading: locLoading } = useAdminOrganizationLocations(orgId);
+  const { invalidateOne: invalidateOrg } = useInvalidateOrganizations();
+  const loading = orgLoading || locLoading;
+
   const [selectedLocation, setSelectedLocation] =
     useState<AdminLocation | null>(null);
-  const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -114,46 +115,20 @@ export default function OrganizationDetail() {
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const orgId = parseInt(id || "0", 10);
-
+  // Redirect if orgId is invalid (0 or NaN)
   useEffect(() => {
     if (!orgId) {
       toast.error("Invalid organization ID");
       navigate("/admin/organization-management");
-      return;
     }
-    loadData();
   }, [orgId]);
 
-  const loadData = async () => {
-    try {
-      const [orgRes, locRes] = await Promise.all([
-        adminGetOrganization(orgId),
-        adminGetOrganizationLocations(orgId),
-      ]);
-
-      if (orgRes.success) {
-        // Merge users, connections, and website into the organization object
-        setOrg({
-          ...orgRes.organization,
-          users: orgRes.users || [],
-          connections: orgRes.connections || [],
-          website: orgRes.website,
-        });
-      }
-      if (locRes.success) {
-        setLocations(locRes.locations);
-        if (locRes.locations.length > 0 && !selectedLocation) {
-          setSelectedLocation(locRes.locations[0]);
-        }
-      }
-    } catch {
-      toast.error("Failed to load organization details");
-      navigate("/admin/organization-management");
-    } finally {
-      setLoading(false);
+  // Set initial selected location when data arrives
+  useEffect(() => {
+    if (locations.length > 0 && !selectedLocation) {
+      setSelectedLocation(locations[0]);
     }
-  };
+  }, [locations]);
 
   const handleCreateProject = async () => {
     if (!org) return;
@@ -163,7 +138,7 @@ export default function OrganizationDetail() {
       if (response.success) {
         toast.success(response.message);
         // Reload data to reflect the new website project
-        loadData();
+        await invalidateOrg(orgId);
       } else {
         toast.error((response as any).error || "Failed to create project");
       }
@@ -197,7 +172,7 @@ export default function OrganizationDetail() {
     try {
       await linkWebsiteToOrganization(websiteId, orgId);
       toast.success("Website attached to organization");
-      loadData();
+      await invalidateOrg(orgId);
     } catch (error: any) {
       toast.error(error?.message || "Failed to attach website");
     } finally {
@@ -229,7 +204,7 @@ export default function OrganizationDetail() {
       const response = await adminRemovePaymentMethod(orgId);
       if (response.success) {
         toast.success(response.message);
-        loadData();
+        await invalidateOrg(orgId);
       } else {
         toast.error((response as any).error || "Failed to remove payment method");
       }
@@ -263,10 +238,8 @@ export default function OrganizationDetail() {
     try {
       const response = await adminLockoutOrganization(orgId);
       if (response.success) {
-        setOrg((prev) =>
-          prev ? { ...prev, subscription_status: "inactive" } : null
-        );
         toast.success(response.message);
+        await invalidateOrg(orgId);
       } else {
         toast.error((response as any).error || "Failed to lock out organization");
       }
@@ -283,10 +256,8 @@ export default function OrganizationDetail() {
     try {
       const response = await adminUnlockOrganization(orgId);
       if (response.success) {
-        setOrg((prev) =>
-          prev ? { ...prev, subscription_status: "active" } : null
-        );
         toast.success(response.message);
+        await invalidateOrg(orgId);
       } else {
         toast.error("Failed to unlock organization");
       }
@@ -342,16 +313,7 @@ export default function OrganizationDetail() {
       if (response.success) {
         setGeneratedPassword(response.temporaryPassword);
         toast.success(response.message);
-        // Update user's has_password in local state
-        setOrg((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            users: prev.users.map((u) =>
-              u.id === passwordModalUser.id ? { ...u, has_password: true } : u
-            ),
-          };
-        });
+        await invalidateOrg(orgId);
       }
     } catch (error: any) {
       const message = error?.response?.data?.error || error?.message || "Failed to set password";

@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, type ReactNode } from "react";
 import { SessionContext } from "./sessionContext";
 import { getPriorityItem } from "../hooks/useLocalStorage";
+import { queryClient } from "../lib/queryClient";
 
 interface SessionProviderProps {
   children: ReactNode;
@@ -26,6 +27,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("pilot_mode");
     sessionStorage.removeItem("user_role");
+
+    // Clear TanStack Query cache
+    queryClient.clear();
 
     // Clear cookie for cross-app auth sync
     const isProduction = window.location.hostname.includes("getalloro.com");

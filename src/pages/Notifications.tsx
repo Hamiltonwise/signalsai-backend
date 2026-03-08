@@ -17,21 +17,19 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useLocationContext } from "../contexts/locationContext";
 import {
-  fetchNotifications,
   markNotificationRead,
   markAllNotificationsRead,
   deleteAllNotifications,
   type Notification,
 } from "../api/notifications";
+import { useNotifications, useInvalidateNotifications } from "../hooks/queries/useNotificationQueries";
 import { formatDistanceToNow } from "date-fns";
 import { ConfirmModal } from "../components/settings/ConfirmModal";
 
 export const Notifications: React.FC = () => {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
-  const { selectedLocation, isTransitioning, registerContentLoading, signalContentReady } = useLocationContext();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { selectedLocation } = useLocationContext();
   const [markingAll, setMarkingAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -39,54 +37,23 @@ export const Notifications: React.FC = () => {
   const organizationId = userProfile?.organizationId ?? null;
   const locationId = selectedLocation?.id ?? null;
 
+  const { data: notificationsData, isLoading: loading } = useNotifications(organizationId, locationId);
+  const { invalidateAll: refetchNotifications } = useInvalidateNotifications();
+
+  const notifications = notificationsData?.notifications ?? [];
+
   // Set page title
   useEffect(() => {
     document.title = "Notifications | Alloro";
   }, []);
 
-  // Fetch notifications on page load, mark as read only on close/unmount
+  // Mark all notifications as read when leaving the page
   useEffect(() => {
-    if (!organizationId) {
-      setLoading(false);
-      return;
-    }
-
-    const loadNotifications = async () => {
-      // Tell the location transition overlay to wait for our data
-      if (isTransitioning) {
-        registerContentLoading();
-      }
-      try {
-        const data = await fetchNotifications(organizationId, locationId);
-        setNotifications(data.notifications);
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
-      } finally {
-        setLoading(false);
-        signalContentReady();
-      }
-    };
-
-    // Mark all notifications as read when leaving the page
-    const markAllReadOnLeave = async () => {
-      try {
-        await markAllNotificationsRead(organizationId, locationId);
-        // Dispatch event to update sidebar notification badge
-        window.dispatchEvent(new CustomEvent("notifications:updated"));
-      } catch (error) {
-        console.error("Error marking notifications as read on leave:", error);
-      }
-    };
-
-    loadNotifications();
-
-    // Poll every 10 seconds
-    const interval = setInterval(loadNotifications, 10000);
-
-    // Mark all as read when component unmounts (user leaves page or changes tab)
     return () => {
-      clearInterval(interval);
-      markAllReadOnLeave();
+      if (organizationId) {
+        markAllNotificationsRead(organizationId, locationId);
+        window.dispatchEvent(new CustomEvent("notifications:updated"));
+      }
     };
   }, [organizationId, locationId]);
 
@@ -148,9 +115,7 @@ export const Notifications: React.FC = () => {
     try {
       if (!notification.read) {
         await markNotificationRead(notification.id, organizationId);
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
-        );
+        refetchNotifications();
       }
       navigate(getNotificationPath(notification.type));
     } catch (error) {
@@ -168,9 +133,7 @@ export const Notifications: React.FC = () => {
 
     try {
       await markNotificationRead(notificationId, organizationId);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
-      );
+      refetchNotifications();
     } catch (error) {
       console.error("Error marking notification as read:", error);
     }
@@ -183,7 +146,7 @@ export const Notifications: React.FC = () => {
     setMarkingAll(true);
     try {
       await markAllNotificationsRead(organizationId, locationId);
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      refetchNotifications();
       // Dispatch event to update sidebar notification badge
       window.dispatchEvent(new CustomEvent("notifications:updated"));
     } catch (error) {
@@ -200,7 +163,7 @@ export const Notifications: React.FC = () => {
     setDeletingAll(true);
     try {
       await deleteAllNotifications(organizationId, locationId);
-      setNotifications([]);
+      refetchNotifications();
       // Dispatch event to update sidebar notification badge
       window.dispatchEvent(new CustomEvent("notifications:updated"));
       setShowDeleteConfirm(false);

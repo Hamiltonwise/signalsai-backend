@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,12 +21,15 @@ import {
   staggerContainer,
 } from "../../lib/animations";
 import {
-  adminListOrganizations,
   adminUpdateOrganizationName,
   adminCreateOrganization,
   type AdminOrganization,
   type AdminCreateOrgInput,
 } from "../../api/admin-organizations";
+import {
+  useAdminOrganizations,
+  useInvalidateOrganizations,
+} from "../../hooks/queries/useAdminQueries";
 
 const EMPTY_CREATE_FORM: AdminCreateOrgInput = {
   organization: { name: "", domain: "", address: "" },
@@ -35,8 +38,9 @@ const EMPTY_CREATE_FORM: AdminCreateOrgInput = {
 };
 
 export function OrganizationManagement() {
-  const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: organizations = [], isLoading: loading, isFetching } = useAdminOrganizations();
+  const { invalidateAll: refetchOrganizations } = useInvalidateOrganizations();
+
   const [editingOrgId, setEditingOrgId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
 
@@ -45,27 +49,6 @@ export function OrganizationManagement() {
   const [createForm, setCreateForm] =
     useState<AdminCreateOrgInput>(EMPTY_CREATE_FORM);
   const [isCreating, setIsCreating] = useState(false);
-
-  useEffect(() => {
-    fetchOrganizations();
-  }, []);
-
-  const fetchOrganizations = async () => {
-    try {
-      const response = await adminListOrganizations();
-      if (response.success) {
-        setOrganizations(response.organizations);
-      } else {
-        toast.error("Failed to fetch organizations");
-      }
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to fetch organizations";
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const startEditing = (e: React.MouseEvent, org: AdminOrganization) => {
     e.preventDefault();
@@ -89,13 +72,9 @@ export function OrganizationManagement() {
     try {
       const response = await adminUpdateOrganizationName(editingOrgId, editName);
       if (response.success) {
-        setOrganizations((prev) =>
-          prev.map((org) =>
-            org.id === editingOrgId ? { ...org, name: editName } : org
-          )
-        );
         toast.success("Organization updated");
         setEditingOrgId(null);
+        await refetchOrganizations();
       } else {
         toast.error("Failed to update organization");
       }
@@ -125,7 +104,7 @@ export function OrganizationManagement() {
         toast.success(response.message || "Organization created");
         setShowCreateModal(false);
         setCreateForm(EMPTY_CREATE_FORM);
-        fetchOrganizations();
+        refetchOrganizations();
       } else {
         toast.error("Failed to create organization");
       }

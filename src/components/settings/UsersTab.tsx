@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserPlus, Shield, Clock, X, Users as UsersIcon, RefreshCw } from "lucide-react";
-import { apiGet, apiPost, apiPut, apiDelete } from "../../api";
+import { apiPost, apiPut, apiDelete } from "../../api";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
 import { ConfirmModal } from "@/components/settings/ConfirmModal";
 import { AlertModal } from "@/components/ui/AlertModal";
+import { useSettingsUsers, useInvalidateSettingsUsers } from "../../hooks/queries/useSettingsQueries";
 
 interface User {
   id: number;
@@ -25,13 +26,14 @@ interface Invitation {
 type UserRole = "admin" | "manager" | "viewer";
 
 export const UsersTab: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: usersData, isLoading } = useSettingsUsers();
+  const { invalidateAll: refetchUsers } = useInvalidateSettingsUsers();
+  const users = (usersData?.users ?? []) as User[];
+  const invitations = (usersData?.invitations ?? []) as Invitation[];
+  const currentUserRole = getPriorityItem("user_role") as UserRole | null;
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("viewer");
-  const [currentUserRole, setCurrentUserRole] = useState<UserRole | null>(null);
   const [changingRoleUserId, setChangingRoleUserId] = useState<number | null>(
     null
   );
@@ -50,26 +52,8 @@ export const UsersTab: React.FC = () => {
     type?: "error" | "success" | "info";
   }>({ isOpen: false, title: "", message: "" });
 
-  useEffect(() => {
-    // Get current user's role
-    const role = getPriorityItem("user_role") as UserRole | null;
-    setCurrentUserRole(role);
-    fetchUsers();
-  }, []);
-
   const fetchUsers = async () => {
-    try {
-      const data = await apiGet({ path: "/settings/users" });
-
-      if (data.success) {
-        setUsers(data.users);
-        setInvitations(data.invitations);
-      }
-    } catch (err) {
-      console.error("Failed to fetch users:", err);
-    } finally {
-      setIsLoading(false);
-    }
+    await refetchUsers();
   };
 
   const handleInvite = async (e: React.FormEvent) => {

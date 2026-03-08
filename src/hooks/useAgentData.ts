@@ -1,68 +1,22 @@
-import { useState, useEffect } from "react";
-import agents from "../api/agents";
 import { useIsWizardActive } from "../contexts/OnboardingWizardContext";
+import { useAgentDataQuery } from "./queries/useDashboardQueries";
 
-interface AgentData {
-  success: boolean;
-  organizationId: number;
-  domain: string;
-  agents: {
-    proofline: AgentResult | null;
-    summary: AgentResult | null;
-    opportunity: AgentResult | null;
-  };
-}
-
-interface AgentResult {
-  results: unknown[];
-  lastUpdated: string;
-  dateStart: string;
-  dateEnd: string;
-  resultId: number;
-}
-
+/**
+ * Backward-compatible wrapper around TanStack Query hook.
+ * Returns the same { data, loading, error, refetch } shape as before.
+ */
 export function useAgentData(organizationId: number | null, locationId?: number | null) {
-  const [data, setData] = useState<AgentData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const isWizardActive = useIsWizardActive();
+  const { data, isLoading, error, refetch } = useAgentDataQuery(
+    organizationId,
+    locationId,
+    isWizardActive,
+  );
 
-  const fetchData = async () => {
-    // Skip fetching during wizard mode - use demo data instead
-    if (isWizardActive) {
-      setLoading(false);
-      return;
-    }
-
-    if (!organizationId) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const json = await agents.getLatestAgentData(organizationId, locationId);
-
-      if (json.successful === false) {
-        throw new Error(json.errorMessage || "Failed to fetch agent data");
-      }
-
-      setData(json);
-      setError(null);
-    } catch (err: unknown) {
-      console.error("Error fetching agent data:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch agent data"
-      );
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
+  return {
+    data: data ?? null,
+    loading: isLoading,
+    error: error?.message ?? null,
+    refetch,
   };
-
-  useEffect(() => {
-    fetchData();
-  }, [organizationId, locationId, isWizardActive]);
-
-  return { data, loading, error, refetch: fetchData };
 }
