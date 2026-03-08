@@ -1,5 +1,7 @@
-import { ArrowLeft, Undo2, Save, Upload, Monitor, Tablet, Smartphone, Loader2, Code } from "lucide-react";
+import { ArrowLeft, Undo2, Save, Upload, Monitor, Tablet, Smartphone, Loader2, Code, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
+
+type EditorView = "visual" | "code" | "seo";
 
 interface EditorToolbarProps {
   projectId: string;
@@ -8,8 +10,8 @@ interface EditorToolbarProps {
   pageStatus: string;
   device: "desktop" | "tablet" | "mobile";
   onDeviceChange: (device: "desktop" | "tablet" | "mobile") => void;
-  codeView: boolean;
-  onCodeViewChange: (active: boolean) => void;
+  activeView: EditorView;
+  onViewChange: (view: EditorView) => void;
   onUndo: () => void;
   onSave: () => void;
   onPublish: () => void;
@@ -26,8 +28,8 @@ export default function EditorToolbar({
   pageStatus,
   device,
   onDeviceChange,
-  codeView,
-  onCodeViewChange,
+  activeView,
+  onViewChange,
   onUndo,
   onSave,
   onPublish,
@@ -68,8 +70,9 @@ export default function EditorToolbar({
         )}
       </div>
 
-      {/* Center: Device switcher + code toggle */}
+      {/* Center: Device switcher + Code + SEO tabs */}
       <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+        {/* Device icons — grouped */}
         {(
           [
             { key: "desktop", icon: Monitor, title: "Desktop (100%)" },
@@ -79,9 +82,9 @@ export default function EditorToolbar({
         ).map(({ key, icon: Icon, title }) => (
           <button
             key={key}
-            onClick={() => { onCodeViewChange(false); onDeviceChange(key); }}
+            onClick={() => { onViewChange("visual"); onDeviceChange(key); }}
             className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
-              !codeView && device === key
+              activeView === "visual" && device === key
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-400 hover:text-gray-600"
             }`}
@@ -90,17 +93,36 @@ export default function EditorToolbar({
             <Icon className="w-4 h-4" />
           </button>
         ))}
+
         <div className="w-px h-4 bg-gray-300 mx-0.5" />
+
+        {/* Code tab */}
         <button
-          onClick={() => onCodeViewChange(!codeView)}
+          onClick={() => onViewChange(activeView === "code" ? "visual" : "code")}
           className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
-            codeView
+            activeView === "code"
               ? "bg-white text-gray-900 shadow-sm"
               : "text-gray-400 hover:text-gray-600"
           }`}
           title="Code editor"
         >
           <Code className="w-4 h-4" />
+        </button>
+
+        <div className="w-px h-4 bg-gray-300 mx-0.5" />
+
+        {/* SEO tab */}
+        <button
+          onClick={() => onViewChange(activeView === "seo" ? "visual" : "seo")}
+          className={`px-2.5 py-1 rounded-md text-xs transition-colors flex items-center gap-1 ${
+            activeView === "seo"
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-400 hover:text-gray-600"
+          }`}
+          title="SEO panel"
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span className="text-[10px] font-bold">SEO</span>
         </button>
       </div>
 

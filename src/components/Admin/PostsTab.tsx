@@ -13,11 +13,15 @@ import {
   ImageIcon,
   Upload,
   ChevronLeft,
+  BarChart3,
 } from "lucide-react";
 import MediaBrowser from "../PageEditor/MediaBrowser";
 import type { MediaItem } from "../PageEditor/MediaBrowser";
 import RichTextEditor from "../ui/RichTextEditor";
 import AnimatedSelect from "../ui/AnimatedSelect";
+import SeoPanel from "../PageEditor/SeoPanel";
+import type { SeoData } from "../../api/websites";
+import { updatePostSeo } from "../../api/websites";
 import {
   fetchPosts,
   createPost,
@@ -182,6 +186,8 @@ export default function PostsTab({ projectId, templateId }: PostsTabProps) {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editorTab, setEditorTab] = useState<"content" | "seo">("content");
+  const [formSeoData, setFormSeoData] = useState<SeoData | null>(null);
 
   // Form state
   const [formTitle, setFormTitle] = useState("");
@@ -265,6 +271,8 @@ export default function PostsTab({ projectId, templateId }: PostsTabProps) {
     setFormTagIds([]);
     setEditingPost(null);
     setIsCreating(false);
+    setEditorTab("content");
+    setFormSeoData(null);
   };
 
   const openEditor = (post?: Post) => {
@@ -279,12 +287,14 @@ export default function PostsTab({ projectId, templateId }: PostsTabProps) {
       setFormCustomFields(post.custom_fields || {});
       setFormCategoryIds(post.categories.map((c) => c.id));
       setFormTagIds(post.tags.map((t) => t.id));
+      setFormSeoData((post as Post & { seo_data?: SeoData | null }).seo_data || null);
       setIsCreating(false);
     } else {
       resetForm();
       if (selectedTypeId) setFormPostTypeId(selectedTypeId);
       setIsCreating(true);
     }
+    setEditorTab("content");
     setView("editor");
   };
 
@@ -643,6 +653,17 @@ export default function PostsTab({ projectId, templateId }: PostsTabProps) {
   };
 
   /* ─── Main Content: Editor ─── */
+  const handleSeoDataChange = async (data: SeoData) => {
+    setFormSeoData(data);
+    if (editingPost) {
+      try {
+        await updatePostSeo(projectId, editingPost.id, data);
+      } catch (err) {
+        console.error("Failed to save post SEO data:", err);
+      }
+    }
+  };
+
   const renderEditor = () => {
     const statusOptions = [
       { value: "draft", label: "Draft", color: "#eab308" },
@@ -661,9 +682,37 @@ export default function PostsTab({ projectId, templateId }: PostsTabProps) {
         className="h-full overflow-y-auto"
       >
         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {editingPost ? "Edit Post" : "New Post"}
-          </h3>
+          <div className="flex items-center gap-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {editingPost ? "Edit Post" : "New Post"}
+            </h3>
+            {/* Content / SEO tab bar — only for existing posts */}
+            {editingPost && (
+              <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
+                <button
+                  onClick={() => setEditorTab("content")}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                    editorTab === "content"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Content
+                </button>
+                <button
+                  onClick={() => setEditorTab("seo")}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                    editorTab === "seo"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  SEO
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => {
               resetForm();
@@ -674,6 +723,22 @@ export default function PostsTab({ projectId, templateId }: PostsTabProps) {
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* SEO Tab */}
+        {editorTab === "seo" && editingPost ? (
+          <div className="p-5">
+            <SeoPanel
+              projectId={projectId}
+              entityId={editingPost.id}
+              entityType="post"
+              seoData={formSeoData}
+              postTitle={formTitle}
+              pageContent={formContent}
+              onSeoDataChange={handleSeoDataChange}
+            />
+          </div>
+        ) : (
+        /* Content Tab */
         <div className="p-5 space-y-4">
           {/* Post Type (only for new) */}
           {isCreating && (
@@ -936,6 +1001,7 @@ export default function PostsTab({ projectId, templateId }: PostsTabProps) {
             </button>
           </div>
         </div>
+        )}
       </motion.div>
     );
   };

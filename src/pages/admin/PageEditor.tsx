@@ -24,6 +24,8 @@ import { LoadingIndicator } from "../../components/Admin/LoadingIndicator";
 import { SidebarProvider, useSidebar } from "../../components/Admin/SidebarContext";
 import EditorToolbar from "../../components/PageEditor/EditorToolbar";
 import EditorSidebar from "../../components/PageEditor/EditorSidebar";
+import SeoPanel from "../../components/PageEditor/SeoPanel";
+import type { SeoData } from "../../api/websites";
 import type { ChatMessage } from "../../components/PageEditor/ChatPanel";
 import { ConfirmModal } from "../../components/settings/ConfirmModal";
 import { AlertModal } from "../../components/ui/AlertModal";
@@ -90,8 +92,10 @@ function PageEditorInner() {
   const [successMessage, setSuccessMessage] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Code view state
-  const [codeView, setCodeView] = useState(false);
+  // View state: visual (iframe), code (monaco), or seo (seo panel)
+  type EditorView = "visual" | "code" | "seo";
+  const [activeView, setActiveView] = useState<EditorView>("visual");
+  const codeView = activeView === "code";
   const [codeContent, setCodeContent] = useState("");
 
   // Debug info from last LLM edit
@@ -595,15 +599,11 @@ function PageEditorInner() {
     }
   }, [projectId, draftPageId, sections, chatMap, isDirty]);
 
-  // --- Code view toggle ---
-  const handleCodeViewChange = useCallback(
-    (active: boolean) => {
-      if (active) {
-        // Entering code view: serialize current sections
-        setCodeContent(serializeSectionsJs(sections));
-        clearSelection();
-      } else if (codeView) {
-        // Leaving code view: parse code back to sections
+  // --- View switching ---
+  const handleViewChange = useCallback(
+    (view: EditorView) => {
+      // Leaving code view — parse code back to sections
+      if (activeView === "code" && view !== "code") {
         try {
           const parsed = parseSectionsJs(codeContent);
           setSections(parsed);
@@ -627,9 +627,21 @@ function PageEditorInner() {
           return; // Stay in code view on parse error
         }
       }
-      setCodeView(active);
+
+      // Entering code view — serialize
+      if (view === "code") {
+        setCodeContent(serializeSectionsJs(sections));
+        clearSelection();
+      }
+
+      // Entering SEO — clear selection
+      if (view === "seo") {
+        clearSelection();
+      }
+
+      setActiveView(view);
     },
-    [codeView, codeContent, sections, project, projectId, scheduleSave, clearSelection]
+    [activeView, codeContent, sections, project, projectId, scheduleSave, clearSelection]
   );
 
   // --- Live preview update while in code view (debounced) ---
@@ -741,8 +753,8 @@ function PageEditorInner() {
         pageStatus={page.status}
         device={device}
         onDeviceChange={setDevice}
-        codeView={codeView}
-        onCodeViewChange={handleCodeViewChange}
+        activeView={activeView}
+        onViewChange={handleViewChange}
         onUndo={handleUndo}
         onSave={handleSave}
         onPublish={handlePublish}
@@ -766,13 +778,32 @@ function PageEditorInner() {
       )}
 
       {/* Main content: iframe + editor sidebar */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Admin sidebar — fixed position, overlays preview, collapsed by default.
-            Offset below both AdminTopBar (4rem) and EditorToolbar (~41px). */}
+      <div className="flex-1 flex overflow-hidden relative ml-[72px]">
+        {/* Admin sidebar — fixed position, collapsed by default.
+            Offset below both AdminTopBar (4rem) and EditorToolbar (~41px).
+            ml-[72px] on parent reserves space for the collapsed sidebar. */}
         <AdminSidebar topOffset="calc(4rem + 41px)" />
 
-        {/* Preview area: iframe or code editor */}
-        {codeView ? (
+        {/* Preview area: iframe, code editor, or SEO panel */}
+        {activeView === "seo" ? (
+          <div className="flex-1 overflow-hidden">
+            <SeoPanel
+              projectId={projectId!}
+              entityId={draftPageId!}
+              entityType="page"
+              seoData={page.seo_data}
+              pagePath={page.path}
+              pageContent={sections.map((s) => s.content || "").join("\n")}
+              homepageContent=""
+              headerHtml={project?.header || ""}
+              footerHtml={project?.footer || ""}
+              wrapperHtml={project?.wrapper || ""}
+              onSeoDataChange={(data: SeoData) => {
+                setPage((prev) => prev ? { ...prev, seo_data: data } : prev);
+              }}
+            />
+          </div>
+        ) : activeView === "code" ? (
           <>
             <div className="flex-1 overflow-hidden">
               <Editor
@@ -843,8 +874,8 @@ function PageEditorInner() {
           </>
         )}
 
-        {/* Editor sidebar — hidden in code view */}
-        {!codeView && (
+        {/* Editor sidebar — shown only in visual view */}
+        {activeView === "visual" && (
           <EditorSidebar
             selectedInfo={selectedInfo}
             chatMessages={currentChatMessages}

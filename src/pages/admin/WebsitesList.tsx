@@ -13,12 +13,16 @@ import {
   Plus,
   Circle,
   CheckCircle,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import {
   fetchWebsites,
   fetchStatuses,
   deleteWebsite,
   createWebsite,
+  updateWebsite,
 } from "../../api/websites";
 import type { WebsiteProject, FetchWebsitesRequest } from "../../api/websites";
 import {
@@ -52,6 +56,10 @@ export default function WebsitesList() {
   // Action loading states
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+
+  // Inline display-name editing
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editingNameValue, setEditingNameValue] = useState("");
 
   // Filter states
   const [filters, setFilters] = useState<FetchWebsitesRequest>({
@@ -192,6 +200,37 @@ export default function WebsitesList() {
 
   const handleCardClick = (id: string) => {
     navigate(`/admin/websites/${id}`);
+  };
+
+  const startEditingName = (website: WebsiteProject, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingNameId(website.id);
+    setEditingNameValue(website.display_name || website.generated_hostname);
+  };
+
+  const cancelEditingName = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingNameId(null);
+    setEditingNameValue("");
+  };
+
+  const saveDisplayName = async (id: string, e?: React.MouseEvent | React.FormEvent) => {
+    if (e) e.stopPropagation();
+    if (e && "preventDefault" in e) e.preventDefault();
+    const trimmed = editingNameValue.trim();
+    if (!trimmed) return;
+
+    try {
+      await updateWebsite(id, { display_name: trimmed } as Partial<WebsiteProject>);
+      setWebsites((prev) =>
+        prev.map((w) => (w.id === id ? { ...w, display_name: trimmed } : w))
+      );
+    } catch (err) {
+      console.error("Failed to update display name:", err);
+    } finally {
+      setEditingNameId(null);
+      setEditingNameValue("");
+    }
   };
 
   const formatRelativeTime = (dateString: string) => {
@@ -431,7 +470,12 @@ export default function WebsitesList() {
         <div className="space-y-3">
           {websites.map((website, index) => {
             const businessName = getBusinessName(website);
-            const subdomainUrl = `https://${website.generated_hostname}.sites.getalloro.com`;
+            const siteUrl = website.custom_domain
+              ? `https://${website.custom_domain}`
+              : `https://${website.generated_hostname}.sites.getalloro.com`;
+            const siteDomain = website.custom_domain
+              || `${website.generated_hostname}.sites.getalloro.com`;
+            const displayLabel = website.display_name || website.generated_hostname;
 
             return (
               <motion.div
@@ -481,9 +525,48 @@ export default function WebsitesList() {
                       {/* Top row: Hostname and status badge */}
                       <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
                         <div className="flex-1 min-w-0">
-                          <span className="text-base font-semibold text-gray-900">
-                            {website.generated_hostname}
-                          </span>
+                          {editingNameId === website.id ? (
+                            <form
+                              onSubmit={(e) => saveDisplayName(website.id, e)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-1.5"
+                            >
+                              <input
+                                autoFocus
+                                value={editingNameValue}
+                                onChange={(e) => setEditingNameValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Escape") cancelEditingName();
+                                }}
+                                className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-base font-semibold text-gray-900 focus:border-alloro-orange focus:outline-none focus:ring-2 focus:ring-alloro-orange/20"
+                              />
+                              <button
+                                type="submit"
+                                className="rounded-md p-1 text-green-600 hover:bg-green-50 transition-colors"
+                              >
+                                <Check className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelEditingName}
+                                className="rounded-md p-1 text-gray-400 hover:bg-gray-100 transition-colors"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </form>
+                          ) : (
+                            <div className="flex items-center gap-1.5 group/name">
+                              <span className="text-base font-semibold text-gray-900">
+                                {displayLabel}
+                              </span>
+                              <button
+                                onClick={(e) => startEditingName(website, e)}
+                                className="rounded-md p-1 text-gray-300 opacity-0 group-hover/name:opacity-100 hover:text-gray-500 hover:bg-gray-100 transition-all"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
                           {businessName && (
                             <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-1.5">
                               <Building2 className="h-3.5 w-3.5" />
@@ -529,10 +612,10 @@ export default function WebsitesList() {
                           <span>{formatRelativeTime(website.created_at)}</span>
                         </div>
 
-                        {/* Subdomain link - only show for live sites */}
+                        {/* Domain link - only show for live sites */}
                         {website.status === "LIVE" && (
                           <a
-                            href={subdomainUrl}
+                            href={siteUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -540,7 +623,7 @@ export default function WebsitesList() {
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                             <span className="truncate max-w-[200px]">
-                              {website.generated_hostname}.sites.getalloro.com
+                              {siteDomain}
                             </span>
                           </a>
                         )}
@@ -555,7 +638,7 @@ export default function WebsitesList() {
                       {/* View Live Site */}
                       {website.status === "LIVE" ? (
                         <a
-                          href={subdomainUrl}
+                          href={siteUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-white px-3 py-1.5 text-xs font-semibold text-green-600 transition hover:border-green-300 hover:bg-green-50"

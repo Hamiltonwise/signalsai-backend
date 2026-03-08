@@ -16,8 +16,6 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
-  FileText,
-  HelpCircle,
   Lock,
   PenLine,
   Plus,
@@ -25,7 +23,6 @@ import {
   ShieldCheck,
   // Target, // Temporarily unused - Practice Diagnosis hidden
   TrendingDown,
-  Upload,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 

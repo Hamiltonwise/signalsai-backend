@@ -8,6 +8,8 @@ export interface WebsiteProject {
   id: string;
   user_id: string;
   generated_hostname: string;
+  display_name: string | null;
+  custom_domain: string | null;
   status: string;
   selected_place_id: string | null;
   selected_website_url: string | null;
@@ -35,6 +37,21 @@ export interface ChatHistoryMessage {
 
 export type EditChatHistory = Record<string, ChatHistoryMessage[]>;
 
+export interface SeoData {
+  location_context?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  canonical_url?: string | null;
+  robots?: string | null;
+  og_title?: string | null;
+  og_description?: string | null;
+  og_image?: string | null;
+  og_type?: string | null;
+  max_image_preview?: string | null;
+  schema_json?: Record<string, unknown>[] | null;
+  scores?: Record<string, unknown> | null;
+}
+
 export interface WebsitePage {
   id: string;
   project_id: string;
@@ -43,6 +60,7 @@ export interface WebsitePage {
   status: string;
   generation_status?: PageGenerationStatus | null;
   sections: Section[];
+  seo_data: SeoData | null;
   edit_chat_history: EditChatHistory | null;
   created_at: string;
   updated_at: string;
@@ -828,5 +846,90 @@ export const submitContactForm = async (
     throw new Error(error.error || "Failed to submit contact form");
   }
 
+  return response.json();
+};
+
+// =====================================================================
+// SEO
+// =====================================================================
+
+/**
+ * Update page SEO data
+ */
+export const updatePageSeo = async (
+  projectId: string,
+  pageId: string,
+  seoData: SeoData,
+): Promise<{ success: boolean; data: WebsitePage }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/pages/${pageId}/seo`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ seo_data: seoData }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to update SEO data");
+  }
+  return response.json();
+};
+
+/**
+ * Update post SEO data
+ */
+export const updatePostSeo = async (
+  projectId: string,
+  postId: string,
+  seoData: SeoData,
+): Promise<{ success: boolean; data: unknown }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/posts/${postId}/seo`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ seo_data: seoData }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to update post SEO data");
+  }
+  return response.json();
+};
+
+/**
+ * AI-generate SEO data for a specific section
+ */
+export const generateSeo = async (
+  projectId: string,
+  entityId: string,
+  entityType: "page" | "post",
+  body: Record<string, unknown>,
+): Promise<{ success: boolean; section: string; generated: Record<string, unknown> }> => {
+  const path = entityType === "page"
+    ? `${API_BASE}/${projectId}/pages/${entityId}/seo/generate`
+    : `${API_BASE}/${projectId}/posts/${entityId}/seo/generate`;
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to generate SEO data");
+  }
+  return response.json();
+};
+
+/**
+ * Fetch all page/post SEO meta for uniqueness checking
+ */
+export const fetchAllSeoMeta = async (
+  projectId: string,
+): Promise<{
+  success: boolean;
+  data: {
+    pages: Array<{ id: string; path: string; meta_title: string | null; meta_description: string | null }>;
+    posts: Array<{ id: string; title: string; slug: string; meta_title: string | null; meta_description: string | null }>;
+  };
+}> => {
+  const response = await fetch(`${API_BASE}/${projectId}/seo/all-meta`);
+  if (!response.ok) throw new Error("Failed to fetch SEO meta");
   return response.json();
 };

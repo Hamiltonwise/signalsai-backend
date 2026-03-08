@@ -14,7 +14,6 @@ import {
   ChevronDown,
   Trophy,
   Zap,
-  Sparkles,
   Trash2,
   Users,
   Layers,
@@ -1828,37 +1827,6 @@ function JobRow({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-// Location Form Row Component
-function LocationFormRow({ form }: { form: LocationFormData }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-      <div className="flex items-center gap-4">
-        {/* Location Name (read-only) */}
-        <div className="flex-1">
-          <label className="mb-1.5 block text-xs font-medium text-gray-500">
-            GBP Location
-          </label>
-          <div className="flex items-center gap-2 rounded-xl bg-white border border-gray-200 px-3 py-2.5 text-sm text-gray-900">
-            <MapPin className="h-4 w-4 text-gray-400" />
-            <span className="truncate">{form.gbpLocationName}</span>
-          </div>
-        </div>
-
-        {/* Auto-detect indicator */}
-        <div className="flex-1">
-          <label className="mb-1.5 block text-xs font-medium text-gray-500">
-            Specialty & Location
-          </label>
-          <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 text-sm text-blue-700">
-            <Sparkles className="h-4 w-4 text-blue-500" />
-            <span>Auto-detected by AI</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

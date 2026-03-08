@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "./index";
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "./index";
 
 export interface GooglePropertyInfo {
   type: string;
@@ -7,12 +7,43 @@ export interface GooglePropertyInfo {
   display_name: string | null;
 }
 
+export interface LocationBusinessData {
+  name?: string;
+  address?: {
+    street?: string;
+    suite?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
+  phone?: string;
+  website?: string;
+  coordinates?: { lat: number; lng: number };
+  hours?: Record<string, { open: string; close: string } | null>;
+  categories?: string[];
+  place_id?: string;
+  refreshed_at?: string;
+}
+
+export interface OrgBusinessData {
+  name?: string;
+  description?: string;
+  logo_url?: string;
+  founding_year?: number;
+  service_area?: string;
+  social_profiles?: Record<string, string>;
+  specialties?: string[];
+  refreshed_at?: string;
+}
+
 export interface Location {
   id: number;
   organization_id: number;
   name: string;
   domain: string | null;
   is_primary: boolean;
+  business_data: LocationBusinessData | null;
   created_at: string;
   updated_at: string;
   googleProperties: GooglePropertyInfo[];
@@ -99,4 +130,58 @@ export async function disconnectLocationGBP(
   locationId: number
 ): Promise<void> {
   await apiDelete({ path: `/locations/${locationId}/gbp` });
+}
+
+// =====================================================================
+// BUSINESS DATA
+// =====================================================================
+
+/**
+ * Fetch all business data (org-level + locations).
+ */
+export async function getBusinessData(): Promise<{
+  organization: { id: number; name: string; business_data: OrgBusinessData | null };
+  locations: Array<{ id: number; name: string; is_primary: boolean; business_data: LocationBusinessData | null }>;
+}> {
+  const response = await apiGet({ path: "/locations/business-data" });
+  return { organization: response.organization, locations: response.locations };
+}
+
+/**
+ * Refresh location business data from Google Places API.
+ */
+export async function refreshLocationBusinessData(
+  locationId: number
+): Promise<LocationBusinessData> {
+  const response = await apiPost({
+    path: `/locations/${locationId}/refresh-business-data`,
+  });
+  return response.business_data;
+}
+
+/**
+ * Update location business data overrides.
+ */
+export async function updateLocationBusinessData(
+  locationId: number,
+  data: Partial<LocationBusinessData>
+): Promise<LocationBusinessData> {
+  const response = await apiPatch({
+    path: `/locations/${locationId}/business-data`,
+    passedData: data,
+  });
+  return response.business_data;
+}
+
+/**
+ * Update organization-level umbrella business data.
+ */
+export async function updateOrgBusinessData(
+  data: Partial<OrgBusinessData>
+): Promise<OrgBusinessData> {
+  const response = await apiPatch({
+    path: "/locations/org-business-data",
+    passedData: data,
+  });
+  return response.business_data;
 }

@@ -362,7 +362,7 @@ function LayoutEditorInner() {
         <AdminSidebar />
 
         {/* Loading skeleton that matches layout editor structure */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden ml-[72px]">
           {/* Left editor panel skeleton */}
           <div className="w-1/2 bg-white border-r border-gray-200 flex flex-col">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
