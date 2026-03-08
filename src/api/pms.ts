@@ -364,6 +364,56 @@ export async function submitManualPMSData(
   }
 }
 
+// =====================================================================
+// PASTE-PARSE TYPES AND API FUNCTION
+// =====================================================================
+
+export interface PasteParseApiResponse {
+  success: boolean;
+  data?: {
+    months: Array<{
+      month: string;
+      rows: Array<{
+        source: string;
+        type: "self" | "doctor";
+        referrals: number;
+        production: number;
+      }>;
+    }>;
+    warnings: string[];
+    rowsParsed: number;
+    monthsDetected: number;
+  };
+  error?: string;
+}
+
+/**
+ * Send pasted text to the AI parsing endpoint.
+ * Returns structured PMS data parsed by Haiku.
+ */
+export async function parsePastedData(
+  rawText: string,
+  currentMonth: string
+): Promise<PasteParseApiResponse> {
+  try {
+    const result = await apiPost({
+      path: "/pms/parse-paste",
+      passedData: { rawText, currentMonth },
+      additionalHeaders: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+    return result as PasteParseApiResponse;
+  } catch (error) {
+    console.error("PMS paste-parse API error:", error);
+    return {
+      success: false,
+      error: "Failed to parse pasted data. Please try again.",
+    };
+  }
+}
+
 /**
  * Get PMS data summary for a client
  * @param clientId - Client identifier

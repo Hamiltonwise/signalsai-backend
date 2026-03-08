@@ -1557,91 +1557,42 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                     : "border border-slate-100"
                 }`}
               >
-                <div className="space-y-6 flex-1 text-center md:text-left">
-                  <div className="flex items-center justify-center md:justify-start gap-3">
-                    <div className="w-10 h-10 bg-alloro-orange/10 text-alloro-orange rounded-xl flex items-center justify-center">
-                      <Upload size={20} />
+                <div className="space-y-8 flex-1 text-center">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-12 h-12 bg-alloro-orange/10 text-alloro-orange rounded-2xl flex items-center justify-center">
+                      <PenLine size={24} />
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-alloro-orange">
-                      Data Ingestion Hub
-                    </span>
                   </div>
-                  <h3 className="text-2xl sm:text-3xl font-bold font-heading text-alloro-navy tracking-tight leading-tight">
-                    Enter your latest data.
-                  </h3>
-                  <p className="text-base sm:text-lg text-slate-500 font-medium tracking-tight leading-relaxed max-w-lg mx-auto md:mx-0">
-                    We recommend updating your referral data monthly for accurate analysis.
-                    You'll receive a reminder notification each month.
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 pt-4">
+                  <div className="space-y-3">
+                    <h3 className="text-2xl sm:text-3xl font-bold font-heading text-alloro-navy tracking-tight leading-tight">
+                      Update your referral data
+                    </h3>
+                    <p className="text-base sm:text-lg text-slate-400 font-normal tracking-tight leading-relaxed max-w-xl mx-auto">
+                      Enter your monthly referral numbers directly. Takes about 2 minutes.
+                      We recommend updating monthly for the most accurate analysis.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setShowManualEntry(true)}
+                      className="group inline-flex items-center gap-3 px-8 py-4 text-white rounded-2xl transition-all text-base font-semibold hover:brightness-110 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] bg-alloro-orange"
+                    >
+                      <PenLine size={20} />
+                      Upload Month's Data
+                    </button>
+                    <p className="text-xs text-slate-400">
+                      Need to backfill? You can enter data for any previous month too.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-6 pt-2">
                     <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                       <Lock size={14} className="text-slate-300" /> HIPAA SECURE
                     </div>
                     <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                      <ShieldCheck size={14} className="text-green-500" />{" "}
-                      ENCRYPTED
+                      <ShieldCheck size={14} className="text-green-500" /> ENCRYPTED
                     </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3 w-full md:w-80">
-                  {/* Upload from Template */}
-                  <button
-                    onClick={() => setShowTemplateUpload(true)}
-                    className="group flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 hover:border-slate-300 transition-all text-left"
-                  >
-                    <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                      <FileText size={20} className="text-emerald-600" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 text-sm block">Upload from Template</span>
-                      <span className="text-[11px] text-slate-500 leading-tight">
-                        Disorganized or unsupported export types
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* Enter Manual Data */}
-                  <button
-                    onClick={() => setShowManualEntry(true)}
-                    className="group flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 hover:border-slate-300 transition-all text-left"
-                  >
-                    <div className="w-10 h-10 bg-alloro-orange/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                      <PenLine size={20} className="text-alloro-orange" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 text-sm block">Enter Manual Data</span>
-                      <span className="text-[11px] text-slate-500 leading-tight">
-                        Enter via interactive UI
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* Direct Upload */}
-                  <button
-                    onClick={() => setShowDirectUpload(true)}
-                    className="group flex items-center gap-4 p-4 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 hover:border-slate-300 transition-all text-left"
-                  >
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                      <Upload size={20} className="text-blue-600" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-900 text-sm block">Direct Upload</span>
-                      <span className="text-[11px] text-slate-500 leading-tight">
-                        Data is clean with required fields
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* Not sure? link - aligned right */}
-                  <div className="text-right pt-1">
-                    <button
-                      onClick={() => setShowUploadWizard(true)}
-                      className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-alloro-orange transition-colors"
-                    >
-                      <HelpCircle size={14} />
-                      <span>Not sure? Let us help</span>
-                    </button>
                   </div>
                 </div>
               </section>

@@ -451,8 +451,10 @@ export function PracticeRanking() {
   const [jobs, setJobs] = useState<RankingJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
-  const [locationForms, setLocationForms] = useState<LocationFormData[]>([]);
+  const [selectedLocationIds, setSelectedLocationIds] = useState<Set<string>>(new Set());
   const [triggering, setTriggering] = useState(false);
+  const [retryingJob, setRetryingJob] = useState<number | null>(null);
+  const [retryingBatch, setRetryingBatch] = useState<string | null>(null);
   const [expandedJobId, setExpandedJobId] = useState<number | null>(null);
   const [expandedBatches, setExpandedBatches] = useState<Set<string>>(
     new Set()
@@ -596,20 +598,28 @@ export function PracticeRanking() {
     fetchJobs();
   }, [organizationFilter]);
 
-  // When account is selected, initialize location forms
+  // When account is selected, select all locations by default
   useEffect(() => {
     if (selectedAccountData && selectedAccountData.gbpLocations.length > 0) {
-      const initialForms: LocationFormData[] =
-        selectedAccountData.gbpLocations.map((loc) => ({
-          gbpAccountId: loc.accountId,
-          gbpLocationId: loc.locationId,
-          gbpLocationName: loc.displayName,
-        }));
-      setLocationForms(initialForms);
+      setSelectedLocationIds(
+        new Set(selectedAccountData.gbpLocations.map((loc) => loc.locationId))
+      );
     } else {
-      setLocationForms([]);
+      setSelectedLocationIds(new Set());
     }
   }, [selectedAccount, selectedAccountData]);
+
+  // Derive location forms from selected IDs
+  const locationForms: LocationFormData[] = useMemo(() => {
+    if (!selectedAccountData) return [];
+    return selectedAccountData.gbpLocations
+      .filter((loc) => selectedLocationIds.has(loc.locationId))
+      .map((loc) => ({
+        gbpAccountId: loc.accountId,
+        gbpLocationId: loc.locationId,
+        gbpLocationName: loc.displayName,
+      }));
+  }, [selectedAccountData, selectedLocationIds]);
 
   // Poll for job status updates
   useEffect(() => {
@@ -849,7 +859,7 @@ export function PracticeRanking() {
 
       fetchJobs();
       setSelectedAccount(null);
-      setLocationForms([]);
+      setSelectedLocationIds(new Set());
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -958,6 +968,59 @@ export function PracticeRanking() {
       toast.error(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setDeletingBatch(null);
+    }
+  };
+
+  const retryJob = async (rankingId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRetryingJob(rankingId);
+    try {
+      const token = localStorage.getItem("auth_token");
+      const response = await fetch(
+        `/api/admin/practice-ranking/retry/${rankingId}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to retry");
+      }
+      toast.success("Retry queued");
+      setPollingJobs((prev) => new Set([...prev, rankingId]));
+      fetchJobs();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "An error occurred");
+    } finally {
+      setRetryingJob(null);
+    }
+  };
+
+  const retryBatchFn = async (batchId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRetryingBatch(batchId);
+    try {
+      const token = localStorage.getItem("auth_token");
+      const response = await fetch(
+        `/api/admin/practice-ranking/retry-batch/${batchId}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to retry batch");
+      }
+      const data = await response.json();
+      toast.success(data.message || "Batch retry queued");
+      setPollingBatches((prev) => new Set([...prev, batchId]));
+      fetchJobs();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "An error occurred");
+    } finally {
+      setRetryingBatch(null);
     }
   };
 
@@ -1178,35 +1241,87 @@ export function PracticeRanking() {
           )}
         </div>
 
-        {/* Location Forms */}
+        {/* Location Selection */}
         <AnimatePresence>
-          {locationForms.length > 0 && (
+          {selectedAccountData && selectedAccountData.gbpLocations.length > 0 && (
             <motion.div
               className="space-y-4"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
             >
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <Layers className="h-4 w-4 text-blue-600" />
-                Configure {locationForms.length} Location
-                {locationForms.length > 1 ? "s" : ""}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Layers className="h-4 w-4 text-blue-600" />
+                  Select Locations ({selectedLocationIds.size} of{" "}
+                  {selectedAccountData.gbpLocations.length})
+                </div>
+                <button
+                  onClick={() => {
+                    if (selectedLocationIds.size === selectedAccountData.gbpLocations.length) {
+                      setSelectedLocationIds(new Set());
+                    } else {
+                      setSelectedLocationIds(
+                        new Set(selectedAccountData.gbpLocations.map((loc) => loc.locationId))
+                      );
+                    }
+                  }}
+                  className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  {selectedLocationIds.size === selectedAccountData.gbpLocations.length
+                    ? "Deselect All"
+                    : "Select All"}
+                </button>
               </div>
 
               <motion.div
-                className="space-y-3"
+                className="space-y-2"
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"
               >
-                {locationForms.map((form) => (
-                  <motion.div
-                    key={form.gbpLocationId}
-                    variants={cardVariants}
-                  >
-                    <LocationFormRow form={form} />
-                  </motion.div>
-                ))}
+                {selectedAccountData.gbpLocations.map((loc) => {
+                  const isSelected = selectedLocationIds.has(loc.locationId);
+                  return (
+                    <motion.label
+                      key={loc.locationId}
+                      variants={cardVariants}
+                      className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
+                        isSelected
+                          ? "border-blue-200 bg-blue-50/50"
+                          : "border-gray-200 bg-gray-50 opacity-60"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          setSelectedLocationIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(loc.locationId)) {
+                              next.delete(loc.locationId);
+                            } else {
+                              next.add(loc.locationId);
+                            }
+                            return next;
+                          });
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <MapPin className="h-4 w-4 text-gray-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-900 truncate block">
+                          {loc.displayName}
+                        </span>
+                        {loc.address && (
+                          <span className="text-xs text-gray-500 truncate block">
+                            {loc.address}
+                          </span>
+                        )}
+                      </div>
+                    </motion.label>
+                  );
+                })}
               </motion.div>
 
               {/* Trigger Button */}
@@ -1215,7 +1330,11 @@ export function PracticeRanking() {
                   label={
                     triggering
                       ? "Starting Batch..."
-                      : `Run Analysis (${locationForms.length} location${locationForms.length > 1 ? "s" : ""})`
+                      : `Run Analysis (${locationForms.length}${
+                          locationForms.length !== selectedAccountData.gbpLocations.length
+                            ? ` of ${selectedAccountData.gbpLocations.length}`
+                            : ""
+                        } location${locationForms.length !== 1 ? "s" : ""})`
                   }
                   icon={
                     triggering ? (
@@ -1226,7 +1345,7 @@ export function PracticeRanking() {
                   }
                   onClick={triggerAnalysis}
                   variant="primary"
-                  disabled={triggering}
+                  disabled={triggering || locationForms.length === 0}
                   loading={triggering}
                 />
               </div>
@@ -1234,7 +1353,7 @@ export function PracticeRanking() {
           )}
         </AnimatePresence>
 
-        {selectedAccount && locationForms.length === 0 && (
+        {selectedAccount && selectedAccountData && selectedAccountData.gbpLocations.length === 0 && (
           <motion.div
             className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800 flex items-start gap-3"
             initial={{ opacity: 0, y: -10 }}
@@ -1389,6 +1508,22 @@ export function PracticeRanking() {
 
                         <div className="flex items-center gap-3">
                           {getStatusBadge(batch.status)}
+                          {(batch.status === "failed" || batch.status === "completed") && (
+                            <motion.button
+                              onClick={(e) => retryBatchFn(batch.batchId, e)}
+                              disabled={retryingBatch === batch.batchId}
+                              className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-50 rounded-lg hover:bg-blue-50"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              title="Retry batch"
+                            >
+                              {retryingBatch === batch.batchId ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4" />
+                              )}
+                            </motion.button>
+                          )}
                           <motion.button
                             onClick={(e) => deleteBatch(batch.batchId, e)}
                             disabled={deletingBatch === batch.batchId}
@@ -1430,7 +1565,9 @@ export function PracticeRanking() {
                                 isExpanded={expandedJobId === job.id}
                                 onToggle={() => toggleExpand(job.id)}
                                 onDelete={(e) => deleteJob(job.id, e)}
+                                onRetry={(e) => retryJob(job.id, e)}
                                 deletingJob={deletingJob}
+                                retryingJob={retryingJob}
                                 loadingResults={loadingResults}
                                 jobResults={jobResults}
                                 rankingTasks={rankingTasks}
@@ -1471,7 +1608,9 @@ export function PracticeRanking() {
                     isExpanded={expandedJobId === job.id}
                     onToggle={() => toggleExpand(job.id)}
                     onDelete={(e) => deleteJob(job.id, e)}
+                    onRetry={(e) => retryJob(job.id, e)}
                     deletingJob={deletingJob}
+                    retryingJob={retryingJob}
                     loadingResults={loadingResults}
                     jobResults={jobResults}
                     rankingTasks={rankingTasks}
@@ -1499,7 +1638,9 @@ function JobRow({
   isExpanded,
   onToggle,
   onDelete,
+  onRetry,
   deletingJob,
+  retryingJob,
   loadingResults,
   jobResults,
   rankingTasks,
@@ -1513,7 +1654,9 @@ function JobRow({
   isExpanded: boolean;
   onToggle: () => void;
   onDelete: (e: React.MouseEvent) => void;
+  onRetry: (e: React.MouseEvent) => void;
   deletingJob: number | null;
+  retryingJob: number | null;
   loadingResults: number | null;
   jobResults: Record<number, RankingResult>;
   rankingTasks: Record<number, RankingTask[]>;
@@ -1583,6 +1726,22 @@ function JobRow({
             </div>
           )}
           {getStatusBadge(job.status)}
+          {(job.status === "failed" || job.status === "completed") && (
+            <motion.button
+              onClick={onRetry}
+              disabled={retryingJob === job.id}
+              className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-50 rounded-lg hover:bg-blue-50"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              title="Retry analysis"
+            >
+              {retryingJob === job.id ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </motion.button>
+          )}
           <motion.button
             onClick={onDelete}
             disabled={deletingJob === job.id}

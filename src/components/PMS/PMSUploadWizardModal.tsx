@@ -507,7 +507,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                       Back
                     </motion.button>
 
-                    {/* Option 1: CSV Template */}
+                    {/* Option 1: CSV Template — hidden for now
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -545,12 +545,13 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                         </div>
                       </div>
                     </motion.div>
+                    */}
 
                     {/* Option 2: Manual Entry */}
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.15 }}
+                      transition={{ delay: 0.1 }}
                       className="bg-slate-50 rounded-2xl p-5 hover:bg-slate-100/80 transition-colors"
                     >
                       <div className="flex items-start gap-4">
@@ -579,7 +580,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                       </div>
                     </motion.div>
 
-                    {/* Option 3: Support */}
+                    {/* Option 3: Support — hidden for now
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -607,6 +608,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                         </div>
                       </div>
                     </motion.div>
+                    */}
                   </motion.div>
                 )}
 

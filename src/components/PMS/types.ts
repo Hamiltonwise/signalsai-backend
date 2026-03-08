@@ -41,3 +41,53 @@ export interface MonthPickerState {
   selectedMonth: string | null; // MM (01-12)
   selectedYear?: number;
 }
+
+/**
+ * Paste-parse request sent to POST /pms/parse-paste
+ */
+export interface PasteParseRequest {
+  rawText: string;
+  currentMonth: string; // YYYY-MM fallback
+}
+
+/**
+ * A parsed row returned by the AI
+ */
+export interface ParsedPasteRow {
+  source: string;
+  type: "self" | "doctor";
+  referrals: number;
+  production: number;
+}
+
+/**
+ * A parsed month bucket returned by the AI
+ */
+export interface ParsedPasteMonth {
+  month: string; // YYYY-MM
+  rows: ParsedPasteRow[];
+}
+
+/**
+ * Full response from POST /pms/parse-paste
+ */
+export interface PasteParseResponse {
+  success: boolean;
+  data?: {
+    months: ParsedPasteMonth[];
+    warnings: string[];
+    rowsParsed: number;
+    monthsDetected: number;
+  };
+  error?: string;
+}
+
+/**
+ * Info about a detected paste (before sending to AI)
+ */
+export interface PasteInfo {
+  text: string;
+  sizeKB: number;
+  estimatedRows: number;
+  chunksRequired: number;
+}

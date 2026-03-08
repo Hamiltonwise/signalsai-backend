@@ -14,6 +14,7 @@ import {
   ArrowDown,
   ArrowUp,
   Calendar,
+  ClipboardPaste,
   DollarSign,
   Loader2,
   Plus,
@@ -35,6 +36,8 @@ import {
 } from "./pmsDataTransform";
 import type { MonthBucket, SourceRow } from "./types";
 import { submitManualPMSData } from "../../api/pms";
+import { usePasteHandler } from "./usePasteHandler";
+import { PasteConfirmDialog } from "./PasteConfirmDialog";
 
 interface PMSManualEntryModalProps {
   isOpen: boolean;
@@ -137,6 +140,55 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
   const [confirmDeleteMonthId, setConfirmDeleteMonthId] = useState<
     number | null
   >(null);
+
+  // Paste handler — AI-powered paste-to-parse
+  const handleParsedPaste = useCallback(
+    (parsedMonths: MonthBucket[]) => {
+      setMonths((prev) => {
+        const merged = [...prev];
+        for (const incoming of parsedMonths) {
+          const existing = merged.find((m) => m.month === incoming.month);
+          if (existing) {
+            existing.rows = [...existing.rows, ...incoming.rows];
+          } else {
+            merged.push(incoming);
+          }
+        }
+        return merged;
+      });
+      showUploadToast(
+        "Data parsed!",
+        `${parsedMonths.reduce((s, m) => s + m.rows.length, 0)} rows added. Review and submit when ready.`
+      );
+    },
+    []
+  );
+
+  const handlePasteWarnings = useCallback((warnings: string[]) => {
+    if (warnings.length > 0) {
+      console.warn("[PMSManualEntry] Paste warnings:", warnings);
+    }
+  }, []);
+
+  const activeMonthStr = useMemo(() => {
+    const found = months.find((m) => m.id === activeMonthId);
+    return found?.month ?? months[0]?.month ?? getPreviousMonth();
+  }, [months, activeMonthId]);
+
+  const {
+    isPasting,
+    showConfirm: showPasteConfirm,
+    pasteInfo,
+    batchProgress,
+    confirmPaste,
+    cancelPaste,
+    handlePasteEvent,
+  } = usePasteHandler({
+    currentMonth: activeMonthStr,
+    onParsed: handleParsedPaste,
+    onError: (msg) => setError(msg),
+    onWarnings: handlePasteWarnings,
+  });
 
   // Reset state when modal opens
   useEffect(() => {
@@ -410,6 +462,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
           transition={{ type: "spring", damping: 20, stiffness: 200 }}
           className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl my-auto"
           onClick={(e) => e.stopPropagation()}
+          onPaste={handlePasteEvent}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-white">
@@ -627,7 +680,8 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                       <User className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                       <p className="text-sm">No sources added yet</p>
                       <p className="text-xs text-gray-400 mt-1">
-                        Click "Add Source" below to get started
+                        Click "Add Source" below, or paste data from your
+                        spreadsheet and Alloro will analyze it for you.
                       </p>
                     </motion.div>
                   ) : (
@@ -811,8 +865,8 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                   )}
                 </AnimatePresence>
 
-                {/* Add Source Button */}
-                <div className="flex justify-end px-2">
+                {/* Add Source + Paste Data Buttons */}
+                <div className="flex justify-end gap-3 px-2">
                   <button
                     onClick={addRow}
                     className="flex items-center gap-2 border rounded-full px-5 py-2 text-xs font-semibold transition-colors hover:bg-gray-50"
@@ -821,10 +875,48 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                     <Plus size={16} />
                     <span>Add Source</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard
+                        .readText()
+                        .then((text) => {
+                          if (text) {
+                            const fakeEvent = {
+                              clipboardData: { getData: () => text },
+                              target: document.body,
+                              preventDefault: () => {},
+                            } as unknown as React.ClipboardEvent;
+                            handlePasteEvent(fakeEvent);
+                          }
+                        })
+                        .catch(() => {
+                          setError(
+                            "Clipboard access denied. Try pressing Cmd+V instead."
+                          );
+                        });
+                    }}
+                    disabled={isPasting}
+                    className="flex items-center gap-2 border rounded-full px-5 py-2 text-xs font-semibold transition-colors hover:bg-gray-50 disabled:opacity-50"
+                    style={{ color: "#6B7280", borderColor: "#D1D5DB" }}
+                  >
+                    <ClipboardPaste size={16} />
+                    <span>Paste Data</span>
+                  </button>
                 </div>
               </div>
             )}
           </div>
+
+          {/* Paste Confirm Dialog */}
+          {showPasteConfirm && (
+            <PasteConfirmDialog
+              pasteInfo={pasteInfo}
+              isPasting={isPasting}
+              batchProgress={batchProgress}
+              onConfirm={confirmPaste}
+              onCancel={cancelPaste}
+            />
+          )}
 
           {/* Month Picker Modal */}
           <AnimatePresence>
