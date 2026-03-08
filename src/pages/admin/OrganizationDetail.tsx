@@ -85,7 +85,7 @@ export default function OrganizationDetail() {
   const activeTab = (searchParams.get("tab") || "tasks") as TabKey;
 
   const orgId = parseInt(id || "0", 10);
-  const { data: org, isLoading: orgLoading, error: orgError } = useAdminOrganization(orgId);
+  const { data: org, isLoading: orgLoading } = useAdminOrganization(orgId);
   const { data: locations = [], isLoading: locLoading } = useAdminOrganizationLocations(orgId);
   const { invalidateOne: invalidateOrg } = useInvalidateOrganizations();
   const loading = orgLoading || locLoading;

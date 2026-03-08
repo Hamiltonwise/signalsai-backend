@@ -16,7 +16,7 @@ import {
   ActionButton,
   EmptyState,
 } from "../../components/ui/DesignSystem";
-import { createMind, type Mind } from "../../api/minds";
+import { createMind } from "../../api/minds";
 import { useAdminMinds } from "../../hooks/queries/useAdminQueries";
 import { MindPublishChannelsTab } from "../../components/Admin/minds/MindPublishChannelsTab";
 

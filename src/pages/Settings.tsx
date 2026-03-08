@@ -51,11 +51,11 @@ export const Settings: React.FC = () => {
 
   const orgId = userProfile?.organizationId;
   const { data: scopesData, isLoading: scopesLoading, refetch: refetchScopes } = useSettingsScopes();
-  const { data: pmsData, isLoading: pmsLoading } = usePmsStatus(orgId);
+  const { data: pmsData, isLoading: pmsLoading } = usePmsStatus(orgId ?? undefined);
 
   const missingScopes = (scopesData?.missingScopes ?? []) as string[];
   const missingScopeCount = scopesData?.missingCount ?? 0;
-  const hasPmsData = pmsData?.success && pmsData?.data?.months?.length > 0 ? true : false;
+  const hasPmsData = pmsData?.success && (pmsData?.data?.months?.length ?? 0) > 0 ? true : false;
   const isLoading = scopesLoading || pmsLoading;
 
   const handleGrantAccessComplete = () => {

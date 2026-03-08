@@ -38,7 +38,7 @@ const EMPTY_CREATE_FORM: AdminCreateOrgInput = {
 };
 
 export function OrganizationManagement() {
-  const { data: organizations = [], isLoading: loading, isFetching } = useAdminOrganizations();
+  const { data: organizations = [], isLoading: loading } = useAdminOrganizations();
   const { invalidateAll: refetchOrganizations } = useInvalidateOrganizations();
 
   const [editingOrgId, setEditingOrgId] = useState<number | null>(null);

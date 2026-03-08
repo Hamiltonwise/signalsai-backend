@@ -808,7 +808,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
         </h3>
         <p className="text-slate-600 mb-6">{error}</p>
         <button
-          onClick={refetch}
+          onClick={() => refetch()}
           className="px-6 py-2.5 bg-alloro-orange text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 mx-auto font-semibold text-sm"
         >
           <RefreshCw className="w-4 h-4" />

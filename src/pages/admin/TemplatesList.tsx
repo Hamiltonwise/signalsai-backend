@@ -17,7 +17,7 @@ import {
   createTemplate,
   activateTemplate,
 } from "../../api/templates";
-import type { Template } from "../../api/templates";
+
 import {
   useAdminTemplates,
   useInvalidateAdminTemplates,
@@ -46,7 +46,7 @@ export default function TemplatesList() {
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "templates");
 
   // Template state (TanStack Query)
-  const { data: templatesResponse, isLoading: loading, error: queryError, isFetching, refetch: refetchTemplates } = useAdminTemplates();
+  const { data: templatesResponse, isLoading: loading, error: queryError } = useAdminTemplates();
   const { invalidateAll: invalidateTemplates } = useInvalidateAdminTemplates();
 
   const templates = templatesResponse?.data ?? [];
