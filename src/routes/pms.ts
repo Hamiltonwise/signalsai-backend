@@ -12,6 +12,7 @@ const pmsRoutes = express.Router();
 
 // Upload & Processing
 pmsRoutes.post("/upload", authenticateToken, rbacMiddleware, upload.single("csvFile"), controller.uploadPmsData);
+pmsRoutes.post("/parse-paste", authenticateToken, rbacMiddleware, controller.parsePaste);
 pmsRoutes.post("/summary", authenticateToken, rbacMiddleware, controller.getPmsSummary);
 
 // Data Retrieval

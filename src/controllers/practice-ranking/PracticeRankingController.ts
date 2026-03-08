@@ -56,6 +56,12 @@ import * as batchTracker from "./feature-services/service.batch-status-tracker";
 import * as competitorService from "./feature-services/service.competitor-analysis";
 import * as llmWebhookHandler from "./feature-services/service.llm-webhook-handler";
 import { processBatch } from "./feature-services/service.ranking-computation";
+import {
+  processLocationRanking,
+  MAX_RETRIES,
+  RETRY_DELAY_MS,
+} from "./feature-services/service.ranking-pipeline";
+import { GooglePropertyModel } from "../../models/GooglePropertyModel";
 
 // =====================================================================
 // POST /trigger
@@ -618,6 +624,311 @@ export async function refreshCompetitors(
       success: false,
       error: "REFRESH_ERROR",
       message: error.message || "Failed to refresh competitors",
+    });
+  }
+}
+
+// =====================================================================
+// POST /retry/:id
+// =====================================================================
+
+export async function retryRanking(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const rankingId = parseInt(id);
+
+    if (isNaN(rankingId)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_ID",
+        message: "Invalid ranking ID",
+      });
+    }
+
+    const ranking = await db("practice_rankings")
+      .where({ id: rankingId })
+      .first();
+
+    if (!ranking) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: `Ranking ${id} not found`,
+      });
+    }
+
+    if (ranking.status === "pending" || ranking.status === "processing") {
+      return res.status(409).json({
+        success: false,
+        error: "ALREADY_RUNNING",
+        message: `Ranking ${id} is currently ${ranking.status}`,
+      });
+    }
+
+    // Look up google_property to get connection_id for OAuth
+    const gbpProperty = await GooglePropertyModel.findByExternalId(
+      ranking.gbp_location_id,
+    );
+    if (!gbpProperty) {
+      return res.status(400).json({
+        success: false,
+        error: "NO_GBP_PROPERTY",
+        message: `GBP property ${ranking.gbp_location_id} not found`,
+      });
+    }
+
+    // Get org domain
+    const org = await db("organizations")
+      .where({ id: ranking.organization_id })
+      .select("domain")
+      .first();
+    const domain = org?.domain || "";
+
+    // Reset record
+    await db("practice_rankings").where({ id: rankingId }).update({
+      status: "pending",
+      error_message: null,
+      status_detail: JSON.stringify({
+        currentStep: "queued",
+        message: "Queued for retry...",
+        progress: 0,
+        stepsCompleted: [],
+        timestamps: { retry_queued_at: new Date().toISOString() },
+      }),
+      updated_at: new Date(),
+    });
+
+    log(`Retry queued for ranking ${rankingId}`);
+
+    // Background processing
+    setImmediate(() => {
+      (async () => {
+        const specialty = ranking.specialty || "orthodontist";
+        const marketLocation = ranking.location || "Unknown, US";
+
+        await db("practice_rankings").where({ id: rankingId }).update({
+          status: "processing",
+          status_detail: JSON.stringify({
+            currentStep: "starting",
+            message: "Starting retry analysis...",
+            progress: 5,
+            stepsCompleted: ["queued"],
+            timestamps: { started_at: new Date().toISOString() },
+          }),
+        });
+
+        try {
+          await processLocationRanking(
+            rankingId,
+            gbpProperty.google_connection_id,
+            ranking.gbp_account_id,
+            ranking.gbp_location_id,
+            ranking.gbp_location_name,
+            specialty,
+            marketLocation,
+            domain,
+            ranking.batch_id,
+            log,
+          );
+          log(`Retry completed for ranking ${rankingId}`);
+        } catch (err: any) {
+          log(`Retry failed for ranking ${rankingId}: ${err.message}`);
+          await db("practice_rankings").where({ id: rankingId }).update({
+            status: "failed",
+            error_message: `Retry failed: ${err.message}`,
+            updated_at: new Date(),
+          });
+        }
+      })().catch((err) => {
+        logError(`retryRanking background ${rankingId}`, err);
+      });
+    });
+
+    return res.json({ success: true, rankingId, message: "Retry queued" });
+  } catch (error: any) {
+    logError("POST /retry/:id", error);
+    return res.status(500).json({
+      success: false,
+      error: "RETRY_ERROR",
+      message: error.message || "Failed to retry ranking",
+    });
+  }
+}
+
+// =====================================================================
+// POST /retry-batch/:batchId
+// =====================================================================
+
+export async function retryBatch(
+  req: Request,
+  res: Response,
+): Promise<Response> {
+  try {
+    const { batchId } = req.params;
+
+    const rankings = await db("practice_rankings")
+      .where({ batch_id: batchId });
+
+    if (rankings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: `Batch ${batchId} not found`,
+      });
+    }
+
+    // Soft retry: only re-run failed/completed, skip pending/processing
+    const retryable = rankings.filter(
+      (r: any) => r.status === "failed" || r.status === "completed",
+    );
+    const skipped = rankings.filter(
+      (r: any) => r.status === "pending" || r.status === "processing",
+    );
+
+    if (retryable.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "NOTHING_TO_RETRY",
+        message:
+          "No failed or completed rankings to retry in this batch",
+      });
+    }
+
+    // Reset retryable records
+    const retryableIds = retryable.map((r: any) => r.id);
+    await db("practice_rankings").whereIn("id", retryableIds).update({
+      status: "pending",
+      error_message: null,
+      status_detail: JSON.stringify({
+        currentStep: "queued",
+        message: "Queued for batch retry...",
+        progress: 0,
+        stepsCompleted: [],
+        timestamps: { retry_queued_at: new Date().toISOString() },
+      }),
+      updated_at: new Date(),
+    });
+
+    log(
+      `Batch retry queued for ${batchId}: ${retryable.length} retryable, ${skipped.length} skipped`,
+    );
+
+    // Background processing
+    setImmediate(() => {
+      (async () => {
+        for (const ranking of retryable) {
+          const gbpProperty = await GooglePropertyModel.findByExternalId(
+            ranking.gbp_location_id,
+          );
+          if (!gbpProperty) {
+            log(
+              `Skipping ranking ${ranking.id}: GBP property not found`,
+            );
+            await db("practice_rankings")
+              .where({ id: ranking.id })
+              .update({
+                status: "failed",
+                error_message: "GBP property not found for retry",
+                updated_at: new Date(),
+              });
+            continue;
+          }
+
+          const org = await db("organizations")
+            .where({ id: ranking.organization_id })
+            .select("domain")
+            .first();
+          const domain = org?.domain || "";
+          const specialty = ranking.specialty || "orthodontist";
+          const marketLocation = ranking.location || "Unknown, US";
+
+          await db("practice_rankings")
+            .where({ id: ranking.id })
+            .update({
+              status: "processing",
+              status_detail: JSON.stringify({
+                currentStep: "starting",
+                message: "Starting retry analysis...",
+                progress: 5,
+                stepsCompleted: ["queued"],
+                timestamps: { started_at: new Date().toISOString() },
+              }),
+            });
+
+          let success = false;
+          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+              if (attempt > 1) {
+                log(
+                  `Retry attempt ${attempt}/${MAX_RETRIES} for ranking ${ranking.id}`,
+                );
+                await new Promise((resolve) =>
+                  setTimeout(resolve, RETRY_DELAY_MS),
+                );
+              }
+
+              await processLocationRanking(
+                ranking.id,
+                gbpProperty.google_connection_id,
+                ranking.gbp_account_id,
+                ranking.gbp_location_id,
+                ranking.gbp_location_name,
+                specialty,
+                marketLocation,
+                domain,
+                ranking.batch_id,
+                log,
+              );
+
+              success = true;
+              break;
+            } catch (err: any) {
+              log(
+                `Batch retry attempt ${attempt} failed for ranking ${ranking.id}: ${err.message}`,
+              );
+              if (attempt === MAX_RETRIES) {
+                await db("practice_rankings")
+                  .where({ id: ranking.id })
+                  .update({
+                    status: "failed",
+                    error_message: `Batch retry failed: ${err.message}`,
+                    updated_at: new Date(),
+                  });
+              }
+            }
+          }
+
+          if (success) {
+            log(`Batch retry completed for ranking ${ranking.id}`);
+          }
+        }
+
+        log(`Batch retry completed for ${batchId}`);
+      })().catch((err) => {
+        logError(`retryBatch background ${batchId}`, err);
+      });
+    });
+
+    return res.json({
+      success: true,
+      batchId,
+      retryCount: retryable.length,
+      skippedCount: skipped.length,
+      message: `Retry queued for ${retryable.length} location(s)${
+        skipped.length > 0
+          ? `, ${skipped.length} still in progress`
+          : ""
+      }`,
+    });
+  } catch (error: any) {
+    logError("POST /retry-batch/:batchId", error);
+    return res.status(500).json({
+      success: false,
+      error: "RETRY_BATCH_ERROR",
+      message: error.message || "Failed to retry batch",
     });
   }
 }

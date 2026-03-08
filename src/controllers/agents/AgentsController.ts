@@ -1214,225 +1214,279 @@ export async function runRankingAgent(
   log("\n" + "=".repeat(70));
   log("POST /api/agents/ranking-run - STARTING");
   log("=".repeat(70));
-  if (googleAccountId) log(`Account ID: ${googleAccountId}`);
+  if (googleAccountId) log(`Connection ID filter: ${googleAccountId}`);
   log(`Timestamp: ${new Date().toISOString()}`);
 
   try {
-    // 1. Fetch accounts to process (join with organizations for name/domain)
-    let accounts: any[] = [];
+    // 1. Fetch onboarded orgs with their google connections
+    let query = db("organizations as o")
+      .join("google_connections as gc", "gc.organization_id", "o.id")
+      .where("o.onboarding_completed", true)
+      .select(
+        "o.id as organization_id",
+        "o.name as org_name",
+        "o.domain",
+        "gc.id as connection_id",
+      );
+
     if (googleAccountId) {
-      const account = await db("google_connections as gc")
-        .join("organizations as o", "gc.organization_id", "o.id")
-        .where("gc.id", googleAccountId)
-        .where("o.onboarding_completed", true)
-        .select("gc.*", "o.domain as domain_name", "o.name as practice_name")
-        .first();
-      if (!account)
-        throw new Error(`Onboarded account ${googleAccountId} not found`);
-      accounts = [account];
-    } else {
-      accounts = await db("google_connections as gc")
-        .join("organizations as o", "gc.organization_id", "o.id")
-        .where("o.onboarding_completed", true)
-        .select("gc.*", "o.domain as domain_name", "o.name as practice_name");
+      query = query.where("gc.id", googleAccountId);
     }
 
+    const accounts = await query;
+
     if (!accounts || accounts.length === 0) {
-      log("[SETUP] No accounts to process");
-      return res.json({ success: true, message: "No accounts found" });
+      log("[SETUP] No onboarded accounts found");
+      return res.json({ success: true, message: "No accounts found", batches: [] });
     }
 
     log(`[SETUP] Found ${accounts.length} account(s) to process`);
 
-    // 2. Process each account sequentially
-    const results: any[] = [];
+    // 2. Build batch metadata and create records upfront (fast DB queries)
+    const batches: Array<{
+      orgName: string;
+      domain: string;
+      batchId: string;
+      locationCount: number;
+      rankingIds: number[];
+    }> = [];
+
+    const workItems: Array<{
+      batchId: string;
+      organizationId: number;
+      domain: string;
+      orgName: string;
+      locations: Array<{
+        locationId: number;
+        rankingId: number;
+        connectionId: number;
+        gbpAccountId: string;
+        gbpLocationId: string;
+        gbpLocationName: string;
+      }>;
+    }> = [];
+
     for (const account of accounts) {
-      const { id: accId, domain_name: domain, organization_id: accOrgId } = account;
-      log(`\n[${"=".repeat(60)}]`);
-      log(`[ACCOUNT] Processing: ${domain} (ID: ${accId})`);
-      log(`[${"=".repeat(60)}]`);
+      const { organization_id, org_name, domain } = account;
 
-      try {
-        const propertyIds: GooglePropertyIds =
-          typeof account.google_property_ids === "string"
-            ? JSON.parse(account.google_property_ids)
-            : account.google_property_ids;
+      // Get locations from canonical table
+      const locations = await LocationModel.findByOrganizationId(organization_id);
+      if (locations.length === 0) {
+        log(`[SETUP] WARNING: No locations for org "${org_name}" (ID: ${organization_id}), skipping`);
+        continue;
+      }
 
-        const gbpLocations = propertyIds?.gbp || [];
-        if (gbpLocations.length === 0) {
-          log(`  [ACCOUNT] No GBP locations found for ${domain}, skipping`);
+      // Get GBP properties for each location
+      const locationWork: Array<{
+        locationId: number;
+        connectionId: number;
+        gbpAccountId: string;
+        gbpLocationId: string;
+        gbpLocationName: string;
+      }> = [];
+
+      for (const location of locations) {
+        const gbpProperties = await GooglePropertyModel.findByLocationId(location.id);
+        const selectedGbp = gbpProperties.find(p => p.selected) || gbpProperties[0];
+        if (!selectedGbp) {
+          log(`[SETUP] No GBP properties for location "${location.name}" (ID: ${location.id}), skipping`);
           continue;
         }
+        locationWork.push({
+          locationId: location.id,
+          connectionId: selectedGbp.google_connection_id,
+          gbpAccountId: selectedGbp.account_id || "",
+          gbpLocationId: selectedGbp.external_id,
+          gbpLocationName: selectedGbp.display_name || location.name,
+        });
+      }
 
-        // Resolve location for each GBP entry during the loop below
-        const oauth2Client = await getValidOAuth2Client(accId);
-        const batchId = uuidv4();
-        log(`  [ACCOUNT] Batch ID: ${batchId}`);
-        log(
-          `  [ACCOUNT] Performing upfront identification for ${gbpLocations.length} locations...`,
-        );
+      if (locationWork.length === 0) {
+        log(`[SETUP] No GBP-linked locations for org "${org_name}", skipping`);
+        continue;
+      }
 
-        // === UPFRONT IDENTIFICATION AND RECORD CREATION ===
-        const locationMetaMap = new Map<
-          string,
-          { specialty: string; marketLocation: string }
-        >();
-        const locationRankingMap = new Map<string, number>();
+      const batchId = uuidv4();
 
-        for (const loc of gbpLocations) {
-          log(`    \u2192 Identifying: ${loc.displayName || loc.locationId}`);
-          try {
-            const gbpProfile = await fetchGBPDataForRange(
-              oauth2Client,
-              [loc],
-              new Date().toISOString().split("T")[0],
-              new Date().toISOString().split("T")[0],
-            );
+      // Create ALL ranking records upfront with "pending" status
+      // This ensures the admin page sees all locations immediately
+      const rankingIds: number[] = [];
+      for (let i = 0; i < locationWork.length; i++) {
+        const loc = locationWork[i];
+        const [record] = await db("practice_rankings")
+          .insert({
+            organization_id,
+            location_id: loc.locationId,
+            gbp_account_id: loc.gbpAccountId,
+            gbp_location_id: loc.gbpLocationId,
+            gbp_location_name: loc.gbpLocationName,
+            batch_id: batchId,
+            observed_at: new Date(),
+            status: "pending",
+            status_detail: JSON.stringify({
+              currentStep: "queued",
+              message: `Waiting in queue (${i + 1}/${locationWork.length})...`,
+              progress: 0,
+              stepsCompleted: [],
+              timestamps: { created_at: new Date().toISOString() },
+            }),
+            created_at: new Date(),
+            updated_at: new Date(),
+          })
+          .returning("id");
+        rankingIds.push(record.id);
+      }
 
-            const locationData = gbpProfile?.locations?.[0]?.data || {};
-            const meta = await identifyLocationMeta(locationData, domain);
-            locationMetaMap.set(loc.locationId, meta);
-          } catch (identErr: any) {
-            log(
-              `    \u2717 Identification failed for ${loc.locationId}, using fallback`,
-            );
-            locationMetaMap.set(loc.locationId, {
-              specialty: "orthodontist",
-              marketLocation: "Unknown, US",
-            });
-          }
-        }
+      log(`[SETUP] Batch ${batchId}: ${org_name} — ${locationWork.length} location(s), records created`);
 
-        // Create ALL ranking records upfront with "pending" status
-        // This ensures the dashboard shows all locations (e.g. 1/3, 2/3) immediately
-        for (let i = 0; i < gbpLocations.length; i++) {
-          const loc = gbpLocations[i];
-          const meta = locationMetaMap.get(loc.locationId)!;
-          const locationId = await resolveLocationId(accOrgId, loc.locationId);
+      batches.push({
+        orgName: org_name,
+        domain,
+        batchId,
+        locationCount: locationWork.length,
+        rankingIds,
+      });
 
-          const [rankingRecord] = await db("practice_rankings")
-            .insert({
-              organization_id: accOrgId ?? null,
-              location_id: locationId,
-              specialty: meta.specialty,
-              location: meta.marketLocation,
-              gbp_account_id: loc.accountId,
-              gbp_location_id: loc.locationId,
-              gbp_location_name: loc.displayName || domain,
-              batch_id: batchId,
-              observed_at: new Date(),
-              status: "pending",
-              status_detail: JSON.stringify({
-                currentStep: "queued",
-                message: `Waiting in queue (${i + 1}/${
-                  gbpLocations.length
-                })...`,
-                progress: 0,
-                stepsCompleted: [],
-                timestamps: { created_at: new Date().toISOString() },
-              }),
-              created_at: new Date(),
-              updated_at: new Date(),
-            })
-            .returning("id");
+      workItems.push({
+        batchId,
+        organizationId: organization_id,
+        domain,
+        orgName: org_name,
+        locations: locationWork.map((loc, i) => ({
+          ...loc,
+          rankingId: rankingIds[i],
+        })),
+      });
+    }
 
-          locationRankingMap.set(loc.locationId, rankingRecord.id);
-        }
+    if (batches.length === 0) {
+      log("[SETUP] No orgs with GBP-linked locations found");
+      return res.json({ success: true, message: "No orgs with GBP locations found", batches: [] });
+    }
 
-        log(`    \u2713 Created ${gbpLocations.length} records upfront`);
+    const totalLocations = batches.reduce((s, b) => s + b.locationCount, 0);
+    log(`[SETUP] Queued ${batches.length} org(s), ${totalLocations} total locations`);
 
-        // === SEQUENTIAL ANALYSIS PHASE ===
-        const accResults = [];
-        for (let i = 0; i < gbpLocations.length; i++) {
-          const loc = gbpLocations[i];
-          const rankingId = locationRankingMap.get(loc.locationId)!;
-          const meta = locationMetaMap.get(loc.locationId)!;
+    // 3. Kick off background processing and return immediately
+    setImmediate(() => {
+      (async () => {
+        log(`\n[BACKGROUND] Starting sequential ranking processing for ${workItems.length} org(s)`);
 
-          log(
-            `\n  [LOCATION] Processing ${i + 1}/${gbpLocations.length}: ${
-              loc.displayName || loc.locationId
-            }`,
-          );
+        for (const work of workItems) {
+          log(`\n[${"=".repeat(60)}]`);
+          log(`[ORG] Processing: ${work.orgName} (${work.domain})`);
+          log(`[ORG] Batch: ${work.batchId}, Locations: ${work.locations.length}`);
+          log(`[${"=".repeat(60)}]`);
 
-          // Update status to processing with progress context
-          await db("practice_rankings")
-            .where({ id: rankingId })
-            .update({
-              status: "processing",
-              status_detail: JSON.stringify({
-                currentStep: "starting",
-                message: `Starting analysis ${i + 1}/${gbpLocations.length}...`,
-                progress: 5,
-                stepsCompleted: ["queued"],
-                timestamps: { started_at: new Date().toISOString() },
-              }),
-            });
+          for (let i = 0; i < work.locations.length; i++) {
+            const loc = work.locations[i];
+            log(`\n  [LOCATION] Processing ${i + 1}/${work.locations.length}: ${loc.gbpLocationName}`);
 
-          // Process the ranking with retry logic
-          let success = false;
-          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            // Identify specialty and market location
+            let specialty = "";
+            let marketLocation = "";
             try {
-              if (attempt > 1) {
-                log(
-                  `    \ud83d\udd04 Retry ${attempt}/${MAX_RETRIES} for ID ${rankingId}`,
-                );
-                await delay(RETRY_DELAY_MS);
-              }
-
-              const result = await processLocationRanking(
-                rankingId,
-                accId,
-                loc.accountId,
-                loc.locationId,
-                loc.displayName || domain,
-                meta.specialty,
-                meta.marketLocation,
-                domain,
-                batchId,
-                log,
+              const oauth2Client = await getValidOAuth2Client(loc.connectionId);
+              const gbpProfile = await fetchGBPDataForRange(
+                oauth2Client,
+                [{
+                  accountId: loc.gbpAccountId,
+                  locationId: loc.gbpLocationId,
+                  displayName: loc.gbpLocationName,
+                }],
+                new Date().toISOString().split("T")[0],
+                new Date().toISOString().split("T")[0],
               );
+              const locationData = gbpProfile?.locations?.[0]?.data || {};
+              const meta = await identifyLocationMeta(locationData, work.domain);
+              specialty = meta.specialty;
+              marketLocation = meta.marketLocation;
 
-              accResults.push(result);
-              success = true;
-              break;
-            } catch (err: any) {
-              log(`    \u2717 Attempt ${attempt} failed: ${err.message}`);
-              if (attempt === MAX_RETRIES) {
-                await db("practice_rankings")
-                  .where({ id: rankingId })
-                  .update({ status: "failed", error_message: err.message });
+              await db("practice_rankings")
+                .where({ id: loc.rankingId })
+                .update({ specialty, location: marketLocation, updated_at: new Date() });
+
+              log(`  [LOCATION] Identified: ${specialty} in ${marketLocation}`);
+            } catch (identErr: any) {
+              log(`  [LOCATION] Identification failed for ${loc.gbpLocationName}: ${identErr.message}, using fallback`);
+              specialty = "orthodontist";
+              marketLocation = "Unknown, US";
+              await db("practice_rankings")
+                .where({ id: loc.rankingId })
+                .update({ specialty, location: marketLocation, updated_at: new Date() });
+            }
+
+            // Update status to processing
+            await db("practice_rankings")
+              .where({ id: loc.rankingId })
+              .update({
+                status: "processing",
+                status_detail: JSON.stringify({
+                  currentStep: "starting",
+                  message: `Starting analysis ${i + 1}/${work.locations.length}...`,
+                  progress: 5,
+                  stepsCompleted: ["queued"],
+                  timestamps: { started_at: new Date().toISOString() },
+                }),
+              });
+
+            // Process ranking with retry logic
+            let success = false;
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+              try {
+                if (attempt > 1) {
+                  log(`    Retry ${attempt}/${MAX_RETRIES} for ID ${loc.rankingId}`);
+                  await delay(RETRY_DELAY_MS);
+                }
+
+                await processLocationRanking(
+                  loc.rankingId,
+                  loc.connectionId,
+                  loc.gbpAccountId,
+                  loc.gbpLocationId,
+                  loc.gbpLocationName,
+                  specialty,
+                  marketLocation,
+                  work.domain,
+                  work.batchId,
+                  log,
+                );
+
+                success = true;
+                break;
+              } catch (err: any) {
+                log(`    Attempt ${attempt} failed: ${err.message}`);
+                if (attempt === MAX_RETRIES) {
+                  await db("practice_rankings")
+                    .where({ id: loc.rankingId })
+                    .update({ status: "failed", error_message: err.message });
+                }
               }
+            }
+
+            if (!success) {
+              log(`    FAILED: Exhausted retries for ${loc.gbpLocationId}`);
             }
           }
 
-          if (!success) {
-            log(`    \u2717 FAILED: Exhausted retries for ${loc.locationId}`);
-          }
+          log(`[ORG] Completed: ${work.orgName}`);
         }
 
-        results.push({
-          domain,
-          batchId,
-          processed: accResults.length,
-          total: gbpLocations.length,
-        });
-      } catch (accErr: any) {
-        logError(`Account ${domain} failed`, accErr);
-      }
-    }
+        const duration = Date.now() - startTime;
+        log("\n" + "=".repeat(70));
+        log(`[COMPLETE] Ranking run completed in ${(duration / 1000).toFixed(1)}s`);
+        log("=".repeat(70) + "\n");
+      })().catch((err) => {
+        logError("ranking-run background processing", err);
+      });
+    });
 
-    const duration = Date.now() - startTime;
-    log("\n" + "=".repeat(70));
-    log(
-      `[COMPLETE] \u2713 Ranking run completed in ${(duration / 1000).toFixed(1)}s`,
-    );
-    log("=".repeat(70) + "\n");
-
+    // 4. Return immediately with batch metadata
     return res.json({
       success: true,
-      message: `Processed ${accounts.length} account(s)`,
-      duration: `${duration}ms`,
-      results,
+      message: `Queued ${batches.length} org(s) for ranking analysis`,
+      totalLocations,
+      batches,
     });
   } catch (error: any) {
     logError("ranking-run", error);

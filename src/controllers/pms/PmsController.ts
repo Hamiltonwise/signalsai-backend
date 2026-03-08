@@ -4,6 +4,7 @@ import * as approvalService from "./pms-services/pms-approval.service";
 import * as automationService from "./pms-services/pms-automation.service";
 import * as dataService from "./pms-services/pms-data.service";
 import * as retryService from "./pms-services/pms-retry.service";
+import * as pasteParseService from "./pms-services/pms-paste-parse.service";
 import { coerceBoolean } from "./pms-utils/pms-validator.util";
 import { validateJobId } from "./pms-utils/pms-validator.util";
 import { PmsStatus } from "./pms-utils/pms-constants";
@@ -449,6 +450,51 @@ export async function getActiveAutomations(req: Request, res: Response) {
     return res.status(500).json({
       success: false,
       error: `Failed to fetch active automation jobs: ${error.message}`,
+    });
+  }
+}
+
+/**
+ * POST /pms/parse-paste
+ * Parse pasted spreadsheet/CSV text using AI (Haiku) and return structured data.
+ * Stateless — no database writes. Used by the manual entry modal.
+ */
+export async function parsePaste(req: Request, res: Response) {
+  try {
+    const { rawText, currentMonth } = req.body;
+
+    if (!rawText || typeof rawText !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "rawText is required and must be a string",
+      });
+    }
+
+    if (
+      !currentMonth ||
+      typeof currentMonth !== "string" ||
+      !/^\d{4}-\d{2}$/.test(currentMonth)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "currentMonth is required in YYYY-MM format",
+      });
+    }
+
+    const result = await pasteParseService.parsePastedData(
+      rawText,
+      currentMonth
+    );
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    console.error("Error in /pms/parse-paste:", error?.message || error);
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      error: error?.message || "Failed to parse pasted data",
     });
   }
 }

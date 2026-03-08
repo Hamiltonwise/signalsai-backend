@@ -35,6 +35,10 @@ router.get("/accounts", controller.listAccounts);
 router.get("/latest", controller.getLatestRankings);
 router.get("/tasks", controller.getRankingTasks);
 
+// Retry
+router.post("/retry/:id", controller.retryRanking);
+router.post("/retry-batch/:batchId", controller.retryBatch);
+
 // Management
 router.delete("/batch/:batchId", controller.deleteBatch);
 router.delete("/:id", controller.deleteRanking);
