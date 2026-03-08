@@ -1,13 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { RefreshCw, TrendingUp } from "lucide-react";
-import { toast } from "react-hot-toast";
-import {
-  fetchPmsJobs,
-  fetchPmsKeyData,
-  type PmsJob,
-  type PmsKeyDataResponse,
-} from "../../api/pms";
+import { useAdminOrgPms } from "../../hooks/queries/useAdminOrgTabQueries";
 
 interface OrgPmsTabProps {
   organizationId: number;
@@ -15,47 +9,20 @@ interface OrgPmsTabProps {
 }
 
 export function OrgPmsTab({ organizationId, locationId }: OrgPmsTabProps) {
-  const [jobs, setJobs] = useState<PmsJob[]>([]);
-  const [keyData, setKeyData] = useState<PmsKeyDataResponse["data"] | null>(
-    null,
-  );
-  const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
 
   const pageSize = 50;
 
-  useEffect(() => {
-    loadData();
-  }, [organizationId, locationId, page]);
+  // TanStack Query — replaces useEffect + useState + parallel fetch
+  const { data, isLoading: loading } = useAdminOrgPms(
+    organizationId,
+    locationId,
+    page,
+  );
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [jobsRes, keyRes] = await Promise.all([
-        fetchPmsJobs({
-          organization_id: organizationId,
-          location_id: locationId || undefined,
-          page,
-        }),
-        fetchPmsKeyData(organizationId, locationId || undefined),
-      ]);
-
-      if (jobsRes.success && jobsRes.data) {
-        setJobs(jobsRes.data.jobs || []);
-        setTotal(jobsRes.data.pagination?.total || 0);
-      }
-
-      if (keyRes.success && keyRes.data) {
-        setKeyData(keyRes.data);
-      }
-    } catch {
-      toast.error("Failed to load PMS data");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const jobs = data?.jobs ?? [];
+  const total = data?.total ?? 0;
+  const keyData = data?.keyData ?? null;
   const totalPages = Math.ceil(total / pageSize);
 
   const getStatusColor = (status: string) => {

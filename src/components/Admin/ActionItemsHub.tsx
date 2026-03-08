@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+// Note: useEffect is still used by AnimatedDropdown for click-outside
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -18,7 +19,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import {
-  fetchAllTasks,
   updateTask,
   updateTaskCategory,
   archiveTask,
@@ -28,7 +28,6 @@ import {
   bulkApproveTasks,
   bulkUpdateStatus,
 } from "../../api/tasks";
-import { fetchOrganizations } from "../../api/agentOutputs";
 import type {
   ActionItem,
   FetchActionItemsRequest,
@@ -47,6 +46,11 @@ import {
 } from "../ui/DesignSystem";
 import { ConfirmModal } from "@/components/settings/ConfirmModal";
 import { AlertModal } from "@/components/ui/AlertModal";
+import {
+  useAdminActionItems,
+  useAdminActionItemOrgs,
+  useInvalidateAdminActionItems,
+} from "../../hooks/queries/useAdminStandaloneQueries";
 
 // Approval Switch Component
 interface ApprovalSwitchProps {
@@ -373,10 +377,6 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
 };
 
 export function ActionItemsHub() {
-  const [tasks, setTasks] = useState<ActionItem[]>([]);
-  const [organizations, setOrganizations] = useState<{ id: number; name: string }[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ActionItem | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -397,10 +397,8 @@ export function ActionItemsHub() {
   }>({ isOpen: false, title: "", message: "" });
 
   // Pagination state
-  const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
-  const totalPages = Math.ceil(total / pageSize);
 
   // Multi-select state
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(
@@ -429,52 +427,21 @@ export function ActionItemsHub() {
   const [selectedAgentType, setSelectedAgentType] = useState<string>("all");
   const [selectedApproval, setSelectedApproval] = useState<string>("all");
 
-  useEffect(() => {
-    loadOrganizations();
-  }, []);
+  // TanStack Query — replaces useEffect + useState + 3s polling
+  const {
+    data: taskData,
+    isLoading: loading,
+    error: queryError,
+  } = useAdminActionItems(filters);
+  const { data: organizations = [] } = useAdminActionItemOrgs();
+  const { invalidateAll: invalidateActionItems } = useInvalidateAdminActionItems();
 
-  useEffect(() => {
-    loadTasks();
-  }, [filters]);
+  const tasks = taskData?.tasks ?? [];
+  const total = taskData?.total ?? 0;
+  const totalPages = Math.ceil(total / pageSize);
+  const error = queryError?.message ?? null;
 
-  // Auto-refresh effect - silent refresh every 3 seconds
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      loadTasks({ silent: true });
-    }, 3000);
-
-    return () => clearInterval(intervalId);
-  }, [filters]);
-
-  const loadOrganizations = async () => {
-    try {
-      const response = await fetchOrganizations();
-      if (response.success && response.organizations) {
-        setOrganizations(response.organizations);
-      }
-    } catch (err) {
-      console.error("Failed to load organizations:", err);
-    }
-  };
-
-  const loadTasks = async (options?: { silent?: boolean }) => {
-    try {
-      if (!options?.silent) {
-        setLoading(true);
-      }
-      setError(null);
-      const response = await fetchAllTasks(filters);
-      setTasks(response.tasks);
-      setTotal(response.total);
-    } catch (err) {
-      console.error("Failed to fetch tasks:", err);
-      setError(err instanceof Error ? err.message : "Failed to load tasks");
-    } finally {
-      if (!options?.silent) {
-        setLoading(false);
-      }
-    }
-  };
+  const loadTasks = () => invalidateActionItems();
 
   const applyFilters = () => {
     const newFilters: FetchActionItemsRequest = {

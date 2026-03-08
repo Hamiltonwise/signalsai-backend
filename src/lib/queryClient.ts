@@ -54,6 +54,50 @@ export const QUERY_KEYS = {
   // Admin — templates
   adminTemplates: ["admin", "templates"] as const,
 
+  // Admin — org sub-tab data (tasks, notifications, rankings, PMS, agent outputs)
+  adminOrgTasks: (orgId: number, params?: Record<string, unknown>) =>
+    ["admin", "org-tasks", orgId, params] as const,
+  adminOrgTasksAll: (orgId: number) =>
+    ["admin", "org-tasks", orgId] as const,
+  adminOrgNotifications: (orgId: number, params?: Record<string, unknown>) =>
+    ["admin", "org-notifications", orgId, params] as const,
+  adminOrgNotificationsAll: (orgId: number) =>
+    ["admin", "org-notifications", orgId] as const,
+  adminOrgRankings: (orgId: number, locationId?: number | null) =>
+    ["admin", "org-rankings", orgId, locationId] as const,
+  adminOrgPmsJobs: (orgId: number, params?: Record<string, unknown>) =>
+    ["admin", "org-pms-jobs", orgId, params] as const,
+  adminOrgPmsJobsAll: (orgId: number) =>
+    ["admin", "org-pms-jobs", orgId] as const,
+  adminOrgPmsKeyData: (orgId: number, locationId?: number | null) =>
+    ["admin", "org-pms-key-data", orgId, locationId] as const,
+  adminOrgAgentOutputs: (orgId: number, agentType: string, params?: Record<string, unknown>) =>
+    ["admin", "org-agent-outputs", orgId, agentType, params] as const,
+  adminOrgAgentOutputsAll: (orgId: number) =>
+    ["admin", "org-agent-outputs", orgId] as const,
+
+  // Admin — standalone pages
+  adminAgentOutputs: (params?: Record<string, unknown>) =>
+    ["admin", "agent-outputs", params] as const,
+  adminAgentOutputsAll: ["admin", "agent-outputs"] as const,
+  adminAgentOutputOrgs: ["admin", "agent-output-orgs"] as const,
+  adminAgentOutputTypes: ["admin", "agent-output-types"] as const,
+  adminActionItems: (params?: Record<string, unknown>) =>
+    ["admin", "action-items", params] as const,
+  adminActionItemsAll: ["admin", "action-items"] as const,
+  adminActionItemOrgs: ["admin", "action-item-orgs"] as const,
+  adminInsightsSummary: (page: number, month: string) =>
+    ["admin", "insights-summary", page, month] as const,
+  adminInsightsSummaryAll: ["admin", "insights-summary"] as const,
+  adminInsightsRecommendations: (agentType: string, page: number, month?: string | null) =>
+    ["admin", "insights-recommendations", agentType, page, month] as const,
+  adminInsightsRecommendationsAll: (agentType: string) =>
+    ["admin", "insights-recommendations", agentType] as const,
+
+  // Admin — website detail
+  adminWebsiteDetail: (uuid: string) =>
+    ["admin", "website-detail", uuid] as const,
+
   // Client — notifications
   notifications: (orgId: number | null, locationId: number | null) =>
     ["notifications", orgId, locationId] as const,

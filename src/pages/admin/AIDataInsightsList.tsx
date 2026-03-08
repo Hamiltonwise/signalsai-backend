@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -12,10 +12,8 @@ import {
   Loader2,
   Bot,
 } from "lucide-react";
-import type {
-  AgentInsightSummary,
-  AgentInsightsSummaryResponse,
-} from "../../types/agentInsights";
+// AgentInsightSummary type used indirectly via TQ hook data
+
 import { MonthSelector } from "../../components/Admin";
 import {
   AdminPageHeader,
@@ -28,6 +26,10 @@ import {
 import { staggerContainer, cardVariants, fadeInUp, getScoreColor } from "../../lib/animations";
 import { getAgentIcon } from "../../lib/adminIcons";
 import { useConfirm } from "../../components/ui/ConfirmModal";
+import {
+  useAdminInsightsSummary,
+  useInvalidateAdminInsights,
+} from "../../hooks/queries/useAdminStandaloneQueries";
 
 /**
  * AI Data Insights List Page
@@ -38,11 +40,7 @@ export default function AIDataInsightsList() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const confirm = useConfirm();
-  const [summaryData, setSummaryData] = useState<AgentInsightSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [isRunning, setIsRunning] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -61,33 +59,19 @@ export default function AIDataInsightsList() {
     setSearchParams({ month });
   };
 
-  useEffect(() => {
-    fetchSummary();
-  }, [currentPage, selectedMonth]);
+  // TanStack Query — replaces useEffect + useState
+  const {
+    data: queryData,
+    isLoading: loading,
+    error: queryError,
+  } = useAdminInsightsSummary(currentPage, selectedMonth);
+  const { invalidateAll: invalidateInsights } = useInvalidateAdminInsights();
 
-  const fetchSummary = async () => {
-    setLoading(true);
-    setError(null);
+  const summaryData = queryData?.data ?? [];
+  const totalPages = queryData?.totalPages ?? 1;
+  const error = queryError?.message ?? null;
 
-    try {
-      const response = await fetch(
-        `/api/admin/agent-insights/summary?page=${currentPage}&limit=50&month=${selectedMonth}`
-      );
-      const data: AgentInsightsSummaryResponse = await response.json();
-
-      if (data.success) {
-        setSummaryData(data.data);
-        setTotalPages(data.pagination.totalPages);
-      } else {
-        setError(data.message || "Failed to fetch summary");
-      }
-    } catch (err) {
-      console.error("Failed to fetch agent insights summary:", err);
-      setError("Failed to load agent insights. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchSummary = () => invalidateInsights();
 
   const formatAgentName = (agentType: string): string => {
     return agentType

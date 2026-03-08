@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   RefreshCw,
@@ -10,11 +10,11 @@ import {
   MailOpen,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { createAdminNotification } from "../../api/notifications";
 import {
-  fetchAdminNotifications,
-  createAdminNotification,
-  type Notification,
-} from "../../api/notifications";
+  useAdminOrgNotifications,
+  useInvalidateAdminOrgNotifications,
+} from "../../hooks/queries/useAdminOrgTabQueries";
 
 interface OrgNotificationsTabProps {
   organizationId: number;
@@ -33,9 +33,6 @@ export function OrgNotificationsTab({
   organizationId,
   locationId,
 }: OrgNotificationsTabProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
@@ -46,29 +43,19 @@ export function OrgNotificationsTab({
   const [newMessage, setNewMessage] = useState("");
   const [newType, setNewType] = useState<string>("system");
 
-  const loadNotifications = async () => {
-    setLoading(true);
-    try {
-      const response = await fetchAdminNotifications({
-        organization_id: organizationId,
-        location_id: locationId ?? undefined,
-        limit: pageSize,
-        offset: (page - 1) * pageSize,
-      });
-      if (response.success) {
-        setNotifications(response.notifications);
-        setTotal(response.total);
-      }
-    } catch {
-      toast.error("Failed to load notifications");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // TanStack Query — replaces useEffect + useState
+  const { data, isLoading: loading } = useAdminOrgNotifications({
+    organizationId,
+    locationId,
+    page,
+    pageSize,
+  });
+  const { invalidateForOrg } = useInvalidateAdminOrgNotifications();
 
-  useEffect(() => {
-    loadNotifications();
-  }, [organizationId, locationId, page]);
+  const notifications = data?.notifications ?? [];
+  const total = data?.total ?? 0;
+
+  const loadNotifications = () => invalidateForOrg(organizationId);
 
   const handleCreate = async () => {
     if (!newTitle.trim()) {

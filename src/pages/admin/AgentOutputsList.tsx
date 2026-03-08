@@ -20,9 +20,6 @@ import {
   Check,
 } from "lucide-react";
 import {
-  fetchAgentOutputs,
-  fetchOrganizations,
-  fetchAgentTypes,
   archiveAgentOutput,
   unarchiveAgentOutput,
   bulkArchiveAgentOutputs,
@@ -46,6 +43,12 @@ import {
   ActionButton,
 } from "../../components/ui/DesignSystem";
 import { useConfirm } from "../../components/ui/ConfirmModal";
+import {
+  useAdminAgentOutputsList,
+  useAdminAgentOutputOrgs,
+  useAdminAgentOutputTypesList,
+  useInvalidateAdminAgentOutputs,
+} from "../../hooks/queries/useAdminStandaloneQueries";
 
 // Animated Dropdown Component
 interface DropdownOption {
@@ -168,13 +171,6 @@ const AnimatedDropdown: React.FC<AnimatedDropdownProps> = ({
  */
 export default function AgentOutputsList() {
   const confirm = useConfirm();
-  const [outputs, setOutputs] = useState<AgentOutput[]>([]);
-  const [organizations, setOrganizations] = useState<{ id: number; name: string }[]>([]);
-  const [agentTypes, setAgentTypes] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
 
   // Modal state
   const [selectedOutput, setSelectedOutput] = useState<AgentOutput | null>(
@@ -199,54 +195,22 @@ export default function AgentOutputsList() {
   const [selectedAgentType, setSelectedAgentType] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
-  useEffect(() => {
-    loadOrganizations();
-    loadAgentTypes();
-  }, []);
+  // TanStack Query — replaces useEffect + useState for data fetching
+  const {
+    data: queryData,
+    isLoading: loading,
+    error: queryError,
+  } = useAdminAgentOutputsList(filters);
+  const { data: organizations = [] } = useAdminAgentOutputOrgs();
+  const { data: agentTypes = [] } = useAdminAgentOutputTypesList();
+  const { invalidateAll: invalidateOutputs } = useInvalidateAdminAgentOutputs();
 
-  useEffect(() => {
-    loadOutputs();
-  }, [filters]);
+  const outputs = queryData?.data ?? [];
+  const totalPages = queryData?.totalPages ?? 1;
+  const total = queryData?.total ?? 0;
+  const error = queryError?.message ?? null;
 
-  const loadOrganizations = async () => {
-    try {
-      const response = await fetchOrganizations();
-      setOrganizations(response.organizations);
-    } catch (err) {
-      console.error("Failed to load organizations:", err);
-    }
-  };
-
-  const loadAgentTypes = async () => {
-    try {
-      const response = await fetchAgentTypes();
-      setAgentTypes(response.agentTypes);
-    } catch (err) {
-      console.error("Failed to load agent types:", err);
-    }
-  };
-
-  const loadOutputs = async (options?: { silent?: boolean }) => {
-    try {
-      if (!options?.silent) {
-        setLoading(true);
-      }
-      setError(null);
-      const response = await fetchAgentOutputs(filters);
-      setOutputs(response.data);
-      setTotalPages(response.pagination.totalPages);
-      setTotal(response.pagination.total);
-    } catch (err) {
-      console.error("Failed to fetch agent outputs:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to load agent outputs"
-      );
-    } finally {
-      if (!options?.silent) {
-        setLoading(false);
-      }
-    }
-  };
+  const loadOutputs = () => invalidateOutputs();
 
   const applyFilters = () => {
     const newFilters: FetchAgentOutputsRequest = {

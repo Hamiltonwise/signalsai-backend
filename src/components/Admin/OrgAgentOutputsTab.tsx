@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   RefreshCw,
@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
-  fetchAgentOutputs,
   archiveAgentOutput,
   unarchiveAgentOutput,
   bulkArchiveAgentOutputs,
@@ -29,6 +28,10 @@ import type { AgentOutput, AgentOutputType } from "../../types/agentOutputs";
 import { AgentOutputDetailModal } from "./AgentOutputDetailModal";
 import { BulkActionBar, ActionButton } from "../ui/DesignSystem";
 import { useConfirm } from "../ui/ConfirmModal";
+import {
+  useAdminOrgAgentOutputs,
+  useInvalidateAdminOrgAgentOutputs,
+} from "../../hooks/queries/useAdminOrgTabQueries";
 
 interface OrgAgentOutputsTabProps {
   organizationId: number;
@@ -41,13 +44,10 @@ export function OrgAgentOutputsTab({
   agentType,
   locationId,
 }: OrgAgentOutputsTabProps) {
-  const [outputs, setOutputs] = useState<AgentOutput[]>([]);
-  const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "success" | "pending" | "error" | "archived"
   >("all");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
 
   // Detail modal
   const [selectedOutput, setSelectedOutput] = useState<AgentOutput | null>(null);
@@ -65,36 +65,22 @@ export function OrgAgentOutputsTab({
 
   const pageSize = 50;
 
-  useEffect(() => {
-    loadOutputs();
-  }, [organizationId, agentType, locationId, statusFilter, page]);
+  // TanStack Query — replaces useEffect + useState
+  const { data, isLoading: loading } = useAdminOrgAgentOutputs({
+    organizationId,
+    agentType,
+    locationId,
+    statusFilter,
+    page,
+    pageSize,
+  });
+  const { invalidateForOrg } = useInvalidateAdminOrgAgentOutputs();
 
-  const loadOutputs = async () => {
-    setLoading(true);
-    try {
-      const response = await fetchAgentOutputs({
-        organization_id: organizationId,
-        location_id: locationId ?? undefined,
-        agent_type: agentType,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        page,
-        limit: pageSize,
-      });
-
-      if (response.success) {
-        setOutputs(response.data || []);
-        setTotal(response.pagination.total || 0);
-      } else {
-        toast.error("Failed to load agent outputs");
-      }
-    } catch {
-      toast.error("Failed to load agent outputs");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const outputs = data?.outputs ?? [];
+  const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pageSize);
+
+  const loadOutputs = () => invalidateForOrg(organizationId);
 
   const getStatusStyles = (status: string) => {
     switch (status?.toLowerCase()) {

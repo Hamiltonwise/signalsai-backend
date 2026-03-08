@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   RefreshCw,
@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
-  fetchAllTasks,
   archiveTask,
   unarchiveTask,
   bulkArchiveTasks,
@@ -28,6 +27,10 @@ import { TaskDetailsModal } from "../tasks/TaskDetailsModal";
 import { AgentTypePill } from "../tasks/AgentTypePill";
 import { BulkActionBar, ActionButton } from "../ui/DesignSystem";
 import { useConfirm } from "../ui/ConfirmModal";
+import {
+  useAdminOrgTasks,
+  useInvalidateAdminOrgTasks,
+} from "../../hooks/queries/useAdminOrgTabQueries";
 
 interface OrgTasksTabProps {
   organizationId: number;
@@ -35,8 +38,6 @@ interface OrgTasksTabProps {
 }
 
 export function OrgTasksTab({ organizationId, locationId }: OrgTasksTabProps) {
-  const [tasks, setTasks] = useState<ActionItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "complete" | "pending" | "in_progress" | "archived"
   >("all");
@@ -44,7 +45,6 @@ export function OrgTasksTab({ organizationId, locationId }: OrgTasksTabProps) {
     "all" | "ALLORO" | "USER"
   >("all");
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
 
   // Detail modal
   const [selectedTask, setSelectedTask] = useState<ActionItem | null>(null);
@@ -62,46 +62,22 @@ export function OrgTasksTab({ organizationId, locationId }: OrgTasksTabProps) {
 
   const pageSize = 50;
 
-  useEffect(() => {
-    loadTasks();
-  }, [organizationId, locationId, statusFilter, categoryFilter, page]);
+  // TanStack Query — replaces useEffect + useState for data fetching
+  const { data, isLoading: loading } = useAdminOrgTasks({
+    organizationId,
+    locationId,
+    statusFilter,
+    categoryFilter,
+    page,
+    pageSize,
+  });
+  const { invalidateForOrg } = useInvalidateAdminOrgTasks();
 
-  const loadTasks = async () => {
-    setLoading(true);
-    try {
-      const response = await fetchAllTasks({
-        organization_id: organizationId,
-        location_id: locationId ?? undefined,
-        status:
-          statusFilter !== "all"
-            ? (statusFilter as
-                | "complete"
-                | "pending"
-                | "in_progress"
-                | "archived")
-            : undefined,
-        category:
-          categoryFilter !== "all"
-            ? (categoryFilter as "ALLORO" | "USER")
-            : undefined,
-        limit: pageSize,
-        offset: (page - 1) * pageSize,
-      });
-
-      if (response.success) {
-        setTasks(response.tasks);
-        setTotal(response.total);
-      } else {
-        toast.error("Failed to load tasks");
-      }
-    } catch {
-      toast.error("Failed to load tasks");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const tasks = data?.tasks ?? [];
+  const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / pageSize);
+
+  const loadTasks = () => invalidateForOrg(organizationId);
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   RefreshCw,
@@ -24,6 +24,10 @@ import {
   chevronVariants,
 } from "../../lib/animations";
 import { useConfirm } from "../ui/ConfirmModal";
+import {
+  useAdminOrgRankings,
+  useInvalidateAdminOrgRankings,
+} from "../../hooks/queries/useAdminOrgTabQueries";
 
 interface OrgRankingsTabProps {
   organizationId: number;
@@ -97,8 +101,6 @@ export function OrgRankingsTab({
   organizationId,
   locationId,
 }: OrgRankingsTabProps) {
-  const [jobs, setJobs] = useState<RankingJob[]>([]);
-  const [loading, setLoading] = useState(false);
   const [expandedBatches, setExpandedBatches] = useState<Set<string>>(
     new Set()
   );
@@ -111,37 +113,12 @@ export function OrgRankingsTab({
 
   const confirm = useConfirm();
 
-  useEffect(() => {
-    loadRankings();
-  }, [organizationId, locationId]);
-
-  const loadRankings = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("auth_token");
-      const params = new URLSearchParams({
-        organization_id: String(organizationId),
-        limit: "100",
-      });
-      if (locationId) {
-        params.set("location_id", String(locationId));
-      }
-
-      const response = await fetch(
-        `/api/admin/practice-ranking/list?${params.toString()}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (!response.ok) throw new Error("Failed to fetch rankings");
-
-      const data = await response.json();
-      setJobs(data.rankings || []);
-    } catch {
-      toast.error("Failed to load practice rankings");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // TanStack Query — replaces useEffect + useState
+  const { data: jobs = [], isLoading: loading } = useAdminOrgRankings(
+    organizationId,
+    locationId,
+  );
+  const { invalidateForOrg } = useInvalidateAdminOrgRankings();
 
   const groupedBatches = useMemo((): BatchGroup[] => {
     const batchMap = new Map<string, BatchGroup>();
@@ -251,7 +228,7 @@ export function OrgRankingsTab({
       });
       if (!response.ok) throw new Error("Failed to delete");
       toast.success("Analysis deleted");
-      setJobs((prev) => prev.filter((j) => j.id !== jobId));
+      invalidateForOrg(organizationId);
       if (expandedJobId === jobId) setExpandedJobId(null);
     } catch {
       toast.error("Failed to delete analysis");

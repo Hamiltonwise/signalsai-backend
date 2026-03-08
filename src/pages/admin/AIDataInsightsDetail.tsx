@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -28,10 +28,12 @@ import { staggerContainer, cardVariants, fadeInUp } from "../../lib/animations";
 import { ConfirmModal } from "../../components/settings/ConfirmModal";
 import { AlertModal } from "../../components/ui/AlertModal";
 import { getAgentIcon } from "../../lib/adminIcons";
-import type {
-  AgentRecommendation,
-  AgentRecommendationsResponse,
-} from "../../types/agentInsights";
+// AgentRecommendation type used indirectly via TQ hook data
+
+import {
+  useAdminInsightsRecommendations,
+  useInvalidateAdminInsights,
+} from "../../hooks/queries/useAdminStandaloneQueries";
 
 /**
  * AI Data Insights Detail Page
@@ -45,13 +47,7 @@ export default function AIDataInsightsDetail() {
 
   // Get month from URL params
   const month = searchParams.get("month");
-  const [recommendations, setRecommendations] = useState<AgentRecommendation[]>(
-    []
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkOperationLoading, setBulkOperationLoading] = useState(false);
 
@@ -70,40 +66,20 @@ export default function AIDataInsightsDetail() {
     type?: "error" | "success" | "info";
   }>({ isOpen: false, title: "", message: "" });
 
-  useEffect(() => {
-    if (agentType) {
-      fetchRecommendations();
-    }
-  }, [agentType, currentPage, month]);
+  // TanStack Query — replaces useEffect + useState
+  const {
+    data: queryData,
+    isLoading: loading,
+    error: queryError,
+  } = useAdminInsightsRecommendations(agentType, currentPage, month);
+  const { invalidateRecommendations } = useInvalidateAdminInsights();
 
-  const fetchRecommendations = async (options?: { silent?: boolean }) => {
-    if (!options?.silent) {
-      setLoading(true);
-    }
-    setError(null);
+  const recommendations = queryData?.data ?? [];
+  const totalPages = queryData?.totalPages ?? 1;
+  const error = queryError?.message ?? null;
 
-    try {
-      const monthParam = month ? `&month=${month}` : "";
-      const response = await fetch(
-        `/api/admin/agent-insights/${agentType}/recommendations?page=${currentPage}&limit=50${monthParam}`
-      );
-      const data: AgentRecommendationsResponse = await response.json();
-
-      if (data.success) {
-        setRecommendations(data.data);
-        setTotalPages(data.pagination.totalPages);
-      } else {
-        setError("Failed to load recommendations");
-      }
-    } catch (err) {
-      console.error("Failed to fetch recommendations:", err);
-      setError("Failed to load recommendations");
-    } finally {
-      if (!options?.silent) {
-        setLoading(false);
-      }
-    }
-  };
+  const fetchRecommendations = () =>
+    invalidateRecommendations(agentType || "");
 
   const handleFixAll = () => {
     setConfirmModal({
@@ -479,7 +455,7 @@ export default function AIDataInsightsDetail() {
                   <div className="flex-1">
                     <RecommendationCard
                       recommendation={rec}
-                      onUpdate={() => fetchRecommendations({ silent: true })}
+                      onUpdate={() => fetchRecommendations()}
                     />
                   </div>
                 </motion.div>
@@ -530,7 +506,7 @@ export default function AIDataInsightsDetail() {
                   <div className="flex-1">
                     <RecommendationCard
                       recommendation={rec}
-                      onUpdate={() => fetchRecommendations({ silent: true })}
+                      onUpdate={() => fetchRecommendations()}
                     />
                   </div>
                 </motion.div>
