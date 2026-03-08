@@ -35,6 +35,7 @@ const scrapeCompareWorker = new Worker(
   {
     connection,
     concurrency: 1,
+    prefix: '{minds}',
   }
 );
 
@@ -47,6 +48,7 @@ const compilePublishWorker = new Worker(
   {
     connection,
     concurrency: 1,
+    prefix: '{minds}',
   }
 );
 
@@ -59,6 +61,7 @@ const discoveryWorker = new Worker(
   {
     connection,
     concurrency: 1,
+    prefix: '{minds}',
   }
 );
 
@@ -75,6 +78,7 @@ const skillTriggerWorker = new Worker(
   {
     connection,
     concurrency: 1,
+    prefix: '{minds}',
   }
 );
 
@@ -87,6 +91,7 @@ const worksDigestWorker = new Worker(
   {
     connection,
     concurrency: 1,
+    prefix: '{minds}',
   }
 );
 

@@ -25,6 +25,7 @@ export function getMindsQueue(name: string): Queue {
   if (!queues[queueName]) {
     queues[queueName] = new Queue(queueName, {
       connection: getRedisConnection(),
+      prefix: '{minds}',
     });
   }
   return queues[queueName];
