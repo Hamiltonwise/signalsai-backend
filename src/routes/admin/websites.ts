@@ -310,6 +310,25 @@ router.patch("/:id/menus/:menuId/items/:itemId", controller.updateMenuItem);
 router.delete("/:id/menus/:menuId/items/:itemId", controller.deleteMenuItem);
 
 // =====================================================================
+// SEO
+// =====================================================================
+
+// GET  /:id/seo/all-meta — All page/post SEO titles/descriptions for uniqueness
+router.get("/:id/seo/all-meta", controller.getAllSeoMeta);
+
+// PATCH /:id/pages/:pageId/seo — Update page SEO data
+router.patch("/:id/pages/:pageId/seo", controller.updatePageSeo);
+
+// POST /:id/pages/:pageId/seo/generate — AI generate SEO for page section
+router.post("/:id/pages/:pageId/seo/generate", controller.generatePageSeo);
+
+// PATCH /:id/posts/:postId/seo — Update post SEO data
+router.patch("/:id/posts/:postId/seo", controller.updatePostSeo);
+
+// POST /:id/posts/:postId/seo/generate — AI generate SEO for post section
+router.post("/:id/posts/:postId/seo/generate", controller.generatePostSeo);
+
+// =====================================================================
 // PROJECT PAGES
 // =====================================================================
 

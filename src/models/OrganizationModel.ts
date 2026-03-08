@@ -14,6 +14,7 @@ export interface IOrganization {
   onboarding_completed: boolean;
   onboarding_wizard_completed: boolean;
   setup_progress: Record<string, unknown> | null;
+  business_data: Record<string, unknown> | null;
   website_edits_this_month: number;
   website_edits_reset_at: Date | null;
   created_at: Date;
@@ -22,7 +23,7 @@ export interface IOrganization {
 
 export class OrganizationModel extends BaseModel {
   protected static tableName = "organizations";
-  protected static jsonFields = ["setup_progress"];
+  protected static jsonFields = ["setup_progress", "business_data"];
 
   static async findById(
     id: number,

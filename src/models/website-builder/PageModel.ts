@@ -6,8 +6,7 @@ export interface IPage {
   title: string;
   path: string;
   sections: Record<string, unknown>[] | null;
-  meta_title: string | null;
-  meta_description: string | null;
+  seo_data: Record<string, unknown> | null;
   status: string;
   sort_order: number | null;
   created_at: Date;
@@ -16,7 +15,7 @@ export interface IPage {
 
 export class PageModel extends BaseModel {
   protected static tableName = "website_builder.pages";
-  protected static jsonFields = ["sections"];
+  protected static jsonFields = ["sections", "seo_data"];
 
   static async findById(
     id: string,

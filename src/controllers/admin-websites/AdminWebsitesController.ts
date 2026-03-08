@@ -2398,3 +2398,107 @@ export async function reorderMenuItems(req: Request, res: Response): Promise<Res
     return res.status(500).json({ success: false, error: "REORDER_ERROR", message: error?.message });
   }
 }
+
+// =====================================================================
+// SEO
+// =====================================================================
+
+/** PATCH /:id/pages/:pageId/seo — Update page SEO data */
+export async function updatePageSeo(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, pageId } = req.params;
+    const { seo_data } = req.body;
+    if (!seo_data) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "seo_data is required" });
+    }
+    const { page, error } = await pageEditor.updatePageSeo(projectId, pageId, seo_data);
+    if (error) return res.status(error.status).json({ success: false, ...error });
+    return res.json({ success: true, data: page });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating page SEO:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /:id/posts/:postId/seo — Update post SEO data */
+export async function updatePostSeo(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, postId } = req.params;
+    const { seo_data } = req.body;
+    if (!seo_data) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "seo_data is required" });
+    }
+    const result = await postManager.updatePost(projectId, postId, { seo_data });
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.post });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating post SEO:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/pages/:pageId/seo/generate — AI generate SEO for a page */
+export async function generatePageSeo(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, pageId } = req.params;
+    const { generateSeoForSection } = await import(
+      "./feature-services/service.seo-generation"
+    );
+    const result = await generateSeoForSection(projectId, pageId, "page", req.body);
+    return res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error generating page SEO:", error);
+    return res.status(500).json({ success: false, error: "GENERATION_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/posts/:postId/seo/generate — AI generate SEO for a post */
+export async function generatePostSeo(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, postId } = req.params;
+    const { generateSeoForSection } = await import(
+      "./feature-services/service.seo-generation"
+    );
+    const result = await generateSeoForSection(projectId, postId, "post", req.body);
+    return res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error generating post SEO:", error);
+    return res.status(500).json({ success: false, error: "GENERATION_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/seo/all-meta — Get all page/post titles and descriptions for uniqueness checking */
+export async function getAllSeoMeta(req: Request, res: Response): Promise<Response> {
+  try {
+    const projectId = req.params.id;
+    const pages = await db("website_builder.pages")
+      .where({ project_id: projectId })
+      .whereIn("status", ["published", "draft"])
+      .select("id", "path", "seo_data");
+
+    const posts = await db("website_builder.posts")
+      .where({ project_id: projectId })
+      .select("id", "title", "slug", "seo_data");
+
+    const meta = {
+      pages: pages.map((p: any) => ({
+        id: p.id,
+        path: p.path,
+        meta_title: p.seo_data?.meta_title || null,
+        meta_description: p.seo_data?.meta_description || null,
+      })),
+      posts: posts.map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+        meta_title: p.seo_data?.meta_title || null,
+        meta_description: p.seo_data?.meta_description || null,
+      })),
+    };
+
+    return res.json({ success: true, data: meta });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching SEO meta:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message });
+  }
+}

@@ -58,6 +58,8 @@ export async function listProjects(filters: {
       `${PROJECTS_TABLE}.selected_website_url`,
       `${PROJECTS_TABLE}.template_id`,
       `${PROJECTS_TABLE}.step_gbp_scrape`,
+      `${PROJECTS_TABLE}.display_name`,
+      `${PROJECTS_TABLE}.custom_domain`,
       `${PROJECTS_TABLE}.primary_color`,
       `${PROJECTS_TABLE}.accent_color`,
       `${PROJECTS_TABLE}.created_at`,
@@ -111,6 +113,7 @@ export async function createProject(data: {
     .insert({
       user_id: userId,
       generated_hostname: generatedHostname,
+      display_name: generatedHostname,
       status: "CREATED",
     })
     .returning("*");
@@ -118,6 +121,19 @@ export async function createProject(data: {
   console.log(`[Admin Websites] \u2713 Created project ID: ${project.id}`);
 
   return project;
+}
+
+// ---------------------------------------------------------------------------
+// Update project display name
+// ---------------------------------------------------------------------------
+
+export async function updateProjectDisplayName(
+  projectId: string,
+  displayName: string
+): Promise<void> {
+  await db(PROJECTS_TABLE)
+    .where({ id: projectId })
+    .update({ display_name: displayName.trim() });
 }
 
 // ---------------------------------------------------------------------------

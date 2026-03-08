@@ -257,9 +257,12 @@ export async function updatePost(
   delete fieldUpdates.post_type_id;
   delete fieldUpdates.created_at;
 
-  // Serialize custom_fields if provided
+  // Serialize JSONB fields if provided
   if (fieldUpdates.custom_fields !== undefined) {
     fieldUpdates.custom_fields = JSON.stringify(fieldUpdates.custom_fields);
+  }
+  if (fieldUpdates.seo_data !== undefined) {
+    fieldUpdates.seo_data = JSON.stringify(fieldUpdates.seo_data);
   }
 
   // Re-generate slug if title changed

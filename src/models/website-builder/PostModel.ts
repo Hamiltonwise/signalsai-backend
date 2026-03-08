@@ -12,6 +12,7 @@ export interface IPost {
   custom_fields: Record<string, unknown>;
   status: "draft" | "published";
   sort_order: number;
+  seo_data: Record<string, unknown> | null;
   published_at: Date | null;
   created_at: Date;
   updated_at: Date;
@@ -22,7 +23,7 @@ export interface IPost {
 
 export class PostModel extends BaseModel {
   protected static tableName = "website_builder.posts";
-  protected static jsonFields = ["custom_fields"];
+  protected static jsonFields = ["custom_fields", "seo_data"];
 
   static async findByProjectId(
     projectId: string,

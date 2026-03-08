@@ -6,12 +6,14 @@ export interface ILocation {
   name: string;
   domain: string | null;
   is_primary: boolean;
+  business_data: Record<string, unknown> | null;
   created_at: Date;
   updated_at: Date;
 }
 
 export class LocationModel extends BaseModel {
   protected static tableName = "locations";
+  protected static jsonFields = ["business_data"];
 
   static async findById(
     id: number,
@@ -47,7 +49,7 @@ export class LocationModel extends BaseModel {
   }
 
   static async create(
-    data: Omit<ILocation, "id" | "created_at" | "updated_at">,
+    data: Omit<ILocation, "id" | "created_at" | "updated_at" | "business_data"> & { business_data?: Record<string, unknown> | null },
     trx?: QueryContext
   ): Promise<ILocation> {
     return super.create(data as Record<string, unknown>, trx);

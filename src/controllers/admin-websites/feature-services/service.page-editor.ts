@@ -592,6 +592,46 @@ export async function editLayoutComponent(
 }
 
 // ---------------------------------------------------------------------------
+// Update page SEO data
+// ---------------------------------------------------------------------------
+
+export async function updatePageSeo(
+  projectId: string,
+  pageId: string,
+  seoData: Record<string, unknown>
+): Promise<{
+  page: any;
+  error?: { status: number; code: string; message: string };
+}> {
+  console.log(
+    `[Admin Websites] Updating SEO for page ID: ${pageId}, project ID: ${projectId}`
+  );
+
+  const page = await db(PAGES_TABLE)
+    .where({ id: pageId, project_id: projectId })
+    .first();
+
+  if (!page) {
+    return {
+      page: null,
+      error: { status: 404, code: "NOT_FOUND", message: "Page not found" },
+    };
+  }
+
+  const [updatedPage] = await db(PAGES_TABLE)
+    .where("id", pageId)
+    .update({
+      seo_data: JSON.stringify(seoData),
+      updated_at: db.fn.now(),
+    })
+    .returning("*");
+
+  console.log(`[Admin Websites] ✓ Updated SEO for page ID: ${pageId}`);
+
+  return { page: updatedPage };
+}
+
+// ---------------------------------------------------------------------------
 // Build media context for AI prompts (shared helper)
 // ---------------------------------------------------------------------------
 

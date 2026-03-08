@@ -17,6 +17,16 @@ import {
   setLocationGBP,
   disconnectLocationGBP,
 } from "../controllers/locations/LocationService";
+import {
+  refreshLocationBusinessData,
+  updateLocationBusinessData,
+  updateOrgBusinessData,
+  getOrgBusinessData,
+} from "../controllers/locations/BusinessDataService";
+import {
+  tokenRefreshMiddleware,
+  AuthenticatedRequest,
+} from "../middleware/tokenRefresh";
 
 const router = express.Router();
 
@@ -130,6 +140,65 @@ router.get(
         success: false,
         error: "Failed to fetch primary location",
         message: error.message || "Unknown error",
+      });
+    }
+  }
+);
+
+// =====================================================================
+// BUSINESS DATA — non-parameterized (must come before /:id)
+// =====================================================================
+
+/**
+ * GET /api/locations/business-data
+ * Get org-level + all locations business data.
+ */
+router.get(
+  "/business-data",
+  authenticateToken,
+  rbacMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { organizationId } = req as RBACRequest;
+      if (!organizationId) {
+        return res.status(400).json({ success: false, error: "Organization not found" });
+      }
+
+      const data = await getOrgBusinessData(organizationId);
+      return res.json({ success: true, ...data });
+    } catch (error: any) {
+      console.error("[LOCATIONS] Error fetching business data:", error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch business data",
+      });
+    }
+  }
+);
+
+/**
+ * PATCH /api/locations/org-business-data
+ * Update organization-level umbrella business data.
+ */
+router.patch(
+  "/org-business-data",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin"),
+  async (req: Request, res: Response) => {
+    try {
+      const { organizationId } = req as RBACRequest;
+      if (!organizationId) {
+        return res.status(400).json({ success: false, error: "Organization not found" });
+      }
+
+      const businessData = await updateOrgBusinessData(organizationId, req.body);
+      return res.json({ success: true, business_data: businessData });
+    } catch (error: any) {
+      console.error("[LOCATIONS] Error updating org business data:", error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Failed to update organization business data",
       });
     }
   }
@@ -358,6 +427,88 @@ router.delete(
       return res.status(status).json({
         success: false,
         error: error.message || "Failed to disconnect GBP",
+      });
+    }
+  }
+);
+
+// =====================================================================
+// BUSINESS DATA endpoints
+// =====================================================================
+
+/**
+ * POST /api/locations/:id/refresh-business-data
+ * Fetch from Google Places API and store in business_data.
+ */
+router.post(
+  "/:id/refresh-business-data",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin"),
+  tokenRefreshMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      const { organizationId } = authReq;
+      if (!organizationId) {
+        return res.status(400).json({ success: false, error: "Organization not found" });
+      }
+
+      const locationId = parseInt(req.params.id, 10);
+      if (isNaN(locationId)) {
+        return res.status(400).json({ success: false, error: "Invalid location ID" });
+      }
+
+      const businessData = await refreshLocationBusinessData(
+        locationId,
+        organizationId,
+        authReq.oauth2Client
+      );
+
+      return res.json({ success: true, business_data: businessData });
+    } catch (error: any) {
+      console.error("[LOCATIONS] Error refreshing business data:", error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Failed to refresh business data",
+      });
+    }
+  }
+);
+
+/**
+ * PATCH /api/locations/:id/business-data
+ * Manual overrides for location business data.
+ */
+router.patch(
+  "/:id/business-data",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin"),
+  async (req: Request, res: Response) => {
+    try {
+      const { organizationId } = req as RBACRequest;
+      if (!organizationId) {
+        return res.status(400).json({ success: false, error: "Organization not found" });
+      }
+
+      const locationId = parseInt(req.params.id, 10);
+      if (isNaN(locationId)) {
+        return res.status(400).json({ success: false, error: "Invalid location ID" });
+      }
+
+      const businessData = await updateLocationBusinessData(
+        locationId,
+        organizationId,
+        req.body
+      );
+
+      return res.json({ success: true, business_data: businessData });
+    } catch (error: any) {
+      console.error("[LOCATIONS] Error updating business data:", error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Failed to update business data",
       });
     }
   }
