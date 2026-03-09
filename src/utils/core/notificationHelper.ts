@@ -247,7 +247,7 @@ export async function notifyAdminsPmsReady(domain: string, jobId: number) {
  * Trigger: After all monthly agents finish successfully
  */
 export async function notifyAdminsMonthlyAgentComplete(
-  domain: string,
+  practiceName: string,
   agentResults: {
     summaryId: number;
     referralEngineId: number;
@@ -259,16 +259,16 @@ export async function notifyAdminsMonthlyAgentComplete(
   const actionUrl = `${APP_URL}/admin`;
 
   return notifyAdmins({
-    summary: `Monthly agent run completed for ${domain}. Created ${tasksCreated.total} tasks (${tasksCreated.user} USER, ${tasksCreated.alloro} ALLORO).`,
+    summary: `Monthly agent run completed for ${practiceName}. Created ${tasksCreated.total} tasks (${tasksCreated.user} USER, ${tasksCreated.alloro} ALLORO).`,
     monthlyAgentsCompleted: [
-      { practiceName: domain, agentType: "Summary", status: "completed" },
+      { practiceName, agentType: "Summary", status: "completed" },
       {
-        practiceName: domain,
+        practiceName,
         agentType: "Referral Engine",
         status: "completed",
       },
-      { practiceName: domain, agentType: "Opportunity", status: "completed" },
-      { practiceName: domain, agentType: "CRO Optimizer", status: "completed" },
+      { practiceName, agentType: "Opportunity", status: "completed" },
+      { practiceName, agentType: "CRO Optimizer", status: "completed" },
     ],
     newActionItems: tasksCreated.total,
   });

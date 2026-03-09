@@ -290,13 +290,12 @@ export async function runMonthlyAgents(
   res: Response,
 ): Promise<any> {
   const startTime = Date.now();
-  const { googleAccountId, domain, force = false, pmsJobId, locationId: requestLocationId } = req.body;
+  const { googleAccountId, force = false, pmsJobId, locationId: requestLocationId } = req.body;
 
   log("\n" + "=".repeat(70));
   log("POST /api/agents/monthly-agents-run - STARTING");
   log("=".repeat(70));
   log(`Account ID: ${googleAccountId}`);
-  log(`Domain: ${domain}`);
   log(`Force run: ${force}`);
   log(`PMS Job ID: ${pmsJobId || "N/A"}`);
   log(`Location ID: ${requestLocationId || "N/A (will resolve from org)"}`);
@@ -321,11 +320,11 @@ export async function runMonthlyAgents(
 
   try {
     // Validate input
-    if (!googleAccountId || !domain) {
+    if (!googleAccountId) {
       return res.status(400).json({
         success: false,
         error: "MISSING_PARAMETERS",
-        message: "googleAccountId and domain are required",
+        message: "googleAccountId is required",
       });
     }
 
@@ -565,7 +564,7 @@ export async function runMonthlyAgents(
     // Send admin email notification about monthly agent completion (after tasksCreated is populated)
     try {
       await notifyAdminsMonthlyAgentComplete(
-        domain,
+        account.practice_name || account.domain_name || "Unknown",
         { summaryId, referralEngineId, opportunityId, croOptimizerId },
         tasksCreated,
       );

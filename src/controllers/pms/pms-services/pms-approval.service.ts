@@ -1,7 +1,6 @@
 import axios from "axios";
 import db from "../../../database/connection";
 import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
-import { OrganizationModel } from "../../../models/OrganizationModel";
 import {
   createNotification,
 } from "../../../utils/core/notificationHelper";
@@ -186,35 +185,22 @@ export async function approveByClient(jobId: number, clientApproval: boolean) {
         : null;
 
       if (account) {
-        // Resolve domain from organization
-        const org = updatedJob.organization_id
-          ? await OrganizationModel.findById(updatedJob.organization_id)
-          : null;
+        // Trigger monthly agents
+        await axios.post(
+          `http://localhost:${
+            process.env.PORT || 3000
+          }/api/agents/monthly-agents-run`,
+          {
+            googleAccountId: account.id,
+            force: true,
+            pmsJobId: jobId,
+            locationId: updatedJob.location_id,
+          }
+        );
 
-        // Trigger monthly agents asynchronously (don't wait for response)
-        axios
-          .post(
-            `http://localhost:${
-              process.env.PORT || 3000
-            }/api/agents/monthly-agents-run`,
-            {
-              googleAccountId: account.id,
-              domain: org?.domain || "",
-              force: true,
-              pmsJobId: jobId,
-              locationId: updatedJob.location_id,
-            }
-          )
-          .then(() => {
-            console.log(
-              `[PMS] Monthly agents triggered successfully for org ${updatedJob.organization_id}`
-            );
-          })
-          .catch((error) => {
-            console.error(
-              `[PMS] Failed to trigger monthly agents: ${error.message}`
-            );
-          });
+        console.log(
+          `[PMS] Monthly agents triggered successfully for org ${updatedJob.organization_id}`
+        );
       } else {
         console.warn(
           `[PMS] No google connection found for org ${updatedJob.organization_id}`

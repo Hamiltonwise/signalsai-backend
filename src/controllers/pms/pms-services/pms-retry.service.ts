@@ -1,7 +1,6 @@
 import axios from "axios";
 import db from "../../../database/connection";
 import { GoogleConnectionModel } from "../../../models/GoogleConnectionModel";
-import { OrganizationModel } from "../../../models/OrganizationModel";
 import {
   resetToStep,
   updateAutomationStatus,
@@ -201,34 +200,21 @@ async function retryMonthlyAgents(jobId: number, job: any) {
 
   // Trigger monthly agents
   try {
-    // Resolve domain from organization
-    const org = job.organization_id
-      ? await OrganizationModel.findById(job.organization_id)
-      : null;
+    await axios.post(
+      `http://localhost:${
+        process.env.PORT || 3000
+      }/api/agents/monthly-agents-run`,
+      {
+        googleAccountId: account.id,
+        force: true,
+        pmsJobId: jobId,
+        locationId: job.location_id,
+      }
+    );
 
-    axios
-      .post(
-        `http://localhost:${
-          process.env.PORT || 3000
-        }/api/agents/monthly-agents-run`,
-        {
-          googleAccountId: account.id,
-          domain: org?.domain || "",
-          force: true,
-          pmsJobId: jobId,
-          locationId: job.location_id,
-        }
-      )
-      .then(() => {
-        console.log(
-          `[PMS] Monthly agents retry triggered successfully for org ${job.organization_id}`
-        );
-      })
-      .catch((error) => {
-        console.error(
-          `[PMS] Failed to trigger monthly agents retry: ${error.message}`
-        );
-      });
+    console.log(
+      `[PMS] Monthly agents retry triggered successfully for org ${job.organization_id}`
+    );
 
     return {
       jobId,

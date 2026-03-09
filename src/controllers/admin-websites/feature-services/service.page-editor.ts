@@ -410,6 +410,7 @@ export async function createDraft(
         .where("id", existingDraft.id)
         .update({
           sections: JSON.stringify(normalizeSections(sourcePage.sections)),
+          seo_data: sourcePage.seo_data ? JSON.stringify(sourcePage.seo_data) : null,
           edit_chat_history: JSON.stringify({}),
           updated_at: db.fn.now(),
         })
@@ -440,6 +441,7 @@ export async function createDraft(
       version: newVersion,
       status: "draft",
       sections: JSON.stringify(normalizeSections(sourcePage.sections)),
+      seo_data: sourcePage.seo_data ? JSON.stringify(sourcePage.seo_data) : null,
     })
     .returning("*");
 
