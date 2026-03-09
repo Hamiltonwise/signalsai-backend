@@ -3,6 +3,7 @@
  */
 
 import type { Section } from "./templates";
+import type { SeoData } from "./websites";
 
 // =====================================================================
 // TYPES
@@ -67,6 +68,7 @@ export interface Post {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  seo_data: SeoData | null;
   categories: { id: string; name: string; slug: string }[];
   tags: { id: string; name: string; slug: string }[];
   attachments: PostAttachment[];

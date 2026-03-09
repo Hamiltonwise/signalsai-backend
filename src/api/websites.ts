@@ -967,6 +967,72 @@ export const analyzeSeo = async (
 };
 
 /**
+ * Start a bulk SEO generation job
+ */
+export const startBulkSeoGenerate = async (
+  projectId: string,
+  entityType: "page" | "post",
+  postTypeId?: string,
+): Promise<{ success: boolean; job_id: string; already_active?: boolean }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/seo/bulk-generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ entity_type: entityType, post_type_id: postTypeId }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to start bulk SEO generation");
+  }
+  return response.json();
+};
+
+/**
+ * Poll bulk SEO generation progress
+ */
+export interface BulkSeoStatus {
+  id: string;
+  status: "queued" | "processing" | "completed" | "failed";
+  total_count: number;
+  completed_count: number;
+  failed_count: number;
+  failed_items: Array<{ id: string; title: string; error: string }> | null;
+}
+
+export const getBulkSeoStatus = async (
+  projectId: string,
+  jobId: string,
+): Promise<{ success: boolean; data: BulkSeoStatus }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/seo/bulk-generate/${jobId}/status`, {
+    headers: { "Cache-Control": "no-cache" },
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to fetch bulk SEO status");
+  }
+  return response.json();
+};
+
+/**
+ * Check for an active bulk SEO job
+ */
+export const getActiveBulkSeoJob = async (
+  projectId: string,
+  entityType: "page" | "post",
+  postTypeId?: string,
+): Promise<{ success: boolean; data: BulkSeoStatus | null }> => {
+  const params = new URLSearchParams({ entity_type: entityType });
+  if (postTypeId) params.set("post_type_id", postTypeId);
+  const response = await fetch(`${API_BASE}/${projectId}/seo/bulk-generate/active?${params.toString()}`, {
+    headers: { "Cache-Control": "no-cache" },
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to check active SEO job");
+  }
+  return response.json();
+};
+
+/**
  * Fetch all page/post SEO meta for uniqueness checking
  */
 export const fetchAllSeoMeta = async (

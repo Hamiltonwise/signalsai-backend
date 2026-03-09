@@ -14,6 +14,7 @@ import {
   Upload,
   ChevronLeft,
   BarChart3,
+  Sparkles,
 } from "lucide-react";
 import MediaBrowser from "../PageEditor/MediaBrowser";
 import type { MediaItem } from "../PageEditor/MediaBrowser";
@@ -36,6 +37,71 @@ import {
 import type { Post, PostType, PostCategory, PostTag } from "../../api/posts";
 import { ActionButton } from "../ui/DesignSystem";
 import { useConfirm } from "../ui/ConfirmModal";
+import { useBulkSeoProgress } from "../../hooks/useBulkSeoProgress";
+
+/** Compute a quick SEO score from seo_data alone (no wrapper/uniqueness) */
+function quickPostSeoScore(seoData: SeoData | null): {
+  pct: number;
+  colorClass: string;
+  barClass: string;
+} {
+  if (!seoData) return { pct: 0, colorClass: "text-gray-400", barClass: "bg-gray-300" };
+
+  const title = seoData.meta_title || "";
+  const desc = seoData.meta_description || "";
+  const canonical = seoData.canonical_url || "";
+  const robots = seoData.robots || "";
+  const ogTitle = seoData.og_title || "";
+  const ogDesc = seoData.og_description || "";
+  const ogImage = seoData.og_image || "";
+  const ogType = seoData.og_type || "";
+  const schema = seoData.schema_json || [];
+  const maxPreview = seoData.max_image_preview || "";
+
+  let score = 0;
+
+  // Critical (30)
+  if (canonical.length > 0) score += 8;
+  if (title.length >= 20) score += 7;
+  if (title.length > 0) score += 6; // uniqueness — give benefit of doubt
+  if (title.length >= 50 && title.length <= 60) score += 5;
+  if (robots.includes("index") || robots === "") score += 4;
+
+  // High Impact (25)
+  if (desc.length > 0) score += 6;
+  if (desc.length > 40) score += 5;
+  if (desc.length >= 140 && desc.length <= 160) score += 5;
+  if (desc.length > 0) score += 5; // uniqueness — give benefit of doubt
+  if (maxPreview === "large") score += 4;
+
+  // Significant (22)
+  if (Array.isArray(schema) && schema.some((s: any) => s["@type"] === "LocalBusiness")) score += 6;
+  if (Array.isArray(schema) && schema.some((s: any) => s["@type"] === "FAQPage")) score += 5;
+  if (Array.isArray(schema) && schema.some((s: any) => s["@type"] === "Organization")) score += 4;
+  if (Array.isArray(schema) && schema.some((s: any) => s["@type"] === "Service")) score += 4;
+  if (Array.isArray(schema) && schema.some((s: any) => s["@type"] === "BreadcrumbList")) score += 3;
+
+  // Moderate (13)
+  if (ogImage.length > 0) score += 8;
+  if (ogTitle.length > 0) score += 3;
+  score += 2;
+
+  // Housekeeping (3)
+  if (ogType.length > 0) score += 0.5;
+  if (ogDesc.length > 0) score += 0.5;
+
+  const pct = Math.round((score / 100) * 100);
+
+  let colorClass: string;
+  let barClass: string;
+  if (pct >= 90) { colorClass = "text-green-600"; barClass = "bg-green-500"; }
+  else if (pct >= 75) { colorClass = "text-lime-600"; barClass = "bg-lime-500"; }
+  else if (pct >= 55) { colorClass = "text-orange-500"; barClass = "bg-orange-500"; }
+  else if (pct >= 35) { colorClass = "text-red-500"; barClass = "bg-red-500"; }
+  else { colorClass = "text-gray-400"; barClass = "bg-gray-300"; }
+
+  return { pct, colorClass, barClass };
+}
 
 /* ─── Media Picker Field ─── */
 function MediaPickerField({
@@ -159,6 +225,49 @@ function MediaPickerField({
         />
       )}
     </div>
+  );
+}
+
+/** Inline component: per-post-type "Generate SEO" button with progress */
+function PostTypeSeoButton({
+  projectId,
+  postTypeId,
+  onComplete,
+}: {
+  projectId: string;
+  postTypeId: string;
+  onComplete: () => void;
+}) {
+  const { start, status, isActive } = useBulkSeoProgress(
+    projectId,
+    "post",
+    postTypeId,
+    onComplete
+  );
+
+  if (isActive && status) {
+    return (
+      <div className="flex items-center gap-1.5 px-2 py-1 text-xs text-alloro-orange">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        <span>
+          {status.completed_count}/{status.total_count}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        start();
+      }}
+      className="p-1.5 text-gray-400 hover:text-alloro-orange rounded-lg hover:bg-orange-50 transition-colors"
+      title="Generate SEO for all posts of this type"
+    >
+      <Sparkles className="w-3.5 h-3.5" />
+    </button>
   );
 }
 
@@ -480,26 +589,37 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
               {postTypes.map((pt) => {
                 const isActive = pt.id === selectedTypeId;
                 return (
-                  <button
+                  <div
                     key={pt.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedTypeId(pt.id);
-                      setFormPostTypeId(pt.id);
-                    }}
-                    className={`w-full text-left px-4 py-3 transition-colors border-l-2 ${
+                    className={`flex items-center transition-colors border-l-2 ${
                       isActive
                         ? "border-l-alloro-orange bg-orange-50/50"
                         : "border-l-transparent hover:bg-gray-50"
                     }`}
                   >
-                    <div className="text-sm font-medium text-gray-900">{pt.name}</div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-gray-400">/{pt.slug}</span>
-                      <span className="text-xs text-gray-400">&middot;</span>
-                      <span className="text-xs text-gray-500">{postCountByType(pt.id)} posts</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTypeId(pt.id);
+                        setFormPostTypeId(pt.id);
+                      }}
+                      className="flex-1 text-left px-4 py-3"
+                    >
+                      <div className="text-sm font-medium text-gray-900">{pt.name}</div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-gray-400">/{pt.slug}</span>
+                        <span className="text-xs text-gray-400">&middot;</span>
+                        <span className="text-xs text-gray-500">{postCountByType(pt.id)} posts</span>
+                      </div>
+                    </button>
+                    <div className="pr-2">
+                      <PostTypeSeoButton
+                        projectId={projectId}
+                        postTypeId={pt.id}
+                        onComplete={loadData}
+                      />
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -630,7 +750,26 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 ml-4">
+                  <div className="flex items-center gap-2 ml-4">
+                    {/* SEO Score */}
+                    {(() => {
+                      const seoScore = quickPostSeoScore(post.seo_data);
+                      return seoScore.pct > 0 ? (
+                        <div className="flex items-center gap-1.5" title={`SEO: ${seoScore.pct}%`}>
+                          <div className="w-8 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${seoScore.barClass}`}
+                              style={{ width: `${seoScore.pct}%` }}
+                            />
+                          </div>
+                          <span className={`text-xs font-medium tabular-nums ${seoScore.colorClass}`}>
+                            {seoScore.pct}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-300" title="No SEO data">—</span>
+                      );
+                    })()}
                     <button
                       onClick={() => openEditor(post)}
                       className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50"

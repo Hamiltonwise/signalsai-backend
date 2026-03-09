@@ -36,8 +36,11 @@ import {
   disconnectDomain,
   createAllFromTemplate,
   fetchPagesGenerationStatus,
+  startBulkSeoGenerate,
+  getBulkSeoStatus,
+  getActiveBulkSeoJob,
 } from "../../api/websites";
-import type { WebsiteProjectWithPages, WebsitePage, PageGenerationStatusItem } from "../../api/websites";
+import type { WebsiteProjectWithPages, WebsitePage, PageGenerationStatusItem, BulkSeoStatus } from "../../api/websites";
 import { toast } from "react-hot-toast";
 import {
   useAdminWebsiteDetail,
@@ -228,6 +231,78 @@ export default function WebsiteDetail() {
   // Create page modal state
   const [showCreatePageModal, setShowCreatePageModal] = useState(false);
   const [isGeneratingPage, setIsGeneratingPage] = useState(false);
+
+  // Bulk SEO generation state
+  const [, setBulkSeoJobId] = useState<string | null>(null);
+  const [bulkSeoStatus, setBulkSeoStatus] = useState<BulkSeoStatus | null>(null);
+  const bulkSeoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopBulkSeoPoll = useCallback(() => {
+    if (bulkSeoIntervalRef.current) {
+      clearInterval(bulkSeoIntervalRef.current);
+      bulkSeoIntervalRef.current = null;
+    }
+  }, []);
+
+  const pollBulkSeo = useCallback(async (jobId: string) => {
+    if (!id) return;
+    try {
+      const res = await getBulkSeoStatus(id, jobId);
+      setBulkSeoStatus(res.data);
+      if (res.data.status === "completed" || res.data.status === "failed") {
+        stopBulkSeoPoll();
+        if (res.data.status === "completed") {
+          invalidateWebsite(id!);
+          setTimeout(() => {
+            setBulkSeoStatus(null);
+            setBulkSeoJobId(null);
+          }, 2000);
+        }
+      }
+    } catch {
+      stopBulkSeoPoll();
+    }
+  }, [id, stopBulkSeoPoll, invalidateWebsite]);
+
+  const startBulkPageSeo = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await startBulkSeoGenerate(id, "page");
+      setBulkSeoJobId(res.job_id);
+      setBulkSeoStatus({ id: res.job_id, status: "queued", total_count: 0, completed_count: 0, failed_count: 0, failed_items: null });
+      stopBulkSeoPoll();
+      await pollBulkSeo(res.job_id);
+      bulkSeoIntervalRef.current = setInterval(() => pollBulkSeo(res.job_id), 2000);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start SEO generation");
+    }
+  }, [id, pollBulkSeo, stopBulkSeoPoll]);
+
+  useEffect(() => {
+    return () => stopBulkSeoPoll();
+  }, [stopBulkSeoPoll]);
+
+  // On mount: check for active page SEO job and resume polling
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getActiveBulkSeoJob(id, "page");
+        if (cancelled) return;
+        if (res.data && (res.data.status === "queued" || res.data.status === "processing")) {
+          setBulkSeoJobId(res.data.id);
+          setBulkSeoStatus(res.data);
+          bulkSeoIntervalRef.current = setInterval(() => pollBulkSeo(res.data!.id), 2000);
+        }
+      } catch {
+        // Silently ignore
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isBulkSeoActive = bulkSeoStatus !== null && (bulkSeoStatus.status === "queued" || bulkSeoStatus.status === "processing");
 
   // Color picker state
   const [primaryColor, setPrimaryColor] = useState("#1E40AF");
@@ -996,7 +1071,7 @@ export default function WebsiteDetail() {
       <AdminPageHeader
         icon={<Globe className="w-6 h-6" />}
         title={
-          gbpData?.name ? String(gbpData.name) : website.generated_hostname
+          website.display_name || (gbpData?.name ? String(gbpData.name) : website.generated_hostname)
         }
         description={
           <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -1691,22 +1766,42 @@ export default function WebsiteDetail() {
                 </span>
               )}
             </div>
-            {(isLive || isInProgress) && website.template_id && (
-              <ActionButton
-                label={isGeneratingPage ? "Generating..." : "Create Page"}
-                icon={
-                  isGeneratingPage ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <FileText className="w-4 h-4" />
-                  )
-                }
-                onClick={() => setShowCreatePageModal(true)}
-                variant="primary"
-                size="sm"
-                disabled={isGeneratingPage}
-              />
-            )}
+            <div className="flex items-center gap-2">
+              {/* Bulk SEO generation progress */}
+              {isBulkSeoActive && bulkSeoStatus ? (
+                <span className="flex items-center gap-1.5 text-xs text-alloro-orange font-medium">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  SEO {bulkSeoStatus.completed_count}/{bulkSeoStatus.total_count}
+                </span>
+              ) : (
+                pageGroups.length > 0 && (
+                  <button
+                    onClick={startBulkPageSeo}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-orange-50 hover:text-alloro-orange rounded-lg transition-colors"
+                    title="Generate SEO for all pages"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Generate SEO
+                  </button>
+                )
+              )}
+              {(isLive || isInProgress) && website.template_id && (
+                <ActionButton
+                  label={isGeneratingPage ? "Generating..." : "Create Page"}
+                  icon={
+                    isGeneratingPage ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )
+                  }
+                  onClick={() => setShowCreatePageModal(true)}
+                  variant="primary"
+                  size="sm"
+                  disabled={isGeneratingPage}
+                />
+              )}
+            </div>
           </div>
           <div className="divide-y divide-gray-100">
             {pageGroups.length > 0 ? (
