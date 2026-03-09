@@ -426,6 +426,70 @@ function extractSectionFields(
 }
 
 // ---------------------------------------------------------------------------
+// Shared context for bulk generation (used by worker processor)
+// ---------------------------------------------------------------------------
+
+export interface SharedSeoContext {
+  businessData: Record<string, unknown>;
+  creatorContext: string;
+  validatorContext: string;
+}
+
+export async function fetchSharedContext(
+  projectId: string,
+  locationContext?: string | null
+): Promise<SharedSeoContext> {
+  const [businessData, creatorContext, validatorContext] = await Promise.all([
+    fetchBusinessData(projectId, locationContext || null),
+    fetchMindSkillCreator(),
+    fetchMindSkillValidator(),
+  ]);
+
+  if (!businessData) {
+    throw new Error(
+      "Business data not found. Refresh business data in Settings > Integrations first."
+    );
+  }
+
+  return { businessData, creatorContext, validatorContext };
+}
+
+export async function generateAllWithSharedContext(
+  ctx: SharedSeoContext,
+  entityType: "page" | "post",
+  data: {
+    page_content: string;
+    homepage_content?: string;
+    header_html?: string;
+    footer_html?: string;
+    wrapper_html?: string;
+    existing_seo_data?: Record<string, unknown>;
+    all_page_titles?: string[];
+    all_page_descriptions?: string[];
+    page_path?: string;
+    post_title?: string;
+  }
+): Promise<Array<{ section: string; generated: Record<string, unknown>; insight: string }>> {
+  const results: Array<{ section: string; generated: Record<string, unknown>; insight: string }> = [];
+  let accumulated = { ...(data.existing_seo_data || {}) };
+
+  for (const section of ALL_SECTIONS) {
+    const result = await runGenerateSection(
+      section,
+      entityType,
+      ctx.businessData,
+      ctx.creatorContext,
+      ctx.validatorContext,
+      { ...data, existing_seo_data: accumulated }
+    );
+    accumulated = { ...accumulated, ...result.generated };
+    results.push(result);
+  }
+
+  return results;
+}
+
+// ---------------------------------------------------------------------------
 // Business data fetching
 // ---------------------------------------------------------------------------
 

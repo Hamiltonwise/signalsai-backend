@@ -2527,6 +2527,143 @@ export async function analyzePostSeo(req: Request, res: Response): Promise<Respo
   }
 }
 
+/** POST /:id/seo/bulk-generate — Start a bulk SEO generation background job */
+export async function startBulkSeoGenerate(req: Request, res: Response): Promise<Response> {
+  try {
+    const projectId = req.params.id;
+    const { entity_type, post_type_id } = req.body;
+
+    if (!entity_type || !["page", "post"].includes(entity_type)) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "entity_type must be 'page' or 'post'" });
+    }
+    if (entity_type === "post" && !post_type_id) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "post_type_id is required for post entity type" });
+    }
+
+    const { SeoGenerationJobModel } = await import("../../models/website-builder/SeoGenerationJobModel");
+    const { getMindsQueue } = await import("../../workers/queues");
+
+    // Check for existing active job
+    const active = await SeoGenerationJobModel.findActive(projectId, entity_type, post_type_id);
+    if (active) {
+      console.log(`[BULK-SEO] Returning existing active job: ${active.id} status=${active.status} ${active.completed_count}/${active.total_count}`);
+      return res.json({ success: true, job_id: active.id, already_active: true });
+    }
+
+    // Count entities
+    let totalCount: number;
+    if (entity_type === "page") {
+      const pages = await db("website_builder.pages")
+        .where({ project_id: projectId })
+        .select("path");
+      const uniquePaths = new Set(pages.map((p: any) => p.path));
+      totalCount = uniquePaths.size;
+    } else {
+      const countResult = await db("website_builder.posts")
+        .where({ project_id: projectId, post_type_id })
+        .count("* as count")
+        .first();
+      totalCount = parseInt(countResult?.count as string, 10) || 0;
+    }
+
+    if (totalCount === 0) {
+      return res.status(400).json({ success: false, error: "NO_ENTITIES", message: `No ${entity_type}s found to generate SEO for.` });
+    }
+
+    // Create job record
+    const jobRecord = await SeoGenerationJobModel.create({
+      project_id: projectId,
+      entity_type,
+      post_type_id: post_type_id || null,
+      total_count: totalCount,
+    });
+
+    // Enqueue BullMQ job
+    console.log(`[BULK-SEO] Created new job: ${jobRecord.id} type=${entity_type} postType=${post_type_id || "n/a"} total=${totalCount}`);
+    const queue = getMindsQueue("seo-bulk-generate");
+    await queue.add("seo-bulk-generate", {
+      jobRecordId: jobRecord.id,
+      projectId,
+      entityType: entity_type,
+      postTypeId: post_type_id,
+    }, { jobId: jobRecord.id });
+    console.log(`[BULK-SEO] Enqueued to BullMQ queue: minds-seo-bulk-generate`);
+
+    return res.json({ success: true, job_id: jobRecord.id });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error starting bulk SEO generation:", error);
+    return res.status(500).json({ success: false, error: "BULK_GENERATE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/seo/bulk-generate/active — Check for any active bulk SEO job */
+export async function getActiveBulkSeoJob(req: Request, res: Response): Promise<Response> {
+  try {
+    const projectId = req.params.id;
+    const { entity_type, post_type_id } = req.query;
+    const { SeoGenerationJobModel } = await import("../../models/website-builder/SeoGenerationJobModel");
+
+    const job = await SeoGenerationJobModel.findActive(
+      projectId,
+      (entity_type as "page" | "post") || "page",
+      (post_type_id as string) || undefined
+    );
+
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+
+    if (!job) {
+      return res.json({ success: true, data: null });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        id: job.id,
+        status: job.status,
+        total_count: job.total_count,
+        completed_count: job.completed_count,
+        failed_count: job.failed_count,
+        failed_items: job.failed_items,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error checking active bulk SEO job:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/seo/bulk-generate/:jobId/status — Poll bulk SEO generation progress */
+export async function getBulkSeoStatus(req: Request, res: Response): Promise<Response> {
+  try {
+    const { jobId } = req.params;
+    const { SeoGenerationJobModel } = await import("../../models/website-builder/SeoGenerationJobModel");
+
+    const job = await SeoGenerationJobModel.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Job not found" });
+    }
+
+    // No caching
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+
+    return res.json({
+      success: true,
+      data: {
+        id: job.id,
+        status: job.status,
+        total_count: job.total_count,
+        completed_count: job.completed_count,
+        failed_count: job.failed_count,
+        failed_items: job.failed_items,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching bulk SEO status:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message });
+  }
+}
+
 /** GET /:id/seo/all-meta — Get all page/post titles and descriptions for uniqueness checking */
 export async function getAllSeoMeta(req: Request, res: Response): Promise<Response> {
   try {

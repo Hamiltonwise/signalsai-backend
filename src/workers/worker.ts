@@ -11,6 +11,7 @@ import {
   processDeadLetterCheck,
 } from "./processors/skillTrigger.processor";
 import { processWorksDigest } from "./processors/worksDigest.processor";
+import { processSeoBulkGenerate } from "./processors/seoBulkGenerate.processor";
 import { getMindsQueue } from "./queues";
 
 const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
@@ -95,6 +96,19 @@ const worksDigestWorker = new Worker(
   }
 );
 
+// SEO Bulk Generate worker
+const seoBulkGenerateWorker = new Worker(
+  "minds-seo-bulk-generate",
+  async (job) => {
+    await processSeoBulkGenerate(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Set up repeatable discovery job (every 24 hours)
 async function setupDiscoverySchedule(): Promise<void> {
   try {
@@ -149,7 +163,7 @@ async function setupSkillTriggerSchedule(): Promise<void> {
 }
 
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -171,6 +185,7 @@ async function shutdown(): Promise<void> {
   await discoveryWorker.close();
   await skillTriggerWorker.close();
   await worksDigestWorker.close();
+  await seoBulkGenerateWorker.close();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
   process.exit(0);

@@ -313,6 +313,15 @@ router.delete("/:id/menus/:menuId/items/:itemId", controller.deleteMenuItem);
 // SEO
 // =====================================================================
 
+// POST /:id/seo/bulk-generate — Start bulk SEO generation background job
+router.post("/:id/seo/bulk-generate", controller.startBulkSeoGenerate);
+
+// GET  /:id/seo/bulk-generate/active — Check for active bulk SEO job (before :jobId)
+router.get("/:id/seo/bulk-generate/active", controller.getActiveBulkSeoJob);
+
+// GET  /:id/seo/bulk-generate/:jobId/status — Poll bulk SEO generation progress
+router.get("/:id/seo/bulk-generate/:jobId/status", controller.getBulkSeoStatus);
+
 // GET  /:id/seo/all-meta — All page/post SEO titles/descriptions for uniqueness
 router.get("/:id/seo/all-meta", controller.getAllSeoMeta);
 
