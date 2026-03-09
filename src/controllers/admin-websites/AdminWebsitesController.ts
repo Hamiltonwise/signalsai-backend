@@ -2467,6 +2467,66 @@ export async function generatePostSeo(req: Request, res: Response): Promise<Resp
   }
 }
 
+/** POST /:id/pages/:pageId/seo/generate-all — AI generate ALL SEO sections at once */
+export async function generateAllPageSeo(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, pageId } = req.params;
+    const { generateAllSeoSections } = await import(
+      "./feature-services/service.seo-generation"
+    );
+    const result = await generateAllSeoSections(projectId, pageId, "page", req.body);
+    return res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error generating all page SEO:", error);
+    return res.status(500).json({ success: false, error: "GENERATION_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/posts/:postId/seo/generate-all — AI generate ALL SEO sections at once */
+export async function generateAllPostSeo(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, postId } = req.params;
+    const { generateAllSeoSections } = await import(
+      "./feature-services/service.seo-generation"
+    );
+    const result = await generateAllSeoSections(projectId, postId, "post", req.body);
+    return res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error generating all post SEO:", error);
+    return res.status(500).json({ success: false, error: "GENERATION_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/pages/:pageId/seo/analyze — AI analyze existing SEO for a page */
+export async function analyzePageSeo(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, pageId } = req.params;
+    const { analyzeSeoForSection } = await import(
+      "./feature-services/service.seo-generation"
+    );
+    const result = await analyzeSeoForSection(projectId, pageId, "page", req.body);
+    return res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error analyzing page SEO:", error);
+    return res.status(500).json({ success: false, error: "ANALYSIS_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/posts/:postId/seo/analyze — AI analyze existing SEO for a post */
+export async function analyzePostSeo(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId, postId } = req.params;
+    const { analyzeSeoForSection } = await import(
+      "./feature-services/service.seo-generation"
+    );
+    const result = await analyzeSeoForSection(projectId, postId, "post", req.body);
+    return res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error analyzing post SEO:", error);
+    return res.status(500).json({ success: false, error: "ANALYSIS_ERROR", message: error?.message });
+  }
+}
+
 /** GET /:id/seo/all-meta — Get all page/post titles and descriptions for uniqueness checking */
 export async function getAllSeoMeta(req: Request, res: Response): Promise<Response> {
   try {

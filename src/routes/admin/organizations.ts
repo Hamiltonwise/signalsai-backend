@@ -22,12 +22,21 @@ organizationsRoutes.get(
 );
 
 // GET /api/admin/organizations/:id/locations — Organization locations with properties
-// MUST be before /:id to avoid matching "locations" as the :id param
+// MUST be before /:id to avoid matching as the :id param
 organizationsRoutes.get(
   "/:id/locations",
   authenticateToken,
   superAdminMiddleware,
   controller.getOrgLocations
+);
+
+// GET /api/admin/organizations/:id/business-data — Org + location business data
+// MUST be before /:id to avoid matching as the :id param
+organizationsRoutes.get(
+  "/:id/business-data",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.getBusinessData
 );
 
 // GET /api/admin/organizations/:id — Organization details
@@ -100,6 +109,22 @@ organizationsRoutes.post(
   authenticateToken,
   superAdminMiddleware,
   controller.setUserPassword
+);
+
+// POST /api/admin/organizations/:id/sync-org-business-data — Copy primary location data to org level
+organizationsRoutes.post(
+  "/:id/sync-org-business-data",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.syncOrgBusinessData
+);
+
+// POST /api/admin/organizations/:id/locations/:locationId/refresh-business-data — Refresh from Google
+organizationsRoutes.post(
+  "/:id/locations/:locationId/refresh-business-data",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.refreshBusinessData
 );
 
 export default organizationsRoutes;

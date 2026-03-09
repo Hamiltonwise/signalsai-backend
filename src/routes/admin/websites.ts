@@ -328,6 +328,18 @@ router.patch("/:id/posts/:postId/seo", controller.updatePostSeo);
 // POST /:id/posts/:postId/seo/generate — AI generate SEO for post section
 router.post("/:id/posts/:postId/seo/generate", controller.generatePostSeo);
 
+// POST /:id/pages/:pageId/seo/generate-all — AI generate ALL SEO sections at once
+router.post("/:id/pages/:pageId/seo/generate-all", controller.generateAllPageSeo);
+
+// POST /:id/posts/:postId/seo/generate-all — AI generate ALL SEO sections at once
+router.post("/:id/posts/:postId/seo/generate-all", controller.generateAllPostSeo);
+
+// POST /:id/pages/:pageId/seo/analyze — AI analyze existing SEO for page section
+router.post("/:id/pages/:pageId/seo/analyze", controller.analyzePageSeo);
+
+// POST /:id/posts/:postId/seo/analyze — AI analyze existing SEO for post section
+router.post("/:id/posts/:postId/seo/analyze", controller.analyzePostSeo);
+
 // =====================================================================
 // PROJECT PAGES
 // =====================================================================

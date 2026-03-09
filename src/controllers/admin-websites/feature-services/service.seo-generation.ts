@@ -3,6 +3,7 @@
  *
  * AI-powered SEO content generation using Claude Sonnet 4.6.
  * Generates meta tags, descriptions, schema markup section by section.
+ * Uses CroSEO mind skills for enhanced context.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -14,8 +15,11 @@ const PAGES_TABLE = "website_builder.pages";
 const POSTS_TABLE = "website_builder.posts";
 const PROJECTS_TABLE = "website_builder.projects";
 
-const MODEL = "claude-sonnet-4-6-20250514";
+const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 4096;
+
+const SKILLS_BASE_URL = "https://app.getalloro.com/api/skills";
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic {
@@ -45,12 +49,92 @@ interface GenerateRequest {
   post_title?: string;
 }
 
+interface AnalyzeRequest {
+  section: SeoSection;
+  location_context: string | null;
+  page_content: string;
+  existing_seo_data: Record<string, unknown>;
+  page_path?: string;
+  post_title?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Mind skill context fetchers (cached per process)
+// ---------------------------------------------------------------------------
+
+let cachedCreatorContext: string | null = null;
+let cachedValidatorContext: string | null = null;
+
+async function fetchMindSkillCreator(): Promise<string> {
+  if (cachedCreatorContext) return cachedCreatorContext;
+  try {
+    const res = await fetch(
+      `${SKILLS_BASE_URL}/seo-head-meta-tags-creator/portal`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-key": INTERNAL_API_KEY || "",
+        },
+        body: JSON.stringify({
+          query:
+            "Generate the head seo meta tag criteria list to add as context in generating a complete Head SEO meta tag for the current page",
+        }),
+      }
+    );
+    if (!res.ok) {
+      console.warn("[SEO] Mind skill creator returned", res.status);
+      return "";
+    }
+    const data = await res.json();
+    cachedCreatorContext = data.response || data.result || data.output || "";
+    return cachedCreatorContext as string;
+  } catch (err) {
+    console.warn("[SEO] Failed to fetch mind skill creator context:", err);
+    return "";
+  }
+}
+
+async function fetchMindSkillValidator(): Promise<string> {
+  if (cachedValidatorContext) return cachedValidatorContext;
+  try {
+    const res = await fetch(
+      `${SKILLS_BASE_URL}/seo-head-meta-tags-validator/portal`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-key": INTERNAL_API_KEY || "",
+        },
+        body: JSON.stringify({
+          query:
+            "Generate the prompt that will validate, evaluate and score a given head seo meta tag object",
+        }),
+      }
+    );
+    if (!res.ok) {
+      console.warn("[SEO] Mind skill validator returned", res.status);
+      return "";
+    }
+    const data = await res.json();
+    cachedValidatorContext = data.response || data.result || data.output || "";
+    return cachedValidatorContext as string;
+  } catch (err) {
+    console.warn("[SEO] Failed to fetch mind skill validator context:", err);
+    return "";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Generate SEO for a section
+// ---------------------------------------------------------------------------
+
 export async function generateSeoForSection(
   projectId: string,
   entityId: string,
   entityType: "page" | "post",
   body: GenerateRequest
-): Promise<{ section: string; generated: Record<string, unknown> }> {
+): Promise<{ section: string; generated: Record<string, unknown>; insight: string }> {
   const {
     section,
     location_context,
@@ -66,8 +150,12 @@ export async function generateSeoForSection(
     post_title,
   } = body;
 
-  // Fetch business data based on location context
-  const businessData = await fetchBusinessData(projectId, location_context);
+  // Fetch business data and mind skill context in parallel
+  const [businessData, creatorContext, validatorContext] = await Promise.all([
+    fetchBusinessData(projectId, location_context),
+    fetchMindSkillCreator(),
+    fetchMindSkillValidator(),
+  ]);
 
   if (!businessData) {
     throw new Error(
@@ -75,9 +163,7 @@ export async function generateSeoForSection(
     );
   }
 
-  // Build section-specific prompt
-  const systemPrompt = buildSystemPrompt(section, businessData);
-  const userPrompt = buildUserPrompt(section, {
+  return runGenerateSection(section, entityType, businessData, creatorContext, validatorContext, {
     page_content,
     homepage_content,
     header_html,
@@ -88,8 +174,92 @@ export async function generateSeoForSection(
     all_page_descriptions,
     page_path,
     post_title,
-    entityType,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Generate ALL sections in one call (fetches shared context once)
+// ---------------------------------------------------------------------------
+
+const ALL_SECTIONS: SeoSection[] = [
+  "critical", "high_impact", "significant", "moderate", "negligible",
+];
+
+interface GenerateAllRequest {
+  location_context: string | null;
+  page_content: string;
+  homepage_content?: string;
+  header_html?: string;
+  footer_html?: string;
+  wrapper_html?: string;
+  existing_seo_data?: Record<string, unknown>;
+  all_page_titles?: string[];
+  all_page_descriptions?: string[];
+  page_path?: string;
+  post_title?: string;
+}
+
+export async function generateAllSeoSections(
+  projectId: string,
+  entityId: string,
+  entityType: "page" | "post",
+  body: GenerateAllRequest
+): Promise<{ results: Array<{ section: string; generated: Record<string, unknown>; insight: string }> }> {
+  const { location_context, ...rest } = body;
+
+  // Single fetch for all shared context
+  const [businessData, creatorContext, validatorContext] = await Promise.all([
+    fetchBusinessData(projectId, location_context),
+    fetchMindSkillCreator(),
+    fetchMindSkillValidator(),
+  ]);
+
+  if (!businessData) {
+    throw new Error(
+      "Business data not found. Refresh business data in Settings > Integrations first."
+    );
+  }
+
+  const results: Array<{ section: string; generated: Record<string, unknown>; insight: string }> = [];
+  let accumulated = { ...(rest.existing_seo_data || {}) };
+
+  for (const section of ALL_SECTIONS) {
+    const result = await runGenerateSection(section, entityType, businessData, creatorContext, validatorContext, {
+      ...rest,
+      existing_seo_data: accumulated,
+    });
+    accumulated = { ...accumulated, ...result.generated };
+    results.push(result);
+  }
+
+  return { results };
+}
+
+// ---------------------------------------------------------------------------
+// Internal: run generation for a single section with pre-fetched context
+// ---------------------------------------------------------------------------
+
+async function runGenerateSection(
+  section: SeoSection,
+  entityType: "page" | "post",
+  businessData: Record<string, unknown>,
+  creatorContext: string,
+  validatorContext: string,
+  data: {
+    page_content: string;
+    homepage_content?: string;
+    header_html?: string;
+    footer_html?: string;
+    wrapper_html?: string;
+    existing_seo_data?: Record<string, unknown>;
+    all_page_titles?: string[];
+    all_page_descriptions?: string[];
+    page_path?: string;
+    post_title?: string;
+  }
+): Promise<{ section: string; generated: Record<string, unknown>; insight: string }> {
+  const systemPrompt = buildSystemPrompt(section, businessData, creatorContext);
+  const userPrompt = buildUserPrompt(section, { ...data, entityType });
 
   const response = await getClient().messages.create({
     model: MODEL,
@@ -98,12 +268,161 @@ export async function generateSeoForSection(
     messages: [{ role: "user", content: userPrompt }],
   });
 
-  // Parse response
   const text =
     response.content[0].type === "text" ? response.content[0].text : "";
   const generated = parseGeneratedSeo(text, section);
 
-  return { section, generated };
+  const insight = await generateInsight(
+    section,
+    generated,
+    businessData,
+    validatorContext,
+    data.page_path,
+    data.post_title
+  );
+
+  return { section, generated, insight };
+}
+
+// ---------------------------------------------------------------------------
+// Analyze existing SEO (no regeneration, insights only)
+// ---------------------------------------------------------------------------
+
+export async function analyzeSeoForSection(
+  projectId: string,
+  entityId: string,
+  entityType: "page" | "post",
+  body: AnalyzeRequest
+): Promise<{ section: string; insight: string }> {
+  const { section, location_context, page_content, existing_seo_data, page_path, post_title } = body;
+
+  const [businessData, validatorContext] = await Promise.all([
+    fetchBusinessData(projectId, location_context),
+    fetchMindSkillValidator(),
+  ]);
+
+  if (!businessData) {
+    throw new Error("Business data not found.");
+  }
+
+  // Extract only the fields relevant to this section
+  const sectionFields = extractSectionFields(section, existing_seo_data);
+
+  const systemPrompt = `You are an expert SEO analyst. Analyze the existing SEO metadata for quality, completeness, and optimization opportunities.
+
+BUSINESS DATA:
+${JSON.stringify(businessData, null, 2)}
+
+${validatorContext ? `SEO VALIDATION CRITERIA (from CroSEO mind):\n${validatorContext}\n` : ""}
+
+RULES:
+- Return ONLY a JSON object with a single "insight" key.
+- The insight must be 1-3 concise sentences.
+- Be specific: reference actual values, not generic advice.
+- Mention what's strong, what's weak, and one actionable fix.
+- No markdown, no code fences.`;
+
+  const userPrompt = `SECTION: ${section}
+${page_path ? `PAGE PATH: ${page_path}\n` : ""}${post_title ? `POST TITLE: ${post_title}\n` : ""}
+PAGE CONTENT (summary):
+${truncate(page_content, 3000)}
+
+CURRENT SEO DATA FOR THIS SECTION:
+${JSON.stringify(sectionFields, null, 2)}
+
+FULL SEO DATA:
+${JSON.stringify(existing_seo_data, null, 2)}
+
+Analyze the "${section}" section's SEO data. Return ONLY valid JSON: { "insight": "..." }`;
+
+  const response = await getClient().messages.create({
+    model: MODEL,
+    max_tokens: 512,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const text =
+    response.content[0].type === "text" ? response.content[0].text : "";
+  const parsed = parseGeneratedSeo(text, section);
+
+  return {
+    section,
+    insight: (parsed.insight as string) || "Analysis complete — no specific issues found.",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Insight generation (called after generation)
+// ---------------------------------------------------------------------------
+
+async function generateInsight(
+  section: SeoSection,
+  generated: Record<string, unknown>,
+  businessData: Record<string, unknown>,
+  validatorContext: string,
+  pagePath?: string,
+  postTitle?: string
+): Promise<string> {
+  try {
+    const systemPrompt = `You are an SEO analyst. Review the just-generated SEO data and provide a brief insight.
+
+BUSINESS DATA:
+${JSON.stringify(businessData, null, 2)}
+
+${validatorContext ? `SEO VALIDATION CRITERIA (from CroSEO mind):\n${validatorContext}\n` : ""}
+
+RULES:
+- Return ONLY a JSON object with a single "insight" key.
+- 1-2 sentences max. Be specific and actionable.
+- Highlight the strongest aspect and one thing to watch.
+- No markdown, no code fences.`;
+
+    const userPrompt = `SECTION: ${section}
+${pagePath ? `PAGE PATH: ${pagePath}\n` : ""}${postTitle ? `POST TITLE: ${postTitle}\n` : ""}
+GENERATED SEO DATA:
+${JSON.stringify(generated, null, 2)}
+
+Provide a brief insight about this generated "${section}" section. Return ONLY valid JSON: { "insight": "..." }`;
+
+    const response = await getClient().messages.create({
+      model: MODEL,
+      max_tokens: 256,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    const text =
+      response.content[0].type === "text" ? response.content[0].text : "";
+    const parsed = parseGeneratedSeo(text, section);
+    return (parsed.insight as string) || "";
+  } catch (err) {
+    console.warn("[SEO] Failed to generate insight:", err);
+    return "";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Section field extraction (for targeted analysis)
+// ---------------------------------------------------------------------------
+
+function extractSectionFields(
+  section: SeoSection,
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  const fieldMap: Record<SeoSection, string[]> = {
+    critical: ["meta_title", "canonical_url", "robots"],
+    high_impact: ["meta_description", "max_image_preview"],
+    significant: ["schema_json"],
+    moderate: ["og_title", "og_description", "og_image", "og_type"],
+    negligible: ["og_type", "og_description"],
+  };
+  const fields = fieldMap[section] || [];
+  const result: Record<string, unknown> = {};
+  for (const f of fields) {
+    if (data[f] !== undefined) result[f] = data[f];
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,7 +433,6 @@ async function fetchBusinessData(
   projectId: string,
   locationContext: string | null
 ): Promise<Record<string, unknown> | null> {
-  // Get project's organization
   const project = await db(PROJECTS_TABLE)
     .where({ id: projectId })
     .select("organization_id")
@@ -142,7 +460,6 @@ async function fetchBusinessData(
     }
   }
 
-  // Fallback to org-level or primary location
   const locations = await LocationModel.findByOrganizationId(orgId);
   const primaryLoc = locations.find((l) => l.is_primary) || locations[0];
 
@@ -155,7 +472,6 @@ async function fetchBusinessData(
     };
   }
 
-  // At minimum, return org data if it exists
   if (Object.keys(orgData).length > 0) {
     return { type: "organization", organization: orgData, location: null };
   }
@@ -169,12 +485,15 @@ async function fetchBusinessData(
 
 function buildSystemPrompt(
   section: SeoSection,
-  businessData: Record<string, unknown>
+  businessData: Record<string, unknown>,
+  creatorContext: string = ""
 ): string {
   const base = `You are an expert SEO specialist. Generate optimized SEO metadata based on the page content and business data provided.
 
 BUSINESS DATA:
 ${JSON.stringify(businessData, null, 2)}
+
+${creatorContext ? `SEO GENERATION CRITERIA (from CroSEO mind):\n${creatorContext}\n` : ""}
 
 RULES:
 - Return ONLY valid JSON. No markdown, no explanation, no code fences.
@@ -294,7 +613,6 @@ function parseGeneratedSeo(
   text: string,
   section: SeoSection
 ): Record<string, unknown> {
-  // Strip markdown code fences if present
   let cleaned = text.trim();
   if (cleaned.startsWith("```")) {
     cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");

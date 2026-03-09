@@ -18,6 +18,8 @@ import { GooglePropertyModel } from "../../models/GooglePropertyModel";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import * as OrganizationEnrichmentService from "./feature-services/OrganizationEnrichmentService";
 import * as ConnectionDetectionService from "./feature-services/ConnectionDetectionService";
+import * as BusinessDataService from "../locations/BusinessDataService";
+import { getValidOAuth2ClientByOrg } from "../../auth/oauth2Helper";
 import * as TierManagementService from "./feature-services/TierManagementService";
 import * as AdminOrgCreationService from "./feature-services/AdminOrgCreationService";
 import * as hostnameGenerator from "./feature-utils/hostnameGenerator";
@@ -642,5 +644,90 @@ export async function setUserPassword(
     });
   } catch (error) {
     return handleError(res, error, "Set user password");
+  }
+}
+
+/**
+ * GET /api/admin/organizations/:id/business-data
+ * Get business data for an organization (org-level + all locations)
+ */
+export async function getBusinessData(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const data = await BusinessDataService.getOrgBusinessData(orgId);
+
+    return res.json({ success: true, ...data });
+  } catch (error) {
+    return handleError(res, error, "Get business data");
+  }
+}
+
+/**
+ * POST /api/admin/organizations/:id/locations/:locationId/refresh-business-data
+ * Refresh location business data from Google (admin-scoped)
+ */
+export async function refreshBusinessData(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    const locationId = parseInt(req.params.locationId);
+    if (isNaN(orgId) || isNaN(locationId)) {
+      return res.status(400).json({ error: "Invalid organization or location ID" });
+    }
+
+    const oauth2Client = await getValidOAuth2ClientByOrg(orgId);
+
+    const businessData = await BusinessDataService.refreshLocationBusinessData(
+      locationId,
+      orgId,
+      oauth2Client
+    );
+
+    return res.json({ success: true, business_data: businessData });
+  } catch (error) {
+    return handleError(res, error, "Refresh business data");
+  }
+}
+
+/**
+ * POST /api/admin/organizations/:id/sync-org-business-data
+ * Copy primary location's business_data to the org-level record.
+ */
+export async function syncOrgBusinessData(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    const locations = await LocationModel.findByOrganizationId(orgId);
+    const primary = locations.find((l) => l.is_primary) || locations[0];
+
+    if (!primary?.business_data) {
+      return res.status(400).json({
+        error: "Primary location has no business data. Refresh the location first.",
+      });
+    }
+
+    const synced = await BusinessDataService.updateOrgBusinessData(
+      orgId,
+      primary.business_data as Record<string, unknown>,
+    );
+
+    return res.json({ success: true, business_data: synced });
+  } catch (error) {
+    return handleError(res, error, "Sync org business data");
   }
 }
