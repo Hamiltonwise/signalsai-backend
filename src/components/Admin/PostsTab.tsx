@@ -165,11 +165,12 @@ function MediaPickerField({
 interface PostsTabProps {
   projectId: string;
   templateId: string | null;
+  organizationId?: number;
 }
 
 type ViewState = "list" | "editor";
 
-export default function PostsTab({ projectId, templateId }: PostsTabProps) {
+export default function PostsTab({ projectId, templateId, organizationId }: PostsTabProps) {
   const confirm = useConfirm();
 
   const [posts, setPosts] = useState<Post[]>([]);
@@ -735,6 +736,7 @@ export default function PostsTab({ projectId, templateId }: PostsTabProps) {
               postTitle={formTitle}
               pageContent={formContent}
               onSeoDataChange={handleSeoDataChange}
+              organizationId={organizationId}
             />
           </div>
         ) : (

@@ -801,6 +801,7 @@ function PageEditorInner() {
               onSeoDataChange={(data: SeoData) => {
                 setPage((prev) => prev ? { ...prev, seo_data: data } : prev);
               }}
+              organizationId={project?.organization?.id}
             />
           </div>
         ) : activeView === "code" ? (

@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Hash,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import {
   fetchWebsiteDetail,
@@ -38,6 +39,10 @@ import {
 } from "../../api/websites";
 import type { WebsiteProjectWithPages, WebsitePage, PageGenerationStatusItem } from "../../api/websites";
 import { toast } from "react-hot-toast";
+import {
+  useAdminWebsiteDetail,
+  useInvalidateAdminWebsiteDetail,
+} from "../../hooks/queries/useAdminQueries";
 import { searchPlaces, getPlaceDetails } from "../../api/places";
 import type { PlaceSuggestion, PlaceDetails } from "../../api/places";
 import { fetchTemplates, fetchTemplatePages } from "../../api/templates";
@@ -59,6 +64,99 @@ import { fetchProjectCodeSnippets } from "../../api/codeSnippets";
 import type { CodeSnippet } from "../../api/codeSnippets";
 import { useConfirm } from "../../components/ui/ConfirmModal";
 
+
+/**
+ * SEO score matching SeoPanel's calculateScores exactly.
+ * Uses sibling titles/descriptions for uniqueness checks.
+ * Uses wrapper HTML for page-speed and housekeeping checks.
+ */
+function computeSeoScore(
+  seoData: WebsitePage["seo_data"],
+  siblingTitles: string[],
+  siblingDescriptions: string[],
+  wrapperHtml: string
+): {
+  score: number;
+  max: number;
+  pct: number;
+  colorClass: string;
+  barClass: string;
+} {
+  if (!seoData) return { score: 0, max: 100, pct: 0, colorClass: "text-gray-400", barClass: "bg-gray-300" };
+
+  const title = seoData.meta_title || "";
+  const desc = seoData.meta_description || "";
+  const canonical = seoData.canonical_url || "";
+  const robots = seoData.robots || "";
+  const ogTitle = seoData.og_title || "";
+  const ogDesc = seoData.og_description || "";
+  const ogImage = seoData.og_image || "";
+  const ogType = seoData.og_type || "";
+  const schema = seoData.schema_json || [];
+  const maxPreview = seoData.max_image_preview || "";
+
+  const titleIsUnique = title ? !siblingTitles.includes(title) : false;
+  const descIsUnique = desc ? !siblingDescriptions.includes(desc) : false;
+
+  const hasViewport = /meta.*viewport/i.test(wrapperHtml);
+  const hasCharset = /charset.*utf-8/i.test(wrapperHtml);
+  const hasLang = /lang\s*=\s*["']en/i.test(wrapperHtml);
+  const hasDeferScripts = /defer|async/i.test(wrapperHtml);
+  const hasPreload = /rel\s*=\s*["']preload/i.test(wrapperHtml);
+
+  let score = 0;
+
+  // Critical (30) — exact match with SeoPanel
+  if (canonical.length > 0) score += 8;
+  if (title.length >= 20) score += 7;
+  if (titleIsUnique) score += 6;
+  if (title.length >= 50 && title.length <= 60) score += 5;
+  if (robots.includes("index") || robots === "") score += 4;
+
+  // High Impact (25)
+  if (desc.length > 0) score += 6;
+  if (desc.length > 40) score += 5;
+  if (desc.length >= 140 && desc.length <= 160) score += 5;
+  if (descIsUnique) score += 5;
+  if (maxPreview === "large") score += 4;
+
+  // Significant (22)
+  if (schema.some((s: any) => s["@type"] === "LocalBusiness")) score += 6;
+  if (schema.some((s: any) => s["@type"] === "FAQPage")) score += 5;
+  if (schema.some((s: any) => s["@type"] === "Organization")) score += 4;
+  if (schema.some((s: any) => s["@type"] === "Service")) score += 4;
+  if (schema.some((s: any) => s["@type"] === "BreadcrumbList")) score += 3;
+
+  // Moderate (13)
+  if (ogImage.length > 0) score += 4;
+  if (ogImage.length > 0) score += 4; // "Real photo, not logo" — same check as SeoPanel
+  if (ogTitle.length > 0) score += 3;
+  score += 2; // "OG URL matches canonical" — always true in SeoPanel
+
+  // Page Speed Tags (7)
+  if (hasViewport) score += 3;
+  if (hasDeferScripts) score += 3;
+  if (hasPreload) score += 1;
+
+  // Housekeeping (3)
+  if (hasCharset) score += 1;
+  if (hasLang) score += 1;
+  if (ogType.length > 0) score += 0.5;
+  if (ogDesc.length > 0) score += 0.5;
+
+  const max = 100;
+  const pct = Math.round((score / max) * 100);
+
+  let colorClass: string;
+  let barClass: string;
+  if (pct >= 90) { colorClass = "text-green-600"; barClass = "bg-green-500"; }
+  else if (pct >= 75) { colorClass = "text-lime-600"; barClass = "bg-lime-500"; }
+  else if (pct >= 55) { colorClass = "text-orange-500"; barClass = "bg-orange-500"; }
+  else if (pct >= 35) { colorClass = "text-red-500"; barClass = "bg-red-500"; }
+  else { colorClass = "text-gray-400"; barClass = "bg-gray-300"; }
+
+  return { score, max, pct, colorClass, barClass };
+}
 
 /**
  * Group pages by path for the expandable list.
@@ -84,9 +182,20 @@ export default function WebsiteDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const confirm = useConfirm();
-  const [website, setWebsite] = useState<WebsiteProjectWithPages | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // TanStack Query — cached initial load
+  const {
+    data: website,
+    isLoading: loading,
+    error: queryError,
+  } = useAdminWebsiteDetail(id);
+  const { invalidate: invalidateWebsite, setData: setWebsiteCache } =
+    useInvalidateAdminWebsiteDetail();
+  const error = queryError?.message ?? null;
+
+  // Helper to update cache directly (used by polling + mutation callbacks)
+  const setWebsite = (data: WebsiteProjectWithPages) => {
+    if (id) setWebsiteCache(id, data);
+  };
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDomainModal, setShowDomainModal] = useState(false);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
@@ -235,13 +344,11 @@ export default function WebsiteDetail() {
     await handleLinkOrganization();
   };
 
-  // Initial load
+  // Side-effects on mount (code snippets, cleanup refs)
+  // Website data is loaded automatically by TanStack Query
   useEffect(() => {
     isMountedRef.current = true;
-    // Trigger loading indicator
-    window.dispatchEvent(new Event("navigation-start"));
     if (id) {
-      loadWebsite();
       loadCodeSnippets();
     }
     return () => {
@@ -637,19 +744,7 @@ export default function WebsiteDetail() {
 
   const loadWebsite = async () => {
     if (!id) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetchWebsiteDetail(id);
-      setWebsite(response.data);
-    } catch (err) {
-      console.error("Failed to fetch website:", err);
-      setError(err instanceof Error ? err.message : "Failed to load website");
-    } finally {
-      setLoading(false);
-      // Manually complete loading indicator since location doesn't change
-      window.dispatchEvent(new Event("navigation-complete"));
-    }
+    await invalidateWebsite(id);
   };
 
   const startPageGenerationPoll = useCallback(() => {
@@ -871,6 +966,21 @@ export default function WebsiteDetail() {
   const isInProgress = website.status === "IN_PROGRESS";
   const pageGroups = groupPagesByPath(website.pages);
 
+  // Pre-compute all SEO titles/descriptions for uniqueness checks in the page list
+  // Check all versions per group to find the one with SEO data
+  const allPageSeoMeta = (() => {
+    const titles: string[] = [];
+    const descriptions: string[] = [];
+    for (const group of pageGroups) {
+      const seoPage = group.pages.find((p) => p.seo_data && p.seo_data.meta_title)
+        || group.pages.find((p) => p.status === "published")
+        || group.pages[0];
+      if (seoPage?.seo_data?.meta_title) titles.push(seoPage.seo_data.meta_title);
+      if (seoPage?.seo_data?.meta_description) descriptions.push(seoPage.seo_data.meta_description);
+    }
+    return { titles, descriptions };
+  })();
+
   return (
     <div className="space-y-6">
       {/* Back link */}
@@ -1037,30 +1147,36 @@ export default function WebsiteDetail() {
                 ? (website as any).custom_domain
                 : "Custom Domain"}
             </button>
+            <button
+              onClick={loadWebsite}
+              title="Refresh"
+              className="inline-flex items-center justify-center rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
             {isLive && (
               <a
                 href={`https://${(website as any).custom_domain && (website as any).domain_verified_at ? (website as any).custom_domain : `${website.generated_hostname}.sites.getalloro.com`}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-100"
+                title="View Live Site"
+                className="inline-flex items-center justify-center rounded-lg p-2 text-green-600 transition hover:bg-green-50 hover:text-green-700"
               >
                 <ExternalLink className="h-4 w-4" />
-                View Live Site
               </a>
             )}
-            <ActionButton
-              label={isDeleting ? "Deleting..." : "Delete"}
-              icon={
-                isDeleting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )
-              }
+            <button
               onClick={handleDelete}
-              variant="danger"
               disabled={isDeleting}
-            />
+              title={isDeleting ? "Deleting..." : "Delete"}
+              className="inline-flex items-center justify-center rounded-lg p-2 text-red-500 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </button>
           </div>
         }
       />
@@ -1622,6 +1738,26 @@ export default function WebsiteDetail() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
+                        {/* SEO Score — use best seo_data across all versions */}
+                        {(() => {
+                          const seoPage = group.pages.find((p) => p.seo_data && p.seo_data.meta_title) || displayPage;
+                          const sibTitles = allPageSeoMeta.titles.filter((t) => t !== (seoPage.seo_data?.meta_title || ""));
+                          const sibDescs = allPageSeoMeta.descriptions.filter((d) => d !== (seoPage.seo_data?.meta_description || ""));
+                          const seoScore = computeSeoScore(seoPage.seo_data, sibTitles, sibDescs, website.wrapper || "");
+                          return (
+                            <div className="flex items-center gap-1.5" title={`SEO: ${seoScore.score}/${seoScore.max}`}>
+                              <div className="w-8 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${seoScore.barClass}`}
+                                  style={{ width: `${seoScore.pct}%` }}
+                                />
+                              </div>
+                              <span className={`text-[10px] font-bold tabular-nums ${seoScore.colorClass}`}>
+                                {seoScore.pct > 0 ? seoScore.pct : "—"}
+                              </span>
+                            </div>
+                          );
+                        })()}
                         {displayPage.generation_status && displayPage.generation_status !== "ready" ? (
                           <>
                             {(displayPage.generation_status === "generating" || displayPage.generation_status === "queued") && (
@@ -1881,7 +2017,7 @@ export default function WebsiteDetail() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <PostsTab projectId={id!} templateId={website.template_id} />
+          <PostsTab projectId={id!} templateId={website.template_id} organizationId={website.organization?.id} />
         </motion.div>
       )}
 

@@ -28,9 +28,11 @@ import { listMinds, type Mind } from "../../api/minds";
 import {
   fetchWebsites,
   fetchStatuses,
+  fetchWebsiteDetail,
   type FetchWebsitesRequest,
   type WebsitesResponse,
   type StatusesResponse,
+  type WebsiteProjectWithPages,
 } from "../../api/websites";
 
 import { fetchTemplates, type Template } from "../../api/templates";
@@ -198,9 +200,51 @@ export function useAdminTemplates() {
   });
 }
 
+/**
+ * Single website project detail (by UUID).
+ */
+export function useAdminWebsiteDetail(uuid: string | undefined) {
+  const queryKey = QUERY_KEYS.adminWebsiteDetail(uuid || "");
+
+  return useQuery({
+    queryKey,
+    queryFn: async () => {
+      const response = await fetchWebsiteDetail(uuid!);
+      return response.data;
+    },
+    enabled: !!uuid,
+    staleTime: 30 * 1000, // 30 seconds — user expects fresh state during editing
+    initialData: () =>
+      queryClient.getQueryData<WebsiteProjectWithPages>(queryKey),
+    initialDataUpdatedAt: () =>
+      queryClient.getQueryState(queryKey)?.dataUpdatedAt,
+  });
+}
+
 // =====================================================================
 // INVALIDATION HOOKS
 // =====================================================================
+
+/**
+ * Invalidate website detail query.
+ */
+export function useInvalidateAdminWebsiteDetail() {
+  const qc = useQueryClient();
+
+  const invalidate = useCallback(
+    (uuid: string) =>
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.adminWebsiteDetail(uuid) }),
+    [qc],
+  );
+
+  const setData = useCallback(
+    (uuid: string, data: WebsiteProjectWithPages) =>
+      qc.setQueryData(QUERY_KEYS.adminWebsiteDetail(uuid), data),
+    [qc],
+  );
+
+  return { invalidate, setData };
+}
 
 /**
  * Invalidate organisation queries.

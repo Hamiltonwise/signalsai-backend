@@ -50,6 +50,7 @@ export interface SeoData {
   max_image_preview?: string | null;
   schema_json?: Record<string, unknown>[] | null;
   scores?: Record<string, unknown> | null;
+  insights?: Record<string, string> | null;
 }
 
 export interface WebsitePage {
@@ -901,7 +902,7 @@ export const generateSeo = async (
   entityId: string,
   entityType: "page" | "post",
   body: Record<string, unknown>,
-): Promise<{ success: boolean; section: string; generated: Record<string, unknown> }> => {
+): Promise<{ success: boolean; section: string; generated: Record<string, unknown>; insight: string }> => {
   const path = entityType === "page"
     ? `${API_BASE}/${projectId}/pages/${entityId}/seo/generate`
     : `${API_BASE}/${projectId}/posts/${entityId}/seo/generate`;
@@ -913,6 +914,54 @@ export const generateSeo = async (
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to generate SEO data");
+  }
+  return response.json();
+};
+
+/**
+ * Generate ALL SEO sections in a single request (fetches shared context once)
+ */
+export const generateAllSeo = async (
+  projectId: string,
+  entityId: string,
+  entityType: "page" | "post",
+  body: Record<string, unknown>,
+): Promise<{ success: boolean; results: Array<{ section: string; generated: Record<string, unknown>; insight: string }> }> => {
+  const path = entityType === "page"
+    ? `${API_BASE}/${projectId}/pages/${entityId}/seo/generate-all`
+    : `${API_BASE}/${projectId}/posts/${entityId}/seo/generate-all`;
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to generate all SEO data");
+  }
+  return response.json();
+};
+
+/**
+ * Analyze existing SEO data for a page or post section (insights only, no regeneration)
+ */
+export const analyzeSeo = async (
+  projectId: string,
+  entityId: string,
+  entityType: "page" | "post",
+  body: Record<string, unknown>,
+): Promise<{ success: boolean; section: string; insight: string }> => {
+  const path = entityType === "page"
+    ? `${API_BASE}/${projectId}/pages/${entityId}/seo/analyze`
+    : `${API_BASE}/${projectId}/posts/${entityId}/seo/analyze`;
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to analyze SEO data");
   }
   return response.json();
 };

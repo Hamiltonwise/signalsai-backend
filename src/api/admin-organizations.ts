@@ -291,3 +291,46 @@ export async function adminSetUserPassword(
     passedData: { notifyUser },
   });
 }
+
+/**
+ * Get business data for an organization (org-level + all locations)
+ */
+export async function adminGetBusinessData(
+  orgId: number
+): Promise<{
+  success: boolean;
+  organization: { id: number; name: string; business_data: Record<string, unknown> | null };
+  locations: Array<{
+    id: number;
+    name: string;
+    is_primary: boolean;
+    business_data: Record<string, unknown> | null;
+  }>;
+}> {
+  return apiGet({ path: `/admin/organizations/${orgId}/business-data` });
+}
+
+/**
+ * Refresh location business data from Google (admin-scoped)
+ */
+export async function adminRefreshBusinessData(
+  orgId: number,
+  locationId: number
+): Promise<{ success: boolean; business_data: Record<string, unknown> }> {
+  return apiPost({
+    path: `/admin/organizations/${orgId}/locations/${locationId}/refresh-business-data`,
+    passedData: {},
+  });
+}
+
+/**
+ * Sync org-level business data from primary location
+ */
+export async function adminSyncOrgBusinessData(
+  orgId: number
+): Promise<{ success: boolean; business_data: Record<string, unknown> }> {
+  return apiPost({
+    path: `/admin/organizations/${orgId}/sync-org-business-data`,
+    passedData: {},
+  });
+}
