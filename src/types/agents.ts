@@ -30,19 +30,25 @@ export interface SummaryAgentData {
   wins: SummaryAgentWin[];
   risks: SummaryAgentRisk[];
   next_steps: string;
+  action_nudge?: string;
   [key: string]: unknown;
 }
 
-export interface OpportunityAgentStep {
-  step: string;
-  description: string;
+export interface OpportunityItem {
+  title: string;
+  type: "USER" | "ALLORO";
+  explanation: string;
+  category?: string;
+  urgency?: string;
+  due_date?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface OpportunityAgentData {
-  title: string;
-  steps: OpportunityAgentStep[];
-  expected_lift: number | string;
-  rationale: string;
+  opportunities: OpportunityItem[];
+  title?: string;
+  steps?: string[];
+  expected_lift?: string;
   [key: string]: unknown;
 }
 
@@ -60,7 +66,12 @@ export interface AgentResponse {
   totalCount?: number;
 }
 
-export type AgentType = "proofline" | "summary" | "opportunity";
+export type AgentType =
+  | "proofline"
+  | "summary"
+  | "opportunity"
+  | "cro_optimizer"
+  | "referral_engine";
 
 export const PROOF_TYPES = [
   "metric_improvement",

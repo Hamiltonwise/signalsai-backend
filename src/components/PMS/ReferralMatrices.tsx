@@ -5,61 +5,76 @@ import type { AutomationStatusDetail } from "../../api/pms";
 
 // Types for Referral Engine Data
 export interface DoctorReferral {
-  referrer_id?: string;
   referrer_name?: string;
   referred?: number;
-  pct_scheduled?: number | null;
-  pct_examined?: number | null;
-  pct_started?: number | null;
+  pct_scheduled?: number;
+  pct_examined?: number;
+  pct_started?: number;
   net_production?: number | null;
+  avg_production_per_referral?: number | null;
   trend_label?: "increasing" | "decreasing" | "new" | "dormant" | "stable";
   notes?: string;
+  /** @deprecated Legacy field — no longer returned by n8n */
+  referrer_id?: string;
 }
 
 export interface NonDoctorReferral {
-  source_key?: string;
   source_label?: string;
+  source_key?: string;
   source_type?: "digital" | "patient" | "other";
   referred?: number;
-  pct_scheduled?: number | null;
-  pct_examined?: number | null;
-  pct_started?: number | null;
+  pct_scheduled?: number;
+  pct_examined?: number;
+  pct_started?: number;
   net_production?: number | null;
+  avg_production_per_referral?: number | null;
   trend_label?: "increasing" | "decreasing" | "new" | "dormant" | "stable";
   notes?: string;
 }
 
-// TopFix interface for enriched fix data (additional fields optional for backwards compatibility)
 export interface TopFix {
   title: string;
   description: string;
-  why_important?: string;
-  expected_impact?: string;
-  estimated_return?: number;
-  sources?: string[];
+  impact?: string;
+}
+
+export interface ReferralAutomationOpportunity {
+  title: string;
+  description: string;
+  priority?: string;
+  impact?: string;
+  effort?: string;
+  category?: string;
+  due_date?: string;
+}
+
+export interface ReferralPracticeAction {
+  title: string;
+  description: string;
+  priority?: string;
+  impact?: string;
+  effort?: string;
+  category?: string;
+  owner?: string;
+  due_date?: string;
 }
 
 export interface ReferralEngineData {
-  lineage?: string;
-  citations?: string[];
-  freshness?: string;
-  agent_name?: string;
-  confidence?: number;
-  practice_id?: string;
-  agent_version?: string;
-  observed_period?: {
-    end_date: string;
-    start_date: string;
-  };
   executive_summary?: string[];
-  doctor_referral_matrix?: DoctorReferral[];
-  non_doctor_referral_matrix?: NonDoctorReferral[];
   growth_opportunity_summary?: {
     top_three_fixes?: (TopFix | string)[];
     estimated_additional_annual_revenue?: number;
   };
-  practice_action_plan?: string[];
-  alloro_automation_opportunities?: string[];
+  doctor_referral_matrix?: DoctorReferral[];
+  non_doctor_referral_matrix?: NonDoctorReferral[];
+  alloro_automation_opportunities?: (ReferralAutomationOpportunity | string)[];
+  practice_action_plan?: (ReferralPracticeAction | string)[];
+  observed_period?: {
+    start_date: string;
+    end_date: string;
+  };
+  data_quality_flags?: string[];
+  confidence?: number;
 }
 
 // Unified row type for combined table
@@ -68,10 +83,8 @@ interface UnifiedReferralRow {
   name: string;
   type: "doctor" | "marketing";
   referred: number;
-  pct_scheduled: number | null;
-  pct_examined: number | null;
-  pct_started: number | null;
   net_production: number | null;
+  avg_production_per_referral: number | null;
   trend_label?: "increasing" | "decreasing" | "new" | "dormant" | "stable";
   notes: string;
 }
@@ -320,10 +333,8 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
           name: doc.referrer_name || "Unknown",
           type: "doctor",
           referred: doc.referred || 0,
-          pct_scheduled: doc.pct_scheduled ?? null,
-          pct_examined: doc.pct_examined ?? null,
-          pct_started: doc.pct_started ?? null,
           net_production: doc.net_production ?? null,
+          avg_production_per_referral: doc.avg_production_per_referral ?? null,
           trend_label: doc.trend_label,
           notes: doc.notes || "No notes available.",
         });
@@ -340,10 +351,8 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
             name: source.source_label || source.source_key || "Unknown",
             type: "marketing",
             referred: source.referred || 0,
-            pct_scheduled: source.pct_scheduled ?? null,
-            pct_examined: source.pct_examined ?? null,
-            pct_started: source.pct_started ?? null,
             net_production: source.net_production ?? null,
+            avg_production_per_referral: source.avg_production_per_referral ?? null,
             trend_label: source.trend_label,
             notes:
               source.notes ||
@@ -468,11 +477,8 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
               <th className="px-6 py-4 w-[20%]">Source</th>
               <th className="px-2 py-4 text-center w-[8%]">Type</th>
               <th className="px-2 py-4 text-center w-[7%]">Ref</th>
-              {/* TODO: Sched, Exam, Start columns hidden for now - enable in future updates when data is available */}
-              {/* <th className="px-2 py-4 text-center w-[9%]">Sched</th> */}
-              {/* <th className="px-2 py-4 text-center w-[9%]">Exam</th> */}
-              {/* <th className="px-2 py-4 text-center w-[9%]">Start</th> */}
               <th className="px-4 py-4 text-right w-[13%]">Production</th>
+              <th className="px-4 py-4 text-right w-[13%]">Avg / Ref</th>
               <th className="px-6 py-4 w-[25%]">Note</th>
             </tr>
           </thead>
@@ -496,18 +502,11 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
                 <td className="px-2 py-5 text-center font-black text-alloro-navy text-sm tabular-nums">
                   {row.referred}
                 </td>
-                {/* TODO: Sched, Exam, Start columns hidden for now - enable in future updates when data is available */}
-                {/* <td className="px-2 py-5 text-center font-bold text-slate-400 text-xs tabular-nums">
-                  {row.pct_scheduled?.toFixed(0) || 0}%
-                </td>
-                <td className="px-2 py-5 text-center font-bold text-slate-400 text-xs tabular-nums">
-                  {row.pct_examined?.toFixed(0) || 0}%
-                </td>
-                <td className="px-2 py-5 text-center font-bold text-slate-400 text-xs tabular-nums">
-                  {row.pct_started?.toFixed(0) || 0}%
-                </td> */}
                 <td className="px-4 py-5 text-right font-black text-alloro-navy text-sm tabular-nums">
                   {formatCurrency(row.net_production)}
+                </td>
+                <td className="px-4 py-5 text-right font-bold text-slate-500 text-sm tabular-nums">
+                  {formatCurrency(row.avg_production_per_referral)}
                 </td>
                 <td className="px-6 py-5">
                   <div className="space-y-1">

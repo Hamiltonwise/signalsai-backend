@@ -148,13 +148,20 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
   const [showDataHub, setShowDataHub] = useState(false);
   const [currentLocationIndex, setCurrentLocationIndex] = useState(0);
 
-  // TopFix interface for enriched fix data (additional fields optional for backwards compatibility)
+  // TopFix interface for enriched fix data
+  // New n8n schema returns: title, description, impact
+  // Legacy data may still contain: why_important, expected_impact, estimated_return, sources
   interface TopFix {
     title: string;
     description: string;
+    impact?: string;
+    /** @deprecated Legacy — use impact instead */
     why_important?: string;
+    /** @deprecated Legacy — use impact instead */
     expected_impact?: string;
+    /** @deprecated Legacy — no longer returned by n8n */
     estimated_return?: number;
+    /** @deprecated Legacy — no longer returned by n8n */
     sources?: string[];
   }
 

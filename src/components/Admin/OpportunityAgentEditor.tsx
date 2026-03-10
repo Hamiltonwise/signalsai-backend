@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { Save, Loader2, Plus, Trash2 } from "lucide-react";
-import type {
-  OpportunityAgentData,
-  OpportunityAgentStep,
-} from "../../types/agents";
+import type { OpportunityAgentData } from "../../types/agents";
 
 interface OpportunityAgentEditorProps {
   data: OpportunityAgentData;
@@ -31,16 +28,13 @@ export function OpportunityAgentEditor({
   const handleAddStep = () => {
     setEditedData({
       ...editedData,
-      steps: [...(editedData.steps || []), { step: "", description: "" }],
+      steps: [...(editedData.steps || []), ""],
     });
   };
 
-  const handleUpdateStep = (
-    index: number,
-    updatedStep: OpportunityAgentStep
-  ) => {
+  const handleUpdateStep = (index: number, value: string) => {
     const updatedSteps = [...(editedData.steps || [])];
-    updatedSteps[index] = updatedStep;
+    updatedSteps[index] = value;
     setEditedData({ ...editedData, steps: updatedSteps });
   };
 
@@ -77,11 +71,11 @@ export function OpportunityAgentEditor({
         {/* Title */}
         <div>
           <label className="mb-1 block text-xs font-semibold text-gray-700">
-            Opportunity Title <span className="text-red-500">*</span>
+            Opportunity Title
           </label>
           <input
             type="text"
-            value={editedData.title}
+            value={editedData.title || ""}
             onChange={(e) =>
               setEditedData({ ...editedData, title: e.target.value })
             }
@@ -112,45 +106,28 @@ export function OpportunityAgentEditor({
             {editedData.steps?.map((step, index) => (
               <div
                 key={index}
-                className="space-y-2 rounded-lg border border-gray-200 bg-white p-3"
+                className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white p-3"
               >
-                <div className="flex items-start justify-between">
-                  <span className="text-xs font-semibold text-gray-500">
-                    Step #{index + 1}
-                  </span>
-                  {!isReadOnly && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveStep(index)}
-                      className="text-red-600 transition hover:text-red-700"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  value={step.step}
-                  onChange={(e) =>
-                    handleUpdateStep(index, { ...step, step: e.target.value })
-                  }
-                  disabled={isReadOnly}
-                  placeholder="Step name"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm disabled:bg-gray-50"
-                />
+                <span className="mt-2 text-xs font-semibold text-gray-500 shrink-0">
+                  #{index + 1}
+                </span>
                 <textarea
-                  value={step.description}
-                  onChange={(e) =>
-                    handleUpdateStep(index, {
-                      ...step,
-                      description: e.target.value,
-                    })
-                  }
+                  value={typeof step === "string" ? step : (step as any)?.step || ""}
+                  onChange={(e) => handleUpdateStep(index, e.target.value)}
                   disabled={isReadOnly}
                   rows={2}
-                  placeholder="Step description"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm disabled:bg-gray-50"
+                  placeholder="Describe this step..."
+                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm disabled:bg-gray-50"
                 />
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveStep(index)}
+                    className="mt-2 text-red-600 transition hover:text-red-700"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -159,34 +136,17 @@ export function OpportunityAgentEditor({
         {/* Expected Lift */}
         <div>
           <label className="mb-1 block text-xs font-semibold text-gray-700">
-            Expected Lift <span className="text-red-500">*</span>
+            Expected Lift
           </label>
           <input
             type="text"
-            value={editedData.expected_lift}
+            value={editedData.expected_lift || ""}
             onChange={(e) =>
               setEditedData({ ...editedData, expected_lift: e.target.value })
             }
             disabled={isReadOnly}
             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-200 disabled:bg-gray-50 disabled:text-gray-500"
             placeholder="e.g., 20% increase in conversions"
-          />
-        </div>
-
-        {/* Rationale */}
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-gray-700">
-            Rationale <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            value={editedData.rationale}
-            onChange={(e) =>
-              setEditedData({ ...editedData, rationale: e.target.value })
-            }
-            disabled={isReadOnly}
-            rows={4}
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-200 disabled:bg-gray-50 disabled:text-gray-500"
-            placeholder="Explain the reasoning behind this opportunity..."
           />
         </div>
       </div>

@@ -570,6 +570,33 @@ export async function retryPmsStep(
 }
 
 /**
+ * Restart a completed monthly agents run.
+ * Deletes all data from the run and re-triggers from scratch.
+ */
+export async function restartPmsJob(
+  jobId: number
+): Promise<{
+  success: boolean;
+  message?: string;
+  data?: { jobId: number; restarted: boolean; deletionCounts: Record<string, number> };
+  error?: string;
+}> {
+  try {
+    const result = await apiPost({
+      path: `/pms/jobs/${jobId}/restart`,
+      passedData: {},
+    });
+    return result as any;
+  } catch (error) {
+    console.error("PMS restart API error:", error);
+    return {
+      success: false,
+      error: "Failed to restart run. Please try again.",
+    };
+  }
+}
+
+/**
  * Get the retryable step for a failed automation
  * Returns the step that can be retried based on current failure state
  */

@@ -26,51 +26,66 @@ import { useLocationContext } from "../contexts/locationContext";
 // ============================================================================
 
 interface ReferralEngineData {
-  lineage?: string;
-  citations?: string[];
-  freshness?: string;
-  agent_name?: string;
-  confidence?: number;
-  practice_id?: string;
-  agent_version?: string;
-  observed_period?: {
-    end_date: string;
-    start_date: string;
-  };
   executive_summary?: string[];
-  doctor_referral_matrix?: DoctorReferral[];
-  non_doctor_referral_matrix?: NonDoctorReferral[];
   growth_opportunity_summary?: {
-    top_three_fixes?: string[];
+    top_three_fixes?: (TopFix | string)[];
     estimated_additional_annual_revenue?: number;
   };
-  practice_action_plan?: string[];
-  alloro_automation_opportunities?: string[];
+  doctor_referral_matrix?: DoctorReferral[];
+  non_doctor_referral_matrix?: NonDoctorReferral[];
+  alloro_automation_opportunities?: (ReferralAutomationOpportunity | string)[];
+  practice_action_plan?: (ReferralPracticeAction | string)[];
+  observed_period?: {
+    start_date: string;
+    end_date: string;
+  };
+  data_quality_flags?: string[];
+  confidence?: number;
+}
+
+interface TopFix {
+  title: string;
+  description: string;
+  impact?: string;
+}
+
+interface ReferralAutomationOpportunity {
+  title: string;
+  description: string;
+  priority?: string;
+  impact?: string;
+  effort?: string;
+  category?: string;
+  due_date?: string;
+}
+
+interface ReferralPracticeAction {
+  title: string;
+  description: string;
+  priority?: string;
+  impact?: string;
+  effort?: string;
+  category?: string;
+  owner?: string;
+  due_date?: string;
 }
 
 interface DoctorReferral {
-  referrer_id?: string;
   referrer_name?: string;
   referred?: number;
-  pct_scheduled?: number | null;
-  pct_examined?: number | null;
-  pct_started?: number | null;
   net_production?: number | null;
-  avg_production_per_start?: number | null;
+  avg_production_per_referral?: number | null;
   trend_label?: "increasing" | "decreasing" | "new" | "dormant" | "stable";
   notes?: string;
 }
 
 interface NonDoctorReferral {
-  source_key?: string;
   source_label?: string;
+  source_key?: string;
   source_type?: "digital" | "patient" | "other";
   referred?: number;
-  pct_scheduled?: number | null;
-  pct_examined?: number | null;
-  pct_started?: number | null;
   net_production?: number | null;
-  avg_production_per_start?: number | null;
+  avg_production_per_referral?: number | null;
   trend_label?: "increasing" | "decreasing" | "new" | "dormant" | "stable";
   notes?: string;
 }
@@ -469,7 +484,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
       name: string;
       category: string;
       count: number;
-      percentage: number;
+      avgPerReferral: number | null;
       production: number;
       notes: string;
     }> = [];
@@ -481,7 +496,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
         name: doc.referrer_name || "Unknown Doctor",
         category: "Doctor",
         count: doc.referred || 0,
-        percentage: doc.pct_started || 0,
+        avgPerReferral: doc.avg_production_per_referral ?? null,
         production: doc.net_production || 0,
         notes:
           doc.notes ||
@@ -496,7 +511,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
         name: source.source_label || source.source_key || "Unknown Source",
         category: source.source_type === "digital" ? "Marketing" : "Insurance",
         count: source.referred || 0,
-        percentage: source.pct_started || 0,
+        avgPerReferral: source.avg_production_per_referral ?? null,
         production: source.net_production || 0,
         notes:
           source.notes ||
@@ -763,7 +778,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   <tr>
                     <th className="px-10 py-5 w-[25%]">Ledger Source</th>
                     <th className="px-4 py-5 text-center w-[12%]">Volume</th>
-                    <th className="px-4 py-5 text-center w-[15%]">Yield %</th>
+                    <th className="px-4 py-5 text-right w-[15%]">Avg / Ref</th>
                     <th className="px-4 py-5 text-right w-[18%]">Production</th>
                     <th className="px-10 py-5 w-[30%]">Intelligence Note</th>
                   </tr>
@@ -786,18 +801,10 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                         <td className="px-4 py-7 text-center font-black text-alloro-navy text-xl font-sans tabular-nums">
                           {source.count}
                         </td>
-                        <td className="px-4 py-7">
-                          <div className="flex flex-col items-center gap-2">
-                            <span className="text-[12px] font-black text-alloro-orange font-sans">
-                              {source.percentage.toFixed(0)}%
-                            </span>
-                            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-alloro-orange shadow-inner"
-                                style={{ width: `${source.percentage}%` }}
-                              />
-                            </div>
-                          </div>
+                        <td className="px-4 py-7 text-right font-bold text-slate-500 tabular-nums text-base font-sans">
+                          {source.avgPerReferral != null
+                            ? formatCurrency(source.avgPerReferral)
+                            : "N/A"}
                         </td>
                         <td className="px-4 py-7 text-right font-black text-alloro-navy tabular-nums text-xl font-sans">
                           ${source.production.toLocaleString()}

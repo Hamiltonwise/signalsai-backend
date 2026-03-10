@@ -272,13 +272,15 @@ export default function SeoPanel({
   const loadAllMeta = async () => {
     try {
       const result = await fetchAllSeoMeta(projectId);
+      // For pages, exclude by path (all versions of same path are the same page).
+      // For posts, exclude by id.
       const titles = [
-        ...result.data.pages.filter((p) => p.id !== entityId).map((p) => p.meta_title).filter(Boolean),
-        ...result.data.posts.filter((p) => p.id !== entityId).map((p) => p.meta_title).filter(Boolean),
+        ...result.data.pages.filter((p) => entityType === "page" ? p.path !== pagePath : p.id !== entityId).map((p) => p.meta_title).filter(Boolean),
+        ...result.data.posts.filter((p) => entityType === "post" ? p.id !== entityId : true).map((p) => p.meta_title).filter(Boolean),
       ] as string[];
       const descs = [
-        ...result.data.pages.filter((p) => p.id !== entityId).map((p) => p.meta_description).filter(Boolean),
-        ...result.data.posts.filter((p) => p.id !== entityId).map((p) => p.meta_description).filter(Boolean),
+        ...result.data.pages.filter((p) => entityType === "page" ? p.path !== pagePath : p.id !== entityId).map((p) => p.meta_description).filter(Boolean),
+        ...result.data.posts.filter((p) => entityType === "post" ? p.id !== entityId : true).map((p) => p.meta_description).filter(Boolean),
       ] as string[];
       setAllTitles(titles);
       setAllDescriptions(descs);

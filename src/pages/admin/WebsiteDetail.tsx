@@ -1042,14 +1042,13 @@ export default function WebsiteDetail() {
   const pageGroups = groupPagesByPath(website.pages);
 
   // Pre-compute all SEO titles/descriptions for uniqueness checks in the page list
-  // Check all versions per group to find the one with SEO data
+  // Use displayPage (published or latest) per group — matches list score display
   const allPageSeoMeta = (() => {
     const titles: string[] = [];
     const descriptions: string[] = [];
     for (const group of pageGroups) {
-      const seoPage = group.pages.find((p) => p.seo_data && p.seo_data.meta_title)
-        || group.pages.find((p) => p.status === "published")
-        || group.pages[0];
+      const publishedPage = group.pages.find((p) => p.status === "published");
+      const seoPage = publishedPage || group.pages[0];
       if (seoPage?.seo_data?.meta_title) titles.push(seoPage.seo_data.meta_title);
       if (seoPage?.seo_data?.meta_description) descriptions.push(seoPage.seo_data.meta_description);
     }
@@ -1833,9 +1832,9 @@ export default function WebsiteDetail() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {/* SEO Score — use best seo_data across all versions */}
+                        {/* SEO Score — use displayPage (published or latest) */}
                         {(() => {
-                          const seoPage = group.pages.find((p) => p.seo_data && p.seo_data.meta_title) || displayPage;
+                          const seoPage = displayPage;
                           const sibTitles = allPageSeoMeta.titles.filter((t) => t !== (seoPage.seo_data?.meta_title || ""));
                           const sibDescs = allPageSeoMeta.descriptions.filter((d) => d !== (seoPage.seo_data?.meta_description || ""));
                           const seoScore = computeSeoScore(seoPage.seo_data, sibTitles, sibDescs, website.wrapper || "");
