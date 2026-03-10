@@ -365,80 +365,21 @@ export async function submitManualPMSData(
 }
 
 // =====================================================================
-// PASTE ANALYSIS TYPES AND API FUNCTION (Phase 1)
+// PASTE-PARSE TYPES AND API FUNCTION
 // =====================================================================
 
-export interface ColumnMapping {
-  source: number | null;
-  date: number | null;
-  type: number | null;
-  referrals: number | null;
-  production: number | null;
+export interface SanitizationRow {
+  source: string;
+  type: "self" | "doctor";
+  referrals: number;
+  production: number;
+  month: string;
 }
-
-export interface TypeInference {
-  hasReferringPractice: boolean;
-  hasReferringDoctor: boolean;
-  referringPracticeColumn: number | null;
-  referringDoctorColumn: number | null;
-}
-
-export interface AnalysisContext {
-  columns: ColumnMapping;
-  delimiter: "tab" | "comma";
-  hasHeaderRow: boolean;
-  typeInference: TypeInference;
-  rowStructure: "one_per_referral" | "aggregated";
-  warnings: string[];
-}
-
-export interface PasteAnalyzeApiResponse {
-  success: boolean;
-  data?: AnalysisContext;
-  error?: string;
-}
-
-/**
- * Phase 1: Analyze pasted data structure and determine column mapping.
- */
-export async function analyzePastedData(
-  rawText: string
-): Promise<PasteAnalyzeApiResponse> {
-  try {
-    const result = await apiPost({
-      path: "/pms/analyze-paste",
-      passedData: { rawText },
-      additionalHeaders: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
-    return result as PasteAnalyzeApiResponse;
-  } catch (error) {
-    console.error("PMS analyze-paste API error:", error);
-    return {
-      success: false,
-      error: "Failed to analyze pasted data. Please try again.",
-    };
-  }
-}
-
-// =====================================================================
-// PASTE-PARSE TYPES AND API FUNCTION (Phase 2)
-// =====================================================================
 
 export interface PasteParseApiResponse {
   success: boolean;
   data?: {
-    months: Array<{
-      month: string;
-      rows: Array<{
-        source: string;
-        type: "self" | "doctor";
-        referrals: number;
-        production: number;
-      }>;
-    }>;
+    rows: SanitizationRow[];
     warnings: string[];
     rowsParsed: number;
     monthsDetected: number;
@@ -447,18 +388,16 @@ export interface PasteParseApiResponse {
 }
 
 /**
- * Phase 2: Send pasted text batch to the AI parsing endpoint.
- * Now accepts optional analysis context from Phase 1.
+ * Send pasted text batch for JS parsing (fixed columns: Date, Source, Type, Production).
  */
 export async function parsePastedData(
   rawText: string,
-  currentMonth: string,
-  analysisContext?: AnalysisContext
+  currentMonth: string
 ): Promise<PasteParseApiResponse> {
   try {
     const result = await apiPost({
       path: "/pms/parse-paste",
-      passedData: { rawText, currentMonth, analysisContext },
+      passedData: { rawText, currentMonth },
       additionalHeaders: {
         Accept: "application/json",
         "Content-Type": "application/json",
@@ -475,16 +414,8 @@ export async function parsePastedData(
 }
 
 // =====================================================================
-// PASTE SANITIZATION TYPES AND API FUNCTION (Phase 3)
+// PASTE SANITIZATION TYPES AND API FUNCTION
 // =====================================================================
-
-export interface SanitizationRow {
-  source: string;
-  type: "self" | "doctor";
-  referrals: number;
-  production: number;
-  month: string;
-}
 
 export interface MergeGroup {
   canonicalName: string;
@@ -495,17 +426,16 @@ export interface MergeGroup {
 
 export interface SanitizationStats {
   totalInputRows: number;
-  duplicateGroupsFound: number;
-  duplicateGroupsConfirmed: number;
-  rowsMerged: number;
+  exactGroupsMerged: number;
+  fuzzyGroupsFound: number;
+  fuzzyGroupsConfirmed: number;
   uniqueSourcesAfter: number;
 }
 
 export interface PasteSanitizeApiResponse {
   success: boolean;
   data?: {
-    mergedRows: SanitizationRow[];
-    uniqueRows: SanitizationRow[];
+    allRows: SanitizationRow[];
     mergeGroups: MergeGroup[];
     reasoning: string[];
     warnings: string[];
@@ -515,7 +445,7 @@ export interface PasteSanitizeApiResponse {
 }
 
 /**
- * Phase 3: Deduplicate and sanitize parsed PMS rows.
+ * Deduplicate and sanitize parsed PMS rows (exact + AI fuzzy dedup).
  */
 export async function sanitizePastedData(
   rows: SanitizationRow[]

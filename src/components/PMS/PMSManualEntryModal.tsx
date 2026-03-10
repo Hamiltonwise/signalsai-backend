@@ -6,7 +6,7 @@
  * On submit, data goes directly to monthly agents (skipping admin/client approval).
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { showUploadToast } from "../../lib/toast";
 import {
@@ -16,12 +16,14 @@ import {
   Calendar,
   ClipboardPaste,
   DollarSign,
+  Download,
   Loader2,
   Plus,
   RefreshCw,
   Save,
   Stethoscope,
   Trash2,
+  Upload,
   User,
   X,
 } from "lucide-react";
@@ -141,21 +143,21 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
     number | null
   >(null);
 
-  // Paste handler — AI-powered paste-to-parse
+  // Drag & drop state
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
+
+  // Paste handler
   const handleParsedPaste = useCallback(
     (parsedMonths: MonthBucket[]) => {
-      setMonths((prev) => {
-        const merged = [...prev];
-        for (const incoming of parsedMonths) {
-          const existing = merged.find((m) => m.month === incoming.month);
-          if (existing) {
-            existing.rows = [...existing.rows, ...incoming.rows];
-          } else {
-            merged.push(incoming);
-          }
-        }
-        return merged;
-      });
+      // Replace existing data with freshly parsed data
+      setMonths(parsedMonths);
+      // Select earliest month that has data
+      const sorted = [...parsedMonths].sort((a, b) => a.month.localeCompare(b.month));
+      const first = sorted.find((m) => m.rows.length > 0) || sorted[0];
+      if (first) {
+        setActiveMonthId(first.id);
+      }
       showUploadToast(
         "Data parsed!",
         `${parsedMonths.reduce((s, m) => s + m.rows.length, 0)} rows added. Review and submit when ready.`
@@ -191,17 +193,91 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
     onWarnings: handlePasteWarnings,
   });
 
-  // Reset state when modal opens
+  // Only reset transient state when modal opens (keep data intact)
   useEffect(() => {
     if (isOpen) {
-      const initialMonth = getPreviousMonth();
-      const initialId = Date.now();
-      setMonths([{ id: initialId, month: initialMonth, rows: [] }]);
-      setActiveMonthId(initialId);
       setSubmitStatus("idle");
       setError(null);
     }
   }, [isOpen]);
+
+  // Clear all data and reset to empty state
+  const clearAllData = useCallback(() => {
+    const initialMonth = getPreviousMonth();
+    const initialId = Date.now();
+    setMonths([{ id: initialId, month: initialMonth, rows: [] }]);
+    setActiveMonthId(initialId);
+    setError(null);
+  }, []);
+
+  // Drag & drop handlers for CSV files
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+    if (e.dataTransfer.types.includes("Files")) {
+      setIsDragging(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current -= 1;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+      dragCounter.current = 0;
+
+      const file = e.dataTransfer.files?.[0];
+      if (!file) return;
+
+      if (!file.name.endsWith(".csv") && !file.name.endsWith(".tsv") && !file.name.endsWith(".txt")) {
+        setError("Please drop a CSV, TSV, or TXT file.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const text = evt.target?.result as string;
+        if (!text) return;
+        const fakeEvent = {
+          clipboardData: { getData: () => text },
+          target: document.body,
+          preventDefault: () => {},
+        } as unknown as React.ClipboardEvent;
+        handlePasteEvent(fakeEvent);
+      };
+      reader.readAsText(file);
+    },
+    [handlePasteEvent, setError]
+  );
+
+  // Download CSV template with the expected headers
+  const downloadTemplate = useCallback(() => {
+    const headers = "Treatment Date,Source,Type,Production";
+    const example = "01/15/2025,Google,self,1500";
+    const csv = `${headers}\n${example}\n`;
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "pms-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
 
   const sortedMonths = useMemo(
     () => [...months].sort((a, b) => a.month.localeCompare(b.month)),
@@ -464,12 +540,35 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
           className="relative flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl my-auto"
           onClick={(e) => e.stopPropagation()}
           onPaste={handlePasteEvent}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
         >
+          {/* Drag overlay */}
+          <AnimatePresence>
+            {isDragging && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-50 flex items-center justify-center rounded-2xl"
+                style={{ backgroundColor: "rgba(201,118,94,0.08)", border: `2px dashed ${ALORO_ORANGE}` }}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <Upload size={32} style={{ color: ALORO_ORANGE }} />
+                  <span className="text-sm font-medium" style={{ color: ALORO_ORANGE }}>
+                    Drop your CSV file here
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-white">
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                Enter PMS Data Manually
+                Enter PMS Data
               </h2>
               <p className="text-xs text-gray-500 mt-1">
                 Add your referral and production data for {clientId}
@@ -678,11 +777,12 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                       animate={{ opacity: 1 }}
                       className="text-center py-8 text-gray-500"
                     >
-                      <User className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <Upload className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                       <p className="text-sm">No sources added yet</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Click "Add Source" below, or paste data from your
-                        spreadsheet and Alloro will analyze it for you.
+                      <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+                        Copy your cells from a spreadsheet and paste here, or drag
+                        and drop a CSV file. Alloro will parse and clean your data
+                        automatically.
                       </p>
                     </motion.div>
                   ) : (
@@ -866,15 +966,15 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                   )}
                 </AnimatePresence>
 
-                {/* Add Source + Paste Data Buttons */}
+                {/* Action Buttons: Download Template | Paste Data | Add Source */}
                 <div className="flex justify-end gap-3 px-2">
                   <button
-                    onClick={addRow}
+                    onClick={downloadTemplate}
                     className="flex items-center gap-2 border rounded-full px-5 py-2 text-xs font-semibold transition-colors hover:bg-gray-50"
-                    style={{ color: ALORO_ORANGE, borderColor: ALORO_ORANGE }}
+                    style={{ color: "#6B7280", borderColor: "#D1D5DB" }}
                   >
-                    <Plus size={16} />
-                    <span>Add Source</span>
+                    <Download size={16} />
+                    <span>Download Template</span>
                   </button>
                   <button
                     onClick={() => {
@@ -902,6 +1002,14 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                   >
                     <ClipboardPaste size={16} />
                     <span>Paste Data</span>
+                  </button>
+                  <button
+                    onClick={addRow}
+                    className="flex items-center gap-2 border rounded-full px-5 py-2 text-xs font-semibold transition-colors hover:bg-gray-50"
+                    style={{ color: ALORO_ORANGE, borderColor: ALORO_ORANGE }}
+                  >
+                    <Plus size={16} />
+                    <span>Add Source</span>
                   </button>
                 </div>
               </div>
@@ -1037,9 +1145,19 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
           {/* Footer */}
           {submitStatus !== "success" && (
             <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4 bg-white">
-              <div className="text-xs text-gray-500">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={clearAllData}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-1.5 rounded-full border px-5 py-2 text-sm font-medium transition hover:bg-orange-50 disabled:opacity-50"
+                  style={{ borderColor: ALORO_ORANGE, color: ALORO_ORANGE }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear
+                </button>
                 {error && (
-                  <span className="inline-flex items-center gap-1 text-red-600">
+                  <span className="inline-flex items-center gap-1 text-xs text-red-600">
                     <AlertCircle className="h-4 w-4" />
                     {error}
                   </span>

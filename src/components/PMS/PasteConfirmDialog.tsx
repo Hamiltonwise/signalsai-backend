@@ -1,6 +1,6 @@
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ClipboardPaste, Loader2, Search, Sparkles, X } from "lucide-react";
+import { ClipboardPaste, Loader2, Sparkles, X } from "lucide-react";
 import type { PasteInfo } from "./types";
 import type { PastePhase } from "./usePasteHandler";
 
@@ -19,15 +19,10 @@ const PHASE_CONFIG: Record<
   Exclude<PastePhase, "idle">,
   { icon: React.ReactNode; label: string; description: string }
 > = {
-  analyzing: {
-    icon: <Search size={16} className="animate-pulse" />,
-    label: "Analyzing your data structure...",
-    description: "Detecting columns, types, and layout",
-  },
   parsing: {
     icon: <Loader2 size={16} className="animate-spin" />,
     label: "Parsing data...",
-    description: "Extracting referral sources and production values",
+    description: "Reading rows from your pasted data",
   },
   sanitizing: {
     icon: <Sparkles size={16} className="animate-pulse" />,
@@ -48,13 +43,9 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
 
   const phaseConfig = phase !== "idle" ? PHASE_CONFIG[phase] : null;
 
-  // Compute overall progress across all 3 phases
   const getOverallProgress = (): number => {
-    if (phase === "analyzing") return 10;
     if (phase === "parsing" && batchProgress) {
-      // Parsing is 10-80% of overall progress
-      const batchPct = batchProgress.current / batchProgress.total;
-      return 10 + batchPct * 70;
+      return (batchProgress.current / batchProgress.total) * 75;
     }
     if (phase === "sanitizing") return 85;
     return 0;
@@ -103,8 +94,8 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
               <>
                 <p className="text-sm text-gray-500 text-center mb-4">
                   {pasteInfo.chunksRequired > 1
-                    ? `That's a lot of data! We'll process it in ${pasteInfo.chunksRequired} batches of 30 rows each.`
-                    : "Ready to parse your pasted data using AI."}
+                    ? `That's a lot of data! We'll process it in ${pasteInfo.chunksRequired} batches of ${50} rows each.`
+                    : "Ready to parse your pasted data."}
                 </p>
 
                 <div className="w-full bg-gray-50 rounded-xl p-3 mb-5 space-y-1">
@@ -151,7 +142,6 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
 
             {isPasting && phaseConfig && (
               <div className="w-full mt-2">
-                {/* Phase indicator */}
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <span style={{ color: ALORO_ORANGE }}>
                     {phaseConfig.icon}
@@ -165,69 +155,45 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
                   </span>
                 </div>
 
-                {/* Phase step indicators */}
+                {/* Step indicators */}
                 <div className="flex items-center justify-center gap-1.5 mb-3 mt-2">
-                  {(
-                    ["analyzing", "parsing", "sanitizing"] as const
-                  ).map((p) => (
-                    <div
-                      key={p}
-                      className="flex items-center gap-1"
-                    >
-                      <div
-                        className="w-2 h-2 rounded-full transition-colors duration-300"
-                        style={{
-                          backgroundColor:
-                            phase === p
-                              ? ALORO_ORANGE
-                              : (
-                                  ["analyzing", "parsing", "sanitizing"].indexOf(phase) >
-                                  ["analyzing", "parsing", "sanitizing"].indexOf(p)
-                                )
-                                ? ALORO_ORANGE
-                                : "#e5e7eb",
-                          opacity:
-                            phase === p
-                              ? 1
-                              : (
-                                  ["analyzing", "parsing", "sanitizing"].indexOf(phase) >
-                                  ["analyzing", "parsing", "sanitizing"].indexOf(p)
-                                )
-                                ? 0.5
-                                : 0.3,
-                        }}
-                      />
-                      <span
-                        className="text-[10px] font-medium transition-colors duration-300"
-                        style={{
-                          color:
-                            phase === p
-                              ? ALORO_ORANGE
-                              : "#9ca3af",
-                        }}
-                      >
-                        {p === "analyzing"
-                          ? "Analyze"
-                          : p === "parsing"
-                            ? "Parse"
-                            : "Clean"}
-                      </span>
-                      {p !== "sanitizing" && (
-                        <div className="w-4 h-px bg-gray-200 mx-0.5" />
-                      )}
-                    </div>
-                  ))}
+                  {(["parsing", "sanitizing"] as const).map((p) => {
+                    const phases = ["parsing", "sanitizing"];
+                    const currentIdx = phases.indexOf(phase);
+                    const stepIdx = phases.indexOf(p);
+                    const isActive = phase === p;
+                    const isDone = currentIdx > stepIdx;
+
+                    return (
+                      <div key={p} className="flex items-center gap-1">
+                        <div
+                          className="w-2 h-2 rounded-full transition-colors duration-300"
+                          style={{
+                            backgroundColor: isActive || isDone ? ALORO_ORANGE : "#e5e7eb",
+                            opacity: isActive ? 1 : isDone ? 0.5 : 0.3,
+                          }}
+                        />
+                        <span
+                          className="text-[10px] font-medium transition-colors duration-300"
+                          style={{ color: isActive ? ALORO_ORANGE : "#9ca3af" }}
+                        >
+                          {p === "parsing" ? "Parse" : "Clean"}
+                        </span>
+                        {p === "parsing" && (
+                          <div className="w-4 h-px bg-gray-200 mx-0.5" />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {/* Overall progress bar */}
+                {/* Progress bar */}
                 <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                   <motion.div
                     className="h-full rounded-full"
                     style={{ backgroundColor: ALORO_ORANGE }}
                     initial={{ width: "0%" }}
-                    animate={{
-                      width: `${getOverallProgress()}%`,
-                    }}
+                    animate={{ width: `${getOverallProgress()}%` }}
                     transition={{ duration: 0.4, ease: "easeOut" }}
                   />
                 </div>

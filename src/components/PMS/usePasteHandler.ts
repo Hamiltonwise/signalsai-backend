@@ -1,15 +1,14 @@
 import { useCallback, useRef, useState } from "react";
 import {
-  analyzePastedData,
   parsePastedData,
   sanitizePastedData,
 } from "../../api/pms";
-import type { AnalysisContext, SanitizationRow } from "../../api/pms";
+import type { SanitizationRow } from "../../api/pms";
 import type { MonthBucket, PasteInfo, SourceRow } from "./types";
 
-const ROWS_PER_BATCH = 30;
+const ROWS_PER_BATCH = 50;
 
-export type PastePhase = "idle" | "analyzing" | "parsing" | "sanitizing";
+export type PastePhase = "idle" | "parsing" | "sanitizing";
 
 interface UsePasteHandlerOptions {
   currentMonth: string; // YYYY-MM fallback
@@ -31,7 +30,6 @@ interface UsePasteHandlerReturn {
 
 /**
  * Detect if pasted content looks like tabular data (from a spreadsheet or CSV).
- * Must have tabs or commas as delimiters AND multiple lines.
  */
 function isTabularPaste(text: string): boolean {
   const lines = text.split("\n").filter((l) => l.trim().length > 0);
@@ -46,7 +44,7 @@ function isTabularPaste(text: string): boolean {
 
 /**
  * Split raw text into chunks of ROWS_PER_BATCH data rows,
- * preserving the first line (headers) in every chunk.
+ * preserving the header line in every chunk.
  */
 function chunkByRows(raw: string): string[] {
   const lines = raw.split("\n");
@@ -65,77 +63,9 @@ function chunkByRows(raw: string): string[] {
 }
 
 /**
- * Convert AI-parsed month data into MonthBucket[] with unique IDs.
+ * Convert SanitizationRow[] to MonthBucket[] for the UI.
  */
-function toMonthBuckets(
-  months: Array<{
-    month: string;
-    rows: Array<{
-      source: string;
-      type: "self" | "doctor";
-      referrals: number;
-      production: number;
-    }>;
-  }>
-): MonthBucket[] {
-  return months.map((m) => ({
-    id: Date.now() + Math.random() * 10000,
-    month: m.month,
-    rows: m.rows.map(
-      (r): SourceRow => ({
-        id: Date.now() + Math.random() * 10000,
-        source: r.source,
-        type: r.type,
-        referrals: String(r.referrals),
-        production: String(r.production),
-      })
-    ),
-  }));
-}
-
-/**
- * Merge parsed MonthBuckets: combine rows for the same month.
- */
-function mergeMonthBuckets(buckets: MonthBucket[]): MonthBucket[] {
-  const map = new Map<string, MonthBucket>();
-
-  for (const bucket of buckets) {
-    const existing = map.get(bucket.month);
-    if (existing) {
-      existing.rows.push(...bucket.rows);
-    } else {
-      map.set(bucket.month, { ...bucket });
-    }
-  }
-
-  return Array.from(map.values());
-}
-
-/**
- * Flatten MonthBucket[] into SanitizationRow[] for the sanitization API.
- */
-function flattenToSanitizationRows(
-  buckets: MonthBucket[]
-): SanitizationRow[] {
-  const rows: SanitizationRow[] = [];
-  for (const bucket of buckets) {
-    for (const row of bucket.rows) {
-      rows.push({
-        source: row.source,
-        type: row.type,
-        referrals: Number(row.referrals) || 0,
-        production: Number(row.production) || 0,
-        month: bucket.month,
-      });
-    }
-  }
-  return rows;
-}
-
-/**
- * Convert SanitizationRow[] back to MonthBucket[] for the UI.
- */
-function sanitizationRowsToBuckets(rows: SanitizationRow[]): MonthBucket[] {
+function rowsToBuckets(rows: SanitizationRow[]): MonthBucket[] {
   const map = new Map<string, MonthBucket>();
 
   for (const row of rows) {
@@ -154,7 +84,7 @@ function sanitizationRowsToBuckets(rows: SanitizationRow[]): MonthBucket[] {
       type: row.type,
       referrals: String(row.referrals),
       production: String(row.production),
-    });
+    } as SourceRow);
   }
 
   return Array.from(map.values());
@@ -179,7 +109,6 @@ export function usePasteHandler({
 
   const handlePasteEvent = useCallback(
     (e: React.ClipboardEvent) => {
-      // Don't intercept paste if user is typing in an input field
       const target = e.target as HTMLElement;
       if (
         target.tagName === "INPUT" ||
@@ -196,7 +125,7 @@ export function usePasteHandler({
 
       const sizeKB = new Blob([text]).size / 1024;
       const lines = text.split("\n").filter((l) => l.trim().length > 0);
-      const estimatedRows = Math.max(0, lines.length - 1); // subtract header
+      const estimatedRows = Math.max(0, lines.length - 1);
       const chunksRequired = Math.ceil(estimatedRows / ROWS_PER_BATCH);
 
       rawTextRef.current = text;
@@ -218,127 +147,76 @@ export function usePasteHandler({
 
     setIsPasting(true);
     const allWarnings: string[] = [];
+    const allRows: SanitizationRow[] = [];
 
     try {
       // ===============================================
-      // PHASE 1: ANALYSIS — "Analyzing your data structure..."
-      // ===============================================
-      setPhase("analyzing");
-      console.log("[PMS-Paste] Phase 1: Analyzing data structure...");
-
-      let analysisContext: AnalysisContext | undefined;
-
-      const analyzeResult = await analyzePastedData(raw);
-      if (analyzeResult.success && analyzeResult.data) {
-        analysisContext = analyzeResult.data;
-        console.log("[PMS-Paste] Analysis complete:", JSON.stringify(analysisContext.columns));
-
-        if (analyzeResult.data.warnings?.length) {
-          allWarnings.push(...analyzeResult.data.warnings);
-        }
-      } else {
-        console.warn(
-          "[PMS-Paste] Analysis failed, proceeding without context:",
-          analyzeResult.error
-        );
-        allWarnings.push(
-          "Column analysis could not determine structure — using fallback detection."
-        );
-      }
-
-      // ===============================================
-      // PHASE 2: BATCH PARSING — "Processing batch X of Y..."
+      // PHASE 1: JS PARSING — batch by 50 rows
       // ===============================================
       setPhase("parsing");
-      console.log("[PMS-Paste] Phase 2: Batch parsing...");
-
       const chunks = chunkByRows(raw);
-      const allBuckets: MonthBucket[] = [];
+
+      console.log(`[PMS-Paste] Parsing ${chunks.length} batch(es)...`);
 
       for (let i = 0; i < chunks.length; i++) {
         setBatchProgress({ current: i + 1, total: chunks.length });
         console.log(`[PMS-Paste] Parsing batch ${i + 1}/${chunks.length}...`);
 
-        const result = await parsePastedData(
-          chunks[i],
-          currentMonth,
-          analysisContext
-        );
+        const result = await parsePastedData(chunks[i], currentMonth);
 
         if (!result.success || !result.data) {
           throw new Error(result.error || "Parsing failed");
         }
 
-        const buckets = toMonthBuckets(result.data.months);
-        allBuckets.push(...buckets);
+        allRows.push(...result.data.rows);
 
         if (result.data.warnings?.length) {
           allWarnings.push(...result.data.warnings);
         }
       }
 
-      const merged = mergeMonthBuckets(allBuckets);
-
-      if (merged.length === 0) {
+      if (allRows.length === 0) {
         throw new Error("No data could be parsed from the pasted content.");
       }
 
-      console.log(
-        `[PMS-Paste] Batch parsing complete: ${merged.length} months, ${merged.reduce((n, m) => n + m.rows.length, 0)} rows`
-      );
+      console.log(`[PMS-Paste] Parsed ${allRows.length} total rows`);
 
       // ===============================================
-      // PHASE 3: SANITIZATION — "Cleaning your data..."
+      // PHASE 2: SANITIZATION — smart dedup
       // ===============================================
       setPhase("sanitizing");
       setBatchProgress(null);
-      console.log("[PMS-Paste] Phase 3: Sanitizing/deduplicating...");
+      console.log("[PMS-Paste] Sanitizing/deduplicating...");
 
-      const flatRows = flattenToSanitizationRows(merged);
+      const sanitizeResult = await sanitizePastedData(allRows);
 
-      // Only run sanitization if there are enough rows to have potential duplicates
-      if (flatRows.length >= 2) {
-        const sanitizeResult = await sanitizePastedData(flatRows);
+      if (sanitizeResult.success && sanitizeResult.data) {
+        const { allRows: sanitizedRows, stats, reasoning, warnings } =
+          sanitizeResult.data;
 
-        if (sanitizeResult.success && sanitizeResult.data) {
-          const { mergedRows, uniqueRows, stats, reasoning, warnings } =
-            sanitizeResult.data;
+        console.log("[PMS-Paste] Sanitization stats:", JSON.stringify(stats));
 
-          console.log("[PMS-Paste] Sanitization stats:", JSON.stringify(stats));
-
-          if (reasoning?.length) {
-            console.log("[PMS-Paste] Sanitization reasoning:", reasoning);
-          }
-
-          if (warnings?.length) {
-            allWarnings.push(...warnings);
-          }
-
-          // Combine merged + unique rows back into MonthBucket[]
-          const allSanitizedRows = [...mergedRows, ...uniqueRows];
-          const sanitizedBuckets = sanitizationRowsToBuckets(allSanitizedRows);
-
-          if (stats.duplicateGroupsConfirmed > 0) {
-            allWarnings.push(
-              `Merged ${stats.duplicateGroupsConfirmed} duplicate source group(s) during sanitization.`
-            );
-          }
-
-          onParsed(sanitizedBuckets);
-        } else {
-          console.warn(
-            "[PMS-Paste] Sanitization failed, using unsanitized data:",
-            sanitizeResult.error
-          );
-          allWarnings.push(
-            "Data cleaning could not complete — using unprocessed results."
-          );
-          onParsed(merged);
+        if (reasoning?.length) {
+          console.log("[PMS-Paste] Dedup reasoning:", reasoning);
         }
+
+        if (warnings?.length) {
+          allWarnings.push(...warnings);
+        }
+
+        if (stats.exactGroupsMerged > 0 || stats.fuzzyGroupsConfirmed > 0) {
+          allWarnings.push(
+            `Deduplicated: ${stats.exactGroupsMerged} exact + ${stats.fuzzyGroupsConfirmed} fuzzy group(s) merged.`
+          );
+        }
+
+        const buckets = rowsToBuckets(sanitizedRows);
+        onParsed(buckets);
       } else {
-        // Not enough rows for dedup, skip sanitization
-        console.log("[PMS-Paste] Skipping sanitization (< 2 rows)");
-        onParsed(merged);
+        console.warn("[PMS-Paste] Sanitization failed, using raw parsed data:", sanitizeResult.error);
+        allWarnings.push("Data cleaning could not complete — using unprocessed results.");
+        const buckets = rowsToBuckets(allRows);
+        onParsed(buckets);
       }
 
       if (allWarnings.length > 0) {
