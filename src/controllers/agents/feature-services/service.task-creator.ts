@@ -13,46 +13,83 @@
 
 import { db } from "../../../database/connection";
 import { log, logError } from "../feature-utils/agentLogger";
+import type {
+  OpportunityAgentOutput,
+  CroOptimizerAgentOutput,
+  ReferralEngineAgentOutput,
+} from "../types/agent-output-schemas";
+
+// =====================================================================
+// SHARED: NORMALIZE n8n OUTPUT
+// =====================================================================
+
+/**
+ * n8n can return agent outputs in multiple shapes:
+ *   1. {opportunities: [...]}              — plain object
+ *   2. [{opportunities: [...]}]            — single-wrapped array
+ *   3. [[{opportunities: [...]}]]          — double-wrapped array
+ *   4. {"0": {opportunities: [...]}}       — numeric-keyed object (array→object serialization)
+ *   5. {"0": [{opportunities: [...]}]}     — numeric-keyed wrapping an array
+ *
+ * This function normalizes all shapes to the inner payload object.
+ */
+function normalizeAgentOutput(raw: any): any {
+  let val = raw;
+
+  // Handle numeric-keyed objects: {"0": ...} → take first value
+  if (val && typeof val === "object" && !Array.isArray(val)) {
+    const keys = Object.keys(val);
+    if (keys.length > 0 && keys.every((k) => /^\d+$/.test(k))) {
+      log(`  [NORMALIZE] Detected numeric-keyed object (keys: ${keys.join(",")}), extracting values`);
+      val = Object.values(val);
+    }
+  }
+
+  // Unwrap nested arrays: [[x]] → [x] → x
+  while (Array.isArray(val) && val.length === 1 && Array.isArray(val[0])) {
+    val = val[0];
+  }
+
+  // Final: if still an array, take first element
+  return Array.isArray(val) ? val[0] : val;
+}
 
 // =====================================================================
 // OPPORTUNITY TASKS
 // =====================================================================
 
 export async function createTasksFromOpportunityOutput(
-  opportunityOutput: any,
+  opportunityOutput: OpportunityAgentOutput,
   googleAccountId: number,
   organizationId?: number | null,
   locationId?: number | null,
 ): Promise<void> {
   try {
-    const actionItems = opportunityOutput[0]?.opportunities || [];
+    const first = normalizeAgentOutput(opportunityOutput);
+    const actionItems = first?.opportunities || [];
 
-    console.log(opportunityOutput[0].opportunities);
+    log(`  [MONTHLY] Opportunity output shape: ${Array.isArray(opportunityOutput) ? `array(${opportunityOutput.length})` : typeof opportunityOutput}, actionItems: ${actionItems.length}`);
+
     if (Array.isArray(actionItems) && actionItems.length > 0) {
       log(
         `  [MONTHLY] Creating ${actionItems.length} task(s) from action items`,
       );
 
       for (const item of actionItems) {
-        // Use type from action item, default to USER if not ALLORO (Opportunity agent outputs USER tasks)
         const type =
           item.type?.toUpperCase() === "ALLORO" ? "ALLORO" : "USER";
 
         const taskData = {
           organization_id: organizationId ?? null,
           location_id: locationId ?? null,
-          title: item.title || item.name || "Untitled Task",
-          description:
-            item.explanation || item.description || item.details || null,
+          title: item.title || "Untitled Task",
+          description: item.explanation || null,
           category: type,
           agent_type: "OPPORTUNITY",
           status: "pending",
           is_approved: false,
           created_by_admin: true,
-          due_date:
-            item.due_date || item.dueDate
-              ? new Date(item.due_date || item.dueDate)
-              : null,
+          due_date: item.due_date ? new Date(item.due_date) : null,
           metadata: JSON.stringify({
             agent_category: item.category || null,
             urgency: item.urgency || null,
@@ -92,13 +129,16 @@ export async function createTasksFromOpportunityOutput(
 // =====================================================================
 
 export async function createTasksFromCroOptimizerOutput(
-  croOptimizerOutput: any,
+  croOptimizerOutput: CroOptimizerAgentOutput,
   googleAccountId: number,
   organizationId?: number | null,
   locationId?: number | null,
 ): Promise<void> {
   try {
-    const croActionItems = croOptimizerOutput[0]?.opportunities || [];
+    const first = normalizeAgentOutput(croOptimizerOutput);
+    const croActionItems = first?.opportunities || [];
+
+    log(`  [MONTHLY] CRO Optimizer output shape: ${Array.isArray(croOptimizerOutput) ? `array(${croOptimizerOutput.length})` : typeof croOptimizerOutput}, actionItems: ${croActionItems.length}`);
 
     if (Array.isArray(croActionItems) && croActionItems.length > 0) {
       log(
@@ -106,24 +146,19 @@ export async function createTasksFromCroOptimizerOutput(
       );
 
       for (const item of croActionItems) {
-        // Use type from action item, default to ALLORO if not USER (CRO Optimizer outputs ALLORO tasks)
         const type = item.type?.toUpperCase() === "USER" ? "USER" : "ALLORO";
 
         const taskData = {
           organization_id: organizationId ?? null,
           location_id: locationId ?? null,
-          title: item.title || item.name || "Untitled Task",
-          description:
-            item.explanation || item.description || item.details || null,
+          title: item.title || "Untitled Task",
+          description: item.explanation || null,
           category: type,
           agent_type: "CRO_OPTIMIZER",
           status: "pending",
           is_approved: false,
           created_by_admin: true,
-          due_date:
-            item.due_date || item.dueDate
-              ? new Date(item.due_date || item.dueDate)
-              : null,
+          due_date: item.due_date ? new Date(item.due_date) : null,
           metadata: JSON.stringify({
             agent_category: item.category || null,
             urgency: item.urgency || null,
@@ -163,22 +198,21 @@ export async function createTasksFromCroOptimizerOutput(
 // =====================================================================
 
 export async function createTasksFromReferralEngineOutput(
-  referralEngineOutput: any,
+  referralEngineOutput: ReferralEngineAgentOutput | ReferralEngineAgentOutput[],
   googleAccountId: number,
   organizationId?: number | null,
   locationId?: number | null,
 ): Promise<void> {
   try {
-    // Referral Engine output may be wrapped in array, handle both cases
-    const referralOutput = Array.isArray(referralEngineOutput)
-      ? referralEngineOutput[0]
-      : referralEngineOutput;
+    const referralOutput = normalizeAgentOutput(referralEngineOutput);
 
     // ALLORO tasks from alloro_automation_opportunities (internal/agency tasks)
     const alloroItems = referralOutput?.alloro_automation_opportunities || [];
 
     // USER tasks from practice_action_plan (client tasks)
     const userItems = referralOutput?.practice_action_plan || [];
+
+    log(`  [MONTHLY] Referral Engine output shape: ${Array.isArray(referralEngineOutput) ? `array(${(referralEngineOutput as any).length})` : typeof referralEngineOutput}, alloroItems: ${alloroItems.length}, userItems: ${userItems.length}`);
 
     const totalReferralTasks = alloroItems.length + userItems.length;
 
@@ -189,50 +223,23 @@ export async function createTasksFromReferralEngineOutput(
 
       // Create ALLORO tasks from alloro_automation_opportunities
       for (const item of alloroItems) {
-        // Handle both string items and object items
-        const isStringItem = typeof item === "string";
-        const fullText = isStringItem
-          ? item
-          : item.description ||
-            item.rationale ||
-            item.explanation ||
-            item.details ||
-            item.title ||
-            "";
-        const titleText = isStringItem
-          ? item.length > 80
-            ? item.substring(0, 80) + "..."
-            : item
-          : item.title ||
-            item.opportunity ||
-            item.name ||
-            (fullText.length > 80
-              ? fullText.substring(0, 80) + "..."
-              : fullText) ||
-            "Untitled Referral Engine Task";
-
         const taskData = {
           organization_id: organizationId ?? null,
           location_id: locationId ?? null,
-          title: titleText,
-          description: fullText || null,
+          title: item.title || "Untitled Referral Engine Task",
+          description: item.description || null,
           category: "ALLORO",
           agent_type: "REFERRAL_ENGINE_ANALYSIS",
           status: "pending",
           is_approved: false,
           created_by_admin: true,
-          due_date: isStringItem
-            ? null
-            : item.due_date || item.dueDate
-              ? new Date(item.due_date || item.dueDate)
-              : null,
+          due_date: item.due_date ? new Date(item.due_date) : null,
           metadata: JSON.stringify({
             source_field: "alloro_automation_opportunities",
-            priority: isStringItem ? null : item.priority || null,
-            impact: isStringItem ? null : item.impact || null,
-            effort: isStringItem ? null : item.effort || null,
-            category: isStringItem ? null : item.category || null,
-            ...(isStringItem ? {} : item.metadata || {}),
+            priority: item.priority || null,
+            impact: item.impact || null,
+            effort: item.effort || null,
+            category: item.category || null,
           }),
           created_at: new Date(),
           updated_at: new Date(),
@@ -251,51 +258,24 @@ export async function createTasksFromReferralEngineOutput(
 
       // Create USER tasks from practice_action_plan
       for (const item of userItems) {
-        // Handle both string items and object items
-        const isStringItem = typeof item === "string";
-        const fullText = isStringItem
-          ? item
-          : item.description ||
-            item.rationale ||
-            item.explanation ||
-            item.details ||
-            item.title ||
-            "";
-        const titleText = isStringItem
-          ? item.length > 80
-            ? item.substring(0, 80) + "..."
-            : item
-          : item.title ||
-            item.action ||
-            item.name ||
-            (fullText.length > 80
-              ? fullText.substring(0, 80) + "..."
-              : fullText) ||
-            "Untitled Practice Action";
-
         const taskData = {
           organization_id: organizationId ?? null,
           location_id: locationId ?? null,
-          title: titleText,
-          description: fullText || null,
+          title: item.title || "Untitled Practice Action",
+          description: item.description || null,
           category: "USER",
           agent_type: "REFERRAL_ENGINE_ANALYSIS",
           status: "pending",
           is_approved: false,
           created_by_admin: true,
-          due_date: isStringItem
-            ? null
-            : item.due_date || item.dueDate
-              ? new Date(item.due_date || item.dueDate)
-              : null,
+          due_date: item.due_date ? new Date(item.due_date) : null,
           metadata: JSON.stringify({
             source_field: "practice_action_plan",
-            priority: isStringItem ? null : item.priority || null,
-            impact: isStringItem ? null : item.impact || null,
-            effort: isStringItem ? null : item.effort || null,
-            category: isStringItem ? null : item.category || null,
-            owner: isStringItem ? null : item.owner || null,
-            ...(isStringItem ? {} : item.metadata || {}),
+            priority: item.priority || null,
+            impact: item.impact || null,
+            effort: item.effort || null,
+            category: item.category || null,
+            owner: item.owner || null,
           }),
           created_at: new Date(),
           updated_at: new Date(),
@@ -444,9 +424,9 @@ ${
  * Helper function to simulate task creation without persisting to database
  */
 export function simulateTaskCreation(agentOutputs: {
-  opportunityOutput: any;
-  croOptimizerOutput: any;
-  referralEngineOutput: any;
+  opportunityOutput: OpportunityAgentOutput;
+  croOptimizerOutput: CroOptimizerAgentOutput;
+  referralEngineOutput: ReferralEngineAgentOutput | ReferralEngineAgentOutput[];
 }): {
   from_opportunity: any[];
   from_cro_optimizer: any[];
@@ -462,19 +442,18 @@ export function simulateTaskCreation(agentOutputs: {
 
   try {
     // Simulate Opportunity tasks
-    const opportunityItems =
-      agentOutputs.opportunityOutput?.[0]?.opportunities || [];
+    const oppFirst = normalizeAgentOutput(agentOutputs.opportunityOutput);
+    const opportunityItems = oppFirst?.opportunities || [];
     if (Array.isArray(opportunityItems)) {
       for (const item of opportunityItems) {
         const type = item.type?.toUpperCase() === "ALLORO" ? "ALLORO" : "USER";
         result.from_opportunity.push({
-          title: item.title || item.name || "Untitled Task",
-          description:
-            item.explanation || item.description || item.details || null,
+          title: item.title || "Untitled Task",
+          description: item.explanation || null,
           category: type,
           agent_type: "OPPORTUNITY",
           urgency: item.urgency || null,
-          due_date: item.due_date || item.dueDate || null,
+          due_date: item.due_date || null,
           metadata: item.metadata || {},
         });
         result.summary[type === "USER" ? "user_tasks" : "alloro_tasks"]++;
@@ -486,18 +465,18 @@ export function simulateTaskCreation(agentOutputs: {
 
   try {
     // Simulate CRO Optimizer tasks
-    const croItems = agentOutputs.croOptimizerOutput?.[0]?.opportunities || [];
+    const croFirst = normalizeAgentOutput(agentOutputs.croOptimizerOutput);
+    const croItems = croFirst?.opportunities || [];
     if (Array.isArray(croItems)) {
       for (const item of croItems) {
         const type = item.type?.toUpperCase() === "USER" ? "USER" : "ALLORO";
         result.from_cro_optimizer.push({
-          title: item.title || item.name || "Untitled Task",
-          description:
-            item.explanation || item.description || item.details || null,
+          title: item.title || "Untitled Task",
+          description: item.explanation || null,
           category: type,
           agent_type: "CRO_OPTIMIZER",
           urgency: item.urgency || null,
-          due_date: item.due_date || item.dueDate || null,
+          due_date: item.due_date || null,
           metadata: item.metadata || {},
         });
         result.summary[type === "USER" ? "user_tasks" : "alloro_tasks"]++;
@@ -509,49 +488,29 @@ export function simulateTaskCreation(agentOutputs: {
 
   try {
     // Simulate Referral Engine tasks
-    const referralOutput = Array.isArray(agentOutputs.referralEngineOutput)
-      ? agentOutputs.referralEngineOutput[0]
-      : agentOutputs.referralEngineOutput;
+    const referralOutput = normalizeAgentOutput(agentOutputs.referralEngineOutput);
 
     const alloroItems = referralOutput?.alloro_automation_opportunities || [];
     const userItems = referralOutput?.practice_action_plan || [];
 
     // Process ALLORO tasks
     for (const item of alloroItems) {
-      const isStringItem = typeof item === "string";
-      const fullText = isStringItem ? item : JSON.stringify(item);
-      const title = isStringItem
-        ? item.substring(0, 100)
-        : item.opportunity || item.title || "Opportunity";
-
       result.from_referral_engine.alloro.push({
-        title,
-        description: isStringItem
-          ? null
-          : item.description || item.explanation || null,
+        title: item.title || "Opportunity",
+        description: item.description || null,
         category: "ALLORO",
         agent_type: "REFERRAL_ENGINE_ANALYSIS",
-        full_text: fullText,
       });
       result.summary.alloro_tasks++;
     }
 
     // Process USER tasks
     for (const item of userItems) {
-      const isStringItem = typeof item === "string";
-      const fullText = isStringItem ? item : JSON.stringify(item);
-      const title = isStringItem
-        ? item.substring(0, 100)
-        : item.action || item.title || "Action Item";
-
       result.from_referral_engine.user.push({
-        title,
-        description: isStringItem
-          ? null
-          : item.description || item.explanation || null,
+        title: item.title || "Action Item",
+        description: item.description || null,
         category: "USER",
         agent_type: "REFERRAL_ENGINE_ANALYSIS",
-        full_text: fullText,
       });
       result.summary.user_tasks++;
     }

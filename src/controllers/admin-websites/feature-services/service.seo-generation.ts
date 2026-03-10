@@ -6,10 +6,11 @@
  * Uses CroSEO mind skills for enhanced context.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import { db } from "../../../database/connection";
 import { LocationModel } from "../../../models/LocationModel";
 import { OrganizationModel } from "../../../models/OrganizationModel";
+import { loadPrompt } from "../../../agents/service.prompt-loader";
+import { runAgent } from "../../../agents/service.llm-runner";
 
 const PAGES_TABLE = "website_builder.pages";
 const POSTS_TABLE = "website_builder.posts";
@@ -20,12 +21,6 @@ const MAX_TOKENS = 4096;
 
 const SKILLS_BASE_URL = "https://app.getalloro.com/api/skills";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
-
-let client: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!client) client = new Anthropic();
-  return client;
-}
 
 type SeoSection =
   | "critical"
@@ -261,16 +256,14 @@ async function runGenerateSection(
   const systemPrompt = buildSystemPrompt(section, businessData, creatorContext);
   const userPrompt = buildUserPrompt(section, { ...data, entityType });
 
-  const response = await getClient().messages.create({
+  const result = await runAgent({
+    systemPrompt,
+    userMessage: userPrompt,
     model: MODEL,
-    max_tokens: MAX_TOKENS,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
+    maxTokens: MAX_TOKENS,
   });
 
-  const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
-  const generated = parseGeneratedSeo(text, section);
+  const generated = result.parsed || parseGeneratedSeo(result.raw, section);
 
   const insight = await generateInsight(
     section,
@@ -308,19 +301,13 @@ export async function analyzeSeoForSection(
   // Extract only the fields relevant to this section
   const sectionFields = extractSectionFields(section, existing_seo_data);
 
-  const systemPrompt = `You are an expert SEO analyst. Analyze the existing SEO metadata for quality, completeness, and optimization opportunities.
+  const basePrompt = loadPrompt("websiteAgents/SeoAnalysis");
+  const systemPrompt = `${basePrompt}
 
 BUSINESS DATA:
 ${JSON.stringify(businessData, null, 2)}
 
-${validatorContext ? `SEO VALIDATION CRITERIA (from CroSEO mind):\n${validatorContext}\n` : ""}
-
-RULES:
-- Return ONLY a JSON object with a single "insight" key.
-- The insight must be 1-3 concise sentences.
-- Be specific: reference actual values, not generic advice.
-- Mention what's strong, what's weak, and one actionable fix.
-- No markdown, no code fences.`;
+${validatorContext ? `SEO VALIDATION CRITERIA (from CroSEO mind):\n${validatorContext}\n` : ""}`;
 
   const userPrompt = `SECTION: ${section}
 ${page_path ? `PAGE PATH: ${page_path}\n` : ""}${post_title ? `POST TITLE: ${post_title}\n` : ""}
@@ -335,16 +322,14 @@ ${JSON.stringify(existing_seo_data, null, 2)}
 
 Analyze the "${section}" section's SEO data. Return ONLY valid JSON: { "insight": "..." }`;
 
-  const response = await getClient().messages.create({
+  const result = await runAgent({
+    systemPrompt,
+    userMessage: userPrompt,
     model: MODEL,
-    max_tokens: 512,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
+    maxTokens: 512,
   });
 
-  const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
-  const parsed = parseGeneratedSeo(text, section);
+  const parsed = result.parsed || parseGeneratedSeo(result.raw, section);
 
   return {
     section,
@@ -365,18 +350,13 @@ async function generateInsight(
   postTitle?: string
 ): Promise<string> {
   try {
-    const systemPrompt = `You are an SEO analyst. Review the just-generated SEO data and provide a brief insight.
+    const basePrompt = loadPrompt("websiteAgents/SeoInsight");
+    const systemPrompt = `${basePrompt}
 
 BUSINESS DATA:
 ${JSON.stringify(businessData, null, 2)}
 
-${validatorContext ? `SEO VALIDATION CRITERIA (from CroSEO mind):\n${validatorContext}\n` : ""}
-
-RULES:
-- Return ONLY a JSON object with a single "insight" key.
-- 1-2 sentences max. Be specific and actionable.
-- Highlight the strongest aspect and one thing to watch.
-- No markdown, no code fences.`;
+${validatorContext ? `SEO VALIDATION CRITERIA (from CroSEO mind):\n${validatorContext}\n` : ""}`;
 
     const userPrompt = `SECTION: ${section}
 ${pagePath ? `PAGE PATH: ${pagePath}\n` : ""}${postTitle ? `POST TITLE: ${postTitle}\n` : ""}
@@ -385,16 +365,14 @@ ${JSON.stringify(generated, null, 2)}
 
 Provide a brief insight about this generated "${section}" section. Return ONLY valid JSON: { "insight": "..." }`;
 
-    const response = await getClient().messages.create({
+    const result = await runAgent({
+      systemPrompt,
+      userMessage: userPrompt,
       model: MODEL,
-      max_tokens: 256,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
+      maxTokens: 256,
     });
 
-    const text =
-      response.content[0].type === "text" ? response.content[0].text : "";
-    const parsed = parseGeneratedSeo(text, section);
+    const parsed = result.parsed || parseGeneratedSeo(result.raw, section);
     return (parsed.insight as string) || "";
   } catch (err) {
     console.warn("[SEO] Failed to generate insight:", err);
@@ -547,76 +525,30 @@ async function fetchBusinessData(
 // Prompt builders
 // ---------------------------------------------------------------------------
 
+const SEO_SECTION_FILE_MAP: Record<SeoSection, string> = {
+  critical: "websiteAgents/SeoGeneration.critical",
+  high_impact: "websiteAgents/SeoGeneration.high-impact",
+  significant: "websiteAgents/SeoGeneration.significant",
+  moderate: "websiteAgents/SeoGeneration.moderate",
+  negligible: "websiteAgents/SeoGeneration.negligible",
+};
+
 function buildSystemPrompt(
   section: SeoSection,
   businessData: Record<string, unknown>,
   creatorContext: string = ""
 ): string {
-  const base = `You are an expert SEO specialist. Generate optimized SEO metadata based on the page content and business data provided.
+  const base = loadPrompt("websiteAgents/SeoGeneration");
+  const sectionInstructions = loadPrompt(SEO_SECTION_FILE_MAP[section]);
+
+  return `${base}
 
 BUSINESS DATA:
 ${JSON.stringify(businessData, null, 2)}
 
 ${creatorContext ? `SEO GENERATION CRITERIA (from CroSEO mind):\n${creatorContext}\n` : ""}
 
-RULES:
-- Return ONLY valid JSON. No markdown, no explanation, no code fences.
-- Every generated field must be unique across the site (avoid duplicating existing titles/descriptions).
-- Use the business name, location, and specialties naturally in the content.
-- Be specific and actionable — avoid generic filler.`;
-
-  const sectionInstructions: Record<SeoSection, string> = {
-    critical: `
-SECTION: Critical — Page Title & Canonical (30 points)
-
-Generate:
-- "meta_title": Page title with main keyword + city/state. Between 50-60 characters. Must be unique.
-- "canonical_url": The canonical URL path for this page (usually the page path itself).
-- "robots": Indexing directive. Use "index, follow" unless this is a thank-you/success page.
-
-The title MUST include the primary service/topic keyword and the city/state from the business data.`,
-
-    high_impact: `
-SECTION: High Impact — Search Snippet & Click-Through (25 points)
-
-Generate:
-- "meta_description": Between 140-160 characters. Must include:
-  1. A clear call-to-action ("Book today", "Call now", "Schedule a free consult")
-  2. A trust signal ("5-star rated", "Serving [City] since [year]", "[X]+ happy patients")
-  Must be unique across all pages.
-- "max_image_preview": Always set to "large".`,
-
-    significant: `
-SECTION: Significant — Structured Data / Schema (22 points)
-
-Generate:
-- "schema_json": An array of JSON-LD schema objects appropriate for this page:
-  - If this is a location/home page: include LocalBusiness schema with address, hours, phone, coordinates from business data.
-  - If this page has FAQ-like content (Q&A patterns): include FAQPage schema.
-  - If this is a service page: include Service schema.
-  - Always include BreadcrumbList schema.
-  - If this is the homepage: include Organization schema with social profiles.
-
-Each schema object must be complete and valid per schema.org specifications. Use real data from the business data provided.`,
-
-    moderate: `
-SECTION: Moderate — Social Share & Image Preview (13 points)
-
-Generate:
-- "og_title": Social share title. Match or improve on the page meta title.
-- "og_description": Social share description. Can match meta description or be slightly shorter.
-- "og_type": "website" for pages, "article" for blog posts.
-- "og_image_recommendation": Describe what the ideal share image should be (we can't generate the actual image, but recommend what to use).`,
-
-    negligible: `
-SECTION: Negligible — Basic Housekeeping (3 points)
-
-Generate:
-- "og_type": Confirm "website" or "article" based on content type.
-- "og_description": Confirm it matches the social share description. If already set, return the same value.`,
-  };
-
-  return base + sectionInstructions[section];
+${sectionInstructions}`;
 }
 
 function buildUserPrompt(

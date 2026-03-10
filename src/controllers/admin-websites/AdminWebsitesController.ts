@@ -2671,14 +2671,28 @@ export async function getAllSeoMeta(req: Request, res: Response): Promise<Respon
     const pages = await db("website_builder.pages")
       .where({ project_id: projectId })
       .whereIn("status", ["published", "draft"])
-      .select("id", "path", "seo_data");
+      .select("id", "path", "status", "version", "seo_data");
+
+    // Deduplicate by path: prefer published, then highest version draft.
+    // Uniqueness checks are across different page paths, not across versions.
+    const pagesByPath = new Map<string, any>();
+    for (const p of pages) {
+      const existing = pagesByPath.get(p.path);
+      if (
+        !existing ||
+        (p.status === "published" && existing.status !== "published") ||
+        (p.status === existing.status && p.version > existing.version)
+      ) {
+        pagesByPath.set(p.path, p);
+      }
+    }
 
     const posts = await db("website_builder.posts")
       .where({ project_id: projectId })
       .select("id", "title", "slug", "seo_data");
 
     const meta = {
-      pages: pages.map((p: any) => ({
+      pages: Array.from(pagesByPath.values()).map((p: any) => ({
         id: p.id,
         path: p.path,
         meta_title: p.seo_data?.meta_title || null,

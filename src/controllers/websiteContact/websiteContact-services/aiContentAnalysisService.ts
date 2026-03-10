@@ -5,16 +5,8 @@
  * Fail-open: if the AI call fails, submissions are not flagged.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
-
-let anthropicClient: Anthropic | null = null;
-
-function getClient(): Anthropic {
-  if (!anthropicClient) {
-    anthropicClient = new Anthropic();
-  }
-  return anthropicClient;
-}
+import { loadPrompt } from "../../../agents/service.prompt-loader";
+import { runAgent } from "../../../agents/service.llm-runner";
 
 const MODEL = process.env.FORM_ANALYSIS_MODEL || "claude-haiku-4-5-20251001";
 
@@ -24,48 +16,25 @@ export interface AnalysisResult {
   reason: string;
 }
 
-const SYSTEM_PROMPT = `You are a form submission classifier for business websites. Analyze the submission and classify it into exactly one category.
-
-Categories:
-- legitimate: A real inquiry from a potential customer, client, or interested person.
-- spam: Automated/bulk/bot-generated content, gibberish, or mass marketing.
-- sales: Vendor pitch, partnership offer, affiliate proposal, SEO/marketing service offer.
-- low_quality: Test submission, placeholder text ("asdf", "test"), mostly blank, or gibberish.
-- malicious: SQL injection, XSS attempts, phishing links, or other attack patterns.
-- irrelevant: Wrong company, wrong form, job application on a contact form, completely off-topic.
-- abusive: Harassment, threats, profanity-laden rants, hate speech.
-
-Respond with ONLY a JSON object:
-{"flagged": boolean, "category": "category_name", "reason": "one sentence explanation"}
-
-Set flagged=false ONLY for "legitimate". All other categories set flagged=true.
-Do not include any text outside the JSON object.`;
-
 export async function analyzeContent(
   formName: string,
   contents: Record<string, string>,
 ): Promise<AnalysisResult> {
   try {
-    const client = getClient();
-
+    const systemPrompt = loadPrompt("websiteAgents/FormClassifier");
     const userMessage = JSON.stringify({ formName, fields: contents });
 
-    const response = await client.messages.create({
+    const result = await runAgent({
+      systemPrompt,
+      userMessage,
       model: MODEL,
-      max_tokens: 256,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userMessage }],
+      maxTokens: 256,
     });
 
-    let text =
-      response.content[0].type === "text" ? response.content[0].text : "";
-
-    // Strip markdown code fences if the model wraps the JSON
-    text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-
-    const parsed = JSON.parse(text);
+    const parsed = result.parsed;
 
     if (
+      !parsed ||
       typeof parsed.flagged !== "boolean" ||
       typeof parsed.category !== "string" ||
       typeof parsed.reason !== "string"

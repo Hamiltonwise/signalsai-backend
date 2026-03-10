@@ -7,6 +7,177 @@ import {
   AutomationStatusDetail,
 } from "../../../utils/pms/pmsAutomationStatus";
 
+const MONTHLY_TASK_AGENT_TYPES = [
+  "OPPORTUNITY",
+  "CRO_OPTIMIZER",
+  "REFERRAL_ENGINE_ANALYSIS",
+];
+
+const MONTHLY_AGENT_RESULT_TYPES = [
+  "summary",
+  "opportunity",
+  "cro_optimizer",
+  "referral_engine",
+];
+
+// =====================================================================
+// SHARED: CLEANUP MONTHLY RUN DATA
+// =====================================================================
+
+/**
+ * Delete all data produced by a monthly agents run.
+ * Used by both retry (failed) and restart (completed) flows.
+ *
+ * Deletes: agent_results, tasks, google_data_store, notifications
+ * created during the run's time window.
+ */
+async function cleanupMonthlyRunData(job: {
+  id: number;
+  organization_id: number;
+  location_id?: number | null;
+  automation_status_detail?: AutomationStatusDetail | any;
+}): Promise<Record<string, number>> {
+  const detail: AutomationStatusDetail | undefined =
+    typeof job.automation_status_detail === "string"
+      ? JSON.parse(job.automation_status_detail)
+      : job.automation_status_detail;
+
+  // 1. Collect agent result IDs from summary (if available)
+  let agentResultIds: number[] = [];
+  const summary = detail?.summary;
+
+  if (summary?.agentResults) {
+    const ar = summary.agentResults;
+    for (const key of Object.keys(ar) as Array<keyof typeof ar>) {
+      if (ar[key]?.resultId) {
+        agentResultIds.push(ar[key]!.resultId!);
+      }
+    }
+  }
+
+  // 2. Get date range from agent_results (before deleting) for google_data_store cleanup
+  let dateStart: string | null = null;
+  let dateEnd: string | null = null;
+
+  if (agentResultIds.length > 0) {
+    const dateRow = await db("agent_results")
+      .whereIn("id", agentResultIds)
+      .select("date_start", "date_end")
+      .first();
+    if (dateRow) {
+      dateStart = dateRow.date_start;
+      dateEnd = dateRow.date_end;
+    }
+  }
+
+  // 3. Fallback: query agent_results by org + location if no IDs in summary
+  if (agentResultIds.length === 0) {
+    const timeStart = detail?.startedAt || new Date(Date.now() - 86400_000).toISOString();
+    const timeEnd = detail?.completedAt || new Date().toISOString();
+
+    const fallbackResults = await db("agent_results")
+      .where({ organization_id: job.organization_id })
+      .where((qb: any) => {
+        if (job.location_id) qb.where({ location_id: job.location_id });
+      })
+      .whereIn("agent_type", MONTHLY_AGENT_RESULT_TYPES)
+      .whereBetween("created_at", [timeStart, timeEnd])
+      .select("id", "date_start", "date_end");
+
+    agentResultIds = fallbackResults.map((r: any) => r.id);
+    if (fallbackResults.length > 0) {
+      dateStart = fallbackResults[0].date_start;
+      dateEnd = fallbackResults[0].date_end;
+    }
+  }
+
+  // 4. Time window for tasks/notifications
+  const timeStart = detail?.startedAt || new Date(Date.now() - 86400_000).toISOString();
+  const timeEnd = detail?.completedAt || new Date().toISOString();
+
+  // 5. Transaction — delete all related data
+  const deletionCounts = await db.transaction(async (trx) => {
+    const counts: Record<string, number> = {};
+
+    // Delete agent_results
+    if (agentResultIds.length > 0) {
+      counts.agentResults = await trx("agent_results")
+        .whereIn("id", agentResultIds)
+        .del();
+    } else {
+      counts.agentResults = 0;
+    }
+
+    // Delete tasks
+    const tasksQuery = trx("tasks")
+      .where({ organization_id: job.organization_id })
+      .whereIn("agent_type", MONTHLY_TASK_AGENT_TYPES)
+      .whereBetween("created_at", [timeStart, timeEnd]);
+    if (job.location_id) {
+      tasksQuery.where({ location_id: job.location_id });
+    }
+    counts.tasks = await tasksQuery.del();
+
+    // Delete google_data_store
+    if (dateStart && dateEnd) {
+      const gdsQuery = trx("google_data_store")
+        .where({
+          organization_id: job.organization_id,
+          date_start: dateStart,
+          date_end: dateEnd,
+          run_type: "monthly",
+        });
+      if (job.location_id) {
+        gdsQuery.where({ location_id: job.location_id });
+      }
+      counts.googleDataStore = await gdsQuery.del();
+    } else {
+      counts.googleDataStore = 0;
+    }
+
+    // Delete notifications
+    const notifQuery = trx("notifications")
+      .where({
+        organization_id: job.organization_id,
+        title: "Monthly Insights Ready",
+      })
+      .whereBetween("created_at", [timeStart, timeEnd]);
+    counts.notifications = await notifQuery.del();
+
+    return counts;
+  });
+
+  console.log(
+    `[PMS] Cleanup for job ${job.id}: ${JSON.stringify(deletionCounts)}`
+  );
+
+  return deletionCounts;
+}
+
+// =====================================================================
+// SHARED: TRIGGER MONTHLY AGENTS
+// =====================================================================
+
+async function triggerMonthlyAgents(
+  accountId: number,
+  jobId: number,
+  locationId?: number | null
+): Promise<void> {
+  await axios.post(
+    `http://localhost:${process.env.PORT || 3000}/api/agents/monthly-agents-run`,
+    {
+      googleAccountId: accountId,
+      force: true,
+      pmsJobId: jobId,
+      locationId,
+    }
+  );
+}
+
+// =====================================================================
+// PUBLIC: RETRY FAILED STEP
+// =====================================================================
+
 /**
  * Retry a failed automation step.
  * Routes to the appropriate retry handler.
@@ -53,12 +224,11 @@ export async function retryFailedStep(
   throw Object.assign(new Error("Invalid retry step"), { statusCode: 400 });
 }
 
-/**
- * Retry the PMS parser step.
- * Resets automation, clears approvals, resends to n8n webhook.
- */
+// =====================================================================
+// RETRY: PMS PARSER
+// =====================================================================
+
 async function retryPmsParser(jobId: number, job: any) {
-  // Check if we have raw input data to retry with
   if (!job.raw_input_data) {
     throw Object.assign(
       new Error(
@@ -68,7 +238,6 @@ async function retryPmsParser(jobId: number, job: any) {
     );
   }
 
-  // Parse the raw input data
   let rawData;
   try {
     rawData =
@@ -81,10 +250,8 @@ async function retryPmsParser(jobId: number, job: any) {
     });
   }
 
-  // Reset automation status to pms_parser step
   await resetToStep(jobId, "pms_parser");
 
-  // Update job status back to pending
   await db("pms_jobs").where({ id: jobId }).update({
     status: "pending",
     response_log: null,
@@ -92,7 +259,6 @@ async function retryPmsParser(jobId: number, job: any) {
     is_client_approved: 0,
   });
 
-  // Update automation status to processing
   await updateAutomationStatus(jobId, {
     status: "processing",
     step: "pms_parser",
@@ -100,7 +266,6 @@ async function retryPmsParser(jobId: number, job: any) {
     customMessage: "Retrying PMS parser agent...",
   });
 
-  // Resend to n8n webhook
   try {
     const PMS_PARSER_WEBHOOK = process.env.PMS_PARSER_WEBHOOK;
     if (!PMS_PARSER_WEBHOOK) {
@@ -109,31 +274,20 @@ async function retryPmsParser(jobId: number, job: any) {
 
     await axios.post(
       PMS_PARSER_WEBHOOK,
-      {
-        report_data: rawData,
-        jobId,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+      { report_data: rawData, jobId },
+      { headers: { "Content-Type": "application/json" } }
     );
 
     console.log(
       `[PMS] Successfully triggered PMS parser retry for job ${jobId}`
     );
 
-    return {
-      jobId,
-      stepRetried: "pms_parser",
-    };
+    return { jobId, stepRetried: "pms_parser" };
   } catch (webhookError: any) {
     console.error(
       `[PMS] Failed to trigger PMS parser retry: ${webhookError.message}`
     );
 
-    // Mark as failed again
     await updateAutomationStatus(jobId, {
       status: "failed",
       step: "pms_parser",
@@ -149,12 +303,11 @@ async function retryPmsParser(jobId: number, job: any) {
   }
 }
 
-/**
- * Retry the monthly agents step.
- * Resets automation, triggers monthly agents via internal API.
- */
+// =====================================================================
+// RETRY: MONTHLY AGENTS (failed runs)
+// =====================================================================
+
 async function retryMonthlyAgents(jobId: number, job: any) {
-  // Monthly agents need: organization, google account, and parsed PMS data (response_log)
   if (!job.organization_id) {
     throw Object.assign(
       new Error(
@@ -164,7 +317,6 @@ async function retryMonthlyAgents(jobId: number, job: any) {
     );
   }
 
-  // Check if response_log exists (PMS data must be parsed first)
   if (!job.response_log) {
     throw Object.assign(
       new Error(
@@ -174,7 +326,6 @@ async function retryMonthlyAgents(jobId: number, job: any) {
     );
   }
 
-  // Get google connection for this organization
   const account = await GoogleConnectionModel.findOneByOrganization(job.organization_id);
 
   if (!account) {
@@ -186,10 +337,12 @@ async function retryMonthlyAgents(jobId: number, job: any) {
     );
   }
 
-  // Reset automation status to monthly_agents step
+  // Clean up any partial data from the failed run
+  const deletionCounts = await cleanupMonthlyRunData(job);
+
+  // Reset automation status
   await resetToStep(jobId, "monthly_agents");
 
-  // Update automation status to processing
   await updateAutomationStatus(jobId, {
     status: "processing",
     step: "monthly_agents",
@@ -198,28 +351,18 @@ async function retryMonthlyAgents(jobId: number, job: any) {
     customMessage: "Retrying monthly agents - fetching data...",
   });
 
-  // Trigger monthly agents
   try {
-    await axios.post(
-      `http://localhost:${
-        process.env.PORT || 3000
-      }/api/agents/monthly-agents-run`,
-      {
-        googleAccountId: account.id,
-        force: true,
-        pmsJobId: jobId,
-        locationId: job.location_id,
-      }
-    );
+    await triggerMonthlyAgents(account.id, jobId, job.location_id);
 
     console.log(
-      `[PMS] Monthly agents retry triggered successfully for org ${job.organization_id}`
+      `[PMS] Monthly agents retry triggered for org ${job.organization_id}`
     );
 
     return {
       jobId,
       stepRetried: "monthly_agents",
       organization_id: job.organization_id,
+      deletionCounts,
     };
   } catch (triggerError: any) {
     console.error(
@@ -233,4 +376,110 @@ async function retryMonthlyAgents(jobId: number, job: any) {
       { statusCode: 500 }
     );
   }
+}
+
+// =====================================================================
+// RESTART: COMPLETED MONTHLY AGENTS RUN
+// =====================================================================
+
+/**
+ * Restart a completed monthly agents run.
+ * Deletes all data produced by the run, then re-triggers from scratch.
+ */
+export async function restartMonthlyAgents(jobId: number) {
+  // 1. Load & validate
+  const job = await db("pms_jobs")
+    .where({ id: jobId })
+    .select(
+      "id",
+      "organization_id",
+      "location_id",
+      "automation_status_detail"
+    )
+    .first();
+
+  if (!job) {
+    throw Object.assign(new Error("PMS job not found"), { statusCode: 404 });
+  }
+
+  const detail: AutomationStatusDetail | undefined =
+    typeof job.automation_status_detail === "string"
+      ? JSON.parse(job.automation_status_detail)
+      : job.automation_status_detail;
+
+  if (!detail) {
+    throw Object.assign(
+      new Error("Only completed runs can be restarted"),
+      { statusCode: 400 }
+    );
+  }
+
+  if (detail.status === "processing") {
+    throw Object.assign(
+      new Error("Run is already processing"),
+      { statusCode: 409 }
+    );
+  }
+
+  if (detail.status !== "completed") {
+    throw Object.assign(
+      new Error("Only completed runs can be restarted"),
+      { statusCode: 400 }
+    );
+  }
+
+  if (!job.organization_id) {
+    throw Object.assign(
+      new Error("No organization associated with this job"),
+      { statusCode: 400 }
+    );
+  }
+
+  // 2. Get Google account for re-trigger
+  const account = await GoogleConnectionModel.findOneByOrganization(
+    job.organization_id
+  );
+  if (!account) {
+    throw Object.assign(
+      new Error(
+        `No Google connection found for org ${job.organization_id}`
+      ),
+      { statusCode: 400 }
+    );
+  }
+
+  // 3. Clean up all data from the completed run
+  const deletionCounts = await cleanupMonthlyRunData(job);
+
+  // 4. Reset automation status
+  await resetToStep(jobId, "monthly_agents");
+
+  await updateAutomationStatus(jobId, {
+    status: "processing",
+    step: "monthly_agents",
+    stepStatus: "processing",
+    subStep: "data_fetch",
+    customMessage: "Restarting monthly agents - fetching data...",
+  });
+
+  // 5. Re-trigger monthly agents
+  let restarted = true;
+  try {
+    await triggerMonthlyAgents(account.id, jobId, job.location_id);
+
+    console.log(
+      `[PMS] Monthly agents restart triggered for job ${jobId}, org ${job.organization_id}`
+    );
+  } catch (triggerError: any) {
+    console.error(
+      `[PMS] Failed to trigger monthly agents after restart cleanup: ${triggerError.message}`
+    );
+    restarted = false;
+  }
+
+  return {
+    jobId,
+    restarted,
+    deletionCounts,
+  };
 }

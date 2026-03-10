@@ -123,9 +123,9 @@ export const MONTHLY_AGENT_CONFIG: Record<
 > = {
   data_fetch: { label: "Fetching data", progressOffset: 0 },
   summary_agent: { label: "Summary Agent", progressOffset: 10 },
-  referral_engine: { label: "Referral Engine", progressOffset: 22 },
-  opportunity_agent: { label: "Opportunity Agent", progressOffset: 34 },
-  cro_optimizer: { label: "CRO Optimizer", progressOffset: 46 },
+  opportunity_agent: { label: "Opportunity Agent", progressOffset: 22 },
+  cro_optimizer: { label: "CRO Optimizer", progressOffset: 34 },
+  referral_engine: { label: "Referral Engine", progressOffset: 46 },
 };
 
 // =====================================================================

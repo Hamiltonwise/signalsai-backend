@@ -4,23 +4,11 @@
  * Stateless transformation — no database writes.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import { loadPrompt } from "../../../agents/service.prompt-loader";
+import { runAgent } from "../../../agents/service.llm-runner";
 
 const MODEL = "claude-haiku-4-5-20251001";
 const MAX_INPUT_SIZE = 50_000; // 50KB hard cap (frontend chunks by 30 rows)
-
-let client: Anthropic | null = null;
-
-function getClient(): Anthropic {
-  if (!client) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error("ANTHROPIC_API_KEY environment variable is not set");
-    }
-    client = new Anthropic({ apiKey });
-  }
-  return client;
-}
 
 interface ParsedRow {
   source: string;
@@ -40,55 +28,6 @@ export interface PasteParseResult {
   rowsParsed: number;
   monthsDetected: number;
 }
-
-const SYSTEM_PROMPT = `You are a data extraction specialist. Your job is to parse pasted spreadsheet or CSV data into structured dental/medical referral data.
-
-INPUT: Raw text that was copy-pasted from Excel, Numbers, Google Sheets, or a CSV file. Columns are typically separated by tabs or commas. The first row may be headers.
-
-OUTPUT: A JSON object with this exact schema:
-{
-  "months": [
-    {
-      "month": "YYYY-MM",
-      "rows": [
-        {
-          "source": "string (referral source name)",
-          "type": "self" | "doctor",
-          "referrals": number,
-          "production": number
-        }
-      ]
-    }
-  ],
-  "warnings": ["string (any issues found during parsing)"]
-}
-
-RULES:
-1. DATES: Look for date/month columns. Convert any date format to YYYY-MM. Supported formats include: MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD, "January 2025", "Jan 2025", "1/2025", etc. If multiple rows share the same month, group them under one month entry. If no date column exists, use the provided fallback month.
-
-2. SOURCE NAMES: Extract the referral source name. This could be a doctor name, website, marketing channel, etc.
-
-3. TYPE INFERENCE: Determine if the referral is "self" or "doctor":
-   - "doctor" if the source name contains: "dr", "doctor", "dds", "dmd", "md", "dentist", "physician", "specialist", "orthodont", "oral surgeon", "periodont", "endodont", "prosthodont"
-   - "self" for everything else (website, google, social media, walk-in, etc.)
-   - If a "type" column exists in the data, use its values directly.
-
-4. NUMBERS: Parse referral counts and production amounts. Strip currency symbols ($), commas, and other formatting. If a value is empty or non-numeric, use 0.
-
-5. COLUMN DETECTION: Intelligently map columns to fields:
-   - Source/name columns: "source", "name", "referring doctor", "doctor", "referral source", "provider", "referred by", "from"
-   - Referral count columns: "referrals", "referral count", "count", "patients", "new patients", "qty", "volume", "#"
-   - Production columns: "production", "revenue", "amount", "total", "collections", "value", "dollars", "$"
-   - Date columns: "date", "month", "period", "time", "year"
-   - Type columns: "type", "referral type", "category", "kind"
-
-6. If the data has no clear column headers, infer from the data patterns (text columns = source, numeric columns = referrals/production).
-
-7. Skip completely empty rows.
-
-8. Add warnings for: rows with missing source names, ambiguous column mappings, unparseable values.
-
-CRITICAL: Return ONLY valid JSON. No markdown fences. No commentary. No explanation. Just the JSON object.`;
 
 /**
  * Parse pasted text using Haiku and return structured PMS data.
@@ -112,7 +51,7 @@ export async function parsePastedData(
     );
   }
 
-  const ai = getClient();
+  const systemPrompt = loadPrompt("pmsAgents/PasteParser");
 
   const userMessage = `Fallback month (use if no date column detected): ${currentMonth}
 
@@ -123,49 +62,30 @@ ${rawText}`;
     `[PMS-Paste] Sending ${rawText.length} bytes to Haiku for parsing`
   );
 
-  const response = await ai.messages.create({
+  const result = await runAgent({
+    systemPrompt,
+    userMessage,
     model: MODEL,
-    max_tokens: 4096,
-    system: SYSTEM_PROMPT,
-    messages: [
-      { role: "user", content: userMessage },
-      { role: "assistant", content: "{" },
-    ],
+    maxTokens: 4096,
+    prefill: "{",
   });
 
-  const textBlock = response.content[0];
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text response from Claude");
-  }
-
-  const rawResponse = textBlock.text;
+  const rawResponse = result.raw;
 
   console.log(
-    `[PMS-Paste] Haiku response: ${response.usage.input_tokens} in / ${response.usage.output_tokens} out`
+    `[PMS-Paste] Haiku response: ${result.inputTokens} in / ${result.outputTokens} out`
   );
   console.log(
     `[PMS-Paste] Raw response (first 800 chars): ${rawResponse.substring(0, 800)}`
   );
-  console.log(
-    `[PMS-Paste] Response stop_reason: ${response.stop_reason}`
-  );
 
-  // Build the full text — we prefilled with "{" so prepend it
-  let text = "{" + rawResponse.trim();
+  // Try the parsed result from runAgent first (it handles fence stripping)
+  let parsed: { months: any[]; warnings?: string[] } | null = result.parsed;
 
-  // Try JSON.parse directly first (happy path with prefill)
-  let parsed: { months: any[]; warnings?: string[] } | null = null;
-
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    // Prefill approach didn't produce clean JSON — try extraction strategies
-    console.log("[PMS-Paste] Direct parse failed, trying extraction...");
-  }
-
-  // Strategy 2: Strip markdown fences from the raw response and try again
+  // Fallback: try manual extraction strategies
   if (!parsed) {
-    let cleaned = rawResponse.trim();
+    console.log("[PMS-Paste] Direct parse failed, trying extraction...");
+    let cleaned = rawResponse.replace(/^[^{]*/, "").trim();
 
     // Remove any markdown fences
     cleaned = cleaned.replace(/^```\w*\s*/gm, "").replace(/```\s*$/gm, "").trim();

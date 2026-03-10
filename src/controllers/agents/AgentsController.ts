@@ -378,6 +378,13 @@ export async function runMonthlyAgents(
       oauth2Client,
       monthRange,
       locationId,
+      async (subStep, message, agentCompleted) => {
+        await updatePmsStatus(
+          subStep as any,
+          message,
+          agentCompleted as any,
+        );
+      },
     );
 
     if (!monthlyResult.success) {
@@ -392,115 +399,23 @@ export async function runMonthlyAgents(
       throw new Error(monthlyResult.error || "Monthly agents failed");
     }
 
-    // Save results
-    log(`[CLIENT] Saving results to database...`);
+    // Agent results saved by orchestrator (direct Claude calls)
+    const summaryId = monthlyResult.agentResultIds?.summary || 0;
+    const opportunityId = monthlyResult.agentResultIds?.opportunity || 0;
+    const croOptimizerId = monthlyResult.agentResultIds?.croOptimizer || 0;
+    const referralEngineId = monthlyResult.agentResultIds?.referralEngine || 0;
+    log(`[CLIENT] Agent results saved (Summary: ${summaryId}, Opportunity: ${opportunityId}, CRO: ${croOptimizerId}, Referral: ${referralEngineId})`);
 
-    // Update status: Summary agent completed, starting Referral Engine
-    await updatePmsStatus(
-      "summary_agent",
-      "Summary Agent completed",
-      "summary_agent",
-    );
-
-    // Save raw data
+    // Save raw GBP data
     await db("google_data_store").insert(monthlyResult.rawData);
+    log(`[CLIENT] \u2713 Raw GBP data saved`);
 
-    // Save Summary result
-    const [summaryResult] = await db("agent_results")
-      .insert({
-        organization_id: account.organization_id,
-        location_id: locationId,
-        agent_type: "summary",
-        date_start: monthRange.startDate,
-        date_end: monthRange.endDate,
-        agent_input: JSON.stringify(monthlyResult.summaryPayload),
-        agent_output: JSON.stringify(monthlyResult.summaryOutput),
-        status: "success",
-        created_at: new Date(),
-        updated_at: new Date(),
-      })
-      .returning("id");
-
-    const summaryId = summaryResult.id;
-    log(`[CLIENT] \u2713 Summary result saved (ID: ${summaryId})`);
-
-    // Update status: Referral Engine completed
+    // Mark all agents complete and move to task creation
     await updatePmsStatus(
       "referral_engine",
-      "Referral Engine Agent completed",
+      "All agents completed, creating tasks...",
       "referral_engine",
     );
-
-    // Save Opportunity result
-    const [opportunityResult] = await db("agent_results")
-      .insert({
-        organization_id: account.organization_id,
-        location_id: locationId,
-        agent_type: "opportunity",
-        date_start: monthRange.startDate,
-        date_end: monthRange.endDate,
-        agent_input: JSON.stringify(monthlyResult.opportunityPayload),
-        agent_output: JSON.stringify(monthlyResult.opportunityOutput),
-        status: "success",
-        created_at: new Date(),
-        updated_at: new Date(),
-      })
-      .returning("id");
-
-    const opportunityId = opportunityResult.id;
-    log(`[CLIENT] \u2713 Opportunity result saved (ID: ${opportunityId})`);
-
-    // Update status: Opportunity agent completed
-    await updatePmsStatus(
-      "opportunity_agent",
-      "Opportunity Agent completed",
-      "opportunity_agent",
-    );
-
-    // Save Referral Engine result
-    const [referralEngineResult] = await db("agent_results")
-      .insert({
-        organization_id: account.organization_id,
-        location_id: locationId,
-        agent_type: "referral_engine",
-        date_start: monthRange.startDate,
-        date_end: monthRange.endDate,
-        agent_input: JSON.stringify(monthlyResult.referralEnginePayload),
-        agent_output: JSON.stringify(monthlyResult.referralEngineOutput),
-        status: "success",
-        created_at: new Date(),
-        updated_at: new Date(),
-      })
-      .returning("id");
-
-    const referralEngineId = referralEngineResult.id;
-    log(`[CLIENT] \u2713 Referral Engine result saved (ID: ${referralEngineId})`);
-
-    // Update status: CRO Optimizer completed
-    await updatePmsStatus(
-      "cro_optimizer",
-      "CRO Optimizer Agent completed",
-      "cro_optimizer",
-    );
-
-    // Save CRO Optimizer result
-    const [croOptimizerResult] = await db("agent_results")
-      .insert({
-        organization_id: account.organization_id,
-        location_id: locationId,
-        agent_type: "cro_optimizer",
-        date_start: monthRange.startDate,
-        date_end: monthRange.endDate,
-        agent_input: JSON.stringify(monthlyResult.croOptimizerPayload),
-        agent_output: JSON.stringify(monthlyResult.croOptimizerOutput),
-        status: "success",
-        created_at: new Date(),
-        updated_at: new Date(),
-      })
-      .returning("id");
-
-    const croOptimizerId = croOptimizerResult.id;
-    log(`[CLIENT] \u2713 CRO Optimizer result saved (ID: ${croOptimizerId})`);
 
     // Update status: Task creation
     if (pmsJobId) {

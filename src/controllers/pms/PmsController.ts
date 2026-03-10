@@ -500,6 +500,26 @@ export async function parsePaste(req: Request, res: Response) {
 }
 
 /**
+ * POST /pms/jobs/:id/restart
+ * Delete all data from a completed run and re-trigger from scratch
+ */
+export async function restartJob(req: Request, res: Response) {
+  try {
+    const jobId = validateJobId(req.params.id);
+
+    const data = await retryService.restartMonthlyAgents(jobId);
+
+    return res.json({
+      success: true,
+      message: "Run restarted",
+      data,
+    });
+  } catch (error: any) {
+    return handleError(res, error, "Restart job");
+  }
+}
+
+/**
  * POST /pms/jobs/:id/retry
  * Retry a failed automation step (pms_parser or monthly_agents)
  */

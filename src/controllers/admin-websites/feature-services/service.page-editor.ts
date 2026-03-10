@@ -594,6 +594,35 @@ export async function editLayoutComponent(
 }
 
 // ---------------------------------------------------------------------------
+// Propagate seo_data to all sibling versions of the same page path
+// ---------------------------------------------------------------------------
+
+export async function propagateSeoToSiblings(
+  projectId: string,
+  path: string,
+  seoData: Record<string, unknown>,
+  excludePageId?: string
+): Promise<void> {
+  const query = db(PAGES_TABLE)
+    .where({ project_id: projectId, path })
+    .whereNull("seo_data");
+
+  if (excludePageId) {
+    query.whereNot("id", excludePageId);
+  }
+
+  const updated = await query.update({
+    seo_data: JSON.stringify(seoData),
+  });
+
+  if (updated > 0) {
+    console.log(
+      `[Admin Websites] ✓ Propagated seo_data to ${updated} sibling version(s) for path: ${path}`
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Update page SEO data
 // ---------------------------------------------------------------------------
 
@@ -627,6 +656,9 @@ export async function updatePageSeo(
       updated_at: db.fn.now(),
     })
     .returning("*");
+
+  // Propagate to all sibling versions with null seo_data
+  await propagateSeoToSiblings(projectId, page.path, seoData, pageId);
 
   console.log(`[Admin Websites] ✓ Updated SEO for page ID: ${pageId}`);
 

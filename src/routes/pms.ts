@@ -34,5 +34,6 @@ pmsRoutes.patch("/jobs/:id/approval", controller.approveJob);
 pmsRoutes.patch("/jobs/:id/response", controller.updateResponseLog);
 pmsRoutes.delete("/jobs/:id", controller.deleteJob);
 pmsRoutes.post("/jobs/:id/retry", controller.retryJob);
+pmsRoutes.post("/jobs/:id/restart", controller.restartJob);
 
 export default pmsRoutes;

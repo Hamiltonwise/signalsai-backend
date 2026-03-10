@@ -22,12 +22,11 @@ import { getDailyDates, getPreviousMonthRange, shouldRunMonthlyAgents } from "..
 import {
   callAgentWebhook,
   PROOFLINE_WEBHOOK,
-  SUMMARY_WEBHOOK,
-  REFERRAL_ENGINE_WEBHOOK,
-  OPPORTUNITY_WEBHOOK,
-  CRO_OPTIMIZER_WEBHOOK,
   COPY_COMPANION_WEBHOOK,
 } from "./service.webhook-orchestrator";
+import { v4 as uuidv4 } from "uuid";
+import { loadPrompt } from "../../../agents/service.prompt-loader";
+import { runAgent } from "../../../agents/service.llm-runner";
 import {
   buildProoflinePayload,
   buildSummaryPayload,
@@ -44,6 +43,12 @@ import {
 } from "./service.task-creator";
 import { resolveLocationId } from "../../../utils/locationResolver";
 import { GooglePropertyModel } from "../../../models/GooglePropertyModel";
+import type {
+  SummaryAgentOutput,
+  OpportunityAgentOutput,
+  CroOptimizerAgentOutput,
+  ReferralEngineAgentOutput,
+} from "../types/agent-output-schemas";
 
 // =====================================================================
 // DAILY AGENT PROCESSING
@@ -173,6 +178,74 @@ export async function processDailyAgent(
 }
 
 // =====================================================================
+// MONTHLY AGENTS: DIRECT LLM CALL + PERSIST
+// =====================================================================
+
+/**
+ * Run a monthly agent via Claude directly (no n8n), then persist the
+ * result to agent_results. Returns the same shape that fireWebhookAndPoll
+ * used to return so the rest of the orchestrator stays unchanged.
+ */
+async function runMonthlyAgent(opts: {
+  promptPath: string;
+  payload: any;
+  agentName: string;
+  meta: {
+    organizationId: number;
+    locationId: number | null;
+    agentType: string;
+    dateStart: string;
+    dateEnd: string;
+  };
+}): Promise<{ agentOutput: any; agentResultId: number }> {
+  const systemPrompt = loadPrompt(opts.promptPath);
+  const userMessage = JSON.stringify(opts.payload, null, 2);
+
+  log(`  → Running ${opts.agentName} via Claude directly`);
+
+  const result = await runAgent({
+    systemPrompt,
+    userMessage,
+    maxTokens: 16384,
+  });
+
+  log(
+    `  ✓ ${opts.agentName} responded (${result.inputTokens} in / ${result.outputTokens} out)`
+  );
+
+  if (!result.parsed) {
+    throw new Error(`${opts.agentName} returned non-JSON output`);
+  }
+
+  // Persist to agent_results (replaces what n8n used to write)
+  const runId = uuidv4();
+  const [record] = await db("agent_results")
+    .insert({
+      run_id: runId,
+      organization_id: opts.meta.organizationId,
+      location_id: opts.meta.locationId,
+      agent_type: opts.meta.agentType,
+      date_start: opts.meta.dateStart,
+      date_end: opts.meta.dateEnd,
+      agent_input: userMessage.length > 50000 ? null : userMessage,
+      agent_output: JSON.stringify(result.parsed),
+      status: "success",
+      created_at: new Date(),
+      updated_at: new Date(),
+    })
+    .returning("id");
+
+  const agentResultId = record.id ?? record;
+
+  log(`  ✓ ${opts.agentName} result saved (ID: ${agentResultId}, run_id: ${runId})`);
+
+  return {
+    agentOutput: result.parsed,
+    agentResultId,
+  };
+}
+
+// =====================================================================
 // MONTHLY AGENTS PROCESSING
 // =====================================================================
 
@@ -185,12 +258,13 @@ export async function processMonthlyAgents(
   oauth2Client: any,
   monthRange: ReturnType<typeof getPreviousMonthRange>,
   passedLocationId?: number | null,
+  onProgress?: (subStep: string, message: string, agentCompleted?: string) => Promise<void>,
 ): Promise<{
   success: boolean;
-  summaryOutput?: any;
-  referralEngineOutput?: any;
-  opportunityOutput?: any;
-  croOptimizerOutput?: any;
+  summaryOutput?: SummaryAgentOutput;
+  referralEngineOutput?: ReferralEngineAgentOutput;
+  opportunityOutput?: OpportunityAgentOutput;
+  croOptimizerOutput?: CroOptimizerAgentOutput;
   summaryPayload?: any;
   referralEnginePayload?: any;
   opportunityPayload?: any;
@@ -198,17 +272,31 @@ export async function processMonthlyAgents(
   rawData?: any;
   skipped?: boolean;
   error?: string;
+  agentResultIds?: {
+    summary?: number;
+    opportunity?: number;
+    croOptimizer?: number;
+    referralEngine?: number;
+  };
 }> {
   const { id: googleAccountId, domain_name: domain, organization_id: organizationId } = account;
   const { startDate, endDate } = monthRange;
 
   log(
-    `  [MONTHLY] Processing Summary + Referral Engine + Opportunity + CRO Optimizer for ${domain} (${startDate} to ${endDate})`,
+    `  [MONTHLY] Processing Summary + Opportunity + CRO Optimizer + Referral Engine for ${domain} (${startDate} to ${endDate})`,
   );
 
   // Use passed locationId if available, otherwise resolve from org
   const locationId = passedLocationId ?? await resolveLocationId(organizationId);
   log(`  [MONTHLY] Using locationId: ${locationId}${passedLocationId ? ' (from request)' : ' (resolved from org)'}`);
+
+  // Shared meta for all agents
+  const agentMeta = {
+    organizationId,
+    locationId: locationId || null,
+    dateStart: startDate,
+    dateEnd: endDate,
+  };
 
   try {
     // Scope GBP data to the active location only
@@ -252,7 +340,6 @@ export async function processMonthlyAgents(
       const aggregated = await aggregatePmsData(organizationId, locationId ?? undefined);
 
       if (aggregated.months.length > 0) {
-        // Use aggregated data structure for Summary agent
         pmsData = {
           monthly_rollup: aggregated.months.map((month) => ({
             month: month.month,
@@ -291,8 +378,9 @@ export async function processMonthlyAgents(
       updated_at: new Date(),
     };
 
-    // === STEP 1: Run Summary Agent ===
-    log(`  [MONTHLY] Calling Summary agent webhook`);
+    // === STEP 1: Summary Agent (direct LLM call) ===
+    if (onProgress) await onProgress("summary_agent", "Running Summary Agent...");
+    log(`  [MONTHLY] Running Summary agent`);
     const summaryPayload = buildSummaryPayload({
       domain,
       googleAccountId,
@@ -302,59 +390,24 @@ export async function processMonthlyAgents(
       pmsData,
     });
 
-    const summaryOutput = await callAgentWebhook(
-      SUMMARY_WEBHOOK,
-      summaryPayload,
-      "Summary",
-    );
-
-    // Log and validate Summary output
-    logAgentOutput("Summary", summaryOutput);
-    const summaryValid = isValidAgentOutput(summaryOutput, "Summary");
-
-    if (!summaryValid) {
-      return {
-        success: false,
-        error: "Summary agent returned empty or invalid output",
-      };
-    }
-
-    log(`  [MONTHLY] \u2713 Summary completed successfully`);
-
-    // === STEP 2: Run Referral Analysis Engine (uses same raw data as Summary) ===
-    log(`  [MONTHLY] Calling Referral Engine agent webhook`);
-    const referralEnginePayload = buildReferralEnginePayload({
-      domain,
-      googleAccountId,
-      startDate,
-      endDate,
-      pmsData,
+    const summaryResult = await runMonthlyAgent({
+      promptPath: "monthlyAgents/Summary",
+      payload: summaryPayload,
+      agentName: "Summary",
+      meta: { ...agentMeta, agentType: "summary" },
     });
 
-    const referralEngineOutput = await callAgentWebhook(
-      REFERRAL_ENGINE_WEBHOOK,
-      referralEnginePayload,
-      "Referral Engine",
-    );
+    const summaryOutput: SummaryAgentOutput = summaryResult.agentOutput;
+    logAgentOutput("Summary", summaryOutput);
 
-    // Log and validate Referral Engine output
-    logAgentOutput("Referral Engine", referralEngineOutput);
-    const referralEngineValid = isValidAgentOutput(
-      referralEngineOutput,
-      "Referral Engine",
-    );
-
-    if (!referralEngineValid) {
-      return {
-        success: false,
-        error: "Referral Engine agent returned empty or invalid output",
-      };
+    if (!isValidAgentOutput(summaryOutput, "Summary")) {
+      return { success: false, error: "Summary agent returned empty or invalid output" };
     }
+    log(`  [MONTHLY] \u2713 Summary completed successfully`);
 
-    log(`  [MONTHLY] \u2713 Referral Engine completed successfully`);
-
-    // === STEP 3: Run Opportunity Agent (only uses Summary output) ===
-    log(`  [MONTHLY] Calling Opportunity agent webhook`);
+    // === STEP 2: Opportunity Agent (depends on Summary output) ===
+    if (onProgress) await onProgress("opportunity_agent", "Running Opportunity Agent...", "summary_agent");
+    log(`  [MONTHLY] Running Opportunity agent`);
     const opportunityPayload = buildOpportunityPayload({
       domain,
       googleAccountId,
@@ -363,47 +416,39 @@ export async function processMonthlyAgents(
       summaryOutput,
     });
 
-    const opportunityOutput = await callAgentWebhook(
-      OPPORTUNITY_WEBHOOK,
-      opportunityPayload,
-      "Opportunity",
-    );
+    const opportunityResult = await runMonthlyAgent({
+      promptPath: "monthlyAgents/Opportunity",
+      payload: opportunityPayload,
+      agentName: "Opportunity",
+      meta: { ...agentMeta, agentType: "opportunity" },
+    });
 
-    // Log and validate Opportunity output
+    const opportunityOutput: OpportunityAgentOutput = opportunityResult.agentOutput;
     logAgentOutput("Opportunity", opportunityOutput);
-    const opportunityValid = isValidAgentOutput(
-      opportunityOutput,
-      "Opportunity",
-    );
 
-    if (!opportunityValid) {
-      return {
-        success: false,
-        error: "Opportunity agent returned empty or invalid output",
-      };
+    if (!isValidAgentOutput(opportunityOutput, "Opportunity")) {
+      return { success: false, error: "Opportunity agent returned empty or invalid output" };
     }
-
     log(`  [MONTHLY] \u2713 Opportunity completed successfully`);
 
-    // === STEP 4: Run CRO Optimizer Agent with retry logic ===
-    log(`  [MONTHLY] Calling CRO Optimizer agent webhook (max 3 attempts)`);
+    // === STEP 3: CRO Optimizer Agent (depends on Summary output, with retry) ===
+    if (onProgress) await onProgress("cro_optimizer", "Running CRO Optimizer Agent...", "opportunity_agent");
+    log(`  [MONTHLY] Running CRO Optimizer agent (max 3 attempts)`);
 
-    let croOptimizerOutput: any = null;
-    let croOptimizerPayload: any = null;
-    let croAttempt = 0;
+    let croOptimizerOutput: CroOptimizerAgentOutput | undefined;
+    let croOptimizerResultId: number | undefined;
     const MAX_CRO_ATTEMPTS = 3;
 
-    for (croAttempt = 1; croAttempt <= MAX_CRO_ATTEMPTS; croAttempt++) {
+    for (let croAttempt = 1; croAttempt <= MAX_CRO_ATTEMPTS; croAttempt++) {
       if (croAttempt > 1) {
-        log(
-          `  [MONTHLY] \ud83d\udd04 CRO Optimizer retry attempt ${croAttempt}/${MAX_CRO_ATTEMPTS}`,
-        );
+        log(`  [MONTHLY] \ud83d\udd04 CRO Optimizer retry attempt ${croAttempt}/${MAX_CRO_ATTEMPTS}`);
         log(`  [MONTHLY] Waiting 30 seconds before retry...`);
+        if (onProgress) await onProgress("cro_optimizer", `Retrying CRO Optimizer (attempt ${croAttempt}/${MAX_CRO_ATTEMPTS})...`);
         await delay(30000);
       }
 
       try {
-        croOptimizerPayload = buildCroOptimizerPayload({
+        const croPayload = buildCroOptimizerPayload({
           domain,
           googleAccountId,
           startDate,
@@ -411,36 +456,26 @@ export async function processMonthlyAgents(
           summaryOutput,
         });
 
-        croOptimizerOutput = await callAgentWebhook(
-          CRO_OPTIMIZER_WEBHOOK,
-          croOptimizerPayload,
-          "CRO Optimizer",
-        );
+        const croResult = await runMonthlyAgent({
+          promptPath: "monthlyAgents/CRO",
+          payload: croPayload,
+          agentName: "CRO Optimizer",
+          meta: { ...agentMeta, agentType: "cro_optimizer" },
+        });
 
-        // Log and validate CRO Optimizer output
+        croOptimizerOutput = croResult.agentOutput;
+        croOptimizerResultId = croResult.agentResultId;
         logAgentOutput("CRO Optimizer", croOptimizerOutput);
-        const croValid = isValidAgentOutput(
-          croOptimizerOutput,
-          "CRO Optimizer",
-        );
 
-        if (!croValid) {
-          throw new Error(
-            "CRO Optimizer agent returned empty or invalid output",
-          );
+        if (!isValidAgentOutput(croOptimizerOutput, "CRO Optimizer")) {
+          throw new Error("CRO Optimizer agent returned empty or invalid output");
         }
 
-        log(
-          `  [MONTHLY] \u2713 CRO Optimizer completed successfully on attempt ${croAttempt}`,
-        );
-        break; // Success, exit retry loop
+        log(`  [MONTHLY] \u2713 CRO Optimizer completed successfully on attempt ${croAttempt}`);
+        break;
       } catch (croError: any) {
-        log(
-          `  [MONTHLY] \u26a0 CRO Optimizer attempt ${croAttempt} failed: ${croError.message}`,
-        );
-
+        log(`  [MONTHLY] \u26a0 CRO Optimizer attempt ${croAttempt} failed: ${croError.message}`);
         if (croAttempt === MAX_CRO_ATTEMPTS) {
-          // All retries exhausted, fail the entire monthly run
           return {
             success: false,
             error: `CRO Optimizer failed after ${MAX_CRO_ATTEMPTS} attempts: ${croError.message}`,
@@ -449,14 +484,63 @@ export async function processMonthlyAgents(
       }
     }
 
+    // === STEP 4: Referral Engine (uses PMS data, runs last, with retry) ===
+    if (onProgress) await onProgress("referral_engine", "Running Referral Engine Agent...", "cro_optimizer");
+    log(`  [MONTHLY] Running Referral Engine agent (max 3 attempts)`);
+
+    let referralEngineOutput: ReferralEngineAgentOutput | undefined;
+    let referralEngineResultId: number | undefined;
+    const MAX_REFERRAL_ATTEMPTS = 3;
+
+    for (let refAttempt = 1; refAttempt <= MAX_REFERRAL_ATTEMPTS; refAttempt++) {
+      if (refAttempt > 1) {
+        log(`  [MONTHLY] \ud83d\udd04 Referral Engine retry attempt ${refAttempt}/${MAX_REFERRAL_ATTEMPTS}`);
+        log(`  [MONTHLY] Waiting 30 seconds before retry...`);
+        if (onProgress) await onProgress("referral_engine", `Retrying Referral Engine (attempt ${refAttempt}/${MAX_REFERRAL_ATTEMPTS})...`);
+        await delay(30000);
+      }
+
+      try {
+        const referralPayload = buildReferralEnginePayload({
+          domain,
+          googleAccountId,
+          startDate,
+          endDate,
+          pmsData,
+        });
+
+        const referralResult = await runMonthlyAgent({
+          promptPath: "monthlyAgents/ReferralEngineAnalysis",
+          payload: referralPayload,
+          agentName: "Referral Engine",
+          meta: { ...agentMeta, agentType: "referral_engine" },
+        });
+
+        referralEngineOutput = referralResult.agentOutput;
+        referralEngineResultId = referralResult.agentResultId;
+        logAgentOutput("Referral Engine", referralEngineOutput);
+
+        if (!isValidAgentOutput(referralEngineOutput, "Referral Engine")) {
+          throw new Error("Referral Engine agent returned empty or invalid output");
+        }
+
+        log(`  [MONTHLY] \u2713 Referral Engine completed successfully on attempt ${refAttempt}`);
+        break;
+      } catch (refError: any) {
+        log(`  [MONTHLY] \u26a0 Referral Engine attempt ${refAttempt} failed: ${refError.message}`);
+        if (refAttempt === MAX_REFERRAL_ATTEMPTS) {
+          return {
+            success: false,
+            error: `Referral Engine failed after ${MAX_REFERRAL_ATTEMPTS} attempts: ${refError.message}`,
+          };
+        }
+      }
+    }
+
     // === STEP 5: Create tasks from action items ===
     await createTasksFromOpportunityOutput(opportunityOutput, googleAccountId, organizationId, locationId);
-
-    // === STEP 6: Create tasks from CRO Optimizer action items ===
-    await createTasksFromCroOptimizerOutput(croOptimizerOutput, googleAccountId, organizationId, locationId);
-
-    // === STEP 7: Create tasks from Referral Engine action items ===
-    await createTasksFromReferralEngineOutput(referralEngineOutput, googleAccountId, organizationId, locationId);
+    await createTasksFromCroOptimizerOutput(croOptimizerOutput!, googleAccountId, organizationId, locationId);
+    await createTasksFromReferralEngineOutput(referralEngineOutput!, googleAccountId, organizationId, locationId);
 
     return {
       success: true,
@@ -464,11 +548,17 @@ export async function processMonthlyAgents(
       referralEngineOutput,
       opportunityOutput,
       croOptimizerOutput,
-      summaryPayload,
-      referralEnginePayload,
+      summaryPayload: summaryPayload,
+      referralEnginePayload: null, // Payload built inside retry loop
       opportunityPayload,
-      croOptimizerPayload,
+      croOptimizerPayload: null, // Payload built inside retry loop
       rawData,
+      agentResultIds: {
+        summary: summaryResult.agentResultId,
+        opportunity: opportunityResult.agentResultId,
+        croOptimizer: croOptimizerResultId,
+        referralEngine: referralEngineResultId,
+      },
     };
   } catch (error: any) {
     logError("processMonthlyAgents", error);
@@ -728,84 +818,12 @@ export async function processClient(
         log(`[CLIENT] \u2139 Daily result already exists (ID: ${existingDaily.id})`);
       }
 
-      // Save monthly results if they were run
+      // Monthly agent results already saved by n8n via fire-and-poll
+      // Just save raw GBP data
       if (!monthlyResult.skipped && monthlyResult.success) {
-        // Save monthly raw data
         await db("google_data_store").insert(monthlyResult.rawData);
-
-        // Save Summary result
-        const [summaryId] = await db("agent_results")
-          .insert({
-            organization_id: account.organization_id,
-            location_id: locationId,
-            agent_type: "summary",
-            date_start: monthRange.startDate,
-            date_end: monthRange.endDate,
-            agent_input: JSON.stringify(monthlyResult.summaryPayload),
-            agent_output: JSON.stringify(monthlyResult.summaryOutput),
-            status: "success",
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .returning("id");
-
-        log(`[CLIENT] \u2713 Summary result saved (ID: ${summaryId})`);
-
-        // Save Opportunity result
-        const [opportunityId] = await db("agent_results")
-          .insert({
-            organization_id: account.organization_id,
-            location_id: locationId,
-            agent_type: "opportunity",
-            date_start: monthRange.startDate,
-            date_end: monthRange.endDate,
-            agent_input: JSON.stringify(monthlyResult.opportunityPayload),
-            agent_output: JSON.stringify(monthlyResult.opportunityOutput),
-            status: "success",
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .returning("id");
-
-        log(`[CLIENT] \u2713 Opportunity result saved (ID: ${opportunityId})`);
-
-        // Save Referral Engine result
-        const [referralEngineId] = await db("agent_results")
-          .insert({
-            organization_id: account.organization_id,
-            location_id: locationId,
-            agent_type: "referral_engine",
-            date_start: monthRange.startDate,
-            date_end: monthRange.endDate,
-            agent_input: JSON.stringify(monthlyResult.referralEnginePayload),
-            agent_output: JSON.stringify(monthlyResult.referralEngineOutput),
-            status: "success",
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .returning("id");
-
-        log(
-          `[CLIENT] \u2713 Referral Engine result saved (ID: ${referralEngineId})`,
-        );
-
-        // Save CRO Optimizer result
-        const [croOptimizerId] = await db("agent_results")
-          .insert({
-            organization_id: account.organization_id,
-            location_id: locationId,
-            agent_type: "cro_optimizer",
-            date_start: monthRange.startDate,
-            date_end: monthRange.endDate,
-            agent_input: JSON.stringify(monthlyResult.croOptimizerPayload),
-            agent_output: JSON.stringify(monthlyResult.croOptimizerOutput),
-            status: "success",
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .returning("id");
-
-        log(`[CLIENT] \u2713 CRO Optimizer result saved (ID: ${croOptimizerId})`);
+        log(`[CLIENT] \u2713 Monthly raw GBP data saved`);
+        log(`[CLIENT] \u2713 Agent results written by n8n (IDs: ${JSON.stringify(monthlyResult.agentResultIds)})`);
       }
 
       log(

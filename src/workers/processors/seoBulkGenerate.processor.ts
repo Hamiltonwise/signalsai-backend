@@ -110,6 +110,18 @@ export async function processSeoBulkGenerate(job: Job<SeoBulkGenerateData>): Pro
         updated_at: new Date(),
       });
 
+      // For pages, propagate seo_data to all sibling versions with null seo_data
+      if (entityType === "page" && entity.path) {
+        const propagated = await db(PAGES_TABLE)
+          .where({ project_id: projectId, path: entity.path })
+          .whereNull("seo_data")
+          .whereNot("id", entity.id)
+          .update({ seo_data: JSON.stringify(mergedSeoData) });
+        if (propagated > 0) {
+          console.log(`[SEO-BULK]     Propagated seo_data to ${propagated} sibling version(s)`);
+        }
+      }
+
       await SeoGenerationJobModel.incrementCompleted(jobRecordId);
       console.log(`[SEO-BULK]   [${i + 1}/${entities.length}] ✓ Done "${entity.title}" (${Date.now() - entityStart}ms)`);
     } catch (err: any) {
@@ -145,24 +157,32 @@ export async function processSeoBulkGenerate(job: Job<SeoBulkGenerateData>): Pro
 // ---------------------------------------------------------------------------
 
 async function getPageEntities(projectId: string) {
-  // Get the best version of each page (published preferred, else latest draft)
+  // Get all pages ordered by path, then version desc
   const pages = await db(PAGES_TABLE)
     .where({ project_id: projectId })
     .orderBy("path", "asc")
     .orderBy("version", "desc");
 
-  // Group by path, take the first (highest version) per path
-  const seen = new Set<string>();
+  // Group by path: prefer published, fallback to draft, then highest version
+  const grouped = new Map<string, any[]>();
+  for (const page of pages) {
+    const group = grouped.get(page.path) || [];
+    group.push(page);
+    grouped.set(page.path, group);
+  }
+
   const entities: Array<{ id: string; title: string; content: string; path: string }> = [];
 
-  for (const page of pages) {
-    if (seen.has(page.path)) continue;
-    seen.add(page.path);
+  for (const [path, versions] of grouped) {
+    const best =
+      versions.find((p: any) => p.status === "published") ||
+      versions.find((p: any) => p.status === "draft") ||
+      versions[0]; // highest version fallback
 
     // Extract text content from sections
     let sections: any[] = [];
     try {
-      const raw = typeof page.sections === "string" ? JSON.parse(page.sections) : page.sections;
+      const raw = typeof best.sections === "string" ? JSON.parse(best.sections) : best.sections;
       sections = Array.isArray(raw) ? raw : [];
     } catch {
       sections = [];
@@ -170,10 +190,10 @@ async function getPageEntities(projectId: string) {
     const content = sections.map((s: any) => s.content || "").join("\n");
 
     entities.push({
-      id: page.id,
-      title: page.path,
+      id: best.id,
+      title: path,
       content,
-      path: page.path,
+      path,
     });
   }
 
