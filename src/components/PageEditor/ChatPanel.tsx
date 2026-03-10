@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Loader2, Paperclip, X, Image, Upload } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
 import MediaBrowser from "./MediaBrowser";
+import ColorPicker from "./ColorPicker";
 import type { MediaItem } from "./MediaBrowser";
 
 export interface ChatMessage {
@@ -16,6 +18,8 @@ interface ChatPanelProps {
   isLoading: boolean;
   disabled: boolean;
   projectId?: string;
+  primaryColor?: string | null;
+  accentColor?: string | null;
 }
 
 export default function ChatPanel({
@@ -24,10 +28,13 @@ export default function ChatPanel({
   isLoading,
   disabled,
   projectId,
+  primaryColor,
+  accentColor,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [attachedMedia, setAttachedMedia] = useState<MediaItem[]>([]);
+  const [attachedColor, setAttachedColor] = useState<string | null>(null);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -47,9 +54,13 @@ export default function ChatPanel({
   const handleSubmit = () => {
     const trimmed = input.trim();
     if (!trimmed || isLoading || disabled) return;
-    onSend(trimmed, attachedMedia.length > 0 ? attachedMedia : undefined);
+    const finalInstruction = attachedColor
+      ? `${trimmed}\n\nUse color: ${attachedColor}`
+      : trimmed;
+    onSend(finalInstruction, attachedMedia.length > 0 ? attachedMedia : undefined);
     setInput("");
     setAttachedMedia([]);
+    setAttachedColor(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -218,6 +229,17 @@ export default function ChatPanel({
 
       {/* Input */}
       <div className="px-4 pb-4 pt-2 border-t border-gray-200">
+        {/* Color Picker — shows when user types "color" */}
+        <AnimatePresence>
+          {input.toLowerCase().includes("color") && (primaryColor || accentColor) && (
+            <ColorPicker
+              primaryColor={primaryColor || null}
+              accentColor={accentColor || null}
+              onSelect={(colorStr) => setAttachedColor(colorStr)}
+            />
+          )}
+        </AnimatePresence>
+
         {/* Media Library */}
         {showMediaLibrary && projectId && (
           <div className="mb-2">
@@ -226,6 +248,25 @@ export default function ChatPanel({
               onSelect={attachMediaFromLibrary}
               onClose={() => setShowMediaLibrary(false)}
             />
+          </div>
+        )}
+
+        {/* Color attachment chip */}
+        {attachedColor && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-700">
+              <span
+                className="w-3.5 h-3.5 rounded-sm border border-gray-300 shrink-0"
+                style={{ backgroundColor: attachedColor }}
+              />
+              <span className="font-medium">{attachedColor}</span>
+              <button
+                onClick={() => setAttachedColor(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         )}
 

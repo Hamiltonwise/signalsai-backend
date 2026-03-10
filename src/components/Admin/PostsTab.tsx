@@ -22,17 +22,17 @@ import RichTextEditor from "../ui/RichTextEditor";
 import AnimatedSelect from "../ui/AnimatedSelect";
 import SeoPanel from "../PageEditor/SeoPanel";
 import type { SeoData } from "../../api/websites";
-import { updatePostSeo } from "../../api/websites";
+import { updatePostSeo as defaultUpdatePostSeo } from "../../api/websites";
 import {
-  fetchPosts,
-  createPost,
-  updatePost,
-  deletePost,
-  fetchPostTypes,
-  fetchCategories,
-  fetchTags,
-  createCategory,
-  createTag,
+  fetchPosts as defaultFetchPosts,
+  createPost as defaultCreatePost,
+  updatePost as defaultUpdatePost,
+  deletePost as defaultDeletePost,
+  fetchPostTypes as defaultFetchPostTypes,
+  fetchCategories as defaultFetchCategories,
+  fetchTags as defaultFetchTags,
+  createCategory as defaultCreateCategory,
+  createTag as defaultCreateTag,
 } from "../../api/posts";
 import type { Post, PostType, PostCategory, PostTag } from "../../api/posts";
 import { ActionButton } from "../ui/DesignSystem";
@@ -275,11 +275,39 @@ interface PostsTabProps {
   projectId: string;
   templateId: string | null;
   organizationId?: number;
+  /** Remove outer border/shadow — useful when embedded edge-to-edge (e.g. user editor). */
+  borderless?: boolean;
+  // Optional API overrides for user-facing context
+  fetchPostsFn?: typeof defaultFetchPosts;
+  createPostFn?: typeof defaultCreatePost;
+  updatePostFn?: typeof defaultUpdatePost;
+  deletePostFn?: typeof defaultDeletePost;
+  fetchPostTypesFn?: typeof defaultFetchPostTypes;
+  fetchCategoriesFn?: typeof defaultFetchCategories;
+  fetchTagsFn?: typeof defaultFetchTags;
+  createCategoryFn?: typeof defaultCreateCategory;
+  createTagFn?: typeof defaultCreateTag;
+  updatePostSeoFn?: typeof defaultUpdatePostSeo;
 }
 
 type ViewState = "list" | "editor";
 
-export default function PostsTab({ projectId, templateId, organizationId }: PostsTabProps) {
+export default function PostsTab({
+  projectId,
+  templateId,
+  organizationId,
+  borderless = false,
+  fetchPostsFn = defaultFetchPosts,
+  createPostFn = defaultCreatePost,
+  updatePostFn = defaultUpdatePost,
+  deletePostFn = defaultDeletePost,
+  fetchPostTypesFn = defaultFetchPostTypes,
+  fetchCategoriesFn = defaultFetchCategories,
+  fetchTagsFn = defaultFetchTags,
+  createCategoryFn = defaultCreateCategory,
+  createTagFn = defaultCreateTag,
+  updatePostSeoFn = defaultUpdatePostSeo,
+}: PostsTabProps) {
   const confirm = useConfirm();
 
   const [posts, setPosts] = useState<Post[]>([]);
@@ -326,8 +354,8 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
     try {
       setError(null);
       const [postsRes, typesRes] = await Promise.all([
-        fetchPosts(projectId),
-        fetchPostTypes(templateId),
+        fetchPostsFn(projectId),
+        fetchPostTypesFn(templateId),
       ]);
       setPosts(postsRes.data);
       setPostTypes(typesRes.data);
@@ -355,8 +383,8 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
     if (!typeId) return;
     setTaxonomyLoading(true);
     Promise.all([
-      fetchCategories(typeId),
-      fetchTags(typeId),
+      fetchCategoriesFn(typeId),
+      fetchTagsFn(typeId),
     ]).then(([catRes, tagRes]) => {
       setCategories(catRes.data);
       setTags(tagRes.data);
@@ -413,7 +441,7 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
     setSaving(true);
     try {
       if (editingPost) {
-        await updatePost(projectId, editingPost.id, {
+        await updatePostFn(projectId, editingPost.id, {
           title: formTitle,
           content: formContent,
           excerpt: formExcerpt || null,
@@ -424,7 +452,7 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
           tag_ids: formTagIds,
         });
       } else {
-        await createPost(projectId, {
+        await createPostFn(projectId, {
           post_type_id: formPostTypeId,
           title: formTitle,
           content: formContent,
@@ -454,7 +482,7 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
       variant: "danger",
     });
     if (!ok) return;
-    await deletePost(projectId, post.id);
+    await deletePostFn(projectId, post.id);
     if (editingPost?.id === post.id) {
       resetForm();
       setView("list");
@@ -464,17 +492,17 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim() || !formPostTypeId) return;
-    await createCategory(formPostTypeId, { name: newCategoryName });
+    await createCategoryFn(formPostTypeId, { name: newCategoryName });
     setNewCategoryName("");
-    const res = await fetchCategories(formPostTypeId);
+    const res = await fetchCategoriesFn(formPostTypeId);
     setCategories(res.data);
   };
 
   const handleAddTag = async () => {
     if (!newTagName.trim() || !formPostTypeId) return;
-    await createTag(formPostTypeId, { name: newTagName });
+    await createTagFn(formPostTypeId, { name: newTagName });
     setNewTagName("");
-    const res = await fetchTags(formPostTypeId);
+    const res = await fetchTagsFn(formPostTypeId);
     setTags(res.data);
   };
 
@@ -541,11 +569,22 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
           <h3 className="text-sm font-semibold text-gray-900">
             {showPostsList ? (selectedType?.name || "Posts") : "Post Types"}
           </h3>
-          {showPostsList && (
-            <span className="text-xs text-gray-400 ml-auto">
-              {typePosts.length} post{typePosts.length !== 1 ? "s" : ""}
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {showPostsList && (
+              <span className="text-xs text-gray-400">
+                {typePosts.length} post{typePosts.length !== 1 ? "s" : ""}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => openEditor()}
+              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-alloro-orange hover:bg-orange-50 rounded-md transition-colors"
+              title="New Post"
+            >
+              <Plus className="w-3 h-3" />
+              New
+            </button>
+          </div>
         </div>
 
         {/* Sidebar content */}
@@ -626,17 +665,6 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
           )}
         </div>
 
-        {/* Sidebar footer: New Post */}
-        <div className="px-3 py-3 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={() => openEditor()}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-alloro-orange bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            New Post
-          </button>
-        </div>
       </div>
     );
   };
@@ -797,7 +825,7 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
     setFormSeoData(data);
     if (editingPost) {
       try {
-        await updatePostSeo(projectId, editingPost.id, data);
+        await updatePostSeoFn(projectId, editingPost.id, data);
       } catch (err) {
         console.error("Failed to save post SEO data:", err);
       }
@@ -1149,7 +1177,7 @@ export default function PostsTab({ projectId, templateId, organizationId }: Post
 
   /* ─── Layout: 30/70 sidebar ─── */
   return (
-    <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden" style={{ minHeight: 480 }}>
+    <div className={`flex bg-white overflow-hidden ${borderless ? "h-full" : "rounded-xl border border-gray-200 shadow-sm"}`} style={borderless ? undefined : { minHeight: 480 }}>
       {/* Sidebar — 30% */}
       <div className="w-[30%] min-w-[220px] max-w-[320px] flex-shrink-0 bg-gray-50/50">
         {renderSidebar()}

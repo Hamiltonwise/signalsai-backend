@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Globe,
   ExternalLink,
   AlertCircle,
   Sparkles,
@@ -11,13 +10,21 @@ import {
   Smartphone,
   ChevronDown,
   Undo2,
+  Redo2,
   RotateCcw,
   Check,
+  FileText,
+  Menu as MenuIcon,
+  Pencil,
+  Loader2,
+  Save,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from "../api";
 import ConnectDomainModal from "../components/Admin/ConnectDomainModal";
 import FormSubmissionsTab from "../components/Admin/FormSubmissionsTab";
+import PostsTab from "../components/Admin/PostsTab";
+import MenusTab from "../components/Admin/MenusTab";
 import RecipientsConfig from "../components/Admin/RecipientsConfig";
 import {
   renderPage as assemblePageHtml,
@@ -53,6 +60,7 @@ interface Page {
 interface Project {
   id: string;
   hostname: string;
+  display_name: string | null;
   status: string;
   is_read_only: boolean;
   custom_domain: string | null;
@@ -60,6 +68,10 @@ interface Project {
   wrapper: string;
   header: string;
   footer: string;
+  template_id: string | null;
+  organization_id: number | null;
+  primary_color: string | null;
+  accent_color: string | null;
 }
 
 interface Usage {
@@ -82,7 +94,7 @@ export function DFYWebsite() {
   const [selectedPage, setSelectedPage] = useState<Page | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [showDomainModal, setShowDomainModal] = useState(false);
-  const [activeView, setActiveView] = useState<"editor" | "submissions">(
+  const [activeView, setActiveView] = useState<"editor" | "submissions" | "posts" | "menus">(
     "editor",
   );
   const [viewportMode, setViewportMode] = useState<"desktop" | "mobile">(
@@ -97,10 +109,15 @@ export function DFYWebsite() {
   // Editor state (ported from admin PageEditor)
   const [sections, setSections] = useState<Section[]>([]);
   const [htmlContent, setHtmlContent] = useState("");
+  const [resolvedHtmlContent, setResolvedHtmlContent] = useState("");
   const [chatMap, setChatMap] = useState<Map<string, ChatMessage[]>>(new Map());
   const [isEditing, setIsEditing] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [editHistory, setEditHistory] = useState<Section[][]>([]);
+  const [undoStack, setUndoStack] = useState<Section[][]>([]);
+  const [redoStack, setRedoStack] = useState<Section[][]>([]);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [pendingSidebarAction, setPendingSidebarAction] =
     useState<QuickActionType | null>(null);
 
@@ -117,10 +134,93 @@ export function DFYWebsite() {
     setCollapsed(true);
   }, [setCollapsed]);
 
+  // Warn before closing/reloading when there are unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  // Resolve shortcodes for preview (debounced)
+  const resolveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!htmlContent) {
+      setResolvedHtmlContent("");
+      return;
+    }
+
+    // Always show raw HTML immediately (prevents blank screen)
+    setResolvedHtmlContent(htmlContent);
+
+    // If no shortcodes present, no need to resolve
+    if (!htmlContent.includes("post_block") && !htmlContent.includes("{{ menu")) {
+      return;
+    }
+
+    // Resolve shortcodes asynchronously
+    setIsResolving(true);
+    if (resolveTimerRef.current) clearTimeout(resolveTimerRef.current);
+    resolveTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await apiPost({
+          path: "/user/website/resolve-preview",
+          passedData: { html: htmlContent },
+        });
+        setResolvedHtmlContent(res.html || htmlContent);
+      } catch {
+        // On failure, raw HTML is already showing
+      } finally {
+        setIsResolving(false);
+      }
+    }, 300);
+
+    return () => {
+      if (resolveTimerRef.current) clearTimeout(resolveTimerRef.current);
+    };
+  }, [htmlContent]);
+
+  // Rebuild htmlContent from given sections (keeps undo/redo in sync)
+  const rebuildHtml = useCallback(
+    (newSections: Section[]) => {
+      if (!project) return;
+      const html = assemblePageHtml(
+        project.wrapper || "{{slot}}",
+        project.header || "",
+        project.footer || "",
+        newSections,
+        undefined,
+        undefined,
+        undefined,
+        project.id,
+      );
+      setHtmlContent(html);
+    },
+    [project],
+  );
+
   // Quick action handler from iframe label icons
   const handleIframeQuickAction = useCallback(
     (payload: QuickActionPayload) => {
-      if (
+      if (payload.action === "text-up" || payload.action === "text-down") {
+        // Text size was mutated in the iframe DOM — extract updated sections
+        const iframe = iframeRef.current;
+        if (iframe?.contentDocument) {
+          setUndoStack((prev) => [...prev, structuredClone(sectionsRef.current)]);
+          setRedoStack([]);
+          const updatedSections = extractSectionsFromDom(
+            iframe.contentDocument,
+            sectionsRef.current,
+          );
+          setSections(updatedSections);
+          rebuildHtml(updatedSections);
+          setIsDirty(true);
+        }
+      } else if (
         (payload.action === "text" || payload.action === "link") &&
         payload.value
       ) {
@@ -189,6 +289,70 @@ export function DFYWebsite() {
       path: `/user/website/form-submissions/${submissionId}`,
     });
 
+  // User-facing API wrappers for Posts
+  const userFetchPosts = async (_projectId: string, filters?: { post_type_id?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.post_type_id) params.set("post_type_id", filters.post_type_id);
+    if (filters?.status) params.set("status", filters.status);
+    const qs = params.toString() ? `?${params}` : "";
+    return apiGet({ path: `/user/website/posts${qs}` });
+  };
+
+  const userCreatePost = async (_projectId: string, data: any) =>
+    apiPost({ path: "/user/website/posts", passedData: data });
+
+  const userUpdatePost = async (_projectId: string, postId: string, data: any) =>
+    apiPatch({ path: `/user/website/posts/${postId}`, passedData: data });
+
+  const userDeletePost = async (_projectId: string, postId: string) =>
+    apiDelete({ path: `/user/website/posts/${postId}` });
+
+  const userFetchPostTypes = async (_templateId: string) =>
+    apiGet({ path: "/user/website/post-types" });
+
+  const userFetchCategories = async (postTypeId: string) =>
+    apiGet({ path: `/user/website/post-types/${postTypeId}/categories` });
+
+  const userFetchTags = async (postTypeId: string) =>
+    apiGet({ path: `/user/website/post-types/${postTypeId}/tags` });
+
+  const userCreateCategory = async (postTypeId: string, data: any) =>
+    apiPost({ path: `/user/website/post-types/${postTypeId}/categories`, passedData: data });
+
+  const userCreateTag = async (postTypeId: string, data: any) =>
+    apiPost({ path: `/user/website/post-types/${postTypeId}/tags`, passedData: data });
+
+  const userUpdatePostSeo = async (_projectId: string, postId: string, data: any) =>
+    apiPatch({ path: `/user/website/posts/${postId}/seo`, passedData: data });
+
+  // User-facing API wrappers for Menus
+  const userFetchMenus = async (_projectId: string) =>
+    apiGet({ path: "/user/website/menus" });
+
+  const userFetchMenu = async (_projectId: string, menuId: string) =>
+    apiGet({ path: `/user/website/menus/${menuId}` });
+
+  const userCreateMenu = async (_projectId: string, data: any) =>
+    apiPost({ path: "/user/website/menus", passedData: data });
+
+  const userUpdateMenu = async (_projectId: string, menuId: string, data: any) =>
+    apiPatch({ path: `/user/website/menus/${menuId}`, passedData: data });
+
+  const userDeleteMenu = async (_projectId: string, menuId: string) =>
+    apiDelete({ path: `/user/website/menus/${menuId}` });
+
+  const userCreateMenuItem = async (_projectId: string, menuId: string, data: any) =>
+    apiPost({ path: `/user/website/menus/${menuId}/items`, passedData: data });
+
+  const userUpdateMenuItem = async (_projectId: string, menuId: string, itemId: string, data: any) =>
+    apiPatch({ path: `/user/website/menus/${menuId}/items/${itemId}`, passedData: data });
+
+  const userDeleteMenuItem = async (_projectId: string, menuId: string, itemId: string) =>
+    apiDelete({ path: `/user/website/menus/${menuId}/items/${itemId}` });
+
+  const userReorderMenuItems = async (_projectId: string, menuId: string, items: any[]) =>
+    apiPatch({ path: `/user/website/menus/${menuId}/items/reorder`, passedData: { items } });
+
   const handleExportSubmissions = async () => {
     try {
       const token =
@@ -252,8 +416,10 @@ export function DFYWebsite() {
 
     // Reset editor state for new page
     setChatMap(new Map());
-    setEditHistory([]);
+    setUndoStack([]);
+    setRedoStack([]);
     setEditError(null);
+    setIsDirty(false);
   }, [selectedPage, project]);
 
   const fetchWebsite = async () => {
@@ -368,7 +534,8 @@ export function DFYWebsite() {
             throw new Error(`Invalid HTML: ${validation.error}`);
           }
 
-          setEditHistory((prev) => [...prev, structuredClone(sections)]);
+          setUndoStack((prev) => [...prev, structuredClone(sections)]);
+          setRedoStack([]);
 
           const iframe = iframeRef.current;
           if (iframe?.contentDocument) {
@@ -386,6 +553,8 @@ export function DFYWebsite() {
               sectionsRef.current,
             );
             setSections(updatedSections);
+            rebuildHtml(updatedSections);
+            setIsDirty(true);
 
             setupListeners();
             iframe.contentWindow?.scrollTo(scrollX, scrollY);
@@ -464,6 +633,8 @@ export function DFYWebsite() {
 
   // --- Toggle hidden ---
   const handleToggleHidden = useCallback(() => {
+    setUndoStack((prev) => [...prev, structuredClone(sections)]);
+    setRedoStack([]);
     toggleHidden();
 
     const iframe = iframeRef.current;
@@ -473,16 +644,20 @@ export function DFYWebsite() {
         sectionsRef.current,
       );
       setSections(updatedSections);
+      rebuildHtml(updatedSections);
+      setIsDirty(true);
     }
-  }, [toggleHidden]);
+  }, [toggleHidden, sections, rebuildHtml]);
 
   // --- Undo ---
   const handleUndo = useCallback(() => {
-    if (editHistory.length === 0 || !project) return;
+    if (undoStack.length === 0 || !project) return;
 
-    const previousSections = editHistory[editHistory.length - 1];
-    setEditHistory((prev) => prev.slice(0, -1));
+    const previousSections = undoStack[undoStack.length - 1];
+    setUndoStack((prev) => prev.slice(0, -1));
+    setRedoStack((prev) => [...prev, structuredClone(sections)]);
     setSections(previousSections);
+    setIsDirty(true);
 
     const html = assemblePageHtml(
       project.wrapper || "{{slot}}",
@@ -496,7 +671,49 @@ export function DFYWebsite() {
     );
     setHtmlContent(html);
     clearSelection();
-  }, [editHistory, project, clearSelection]);
+  }, [undoStack, sections, project, clearSelection]);
+
+  // --- Redo ---
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0 || !project) return;
+
+    const nextSections = redoStack[redoStack.length - 1];
+    setRedoStack((prev) => prev.slice(0, -1));
+    setUndoStack((prev) => [...prev, structuredClone(sections)]);
+    setSections(nextSections);
+    setIsDirty(true);
+
+    const html = assemblePageHtml(
+      project.wrapper || "{{slot}}",
+      project.header || "",
+      project.footer || "",
+      nextSections,
+      undefined,
+      undefined,
+      undefined,
+      project.id,
+    );
+    setHtmlContent(html);
+    clearSelection();
+  }, [redoStack, sections, project, clearSelection]);
+
+  // --- Save & Publish ---
+  const handleSave = useCallback(async () => {
+    if (!selectedPage || !project || isSaving) return;
+    setIsSaving(true);
+    try {
+      await apiPatch({
+        path: `/user/website/pages/${selectedPage.id}/save`,
+        passedData: { sections },
+      });
+      setIsDirty(false);
+      toast.success("Changes saved & published");
+    } catch {
+      toast.error("Failed to save changes");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedPage, project, sections, isSaving]);
 
   // --- Version preview ---
   const handlePreviewVersion = useCallback(
@@ -681,133 +898,198 @@ export function DFYWebsite() {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Top Bar */}
-      <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-3">
-        <div className="flex items-center gap-2 shrink-0 text-sm font-semibold text-gray-800">
-          <Globe className="h-4 w-4 text-alloro-orange" />
-          <span className="truncate max-w-[200px]">
-            {project?.custom_domain || (project ? `${project.hostname}.sites.getalloro.com` : "Your Website")}
-          </span>
-        </div>
-
-        {/* Page Selector Dropdown */}
-        <div className="relative shrink-0" ref={dropdownRef}>
-          <button
-            onClick={() => setIsPageDropdownOpen((prev) => !prev)}
-            className="flex items-center gap-2 pl-3 pr-2.5 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange cursor-pointer transition-colors"
-          >
-            <span className="truncate max-w-[140px]">
-              {selectedPage
-                ? selectedPage.path === "/"
-                  ? "Home"
-                  : selectedPage.path
-                : "Select page"}
-            </span>
-            <motion.span
-              animate={{ rotate: isPageDropdownOpen ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
-              className="shrink-0"
-            >
-              <ChevronDown size={14} className="text-gray-400" />
-            </motion.span>
-          </button>
-
-          <AnimatePresence>
-            {isPageDropdownOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -4, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                transition={{ duration: 0.15 }}
-                className="absolute top-full left-0 mt-1 min-w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50"
-              >
-                {pages.map((page) => {
-                  const isActive = selectedPage?.id === page.id;
-                  return (
-                    <button
-                      key={page.id}
-                      onClick={() => {
-                        setSelectedPage(page);
-                        setActiveView("editor");
-                        setIsPageDropdownOpen(false);
-                        setPreviewVersion(null);
-                        setPreviewHtmlContent("");
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between ${
-                        isActive
-                          ? "bg-alloro-orange/5 text-alloro-orange font-medium"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      <span>{page.path === "/" ? "Home" : page.path}</span>
-                      {isActive && <Check size={14} className="text-alloro-orange shrink-0" />}
-                    </button>
-                  );
-                })}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Viewport Toggle */}
-        {activeView === "editor" && (
-          <div className="flex items-center bg-gray-100 rounded-lg p-0.5 shrink-0">
-            <button
-              onClick={() => setViewportMode("desktop")}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewportMode === "desktop"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-400 hover:text-gray-600"
-              }`}
-              title="Desktop view"
-            >
-              <Monitor size={14} />
-            </button>
-            <button
-              onClick={() => setViewportMode("mobile")}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewportMode === "mobile"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-400 hover:text-gray-600"
-              }`}
-              title="Mobile view"
-            >
-              <Smartphone size={14} />
-            </button>
+      <div className="bg-white border-b border-gray-200 px-4 py-0 flex items-center gap-0">
+        {/* Left: Editing Page + page selector */}
+        <div className="flex items-center gap-2 shrink-0 mr-3">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
+            <Pencil className="h-3 w-3" />
+            Editing Page:
           </div>
-        )}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setIsPageDropdownOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 pl-2.5 pr-2 py-1 rounded-md text-sm font-semibold text-gray-800 hover:bg-gray-50 focus:outline-none cursor-pointer transition-colors"
+            >
+              <span className="truncate max-w-[140px]">
+                {selectedPage
+                  ? selectedPage.path === "/"
+                    ? "Home"
+                    : selectedPage.path
+                  : "Select page"}
+              </span>
+              <motion.span
+                animate={{ rotate: isPageDropdownOpen ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="shrink-0"
+              >
+                <ChevronDown size={12} className="text-gray-400" />
+              </motion.span>
+            </button>
 
-        {/* Undo */}
-        {activeView === "editor" && editHistory.length > 0 && (
-          <button
-            onClick={handleUndo}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
-            title="Undo last edit"
-          >
-            <Undo2 size={14} />
-          </button>
-        )}
+            <AnimatePresence>
+              {isPageDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 mt-1 min-w-[180px] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50"
+                >
+                  {pages.map((page) => {
+                    const isActive = selectedPage?.id === page.id;
+                    return (
+                      <button
+                        key={page.id}
+                        onClick={() => {
+                          setSelectedPage(page);
+                          setActiveView("editor");
+                          setIsPageDropdownOpen(false);
+                          setPreviewVersion(null);
+                          setPreviewHtmlContent("");
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between ${
+                          isActive
+                            ? "bg-alloro-orange/5 text-alloro-orange font-medium"
+                            : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span>{page.path === "/" ? "Home" : page.path}</span>
+                        {isActive && <Check size={14} className="text-alloro-orange shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
 
-        <div className="w-px h-5 bg-gray-200" />
+        <div className="w-px h-5 bg-gray-200 mr-1" />
 
-        <button
-          onClick={() => setActiveView("submissions")}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0 ${
-            activeView === "submissions"
-              ? "bg-orange-100 text-orange-700"
-              : "text-gray-600 hover:bg-gray-100"
-          }`}
-        >
-          <Inbox size={14} />
-          Submissions
-        </button>
+        {/* Animated View Tabs */}
+        <nav className="flex items-center shrink-0">
+          {(
+            [
+              { key: "editor", icon: Pencil, label: "Editor" },
+              { key: "submissions", icon: Inbox, label: "Submissions" },
+              ...(project?.template_id
+                ? [{ key: "posts", icon: FileText, label: "Posts" }]
+                : []),
+              { key: "menus", icon: MenuIcon, label: "Menus" },
+            ] as const
+          ).map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeView === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveView(tab.key as typeof activeView)}
+                className={`relative px-3 py-2.5 text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                  isActive ? "text-alloro-orange" : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Icon size={13} />
+                {tab.label}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute bottom-0 left-2 right-2 h-[2px] bg-alloro-orange rounded-full"
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Viewport toggle — slides in when on editor tab */}
+        <AnimatePresence>
+          {activeView === "editor" && (
+            <motion.div
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden flex items-center ml-1"
+            >
+              <div className="flex items-center bg-gray-100 rounded-lg p-0.5 shrink-0">
+                <button
+                  onClick={() => setViewportMode("desktop")}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    viewportMode === "desktop"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                  title="Desktop view"
+                >
+                  <Monitor size={13} />
+                </button>
+                <button
+                  onClick={() => setViewportMode("mobile")}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    viewportMode === "mobile"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                  title="Mobile view"
+                >
+                  <Smartphone size={13} />
+                </button>
+              </div>
+
+              {/* Undo / Redo */}
+              {(undoStack.length > 0 || redoStack.length > 0) && (
+                <div className="flex items-center gap-0.5 ml-1">
+                  <button
+                    onClick={handleUndo}
+                    disabled={undoStack.length === 0}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Undo"
+                  >
+                    <Undo2 size={13} />
+                  </button>
+                  <button
+                    onClick={handleRedo}
+                    disabled={redoStack.length === 0}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Redo"
+                  >
+                    <Redo2 size={13} />
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Right section: usage, domain, view live */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Right section: save, usage, domain, view live */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Save button — only visible when dirty */}
+          <AnimatePresence>
+            {isDirty && activeView === "editor" && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-alloro-orange text-white hover:bg-alloro-orange/90 transition-colors disabled:opacity-60 shadow-sm shadow-alloro-orange/20"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Save className="w-3.5 h-3.5" />
+                )}
+                {isSaving ? "Saving..." : "Save & Publish"}
+              </motion.button>
+            )}
+          </AnimatePresence>
+
           {usage && (
-            <div className="flex items-center gap-3 text-xs text-gray-500">
+            <div className="flex items-center gap-2.5 text-[11px] text-gray-400">
               <span>
                 {usage.edits_today}/{usage.edits_limit} edits
               </span>
@@ -817,7 +1099,7 @@ export function DFYWebsite() {
 
           <button
             onClick={() => setShowDomainModal(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
               project?.custom_domain && project?.domain_verified_at
                 ? "bg-green-50 text-green-700 hover:bg-green-100"
                 : project?.custom_domain
@@ -825,7 +1107,7 @@ export function DFYWebsite() {
                   : "bg-alloro-orange/10 text-alloro-orange hover:bg-alloro-orange/20"
             }`}
           >
-            <LinkIcon className="w-3.5 h-3.5" />
+            <LinkIcon className="w-3 h-3" />
             {project?.custom_domain || "Connect Domain"}
           </button>
 
@@ -881,16 +1163,67 @@ export function DFYWebsite() {
             </>
           )}
         </div>
+      ) : activeView === "posts" ? (
+        <div className="flex-1 overflow-y-auto">
+          {project && project.template_id && (
+            <PostsTab
+              projectId={project.id}
+              templateId={project.template_id}
+              organizationId={project.organization_id || undefined}
+              borderless
+              fetchPostsFn={userFetchPosts}
+              createPostFn={userCreatePost}
+              updatePostFn={userUpdatePost}
+              deletePostFn={userDeletePost}
+              fetchPostTypesFn={userFetchPostTypes}
+              fetchCategoriesFn={userFetchCategories}
+              fetchTagsFn={userFetchTags}
+              createCategoryFn={userCreateCategory}
+              createTagFn={userCreateTag}
+              updatePostSeoFn={userUpdatePostSeo}
+            />
+          )}
+        </div>
+      ) : activeView === "menus" ? (
+        <div className="flex-1 overflow-y-auto">
+          {project && (
+            <MenusTab
+              projectId={project.id}
+              templateId={project.template_id}
+              borderless
+              fetchMenusFn={userFetchMenus}
+              fetchMenuFn={userFetchMenu}
+              createMenuFn={userCreateMenu}
+              updateMenuFn={userUpdateMenu}
+              deleteMenuFn={userDeleteMenu}
+              createMenuItemFn={userCreateMenuItem}
+              updateMenuItemFn={userUpdateMenuItem}
+              deleteMenuItemFn={userDeleteMenuItem}
+              reorderMenuItemsFn={userReorderMenuItems}
+              fetchPostsFn={userFetchPosts}
+              fetchPostTypesFn={userFetchPostTypes}
+            />
+          )}
+        </div>
       ) : (
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Preview */}
           <div className="flex-1 flex flex-col relative">
-            <div className="flex-1 overflow-hidden bg-gray-100">
+            <div className="flex-1 overflow-hidden bg-gray-100 relative">
+              {/* Loading overlay for page switching / shortcode resolution */}
+              {isResolving && (
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-20 flex items-center justify-center">
+                  <div className="flex items-center gap-2 bg-white rounded-xl shadow-lg px-4 py-3">
+                    <Loader2 className="w-4 h-4 text-alloro-orange animate-spin" />
+                    <span className="text-sm text-gray-600">Loading preview...</span>
+                  </div>
+                </div>
+              )}
               {viewportMode === "desktop" ? (
                 <iframe
                   ref={iframeRef}
                   srcDoc={prepareHtmlForPreview(
-                    previewVersion ? previewHtmlContent : htmlContent,
+                    previewVersion ? previewHtmlContent : resolvedHtmlContent,
                   )}
                   style={{
                     width: `${Math.round(100 / DESKTOP_SCALE)}%`,
@@ -909,7 +1242,7 @@ export function DFYWebsite() {
                     <iframe
                       ref={iframeRef}
                       srcDoc={prepareHtmlForPreview(
-                        previewVersion ? previewHtmlContent : htmlContent,
+                        previewVersion ? previewHtmlContent : resolvedHtmlContent,
                       )}
                       className="w-full h-full border-0"
                       title="Page Preview"
@@ -987,6 +1320,8 @@ export function DFYWebsite() {
                 : null
             }
             onExternalActionHandled={() => setPendingSidebarAction(null)}
+            primaryColor={project?.primary_color}
+            accentColor={project?.accent_color}
           />
         </div>
       )}

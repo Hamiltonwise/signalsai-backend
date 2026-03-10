@@ -124,6 +124,24 @@ function extractAlloroClass(sectionContent: string): string | null {
  *
  * Falls back to the original section content if no matching element is found.
  */
+/**
+ * Restore original shortcode tokens in an HTML string.
+ * Finds `<div data-alloro-shortcode-original="ENCODED_TOKEN" ...>...resolved...</div>`
+ * markers and replaces the entire wrapper with the decoded original shortcode token.
+ */
+function restoreShortcodeTokens(html: string): string {
+  return html.replace(
+    /<div\s+data-alloro-shortcode-original="([^"]*)"[^>]*>[\s\S]*?<\/div>/g,
+    (_match, encoded: string) => {
+      return encoded
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, "&");
+    }
+  );
+}
+
 export function extractSectionsFromDom(
   iframeDoc: Document,
   currentSections: Section[]
@@ -134,9 +152,11 @@ export function extractSectionsFromDom(
     if (markerEl) {
       // Strip the marker attribute before persisting — it's editor-only
       markerEl.removeAttribute("data-alloro-section");
-      const html = markerEl.outerHTML;
+      let html = markerEl.outerHTML;
       // Re-add the marker so subsequent extractions still work
       markerEl.setAttribute("data-alloro-section", section.name);
+      // Restore any resolved shortcodes back to their original tokens
+      html = restoreShortcodeTokens(html);
       return { ...section, content: html };
     }
 
@@ -145,7 +165,9 @@ export function extractSectionsFromDom(
     if (alloroClass) {
       const el = iframeDoc.querySelector(`.${CSS.escape(alloroClass)}`);
       if (el) {
-        return { ...section, content: el.outerHTML };
+        let html = el.outerHTML;
+        html = restoreShortcodeTokens(html);
+        return { ...section, content: html };
       }
     }
 

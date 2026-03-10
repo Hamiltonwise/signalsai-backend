@@ -17,19 +17,19 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import {
-  fetchMenus,
-  fetchMenu,
-  createMenu,
-  updateMenu,
-  deleteMenu,
-  createMenuItem,
-  updateMenuItem,
-  deleteMenuItem,
-  reorderMenuItems,
+  fetchMenus as defaultFetchMenus,
+  fetchMenu as defaultFetchMenu,
+  createMenu as defaultCreateMenu,
+  updateMenu as defaultUpdateMenu,
+  deleteMenu as defaultDeleteMenu,
+  createMenuItem as defaultCreateMenuItem,
+  updateMenuItem as defaultUpdateMenuItem,
+  deleteMenuItem as defaultDeleteMenuItem,
+  reorderMenuItems as defaultReorderMenuItems,
 } from "../../api/menus";
 import type { Menu, MenuWithItems, MenuItem } from "../../api/menus";
-import { fetchPosts } from "../../api/posts";
-import { fetchPostTypes } from "../../api/posts";
+import { fetchPosts as defaultFetchPosts } from "../../api/posts";
+import { fetchPostTypes as defaultFetchPostTypes } from "../../api/posts";
 import type { Post, PostType } from "../../api/posts";
 import AnimatedSelect from "../ui/AnimatedSelect";
 import { ActionButton } from "../ui/DesignSystem";
@@ -38,6 +38,19 @@ import { useConfirm } from "../ui/ConfirmModal";
 interface MenusTabProps {
   projectId: string;
   templateId?: string | null;
+  borderless?: boolean;
+  // Optional API overrides for user-facing context
+  fetchMenusFn?: typeof defaultFetchMenus;
+  fetchMenuFn?: typeof defaultFetchMenu;
+  createMenuFn?: typeof defaultCreateMenu;
+  updateMenuFn?: typeof defaultUpdateMenu;
+  deleteMenuFn?: typeof defaultDeleteMenu;
+  createMenuItemFn?: typeof defaultCreateMenuItem;
+  updateMenuItemFn?: typeof defaultUpdateMenuItem;
+  deleteMenuItemFn?: typeof defaultDeleteMenuItem;
+  reorderMenuItemsFn?: typeof defaultReorderMenuItems;
+  fetchPostsFn?: typeof defaultFetchPosts;
+  fetchPostTypesFn?: typeof defaultFetchPostTypes;
 }
 
 /** Flat representation of a menu item for DnD */
@@ -100,7 +113,22 @@ function rebuildHierarchy(flatItems: FlatItem[]): { id: string; parent_id: strin
   return result;
 }
 
-export default function MenusTab({ projectId, templateId }: MenusTabProps) {
+export default function MenusTab({
+  projectId,
+  templateId,
+  borderless = false,
+  fetchMenusFn = defaultFetchMenus,
+  fetchMenuFn = defaultFetchMenu,
+  createMenuFn = defaultCreateMenu,
+  updateMenuFn = defaultUpdateMenu,
+  deleteMenuFn = defaultDeleteMenu,
+  createMenuItemFn = defaultCreateMenuItem,
+  updateMenuItemFn = defaultUpdateMenuItem,
+  deleteMenuItemFn = defaultDeleteMenuItem,
+  reorderMenuItemsFn = defaultReorderMenuItems,
+  fetchPostsFn = defaultFetchPosts,
+  fetchPostTypesFn = defaultFetchPostTypes,
+}: MenusTabProps) {
   const confirm = useConfirm();
 
   const [menus, setMenus] = useState<Menu[]>([]);
@@ -160,7 +188,7 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
   const loadMenus = useCallback(async () => {
     try {
       setError(null);
-      const res = await fetchMenus(projectId);
+      const res = await fetchMenusFn(projectId);
       setMenus(res.data);
       // Auto-select first menu if none selected
       if (!selectedMenuId && res.data.length > 0) {
@@ -180,7 +208,7 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
   const loadActiveMenu = useCallback(async (menuId: string) => {
     setMenuLoading(true);
     try {
-      const res = await fetchMenu(projectId, menuId);
+      const res = await fetchMenuFn(projectId, menuId);
       setActiveMenu(res.data);
       setLocalFlatItems(flattenTree(res.data.items));
       setHasUnsavedOrder(false);
@@ -206,7 +234,7 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
     setSavingOrder(true);
     try {
       const newOrder = rebuildHierarchy(localFlatItems);
-      await reorderMenuItems(projectId, selectedMenuId, newOrder);
+      await reorderMenuItemsFn(projectId, selectedMenuId, newOrder);
       await loadActiveMenu(selectedMenuId);
       await loadMenus();
     } catch (err) {
@@ -230,12 +258,12 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
     setSavingMenu(true);
     try {
       if (editingMenu) {
-        await updateMenu(projectId, editingMenu.id, {
+        await updateMenuFn(projectId, editingMenu.id, {
           name: menuName,
           slug: menuSlug || undefined,
         });
       } else {
-        const res = await createMenu(projectId, {
+        const res = await createMenuFn(projectId, {
           name: menuName,
           slug: menuSlug || undefined,
         });
@@ -259,7 +287,7 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
       variant: "danger",
     });
     if (!ok) return;
-    await deleteMenu(projectId, menu.id);
+    await deleteMenuFn(projectId, menu.id);
     if (selectedMenuId === menu.id) {
       setSelectedMenuId(null);
       setActiveMenu(null);
@@ -297,14 +325,14 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
     setSavingItem(true);
     try {
       if (editingItem) {
-        await updateMenuItem(projectId, selectedMenuId, editingItem.id, {
+        await updateMenuItemFn(projectId, selectedMenuId, editingItem.id, {
           label: itemLabel,
           url: itemUrl,
           target: itemTarget,
           parent_id: itemParentId,
         });
       } else {
-        await createMenuItem(projectId, selectedMenuId, {
+        await createMenuItemFn(projectId, selectedMenuId, {
           label: itemLabel,
           url: itemUrl,
           target: itemTarget,
@@ -330,7 +358,7 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
       variant: "danger",
     });
     if (!ok) return;
-    await deleteMenuItem(projectId, selectedMenuId, item.id);
+    await deleteMenuItemFn(projectId, selectedMenuId, item.id);
     await loadActiveMenu(selectedMenuId);
     await loadMenus();
   };
@@ -342,8 +370,8 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
     setPostsLoading(true);
     try {
       const [postsRes, typesRes] = await Promise.all([
-        fetchPosts(projectId, { status: "published" }),
-        fetchPostTypes(templateId),
+        fetchPostsFn(projectId, { status: "published" }),
+        fetchPostTypesFn(templateId),
       ]);
       setPosts(postsRes.data || []);
       setPostTypes(typesRes.data || []);
@@ -360,7 +388,7 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
     const url = postType ? `/${postType.slug}/${post.slug}` : `/${post.slug}`;
     setAddingPostId(post.id);
     try {
-      await createMenuItem(projectId, selectedMenuId, {
+      await createMenuItemFn(projectId, selectedMenuId, {
         label: post.title,
         url,
         target: "_self",
@@ -476,9 +504,23 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
     <div className="flex flex-col h-full border-r border-gray-200">
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
         <h3 className="text-sm font-semibold text-gray-900">Menus</h3>
-        <span className="text-xs text-gray-400 ml-auto">
-          {menus.length} menu{menus.length !== 1 ? "s" : ""}
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-xs text-gray-400">
+            {menus.length} menu{menus.length !== 1 ? "s" : ""}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              resetMenuForm();
+              setShowMenuForm(true);
+            }}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-alloro-orange hover:bg-orange-50 rounded-md transition-colors"
+            title="New Menu"
+          >
+            <Plus className="w-3 h-3" />
+            New
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto py-1">
@@ -528,19 +570,6 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
         )}
       </div>
 
-      <div className="px-3 py-3 border-t border-gray-100">
-        <button
-          type="button"
-          onClick={() => {
-            resetMenuForm();
-            setShowMenuForm(true);
-          }}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-alloro-orange bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          New Menu
-        </button>
-      </div>
     </div>
   );
 
@@ -640,16 +669,40 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
             </p>
           </div>
 
-          {/* Save Order button — only visible when dirty */}
-          {hasUnsavedOrder && (
-            <ActionButton
-              label="Save Order"
-              icon={<Save className="w-4 h-4" />}
-              onClick={handleSaveOrder}
-              variant="primary"
-              loading={savingOrder}
-            />
-          )}
+          <div className="flex items-center gap-2">
+            {/* Save Order button — only visible when dirty */}
+            {hasUnsavedOrder && (
+              <ActionButton
+                label="Save Order"
+                icon={<Save className="w-4 h-4" />}
+                onClick={handleSaveOrder}
+                variant="primary"
+                loading={savingOrder}
+              />
+            )}
+            {!showItemForm && !showPostPicker && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => openItemEditor()}
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-alloro-orange hover:bg-orange-50 rounded-md transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Item
+                </button>
+                {templateId && (
+                  <button
+                    type="button"
+                    onClick={openPostPicker}
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add Post
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Items list */}
@@ -914,29 +967,6 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
           )}
         </AnimatePresence>
 
-        {/* Footer: Add item / Add post buttons */}
-        {!showItemForm && !showPostPicker && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => openItemEditor()}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-alloro-orange bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Item
-            </button>
-            {templateId && (
-              <button
-                type="button"
-                onClick={openPostPicker}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Post
-              </button>
-            )}
-          </div>
-        )}
       </div>
     );
   };
@@ -953,7 +983,7 @@ export default function MenusTab({ projectId, templateId }: MenusTabProps) {
 
   /* ─── Layout ─── */
   return (
-    <div className="flex rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden" style={{ minHeight: 480 }}>
+    <div className={`flex bg-white overflow-hidden ${borderless ? "h-full" : "rounded-xl border border-gray-200 shadow-sm"}`} style={borderless ? undefined : { minHeight: 480 }}>
       <div className="w-[30%] min-w-[220px] max-w-[320px] flex-shrink-0 bg-gray-50/50">
         {renderSidebar()}
       </div>

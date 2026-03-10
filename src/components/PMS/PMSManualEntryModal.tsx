@@ -177,6 +177,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
 
   const {
     isPasting,
+    phase: pastePhase,
     showConfirm: showPasteConfirm,
     pasteInfo,
     batchProgress,
@@ -912,6 +913,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
             <PasteConfirmDialog
               pasteInfo={pasteInfo}
               isPasting={isPasting}
+              phase={pastePhase}
               batchProgress={batchProgress}
               onConfirm={confirmPaste}
               onCancel={cancelPaste}

@@ -43,6 +43,10 @@ interface EditorSidebarProps {
   previewVersionId?: string | null;
   /** Callback to exit preview mode. */
   onExitPreview?: () => void;
+  /** Project primary color for color picker. */
+  primaryColor?: string | null;
+  /** Project accent color for color picker. */
+  accentColor?: string | null;
 }
 
 export default function EditorSidebar({
@@ -64,6 +68,8 @@ export default function EditorSidebar({
   isPreviewingVersion = false,
   previewVersionId,
   onExitPreview,
+  primaryColor,
+  accentColor,
 }: EditorSidebarProps) {
   const [tab, setTab] = useState<"chat" | "debug" | "history">("chat");
   const [activeAction, setActiveAction] = useState<"text" | "link" | "media" | null>(null);
@@ -80,8 +86,8 @@ export default function EditorSidebar({
   useEffect(() => {
     if (!externalAction) return;
 
-    if (externalAction === "hide") {
-      onToggleHidden();
+    if (externalAction === "hide" || externalAction === "text-up" || externalAction === "text-down") {
+      if (externalAction === "hide") onToggleHidden();
     } else {
       if (externalAction === "link") {
         setActionInput(selectedInfo?.href || "");
@@ -345,6 +351,8 @@ export default function EditorSidebar({
             isLoading={isEditing}
             disabled={isPreviewingVersion}
             projectId={projectId}
+            primaryColor={primaryColor}
+            accentColor={accentColor}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center px-6">

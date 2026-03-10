@@ -365,7 +365,66 @@ export async function submitManualPMSData(
 }
 
 // =====================================================================
-// PASTE-PARSE TYPES AND API FUNCTION
+// PASTE ANALYSIS TYPES AND API FUNCTION (Phase 1)
+// =====================================================================
+
+export interface ColumnMapping {
+  source: number | null;
+  date: number | null;
+  type: number | null;
+  referrals: number | null;
+  production: number | null;
+}
+
+export interface TypeInference {
+  hasReferringPractice: boolean;
+  hasReferringDoctor: boolean;
+  referringPracticeColumn: number | null;
+  referringDoctorColumn: number | null;
+}
+
+export interface AnalysisContext {
+  columns: ColumnMapping;
+  delimiter: "tab" | "comma";
+  hasHeaderRow: boolean;
+  typeInference: TypeInference;
+  rowStructure: "one_per_referral" | "aggregated";
+  warnings: string[];
+}
+
+export interface PasteAnalyzeApiResponse {
+  success: boolean;
+  data?: AnalysisContext;
+  error?: string;
+}
+
+/**
+ * Phase 1: Analyze pasted data structure and determine column mapping.
+ */
+export async function analyzePastedData(
+  rawText: string
+): Promise<PasteAnalyzeApiResponse> {
+  try {
+    const result = await apiPost({
+      path: "/pms/analyze-paste",
+      passedData: { rawText },
+      additionalHeaders: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+    return result as PasteAnalyzeApiResponse;
+  } catch (error) {
+    console.error("PMS analyze-paste API error:", error);
+    return {
+      success: false,
+      error: "Failed to analyze pasted data. Please try again.",
+    };
+  }
+}
+
+// =====================================================================
+// PASTE-PARSE TYPES AND API FUNCTION (Phase 2)
 // =====================================================================
 
 export interface PasteParseApiResponse {
@@ -388,17 +447,18 @@ export interface PasteParseApiResponse {
 }
 
 /**
- * Send pasted text to the AI parsing endpoint.
- * Returns structured PMS data parsed by Haiku.
+ * Phase 2: Send pasted text batch to the AI parsing endpoint.
+ * Now accepts optional analysis context from Phase 1.
  */
 export async function parsePastedData(
   rawText: string,
-  currentMonth: string
+  currentMonth: string,
+  analysisContext?: AnalysisContext
 ): Promise<PasteParseApiResponse> {
   try {
     const result = await apiPost({
       path: "/pms/parse-paste",
-      passedData: { rawText, currentMonth },
+      passedData: { rawText, currentMonth, analysisContext },
       additionalHeaders: {
         Accept: "application/json",
         "Content-Type": "application/json",
@@ -410,6 +470,71 @@ export async function parsePastedData(
     return {
       success: false,
       error: "Failed to parse pasted data. Please try again.",
+    };
+  }
+}
+
+// =====================================================================
+// PASTE SANITIZATION TYPES AND API FUNCTION (Phase 3)
+// =====================================================================
+
+export interface SanitizationRow {
+  source: string;
+  type: "self" | "doctor";
+  referrals: number;
+  production: number;
+  month: string;
+}
+
+export interface MergeGroup {
+  canonicalName: string;
+  canonicalType: "self" | "doctor";
+  sourceNames: string[];
+  rows: SanitizationRow[];
+}
+
+export interface SanitizationStats {
+  totalInputRows: number;
+  duplicateGroupsFound: number;
+  duplicateGroupsConfirmed: number;
+  rowsMerged: number;
+  uniqueSourcesAfter: number;
+}
+
+export interface PasteSanitizeApiResponse {
+  success: boolean;
+  data?: {
+    mergedRows: SanitizationRow[];
+    uniqueRows: SanitizationRow[];
+    mergeGroups: MergeGroup[];
+    reasoning: string[];
+    warnings: string[];
+    stats: SanitizationStats;
+  };
+  error?: string;
+}
+
+/**
+ * Phase 3: Deduplicate and sanitize parsed PMS rows.
+ */
+export async function sanitizePastedData(
+  rows: SanitizationRow[]
+): Promise<PasteSanitizeApiResponse> {
+  try {
+    const result = await apiPost({
+      path: "/pms/sanitize-paste",
+      passedData: { rows },
+      additionalHeaders: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+    return result as PasteSanitizeApiResponse;
+  } catch (error) {
+    console.error("PMS sanitize-paste API error:", error);
+    return {
+      success: false,
+      error: "Failed to sanitize pasted data. Please try again.",
     };
   }
 }

@@ -1,11 +1,13 @@
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ClipboardPaste, Loader2, X } from "lucide-react";
+import { ClipboardPaste, Loader2, Search, Sparkles, X } from "lucide-react";
 import type { PasteInfo } from "./types";
+import type { PastePhase } from "./usePasteHandler";
 
 interface PasteConfirmDialogProps {
   pasteInfo: PasteInfo | null;
   isPasting: boolean;
+  phase: PastePhase;
   batchProgress: { current: number; total: number } | null;
   onConfirm: () => void;
   onCancel: () => void;
@@ -13,14 +15,50 @@ interface PasteConfirmDialogProps {
 
 const ALORO_ORANGE = "#C9765E";
 
+const PHASE_CONFIG: Record<
+  Exclude<PastePhase, "idle">,
+  { icon: React.ReactNode; label: string; description: string }
+> = {
+  analyzing: {
+    icon: <Search size={16} className="animate-pulse" />,
+    label: "Analyzing your data structure...",
+    description: "Detecting columns, types, and layout",
+  },
+  parsing: {
+    icon: <Loader2 size={16} className="animate-spin" />,
+    label: "Parsing data...",
+    description: "Extracting referral sources and production values",
+  },
+  sanitizing: {
+    icon: <Sparkles size={16} className="animate-pulse" />,
+    label: "Cleaning your data...",
+    description: "Deduplicating similar sources",
+  },
+};
+
 export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
   pasteInfo,
   isPasting,
+  phase,
   batchProgress,
   onConfirm,
   onCancel,
 }) => {
   if (!pasteInfo) return null;
+
+  const phaseConfig = phase !== "idle" ? PHASE_CONFIG[phase] : null;
+
+  // Compute overall progress across all 3 phases
+  const getOverallProgress = (): number => {
+    if (phase === "analyzing") return 10;
+    if (phase === "parsing" && batchProgress) {
+      // Parsing is 10-80% of overall progress
+      const batchPct = batchProgress.current / batchProgress.total;
+      return 10 + batchPct * 70;
+    }
+    if (phase === "sanitizing") return 85;
+    return 0;
+  };
 
   return (
     <AnimatePresence>
@@ -56,7 +94,9 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
             </div>
 
             <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              {isPasting ? "Parsing data..." : "Paste detected"}
+              {isPasting
+                ? phaseConfig?.label || "Processing..."
+                : "Paste detected"}
             </h3>
 
             {!isPasting && (
@@ -109,32 +149,88 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
               </>
             )}
 
-            {isPasting && (
+            {isPasting && phaseConfig && (
               <div className="w-full mt-2">
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <Loader2 size={16} className="animate-spin text-gray-500" />
+                {/* Phase indicator */}
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <span style={{ color: ALORO_ORANGE }}>
+                    {phaseConfig.icon}
+                  </span>
                   <span className="text-sm text-gray-600">
-                    {batchProgress && batchProgress.total > 1
+                    {phase === "parsing" &&
+                    batchProgress &&
+                    batchProgress.total > 1
                       ? `Processing batch ${batchProgress.current} of ${batchProgress.total}...`
-                      : "Analyzing your data..."}
+                      : phaseConfig.description}
                   </span>
                 </div>
 
-                {batchProgress && batchProgress.total > 1 && (
-                  <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: ALORO_ORANGE }}
-                      initial={{ width: "0%" }}
-                      animate={{
-                        width: `${
-                          (batchProgress.current / batchProgress.total) * 100
-                        }%`,
-                      }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  </div>
-                )}
+                {/* Phase step indicators */}
+                <div className="flex items-center justify-center gap-1.5 mb-3 mt-2">
+                  {(
+                    ["analyzing", "parsing", "sanitizing"] as const
+                  ).map((p) => (
+                    <div
+                      key={p}
+                      className="flex items-center gap-1"
+                    >
+                      <div
+                        className="w-2 h-2 rounded-full transition-colors duration-300"
+                        style={{
+                          backgroundColor:
+                            phase === p
+                              ? ALORO_ORANGE
+                              : (
+                                  ["analyzing", "parsing", "sanitizing"].indexOf(phase) >
+                                  ["analyzing", "parsing", "sanitizing"].indexOf(p)
+                                )
+                                ? ALORO_ORANGE
+                                : "#e5e7eb",
+                          opacity:
+                            phase === p
+                              ? 1
+                              : (
+                                  ["analyzing", "parsing", "sanitizing"].indexOf(phase) >
+                                  ["analyzing", "parsing", "sanitizing"].indexOf(p)
+                                )
+                                ? 0.5
+                                : 0.3,
+                        }}
+                      />
+                      <span
+                        className="text-[10px] font-medium transition-colors duration-300"
+                        style={{
+                          color:
+                            phase === p
+                              ? ALORO_ORANGE
+                              : "#9ca3af",
+                        }}
+                      >
+                        {p === "analyzing"
+                          ? "Analyze"
+                          : p === "parsing"
+                            ? "Parse"
+                            : "Clean"}
+                      </span>
+                      {p !== "sanitizing" && (
+                        <div className="w-4 h-px bg-gray-200 mx-0.5" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Overall progress bar */}
+                <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: ALORO_ORANGE }}
+                    initial={{ width: "0%" }}
+                    animate={{
+                      width: `${getOverallProgress()}%`,
+                    }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  />
+                </div>
               </div>
             )}
           </div>
