@@ -1,210 +1,238 @@
 /**
  * PMS Paste-Parse Service
- * Uses Anthropic Haiku to parse pasted spreadsheet/CSV data into structured PMS referral data.
- * Stateless transformation — no database writes.
  *
- * Now accepts optional column context from the Analysis phase (Phase 1)
- * to give the AI a head start on column mapping.
+ * Pure JS parsing for fixed-column PMS data:
+ *   Col 0: Treatment Date
+ *   Col 1: Source
+ *   Col 2: Type (self | doctor)
+ *   Col 3: Production
+ *
+ * Each row = 1 referral. No AI needed for parsing.
+ * Stateless — no database writes.
  */
 
-import { loadPrompt } from "../../../agents/service.prompt-loader";
-import { runAgent } from "../../../agents/service.llm-runner";
-import { parseAgentJson } from "../pms-utils/agent-json-parse.util";
-import type { AnalysisResult } from "./pms-paste-analysis.service";
-
-const MODEL = "claude-haiku-4-5-20251001";
-const MAX_INPUT_SIZE = 50_000; // 50KB hard cap (frontend chunks by 30 rows)
-
-interface ParsedRow {
+export interface ParsedRow {
   source: string;
   type: "self" | "doctor";
   referrals: number;
   production: number;
-}
-
-interface ParsedMonth {
   month: string; // YYYY-MM
-  rows: ParsedRow[];
 }
 
 export interface PasteParseResult {
-  months: ParsedMonth[];
+  rows: ParsedRow[];
   warnings: string[];
   rowsParsed: number;
   monthsDetected: number;
 }
 
 /**
- * Build column context string from analysis result.
+ * Detect delimiter: tab (pasted from spreadsheet) or comma (CSV file).
  */
-function buildColumnContext(analysis: AnalysisResult): string {
-  const parts: string[] = [
-    "COLUMN MAPPING FROM ANALYSIS (0-based column indices):",
-  ];
-
-  const { columns, typeInference, rowStructure, delimiter } = analysis;
-
-  parts.push(`Delimiter: ${delimiter === "tab" ? "TAB" : "COMMA"}`);
-  parts.push(`Has header row: ${analysis.hasHeaderRow ? "yes" : "no"}`);
-  parts.push(`Row structure: ${rowStructure}`);
-
-  if (columns.source !== null) parts.push(`Source column: index ${columns.source}`);
-  if (columns.date !== null) parts.push(`Date column: index ${columns.date}`);
-  if (columns.type !== null) parts.push(`Type column: index ${columns.type}`);
-  if (columns.referrals !== null) parts.push(`Referrals column: index ${columns.referrals}`);
-  if (columns.production !== null) parts.push(`Production column: index ${columns.production}`);
-
-  if (typeInference.hasReferringPractice) {
-    parts.push(
-      `Referring Practice column: index ${typeInference.referringPracticeColumn} (rows with values here are "doctor" type)`
-    );
-  }
-  if (typeInference.hasReferringDoctor) {
-    parts.push(
-      `Referring Doctor column: index ${typeInference.referringDoctorColumn}`
-    );
-  }
-
-  if (rowStructure === "one_per_referral") {
-    parts.push(
-      "Each row = 1 referral. Count referrals as 1 per row for the same source."
-    );
-  }
-
-  return parts.join("\n");
+function detectDelimiter(line: string): "\t" | "," {
+  return line.includes("\t") ? "\t" : ",";
 }
 
 /**
- * Parse pasted text using Haiku and return structured PMS data.
- * Optionally accepts column context from the Analysis phase.
+ * Parse a single CSV line respecting quoted fields.
+ * Handles: "field with, comma" and "field with ""escaped"" quotes"
+ * Only needed for comma-delimited CSV files — tab splits are safe as-is.
  */
-export async function parsePastedData(
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        // Escaped quote ("") or end of quoted field
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++; // skip next quote
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        fields.push(current);
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+  }
+
+  fields.push(current);
+  return fields;
+}
+
+/**
+ * Split a data line into columns based on delimiter.
+ * Tab-delimited: simple split (pasted from spreadsheet).
+ * Comma-delimited: quote-aware CSV parsing (exported CSV files).
+ */
+function splitLine(line: string, delimiter: "\t" | ","): string[] {
+  if (delimiter === "\t") {
+    return line.split("\t").map((c) => c.trim());
+  }
+  return parseCSVLine(line).map((c) => c.trim());
+}
+
+/**
+ * Parse a date string into YYYY-MM format.
+ * Handles: MM/DD/YYYY, YYYY-MM-DD, "January 2025", "Jan 2025", etc.
+ */
+function parseDateToMonth(dateStr: string, fallback: string): string {
+  const trimmed = dateStr.trim();
+  if (!trimmed) return fallback;
+
+  // Try YYYY-MM-DD or YYYY/MM/DD
+  const isoMatch = trimmed.match(/^(\d{4})[\-\/](\d{1,2})/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}`;
+  }
+
+  // Try MM/DD/YYYY or M/D/YYYY
+  const usMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (usMatch) {
+    return `${usMatch[3]}-${usMatch[1].padStart(2, "0")}`;
+  }
+
+  // Try "Month Year" or "Mon Year" (e.g. "January 2025", "Jan 2025")
+  const monthNames: Record<string, string> = {
+    january: "01", jan: "01", february: "02", feb: "02", march: "03", mar: "03",
+    april: "04", apr: "04", may: "05", june: "06", jun: "06",
+    july: "07", jul: "07", august: "08", aug: "08", september: "09", sep: "09",
+    october: "10", oct: "10", november: "11", nov: "11", december: "12", dec: "12",
+  };
+  const monthYearMatch = trimmed.match(/^([a-zA-Z]+)\s+(\d{4})/);
+  if (monthYearMatch) {
+    const mm = monthNames[monthYearMatch[1].toLowerCase()];
+    if (mm) return `${monthYearMatch[2]}-${mm}`;
+  }
+
+  // Try M/YYYY
+  const shortMatch = trimmed.match(/^(\d{1,2})\/(\d{4})$/);
+  if (shortMatch) {
+    return `${shortMatch[2]}-${shortMatch[1].padStart(2, "0")}`;
+  }
+
+  return fallback;
+}
+
+/**
+ * Parse a production value string to number.
+ * Strips $, commas, whitespace. Returns 0 for unparseable.
+ */
+function parseProduction(val: string): number {
+  const cleaned = val.replace(/[$,\s]/g, "").trim();
+  const num = Number(cleaned);
+  return isNaN(num) ? 0 : Math.max(0, num);
+}
+
+/**
+ * Clean special characters from a source name.
+ * Keeps: letters, numbers, spaces, dots, commas, dashes, em dashes,
+ * parentheses, ampersands, apostrophes, forward slashes.
+ * Strips: asterisks, #, @, ~, ^, {, }, [, ], <, >, |, \, =, +, _, etc.
+ * Collapses multiple spaces and trims.
+ */
+function cleanSourceName(raw: string): string {
+  return raw
+    .replace(/[^a-zA-Z0-9\s.\,\-\—\(\)&'\/]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/**
+ * Normalize type string to "self" | "doctor".
+ */
+function parseType(val: string): "self" | "doctor" {
+  const lower = val.toLowerCase().trim();
+  if (lower === "doctor" || lower === "dr" || lower === "doc") return "doctor";
+  return "self";
+}
+
+/**
+ * Parse pasted text with fixed column structure.
+ * Returns flat array of ParsedRow (one per input row).
+ */
+export function parsePastedData(
   rawText: string,
-  currentMonth: string,
-  analysisContext?: AnalysisResult
-): Promise<PasteParseResult> {
+  currentMonth: string
+): PasteParseResult {
   if (!rawText || rawText.trim().length === 0) {
     throw Object.assign(new Error("No data provided to parse"), {
       statusCode: 400,
     });
   }
 
-  if (rawText.length > MAX_INPUT_SIZE) {
-    throw Object.assign(
-      new Error(
-        `Input exceeds maximum size of ${MAX_INPUT_SIZE} bytes. Please send smaller chunks.`
-      ),
-      { statusCode: 400 }
-    );
+  const lines = rawText.split("\n").filter((l) => l.trim().length > 0);
+  if (lines.length < 2) {
+    throw Object.assign(new Error("Data must have a header row and at least one data row"), {
+      statusCode: 400,
+    });
   }
 
-  const systemPrompt = loadPrompt("pmsAgents/PasteParser");
-
-  // Build user message with optional column context
-  const contextBlock = analysisContext
-    ? `\n${buildColumnContext(analysisContext)}\n`
-    : "";
-
-  const userMessage = `Fallback month (use if no date column detected): ${currentMonth}
-${contextBlock}
-Pasted data:
-${rawText}`;
+  const delimiter = detectDelimiter(lines[0]);
+  const dataLines = lines.slice(1); // skip header
 
   console.log(
-    `[PMS-Paste] Sending ${rawText.length} bytes to Haiku for parsing${analysisContext ? " (with column context)" : ""}`
+    `[PMS-Paste] Parsing ${dataLines.length} data rows (delimiter: ${delimiter === "\t" ? "TAB" : "COMMA"})`
   );
 
-  const agentOptions = {
-    systemPrompt,
-    userMessage,
-    model: MODEL,
-    maxTokens: 4096,
-    prefill: "{",
-  };
+  const warnings: string[] = [];
+  const rows: ParsedRow[] = [];
+  const monthsSet = new Set<string>();
 
-  const result = await runAgent(agentOptions);
+  for (let i = 0; i < dataLines.length; i++) {
+    const cols = splitLine(dataLines[i], delimiter);
 
-  console.log(
-    `[PMS-Paste] Haiku response: ${result.inputTokens} in / ${result.outputTokens} out`
-  );
-  console.log(
-    `[PMS-Paste] Raw response (first 800 chars): ${result.raw.substring(0, 800)}`
-  );
-
-  // Use shared JSON parser with retry logic
-  const parsed = await parseAgentJson<{ months: any[]; warnings?: string[] }>(
-    result.raw,
-    agentOptions,
-    "Parser"
-  );
-
-  // Validate shape
-  if (!Array.isArray(parsed.months)) {
-    throw new Error("AI response missing 'months' array");
-  }
-
-  const warnings: string[] = Array.isArray(parsed.warnings)
-    ? parsed.warnings
-    : [];
-  let totalRows = 0;
-
-  // Validate and coerce each month entry
-  const validatedMonths: ParsedMonth[] = [];
-  for (const monthEntry of parsed.months) {
-    const month =
-      typeof monthEntry.month === "string" &&
-      /^\d{4}-\d{2}$/.test(monthEntry.month)
-        ? monthEntry.month
-        : currentMonth;
-
-    if (!Array.isArray(monthEntry.rows)) continue;
-
-    const validatedRows: ParsedRow[] = [];
-    for (const row of monthEntry.rows) {
-      const source =
-        typeof row.source === "string" ? row.source.trim() : "";
-      if (!source) {
-        warnings.push("Skipped row with empty source name");
-        continue;
-      }
-
-      const type =
-        row.type === "doctor" || row.type === "self" ? row.type : "self";
-      const referrals = Math.max(0, Math.round(Number(row.referrals) || 0));
-      const production = Math.max(0, Number(row.production) || 0);
-
-      validatedRows.push({ source, type, referrals, production });
+    // Need at least 4 columns: date, source, type, production
+    if (cols.length < 4) {
+      warnings.push(`Row ${i + 2}: skipped — expected 4 columns, got ${cols.length}`);
+      continue;
     }
 
-    if (validatedRows.length > 0) {
-      // Merge with existing month if duplicate
-      const existing = validatedMonths.find((m) => m.month === month);
-      if (existing) {
-        existing.rows.push(...validatedRows);
-      } else {
-        validatedMonths.push({ month, rows: validatedRows });
-      }
-      totalRows += validatedRows.length;
-    }
+    const [dateStr, source, typeStr, productionStr] = cols;
+
+    const month = parseDateToMonth(dateStr, currentMonth);
+    const type = parseType(typeStr);
+    const production = parseProduction(productionStr);
+
+    monthsSet.add(month);
+    rows.push({
+      source: cleanSourceName(source) || "Unknown",
+      type,
+      referrals: 1, // each row = 1 referral
+      production,
+      month,
+    });
   }
 
-  if (totalRows === 0) {
+  if (rows.length === 0) {
     throw Object.assign(
-      new Error(
-        "No parseable data found. Make sure the pasted content contains referral data."
-      ),
+      new Error("No parseable data found. Make sure the pasted content has Date, Source, Type, Production columns."),
       { statusCode: 400 }
     );
   }
 
   console.log(
-    `[PMS-Paste] Parsed ${totalRows} rows across ${validatedMonths.length} month(s)`
+    `[PMS-Paste] Parsed ${rows.length} rows across ${monthsSet.size} month(s)`
   );
 
   return {
-    months: validatedMonths,
+    rows,
     warnings,
-    rowsParsed: totalRows,
-    monthsDetected: validatedMonths.length,
+    rowsParsed: rows.length,
+    monthsDetected: monthsSet.size,
   };
 }
