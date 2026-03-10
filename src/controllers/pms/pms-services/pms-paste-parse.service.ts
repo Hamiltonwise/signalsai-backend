@@ -2,10 +2,15 @@
  * PMS Paste-Parse Service
  * Uses Anthropic Haiku to parse pasted spreadsheet/CSV data into structured PMS referral data.
  * Stateless transformation — no database writes.
+ *
+ * Now accepts optional column context from the Analysis phase (Phase 1)
+ * to give the AI a head start on column mapping.
  */
 
 import { loadPrompt } from "../../../agents/service.prompt-loader";
 import { runAgent } from "../../../agents/service.llm-runner";
+import { parseAgentJson } from "../pms-utils/agent-json-parse.util";
+import type { AnalysisResult } from "./pms-paste-analysis.service";
 
 const MODEL = "claude-haiku-4-5-20251001";
 const MAX_INPUT_SIZE = 50_000; // 50KB hard cap (frontend chunks by 30 rows)
@@ -30,11 +35,53 @@ export interface PasteParseResult {
 }
 
 /**
+ * Build column context string from analysis result.
+ */
+function buildColumnContext(analysis: AnalysisResult): string {
+  const parts: string[] = [
+    "COLUMN MAPPING FROM ANALYSIS (0-based column indices):",
+  ];
+
+  const { columns, typeInference, rowStructure, delimiter } = analysis;
+
+  parts.push(`Delimiter: ${delimiter === "tab" ? "TAB" : "COMMA"}`);
+  parts.push(`Has header row: ${analysis.hasHeaderRow ? "yes" : "no"}`);
+  parts.push(`Row structure: ${rowStructure}`);
+
+  if (columns.source !== null) parts.push(`Source column: index ${columns.source}`);
+  if (columns.date !== null) parts.push(`Date column: index ${columns.date}`);
+  if (columns.type !== null) parts.push(`Type column: index ${columns.type}`);
+  if (columns.referrals !== null) parts.push(`Referrals column: index ${columns.referrals}`);
+  if (columns.production !== null) parts.push(`Production column: index ${columns.production}`);
+
+  if (typeInference.hasReferringPractice) {
+    parts.push(
+      `Referring Practice column: index ${typeInference.referringPracticeColumn} (rows with values here are "doctor" type)`
+    );
+  }
+  if (typeInference.hasReferringDoctor) {
+    parts.push(
+      `Referring Doctor column: index ${typeInference.referringDoctorColumn}`
+    );
+  }
+
+  if (rowStructure === "one_per_referral") {
+    parts.push(
+      "Each row = 1 referral. Count referrals as 1 per row for the same source."
+    );
+  }
+
+  return parts.join("\n");
+}
+
+/**
  * Parse pasted text using Haiku and return structured PMS data.
+ * Optionally accepts column context from the Analysis phase.
  */
 export async function parsePastedData(
   rawText: string,
-  currentMonth: string
+  currentMonth: string,
+  analysisContext?: AnalysisResult
 ): Promise<PasteParseResult> {
   if (!rawText || rawText.trim().length === 0) {
     throw Object.assign(new Error("No data provided to parse"), {
@@ -53,94 +100,43 @@ export async function parsePastedData(
 
   const systemPrompt = loadPrompt("pmsAgents/PasteParser");
 
-  const userMessage = `Fallback month (use if no date column detected): ${currentMonth}
+  // Build user message with optional column context
+  const contextBlock = analysisContext
+    ? `\n${buildColumnContext(analysisContext)}\n`
+    : "";
 
+  const userMessage = `Fallback month (use if no date column detected): ${currentMonth}
+${contextBlock}
 Pasted data:
 ${rawText}`;
 
   console.log(
-    `[PMS-Paste] Sending ${rawText.length} bytes to Haiku for parsing`
+    `[PMS-Paste] Sending ${rawText.length} bytes to Haiku for parsing${analysisContext ? " (with column context)" : ""}`
   );
 
-  const result = await runAgent({
+  const agentOptions = {
     systemPrompt,
     userMessage,
     model: MODEL,
     maxTokens: 4096,
     prefill: "{",
-  });
+  };
 
-  const rawResponse = result.raw;
+  const result = await runAgent(agentOptions);
 
   console.log(
     `[PMS-Paste] Haiku response: ${result.inputTokens} in / ${result.outputTokens} out`
   );
   console.log(
-    `[PMS-Paste] Raw response (first 800 chars): ${rawResponse.substring(0, 800)}`
+    `[PMS-Paste] Raw response (first 800 chars): ${result.raw.substring(0, 800)}`
   );
 
-  // Try the parsed result from runAgent first (it handles fence stripping)
-  let parsed: { months: any[]; warnings?: string[] } | null = result.parsed;
-
-  // Fallback: try manual extraction strategies
-  if (!parsed) {
-    console.log("[PMS-Paste] Direct parse failed, trying extraction...");
-    let cleaned = rawResponse.replace(/^[^{]*/, "").trim();
-
-    // Remove any markdown fences
-    cleaned = cleaned.replace(/^```\w*\s*/gm, "").replace(/```\s*$/gm, "").trim();
-
-    // If it doesn't start with {, the prefill continuation might have it
-    if (!cleaned.startsWith("{")) {
-      cleaned = "{" + cleaned;
-    }
-
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      console.log("[PMS-Paste] Fence-stripped parse failed, trying JSON extraction...");
-    }
-  }
-
-  // Strategy 3: Find the outermost { ... } in the full text
-  if (!parsed) {
-    const fullText = "{" + rawResponse;
-    let braceDepth = 0;
-    let jsonStart = -1;
-    let jsonEnd = -1;
-
-    for (let i = 0; i < fullText.length; i++) {
-      if (fullText[i] === "{") {
-        if (braceDepth === 0) jsonStart = i;
-        braceDepth++;
-      } else if (fullText[i] === "}") {
-        braceDepth--;
-        if (braceDepth === 0 && jsonStart !== -1) {
-          jsonEnd = i;
-          break;
-        }
-      }
-    }
-
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      const extracted = fullText.slice(jsonStart, jsonEnd + 1);
-      try {
-        parsed = JSON.parse(extracted);
-      } catch {
-        console.log("[PMS-Paste] Brace-matched extraction also failed");
-      }
-    }
-  }
-
-  if (!parsed) {
-    console.error(
-      "[PMS-Paste] All parse strategies failed. Raw response:",
-      rawResponse.substring(0, 1000)
-    );
-    throw new Error(
-      "Could not parse the AI response. Please try pasting again — if the issue persists, try pasting fewer rows."
-    );
-  }
+  // Use shared JSON parser with retry logic
+  const parsed = await parseAgentJson<{ months: any[]; warnings?: string[] }>(
+    result.raw,
+    agentOptions,
+    "Parser"
+  );
 
   // Validate shape
   if (!Array.isArray(parsed.months)) {

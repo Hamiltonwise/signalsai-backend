@@ -1,0 +1,507 @@
+/**
+ * Shortcode Resolver Service
+ *
+ * Resolves {{ post_block ... }} and {{ menu ... }} shortcodes in HTML.
+ * Ported from website-builder-rebuild/src/services/postblock.service.ts
+ * and menu.service.ts for use in the editor preview.
+ *
+ * Each resolved shortcode is wrapped in a marker div so the editor can
+ * restore the original shortcode token during section extraction.
+ */
+
+import { db } from "../../../database/connection";
+
+// =====================================================================
+// HTML Escaping
+// =====================================================================
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// =====================================================================
+// Shortcode Parsing
+// =====================================================================
+
+const POST_BLOCK_RE = /\{\{\s*post_block\s+((?:[a-z_]+='[^']*'\s*)+)\}\}/g;
+const MENU_RE = /\{\{\s*menu\s+((?:[a-z_]+='[^']*'\s*)+)\}\}/g;
+
+interface PostBlockShortcode {
+  raw: string;
+  id: string;
+  items: string;
+  tags?: string;
+  cats?: string;
+  ids?: string;
+  exc_ids?: string;
+  order?: string;
+  order_by?: string;
+  limit?: string;
+  offset?: string;
+}
+
+interface MenuShortcode {
+  raw: string;
+  id: string;
+  template?: string;
+}
+
+function parseAttrs(attrStr: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  const re = /([a-z_]+)='([^']*)'/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(attrStr)) !== null) {
+    attrs[m[1]] = m[2];
+  }
+  return attrs;
+}
+
+// =====================================================================
+// Post Block Resolution
+// =====================================================================
+
+async function resolvePostBlocks(
+  html: string,
+  projectId: string,
+  templateId: string | null
+): Promise<string> {
+  if (!html.includes("post_block") || !templateId) return html;
+
+  const shortcodes: PostBlockShortcode[] = [];
+  let match: RegExpExecArray | null;
+  const re = new RegExp(POST_BLOCK_RE.source, "g");
+  while ((match = re.exec(html)) !== null) {
+    const attrs = parseAttrs(match[1]);
+    if (!attrs.id || !attrs.items) continue;
+    shortcodes.push({ raw: match[0], ...attrs } as PostBlockShortcode);
+  }
+
+  if (shortcodes.length === 0) return html;
+
+  // Batch fetch post blocks
+  const slugs = [...new Set(shortcodes.map((s) => s.id))];
+  const blocks = await db("website_builder.post_blocks as pb")
+    .join("website_builder.post_types as pt", "pb.post_type_id", "pt.id")
+    .where("pb.template_id", templateId)
+    .whereIn("pb.slug", slugs)
+    .select("pb.slug", "pb.sections", "pt.slug as post_type_slug");
+
+  const blockMap = new Map<string, { sections: any; post_type_slug: string }>();
+  for (const b of blocks) {
+    const sections =
+      typeof b.sections === "string" ? JSON.parse(b.sections) : b.sections;
+    blockMap.set(b.slug, { sections, post_type_slug: b.post_type_slug });
+  }
+
+  for (const sc of shortcodes) {
+    const block = blockMap.get(sc.id);
+    if (!block) {
+      html = html.replace(sc.raw, wrapResolved(sc.raw, ""));
+      continue;
+    }
+
+    const posts = await fetchFilteredPosts(projectId, sc.items, sc);
+
+    const blockHtml = Array.isArray(block.sections)
+      ? block.sections.map((s: any) => s.content || "").join("\n")
+      : "";
+    const rendered = renderPostBlock(blockHtml, posts, block.post_type_slug);
+    html = html.replace(sc.raw, wrapResolved(sc.raw, rendered));
+  }
+
+  return html;
+}
+
+async function fetchFilteredPosts(
+  projectId: string,
+  postTypeSlug: string,
+  sc: PostBlockShortcode
+): Promise<any[]> {
+  let query = db("website_builder.posts as p")
+    .join("website_builder.post_types as pt", "p.post_type_id", "pt.id")
+    .where("p.project_id", projectId)
+    .where("pt.slug", postTypeSlug)
+    .where("p.status", "published")
+    .select("p.*");
+
+  if (sc.ids) {
+    query = query.whereIn("p.slug", sc.ids.split(",").map((s) => s.trim()));
+  }
+  if (sc.exc_ids) {
+    query = query.whereNotIn(
+      "p.slug",
+      sc.exc_ids.split(",").map((s) => s.trim())
+    );
+  }
+  if (sc.cats) {
+    const catSlugs = sc.cats.split(",").map((s) => s.trim());
+    query = query.whereExists(
+      db("website_builder.post_category_assignments as pca")
+        .join(
+          "website_builder.post_categories as pc",
+          "pca.category_id",
+          "pc.id"
+        )
+        .whereRaw("pca.post_id = p.id")
+        .whereIn("pc.slug", catSlugs)
+    );
+  }
+  if (sc.tags) {
+    const tagSlugs = sc.tags.split(",").map((s) => s.trim());
+    query = query.whereExists(
+      db("website_builder.post_tag_assignments as pta")
+        .join("website_builder.post_tags as ptag", "pta.tag_id", "ptag.id")
+        .whereRaw("pta.post_id = p.id")
+        .whereIn("ptag.slug", tagSlugs)
+    );
+  }
+
+  const orderBy = sc.order_by || "created_at";
+  const order = sc.order || "asc";
+  query = query.orderBy(`p.${orderBy}`, order);
+  query = query.limit(parseInt(sc.limit || "10", 10));
+  query = query.offset(parseInt(sc.offset || "0", 10));
+
+  const posts = await query;
+
+  if (posts.length > 0) {
+    const postIds = posts.map((p: any) => p.id);
+
+    const cats = await db("website_builder.post_category_assignments as pca")
+      .join(
+        "website_builder.post_categories as pc",
+        "pca.category_id",
+        "pc.id"
+      )
+      .whereIn("pca.post_id", postIds)
+      .select("pca.post_id", "pc.name");
+
+    const tags = await db("website_builder.post_tag_assignments as pta")
+      .join("website_builder.post_tags as pt", "pta.tag_id", "pt.id")
+      .whereIn("pta.post_id", postIds)
+      .select("pta.post_id", "pt.name");
+
+    const catMap = new Map<string, string[]>();
+    for (const c of cats) {
+      if (!catMap.has(c.post_id)) catMap.set(c.post_id, []);
+      catMap.get(c.post_id)!.push(c.name);
+    }
+    const tagMap = new Map<string, string[]>();
+    for (const t of tags) {
+      if (!tagMap.has(t.post_id)) tagMap.set(t.post_id, []);
+      tagMap.get(t.post_id)!.push(t.name);
+    }
+
+    for (const post of posts) {
+      post._categories = (catMap.get(post.id) || []).join(", ");
+      post._tags = (tagMap.get(post.id) || []).join(", ");
+    }
+  }
+
+  return posts;
+}
+
+function renderPostBlock(
+  blockHtml: string,
+  posts: any[],
+  postTypeSlug: string
+): string {
+  const startMarker = "{{start_post_loop}}";
+  const endMarker = "{{end_post_loop}}";
+  const startIdx = blockHtml.indexOf(startMarker);
+  const endIdx = blockHtml.indexOf(endMarker);
+
+  let before = "";
+  let template = blockHtml;
+  let after = "";
+
+  if (startIdx !== -1 && endIdx !== -1) {
+    before = blockHtml.slice(0, startIdx);
+    template = blockHtml.slice(startIdx + startMarker.length, endIdx);
+    after = blockHtml.slice(endIdx + endMarker.length);
+  }
+
+  const rendered = posts.map((post) => {
+    const customFields =
+      typeof post.custom_fields === "string"
+        ? JSON.parse(post.custom_fields || "{}")
+        : post.custom_fields || {};
+
+    const fmtDate = (d: any) =>
+      d
+        ? new Date(d).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        : "";
+
+    let html = template;
+    html = html.replace(/\{\{post\.title\}\}/g, escapeHtml(post.title || ""));
+    html = html.replace(/\{\{post\.slug\}\}/g, escapeHtml(post.slug || ""));
+    html = html.replace(
+      /\{\{post\.url\}\}/g,
+      escapeHtml(`/${postTypeSlug}/${post.slug}`)
+    );
+    html = html.replace(/\{\{post\.content\}\}/g, post.content || "");
+    html = html.replace(
+      /\{\{post\.excerpt\}\}/g,
+      escapeHtml(post.excerpt || "")
+    );
+    html = html.replace(
+      /\{\{post\.featured_image\}\}/g,
+      escapeHtml(post.featured_image || "")
+    );
+    html = html.replace(
+      /\{\{post\.categories\}\}/g,
+      escapeHtml(post._categories || "")
+    );
+    html = html.replace(
+      /\{\{post\.tags\}\}/g,
+      escapeHtml(post._tags || "")
+    );
+    html = html.replace(
+      /\{\{post\.created_at\}\}/g,
+      escapeHtml(fmtDate(post.created_at))
+    );
+    html = html.replace(
+      /\{\{post\.updated_at\}\}/g,
+      escapeHtml(fmtDate(post.updated_at))
+    );
+    html = html.replace(
+      /\{\{post\.published_at\}\}/g,
+      escapeHtml(fmtDate(post.published_at))
+    );
+
+    // Custom fields
+    html = html.replace(
+      /\{\{post\.custom\.([a-z0-9_-]+)\}\}/gi,
+      (_: string, field: string) => {
+        const val = customFields[field];
+        if (val == null) return "";
+        return escapeHtml(String(val)).replace(/\n/g, "<br>");
+      }
+    );
+
+    return html;
+  });
+
+  return before + rendered.join("\n") + after;
+}
+
+// =====================================================================
+// Menu Resolution
+// =====================================================================
+
+interface MenuItemNode {
+  id: string;
+  label: string;
+  url: string;
+  target: string;
+  children: MenuItemNode[];
+}
+
+async function resolveMenus(
+  html: string,
+  projectId: string,
+  templateId: string | null
+): Promise<string> {
+  if (!html.includes("menu")) return html;
+
+  const shortcodes: MenuShortcode[] = [];
+  let match: RegExpExecArray | null;
+  const re = new RegExp(MENU_RE.source, "g");
+  while ((match = re.exec(html)) !== null) {
+    const attrs = parseAttrs(match[1]);
+    if (!attrs.id) continue;
+    shortcodes.push({ raw: match[0], id: attrs.id, template: attrs.template });
+  }
+
+  if (shortcodes.length === 0) return html;
+
+  for (const sc of shortcodes) {
+    const menu = await db("website_builder.menus")
+      .where({ project_id: projectId, slug: sc.id })
+      .first();
+
+    if (!menu) {
+      html = html.replace(
+        sc.raw,
+        wrapResolved(sc.raw, `<nav data-menu="${escapeHtml(sc.id)}"></nav>`)
+      );
+      continue;
+    }
+
+    const items = await db("website_builder.menu_items")
+      .where("menu_id", menu.id)
+      .orderBy("order_index", "asc")
+      .select("id", "parent_id", "label", "url", "target", "order_index");
+
+    if (items.length === 0) {
+      html = html.replace(
+        sc.raw,
+        wrapResolved(sc.raw, `<nav data-menu="${escapeHtml(sc.id)}"></nav>`)
+      );
+      continue;
+    }
+
+    const tree = buildMenuTree(items);
+
+    let menuTemplateHtml: string | null = null;
+    if (sc.template && templateId) {
+      const mt = await db("website_builder.menu_templates")
+        .where({ template_id: templateId, slug: sc.template })
+        .first();
+      if (mt) {
+        const sections =
+          typeof mt.sections === "string"
+            ? JSON.parse(mt.sections)
+            : mt.sections;
+        menuTemplateHtml = Array.isArray(sections)
+          ? sections.map((s: any) => s.content || "").join("\n")
+          : "";
+      }
+    }
+
+    let rendered: string;
+    if (menuTemplateHtml) {
+      rendered = renderMenuWithTemplate(tree, menuTemplateHtml);
+    } else {
+      rendered = renderMenuHtml(tree, true);
+    }
+
+    const navWrapped = `<nav data-menu="${escapeHtml(sc.id)}">${rendered}</nav>`;
+    html = html.replace(sc.raw, wrapResolved(sc.raw, navWrapped));
+  }
+
+  return html;
+}
+
+function buildMenuTree(items: any[]): MenuItemNode[] {
+  const map = new Map<string, MenuItemNode>();
+  const roots: MenuItemNode[] = [];
+
+  for (const item of items) {
+    map.set(item.id, {
+      id: item.id,
+      label: item.label,
+      url: item.url,
+      target: item.target || "_self",
+      children: [],
+    });
+  }
+
+  for (const item of items) {
+    const node = map.get(item.id)!;
+    if (item.parent_id && map.has(item.parent_id)) {
+      map.get(item.parent_id)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  return roots;
+}
+
+function renderMenuWithTemplate(
+  tree: MenuItemNode[],
+  templateHtml: string
+): string {
+  const startMarker = "{{start_menu_loop}}";
+  const endMarker = "{{end_menu_loop}}";
+  const startIdx = templateHtml.indexOf(startMarker);
+  const endIdx = templateHtml.indexOf(endMarker);
+
+  if (startIdx === -1 || endIdx === -1) return templateHtml;
+
+  const before = templateHtml.slice(0, startIdx);
+  const itemTemplate = templateHtml.slice(
+    startIdx + startMarker.length,
+    endIdx
+  );
+  const after = templateHtml.slice(endIdx + endMarker.length);
+
+  const rendered = tree
+    .map((node) => renderMenuItemFromTemplate(node, itemTemplate))
+    .join("\n");
+
+  return before + rendered + after;
+}
+
+function renderMenuItemFromTemplate(
+  node: MenuItemNode,
+  template: string
+): string {
+  let html = template;
+  html = html.replace(/\{\{menu_item\.label\}\}/g, escapeHtml(node.label));
+  html = html.replace(/\{\{menu_item\.url\}\}/g, escapeHtml(node.url));
+  html = html.replace(/\{\{menu_item\.target\}\}/g, escapeHtml(node.target));
+
+  if (node.children.length > 0) {
+    const childrenHtml =
+      '<ul class="nav-submenu">' +
+      node.children
+        .map((c) => renderMenuItemFromTemplate(c, template))
+        .join("\n") +
+      "</ul>";
+    html = html.replace(/\{\{menu_item\.children\}\}/g, childrenHtml);
+  } else {
+    html = html.replace(/\{\{menu_item\.children\}\}/g, "");
+  }
+
+  return html;
+}
+
+function renderMenuHtml(nodes: MenuItemNode[], isRoot: boolean): string {
+  const cls = isRoot ? 'class="alloro-menu"' : 'class="alloro-submenu"';
+  const items = nodes
+    .map((node) => {
+      const hasSub = node.children.length > 0;
+      const liClass = hasSub ? ' class="has-submenu"' : "";
+      const target =
+        node.target && node.target !== "_self"
+          ? ` target="${escapeHtml(node.target)}"`
+          : "";
+      const children = hasSub ? renderMenuHtml(node.children, false) : "";
+      return `<li${liClass}><a href="${escapeHtml(node.url)}"${target}>${escapeHtml(node.label)}</a>${children}</li>`;
+    })
+    .join("");
+  return `<ul ${cls}>${items}</ul>`;
+}
+
+// =====================================================================
+// Marker Wrapper
+// =====================================================================
+
+function wrapResolved(originalToken: string, resolvedHtml: string): string {
+  const encoded = originalToken
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return `<div data-alloro-shortcode-original="${encoded}" style="pointer-events:none">${resolvedHtml}</div>`;
+}
+
+// =====================================================================
+// Main Entry Point
+// =====================================================================
+
+export async function resolveShortcodes(
+  html: string,
+  projectId: string,
+  templateId: string | null
+): Promise<string> {
+  try {
+    html = await resolvePostBlocks(html, projectId, templateId);
+    html = await resolveMenus(html, projectId, templateId);
+    return html;
+  } catch (error) {
+    console.error("[ShortcodeResolver] Error resolving shortcodes:", error);
+    return html;
+  }
+}

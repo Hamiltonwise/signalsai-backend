@@ -29,6 +29,22 @@ userWebsiteRoutes.post(
   controller.editPageComponent
 );
 
+userWebsiteRoutes.post(
+  "/resolve-preview",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.resolvePreview
+);
+
+userWebsiteRoutes.patch(
+  "/pages/:pageId/save",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.savePageSections
+);
+
 // Version history
 userWebsiteRoutes.get(
   "/pages/:pageId/versions",
@@ -110,6 +126,114 @@ userWebsiteRoutes.delete(
   rbacMiddleware,
   requireRole("admin", "manager"),
   controller.deleteFormSubmission
+);
+
+// Posts
+userWebsiteRoutes.get(
+  "/posts",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.listPosts
+);
+userWebsiteRoutes.post(
+  "/posts",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.createUserPost
+);
+userWebsiteRoutes.get(
+  "/posts/:postId",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.getPost
+);
+userWebsiteRoutes.patch(
+  "/posts/:postId",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.updateUserPost
+);
+userWebsiteRoutes.delete(
+  "/posts/:postId",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.deleteUserPost
+);
+userWebsiteRoutes.patch(
+  "/posts/:postId/seo",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.updateUserPostSeo
+);
+
+// Post types (read-only)
+userWebsiteRoutes.get(
+  "/post-types",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.listPostTypes
+);
+
+// Categories & Tags
+userWebsiteRoutes.get(
+  "/post-types/:postTypeId/categories",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.listCategories
+);
+userWebsiteRoutes.post(
+  "/post-types/:postTypeId/categories",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.createUserCategory
+);
+userWebsiteRoutes.get(
+  "/post-types/:postTypeId/tags",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.listTags
+);
+userWebsiteRoutes.post(
+  "/post-types/:postTypeId/tags",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.createUserTag
+);
+
+// Menus
+userWebsiteRoutes.patch(
+  "/menus/:menuId/items/reorder",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.reorderUserMenuItems
+);
+userWebsiteRoutes.get(
+  "/menus",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.listUserMenus
+);
+userWebsiteRoutes.post(
+  "/menus",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.createUserMenu
+);
+userWebsiteRoutes.get(
+  "/menus/:menuId",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.getUserMenu
+);
+userWebsiteRoutes.patch(
+  "/menus/:menuId",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.updateUserMenu
+);
+userWebsiteRoutes.delete(
+  "/menus/:menuId",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.deleteUserMenu
+);
+userWebsiteRoutes.post(
+  "/menus/:menuId/items",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.createUserMenuItem
+);
+userWebsiteRoutes.patch(
+  "/menus/:menuId/items/:itemId",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.updateUserMenuItem
+);
+userWebsiteRoutes.delete(
+  "/menus/:menuId/items/:itemId",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.deleteUserMenuItem
 );
 
 // Custom domain

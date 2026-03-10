@@ -114,6 +114,7 @@ export async function fetchUserWebsiteData(orgId: number) {
     project: {
       id: project.id,
       hostname: (project as any).generated_hostname,
+      display_name: (project as any).display_name || null,
       status: project.status,
       is_read_only: (project as any).is_read_only,
       custom_domain: project.custom_domain,
@@ -121,6 +122,10 @@ export async function fetchUserWebsiteData(orgId: number) {
       wrapper: (project as any).wrapper,
       header: (project as any).header,
       footer: (project as any).footer,
+      template_id: project.template_id || null,
+      organization_id: project.organization_id || null,
+      primary_color: project.primary_color || null,
+      accent_color: project.accent_color || null,
     },
     pages,
     media,

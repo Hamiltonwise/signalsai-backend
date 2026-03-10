@@ -13,6 +13,10 @@ import { Response } from "express";
 import { RBACRequest } from "../../middleware/rbac";
 import * as userWebsiteService from "./user-website-services/userWebsite.service";
 import * as customDomainService from "../admin-websites/feature-services/service.custom-domain";
+import * as postManager from "../admin-websites/feature-services/service.post-manager";
+import * as postTypeManager from "../admin-websites/feature-services/service.post-type-manager";
+import * as menuManager from "../admin-websites/feature-services/service.menu-manager";
+import { resolveShortcodes } from "./user-website-services/shortcodeResolver.service";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
@@ -596,5 +600,423 @@ export async function exportFormSubmissions(
     res.send(csv);
   } catch (error) {
     res.status(500).json({ error: "Failed to export submissions" });
+  }
+}
+
+// =====================================================================
+// PATCH /api/user/website/pages/:pageId/save — Save page sections
+// =====================================================================
+
+export async function savePageSections(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const { pageId } = req.params;
+    const { sections } = req.body;
+    if (!sections || !Array.isArray(sections)) {
+      return res.status(400).json({ error: "sections array is required" });
+    }
+
+    // Verify page belongs to project
+    const page = await db("website_builder.pages")
+      .where({ id: pageId, project_id: projectId })
+      .first();
+    if (!page) return res.status(404).json({ error: "Page not found" });
+
+    // Update the page sections directly
+    await db("website_builder.pages")
+      .where("id", pageId)
+      .update({
+        sections: JSON.stringify(sections),
+        updated_at: db.fn.now(),
+      });
+
+    return res.json({ success: true });
+  } catch (error) {
+    return handleError(res, error, "Save page sections");
+  }
+}
+
+// =====================================================================
+// RESOLVE PREVIEW (shortcodes → HTML)
+// =====================================================================
+
+/** POST /api/user/website/resolve-preview */
+export async function resolvePreview(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const { html } = req.body;
+    if (!html || typeof html !== "string") {
+      return res.status(400).json({ error: "html string is required" });
+    }
+
+    const resolved = await resolveShortcodes(html, ids.projectId, ids.templateId);
+    return res.json({ html: resolved });
+  } catch (error) {
+    return handleError(res, error, "Resolve preview");
+  }
+}
+
+// =====================================================================
+// POSTS
+// =====================================================================
+
+/** Helper: resolve projectId + templateId from orgId */
+async function getProjectAndTemplate(orgId: number) {
+  const project = await ProjectModel.findByOrganizationId(orgId);
+  if (!project) return null;
+  return { projectId: project.id, templateId: project.template_id };
+}
+
+/** GET /api/user/website/posts */
+export async function listPosts(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const { post_type_id, status } = req.query as Record<string, string>;
+    const result = await postManager.listPosts(ids.projectId, { post_type_id, status });
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.posts });
+  } catch (error) {
+    return handleError(res, error, "List posts");
+  }
+}
+
+/** POST /api/user/website/posts */
+export async function createUserPost(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const result = await postManager.createPost(ids.projectId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.post });
+  } catch (error) {
+    return handleError(res, error, "Create post");
+  }
+}
+
+/** GET /api/user/website/posts/:postId */
+export async function getPost(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const post = await postManager.getPost(ids.projectId, req.params.postId);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+    return res.json({ success: true, data: post });
+  } catch (error) {
+    return handleError(res, error, "Get post");
+  }
+}
+
+/** PATCH /api/user/website/posts/:postId */
+export async function updateUserPost(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const result = await postManager.updatePost(ids.projectId, req.params.postId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.post });
+  } catch (error) {
+    return handleError(res, error, "Update post");
+  }
+}
+
+/** DELETE /api/user/website/posts/:postId */
+export async function deleteUserPost(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const result = await postManager.deletePost(ids.projectId, req.params.postId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error) {
+    return handleError(res, error, "Delete post");
+  }
+}
+
+/** GET /api/user/website/post-types */
+export async function listPostTypes(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids || !ids.templateId) return res.status(404).json({ error: "No website or template found" });
+
+    const result = await postTypeManager.listPostTypes(ids.templateId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.postTypes });
+  } catch (error) {
+    return handleError(res, error, "List post types");
+  }
+}
+
+/** GET /api/user/website/post-types/:postTypeId/categories */
+export async function listCategories(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const categories = await db("website_builder.post_categories")
+      .where("post_type_id", req.params.postTypeId)
+      .orderBy("sort_order", "asc");
+    return res.json({ success: true, data: categories });
+  } catch (error) {
+    return handleError(res, error, "List categories");
+  }
+}
+
+/** POST /api/user/website/post-types/:postTypeId/categories */
+export async function createUserCategory(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const { name, slug, parent_id } = req.body;
+    const finalSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const [category] = await db("website_builder.post_categories")
+      .insert({ post_type_id: req.params.postTypeId, name, slug: finalSlug, parent_id: parent_id || null })
+      .returning("*");
+    return res.status(201).json({ success: true, data: category });
+  } catch (error) {
+    return handleError(res, error, "Create category");
+  }
+}
+
+/** GET /api/user/website/post-types/:postTypeId/tags */
+export async function listTags(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const tags = await db("website_builder.post_tags")
+      .where("post_type_id", req.params.postTypeId)
+      .orderBy("name", "asc");
+    return res.json({ success: true, data: tags });
+  } catch (error) {
+    return handleError(res, error, "List tags");
+  }
+}
+
+/** POST /api/user/website/post-types/:postTypeId/tags */
+export async function createUserTag(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const { name, slug } = req.body;
+    const finalSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const [tag] = await db("website_builder.post_tags")
+      .insert({ post_type_id: req.params.postTypeId, name, slug: finalSlug })
+      .returning("*");
+    return res.status(201).json({ success: true, data: tag });
+  } catch (error) {
+    return handleError(res, error, "Create tag");
+  }
+}
+
+/** PATCH /api/user/website/posts/:postId/seo */
+export async function updateUserPostSeo(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const ids = await getProjectAndTemplate(orgId);
+    if (!ids) return res.status(404).json({ error: "No website found" });
+
+    const post = await postManager.getPost(ids.projectId, req.params.postId);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+
+    await db("website_builder.posts").where("id", req.params.postId).update({
+      seo_data: JSON.stringify(req.body),
+      updated_at: db.fn.now(),
+    });
+    return res.json({ success: true });
+  } catch (error) {
+    return handleError(res, error, "Update post SEO");
+  }
+}
+
+// =====================================================================
+// MENUS
+// =====================================================================
+
+/** GET /api/user/website/menus */
+export async function listUserMenus(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const result = await menuManager.listMenus(projectId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.menus });
+  } catch (error) {
+    return handleError(res, error, "List menus");
+  }
+}
+
+/** POST /api/user/website/menus */
+export async function createUserMenu(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const result = await menuManager.createMenu(projectId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.menu });
+  } catch (error) {
+    return handleError(res, error, "Create menu");
+  }
+}
+
+/** GET /api/user/website/menus/:menuId */
+export async function getUserMenu(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const result = await menuManager.getMenu(projectId, req.params.menuId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.menu });
+  } catch (error) {
+    return handleError(res, error, "Get menu");
+  }
+}
+
+/** PATCH /api/user/website/menus/:menuId */
+export async function updateUserMenu(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const result = await menuManager.updateMenu(projectId, req.params.menuId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.menu });
+  } catch (error) {
+    return handleError(res, error, "Update menu");
+  }
+}
+
+/** DELETE /api/user/website/menus/:menuId */
+export async function deleteUserMenu(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const result = await menuManager.deleteMenu(projectId, req.params.menuId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error) {
+    return handleError(res, error, "Delete menu");
+  }
+}
+
+/** POST /api/user/website/menus/:menuId/items */
+export async function createUserMenuItem(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const result = await menuManager.createMenuItem(projectId, req.params.menuId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.item });
+  } catch (error) {
+    return handleError(res, error, "Create menu item");
+  }
+}
+
+/** PATCH /api/user/website/menus/:menuId/items/:itemId */
+export async function updateUserMenuItem(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const result = await menuManager.updateMenuItem(projectId, req.params.menuId, req.params.itemId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.item });
+  } catch (error) {
+    return handleError(res, error, "Update menu item");
+  }
+}
+
+/** DELETE /api/user/website/menus/:menuId/items/:itemId */
+export async function deleteUserMenuItem(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const result = await menuManager.deleteMenuItem(projectId, req.params.menuId, req.params.itemId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error) {
+    return handleError(res, error, "Delete menu item");
+  }
+}
+
+/** PATCH /api/user/website/menus/:menuId/items/reorder */
+export async function reorderUserMenuItems(req: RBACRequest, res: Response): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+    const projectId = await getProjectIdForOrg(orgId);
+    if (!projectId) return res.status(404).json({ error: "No website found" });
+
+    const result = await menuManager.reorderItems(projectId, req.params.menuId, req.body.items || []);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error) {
+    return handleError(res, error, "Reorder menu items");
   }
 }

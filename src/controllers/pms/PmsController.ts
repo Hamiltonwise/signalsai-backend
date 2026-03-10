@@ -5,6 +5,7 @@ import * as automationService from "./pms-services/pms-automation.service";
 import * as dataService from "./pms-services/pms-data.service";
 import * as retryService from "./pms-services/pms-retry.service";
 import * as pasteParseService from "./pms-services/pms-paste-parse.service";
+import * as pasteAnalysisService from "./pms-services/pms-paste-analysis.service";
 import { coerceBoolean } from "./pms-utils/pms-validator.util";
 import { validateJobId } from "./pms-utils/pms-validator.util";
 import { PmsStatus } from "./pms-utils/pms-constants";
@@ -461,7 +462,7 @@ export async function getActiveAutomations(req: Request, res: Response) {
  */
 export async function parsePaste(req: Request, res: Response) {
   try {
-    const { rawText, currentMonth } = req.body;
+    const { rawText, currentMonth, analysisContext } = req.body;
 
     if (!rawText || typeof rawText !== "string") {
       return res.status(400).json({
@@ -483,7 +484,8 @@ export async function parsePaste(req: Request, res: Response) {
 
     const result = await pasteParseService.parsePastedData(
       rawText,
-      currentMonth
+      currentMonth,
+      analysisContext || undefined
     );
 
     return res.json({
@@ -495,6 +497,66 @@ export async function parsePaste(req: Request, res: Response) {
     return res.status(error.statusCode || 500).json({
       success: false,
       error: error?.message || "Failed to parse pasted data",
+    });
+  }
+}
+
+/**
+ * POST /pms/analyze-paste
+ * Phase 1: Analyze pasted data structure and determine column mapping.
+ */
+export async function analyzePaste(req: Request, res: Response) {
+  try {
+    const { rawText } = req.body;
+
+    if (!rawText || typeof rawText !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "rawText is required and must be a string",
+      });
+    }
+
+    const result = await pasteAnalysisService.analyzePastedData(rawText);
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    console.error("Error in /pms/analyze-paste:", error?.message || error);
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      error: error?.message || "Failed to analyze pasted data",
+    });
+  }
+}
+
+/**
+ * POST /pms/sanitize-paste
+ * Phase 3: Deduplicate and clean parsed PMS rows.
+ */
+export async function sanitizePaste(req: Request, res: Response) {
+  try {
+    const { rows } = req.body;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "rows is required and must be a non-empty array",
+      });
+    }
+
+    const result = await pasteAnalysisService.sanitizeParsedData(rows);
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error: any) {
+    console.error("Error in /pms/sanitize-paste:", error?.message || error);
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      error: error?.message || "Failed to sanitize pasted data",
     });
   }
 }
