@@ -20,10 +20,10 @@ import * as controller from "../../controllers/admin-media/AdminMediaController"
 
 const router = express.Router({ mergeParams: true }); // Preserve :projectId param
 
-// Multer config: memory storage, 25 MB limit, accept all files
+// Multer config: memory storage, 100 MB limit, accept all files
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB
 });
 
 // POST /api/admin/websites/:projectId/media — Bulk media upload
