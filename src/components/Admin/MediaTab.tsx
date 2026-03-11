@@ -88,6 +88,7 @@ export default function MediaTab({ projectId }: { projectId: string }) {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [quota, setQuota] = useState({ used: 0, limit: 0, percentage: 0 });
   const [filter, setFilter] = useState<"all" | "image" | "video" | "pdf">("all");
   const [search, setSearch] = useState("");
@@ -135,42 +136,58 @@ export default function MediaTab({ projectId }: { projectId: string }) {
   };
 
   const uploadFiles = async (files: File[]) => {
-    try {
-      setUploading(true);
-      setUploadErrors([]);
+    setUploading(true);
+    setUploadProgress(0);
+    setUploadErrors([]);
 
-      const formData = new FormData();
-      files.forEach((file) => formData.append("files", file));
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
 
-      const response = await fetch(`/api/admin/websites/${projectId}/media`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
+    const xhr = new XMLHttpRequest();
 
-      const data: UploadResponse = await response.json();
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable) {
+        setUploadProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    });
 
-      if (!data.success) {
-        if (response.status === 507) {
-          throw new Error(data.error || "Storage quota exceeded");
+    xhr.addEventListener("load", async () => {
+      try {
+        const data: UploadResponse = JSON.parse(xhr.responseText);
+
+        if (!data.success) {
+          throw new Error(
+            xhr.status === 507
+              ? data.error || "Storage quota exceeded"
+              : data.error || "Upload failed"
+          );
         }
-        throw new Error(data.error || "Upload failed");
-      }
 
-      // Show any partial failures
-      if (data.failed && data.failed.length > 0) {
-        setUploadErrors(
-          data.failed.map((f) => `${f.filename}: ${f.message}`)
-        );
-      }
+        if (data.failed && data.failed.length > 0) {
+          setUploadErrors(
+            data.failed.map((f) => `${f.filename}: ${f.message}`)
+          );
+        }
 
-      setQuota(data.quota);
-      await fetchMedia(); // Refresh list
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
+        setQuota(data.quota);
+        await fetchMedia();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed");
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      setError("Upload failed — network error");
       setUploading(false);
-    }
+      setUploadProgress(0);
+    });
+
+    xhr.open("POST", `/api/admin/websites/${projectId}/media`);
+    xhr.withCredentials = true;
+    xhr.send(formData);
   };
 
   const updateMedia = async (mediaId: string) => {
@@ -336,6 +353,25 @@ export default function MediaTab({ projectId }: { projectId: string }) {
             className="hidden"
           />
         </div>
+
+        {/* Upload Progress */}
+        {uploading && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Uploading...
+              </span>
+              <span>{uploadProgress}%</span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-alloro-orange rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Quota Bar */}
         <div className="mb-4">
