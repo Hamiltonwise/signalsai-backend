@@ -21,6 +21,7 @@ import {
   IGoogleConnection,
 } from "../../models/GoogleConnectionModel";
 import { OrganizationModel } from "../../models/OrganizationModel";
+import { syncSubscriptionQuantity } from "../billing/BillingService";
 
 interface GBPSelection {
   accountId: string;
@@ -151,7 +152,7 @@ export async function createLocation(
   gbp: GBPSelection,
   domain?: string | null
 ): Promise<ILocation> {
-  return db.transaction(async (trx) => {
+  const location = await db.transaction(async (trx) => {
     const connection = await GoogleConnectionModel.findOneByOrganization(
       organizationId,
       trx
@@ -170,7 +171,7 @@ export async function createLocation(
       trx
     );
 
-    const location = await LocationModel.create(
+    const loc = await LocationModel.create(
       {
         organization_id: organizationId,
         name,
@@ -182,7 +183,7 @@ export async function createLocation(
 
     await GooglePropertyModel.create(
       {
-        location_id: location.id,
+        location_id: loc.id,
         google_connection_id: connection.id,
         type: "gbp",
         external_id: gbp.locationId,
@@ -196,8 +197,13 @@ export async function createLocation(
 
     await syncJsonBlobFromProperties(organizationId, connection.id, trx);
 
-    return location;
+    return loc;
   });
+
+  // Sync Stripe subscription quantity (fire-and-forget, after transaction commits)
+  syncSubscriptionQuantity(organizationId);
+
+  return location;
 }
 
 /**
@@ -209,7 +215,7 @@ export async function removeLocation(
   locationId: number,
   organizationId: number
 ): Promise<void> {
-  return db.transaction(async (trx) => {
+  await db.transaction(async (trx) => {
     const location = await LocationModel.findById(locationId, trx);
     if (!location || location.organization_id !== organizationId) {
       throw new Error("Location not found or does not belong to organization");
@@ -257,6 +263,9 @@ export async function removeLocation(
       await syncJsonBlobFromProperties(organizationId, connection.id, trx);
     }
   });
+
+  // Sync Stripe subscription quantity (fire-and-forget, after transaction commits)
+  syncSubscriptionQuantity(organizationId);
 }
 
 /**

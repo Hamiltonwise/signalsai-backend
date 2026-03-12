@@ -16,6 +16,9 @@ import {
   IOrganization,
 } from "../../models/OrganizationModel";
 import { updateTier } from "../admin-organizations/feature-services/TierManagementService";
+import { OrganizationUserModel } from "../../models/OrganizationUserModel";
+import { sendEmail } from "../../emails/emailService";
+import { isStripeConfigured } from "../../config/stripe";
 
 // ─── Types ───
 
@@ -406,6 +409,113 @@ async function handleSubscriptionDeleted(
   console.log(
     `[Stripe Webhook] Subscription deleted for customer ${customerId}`
   );
+}
+
+// ─── Subscription Quantity Sync ───
+
+/**
+ * Sync Stripe subscription quantity to match the org's current location count.
+ * Called after location add/remove. Best-effort — never throws.
+ */
+export async function syncSubscriptionQuantity(
+  organizationId: number
+): Promise<void> {
+  try {
+    if (!isStripeConfigured()) return;
+
+    const org = await OrganizationModel.findById(organizationId);
+    if (!org?.stripe_subscription_id) return;
+
+    // Count current locations
+    const result = await db("locations")
+      .where({ organization_id: organizationId })
+      .count("id as count")
+      .first();
+    const newQuantity = Math.max(Number(result?.count) || 0, 1);
+
+    // Get subscription from Stripe
+    const stripe = getStripe();
+    const subscription = await stripe.subscriptions.retrieve(
+      org.stripe_subscription_id
+    );
+
+    const item = subscription.items.data[0];
+    if (!item) {
+      console.warn(
+        `[Billing] No subscription items found for org ${organizationId}`
+      );
+      return;
+    }
+
+    const oldQuantity = item.quantity || 1;
+    if (oldQuantity === newQuantity) return;
+
+    // Update subscription item quantity (Stripe prorates automatically)
+    await stripe.subscriptionItems.update(item.id, {
+      quantity: newQuantity,
+    });
+
+    console.log(
+      `[Billing] Subscription quantity updated for org ${organizationId}: ${oldQuantity} → ${newQuantity}`
+    );
+
+    // Notify org admins via email
+    try {
+      const orgUsers = await OrganizationUserModel.listByOrgWithUsers(
+        organizationId
+      );
+      const adminEmails = orgUsers
+        .filter((u) => u.role === "admin")
+        .map((u) => u.email)
+        .filter(Boolean);
+
+      if (adminEmails.length === 0) return;
+
+      const unitPrice = item.price?.unit_amount
+        ? (item.price.unit_amount / 100).toFixed(0)
+        : "—";
+      const newTotal = item.price?.unit_amount
+        ? ((item.price.unit_amount / 100) * newQuantity).toLocaleString()
+        : "—";
+      const direction = newQuantity > oldQuantity ? "added" : "removed";
+      const locationLabel =
+        org.organization_type === "saas" ? "team" : "location";
+      const locationLabelPlural =
+        org.organization_type === "saas" ? "teams" : "locations";
+
+      await sendEmail({
+        subject: `Your Alloro subscription has been updated`,
+        body: `
+          <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
+            <h2 style="color: #1a1a1a;">Subscription Updated</h2>
+            <p style="color: #4a5568; font-size: 16px;">
+              A ${locationLabel} was ${direction} for <strong>${org.name}</strong>, and your subscription has been automatically adjusted.
+            </p>
+            <div style="background: #f7f7f7; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+              <p style="margin: 4px 0; color: #4a5568;">Previous: <strong>${oldQuantity}</strong> ${oldQuantity === 1 ? locationLabel : locationLabelPlural} × $${unitPrice}/mo</p>
+              <p style="margin: 4px 0; color: #4a5568;">Updated: <strong>${newQuantity}</strong> ${newQuantity === 1 ? locationLabel : locationLabelPlural} × $${unitPrice}/mo</p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 12px 0;" />
+              <p style="margin: 4px 0; color: #1a1a1a; font-weight: bold;">New monthly total: $${newTotal}/mo</p>
+            </div>
+            <p style="color: #718096; font-size: 14px;">
+              Any price difference for the current billing period will be prorated on your next invoice.
+            </p>
+          </div>
+        `,
+        recipients: adminEmails,
+      });
+    } catch (emailErr) {
+      console.warn(
+        `[Billing] Failed to send quantity update email for org ${organizationId}:`,
+        emailErr
+      );
+    }
+  } catch (error) {
+    console.error(
+      `[Billing] Failed to sync subscription quantity for org ${organizationId}:`,
+      error
+    );
+  }
 }
 
 /**
