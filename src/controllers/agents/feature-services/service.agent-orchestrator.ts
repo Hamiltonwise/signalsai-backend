@@ -42,6 +42,7 @@ import {
 } from "./service.task-creator";
 import { resolveLocationId } from "../../../utils/locationResolver";
 import { GooglePropertyModel } from "../../../models/GooglePropertyModel";
+import { fetchRybbitDailyComparison, fetchRybbitMonthlyComparison } from "../../../utils/rybbit/service.rybbit-data";
 import type {
   SummaryAgentOutput,
   OpportunityAgentOutput,
@@ -121,6 +122,19 @@ export async function processDailyAgent(
       dates.yesterday,
     );
 
+    // Fetch Rybbit website analytics (optional, non-blocking)
+    log(`  [DAILY] Fetching Rybbit website analytics for org ${organizationId}`);
+    const websiteAnalytics = await fetchRybbitDailyComparison(
+      organizationId,
+      dates.yesterday,
+      dates.dayBeforeYesterday,
+    );
+    if (websiteAnalytics) {
+      log(`  [DAILY] ✓ Rybbit data available`);
+    } else {
+      log(`  [DAILY] ⚠ No Rybbit data — proceeding with GBP only`);
+    }
+
     // Build payload and call Proofline agent
     const locationDisplayName = propertyIds.gbp?.[0]?.displayName || null;
     const payload = buildProoflinePayload({
@@ -130,6 +144,7 @@ export async function processDailyAgent(
       dayBeforeYesterdayData,
       yesterdayData,
       locationName: locationDisplayName,
+      websiteAnalytics,
     });
 
     log(`  [DAILY] Running Proofline agent via Claude directly`);
@@ -383,6 +398,32 @@ export async function processMonthlyAgents(
       );
     }
 
+    // Fetch Rybbit website analytics (optional, non-blocking)
+    log(`  [MONTHLY] Fetching Rybbit website analytics for org ${organizationId}`);
+    let websiteAnalyticsMonthly = null;
+    try {
+      const prevStart = new Date(new Date(startDate).getFullYear(), new Date(startDate).getMonth() - 1, 1);
+      const prevEnd = new Date(new Date(startDate).getFullYear(), new Date(startDate).getMonth(), 0);
+      const prevStartDate = prevStart.toISOString().split("T")[0];
+      const prevEndDate = prevEnd.toISOString().split("T")[0];
+
+      websiteAnalyticsMonthly = await fetchRybbitMonthlyComparison(
+        organizationId,
+        startDate,
+        endDate,
+        prevStartDate,
+        prevEndDate,
+      );
+
+      if (websiteAnalyticsMonthly) {
+        log(`  [MONTHLY] ✓ Rybbit data available (${prevStartDate}–${prevEndDate} vs ${startDate}–${endDate})`);
+      } else {
+        log(`  [MONTHLY] ⚠ No Rybbit data — proceeding with GBP + PMS only`);
+      }
+    } catch (rybbitError: any) {
+      log(`  [MONTHLY] ⚠ Error fetching Rybbit data: ${rybbitError.message}`);
+    }
+
     // Prepare raw data for potential DB storage
     const rawData = {
       organization_id: organizationId,
@@ -406,6 +447,7 @@ export async function processMonthlyAgents(
       endDate,
       monthData,
       pmsData,
+      websiteAnalytics: websiteAnalyticsMonthly,
     });
 
     const summaryResult = await runMonthlyAgent({

@@ -64,8 +64,9 @@ export function buildProoflinePayload(params: {
   dayBeforeYesterdayData: any;
   yesterdayData: any;
   locationName?: string | null;
+  websiteAnalytics?: { yesterday: any; dayBefore: any } | null;
 }): any {
-  const { domain, dates, yesterdayData, dayBeforeYesterdayData, locationName } = params;
+  const { domain, dates, yesterdayData, dayBeforeYesterdayData, locationName, websiteAnalytics } = params;
 
   // Profile: extract once from yesterday (fallback to dayBefore)
   const profile = extractProfile(yesterdayData) || extractProfile(dayBeforeYesterdayData) || {};
@@ -128,6 +129,7 @@ export function buildProoflinePayload(params: {
         },
         newReviews: allNewReviews,
       },
+      ...(websiteAnalytics ? { website_analytics: websiteAnalytics } : {}),
     },
   };
 }
@@ -194,6 +196,7 @@ export function buildSummaryPayload(params: {
   endDate: string;
   monthData: any;
   pmsData?: any;
+  websiteAnalytics?: { currentMonth: any; previousMonth: any } | null;
 }): any {
   return {
     agent: "summary",
@@ -206,6 +209,7 @@ export function buildSummaryPayload(params: {
     additional_data: {
       ...params.monthData,
       pms: params.pmsData || null,
+      ...(params.websiteAnalytics ? { website_analytics: params.websiteAnalytics } : {}),
     },
   };
 }
