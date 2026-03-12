@@ -11,6 +11,32 @@
  */
 
 // =====================================================================
+// PROOFLINE AGENT (DAILY)
+// =====================================================================
+
+/**
+ * Proofline Agent Output
+ *
+ * Consumed by: DashboardOverview (trajectory, title, explanation),
+ * ApprovedInsightCard (proof_type, value_change, metric_signal)
+ */
+export interface ProoflineAgentOutput {
+  title: string;
+  proof_type: "win" | "loss";
+  trajectory: string;
+  explanation: string;
+  value_change?: string;
+  metric_signal?: string;
+  source_type?: "visibility" | "engagement" | "reviews";
+  citations?: string[];
+}
+
+export interface ProoflineSkippedOutput {
+  skipped: true;
+  reason: string;
+}
+
+// =====================================================================
 // SUMMARY AGENT
 // =====================================================================
 

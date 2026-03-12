@@ -4,6 +4,7 @@ export interface IOrganization {
   id: number;
   name: string;
   domain: string | null;
+  organization_type: "health" | "saas" | null;
   subscription_tier: "DWY" | "DFY" | null;
   subscription_status: "active" | "inactive" | "trial" | "cancelled";
   subscription_started_at: Date | null;

@@ -10,7 +10,7 @@
 
 import Stripe from "stripe";
 import { db } from "../../database/connection";
-import { getStripe, getPriceId, getWebhookSecret } from "../../config/stripe";
+import { getStripe, getPriceIdByOrgType, getWebhookSecret } from "../../config/stripe";
 import {
   OrganizationModel,
   IOrganization,
@@ -58,14 +58,23 @@ export async function createCheckoutSession(
   isOnboarding: boolean = false
 ): Promise<CheckoutResult> {
   const stripe = getStripe();
-  // Single-product model: always use DFY price
-  const priceId = getPriceId("DFY");
   const appUrl = getAppUrl();
 
   const org = await OrganizationModel.findById(orgId);
   if (!org) {
     throw { statusCode: 404, message: "Organization not found" };
   }
+
+  // Resolve price by organization type (null defaults to health)
+  const orgType = org.organization_type || "health";
+  const priceId = getPriceIdByOrgType(orgType);
+
+  // Quantity = number of locations for this org (minimum 1)
+  const locationCountResult = await db("locations")
+    .where({ organization_id: orgId })
+    .count("id as count")
+    .first();
+  const locationCount = Math.max(Number(locationCountResult?.count) || 0, 1);
 
   // If org already has a Stripe customer, reuse it
   const customerOptions: Stripe.Checkout.SessionCreateParams["customer"] =
@@ -85,12 +94,14 @@ export async function createCheckoutSession(
     line_items: [
       {
         price: priceId,
-        quantity: 1,
+        quantity: locationCount,
       },
     ],
     metadata: {
       organization_id: orgId.toString(),
       tier: "DFY",
+      organization_type: orgType,
+      location_count: locationCount.toString(),
       is_onboarding: isOnboarding ? "true" : "false",
     },
     success_url: successUrl,

@@ -63,6 +63,14 @@ organizationsRoutes.patch(
   controller.updateTier
 );
 
+// PATCH /api/admin/organizations/:id/type — Set organization type (immutable once set)
+organizationsRoutes.patch(
+  "/:id/type",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.updateOrganizationType
+);
+
 // POST /api/admin/organizations/:id/create-project — Create website project for org
 organizationsRoutes.post(
   "/:id/create-project",

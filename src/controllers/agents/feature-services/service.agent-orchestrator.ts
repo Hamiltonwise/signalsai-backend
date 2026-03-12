@@ -21,7 +21,6 @@ import { log, logError, delay, isValidAgentOutput, logAgentOutput } from "../fea
 import { getDailyDates, getPreviousMonthRange, shouldRunMonthlyAgents } from "../feature-utils/dateHelpers";
 import {
   callAgentWebhook,
-  PROOFLINE_WEBHOOK,
   COPY_COMPANION_WEBHOOK,
 } from "./service.webhook-orchestrator";
 import { v4 as uuidv4 } from "uuid";
@@ -133,15 +132,34 @@ export async function processDailyAgent(
       locationName: locationDisplayName,
     });
 
-    log(`  [DAILY] Calling Proofline agent webhook`);
-    const agentOutput = await callAgentWebhook(
-      PROOFLINE_WEBHOOK,
-      payload,
-      "Proofline",
+    log(`  [DAILY] Running Proofline agent via Claude directly`);
+    const systemPrompt = loadPrompt("dailyAgents/Proofline");
+    const userMessage = JSON.stringify(payload, null, 2);
+
+    const result = await runAgent({
+      systemPrompt,
+      userMessage,
+      maxTokens: 4096,
+    });
+
+    log(
+      `  [DAILY] ✓ Proofline responded (${result.inputTokens} in / ${result.outputTokens} out)`
     );
+
+    const agentOutput = result.parsed;
 
     // Log and validate output
     logAgentOutput("Proofline", agentOutput);
+
+    // Handle skip case
+    if (agentOutput?.skipped) {
+      log(`  [DAILY] Proofline skipped: ${agentOutput.reason}`);
+      return {
+        success: false,
+        error: `Proofline skipped: ${agentOutput.reason}`,
+      };
+    }
+
     const isValid = isValidAgentOutput(agentOutput, "Proofline");
 
     if (!isValid) {

@@ -11,8 +11,8 @@ import Stripe from "stripe";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
-const STRIPE_DWY_PRICE_ID = process.env.STRIPE_DWY_PRICE_ID;
-const STRIPE_DFY_PRICE_ID = process.env.STRIPE_DFY_PRICE_ID;
+const STRIPE_HEALTH_PRICE_ID = process.env.STRIPE_HEALTH_PRICE_ID;
+const STRIPE_SAAS_PRICE_ID = process.env.STRIPE_SAAS_PRICE_ID;
 
 if (!STRIPE_SECRET_KEY) {
   console.warn(
@@ -51,13 +51,15 @@ export function getWebhookSecret(): string {
 }
 
 /**
- * Get the price ID for a given tier.
+ * Get the price ID based on organization type.
+ * Null defaults to 'health'.
  */
-export function getPriceId(tier: "DWY" | "DFY"): string {
-  const priceId = tier === "DFY" ? STRIPE_DFY_PRICE_ID : STRIPE_DWY_PRICE_ID;
+export function getPriceIdByOrgType(orgType: "health" | "saas" | null): string {
+  const resolvedType = orgType || "health";
+  const priceId = resolvedType === "saas" ? STRIPE_SAAS_PRICE_ID : STRIPE_HEALTH_PRICE_ID;
   if (!priceId) {
     throw new Error(
-      `Stripe price ID for ${tier} is not configured. Set STRIPE_${tier}_PRICE_ID in environment variables.`
+      `Stripe price ID for org type "${resolvedType}" is not configured. Set STRIPE_${resolvedType.toUpperCase()}_PRICE_ID in environment variables.`
     );
   }
   return priceId;

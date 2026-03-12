@@ -252,6 +252,56 @@ export async function updateTier(
 }
 
 /**
+ * PATCH /api/admin/organizations/:id/type
+ * Set organization type (health or saas). Immutable once set.
+ */
+export async function updateOrganizationType(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id);
+    const { type } = req.body;
+
+    if (isNaN(orgId)) {
+      return res.status(400).json({ error: "Invalid organization ID" });
+    }
+
+    if (!type || !["health", "saas"].includes(type)) {
+      return res
+        .status(400)
+        .json({ error: "Type must be either 'health' or 'saas'" });
+    }
+
+    const organization = await OrganizationModel.findById(orgId);
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    // Immutable once set
+    if (organization.organization_type) {
+      return res.status(409).json({
+        success: false,
+        error: `Organization type is already set to "${organization.organization_type}" and cannot be changed.`,
+      });
+    }
+
+    await OrganizationModel.updateById(orgId, {
+      organization_type: type,
+      updated_at: new Date(),
+    } as any);
+
+    return res.json({
+      success: true,
+      type,
+      message: `Organization type set to "${type}".`,
+    });
+  } catch (error) {
+    return handleError(res, error, "Update organization type");
+  }
+}
+
+/**
  * GET /api/admin/organizations/:id/locations
  * Fetch all locations for an organization with their Google Properties
  */
