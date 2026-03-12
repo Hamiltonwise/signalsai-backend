@@ -11,6 +11,7 @@ import dns from "dns";
 import { promisify } from "util";
 import { db } from "../../../database/connection";
 import { refreshCustomDomainCache } from "../../../middleware/corsCustomDomains";
+import { provisionRybbitSite } from "./service.rybbit";
 
 const resolve4 = promisify(dns.resolve4);
 const PROJECTS_TABLE = "website_builder.projects";
@@ -173,6 +174,9 @@ export async function verifyDomain(
 
     // Immediately update the CORS cache so the new domain is allowed
     refreshCustomDomainCache();
+
+    // Provision Rybbit analytics site (non-blocking)
+    provisionRybbitSite(projectId, project.custom_domain).catch(() => {});
   }
 
   return {
