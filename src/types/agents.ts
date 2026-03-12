@@ -5,6 +5,7 @@
 export interface ProoflineAgentData {
   title: string;
   proof_type: string;
+  trajectory?: string;
   explanation: string;
   value_change?: number | string;
   metric_signal?: string;

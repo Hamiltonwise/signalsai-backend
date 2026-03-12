@@ -119,6 +119,26 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
             )}
           </div>
         )}
+
+        {/* Subscribe Banner — persistent for admin-granted users without Stripe */}
+        {!isLockedOut && billingStatus?.isAdminGranted && !isOnSettingsPage && (
+          <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
+            <div className="flex items-center gap-3">
+              <CreditCard size={16} className="text-amber-600 shrink-0" />
+              <p className="text-sm text-amber-800 font-medium">
+                You haven't subscribed to Alloro yet. Head to Settings &gt;
+                Billing to get started.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/settings")}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 transition-colors shrink-0"
+            >
+              <CreditCard size={14} />
+              Subscribe
+            </button>
+          </div>
+        )}
         {children}
       </main>
 

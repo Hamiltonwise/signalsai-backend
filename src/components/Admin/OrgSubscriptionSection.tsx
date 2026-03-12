@@ -17,6 +17,7 @@ import {
   adminRemovePaymentMethod,
   adminLockoutOrganization,
   adminUnlockOrganization,
+  adminUpdateOrganizationType,
   type AdminOrganizationDetail,
 } from "../../api/admin-organizations";
 import { fetchWebsites, linkWebsiteToOrganization } from "../../api/websites";
@@ -36,6 +37,7 @@ export function OrgSubscriptionSection({
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isRemovingPayment, setIsRemovingPayment] = useState(false);
   const [isLockoutLoading, setIsLockoutLoading] = useState(false);
+  const [isSavingType, setIsSavingType] = useState(false);
 
   // Attach Website state
   const [showAttachDropdown, setShowAttachDropdown] = useState(false);
@@ -177,6 +179,37 @@ export function OrgSubscriptionSection({
     }
   };
 
+  const handleSetOrgType = async (type: "health" | "saas") => {
+    const label = type === "saas" ? "SaaS" : "Health";
+    const confirmed = await confirm({
+      title: `Set organization type to "${label}"?`,
+      message:
+        "This cannot be changed later. Organization type determines the Stripe pricing used for this account.",
+      confirmLabel: `Set to ${label}`,
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    setIsSavingType(true);
+    try {
+      const response = await adminUpdateOrganizationType(orgId, type);
+      if (response.success) {
+        toast.success(response.message);
+        await onRefresh();
+      } else {
+        toast.error((response as any).error || "Failed to set organization type");
+      }
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.error ||
+        error?.message ||
+        "Failed to set organization type";
+      toast.error(message);
+    } finally {
+      setIsSavingType(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -186,6 +219,34 @@ export function OrgSubscriptionSection({
       <div className="flex items-center gap-2 mb-4">
         <Crown className="h-5 w-5 text-alloro-orange" />
         <h3 className="font-semibold text-gray-900">Subscription & Project</h3>
+      </div>
+
+      {/* Organization Type */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-sm text-gray-600">Type:</span>
+        {org.organization_type ? (
+          <span className="inline-flex items-center px-2.5 py-1 text-xs font-bold rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+            {org.organization_type === "saas" ? "SaaS" : "Health"}
+          </span>
+        ) : (
+          <select
+            disabled={isSavingType}
+            defaultValue=""
+            onChange={(e) => {
+              if (e.target.value) {
+                handleSetOrgType(e.target.value as "health" | "saas");
+              }
+            }}
+            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-alloro-orange/50 disabled:opacity-50"
+          >
+            <option value="" disabled>
+              Health (default)
+            </option>
+            <option value="health">Health</option>
+            <option value="saas">SaaS</option>
+          </select>
+        )}
+        {isSavingType && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
       </div>
 
       {/* Billing Status Row */}

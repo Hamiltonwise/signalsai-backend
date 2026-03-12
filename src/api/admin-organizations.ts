@@ -16,6 +16,7 @@ export interface AdminOrganization {
   id: number;
   name: string;
   domain: string | null;
+  organization_type: "health" | "saas" | null;
   subscription_tier: "DWY" | "DFY" | null;
   subscription_status: string | null;
   stripe_customer_id: string | null;
@@ -50,6 +51,7 @@ export interface AdminOrganizationDetail {
   id: number;
   name: string;
   domain: string | null;
+  organization_type: "health" | "saas" | null;
   subscription_tier: "DWY" | "DFY" | null;
   subscription_status: string | null;
   stripe_customer_id: string | null;
@@ -148,6 +150,19 @@ export async function adminUpdateOrganizationTier(
   return apiPatch({
     path: `/admin/organizations/${orgId}/tier`,
     passedData: { tier },
+  });
+}
+
+/**
+ * Set organization type (health or saas). Immutable once set.
+ */
+export async function adminUpdateOrganizationType(
+  orgId: number,
+  type: "health" | "saas"
+): Promise<{ success: boolean; type: string; message: string }> {
+  return apiPatch({
+    path: `/admin/organizations/${orgId}/type`,
+    passedData: { type },
   });
 }
 
