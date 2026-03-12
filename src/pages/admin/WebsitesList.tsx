@@ -50,6 +50,9 @@ export default function WebsitesList() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  // Favicon load failure tracking
+  const [failedFavicons, setFailedFavicons] = useState<Set<string>>(new Set());
+
   // Inline display-name editing
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [editingNameValue, setEditingNameValue] = useState("");
@@ -479,6 +482,13 @@ export default function WebsitesList() {
                     >
                       {isProcessingStatus(website.status) ? (
                         <Loader2 className={`w-5 h-5 ${getIconColor(website.status)} animate-spin`} />
+                      ) : website.status === "LIVE" && !failedFavicons.has(siteDomain) ? (
+                        <img
+                          src={`https://www.google.com/s2/favicons?domain=${siteDomain}&sz=64`}
+                          alt=""
+                          className="w-5 h-5 rounded-sm"
+                          onError={() => setFailedFavicons(prev => new Set(prev).add(siteDomain))}
+                        />
                       ) : (
                         <Globe className={`w-5 h-5 ${getIconColor(website.status)}`} />
                       )}
