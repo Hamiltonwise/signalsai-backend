@@ -226,14 +226,19 @@ export async function getSubscriptionStatus(
       const sub = await stripe.subscriptions.retrieve(
         org.stripe_subscription_id
       ) as any;
-      if (sub.current_period_end) {
-        currentPeriodEnd = new Date(
-          sub.current_period_end * 1000
-        ).toISOString();
+      // cancel_at is a timestamp when cancellation is scheduled (via portal)
+      // cancel_at_period_end is a boolean (via API direct cancel)
+      // current_period_end was removed in Stripe SDK v20 — use cancel_at or billing_cycle_anchor
+      const isCancelling = sub.cancel_at_period_end === true || !!sub.cancel_at;
+      cancelAtPeriodEnd = isCancelling;
+
+      if (sub.cancel_at) {
+        currentPeriodEnd = new Date(sub.cancel_at * 1000).toISOString();
+      } else if (sub.current_period_end) {
+        currentPeriodEnd = new Date(sub.current_period_end * 1000).toISOString();
       }
-      cancelAtPeriodEnd = sub.cancel_at_period_end === true;
-    } catch {
-      // Stripe fetch failed — return what we have
+    } catch (err: any) {
+      console.error(`[Billing] Failed to fetch subscription ${org.stripe_subscription_id}:`, err?.message || err);
     }
   }
 
@@ -342,8 +347,8 @@ export async function getBillingDetails(
       };
     }
 
-    // Cancellation state
-    result.cancelAtPeriodEnd = sub.cancel_at_period_end === true;
+    // Cancellation state — cancel_at (timestamp) or cancel_at_period_end (boolean)
+    result.cancelAtPeriodEnd = sub.cancel_at_period_end === true || !!sub.cancel_at;
     result.canceledAt = sub.canceled_at
       ? new Date(sub.canceled_at * 1000).toISOString()
       : null;
