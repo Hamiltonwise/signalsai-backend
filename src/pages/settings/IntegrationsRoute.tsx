@@ -5,7 +5,6 @@ import {
   Shield,
   Lock,
   Activity,
-  Link2,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useSettingsScopes, usePmsStatus } from "../../hooks/queries/useSettingsQueries";
