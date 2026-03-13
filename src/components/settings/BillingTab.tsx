@@ -26,7 +26,6 @@ import {
   Users,
   Lock,
   ExternalLink,
-  Clock,
   Tag,
   Receipt,
   XCircle,
