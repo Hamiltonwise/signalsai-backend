@@ -213,22 +213,22 @@ export const BillingTab: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Cancelling at Period End Banner */}
+      {/* Cancelled — pending period end */}
       {isCancellingAtPeriodEnd && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex items-start gap-4"
+          className="bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-4"
         >
-          <div className="p-2 bg-amber-100 rounded-xl shrink-0">
-            <Clock size={20} className="text-amber-600" />
+          <div className="p-2 bg-red-100 rounded-xl shrink-0">
+            <XCircle size={20} className="text-red-500" />
           </div>
           <div className="flex-1">
-            <h3 className="text-amber-900 font-bold text-sm">
-              Subscription Ending
+            <h3 className="text-red-900 font-bold text-sm">
+              Subscription Cancelled
             </h3>
-            <p className="text-amber-700 text-sm mt-1">
-              Your subscription will end on{" "}
+            <p className="text-red-700 text-sm mt-1">
+              Your subscription has been cancelled. You still have access until{" "}
               <strong>
                 {billing?.currentPeriodEnd
                   ? new Date(billing.currentPeriodEnd).toLocaleDateString(
@@ -237,12 +237,12 @@ export const BillingTab: React.FC = () => {
                     )
                   : "the end of your billing period"}
               </strong>
-              . You can resume anytime before then.
+              .
             </p>
             <button
               onClick={handleManageSubscription}
               disabled={isPortalLoading}
-              className="mt-3 px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+              className="mt-3 px-4 py-2 bg-alloro-orange text-white text-xs font-bold rounded-lg hover:bg-alloro-orange/90 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
             >
               {isPortalLoading ? "Opening..." : "Resume Subscription"}
             </button>
@@ -270,10 +270,10 @@ export const BillingTab: React.FC = () => {
                     <Crown size={18} className="text-white" />
                   </div>
                   {isCancellingAtPeriodEnd ? (
-                    <div className="px-2.5 py-1 bg-amber-500/30 border border-amber-300/40 rounded-full flex items-center gap-1.5">
-                      <Clock size={12} className="text-white" />
+                    <div className="px-2.5 py-1 bg-red-500/40 border border-red-300/40 rounded-full flex items-center gap-1.5">
+                      <XCircle size={12} className="text-white" />
                       <span className="text-white text-[10px] font-black uppercase tracking-wider">
-                        Cancelling
+                        Cancelled
                       </span>
                     </div>
                   ) : (
@@ -290,7 +290,7 @@ export const BillingTab: React.FC = () => {
                 </h3>
                 <p className="text-white/60 text-sm font-medium">
                   {isCancellingAtPeriodEnd
-                    ? "Access until end of billing period"
+                    ? `Access until ${billing?.currentPeriodEnd ? new Date(billing.currentPeriodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "end of billing period"}`
                     : "Your active subscription"}
                 </p>
               </div>
