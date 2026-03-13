@@ -71,6 +71,7 @@ export async function listAllReviewsInRangeREST(
       stars: numericRating,
       text: r.comment || null,
       reviewerName: r.reviewer?.displayName || null,
+      reviewerPhotoUrl: r.reviewer?.profilePhotoUrl || null,
       isAnonymous: r.reviewer?.isAnonymous || false,
       createdAt: r.createTime || null,
       hasReply: !!(r.reviewReply?.comment),

@@ -85,11 +85,11 @@ export async function createCheckoutSession(
 
   const successUrl = isOnboarding
     ? `${appUrl}/onboarding/payment-success?session_id={CHECKOUT_SESSION_ID}`
-    : `${appUrl}/settings?billing=success&session_id={CHECKOUT_SESSION_ID}`;
+    : `${appUrl}/settings/billing?billing=success&session_id={CHECKOUT_SESSION_ID}`;
 
   const cancelUrl = isOnboarding
     ? `${appUrl}/onboarding/payment-cancelled`
-    : `${appUrl}/settings?billing=cancelled`;
+    : `${appUrl}/settings/billing?cancelled=true`;
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "subscription",
@@ -152,7 +152,7 @@ export async function createPortalSession(
 
   const session = await stripe.billingPortal.sessions.create({
     customer: stripeCustomerId,
-    return_url: `${appUrl}/settings`,
+    return_url: `${appUrl}/settings/billing`,
   });
 
   return { url: session.url };

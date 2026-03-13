@@ -12,6 +12,7 @@ import {
 } from "./processors/skillTrigger.processor";
 import { processWorksDigest } from "./processors/worksDigest.processor";
 import { processSeoBulkGenerate } from "./processors/seoBulkGenerate.processor";
+import { processReviewSync } from "./processors/reviewSync.processor";
 import { getMindsQueue } from "./queues";
 
 const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
@@ -162,8 +163,21 @@ async function setupSkillTriggerSchedule(): Promise<void> {
   }
 }
 
+// Review Sync worker
+const reviewSyncWorker = new Worker(
+  "minds-review-sync",
+  async (job) => {
+    await processReviewSync(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -186,6 +200,7 @@ async function shutdown(): Promise<void> {
   await skillTriggerWorker.close();
   await worksDigestWorker.close();
   await seoBulkGenerateWorker.close();
+  await reviewSyncWorker.close();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
   process.exit(0);
@@ -215,8 +230,30 @@ async function setupWorksDigestSchedule(): Promise<void> {
   }
 }
 
+// Set up review sync schedule (daily — 4 AM UTC)
+async function setupReviewSyncSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("review-sync");
+    await queue.add(
+      "daily-review-sync",
+      {},
+      {
+        repeat: {
+          pattern: "0 4 * * *", // 4 AM UTC daily
+          tz: "UTC",
+        },
+        jobId: "daily-review-sync",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily review sync job scheduled (4 AM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up review sync schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
+setupReviewSyncSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");

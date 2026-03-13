@@ -132,6 +132,32 @@ router.patch("/templates/:templateId/post-blocks/:postBlockId", controller.updat
 router.delete("/templates/:templateId/post-blocks/:postBlockId", controller.deletePostBlock);
 
 // =====================================================================
+// TEMPLATE REVIEW BLOCKS (must come before /templates/:templateId)
+// =====================================================================
+
+// GET  /templates/:templateId/review-blocks — List review blocks
+router.get("/templates/:templateId/review-blocks", controller.listReviewBlocks);
+
+// POST /templates/:templateId/review-blocks — Create review block
+router.post("/templates/:templateId/review-blocks", controller.createReviewBlock);
+
+// GET  /templates/:templateId/review-blocks/:reviewBlockId — Get review block
+router.get("/templates/:templateId/review-blocks/:reviewBlockId", controller.getReviewBlock);
+
+// PATCH /templates/:templateId/review-blocks/:reviewBlockId — Update review block
+router.patch("/templates/:templateId/review-blocks/:reviewBlockId", controller.updateReviewBlock);
+
+// DELETE /templates/:templateId/review-blocks/:reviewBlockId — Delete review block
+router.delete("/templates/:templateId/review-blocks/:reviewBlockId", controller.deleteReviewBlock);
+
+// =====================================================================
+// REVIEW SYNC
+// =====================================================================
+
+// POST /reviews/sync — Trigger manual review sync
+router.post("/reviews/sync", controller.triggerReviewSync);
+
+// =====================================================================
 // TEMPLATE MENU TEMPLATES (must come before /templates/:templateId)
 // =====================================================================
 

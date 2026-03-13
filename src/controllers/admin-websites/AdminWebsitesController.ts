@@ -31,6 +31,7 @@ import * as menuTemplateManager from "./feature-services/service.menu-template-m
 import * as postTaxonomyManager from "./feature-services/service.post-taxonomy-manager";
 import * as postManager from "./feature-services/service.post-manager";
 import * as menuManager from "./feature-services/service.menu-manager";
+import * as reviewBlockManager from "./feature-services/service.review-block-manager";
 import { db } from "../../database/connection";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
@@ -2711,5 +2712,94 @@ export async function getAllSeoMeta(req: Request, res: Response): Promise<Respon
   } catch (error: any) {
     console.error("[Admin Websites] Error fetching SEO meta:", error);
     return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
+// REVIEW BLOCKS
+// =====================================================================
+
+/** GET /templates/:templateId/review-blocks */
+export async function listReviewBlocks(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId } = req.params;
+    const result = await reviewBlockManager.listReviewBlocks(templateId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.reviewBlocks });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing review blocks:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** POST /templates/:templateId/review-blocks */
+export async function createReviewBlock(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId } = req.params;
+    const result = await reviewBlockManager.createReviewBlock(templateId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.reviewBlock });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating review block:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /templates/:templateId/review-blocks/:reviewBlockId */
+export async function getReviewBlock(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, reviewBlockId } = req.params;
+    const reviewBlock = await reviewBlockManager.getReviewBlock(templateId, reviewBlockId);
+    if (!reviewBlock) return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Review block not found" });
+    return res.json({ success: true, data: reviewBlock });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error getting review block:", error);
+    return res.status(500).json({ success: false, error: "GET_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /templates/:templateId/review-blocks/:reviewBlockId */
+export async function updateReviewBlock(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, reviewBlockId } = req.params;
+    const result = await reviewBlockManager.updateReviewBlock(templateId, reviewBlockId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.reviewBlock });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating review block:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /templates/:templateId/review-blocks/:reviewBlockId */
+export async function deleteReviewBlock(req: Request, res: Response): Promise<Response> {
+  try {
+    const { templateId, reviewBlockId } = req.params;
+    const result = await reviewBlockManager.deleteReviewBlock(templateId, reviewBlockId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting review block:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+/** POST /reviews/sync — Trigger manual review sync for the authenticated user's org */
+export async function triggerReviewSync(req: Request, res: Response): Promise<Response> {
+  try {
+    const orgId = (req as any).organizationId;
+    if (!orgId) {
+      return res.status(400).json({ success: false, error: "NO_ORG", message: "Organization context required" });
+    }
+
+    const { getMindsQueue } = await import("../../workers/queues");
+    const queue = getMindsQueue("review-sync");
+    const job = await queue.add("manual-review-sync", { organizationId: orgId });
+
+    console.log(`[Admin Websites] Triggered manual review sync for org ${orgId}, job ${job.id}`);
+    return res.json({ success: true, data: { jobId: job.id } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error triggering review sync:", error);
+    return res.status(500).json({ success: false, error: "SYNC_ERROR", message: error?.message });
   }
 }
