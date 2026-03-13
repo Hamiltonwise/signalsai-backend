@@ -42,6 +42,14 @@ billingRoutes.get(
   BillingController.getStatus
 );
 
+// GET /api/billing/details — Get detailed billing info (invoices, payment method, etc.)
+billingRoutes.get(
+  "/details",
+  authenticateToken,
+  rbacMiddleware,
+  BillingController.getDetails
+);
+
 // ─── Public Webhook Endpoint ───
 // Uses raw body parser for Stripe signature verification.
 // No auth — verified by Stripe webhook signature.

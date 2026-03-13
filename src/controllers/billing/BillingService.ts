@@ -30,6 +30,38 @@ export interface BillingStatus {
   isLockedOut: boolean;
   stripeCustomerId: string | null;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+}
+
+export interface BillingPaymentMethod {
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
+export interface BillingInvoice {
+  id: string;
+  date: string;
+  amount: number;
+  currency: string;
+  status: string;
+  coupon: string | null;
+  hostedInvoiceUrl: string | null;
+}
+
+export interface BillingDiscount {
+  couponName: string;
+  percentOff: number | null;
+  amountOff: number | null;
+}
+
+export interface BillingDetails {
+  paymentMethod: BillingPaymentMethod | null;
+  invoices: BillingInvoice[];
+  discount: BillingDiscount | null;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: string | null;
 }
 
 export interface CheckoutResult {
@@ -185,8 +217,9 @@ export async function getSubscriptionStatus(
   const isAdminGranted =
     !hasStripe && org.subscription_status === "active";
 
-  // If we have a Stripe subscription, fetch period end from Stripe
+  // If we have a Stripe subscription, fetch period end + cancel state from Stripe
   let currentPeriodEnd: string | null = null;
+  let cancelAtPeriodEnd = false;
   if (org.stripe_subscription_id) {
     try {
       const stripe = getStripe();
@@ -198,6 +231,7 @@ export async function getSubscriptionStatus(
           sub.current_period_end * 1000
         ).toISOString();
       }
+      cancelAtPeriodEnd = sub.cancel_at_period_end === true;
     } catch {
       // Stripe fetch failed — return what we have
     }
@@ -211,7 +245,111 @@ export async function getSubscriptionStatus(
     isLockedOut,
     stripeCustomerId: org.stripe_customer_id,
     currentPeriodEnd,
+    cancelAtPeriodEnd,
   };
+}
+
+// ─── Billing Details ───
+
+/**
+ * Get detailed billing information for an organization.
+ * Fetches payment method, invoices, discount, and cancellation state from Stripe.
+ * Returns null-safe defaults for orgs without Stripe.
+ */
+export async function getBillingDetails(
+  orgId: number
+): Promise<BillingDetails> {
+  const org = (await db("organizations")
+    .where({ id: orgId })
+    .select("stripe_customer_id", "stripe_subscription_id")
+    .first()) as any;
+
+  if (!org) {
+    throw { statusCode: 404, message: "Organization not found" };
+  }
+
+  const result: BillingDetails = {
+    paymentMethod: null,
+    invoices: [],
+    discount: null,
+    cancelAtPeriodEnd: false,
+    canceledAt: null,
+  };
+
+  if (!org.stripe_customer_id) {
+    return result;
+  }
+
+  const stripe = getStripe();
+
+  // Fetch payment method, invoices, and subscription in parallel
+  const [invoicesResult, subscriptionResult] = await Promise.allSettled([
+    stripe.invoices.list({
+      customer: org.stripe_customer_id,
+      limit: 12,
+      expand: ["data.discount"],
+    }),
+    org.stripe_subscription_id
+      ? stripe.subscriptions.retrieve(org.stripe_subscription_id, {
+          expand: ["default_payment_method", "discount"],
+        })
+      : Promise.resolve(null),
+  ]);
+
+  // Extract invoices
+  if (invoicesResult.status === "fulfilled" && invoicesResult.value) {
+    result.invoices = invoicesResult.value.data.map((inv) => {
+      let coupon: string | null = null;
+      const discount = (inv as any).discount;
+      if (discount?.coupon) {
+        coupon = discount.coupon.name || discount.coupon.id;
+      }
+      return {
+        id: inv.id,
+        date: new Date((inv.created ?? 0) * 1000).toISOString(),
+        amount: (inv.amount_paid ?? 0) / 100,
+        currency: inv.currency ?? "usd",
+        status: inv.status ?? "unknown",
+        coupon,
+        hostedInvoiceUrl: inv.hosted_invoice_url ?? null,
+      };
+    });
+  }
+
+  // Extract subscription details (payment method, discount, cancel state)
+  if (subscriptionResult.status === "fulfilled" && subscriptionResult.value) {
+    const sub = subscriptionResult.value as any;
+
+    // Payment method
+    const pm = sub.default_payment_method;
+    if (pm && typeof pm === "object" && pm.card) {
+      result.paymentMethod = {
+        brand: pm.card.brand ?? "unknown",
+        last4: pm.card.last4 ?? "????",
+        expMonth: pm.card.exp_month ?? 0,
+        expYear: pm.card.exp_year ?? 0,
+      };
+    }
+
+    // Active discount/coupon
+    if (sub.discount?.coupon) {
+      result.discount = {
+        couponName: sub.discount.coupon.name || sub.discount.coupon.id,
+        percentOff: sub.discount.coupon.percent_off ?? null,
+        amountOff: sub.discount.coupon.amount_off
+          ? sub.discount.coupon.amount_off / 100
+          : null,
+      };
+    }
+
+    // Cancellation state
+    result.cancelAtPeriodEnd = sub.cancel_at_period_end === true;
+    result.canceledAt = sub.canceled_at
+      ? new Date(sub.canceled_at * 1000).toISOString()
+      : null;
+  }
+
+  return result;
 }
 
 // ─── Webhook Event Processing ───

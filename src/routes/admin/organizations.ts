@@ -2,6 +2,7 @@ import express from "express";
 import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";
 import * as controller from "../../controllers/admin-organizations/AdminOrganizationsController";
+import * as BillingController from "../../controllers/billing/BillingController";
 
 const organizationsRoutes = express.Router();
 
@@ -28,6 +29,15 @@ organizationsRoutes.get(
   authenticateToken,
   superAdminMiddleware,
   controller.getOrgLocations
+);
+
+// GET /api/admin/organizations/:id/billing — Billing details from Stripe
+// MUST be before /:id to avoid matching as the :id param
+organizationsRoutes.get(
+  "/:id/billing",
+  authenticateToken,
+  superAdminMiddleware,
+  BillingController.getAdminDetails
 );
 
 // GET /api/admin/organizations/:id/business-data — Org + location business data

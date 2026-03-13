@@ -132,6 +132,69 @@ export async function getStatus(
 }
 
 /**
+ * GET /api/billing/details
+ *
+ * Get detailed billing info: payment method, invoices, discount, cancel state.
+ */
+export async function getDetails(
+  req: RBACRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const organizationId = req.organizationId;
+    if (!organizationId) {
+      res.json({
+        success: true,
+        paymentMethod: null,
+        invoices: [],
+        discount: null,
+        cancelAtPeriodEnd: false,
+        canceledAt: null,
+      });
+      return;
+    }
+
+    const details = await BillingService.getBillingDetails(organizationId);
+    res.json({ success: true, ...details });
+  } catch (error: any) {
+    console.error("[Billing] Details error:", error?.message || error);
+    const statusCode = error?.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      error: error?.message || "Failed to get billing details",
+    });
+  }
+}
+
+/**
+ * GET /api/admin/organizations/:id/billing
+ *
+ * Admin endpoint: get billing details for any organization.
+ */
+export async function getAdminDetails(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const orgId = parseInt(req.params.id, 10);
+    if (isNaN(orgId)) {
+      res.status(400).json({ success: false, error: "Invalid organization ID" });
+      return;
+    }
+
+    const details = await BillingService.getBillingDetails(orgId);
+    res.json({ success: true, ...details });
+  } catch (error: any) {
+    console.error("[Billing] Admin details error:", error?.message || error);
+    const statusCode = error?.statusCode || 500;
+    res.status(statusCode).json({
+      success: false,
+      error: error?.message || "Failed to get billing details",
+    });
+  }
+}
+
+/**
  * POST /api/billing/webhook
  *
  * Handle Stripe webhook events.
