@@ -18,6 +18,39 @@ export interface BillingStatus {
   isLockedOut: boolean;
   stripeCustomerId: string | null;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+}
+
+export interface BillingPaymentMethod {
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
+export interface BillingInvoice {
+  id: string;
+  date: string;
+  amount: number;
+  currency: string;
+  status: string;
+  coupon: string | null;
+  hostedInvoiceUrl: string | null;
+}
+
+export interface BillingDiscount {
+  couponName: string;
+  percentOff: number | null;
+  amountOff: number | null;
+}
+
+export interface BillingDetails {
+  success: boolean;
+  paymentMethod: BillingPaymentMethod | null;
+  invoices: BillingInvoice[];
+  discount: BillingDiscount | null;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: string | null;
 }
 
 export interface CheckoutResponse {
@@ -67,4 +100,11 @@ export async function createPortalSession(): Promise<PortalResponse> {
     path: "/billing/portal",
     passedData: {},
   });
+}
+
+/**
+ * Get detailed billing info: payment method, invoices, discount, cancel state.
+ */
+export async function getBillingDetails(): Promise<BillingDetails> {
+  return apiGet({ path: "/billing/details" });
 }

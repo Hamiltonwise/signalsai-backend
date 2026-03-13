@@ -277,6 +277,47 @@ export async function adminRemovePaymentMethod(
 }
 
 /**
+ * Get detailed billing info for an organization (Stripe data).
+ */
+export interface AdminBillingPaymentMethod {
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
+export interface AdminBillingInvoice {
+  id: string;
+  date: string;
+  amount: number;
+  currency: string;
+  status: string;
+  coupon: string | null;
+  hostedInvoiceUrl: string | null;
+}
+
+export interface AdminBillingDiscount {
+  couponName: string;
+  percentOff: number | null;
+  amountOff: number | null;
+}
+
+export interface AdminBillingDetails {
+  success: boolean;
+  paymentMethod: AdminBillingPaymentMethod | null;
+  invoices: AdminBillingInvoice[];
+  discount: AdminBillingDiscount | null;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: string | null;
+}
+
+export async function adminGetBillingDetails(
+  orgId: number
+): Promise<AdminBillingDetails> {
+  return apiGet({ path: `/admin/organizations/${orgId}/billing` });
+}
+
+/**
  * Start a pilot session as a specific user
  */
 export async function adminStartPilotSession(

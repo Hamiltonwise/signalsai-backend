@@ -9,6 +9,12 @@ import {
   Link2,
   Loader2,
   ChevronDown,
+  Tag,
+  Clock,
+  ExternalLink,
+  Receipt,
+  XCircle,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useConfirm } from "../ui/ConfirmModal";
@@ -18,7 +24,9 @@ import {
   adminLockoutOrganization,
   adminUnlockOrganization,
   adminUpdateOrganizationType,
+  adminGetBillingDetails,
   type AdminOrganizationDetail,
+  type AdminBillingDetails,
 } from "../../api/admin-organizations";
 import { fetchWebsites, linkWebsiteToOrganization } from "../../api/websites";
 
@@ -38,6 +46,19 @@ export function OrgSubscriptionSection({
   const [isRemovingPayment, setIsRemovingPayment] = useState(false);
   const [isLockoutLoading, setIsLockoutLoading] = useState(false);
   const [isSavingType, setIsSavingType] = useState(false);
+  const [billingDetails, setBillingDetails] = useState<AdminBillingDetails | null>(null);
+  const [showInvoices, setShowInvoices] = useState(false);
+
+  // Fetch billing details if org has Stripe
+  useEffect(() => {
+    if (org.stripe_customer_id) {
+      adminGetBillingDetails(orgId)
+        .then((data) => {
+          if (data.success !== false) setBillingDetails(data);
+        })
+        .catch(() => {});
+    }
+  }, [org.stripe_customer_id, orgId]);
 
   // Attach Website state
   const [showAttachDropdown, setShowAttachDropdown] = useState(false);
@@ -258,6 +279,14 @@ export function OrgSubscriptionSection({
           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-red-50 text-red-700 border border-red-200">
             <Lock className="h-3 w-3" /> Locked Out
           </span>
+        ) : org.subscription_status === "cancelled" ? (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-red-50 text-red-700 border border-red-200">
+            <XCircle className="h-3 w-3" /> Cancelled
+          </span>
+        ) : org.stripe_customer_id && billingDetails?.cancelAtPeriodEnd ? (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+            <Clock className="h-3 w-3" /> Cancelling at Period End
+          </span>
         ) : org.stripe_customer_id ? (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-green-50 text-green-700 border border-green-200">
             ✓ Stripe Active
@@ -278,6 +307,117 @@ export function OrgSubscriptionSection({
           </span>
         )}
       </div>
+
+      {/* Stripe Billing Details */}
+      {billingDetails && org.stripe_customer_id && (
+        <div className="mb-4 space-y-3">
+          {/* Payment Method + Coupon */}
+          <div className="flex flex-wrap items-center gap-3">
+            {billingDetails.paymentMethod ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-full">
+                <CreditCard className="h-3 w-3" />
+                {billingDetails.paymentMethod.brand.charAt(0).toUpperCase() + billingDetails.paymentMethod.brand.slice(1)} •••• {billingDetails.paymentMethod.last4}
+                <span className="text-gray-400 ml-1">
+                  {String(billingDetails.paymentMethod.expMonth).padStart(2, "0")}/{billingDetails.paymentMethod.expYear}
+                </span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-full">
+                <CreditCard className="h-3 w-3" />
+                No payment method
+              </span>
+            )}
+
+            {billingDetails.discount && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-full">
+                <Tag className="h-3 w-3" />
+                {billingDetails.discount.couponName}
+                {billingDetails.discount.percentOff
+                  ? ` (${billingDetails.discount.percentOff}% off)`
+                  : billingDetails.discount.amountOff
+                    ? ` ($${billingDetails.discount.amountOff} off)`
+                    : ""}
+              </span>
+            )}
+
+            {billingDetails.canceledAt && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-full">
+                Cancelled {new Date(billingDetails.canceledAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </span>
+            )}
+          </div>
+
+          {/* Invoice History (collapsible) */}
+          {billingDetails.invoices.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowInvoices(!showInvoices)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <Receipt className="h-3.5 w-3.5" />
+                Invoices ({billingDetails.invoices.length})
+                <ChevronRight
+                  className={`h-3 w-3 transition-transform ${showInvoices ? "rotate-90" : ""}`}
+                />
+              </button>
+
+              {showInvoices && (
+                <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-3 py-2 font-semibold text-gray-500">Date</th>
+                        <th className="px-3 py-2 font-semibold text-gray-500">Amount</th>
+                        <th className="px-3 py-2 font-semibold text-gray-500">Status</th>
+                        <th className="px-3 py-2 font-semibold text-gray-500">Coupon</th>
+                        <th className="px-3 py-2 font-semibold text-gray-500">Link</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {billingDetails.invoices.map((inv) => (
+                        <tr key={inv.id} className="border-b border-gray-100 last:border-0">
+                          <td className="px-3 py-2 text-gray-600">
+                            {new Date(inv.date).toLocaleDateString("en-US", {
+                              month: "short", day: "numeric", year: "numeric",
+                            })}
+                          </td>
+                          <td className="px-3 py-2 font-semibold text-gray-900">
+                            ${inv.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              inv.status === "paid"
+                                ? "bg-green-50 text-green-700"
+                                : inv.status === "open"
+                                  ? "bg-amber-50 text-amber-700"
+                                  : "bg-red-50 text-red-700"
+                            }`}>
+                              {inv.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-gray-500">{inv.coupon || "—"}</td>
+                          <td className="px-3 py-2">
+                            {inv.hostedInvoiceUrl ? (
+                              <a
+                                href={inv.hostedInvoiceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-alloro-orange hover:text-alloro-orange/80 inline-flex items-center gap-0.5"
+                              >
+                                <ExternalLink className="h-3 w-3" /> View
+                              </a>
+                            ) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex items-center gap-3 flex-wrap">
