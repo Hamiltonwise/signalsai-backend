@@ -12,6 +12,10 @@ import NewAccountOnboarding from "./pages/NewAccountOnboarding";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import { Settings } from "./pages/Settings";
+import { IntegrationsRoute } from "./pages/settings/IntegrationsRoute";
+import { UsersRoute } from "./pages/settings/UsersRoute";
+import { BillingRoute } from "./pages/settings/BillingRoute";
+import { AccountRoute } from "./pages/settings/AccountRoute";
 import { DFYWebsite } from "./pages/DFYWebsite";
 import { Notifications } from "./pages/Notifications";
 import Help from "./pages/Help";
@@ -159,7 +163,13 @@ function App() {
                     </DFYRoute>
                   }
                 />
-                <Route path="/settings" element={<Settings />} />
+                <Route path="/settings" element={<Settings />}>
+                  <Route index element={<Navigate to="integrations" replace />} />
+                  <Route path="integrations" element={<IntegrationsRoute />} />
+                  <Route path="users" element={<UsersRoute />} />
+                  <Route path="billing" element={<BillingRoute />} />
+                  <Route path="account" element={<AccountRoute />} />
+                </Route>
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/help" element={<Help />} />
               </Route>

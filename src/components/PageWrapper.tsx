@@ -30,12 +30,12 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isLockedOut = billingStatus?.isLockedOut ?? false;
-  const isOnSettingsPage = location.pathname === "/settings";
+  const isOnSettingsPage = location.pathname.startsWith("/settings");
 
   // Redirect locked-out users to /settings (the only page they can access)
   useEffect(() => {
     if (isLockedOut && !isOnSettingsPage) {
-      navigate("/settings", { replace: true });
+      navigate("/settings/billing", { replace: true });
     }
   }, [isLockedOut, isOnSettingsPage, navigate]);
 
@@ -110,7 +110,7 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
             </div>
             {!isOnSettingsPage && (
               <button
-                onClick={() => navigate("/settings")}
+                onClick={() => navigate("/settings/billing")}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors shrink-0"
               >
                 <CreditCard size={14} />
@@ -131,8 +131,8 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
               </p>
             </div>
             <button
-              onClick={() => navigate("/settings")}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 transition-colors shrink-0"
+              onClick={() => navigate("/settings/billing")}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-alloro-orange text-white text-xs font-bold rounded-lg hover:bg-alloro-orange/90 transition-colors shrink-0"
             >
               <CreditCard size={14} />
               Subscribe

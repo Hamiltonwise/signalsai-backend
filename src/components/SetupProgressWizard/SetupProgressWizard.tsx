@@ -31,7 +31,7 @@ export function SetupProgressWizard() {
   // Navigate to settings/integrations
   const goToIntegrations = () => {
     setIsExpanded(false);
-    navigate("/settings");
+    navigate("/settings/integrations");
   };
 
   // Navigate to referrals hub with scroll flag

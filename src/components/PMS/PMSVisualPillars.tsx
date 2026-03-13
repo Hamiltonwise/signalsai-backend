@@ -1157,7 +1157,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
           <div className="space-y-4">
             {/* Step 1 - Connect Properties */}
             <div
-              onClick={() => navigate("/settings")}
+              onClick={() => navigate("/settings/integrations")}
               className="group relative bg-white rounded-3xl border-2 border-alloro-orange shadow-xl shadow-alloro-orange/10 p-8 cursor-pointer hover:shadow-2xl hover:shadow-alloro-orange/20 transition-all duration-300 hover:-translate-y-1"
             >
               <div className="flex items-start gap-6">
