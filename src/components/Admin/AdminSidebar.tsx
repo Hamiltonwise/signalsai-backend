@@ -19,6 +19,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  Clock,
 } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 
@@ -33,6 +34,7 @@ export type AdminNavKey =
   | "organization-management"
   | "websites"
   | "templates"
+  | "schedules"
   | "settings";
 
 interface NavItem {
@@ -61,6 +63,7 @@ const TOP_ITEMS: NavItem[] = [
 const BOTTOM_ITEMS: NavItem[] = [
   { key: "app-logs", label: "App Logs", icon: FileText },
   { key: "organization-management", label: "Organizations", icon: Building },
+  { key: "schedules", label: "Schedules", icon: Clock },
   { key: "settings", label: "Settings", icon: Settings },
 ];
 

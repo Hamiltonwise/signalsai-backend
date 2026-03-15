@@ -54,6 +54,11 @@ export const QUERY_KEYS = {
   // Admin — templates
   adminTemplates: ["admin", "templates"] as const,
 
+  // Admin — schedules
+  adminSchedules: ["admin", "schedules"] as const,
+  adminScheduleRuns: (scheduleId: number) =>
+    ["admin", "schedule-runs", scheduleId] as const,
+
   // Admin — org sub-tab data (tasks, notifications, rankings, PMS, agent outputs)
   adminOrgTasks: (orgId: number, params?: Record<string, unknown>) =>
     ["admin", "org-tasks", orgId, params] as const,

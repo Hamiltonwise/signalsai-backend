@@ -21,6 +21,7 @@ import ImportDetail from "./admin/ImportDetail";
 import PageEditor from "./admin/PageEditor";
 import LayoutEditor from "./admin/LayoutEditor";
 import AdminSettings from "./admin/AdminSettings";
+import Schedules from "./admin/Schedules";
 import MindsList from "./admin/MindsList";
 import MindDetail from "./admin/MindDetail";
 import AlloroPostsDocs from "./admin/AlloroPostsDocs";
@@ -89,6 +90,7 @@ function AdminWithLayout() {
         <Route path="minds" element={<MindsList />} />
         <Route path="minds/:mindId" element={<MindDetail />} />
         <Route path="documentation/alloro-posts" element={<AlloroPostsDocs />} />
+        <Route path="schedules" element={<Schedules />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="sentry-test" element={<SentryTest />} />
       </Routes>
