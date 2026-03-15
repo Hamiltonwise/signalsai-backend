@@ -11,12 +11,16 @@ import { db } from "../../../database/connection";
 import { getValidOAuth2Client } from "../../../auth/oauth2Helper";
 import { fetchGBPDataForRange } from "../../../utils/dataAggregation/dataAggregator";
 import {
-  discoverCompetitors,
   getCompetitorDetails,
   enrichCompetitorReviewCounts,
   auditWebsite,
   getSpecialtyKeywords,
 } from "./service.apify";
+import {
+  discoverCompetitorsViaPlaces,
+  filterBySpecialty,
+  getClientPhotosViaPlaces,
+} from "./service.places-competitor-discovery";
 import {
   getCachedCompetitors,
   setCachedCompetitors,
@@ -29,13 +33,8 @@ import {
   FACTOR_WEIGHTS,
 } from "./service.ranking-algorithm";
 import { createNotification } from "../../../utils/core/notificationHelper";
-import { resolveLocationId } from "../../../utils/locationResolver";
-import axios from "axios";
 import { listLocalPostsInRange } from "../../../routes/gbp";
-
-// Webhook URL from environment
-const PRACTICE_RANKING_ANALYSIS_WEBHOOK =
-  process.env.PRACTICE_RANKING_ANALYSIS_AGENT_WEBHOOK || "";
+import { runRankingAnalysis, RankingLlmPayload } from "./service.ranking-llm";
 
 // Batch processing configuration
 export const MAX_RETRIES = 3;
@@ -286,11 +285,16 @@ export async function processLocationRanking(
       name: c.name,
       address: c.address || "",
       category: c.category || "Unknown",
+      primaryType: c.primaryType || "",
+      types: c.types || [],
       totalScore: c.totalScore ?? 0,
       reviewsCount: c.reviewsCount ?? 0,
       url: "",
       website: undefined,
       phone: undefined,
+      hasHours: false,
+      hoursComplete: false,
+      photosCount: 0,
     }));
     usedCache = true;
     await updateStatus(
@@ -307,21 +311,25 @@ export async function processLocationRanking(
       rankingId,
       "processing",
       "discovering_competitors",
-      "Discovering local competitors...",
+      "Discovering local competitors via Google Places...",
       30,
       statusDetail,
       log,
     );
 
-    // Build search query with specialty (Apify will use location params for geographic filtering)
-    const searchQuery = specialty;
     log(
-      `[RANKING] [${rankingId}] Discovering competitors with search: "${searchQuery}", location params: ${JSON.stringify(locationParams || {})}`,
+      `[RANKING] [${rankingId}] Discovering competitors: "${specialty}" in "${marketLocation}"`,
     );
-    discoveredCompetitors = await discoverCompetitors(
-      searchQuery,
+    discoveredCompetitors = await discoverCompetitorsViaPlaces(
+      specialty,
+      marketLocation,
       20,
-      locationParams,
+    );
+
+    // Strict category filter — only keep specialty-matching competitors
+    discoveredCompetitors = filterBySpecialty(discoveredCompetitors, specialty);
+    log(
+      `[RANKING] [${rankingId}] After specialty filter: ${discoveredCompetitors.length} competitors`,
     );
 
     if (discoveredCompetitors.length > 0) {
@@ -330,6 +338,8 @@ export async function processLocationRanking(
         name: c.name,
         address: c.address,
         category: c.category,
+        primaryType: c.primaryType,
+        types: c.types,
         totalScore: c.totalScore ?? 0,
         reviewsCount: c.reviewsCount ?? 0,
       }));
@@ -497,56 +507,24 @@ export async function processLocationRanking(
     // Continue with postsLast30d = 0 if fetch fails
   }
 
-  // Fetch client photos count via Apify
-  // First search for client on Google Maps to get their Place ID (GBP location ID ≠ Google Place ID)
+  // Fetch client photos count via Google Places API
   let clientPhotosCount = 0;
-  let clientPlaceId: string | null = null;
   try {
-    // Search for client business on Google Maps to find their Place ID
-    const clientSearchQuery = `${gbpLocationName} ${marketLocation}`;
     log(
-      `[RANKING] [${rankingId}] Searching Google Maps for client: "${clientSearchQuery}"`,
+      `[RANKING] [${rankingId}] Fetching client photos via Places API: "${gbpLocationName}" in "${marketLocation}"`,
     );
-
-    const searchResults = await discoverCompetitors(clientSearchQuery, 10);
-    log(
-      `[RANKING] [${rankingId}] Found ${searchResults.length} search results`,
+    const clientPhotosResult = await getClientPhotosViaPlaces(
+      gbpLocationName,
+      marketLocation,
     );
-
-    // Find the client in search results by matching name
-    const clientNameLower = gbpLocationName.toLowerCase().trim();
-    const clientMatch = searchResults.find((result) => {
-      const resultNameLower = (result.name || "").toLowerCase().trim();
-      return (
-        resultNameLower === clientNameLower ||
-        resultNameLower.includes(clientNameLower) ||
-        clientNameLower.includes(resultNameLower)
-      );
-    });
-
-    if (clientMatch?.placeId) {
-      clientPlaceId = clientMatch.placeId;
+    clientPhotosCount = clientPhotosResult.photosCount;
+    if (clientPhotosResult.placeId) {
       log(
-        `[RANKING] [${rankingId}] ✓ Found client Place ID: ${clientPlaceId} (name: ${clientMatch.name})`,
+        `[RANKING] [${rankingId}] ✓ Client photos: ${clientPhotosCount} (Place ID: ${clientPhotosResult.placeId})`,
       );
-
-      // Now fetch detailed data including photos using the correct Place ID
-      const clientApifyData = await getCompetitorDetails([clientPlaceId], []);
-      if (clientApifyData.length > 0) {
-        clientPhotosCount = clientApifyData[0]?.photosCount || 0;
-        log(
-          `[RANKING] [${rankingId}] ✓ Fetched ${clientPhotosCount} photos from Apify`,
-        );
-      } else {
-        log(
-          `[RANKING] [${rankingId}] ✗ Apify returned empty data for Place ID: ${clientPlaceId}`,
-        );
-      }
     } else {
       log(
-        `[RANKING] [${rankingId}] ✗ Could not find client in Google Maps search results. Searched: ${searchResults
-          .map((r) => r.name)
-          .join(", ")}`,
+        `[RANKING] [${rankingId}] ✗ Could not match client in Places API results`,
       );
     }
   } catch (error: any) {
@@ -603,11 +581,12 @@ export async function processLocationRanking(
     ...competitorsForRanking,
   ];
 
-  // Pass keywords to rankPractices for consistent scoring across all practices
+  // Rank by 6-factor competitive score (excludes velocity + activity which are client-only)
   const rankedPractices = rankPractices(
     allPractices,
     specialty,
     specialtyKeywords,
+    "competitive",
   );
   const clientRankResult = rankedPractices.find((p) => p.id === "client");
 
@@ -646,7 +625,7 @@ export async function processLocationRanking(
         return {
           name: details?.name || "Unknown",
           placeId: p.id,
-          rankScore: p.rankingResult.totalScore,
+          rankScore: p.competitiveScore,
           rankPosition: p.rankPosition,
           totalReviews: details?.totalReviews || 0,
           averageRating: details?.averageRating || 0,
@@ -737,7 +716,7 @@ export async function processLocationRanking(
     .where({ id: rankingId })
     .update({
       rank_score:
-        clientRankResult?.rankingResult.totalScore || clientRanking.totalScore,
+        clientRankResult?.competitiveScore || clientRanking.totalScore,
       rank_position: clientRankResult?.rankPosition || 1,
       total_competitors: competitorDetails.length + 1,
       ranking_factors: JSON.stringify(rankingFactors),
@@ -756,151 +735,41 @@ export async function processLocationRanking(
     log,
   );
 
-  if (PRACTICE_RANKING_ANALYSIS_WEBHOOK) {
-    const llmPayload = {
-      additional_data: {
-        practice_ranking_id: rankingId,
-        batch_id: batchId,
-        client: {
-          domain,
-          practice_name: gbpLocationName,
-          specialty,
-          location: marketLocation,
-          gbp_location_id: gbpLocationId,
-          gbp_account_id: gbpAccountId,
-          rank_score: clientRanking.totalScore,
-          rank_position: clientRankResult?.rankPosition || 1,
-          total_competitors: competitorDetails.length,
-          factors: rankingFactors,
-          gbp_data: {
-            business_name: clientPracticeData.name,
-            total_reviews: clientPracticeData.totalReviews,
-            average_rating: clientPracticeData.averageRating,
-            reviews_last_30d: clientPracticeData.reviewsLast30d,
-            primary_category: clientPracticeData.primaryCategory,
-          },
-          website_audit: websiteAudit,
+  // Get the ranking record for task creation context
+  const ranking = await db("practice_rankings")
+    .where({ id: rankingId })
+    .first();
+
+  const llmPayload: RankingLlmPayload = {
+    additional_data: {
+      practice_ranking_id: rankingId,
+      batch_id: batchId,
+      client: {
+        domain,
+        practice_name: gbpLocationName,
+        specialty,
+        location: marketLocation,
+        gbp_location_id: gbpLocationId,
+        gbp_account_id: gbpAccountId,
+        rank_score: clientRanking.totalScore,
+        rank_position: clientRankResult?.rankPosition || 1,
+        total_competitors: competitorDetails.length,
+        factors: rankingFactors,
+        gbp_data: {
+          business_name: clientPracticeData.name,
+          total_reviews: clientPracticeData.totalReviews,
+          average_rating: clientPracticeData.averageRating,
+          reviews_last_30d: clientPracticeData.reviewsLast30d,
+          primary_category: clientPracticeData.primaryCategory,
         },
-        competitors: rawData.competitors.slice(0, 5),
-        benchmarks,
+        website_audit: websiteAudit,
       },
-    };
+      competitors: rawData.competitors.slice(0, 5),
+      benchmarks,
+    },
+  };
 
-    try {
-      const llmResponse = await axios.post(
-        PRACTICE_RANKING_ANALYSIS_WEBHOOK,
-        llmPayload,
-        {
-          timeout: 120000,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-
-      let llmData = llmResponse.data;
-      if (Array.isArray(llmData)) llmData = llmData[0] || {};
-      const { practice_ranking_id: _, ...llmAnalysis } = llmData;
-
-      // Create tasks from recommendations
-      const topRecommendations = llmAnalysis.top_recommendations || [];
-      if (topRecommendations.length > 0) {
-        const taskOrgId = account.organization_id ?? null;
-        const taskLocationId = await resolveLocationId(taskOrgId, gbpLocationId);
-
-        // Archive old tasks
-        const previousRankings = await db("practice_rankings")
-          .where({
-            organization_id: taskOrgId,
-            gbp_location_id: gbpLocationId,
-          })
-          .whereNot({ id: rankingId })
-          .select("id");
-
-        if (previousRankings.length > 0) {
-          await db("tasks")
-            .where({ agent_type: "RANKING" })
-            .whereRaw("metadata::jsonb->>'practice_ranking_id' IN (?)", [
-              previousRankings.map((r: any) => String(r.id)).join(","),
-            ])
-            .whereNot({ status: "archived" })
-            .update({ status: "archived", updated_at: new Date() });
-        }
-
-        const tasksToInsert = topRecommendations.map((item: any) => ({
-          organization_id: taskOrgId,
-          location_id: taskLocationId,
-          title: item.title || "Ranking Improvement Action",
-          description: item.expected_outcome
-            ? `${item.description || ""}\n\n**Expected Outcome:**\n${
-                item.expected_outcome
-              }`
-            : item.description || "",
-          category: "USER",
-          agent_type: "RANKING",
-          status: "pending",
-          is_approved: false,
-          created_by_admin: true,
-          metadata: JSON.stringify({
-            practice_ranking_id: rankingId,
-            gbp_location_id: gbpLocationId,
-            gbp_location_name: gbpLocationName,
-            priority: item.priority || null,
-            impact: item.impact || null,
-            effort: item.effort || null,
-            timeline: item.timeline || null,
-          }),
-          created_at: new Date(),
-          updated_at: new Date(),
-        }));
-
-        await db("tasks").insert(tasksToInsert);
-      }
-
-      await db("practice_rankings")
-        .where({ id: rankingId })
-        .update({
-          llm_analysis: JSON.stringify(llmAnalysis),
-          status: "completed",
-          status_detail: JSON.stringify({
-            currentStep: "done",
-            message: "Analysis complete with AI insights",
-            progress: 100,
-            stepsCompleted: [
-              "queued",
-              "fetching_client_gbp",
-              "discovering_competitors",
-              "scraping_competitors",
-              "auditing_website",
-              "calculating_scores",
-              "awaiting_llm",
-              "done",
-            ],
-            timestamps: { completed_at: new Date().toISOString() },
-          }),
-          updated_at: new Date(),
-        });
-    } catch (error: any) {
-      log(`[RANKING] [${rankingId}] LLM Webhook failed: ${error.message}`);
-      await updateStatus(
-        rankingId,
-        "completed",
-        "done",
-        "Analysis complete (without AI insights)",
-        100,
-        statusDetail,
-        log,
-      );
-    }
-  } else {
-    await updateStatus(
-      rankingId,
-      "completed",
-      "done",
-      "Analysis complete",
-      100,
-      statusDetail,
-      log,
-    );
-  }
+  await runRankingAnalysis(rankingId, llmPayload, ranking, statusDetail, log);
 
   log(
     `[RANKING] [${rankingId}] COMPLETE in ${(
@@ -914,7 +783,7 @@ export async function processLocationRanking(
     gbpLocationId,
     gbpLocationName,
     rankScore:
-      clientRankResult?.rankingResult.totalScore || clientRanking.totalScore,
+      clientRankResult?.competitiveScore || clientRanking.totalScore,
     rankPosition: clientRankResult?.rankPosition || 1,
   };
 }

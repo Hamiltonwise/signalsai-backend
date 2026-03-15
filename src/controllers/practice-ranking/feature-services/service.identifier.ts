@@ -71,7 +71,7 @@ export async function identifyLocationMeta(
     let data = response.data;
     if (Array.isArray(data)) data = data[0] || {};
 
-    const specialty = data.specialty || "orthodontist";
+    const specialty = data.specialty || deriveSpecialtyFromGbp(gbpData);
     const marketLocation = data.marketLocation || getFallbackMarket(gbpData);
     const specialtyKeywords = data.specialtyKeywords || undefined;
 
@@ -107,12 +107,38 @@ export async function identifyLocationMeta(
 }
 
 /**
+ * Derive specialty from GBP primary category when Identifier Agent
+ * doesn't return one. Falls back to "dentist" (general) instead of
+ * hardcoding "orthodontist" which skewed rankings for non-ortho practices.
+ */
+function deriveSpecialtyFromGbp(gbpData: any): string {
+  const primaryCategory = (
+    gbpData?.profile?.primaryCategory || ""
+  ).toLowerCase();
+
+  const categoryMap: Record<string, string> = {
+    orthodontist: "orthodontist",
+    endodontist: "endodontist",
+    periodontist: "periodontist",
+    "oral surgeon": "oral surgeon",
+    "pediatric dentist": "pediatric dentist",
+    prosthodontist: "prosthodontist",
+  };
+
+  for (const [keyword, specialty] of Object.entries(categoryMap)) {
+    if (primaryCategory.includes(keyword)) return specialty;
+  }
+
+  return "dentist";
+}
+
+/**
  * Fallback logic for location metadata when webhook is not available
  */
 export function getFallbackMeta(gbpData: any): IdentifierResult {
   const addr = gbpData.profile?.storefrontAddress;
   return {
-    specialty: "orthodontist",
+    specialty: deriveSpecialtyFromGbp(gbpData),
     marketLocation: getFallbackMarket(gbpData),
     // Extract location fields from GBP address as fallback
     county: null,

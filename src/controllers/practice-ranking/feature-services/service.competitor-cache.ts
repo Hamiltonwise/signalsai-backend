@@ -10,10 +10,10 @@
 
 import { db } from "../../../database/connection";
 
-// Cache TTL in hours (6 months = 180 days = 4320 hours default)
-// This ensures consistent competitor comparisons for long-term tracking
+// Cache TTL in hours (30 days = 720 hours default)
+// Competitors shift seasonally; Places API is fast/cheap so shorter TTL is fine
 const CACHE_TTL_HOURS = parseInt(
-  process.env.COMPETITOR_CACHE_TTL_HOURS || "4320",
+  process.env.COMPETITOR_CACHE_TTL_HOURS || "720",
   10
 );
 
@@ -22,6 +22,8 @@ interface CachedCompetitor {
   name: string;
   address?: string;
   category?: string;
+  primaryType?: string;
+  types?: string[];
   totalScore?: number;
   reviewsCount?: number;
 }

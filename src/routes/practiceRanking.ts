@@ -13,7 +13,6 @@
  * - POST /refresh-competitors - Invalidate competitor cache
  * - GET /latest - Get latest rankings for all locations (client dashboard)
  * - GET /tasks - Get approved ranking tasks
- * - POST /webhook/llm-response - Receive LLM analysis from n8n
  */
 
 import express from "express";
@@ -43,8 +42,5 @@ router.post("/retry-batch/:batchId", controller.retryBatch);
 router.delete("/batch/:batchId", controller.deleteBatch);
 router.delete("/:id", controller.deleteRanking);
 router.post("/refresh-competitors", controller.refreshCompetitors);
-
-// Webhook
-router.post("/webhook/llm-response", controller.handleLlmWebhook);
 
 export default router;

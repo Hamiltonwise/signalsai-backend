@@ -2,6 +2,7 @@ import axios from "axios";
 import {
   PLACE_DETAILS_FIELD_MASK,
   PLACE_SEARCH_FIELD_MASK,
+  TEXT_SEARCH_FIELD_MASK,
 } from "../feature-utils/fieldMasks";
 
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API;
@@ -73,6 +74,36 @@ export async function getSearchPlaceDetails(placeId: string): Promise<any> {
   });
 
   return response.data;
+}
+
+/**
+ * Calls the Google Places Text Search API.
+ * Used for competitor discovery — searches for businesses by query string.
+ *
+ * @param textQuery - Search query (e.g. "endodontist in Austin, TX")
+ * @param maxResultCount - Maximum results (default 20, max 20)
+ * @returns Array of place objects from Google
+ */
+export async function textSearch(
+  textQuery: string,
+  maxResultCount: number = 20,
+): Promise<any[]> {
+  const response = await axios.post(
+    `${PLACES_API_BASE}/places:searchText`,
+    {
+      textQuery,
+      maxResultCount,
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY!,
+        "X-Goog-FieldMask": TEXT_SEARCH_FIELD_MASK,
+      },
+    },
+  );
+
+  return response.data.places || [];
 }
 
 /**

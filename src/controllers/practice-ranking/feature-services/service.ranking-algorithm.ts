@@ -1,9 +1,19 @@
 /**
  * Practice Ranking Algorithm
  *
- * Proprietary 8-factor weighted scoring system for local dental practice rankings
+ * Two scoring modes:
  *
- * Factor Weights:
+ * COMPETITIVE (6 factors) — used for rank position vs competitors.
+ * Only factors that can be measured for all practices (client + competitors).
+ * 1. Primary Category Match: 30%
+ * 2. Total Review Count: 24%
+ * 3. Overall Star Rating: 18%
+ * 4. Keyword in Business Name: 12%
+ * 5. NAP Consistency: 10%
+ * 6. Review Sentiment: 6%
+ *
+ * FULL (8 factors) — used for client-only insights.
+ * Includes velocity + activity which require GBP API access (client only).
  * 1. Primary Category Match: 25%
  * 2. Total Review Count: 20%
  * 3. Overall Star Rating: 15%
@@ -14,7 +24,7 @@
  * 8. Review Sentiment: 5%
  */
 
-// Factor weights (must sum to 1.0)
+// Full 8-factor weights — used for client-only scoring (must sum to 1.0)
 const FACTOR_WEIGHTS = {
   categoryMatch: 0.25,
   reviewCount: 0.2,
@@ -24,6 +34,17 @@ const FACTOR_WEIGHTS = {
   napConsistency: 0.08,
   gbpActivity: 0.07,
   sentiment: 0.05,
+};
+
+// Competitive 6-factor weights — used for rank position (must sum to 1.0)
+// Excludes reviewVelocity and gbpActivity (no reliable data for competitors)
+const COMPETITIVE_FACTOR_WEIGHTS = {
+  categoryMatch: 0.3,
+  reviewCount: 0.24,
+  starRating: 0.18,
+  keywordName: 0.12,
+  napConsistency: 0.1,
+  sentiment: 0.06,
 };
 
 // Map frontend specialty values to internal keys
@@ -44,6 +65,11 @@ const SPECIALTY_ALIASES: Record<string, string> = {
   pediatric: "pediatric",
   prosthodontics: "prosthodontics",
   general: "general",
+  // Common fallback aliases
+  dentist: "general",
+  "dental clinic": "general",
+  "dental practice": "general",
+  "dental office": "general",
 };
 
 /**
@@ -593,30 +619,82 @@ export function calculateRankingScore(
 }
 
 /**
+ * Calculate competitive score using only the 6 factors measurable for all practices.
+ * Used for rank position determination (excludes velocity + activity).
+ */
+export function calculateCompetitiveScore(
+  practice: PracticeData,
+  specialty: string,
+  keywords?: string[],
+): number {
+  const categoryMatch = calculateCategoryMatchScore(
+    practice.primaryCategory,
+    specialty,
+  );
+  const reviewCount = calculateReviewCountScore(practice.totalReviews);
+  const starRating = calculateStarRatingScore(practice.averageRating);
+  const keywordName = calculateKeywordNameScore(practice.name, specialty, keywords);
+  const napConsistency = calculateNapConsistencyScore(
+    practice.hasWebsite,
+    practice.hasPhone,
+    practice.hasHours,
+    practice.hoursComplete,
+  );
+  const sentiment = calculateSentimentScore(
+    practice.sentimentScore,
+    practice.averageRating,
+  );
+
+  // Re-score using competitive weights (normalized to 100-point scale)
+  const score =
+    (categoryMatch.score / categoryMatch.max) *
+      COMPETITIVE_FACTOR_WEIGHTS.categoryMatch * 100 +
+    (reviewCount.score / reviewCount.max) *
+      COMPETITIVE_FACTOR_WEIGHTS.reviewCount * 100 +
+    (starRating.score / starRating.max) *
+      COMPETITIVE_FACTOR_WEIGHTS.starRating * 100 +
+    (keywordName.score / keywordName.max) *
+      COMPETITIVE_FACTOR_WEIGHTS.keywordName * 100 +
+    (napConsistency.score / napConsistency.max) *
+      COMPETITIVE_FACTOR_WEIGHTS.napConsistency * 100 +
+    (sentiment.score / sentiment.max) *
+      COMPETITIVE_FACTOR_WEIGHTS.sentiment * 100;
+
+  return Math.round(score * 100) / 100;
+}
+
+/**
  * Rank multiple practices and return sorted results
  * @param practices - Array of practices to rank
  * @param specialty - Specialty type for scoring
  * @param keywords - Optional array of custom keywords from Identifier Agent for name matching
+ * @param mode - "competitive" (6-factor for rank position) or "full" (8-factor for client insights). Default: "competitive"
  */
 export function rankPractices(
   practices: Array<{ id: string; data: PracticeData }>,
   specialty: string,
   keywords?: string[],
-): Array<{ id: string; rankPosition: number; rankingResult: RankingResult }> {
-  // Calculate scores for all practices
+  mode: "competitive" | "full" = "competitive",
+): Array<{ id: string; rankPosition: number; rankingResult: RankingResult; competitiveScore: number }> {
+  // Calculate full 8-factor scores for all practices (used in results regardless of mode)
   const scored = practices.map((practice) => ({
     id: practice.id,
     rankingResult: calculateRankingScore(practice.data, specialty, keywords),
+    competitiveScore: calculateCompetitiveScore(practice.data, specialty, keywords),
   }));
 
-  // Sort by total score (descending)
-  scored.sort(
-    (a, b) => b.rankingResult.totalScore - a.rankingResult.totalScore,
-  );
+  // Sort by the appropriate score mode
+  if (mode === "competitive") {
+    scored.sort((a, b) => b.competitiveScore - a.competitiveScore);
+  } else {
+    scored.sort((a, b) => b.rankingResult.totalScore - a.rankingResult.totalScore);
+  }
 
   // Assign rank positions
   return scored.map((item, index) => ({
-    ...item,
+    id: item.id,
+    rankingResult: item.rankingResult,
+    competitiveScore: item.competitiveScore,
     rankPosition: index + 1,
   }));
 }
@@ -673,13 +751,20 @@ export function calculateBenchmarks(
   };
 }
 
-export { FACTOR_WEIGHTS, SPECIALTY_CATEGORIES, SPECIALTY_KEYWORDS };
+export {
+  FACTOR_WEIGHTS,
+  COMPETITIVE_FACTOR_WEIGHTS,
+  SPECIALTY_CATEGORIES,
+  SPECIALTY_KEYWORDS,
+};
 
 export default {
   calculateRankingScore,
+  calculateCompetitiveScore,
   rankPractices,
   calculateBenchmarks,
   FACTOR_WEIGHTS,
+  COMPETITIVE_FACTOR_WEIGHTS,
   SPECIALTY_CATEGORIES,
   SPECIALTY_KEYWORDS,
 };

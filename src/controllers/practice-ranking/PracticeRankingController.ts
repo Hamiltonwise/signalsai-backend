@@ -22,7 +22,7 @@
  * - POST /refresh-competitors - Invalidate competitor cache
  * - GET /latest - Latest rankings for client dashboard
  * - GET /tasks - Approved ranking tasks
- * - POST /webhook/llm-response - Receive LLM analysis from n8n
+ * (webhook endpoint removed — LLM analysis now runs inline via Claude)
  */
 
 import { Request, Response } from "express";
@@ -35,7 +35,6 @@ import {
   validateTriggerRequest,
   validateLocations,
   validateRefreshCompetitors,
-  validateWebhookBody,
   validateRankingId,
   validateTasksRequest,
 } from "./feature-utils/util.ranking-validator";
@@ -54,7 +53,6 @@ import {
 } from "./feature-utils/util.ranking-formatter";
 import * as batchTracker from "./feature-services/service.batch-status-tracker";
 import * as competitorService from "./feature-services/service.competitor-analysis";
-import * as llmWebhookHandler from "./feature-services/service.llm-webhook-handler";
 import { processBatch } from "./feature-services/service.ranking-computation";
 import {
   processLocationRanking,
@@ -1138,77 +1136,3 @@ export async function getRankingTasks(
   }
 }
 
-// =====================================================================
-// POST /webhook/llm-response
-// =====================================================================
-
-export async function handleLlmWebhook(
-  req: Request,
-  res: Response,
-): Promise<Response> {
-  try {
-    // Handle both array and object formats from n8n
-    let body = req.body;
-    if (Array.isArray(body)) {
-      log(`Webhook received array format, extracting first element`);
-      body = body[0] || {};
-    }
-
-    const {
-      practice_ranking_id,
-      error,
-      error_code,
-      error_message,
-      ...llmAnalysis
-    } = body;
-
-    const validation = validateWebhookBody(body);
-    if (!validation.valid) {
-      return res.status(400).json(validation.error);
-    }
-
-    log(`Received LLM response for ranking ${practice_ranking_id}`);
-
-    // Check if error response
-    if (error) {
-      await llmWebhookHandler.handleErrorResponse(
-        practice_ranking_id,
-        error_code,
-        error_message,
-      );
-      return res.json({ success: true, message: "Error recorded" });
-    }
-
-    // Get the ranking record to access context for task creation
-    const ranking = await db("practice_rankings")
-      .where({ id: practice_ranking_id })
-      .first();
-
-    if (!ranking) {
-      return res.status(404).json({
-        success: false,
-        error: "NOT_FOUND",
-        message: `Ranking ${practice_ranking_id} not found`,
-      });
-    }
-
-    // Archive previous tasks and create new ones (CRITICAL: wrapped in transaction)
-    await llmWebhookHandler.archiveAndCreateTasks(
-      ranking,
-      practice_ranking_id,
-      llmAnalysis,
-    );
-
-    // Save successful LLM analysis
-    await llmWebhookHandler.saveLlmAnalysis(practice_ranking_id, llmAnalysis);
-
-    return res.json({ success: true, message: "Analysis saved" });
-  } catch (error: any) {
-    logError("POST /webhook/llm-response", error);
-    return res.status(500).json({
-      success: false,
-      error: "WEBHOOK_ERROR",
-      message: error.message || "Failed to process webhook",
-    });
-  }
-}
