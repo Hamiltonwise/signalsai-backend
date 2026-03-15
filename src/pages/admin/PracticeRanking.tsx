@@ -2080,58 +2080,149 @@ function RankingResultsView({
         )}
 
       {/* Ranking Factors Breakdown */}
-      <motion.div
-        className="rounded-xl border border-gray-200 bg-white p-4"
-        variants={cardVariants}
-      >
-        <h4 className="mb-4 font-semibold text-gray-900">
-          Ranking Factors Breakdown
-        </h4>
-        <div className="space-y-3">
-          {factors &&
-            Object.entries(factors).map(([key, value]) => (
-              <div key={key} className="flex items-center gap-3">
-                <div className="w-44 text-sm text-gray-600 capitalize flex items-center gap-1.5">
+      {(() => {
+        const COMPETITIVE_KEYS = [
+          "category_match",
+          "review_count",
+          "star_rating",
+          "keyword_name",
+          "nap_consistency",
+          "sentiment",
+        ];
+        const CLIENT_ONLY_KEYS = ["review_velocity", "gbp_activity"];
+
+        const FACTOR_LABELS: Record<string, string> = {
+          category_match: "Category Match",
+          review_count: "Review Count",
+          star_rating: "Star Rating",
+          keyword_name: "Keyword in Name",
+          nap_consistency: "NAP Consistency",
+          sentiment: "Sentiment",
+          review_velocity: "Review Velocity",
+          gbp_activity: "GBP Activity",
+        };
+
+        const getBarColor = (pct: number) => {
+          if (pct >= 80) return { bar: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100", badge: "bg-emerald-100 text-emerald-700" };
+          if (pct >= 60) return { bar: "bg-amber-400", text: "text-amber-700", bg: "bg-amber-50", border: "border-amber-100", badge: "bg-amber-100 text-amber-700" };
+          return { bar: "bg-red-400", text: "text-red-700", bg: "bg-red-50", border: "border-red-100", badge: "bg-red-100 text-red-700" };
+        };
+
+        const renderFactor = (
+          key: string,
+          value: any,
+          index: number,
+        ) => {
+          const pct = Math.round((value?.score ?? 0) * 100);
+          const colors = getBarColor(pct);
+          const weightPct = Math.round((value?.weight ?? 0) * 100);
+
+          return (
+            <motion.div
+              key={key}
+              className={`rounded-lg border ${colors.border} ${colors.bg} p-3`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.04 }}
+            >
+              <div className="flex items-start justify-between mb-1.5">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-900">
+                      {FACTOR_LABELS[key] || key.replace(/_/g, " ")}
+                    </span>
+                    <span className="text-[10px] font-medium text-gray-400 tabular-nums">
+                      {weightPct}% weight
+                    </span>
+                  </div>
                   {value?.details && (
-                    <div className="relative group">
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-help hover:text-blue-500 transition-colors" />
-                      <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                        <div className="font-medium mb-1 capitalize">
-                          {key.replace(/_/g, " ")}
-                        </div>
-                        <div className="text-gray-300">{value.details}</div>
-                      </div>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                      {value.details}
+                    </p>
                   )}
-                  {key.replace(/_/g, " ")}
                 </div>
-                <div className="flex-1">
-                  <HorizontalProgressBar
-                    value={(value?.score ?? 0) * 100}
-                    height={8}
-                  />
-                </div>
-                <div className="w-16 text-right text-sm font-medium text-gray-900">
-                  {((value?.score ?? 0) * 100).toFixed(0)}%
-                </div>
-                <div className="w-16 text-right text-xs text-gray-500">
-                  +{value?.weighted?.toFixed(1) ?? "0.0"}
+                <div className="flex items-baseline gap-1.5 ml-3 flex-shrink-0">
+                  <span className={`text-lg font-bold tabular-nums ${colors.text}`}>
+                    {pct}
+                  </span>
+                  <span className="text-xs text-gray-400">/100</span>
                 </div>
               </div>
-            ))}
-        </div>
-      </motion.div>
+              <div className="w-full h-1.5 bg-white/60 rounded-full overflow-hidden">
+                <motion.div
+                  className={`h-full ${colors.bar} rounded-full`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1], delay: index * 0.04 + 0.2 }}
+                />
+              </div>
+            </motion.div>
+          );
+        };
+
+        const competitiveFactors = factors
+          ? COMPETITIVE_KEYS.filter((k) => k in factors).map((k) => [k, (factors as any)[k]] as [string, any])
+          : [];
+        const clientFactors = factors
+          ? CLIENT_ONLY_KEYS.filter((k) => k in factors).map((k) => [k, (factors as any)[k]] as [string, any])
+          : [];
+
+        return (
+          <motion.div
+            className="rounded-xl border border-gray-200 bg-white p-5"
+            variants={cardVariants}
+          >
+            {/* Competitive Factors */}
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="h-4.5 w-4.5 text-gray-700" />
+              <h4 className="font-semibold text-gray-900 text-sm tracking-tight">
+                Competitive Ranking Factors
+              </h4>
+              <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                Used for rank position
+              </span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {competitiveFactors.map(([key, value], i) =>
+                renderFactor(key, value, i),
+              )}
+            </div>
+
+            {/* Client-Only Insights */}
+            {clientFactors.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 mt-5 mb-3">
+                  <Zap className="h-4 w-4 text-blue-500" />
+                  <h4 className="font-semibold text-gray-900 text-sm tracking-tight">
+                    Client-Only Insights
+                  </h4>
+                  <span className="text-[10px] font-medium text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
+                    Not used in competitive ranking
+                  </span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {clientFactors.map(([key, value], i) =>
+                    renderFactor(key, value, competitiveFactors.length + i),
+                  )}
+                </div>
+              </>
+            )}
+          </motion.div>
+        );
+      })()}
 
       {/* Top Competitors */}
       <motion.div
-        className="rounded-xl border border-gray-200 bg-white p-4"
+        className="rounded-xl border border-gray-200 bg-white p-5"
         variants={cardVariants}
       >
         <div className="flex items-center justify-between mb-4">
-          <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-600" />
-            Top Competitors
-          </h4>
+          <div className="flex items-center gap-2">
+            <Users className="h-4.5 w-4.5 text-gray-700" />
+            <h4 className="font-semibold text-gray-900 text-sm tracking-tight">
+              Top Competitors
+            </h4>
+          </div>
           {onRefreshCompetitors && (
             <ActionButton
               label={refreshingCompetitors ? "Refreshing..." : "Refresh"}
@@ -2148,100 +2239,120 @@ function RankingResultsView({
             />
           )}
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-2 px-2 font-medium text-gray-500">
-                  Rank
-                </th>
-                <th className="text-left py-2 px-2 font-medium text-gray-500">
-                  Name
-                </th>
-                <th className="text-center py-2 px-2 font-medium text-gray-500">
-                  Score
-                </th>
-                <th className="text-center py-2 px-2 font-medium text-gray-500">
-                  Reviews
-                </th>
-                <th className="text-center py-2 px-2 font-medium text-gray-500">
-                  Rating
-                </th>
-                <th className="text-left py-2 px-2 font-medium text-gray-500">
-                  Category
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {(() => {
-                const clientEntry = {
-                  name: result.gbpLocationName || result.specialty,
-                  rankScore: Number(result.rankScore),
-                  rankPosition: result.rankPosition,
-                  totalReviews:
-                    result.rawData?.client_gbp?.totalReviewCount || 0,
-                  averageRating:
-                    factors?.star_rating?.value ??
-                    result.rawData?.client_gbp?.averageRating ??
-                    0,
-                  primaryCategory:
-                    result.rawData?.client_gbp?.primaryCategory ||
-                    result.specialty,
-                  isClient: true,
-                };
+        <div className="space-y-1.5">
+          {(() => {
+            const clientEntry = {
+              name: result.gbpLocationName || result.specialty,
+              rankScore: Number(result.rankScore),
+              rankPosition: result.rankPosition,
+              totalReviews:
+                result.rawData?.client_gbp?.totalReviewCount || 0,
+              averageRating:
+                factors?.star_rating?.value ??
+                result.rawData?.client_gbp?.averageRating ??
+                0,
+              primaryCategory:
+                result.rawData?.client_gbp?.primaryCategory ||
+                result.specialty,
+              isClient: true,
+            };
 
-                const allEntries = [
-                  clientEntry,
-                  ...competitors.map((c) => ({ ...c, isClient: false })),
-                ].sort((a, b) => a.rankPosition - b.rankPosition);
+            const allEntries = [
+              clientEntry,
+              ...competitors.map((c) => ({ ...c, isClient: false })),
+            ].sort((a, b) => a.rankPosition - b.rankPosition);
 
-                return allEntries.slice(0, 10).map((comp, idx) => (
-                  <motion.tr
-                    key={idx}
-                    className={`border-b border-gray-100 ${
-                      comp.isClient ? "bg-blue-50" : ""
-                    }`}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                  >
-                    <td className="py-2 px-2">
-                      <span className="flex items-center gap-1">
-                        {comp.rankPosition === 1 && (
-                          <Trophy className="h-4 w-4 text-yellow-500" />
-                        )}
-                        #{comp.rankPosition}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2 font-medium text-gray-900">
-                      {comp.name}
-                      {comp.isClient && (
-                        <span className="ml-2 text-xs text-blue-600 font-medium">
-                          (You)
+            const topScore = Math.max(...allEntries.map((e) => e.rankScore), 1);
+
+            return allEntries.slice(0, 10).map((comp, idx) => {
+              const scorePct = Math.round((comp.rankScore / topScore) * 100);
+              const scoreColor = comp.rankScore >= 80
+                ? "text-emerald-700"
+                : comp.rankScore >= 60
+                  ? "text-amber-700"
+                  : "text-red-600";
+              const barColor = comp.rankScore >= 80
+                ? "bg-emerald-500"
+                : comp.rankScore >= 60
+                  ? "bg-amber-400"
+                  : "bg-red-400";
+
+              return (
+                <motion.div
+                  key={idx}
+                  className={`rounded-lg border p-3 ${
+                    comp.isClient
+                      ? "border-blue-200 bg-blue-50/50"
+                      : "border-gray-100 bg-gray-50/50"
+                  }`}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.04 }}
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Rank */}
+                    <div className="flex-shrink-0 w-8 text-center">
+                      {comp.rankPosition === 1 ? (
+                        <Trophy className="h-4.5 w-4.5 text-amber-500 mx-auto" />
+                      ) : (
+                        <span className="text-sm font-bold text-gray-400 tabular-nums">
+                          {comp.rankPosition}
                         </span>
                       )}
-                    </td>
-                    <td
-                      className={`py-2 px-2 text-center font-medium ${getScoreColorLocal(
-                        comp.rankScore
-                      )}`}
-                    >
-                      {comp.rankScore?.toFixed(1) || "-"}
-                    </td>
-                    <td className="py-2 px-2 text-center text-gray-700">
-                      {comp.totalReviews}
-                    </td>
-                    <td className="py-2 px-2 text-center text-gray-700">
-                      {comp.averageRating?.toFixed(1) || "-"}
-                    </td>
-                    <td className="py-2 px-2 text-gray-600 truncate max-w-[150px]">
-                      {comp.primaryCategory || "-"}
-                    </td>
-                  </motion.tr>
-                ));
-              })()}
-            </tbody>
-          </table>
+                    </div>
+
+                    {/* Name + Category */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900 truncate">
+                          {comp.name}
+                        </span>
+                        {comp.isClient && (
+                          <span className="text-[10px] font-semibold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded flex-shrink-0">
+                            YOU
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-gray-400">
+                        {comp.primaryCategory || "—"}
+                      </span>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                      <div className="text-right">
+                        <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Reviews</div>
+                        <div className="text-sm font-bold text-gray-800 tabular-nums">{comp.totalReviews.toLocaleString()}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Rating</div>
+                        <div className="text-sm font-bold text-gray-800 tabular-nums flex items-center justify-end gap-0.5">
+                          {comp.averageRating?.toFixed(1) || "—"}
+                          <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                        </div>
+                      </div>
+                      <div className="text-right w-14">
+                        <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Score</div>
+                        <div className={`text-sm font-bold tabular-nums ${scoreColor}`}>
+                          {comp.rankScore?.toFixed(1) || "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Score bar */}
+                  <div className="mt-2 w-full h-1 bg-gray-200/60 rounded-full overflow-hidden">
+                    <motion.div
+                      className={`h-full ${barColor} rounded-full`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${scorePct}%` }}
+                      transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1], delay: idx * 0.04 + 0.2 }}
+                    />
+                  </div>
+                </motion.div>
+              );
+            });
+          })()}
         </div>
       </motion.div>
 
@@ -2251,39 +2362,52 @@ function RankingResultsView({
           {/* Gaps */}
           {result.llmAnalysis.gaps && result.llmAnalysis.gaps.length > 0 && (
             <motion.div
-              className="rounded-xl border border-gray-200 bg-white p-4"
+              className="rounded-xl border border-gray-200 bg-white p-5"
               variants={cardVariants}
             >
-              <h4 className="mb-3 font-semibold text-gray-900">
-                Identified Gaps
-              </h4>
+              <div className="flex items-center gap-2 mb-4">
+                <Target className="h-4.5 w-4.5 text-gray-700" />
+                <h4 className="font-semibold text-gray-900 text-sm tracking-tight">
+                  Identified Gaps
+                </h4>
+              </div>
               <div className="space-y-2">
-                {result.llmAnalysis.gaps.map((gap, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3"
-                  >
-                    <Badge
-                      variant={
-                        gap.impact === "high"
-                          ? "danger"
-                          : gap.impact === "medium"
-                            ? "warning"
-                            : "default"
-                      }
+                {result.llmAnalysis.gaps.map((gap, idx) => {
+                  const impactColors = gap.impact === "high"
+                    ? "border-red-200 bg-red-50"
+                    : gap.impact === "medium"
+                      ? "border-amber-200 bg-amber-50"
+                      : "border-gray-100 bg-gray-50";
+                  const impactBadge = gap.impact === "high"
+                    ? "bg-red-100 text-red-700"
+                    : gap.impact === "medium"
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-gray-100 text-gray-600";
+
+                  return (
+                    <motion.div
+                      key={idx}
+                      className={`rounded-lg border ${impactColors} p-3`}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
                     >
-                      {gap.impact}
-                    </Badge>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {gap.type}: {gap.area || gap.query_class}
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        {gap.reason}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                      <div className="flex items-start gap-2.5">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${impactBadge} flex-shrink-0 mt-0.5`}>
+                          {gap.impact}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {gap.area || gap.query_class}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                            {gap.reason}
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             </motion.div>
           )}
@@ -2292,33 +2416,60 @@ function RankingResultsView({
           {result.llmAnalysis.drivers &&
             result.llmAnalysis.drivers.length > 0 && (
               <motion.div
-                className="rounded-xl border border-gray-200 bg-white p-4"
+                className="rounded-xl border border-gray-200 bg-white p-5"
                 variants={cardVariants}
               >
-                <h4 className="mb-3 font-semibold text-gray-900">
-                  Key Drivers
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {result.llmAnalysis.drivers.map((driver, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm"
-                    >
-                      <span
-                        className={`h-2 w-2 rounded-full ${
-                          driver.direction === "positive"
-                            ? "bg-green-500"
-                            : driver.direction === "negative"
-                              ? "bg-red-500"
-                              : "bg-gray-400"
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="h-4.5 w-4.5 text-gray-700" />
+                  <h4 className="font-semibold text-gray-900 text-sm tracking-tight">
+                    Key Drivers
+                  </h4>
+                </div>
+                <div className="space-y-1.5">
+                  {result.llmAnalysis.drivers.map((driver, idx) => {
+                    const isPositive = driver.direction === "positive";
+                    const isNegative = driver.direction === "negative";
+
+                    return (
+                      <motion.div
+                        key={idx}
+                        className={`flex items-center justify-between rounded-lg border p-2.5 ${
+                          isPositive
+                            ? "border-emerald-100 bg-emerald-50/50"
+                            : isNegative
+                              ? "border-red-100 bg-red-50/50"
+                              : "border-gray-100 bg-gray-50/50"
                         }`}
-                      />
-                      <span className="text-gray-700">{driver.factor}</span>
-                      <span className="text-xs text-gray-400">
-                        ({driver.weight})
-                      </span>
-                    </div>
-                  ))}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.04 }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${
+                              isPositive
+                                ? "bg-emerald-500"
+                                : isNegative
+                                  ? "bg-red-500"
+                                  : "bg-gray-400"
+                            }`}
+                          />
+                          <span className="text-sm font-medium text-gray-800">
+                            {(driver.factor || "").replace(/_/g, " ")}
+                          </span>
+                        </div>
+                        <span className={`text-xs font-semibold tabular-nums ${
+                          isPositive
+                            ? "text-emerald-600"
+                            : isNegative
+                              ? "text-red-600"
+                              : "text-gray-500"
+                        }`}>
+                          {isPositive ? "+" : isNegative ? "−" : ""}{driver.weight}
+                        </span>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}

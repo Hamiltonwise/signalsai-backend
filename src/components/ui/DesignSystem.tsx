@@ -551,7 +551,7 @@ export const HorizontalProgressBar: React.FC<HorizontalProgressBarProps> = ({
             animate={{ opacity: 1 }}
             transition={{ delay: delay + 0.3 }}
           >
-            {score}%
+            {Math.round(score)}%
           </motion.span>
         )}
       </div>
