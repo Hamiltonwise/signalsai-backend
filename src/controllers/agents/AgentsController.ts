@@ -76,6 +76,8 @@ import {
   buildOpportunityPayload,
   buildCroOptimizerPayload,
 } from "./feature-services/service.agent-input-builder";
+import { executeProoflineAgent } from "./feature-services/service.proofline-executor";
+import { setupRankingBatches, processRankingWork } from "./feature-services/service.ranking-executor";
 import {
   createTasksFromCopyRecommendations,
   simulateTaskCreation,
@@ -94,189 +96,25 @@ export async function runProoflineAgent(
   req: Request,
   res: Response,
 ): Promise<any> {
-  const startTime = Date.now();
   const { referenceDate } = req.body || {};
 
-  log("\n" + "=".repeat(70));
-  log("POST /api/agents/proofline-run - STARTING");
-  log("=".repeat(70));
-  if (referenceDate) log(`Reference Date: ${referenceDate}`);
-  log(`Timestamp: ${new Date().toISOString()}`);
-
   try {
-    // Fetch all onboarded Google accounts (join with organizations for name/domain)
-    log("\n[SETUP] Fetching all onboarded Google accounts...");
-    const accounts = await db("google_connections as gc")
-      .join("organizations as o", "gc.organization_id", "o.id")
-      .where("o.onboarding_completed", true)
-      .select("gc.*", "o.domain as domain_name", "o.name as practice_name");
-
-    if (!accounts || accounts.length === 0) {
-      log("[SETUP] No onboarded accounts found");
-      return res.json({
-        success: true,
-        message: "No accounts to process",
-        processed: 0,
-        results: [],
-      });
-    }
-
-    log(`[SETUP] Found ${accounts.length} account(s) to process`);
-
-    // Process each client sequentially, running all locations per client
-    const results: any[] = [];
-    let totalLocationsProcessed = 0;
-
-    for (const account of accounts) {
-      const { id: googleAccountId, domain_name: domain } = account;
-
-      log(`\n[${"=".repeat(60)}]`);
-      log(
-        `[CLIENT] Processing Proofline: ${domain} (ID: ${googleAccountId})`,
-      );
-      log(`[${"=".repeat(60)}]`);
-
-      try {
-        // Get ALL locations for this organization
-        const locations = await LocationModel.findByOrganizationId(account.organization_id);
-
-        if (locations.length === 0) {
-          // Fallback: resolve primary location (legacy orgs without location rows)
-          const fallbackLocationId = await resolveLocationId(account.organization_id);
-          if (fallbackLocationId) {
-            log(`[CLIENT] No location rows found, using resolved primary: ${fallbackLocationId}`);
-            locations.push({ id: fallbackLocationId, name: domain } as any);
-          } else {
-            log(`[CLIENT] No locations found for org ${account.organization_id}, skipping`);
-            results.push({ googleAccountId, domain, success: false, error: "No locations found" });
-            continue;
-          }
-        }
-
-        log(`[CLIENT] Found ${locations.length} location(s) for org ${account.organization_id}`);
-
-        // Get valid OAuth2 client (shared across locations — same GBP connection)
-        log(`[CLIENT] Getting valid OAuth2 client`);
-        const oauth2Client = await getValidOAuth2Client(googleAccountId);
-
-        // Get date range
-        const dailyDates = getDailyDates(referenceDate);
-
-        // Run proofline agent for EACH location
-        for (const location of locations) {
-          const locationId = location.id;
-          const locationName = (location as any).name || `Location ${locationId}`;
-
-          log(`  [LOCATION] Running Proofline for "${locationName}" (location_id: ${locationId})`);
-
-          try {
-            const dailyResult = await processDailyAgent(
-              account,
-              oauth2Client,
-              dailyDates,
-              locationId,
-            );
-
-            if (!dailyResult.success) {
-              log(`  [LOCATION] \u2717 Proofline failed for "${locationName}": ${dailyResult.error}`);
-              results.push({
-                googleAccountId,
-                domain,
-                locationId,
-                locationName,
-                success: false,
-                error: dailyResult.error || "Proofline agent failed",
-              });
-              continue;
-            }
-
-            // Save raw data
-            await db("google_data_store").insert(dailyResult.rawData);
-
-            // Save agent result scoped to this location
-            const [result] = await db("agent_results")
-              .insert({
-                organization_id: account.organization_id,
-                location_id: locationId,
-                agent_type: "proofline",
-                date_start: dailyDates.dayBeforeYesterday,
-                date_end: dailyDates.yesterday,
-                agent_input: JSON.stringify(dailyResult.payload),
-                agent_output: JSON.stringify(dailyResult.output),
-                status: "success",
-                created_at: new Date(),
-                updated_at: new Date(),
-              })
-              .returning("id");
-
-            const resultId = result.id;
-            log(`  [LOCATION] \u2713 Proofline result saved for "${locationName}" (ID: ${resultId})`);
-            totalLocationsProcessed++;
-
-            results.push({
-              googleAccountId,
-              domain,
-              locationId,
-              locationName,
-              success: true,
-            });
-          } catch (locError: any) {
-            logError(`Proofline for ${domain} / ${locationName}`, locError);
-            results.push({
-              googleAccountId,
-              domain,
-              locationId,
-              locationName,
-              success: false,
-              error: locError?.message || String(locError),
-            });
-          }
-        }
-
-        log(`[CLIENT] \u2713 ${domain} completed (${locations.length} location(s))`);
-      } catch (error: any) {
-        logError(`Proofline for ${domain}`, error);
-        results.push({
-          googleAccountId,
-          domain,
-          success: false,
-          error: error?.message || String(error),
-        });
-      }
-    }
-
-    const duration = Date.now() - startTime;
-    const successfulResults = results.filter((r) => r.success).length;
-
-    log("\n" + "=".repeat(70));
-    log(`[COMPLETE] \u2713 Proofline run completed`);
-    log(`  - Total clients: ${accounts.length}`);
-    log(`  - Total locations processed: ${totalLocationsProcessed}`);
-    log(`  - Successful: ${successfulResults}`);
-    log(`  - Failed: ${results.length - successfulResults}`);
-    log(`  - Duration: ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
-    log("=".repeat(70) + "\n");
-
+    const result = await executeProoflineAgent(referenceDate);
     return res.json({
       success: true,
-      message: `Processed ${accounts.length} account(s), ${totalLocationsProcessed} location(s)`,
-      processed: accounts.length,
-      locationsProcessed: totalLocationsProcessed,
-      successful: successfulResults,
-      duration: `${duration}ms`,
-      results,
+      message: `Processed ${result.summary.totalAccounts} account(s), ${result.summary.totalLocations} location(s)`,
+      processed: result.summary.totalAccounts,
+      locationsProcessed: result.summary.totalLocations,
+      successful: result.summary.successful,
+      duration: `${result.summary.durationMs}ms`,
+      results: result.results,
     });
   } catch (error: any) {
     logError("proofline-run", error);
-    const duration = Date.now() - startTime;
-    log(`\n[FAILED] \u274c Proofline run failed after ${duration}ms`);
-    log("=".repeat(70) + "\n");
-
     return res.status(500).json({
       success: false,
       error: "PROOFLINE_RUN_ERROR",
       message: error?.message || "Failed to run proofline agent",
-      duration: `${duration}ms`,
     });
   }
 }
@@ -1132,270 +970,26 @@ export async function runRankingAgent(
   log(`Timestamp: ${new Date().toISOString()}`);
 
   try {
-    // 1. Fetch onboarded orgs with their google connections
-    let query = db("organizations as o")
-      .join("google_connections as gc", "gc.organization_id", "o.id")
-      .where("o.onboarding_completed", true)
-      .select(
-        "o.id as organization_id",
-        "o.name as org_name",
-        "o.domain",
-        "gc.id as connection_id",
-      );
-
-    if (googleAccountId) {
-      query = query.where("gc.id", googleAccountId);
-    }
-
-    const accounts = await query;
-
-    if (!accounts || accounts.length === 0) {
-      log("[SETUP] No onboarded accounts found");
-      return res.json({ success: true, message: "No accounts found", batches: [] });
-    }
-
-    log(`[SETUP] Found ${accounts.length} account(s) to process`);
-
-    // 2. Build batch metadata and create records upfront (fast DB queries)
-    const batches: Array<{
-      orgName: string;
-      domain: string;
-      batchId: string;
-      locationCount: number;
-      rankingIds: number[];
-    }> = [];
-
-    const workItems: Array<{
-      batchId: string;
-      organizationId: number;
-      domain: string;
-      orgName: string;
-      locations: Array<{
-        locationId: number;
-        rankingId: number;
-        connectionId: number;
-        gbpAccountId: string;
-        gbpLocationId: string;
-        gbpLocationName: string;
-      }>;
-    }> = [];
-
-    for (const account of accounts) {
-      const { organization_id, org_name, domain } = account;
-
-      // Get locations from canonical table
-      const locations = await LocationModel.findByOrganizationId(organization_id);
-      if (locations.length === 0) {
-        log(`[SETUP] WARNING: No locations for org "${org_name}" (ID: ${organization_id}), skipping`);
-        continue;
-      }
-
-      // Get GBP properties for each location
-      const locationWork: Array<{
-        locationId: number;
-        connectionId: number;
-        gbpAccountId: string;
-        gbpLocationId: string;
-        gbpLocationName: string;
-      }> = [];
-
-      for (const location of locations) {
-        const gbpProperties = await GooglePropertyModel.findByLocationId(location.id);
-        const selectedGbp = gbpProperties.find(p => p.selected) || gbpProperties[0];
-        if (!selectedGbp) {
-          log(`[SETUP] No GBP properties for location "${location.name}" (ID: ${location.id}), skipping`);
-          continue;
-        }
-        locationWork.push({
-          locationId: location.id,
-          connectionId: selectedGbp.google_connection_id,
-          gbpAccountId: selectedGbp.account_id || "",
-          gbpLocationId: selectedGbp.external_id,
-          gbpLocationName: selectedGbp.display_name || location.name,
-        });
-      }
-
-      if (locationWork.length === 0) {
-        log(`[SETUP] No GBP-linked locations for org "${org_name}", skipping`);
-        continue;
-      }
-
-      const batchId = uuidv4();
-
-      // Create ALL ranking records upfront with "pending" status
-      // This ensures the admin page sees all locations immediately
-      const rankingIds: number[] = [];
-      for (let i = 0; i < locationWork.length; i++) {
-        const loc = locationWork[i];
-        const [record] = await db("practice_rankings")
-          .insert({
-            organization_id,
-            location_id: loc.locationId,
-            gbp_account_id: loc.gbpAccountId,
-            gbp_location_id: loc.gbpLocationId,
-            gbp_location_name: loc.gbpLocationName,
-            batch_id: batchId,
-            observed_at: new Date(),
-            status: "pending",
-            status_detail: JSON.stringify({
-              currentStep: "queued",
-              message: `Waiting in queue (${i + 1}/${locationWork.length})...`,
-              progress: 0,
-              stepsCompleted: [],
-              timestamps: { created_at: new Date().toISOString() },
-            }),
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .returning("id");
-        rankingIds.push(record.id);
-      }
-
-      log(`[SETUP] Batch ${batchId}: ${org_name} — ${locationWork.length} location(s), records created`);
-
-      batches.push({
-        orgName: org_name,
-        domain,
-        batchId,
-        locationCount: locationWork.length,
-        rankingIds,
-      });
-
-      workItems.push({
-        batchId,
-        organizationId: organization_id,
-        domain,
-        orgName: org_name,
-        locations: locationWork.map((loc, i) => ({
-          ...loc,
-          rankingId: rankingIds[i],
-        })),
-      });
-    }
+    const { batches, workItems, totalLocations } = await setupRankingBatches(googleAccountId);
 
     if (batches.length === 0) {
-      log("[SETUP] No orgs with GBP-linked locations found");
       return res.json({ success: true, message: "No orgs with GBP locations found", batches: [] });
     }
 
-    const totalLocations = batches.reduce((s, b) => s + b.locationCount, 0);
-    log(`[SETUP] Queued ${batches.length} org(s), ${totalLocations} total locations`);
-
-    // 3. Kick off background processing and return immediately
+    // Kick off background processing and return immediately
     setImmediate(() => {
-      (async () => {
-        log(`\n[BACKGROUND] Starting sequential ranking processing for ${workItems.length} org(s)`);
-
-        for (const work of workItems) {
-          log(`\n[${"=".repeat(60)}]`);
-          log(`[ORG] Processing: ${work.orgName} (${work.domain})`);
-          log(`[ORG] Batch: ${work.batchId}, Locations: ${work.locations.length}`);
-          log(`[${"=".repeat(60)}]`);
-
-          for (let i = 0; i < work.locations.length; i++) {
-            const loc = work.locations[i];
-            log(`\n  [LOCATION] Processing ${i + 1}/${work.locations.length}: ${loc.gbpLocationName}`);
-
-            // Identify specialty and market location
-            let specialty = "";
-            let marketLocation = "";
-            try {
-              const oauth2Client = await getValidOAuth2Client(loc.connectionId);
-              const gbpProfile = await fetchGBPDataForRange(
-                oauth2Client,
-                [{
-                  accountId: loc.gbpAccountId,
-                  locationId: loc.gbpLocationId,
-                  displayName: loc.gbpLocationName,
-                }],
-                new Date().toISOString().split("T")[0],
-                new Date().toISOString().split("T")[0],
-              );
-              const locationData = gbpProfile?.locations?.[0]?.data || {};
-              const meta = await identifyLocationMeta(locationData, work.domain);
-              specialty = meta.specialty;
-              marketLocation = meta.marketLocation;
-
-              await db("practice_rankings")
-                .where({ id: loc.rankingId })
-                .update({ specialty, location: marketLocation, updated_at: new Date() });
-
-              log(`  [LOCATION] Identified: ${specialty} in ${marketLocation}`);
-            } catch (identErr: any) {
-              log(`  [LOCATION] Identification failed for ${loc.gbpLocationName}: ${identErr.message}, using fallback`);
-              specialty = "orthodontist";
-              marketLocation = "Unknown, US";
-              await db("practice_rankings")
-                .where({ id: loc.rankingId })
-                .update({ specialty, location: marketLocation, updated_at: new Date() });
-            }
-
-            // Update status to processing
-            await db("practice_rankings")
-              .where({ id: loc.rankingId })
-              .update({
-                status: "processing",
-                status_detail: JSON.stringify({
-                  currentStep: "starting",
-                  message: `Starting analysis ${i + 1}/${work.locations.length}...`,
-                  progress: 5,
-                  stepsCompleted: ["queued"],
-                  timestamps: { started_at: new Date().toISOString() },
-                }),
-              });
-
-            // Process ranking with retry logic
-            let success = false;
-            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-              try {
-                if (attempt > 1) {
-                  log(`    Retry ${attempt}/${MAX_RETRIES} for ID ${loc.rankingId}`);
-                  await delay(RETRY_DELAY_MS);
-                }
-
-                await processLocationRanking(
-                  loc.rankingId,
-                  loc.connectionId,
-                  loc.gbpAccountId,
-                  loc.gbpLocationId,
-                  loc.gbpLocationName,
-                  specialty,
-                  marketLocation,
-                  work.domain,
-                  work.batchId,
-                  log,
-                );
-
-                success = true;
-                break;
-              } catch (err: any) {
-                log(`    Attempt ${attempt} failed: ${err.message}`);
-                if (attempt === MAX_RETRIES) {
-                  await db("practice_rankings")
-                    .where({ id: loc.rankingId })
-                    .update({ status: "failed", error_message: err.message });
-                }
-              }
-            }
-
-            if (!success) {
-              log(`    FAILED: Exhausted retries for ${loc.gbpLocationId}`);
-            }
-          }
-
-          log(`[ORG] Completed: ${work.orgName}`);
-        }
-
-        const duration = Date.now() - startTime;
-        log("\n" + "=".repeat(70));
-        log(`[COMPLETE] Ranking run completed in ${(duration / 1000).toFixed(1)}s`);
-        log("=".repeat(70) + "\n");
-      })().catch((err) => {
-        logError("ranking-run background processing", err);
-      });
+      processRankingWork(workItems)
+        .then(() => {
+          const duration = Date.now() - startTime;
+          log("\n" + "=".repeat(70));
+          log(`[COMPLETE] Ranking run completed in ${(duration / 1000).toFixed(1)}s`);
+          log("=".repeat(70) + "\n");
+        })
+        .catch((err) => {
+          logError("ranking-run background processing", err);
+        });
     });
 
-    // 4. Return immediately with batch metadata
     return res.json({
       success: true,
       message: `Queued ${batches.length} org(s) for ranking analysis`,

@@ -13,6 +13,7 @@ import {
 import { processWorksDigest } from "./processors/worksDigest.processor";
 import { processSeoBulkGenerate } from "./processors/seoBulkGenerate.processor";
 import { processReviewSync } from "./processors/reviewSync.processor";
+import { processSchedulerTick } from "./processors/scheduler.processor";
 import { getMindsQueue } from "./queues";
 
 const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
@@ -176,8 +177,21 @@ const reviewSyncWorker = new Worker(
   }
 );
 
+// Scheduler worker (ticks every 60s, checks DB for due schedules)
+const schedulerWorker = new Worker(
+  "minds-scheduler",
+  async (job) => {
+    await processSchedulerTick(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -201,6 +215,7 @@ async function shutdown(): Promise<void> {
   await worksDigestWorker.close();
   await seoBulkGenerateWorker.close();
   await reviewSyncWorker.close();
+  await schedulerWorker.close();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
   process.exit(0);
@@ -251,9 +266,31 @@ async function setupReviewSyncSchedule(): Promise<void> {
   }
 }
 
+// Set up scheduler tick (every 60 seconds)
+async function setupSchedulerTick(): Promise<void> {
+  try {
+    const queue = getMindsQueue("scheduler");
+    await queue.add(
+      "scheduler-tick",
+      {},
+      {
+        repeat: {
+          pattern: "* * * * *", // Every minute
+          tz: "UTC",
+        },
+        jobId: "scheduler-tick",
+      }
+    );
+    console.log("[MINDS-WORKER] Scheduler tick scheduled (every 60s)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up scheduler tick:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
 setupReviewSyncSchedule();
+setupSchedulerTick();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
