@@ -7,7 +7,6 @@ import {
   Pause,
   Trash2,
   Plus,
-  CheckCircle2,
   XCircle,
   Loader2,
   Timer,
