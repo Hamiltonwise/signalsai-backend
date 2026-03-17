@@ -19,13 +19,11 @@ import {
   XCircle,
   AlertCircle,
   Zap,
-  RotateCcw,
   FileText,
   Layout,
   Newspaper,
   Trash2,
   Plus,
-  Clock,
   ArrowLeft,
 } from "lucide-react";
 import {

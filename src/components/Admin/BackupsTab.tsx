@@ -8,8 +8,6 @@ import {
   Archive,
   RotateCcw,
   AlertTriangle,
-  Check,
-  X,
   HardDrive,
 } from "lucide-react";
 import {
@@ -215,7 +213,7 @@ export default function BackupsTab({ projectId, projectName }: BackupsTabProps) 
   };
 
   const activeJob = jobs.find((j) => j.id === activeJobId);
-  const completedBackups = jobs.filter(
+  const _completedBackups = jobs.filter(
     (j) => j.type === "backup" && j.status === "completed"
   );
   const hasActiveJob = !!activeJob;
