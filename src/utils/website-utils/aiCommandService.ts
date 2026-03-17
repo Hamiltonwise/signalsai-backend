@@ -176,6 +176,8 @@ RULES:
 - For content that maps to an existing post_type (e.g., doctors, services, team members), recommend creating a POST, not a page
 - For standalone pages (pricing, privacy policy, referral form), recommend creating a PAGE
 - For URL changes mentioned in the requirements, recommend REDIRECTS
+- For navigation changes (add/remove/update links in menus), recommend MENU CHANGES — do NOT recommend editing header HTML for nav links
+- When a new page or post is created, also recommend adding it to the appropriate menu
 - Post slugs should be URL-safe (lowercase, hyphens, no spaces)
 
 RESPONSE FORMAT — return ONLY valid JSON, no markdown fences:
@@ -188,15 +190,30 @@ RESPONSE FORMAT — return ONLY valid JSON, no markdown fences:
   ],
   "posts": [
     { "post_type_slug": "doctors", "title": "Dr. Name", "slug": "dr-name", "purpose": "What this post should contain", "recommendation": "Human-readable reason" }
+  ],
+  "menuChanges": [
+    { "menu_slug": "main-nav", "action": "add", "label": "Pricing", "url": "/pricing", "target": "_self", "recommendation": "Add pricing link to main navigation" }
   ]
 }
 
-If no structural changes are needed, return: { "redirects": [], "pages": [], "posts": [] }`;
+If no structural changes are needed, return: { "redirects": [], "pages": [], "posts": [], "menuChanges": [] }`;
+
+export interface MenuChangeRecommendation {
+  menu_slug: string;
+  action: "add" | "remove" | "update";
+  label: string;
+  url?: string;
+  target?: string;
+  original_label?: string;
+  parent_id?: string | null;
+  recommendation: string;
+}
 
 export interface StructuralAnalysisResult {
   redirects: Array<{ from_path: string; to_path: string; type?: number; recommendation: string }>;
   pages: Array<{ path: string; purpose: string; recommendation: string }>;
   posts: Array<{ post_type_slug: string; title: string; slug: string; purpose: string; recommendation: string }>;
+  menuChanges: MenuChangeRecommendation[];
 }
 
 export async function analyzeForStructuralChanges(params: {
@@ -205,8 +222,9 @@ export async function analyzeForStructuralChanges(params: {
   existingRedirects: string[];
   existingPostSlugs: string[];
   postTypes: string[];
+  existingMenus: Array<{ menu_slug: string; items: Array<{ label: string; url: string }> }>;
 }): Promise<StructuralAnalysisResult> {
-  const { prompt, existingPaths, existingRedirects, existingPostSlugs, postTypes } = params;
+  const { prompt, existingPaths, existingRedirects, existingPostSlugs, postTypes, existingMenus } = params;
   const ai = getClient();
 
   const userMessage = `## Requirements / Checklist
@@ -223,7 +241,10 @@ ${existingRedirects.length > 0 ? existingRedirects.join("\n") : "(none)"}
 ${existingPostSlugs.length > 0 ? existingPostSlugs.join("\n") : "(none)"}
 
 ## Available Post Types
-${postTypes.length > 0 ? postTypes.join("\n") : "(none)"}`;
+${postTypes.length > 0 ? postTypes.join("\n") : "(none)"}
+
+## Existing Menus & Items
+${existingMenus.length > 0 ? existingMenus.map((m) => `Menu "${m.menu_slug}":\n${m.items.map((i) => `  - ${i.label} → ${i.url}`).join("\n") || "  (empty)"}`).join("\n\n") : "(no menus)"}`;
 
   console.log(`[AiCommand] Analyzing structural changes...`);
 
@@ -255,17 +276,18 @@ ${postTypes.length > 0 ? postTypes.join("\n") : "(none)"}`;
 
   if (!parsed) {
     console.error("[AiCommand] Structural analysis failed to parse:", text.substring(0, 300));
-    return { redirects: [], pages: [], posts: [] };
+    return { redirects: [], pages: [], posts: [], menuChanges: [] };
   }
 
   const result: StructuralAnalysisResult = {
     redirects: Array.isArray(parsed.redirects) ? parsed.redirects.filter((r: any) => r?.from_path && r?.to_path) : [],
     pages: Array.isArray(parsed.pages) ? parsed.pages.filter((p: any) => p?.path && p?.purpose) : [],
     posts: Array.isArray(parsed.posts) ? parsed.posts.filter((p: any) => p?.post_type_slug && p?.title) : [],
+    menuChanges: Array.isArray(parsed.menuChanges) ? parsed.menuChanges.filter((m: any) => m?.menu_slug && m?.action && m?.label) : [],
   };
 
   console.log(
-    `[AiCommand] ✓ Structural: ${result.redirects.length} redirects, ${result.pages.length} pages, ${result.posts.length} posts`
+    `[AiCommand] ✓ Structural: ${result.redirects.length} redirects, ${result.pages.length} pages, ${result.posts.length} posts, ${result.menuChanges.length} menu changes`
   );
 
   return result;

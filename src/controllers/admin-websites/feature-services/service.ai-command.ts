@@ -17,6 +17,7 @@ import {
 } from "../../../utils/website-utils/aiCommandService";
 import crypto from "crypto";
 import * as redirectsService from "./service.redirects";
+import * as menuManager from "./service.menu-manager";
 
 const BATCHES_TABLE = "website_builder.ai_command_batches";
 const RECS_TABLE = "website_builder.ai_command_recommendations";
@@ -250,6 +251,7 @@ export async function analyzeBatch(batchId: string): Promise<void> {
       const existingRedirects = await redirectsService.getExistingRedirects(batch.project_id);
       const existingPostSlugs = await getExistingPostSlugs(batch.project_id);
       const postTypes = await getProjectPostTypes(batch.project_id, project.template_id);
+      const existingMenus = await getExistingMenuItems(batch.project_id);
 
       const structural = await analyzeForStructuralChanges({
         prompt: batch.prompt,
@@ -257,6 +259,7 @@ export async function analyzeBatch(batchId: string): Promise<void> {
         existingRedirects: existingRedirects.map((r) => `${r.from_path} → ${r.to_path}`),
         existingPostSlugs: existingPostSlugs.map((p) => `${p.post_type_slug}/${p.slug}`),
         postTypes: postTypes.map((pt: any) => `${pt.slug} (${pt.name})`),
+        existingMenus,
       });
 
       for (const rec of structural.redirects) {
@@ -298,6 +301,21 @@ export async function analyzeBatch(batchId: string): Promise<void> {
           target_meta: JSON.stringify({ post_type_slug: rec.post_type_slug, title: rec.title, slug: rec.slug, purpose: rec.purpose }),
           recommendation: rec.recommendation,
           instruction: `Create a new ${rec.post_type_slug} post: ${rec.title}`,
+          current_html: "",
+          sort_order: sortOrder++,
+        });
+        totalRecommendations++;
+      }
+
+      for (const rec of structural.menuChanges) {
+        await db(RECS_TABLE).insert({
+          batch_id: batchId,
+          target_type: "update_menu",
+          target_id: batch.project_id,
+          target_label: `Menu: ${rec.action} "${rec.label}" in ${rec.menu_slug}`,
+          target_meta: JSON.stringify(rec),
+          recommendation: rec.recommendation,
+          instruction: `${rec.action} menu item "${rec.label}" ${rec.action === "add" ? `with URL ${rec.url} in menu "${rec.menu_slug}"` : `from menu "${rec.menu_slug}"`}`,
           current_html: "",
           sort_order: sortOrder++,
         });
@@ -410,6 +428,9 @@ async function executeRecommendation(rec: any): Promise<void> {
   }
   if (rec.target_type === "create_post") {
     return executeCreatePost(rec);
+  }
+  if (rec.target_type === "update_menu") {
+    return executeUpdateMenu(rec);
   }
 
   // Stale check — compare stored HTML with current live HTML
@@ -909,6 +930,132 @@ async function executeCreatePost(rec: any): Promise<void> {
   console.log(`[AiCommand] ✓ Created post: ${meta.title} (${meta.post_type_slug}, ID: ${post.id})`);
 }
 
+async function executeUpdateMenu(rec: any): Promise<void> {
+  const meta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
+  const projectId = rec.target_id;
+
+  // Find the menu by slug
+  const { menus } = await menuManager.listMenus(projectId);
+  const menu = menus.find((m: any) => m.slug === meta.menu_slug);
+
+  if (!menu) {
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "failed",
+      execution_result: JSON.stringify({ success: false, error: `Menu "${meta.menu_slug}" not found` }),
+    });
+    return;
+  }
+
+  if (meta.action === "add") {
+    // Check if item with same URL already exists
+    const menuDetail = await menuManager.getMenu(projectId, menu.id);
+    const existingItem = findMenuItemByUrl(menuDetail.menu?.items || [], meta.url);
+    if (existingItem) {
+      await db(RECS_TABLE).where("id", rec.id).update({
+        status: "failed",
+        execution_result: JSON.stringify({ success: false, error: `Menu item with URL "${meta.url}" already exists` }),
+      });
+      return;
+    }
+
+    const result = await menuManager.createMenuItem(projectId, menu.id, {
+      label: meta.label,
+      url: meta.url,
+      target: meta.target || "_self",
+      parent_id: meta.parent_id || null,
+    });
+
+    if (result.error) {
+      await db(RECS_TABLE).where("id", rec.id).update({
+        status: "failed",
+        execution_result: JSON.stringify({ success: false, error: result.error.message }),
+      });
+      return;
+    }
+
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "executed",
+      execution_result: JSON.stringify({ success: true, item_id: result.item.id }),
+    });
+    console.log(`[AiCommand] ✓ Added menu item: "${meta.label}" → ${meta.url}`);
+
+  } else if (meta.action === "remove") {
+    const menuDetail = await menuManager.getMenu(projectId, menu.id);
+    const item = findMenuItemByLabel(menuDetail.menu?.items || [], meta.label);
+
+    if (!item) {
+      await db(RECS_TABLE).where("id", rec.id).update({
+        status: "failed",
+        execution_result: JSON.stringify({ success: false, error: `Menu item "${meta.label}" not found` }),
+      });
+      return;
+    }
+
+    await menuManager.deleteMenuItem(projectId, menu.id, item.id);
+
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "executed",
+      execution_result: JSON.stringify({ success: true, deleted_item_id: item.id }),
+    });
+    console.log(`[AiCommand] ✓ Removed menu item: "${meta.label}"`);
+
+  } else if (meta.action === "update") {
+    const menuDetail = await menuManager.getMenu(projectId, menu.id);
+    const item = findMenuItemByLabel(menuDetail.menu?.items || [], meta.original_label || meta.label);
+
+    if (!item) {
+      await db(RECS_TABLE).where("id", rec.id).update({
+        status: "failed",
+        execution_result: JSON.stringify({ success: false, error: `Menu item "${meta.original_label || meta.label}" not found` }),
+      });
+      return;
+    }
+
+    const updates: Record<string, string> = {};
+    if (meta.label) updates.label = meta.label;
+    if (meta.url) updates.url = meta.url;
+    if (meta.target) updates.target = meta.target;
+
+    const result = await menuManager.updateMenuItem(projectId, menu.id, item.id, updates);
+
+    if (result.error) {
+      await db(RECS_TABLE).where("id", rec.id).update({
+        status: "failed",
+        execution_result: JSON.stringify({ success: false, error: result.error.message }),
+      });
+      return;
+    }
+
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "executed",
+      execution_result: JSON.stringify({ success: true, item_id: item.id }),
+    });
+    console.log(`[AiCommand] ✓ Updated menu item: "${meta.label}"`);
+  }
+}
+
+function findMenuItemByUrl(items: any[], url: string): any | null {
+  for (const item of items) {
+    if (item.url === url) return item;
+    if (item.children?.length) {
+      const found = findMenuItemByUrl(item.children, url);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function findMenuItemByLabel(items: any[], label: string): any | null {
+  for (const item of items) {
+    if (item.label.toLowerCase() === label.toLowerCase()) return item;
+    if (item.children?.length) {
+      const found = findMenuItemByLabel(item.children, label);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Context helpers for structural analysis
 // ---------------------------------------------------------------------------
@@ -938,4 +1085,30 @@ async function getProjectPostTypes(
 ): Promise<any[]> {
   if (!templateId) return [];
   return db(POST_TYPES_TABLE).where("template_id", templateId);
+}
+
+async function getExistingMenuItems(
+  projectId: string
+): Promise<Array<{ menu_slug: string; items: Array<{ label: string; url: string }> }>> {
+  const { menus } = await menuManager.listMenus(projectId);
+  const result: Array<{ menu_slug: string; items: Array<{ label: string; url: string }> }> = [];
+
+  for (const menu of menus) {
+    const detail = await menuManager.getMenu(projectId, menu.id);
+    const items = flattenMenuItems(detail.menu?.items || []);
+    result.push({ menu_slug: menu.slug, items });
+  }
+
+  return result;
+}
+
+function flattenMenuItems(items: any[]): Array<{ label: string; url: string }> {
+  const flat: Array<{ label: string; url: string }> = [];
+  for (const item of items) {
+    flat.push({ label: item.label, url: item.url });
+    if (item.children?.length) {
+      flat.push(...flattenMenuItems(item.children));
+    }
+  }
+  return flat;
 }
