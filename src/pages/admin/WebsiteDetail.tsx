@@ -64,6 +64,8 @@ import FormSubmissionsTab from "../../components/Admin/FormSubmissionsTab";
 import PostsTab from "../../components/Admin/PostsTab";
 import MenusTab from "../../components/Admin/MenusTab";
 import BackupsTab from "../../components/Admin/BackupsTab";
+import AiCommandTab from "../../components/Admin/AiCommandTab";
+import RedirectsTab from "../../components/Admin/RedirectsTab";
 import { fetchProjectCodeSnippets } from "../../api/codeSnippets";
 import type { CodeSnippet } from "../../api/codeSnippets";
 import { useConfirm } from "../../components/ui/ConfirmModal";
@@ -314,7 +316,7 @@ export default function WebsiteDetail() {
   const [scrapedData, setScrapedData] = useState("");
 
   // Detail tab: persisted in URL search params so refresh preserves tab
-  const VALID_TABS = ["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "backups"] as const;
+  const VALID_TABS = ["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "redirects", "ai-command", "backups"] as const;
   type DetailTab = typeof VALID_TABS[number];
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get("tab");
@@ -1731,7 +1733,7 @@ export default function WebsiteDetail() {
 
       {/* Tab bar: Pages | Layouts | Code Manager | Media | Form Submissions */}
       <div className="flex items-stretch gap-1 p-1.5 bg-gray-100 rounded-xl mb-4">
-        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "backups"] as const).map((tab) => {
+        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "redirects", "ai-command", "backups"] as const).map((tab) => {
           const isActive = detailTab === tab;
           return (
             <motion.button
@@ -1751,7 +1753,7 @@ export default function WebsiteDetail() {
                 />
               )}
               <span className="relative z-10">
-                {tab === "form-submissions" ? "Form Submissions" : tab === "code-manager" ? "Code Manager" : tab}
+                {tab === "form-submissions" ? "Form Submissions" : tab === "code-manager" ? "Code Manager" : tab === "ai-command" ? "AI Command" : tab === "redirects" ? "Redirects" : tab}
               </span>
             </motion.button>
           );
@@ -2137,6 +2139,28 @@ export default function WebsiteDetail() {
           transition={{ delay: 0.2 }}
         >
           <MenusTab projectId={id!} templateId={website.template_id} />
+        </motion.div>
+      )}
+
+      {/* Redirects Section */}
+      {detailTab === "redirects" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <RedirectsTab projectId={id!} />
+        </motion.div>
+      )}
+
+      {/* AI Command Section */}
+      {detailTab === "ai-command" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <AiCommandTab projectId={id!} pages={website.pages} />
         </motion.div>
       )}
 

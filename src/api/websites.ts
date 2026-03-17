@@ -1048,3 +1048,221 @@ export const fetchAllSeoMeta = async (
   if (!response.ok) throw new Error("Failed to fetch SEO meta");
   return response.json();
 };
+
+// =====================================================================
+// AI COMMAND
+// =====================================================================
+
+export interface AiCommandTargets {
+  pages?: string[] | "all";
+  posts?: string[] | "all";
+  layouts?: string[] | "all";
+}
+
+export interface AiCommandBatchStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  executed: number;
+  failed: number;
+}
+
+export interface AiCommandBatch {
+  id: string;
+  project_id: string;
+  prompt: string;
+  targets: AiCommandTargets;
+  status: "analyzing" | "ready" | "executing" | "completed" | "failed";
+  summary: string | null;
+  stats: AiCommandBatchStats;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AiCommandRecommendation {
+  id: string;
+  batch_id: string;
+  target_type: "page_section" | "layout" | "post";
+  target_id: string;
+  target_label: string;
+  target_meta: Record<string, unknown>;
+  recommendation: string;
+  instruction: string;
+  current_html: string;
+  status: "pending" | "approved" | "rejected" | "executed" | "failed";
+  execution_result: { success: boolean; error?: string; edited_html?: string } | null;
+  sort_order: number;
+  created_at: string;
+}
+
+export const createAiCommandBatch = async (
+  projectId: string,
+  data: { prompt: string; targets?: AiCommandTargets },
+): Promise<{ success: boolean; data: AiCommandBatch }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/ai-command`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create AI command batch");
+  return response.json();
+};
+
+export const fetchAiCommandBatch = async (
+  projectId: string,
+  batchId: string,
+): Promise<{ success: boolean; data: AiCommandBatch }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/ai-command/${batchId}`);
+  if (!response.ok) throw new Error("Failed to fetch AI command batch");
+  return response.json();
+};
+
+export const fetchAiCommandRecommendations = async (
+  projectId: string,
+  batchId: string,
+  filters?: { status?: string; target_type?: string },
+): Promise<{ success: boolean; data: AiCommandRecommendation[] }> => {
+  const params = new URLSearchParams();
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.target_type) params.append("target_type", filters.target_type);
+  const qs = params.toString() ? `?${params.toString()}` : "";
+
+  const response = await fetch(
+    `${API_BASE}/${projectId}/ai-command/${batchId}/recommendations${qs}`,
+  );
+  if (!response.ok) throw new Error("Failed to fetch recommendations");
+  return response.json();
+};
+
+export const updateAiCommandRecommendation = async (
+  projectId: string,
+  batchId: string,
+  recId: string,
+  status: "approved" | "rejected",
+): Promise<{ success: boolean; data: AiCommandRecommendation }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/ai-command/${batchId}/recommendations/${recId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    },
+  );
+  if (!response.ok) throw new Error("Failed to update recommendation");
+  return response.json();
+};
+
+export const bulkUpdateAiCommandRecommendations = async (
+  projectId: string,
+  batchId: string,
+  status: "approved" | "rejected",
+  filters?: { target_type?: string },
+): Promise<{ success: boolean; data: { updated: number } }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/ai-command/${batchId}/recommendations/bulk`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, ...filters }),
+    },
+  );
+  if (!response.ok) throw new Error("Failed to bulk update recommendations");
+  return response.json();
+};
+
+export const executeAiCommandBatch = async (
+  projectId: string,
+  batchId: string,
+): Promise<{ success: boolean; data: { status: string } }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/ai-command/${batchId}/execute`,
+    { method: "POST" },
+  );
+  if (!response.ok) throw new Error("Failed to execute AI command batch");
+  return response.json();
+};
+
+// =====================================================================
+// REDIRECTS
+// =====================================================================
+
+export interface Redirect {
+  id: string;
+  project_id: string;
+  from_path: string;
+  to_path: string;
+  type: number;
+  is_wildcard: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const listRedirects = async (
+  projectId: string,
+): Promise<{ success: boolean; data: Redirect[] }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/redirects`);
+  if (!response.ok) throw new Error("Failed to list redirects");
+  return response.json();
+};
+
+export const createRedirect = async (
+  projectId: string,
+  data: { from_path: string; to_path: string; type?: number },
+): Promise<{ success: boolean; data: Redirect }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/redirects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create redirect");
+  }
+  return response.json();
+};
+
+export const updateRedirect = async (
+  projectId: string,
+  redirectId: string,
+  data: Partial<{ from_path: string; to_path: string; type: number }>,
+): Promise<{ success: boolean; data: Redirect }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/redirects/${redirectId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to update redirect");
+  return response.json();
+};
+
+export const deleteRedirect = async (
+  projectId: string,
+  redirectId: string,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/redirects/${redirectId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("Failed to delete redirect");
+  return response.json();
+};
+
+export const listAiCommandBatches = async (
+  projectId: string,
+): Promise<{ success: boolean; data: AiCommandBatch[] }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/ai-command`);
+  if (!response.ok) throw new Error("Failed to list AI command batches");
+  return response.json();
+};
+
+export const deleteAiCommandBatch = async (
+  projectId: string,
+  batchId: string,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/ai-command/${batchId}`,
+    { method: "DELETE" },
+  );
+  if (!response.ok) throw new Error("Failed to delete AI command batch");
+  return response.json();
+};
