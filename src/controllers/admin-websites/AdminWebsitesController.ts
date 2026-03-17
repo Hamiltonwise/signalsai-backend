@@ -2884,7 +2884,11 @@ export async function updateAiCommandRecommendation(req: Request, res: Response)
       return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "status must be 'approved' or 'rejected'" });
     }
 
-    const rec = await aiCommand.updateRecommendationStatus(recId, status);
+    const { reference_url, reference_content } = req.body;
+    const rec = await aiCommand.updateRecommendationStatus(recId, status, {
+      reference_url,
+      reference_content,
+    });
     if (!rec) {
       return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Recommendation not found" });
     }

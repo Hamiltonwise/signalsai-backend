@@ -25,22 +25,55 @@ function getClient(): Anthropic {
 // Analysis — produce structured recommendations from content + prompt
 // ---------------------------------------------------------------------------
 
-const ANALYSIS_SYSTEM_PROMPT = `You are a website QA analyst reviewing HTML content against a set of requirements, a QA checklist, or a change instruction.
+const ANALYSIS_SYSTEM_PROMPT = `You are a website QA analyst for the Alloro website engine. You review HTML content against requirements and recommend changes.
 
-Your job is to find EVERY applicable change that should be made to the HTML you're given. Be thorough — err on the side of flagging too many issues rather than too few.
+## ALLORO ENGINE ARCHITECTURE — YOU MUST UNDERSTAND THIS
 
-HOW TO ANALYZE:
-1. Read the requirements/checklist/instruction carefully
+Alloro websites are data-driven. Content that repeats or belongs to a collection should NEVER be hardcoded in HTML. Instead, it should be managed as **posts** (database records) rendered dynamically via **shortcodes**.
+
+**Content types that MUST be posts (not hardcoded HTML):**
+- Doctor/team member profiles → post_type "doctors" or "team"
+- Services/treatments → post_type "services"
+- Testimonials/reviews → post_type "testimonials" or "reviews"
+- Blog articles → post_type "blog"
+- Locations/offices → post_type "locations"
+- FAQs (if managed as individual items) → post_type "faqs"
+- Any repeating content cards, grids, or lists
+
+**Navigation menus MUST use the menu shortcode system:**
+- Menus are stored in the database and rendered via {{ menu id='slug' }} or {{ menu id='slug' template='template-slug' }}
+- Navigation links should NEVER be hardcoded as <a> tags in header/footer HTML
+- If you see hardcoded nav links in a header/footer, recommend replacing them with a {{ menu }} shortcode
+
+**Post blocks render posts dynamically via shortcodes:**
+- {{ post_block id='block-slug' items='post-type-slug' limit='10' }} renders a grid/list of posts
+- Posts have: title, slug, content, custom_fields, featured_image, categories, tags
+- Post blocks loop through posts using {{start_post_loop}} / {{end_post_loop}} markers
+
+**What SHOULD be hardcoded HTML (not posts):**
+- Hero sections with unique copy
+- About/mission text (unless it's a team page)
+- Contact forms
+- CTA sections
+- Page-specific content that doesn't repeat
+
+## HOW TO ANALYZE
+
+1. Read the requirements/checklist carefully
 2. Read the HTML content carefully
 3. For each requirement, check if the HTML satisfies it
-4. If the requirement mentions content that should exist (e.g., hours, addresses, names, links) — check if that content is present AND correct in the HTML
-5. If the instruction asks for a style/design change (e.g., "change rounded buttons to square") — check every element that matches
-6. If a finding/requirement is about content on THIS specific section/page, flag it even if the fix seems minor
-7. Requirements about missing pages, missing sections, or site-wide architecture changes that can't be fixed by editing THIS HTML should still be flagged if this HTML could partially address them (e.g., adding a link, updating a menu reference)
+4. Flag hardcoded content that should be data-driven (see architecture rules above)
+5. If you see hardcoded nav links, recommend converting to {{ menu }} shortcode
+6. If you see a hardcoded grid of services/doctors/reviews, recommend converting to {{ post_block }} shortcode
+7. For simple style/design changes (e.g., "change rounded buttons to square") — find every matching element
 
-IMPORTANT: If the user gives you a simple instruction like "change all buttons to rounded-sm" or "update the phone number to X" — you MUST find matching elements in the HTML and create recommendations for them. Do NOT return empty recommendations when there are clearly applicable changes.
+## RULES
 
-Only return empty recommendations if you have genuinely examined the HTML and confirmed NONE of the requirements apply to it.
+- NEVER return "no change needed" recommendations. If nothing applies, return empty array.
+- Do NOT recommend creating new pages, posts, redirects, or menu items. A separate structural analysis handles those.
+- DO recommend replacing hardcoded content with shortcodes (this IS an HTML edit)
+- DO recommend fixing broken HTML, incorrect content, wrong links, styling issues
+- If the HTML contains {{ menu }} or {{ post_block }} shortcodes, do NOT try to edit the content inside them — they are resolved at render time from the database
 
 RESPONSE FORMAT — return ONLY valid JSON, no markdown fences, no commentary:
 {
@@ -130,9 +163,16 @@ ${currentHtml}`;
     );
   }
 
+  const NO_CHANGE_PATTERNS = /no change|no action|not applicable|no modification|nothing to change|no update|cannot be made|not needed/i;
+
   const recommendations = Array.isArray(parsed.recommendations)
     ? parsed.recommendations.filter(
-        (r: any) => r && typeof r.recommendation === "string" && typeof r.instruction === "string"
+        (r: any) =>
+          r &&
+          typeof r.recommendation === "string" &&
+          typeof r.instruction === "string" &&
+          !NO_CHANGE_PATTERNS.test(r.instruction) &&
+          !NO_CHANGE_PATTERNS.test(r.recommendation)
       )
     : [];
 
@@ -160,25 +200,53 @@ ${currentHtml}`;
 // Structural analysis — detect needed pages, posts, redirects
 // ---------------------------------------------------------------------------
 
-const STRUCTURAL_SYSTEM_PROMPT = `You analyze a QA checklist or change request and identify structural changes needed: new pages to create, new posts to create, and URL redirects to set up.
+const STRUCTURAL_SYSTEM_PROMPT = `You are a structural analyst for the Alloro website engine. You identify what needs to be CREATED or CHANGED at the data level — new pages, new posts, redirects, and menu updates.
 
-You are given:
-- The user's requirements/checklist
-- A list of existing page paths (so you don't recommend creating pages that already exist)
-- A list of existing redirects (so you don't recommend duplicates)
-- A list of existing post slugs with their types (so you don't recommend duplicates)
-- Available post types (to determine if content should be a post vs a page — e.g., if "doctors" is a post type, a new doctor should be a post, not a page)
+## ALLORO ENGINE ARCHITECTURE — CRITICAL
 
-RULES:
-- Only recommend creating pages/posts/redirects that are explicitly mentioned or strongly implied by the requirements
-- Do NOT recommend creating content that already exists (check the existing lists)
-- Do NOT recommend redirects that already exist
-- For content that maps to an existing post_type (e.g., doctors, services, team members), recommend creating a POST, not a page
-- For standalone pages (pricing, privacy policy, referral form), recommend creating a PAGE
-- For URL changes mentioned in the requirements, recommend REDIRECTS
-- For navigation changes (add/remove/update links in menus), recommend MENU CHANGES — do NOT recommend editing header HTML for nav links
-- When a new page or post is created, also recommend adding it to the appropriate menu
-- Post slugs should be URL-safe (lowercase, hyphens, no spaces)
+Alloro is a data-driven website engine. You must recommend the RIGHT data structure for each content type:
+
+**MUST be posts (rendered via {{ post_block }} shortcodes, not hardcoded HTML):**
+- Doctor/provider profiles → post_type "doctors" or "team"
+- Services/treatments → post_type "services"
+- Testimonials/reviews → post_type "testimonials" or "reviews"
+- Blog articles → post_type "blog"
+- Locations/offices → post_type "locations"
+- Team members → post_type "team"
+- Any content that belongs to a repeating collection
+
+**MUST be pages (standalone content):**
+- Pricing/financial info pages
+- Privacy policy, accessibility notices
+- Referral forms
+- Patient information pages
+- About/mission pages
+- Any standalone content that doesn't belong to a collection
+
+**MUST be menus (not hardcoded nav links):**
+- All navigation links in headers and footers
+- If the checklist mentions adding nav items, recommend MENU CHANGES
+- When creating new pages/posts, also recommend adding them to the appropriate menu
+
+**MUST be redirects:**
+- Old URLs that changed in the migration
+- Removed pages that should point somewhere
+
+## GIVEN CONTEXT
+- Existing page paths (don't create duplicates)
+- Existing redirects (don't create duplicates)
+- Existing posts by type (don't create duplicates)
+- Available post types (use these — don't invent new ones unless one clearly doesn't exist)
+- Existing menu structure (know what's already linked)
+
+## RULES
+- ALWAYS prefer posts over hardcoded HTML for repeating/collection content
+- If the checklist says "add Dr. Wang's page" and "doctors" is a post_type, recommend creating a POST, not a page
+- If the checklist says "add services pages" and "services" is a post_type, recommend creating POSTS for each service
+- When creating posts/pages, also recommend adding them to the correct menu
+- Post slugs must be URL-safe (lowercase, hyphens, no spaces)
+- Do NOT recommend content that already exists
+- Do NOT recommend redirects that already exist or have identical from/to paths
 
 RESPONSE FORMAT — return ONLY valid JSON, no markdown fences:
 {
@@ -192,11 +260,21 @@ RESPONSE FORMAT — return ONLY valid JSON, no markdown fences:
     { "post_type_slug": "doctors", "title": "Dr. Name", "slug": "dr-name", "purpose": "What this post should contain", "recommendation": "Human-readable reason" }
   ],
   "menuChanges": [
-    { "menu_slug": "main-nav", "action": "add", "label": "Pricing", "url": "/pricing", "target": "_self", "recommendation": "Add pricing link to main navigation" }
+    { "menu_slug": "main-nav", "action": "add", "label": "Pricing", "url": "/pricing", "target": "_self", "recommendation": "Add pricing link to main navigation" },
+    { "menu_slug": "main-nav", "action": "remove", "label": "Old Link", "recommendation": "Remove broken link" },
+    { "menu_slug": "main-nav", "action": "update", "original_label": "About", "label": "About Us", "url": "/about-us", "recommendation": "Update label and URL" }
+  ],
+  "newMenus": [
+    { "name": "Footer Menu", "slug": "footer-menu", "recommendation": "Create a separate footer navigation menu" }
   ]
 }
 
-If no structural changes are needed, return: { "redirects": [], "pages": [], "posts": [], "menuChanges": [] }`;
+NOTES:
+- Menu items support any URL — internal pages (/about), post URLs (/doctors/dr-name), or external links (https://pay.example.com)
+- When recommending new pages or posts, ALSO recommend adding them to the appropriate menu
+- If a menu doesn't exist yet (e.g., footer-menu), recommend creating it in "newMenus" first
+
+If no structural changes are needed, return: { "redirects": [], "pages": [], "posts": [], "menuChanges": [], "newMenus": [] }`;
 
 export interface MenuChangeRecommendation {
   menu_slug: string;
@@ -209,11 +287,18 @@ export interface MenuChangeRecommendation {
   recommendation: string;
 }
 
+export interface NewMenuRecommendation {
+  name: string;
+  slug: string;
+  recommendation: string;
+}
+
 export interface StructuralAnalysisResult {
   redirects: Array<{ from_path: string; to_path: string; type?: number; recommendation: string }>;
   pages: Array<{ path: string; purpose: string; recommendation: string }>;
   posts: Array<{ post_type_slug: string; title: string; slug: string; purpose: string; recommendation: string }>;
   menuChanges: MenuChangeRecommendation[];
+  newMenus: NewMenuRecommendation[];
 }
 
 export async function analyzeForStructuralChanges(params: {
@@ -276,7 +361,7 @@ ${existingMenus.length > 0 ? existingMenus.map((m) => `Menu "${m.menu_slug}":\n$
 
   if (!parsed) {
     console.error("[AiCommand] Structural analysis failed to parse:", text.substring(0, 300));
-    return { redirects: [], pages: [], posts: [], menuChanges: [] };
+    return { redirects: [], pages: [], posts: [], menuChanges: [], newMenus: [] };
   }
 
   const result: StructuralAnalysisResult = {
@@ -284,10 +369,11 @@ ${existingMenus.length > 0 ? existingMenus.map((m) => `Menu "${m.menu_slug}":\n$
     pages: Array.isArray(parsed.pages) ? parsed.pages.filter((p: any) => p?.path && p?.purpose) : [],
     posts: Array.isArray(parsed.posts) ? parsed.posts.filter((p: any) => p?.post_type_slug && p?.title) : [],
     menuChanges: Array.isArray(parsed.menuChanges) ? parsed.menuChanges.filter((m: any) => m?.menu_slug && m?.action && m?.label) : [],
+    newMenus: Array.isArray(parsed.newMenus) ? parsed.newMenus.filter((m: any) => m?.name && m?.slug) : [],
   };
 
   console.log(
-    `[AiCommand] ✓ Structural: ${result.redirects.length} redirects, ${result.pages.length} pages, ${result.posts.length} posts, ${result.menuChanges.length} menu changes`
+    `[AiCommand] ✓ Structural: ${result.redirects.length} redirects, ${result.pages.length} pages, ${result.posts.length} posts, ${result.menuChanges.length} menu changes, ${result.newMenus.length} new menus`
   );
 
   return result;

@@ -307,6 +307,21 @@ export async function analyzeBatch(batchId: string): Promise<void> {
         totalRecommendations++;
       }
 
+      for (const rec of structural.newMenus) {
+        await db(RECS_TABLE).insert({
+          batch_id: batchId,
+          target_type: "create_menu",
+          target_id: batch.project_id,
+          target_label: `Create menu: ${rec.name}`,
+          target_meta: JSON.stringify({ name: rec.name, slug: rec.slug }),
+          recommendation: rec.recommendation,
+          instruction: `Create a new menu named "${rec.name}" with slug "${rec.slug}"`,
+          current_html: "",
+          sort_order: sortOrder++,
+        });
+        totalRecommendations++;
+      }
+
       for (const rec of structural.menuChanges) {
         await db(RECS_TABLE).insert({
           batch_id: batchId,
@@ -353,6 +368,42 @@ export async function analyzeBatch(batchId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Execution context — shared state across recommendations in a batch run
+// ---------------------------------------------------------------------------
+
+interface ExecutionContext {
+  createdPages: Map<string, { path: string; id: string }>;   // purpose → { path, id }
+  createdPosts: Map<string, { id: string; slug: string; post_type_slug: string }>;  // slug → { id, slug, type }
+  createdMenus: Map<string, string>;                          // slug → id
+  createdRedirects: Map<string, string>;                      // from_path → to_path
+}
+
+function createExecutionContext(): ExecutionContext {
+  return {
+    createdPages: new Map(),
+    createdPosts: new Map(),
+    createdMenus: new Map(),
+    createdRedirects: new Map(),
+  };
+}
+
+// Execution phases — deterministic ordering so dependencies resolve correctly
+const EXECUTION_PHASE_ORDER: Record<string, number> = {
+  create_post: 1,        // Posts first (services, doctors, etc.)
+  create_page: 2,        // Pages second (may reference posts)
+  create_menu: 3,        // Menus third (need to know what pages/posts exist)
+  update_menu: 4,        // Menu item changes
+  create_redirect: 5,    // Redirects fourth (targets should exist)
+  update_redirect: 6,    // Redirect updates
+  delete_redirect: 7,    // Redirect deletes
+  update_post_meta: 8,   // Post metadata updates
+  update_page_path: 9,   // Page path updates
+  page_section: 10,      // HTML edits last
+  layout: 10,
+  post: 10,
+};
+
+// ---------------------------------------------------------------------------
 // Execute batch (Phase C)
 // ---------------------------------------------------------------------------
 
@@ -372,16 +423,25 @@ export async function executeBatch(batchId: string): Promise<void> {
     .where({ batch_id: batchId, status: "approved" })
     .orderBy("sort_order", "asc");
 
+  // Sort by execution phase — posts first, then pages, menus, redirects, edits last
+  const sorted = [...approved].sort((a, b) => {
+    const phaseA = EXECUTION_PHASE_ORDER[a.target_type] ?? 99;
+    const phaseB = EXECUTION_PHASE_ORDER[b.target_type] ?? 99;
+    if (phaseA !== phaseB) return phaseA - phaseB;
+    return a.sort_order - b.sort_order;
+  });
+
   console.log(
-    `[AiCommand] Executing batch ${batchId}: ${approved.length} approved recommendations`
+    `[AiCommand] Executing batch ${batchId}: ${sorted.length} approved recommendations (phase-ordered)`
   );
 
+  const ctx = createExecutionContext();
   let executedCount = 0;
   let failedCount = 0;
 
-  for (const rec of approved) {
+  for (const rec of sorted) {
     try {
-      await executeRecommendation(rec);
+      await executeRecommendation(rec, ctx);
       executedCount++;
     } catch (err) {
       console.error(
@@ -418,20 +478,17 @@ export async function executeBatch(batchId: string): Promise<void> {
   );
 }
 
-async function executeRecommendation(rec: any): Promise<void> {
-  // Handle structural recommendations (no HTML editing needed)
-  if (rec.target_type === "create_redirect") {
-    return executeCreateRedirect(rec);
-  }
-  if (rec.target_type === "create_page") {
-    return executeCreatePage(rec);
-  }
-  if (rec.target_type === "create_post") {
-    return executeCreatePost(rec);
-  }
-  if (rec.target_type === "update_menu") {
-    return executeUpdateMenu(rec);
-  }
+async function executeRecommendation(rec: any, ctx: ExecutionContext): Promise<void> {
+  // Structural recommendations
+  if (rec.target_type === "create_redirect") return executeCreateRedirect(rec);
+  if (rec.target_type === "update_redirect") return executeUpdateRedirect(rec);
+  if (rec.target_type === "delete_redirect") return executeDeleteRedirect(rec);
+  if (rec.target_type === "create_page") return executeCreatePage(rec, ctx);
+  if (rec.target_type === "create_post") return executeCreatePost(rec, ctx);
+  if (rec.target_type === "create_menu") return executeCreateMenu(rec, ctx);
+  if (rec.target_type === "update_menu") return executeUpdateMenu(rec, ctx);
+  if (rec.target_type === "update_post_meta") return executeUpdatePostMeta(rec);
+  if (rec.target_type === "update_page_path") return executeUpdatePagePath(rec);
 
   // Stale check — compare stored HTML with current live HTML
   const currentHtml = await getCurrentHtml(rec);
@@ -628,11 +685,27 @@ export async function getBatchRecommendations(
 
 export async function updateRecommendationStatus(
   recommendationId: string,
-  status: "approved" | "rejected"
+  status: "approved" | "rejected",
+  metaUpdates?: { reference_url?: string; reference_content?: string }
 ): Promise<any> {
+  const updatePayload: Record<string, unknown> = { status };
+
+  // Merge reference data into target_meta for create_page/create_post
+  if (metaUpdates && (metaUpdates.reference_url || metaUpdates.reference_content)) {
+    const existing = await db(RECS_TABLE).where("id", recommendationId).first();
+    if (existing) {
+      const meta = typeof existing.target_meta === "string"
+        ? JSON.parse(existing.target_meta)
+        : existing.target_meta || {};
+      if (metaUpdates.reference_url) meta.reference_url = metaUpdates.reference_url;
+      if (metaUpdates.reference_content) meta.reference_content = metaUpdates.reference_content;
+      updatePayload.target_meta = JSON.stringify(meta);
+    }
+  }
+
   const [rec] = await db(RECS_TABLE)
     .where("id", recommendationId)
-    .update({ status })
+    .update(updatePayload)
     .returning("*");
 
   if (rec) {
@@ -759,7 +832,7 @@ async function executeCreateRedirect(rec: any): Promise<void> {
   console.log(`[AiCommand] ✓ Created redirect: ${meta.from_path} → ${meta.to_path}`);
 }
 
-async function executeCreatePage(rec: any): Promise<void> {
+async function executeCreatePage(rec: any, ctx: ExecutionContext): Promise<void> {
   const meta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
   const projectId = rec.target_id;
 
@@ -798,9 +871,53 @@ async function executeCreatePage(rec: any): Promise<void> {
     }
   }
 
+  // Resolve reference content — scrape URL or use provided text
+  let referenceContent = "";
+  if (meta.reference_content) {
+    referenceContent = meta.reference_content;
+  } else if (meta.reference_url) {
+    try {
+      console.log(`[AiCommand] Scraping reference URL: ${meta.reference_url}`);
+      const scrapeResponse = await fetch(meta.reference_url, {
+        headers: { "User-Agent": "AlloroBot/1.0" },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (scrapeResponse.ok) {
+        const html = await scrapeResponse.text();
+        // Strip scripts/styles, keep text content
+        referenceContent = html
+          .replace(/<script[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[\s\S]*?<\/style>/gi, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .substring(0, 8000);
+        console.log(`[AiCommand] ✓ Scraped ${referenceContent.length} chars from reference URL`);
+      }
+    } catch (err) {
+      console.warn(`[AiCommand] Failed to scrape reference URL: ${(err as Error).message}`);
+    }
+  }
+
+  if (!referenceContent && !meta.reference_url) {
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "failed",
+      execution_result: JSON.stringify({
+        success: false,
+        error: "Reference URL or content is required for page creation. Provide it when approving this recommendation.",
+      }),
+    });
+    return;
+  }
+
+  const pageContext = [
+    meta.page_purpose || "",
+    referenceContent ? `\n\n## Reference Content (from old site or provided text)\n${referenceContent}` : "",
+  ].join("");
+
   // Plan sections
   const plan = await planPageSections({
-    purpose: meta.page_purpose || meta.path,
+    purpose: pageContext,
     existingSections,
   });
 
@@ -815,7 +932,7 @@ async function executeCreatePage(rec: any): Promise<void> {
         sectionName: planned.name,
         sectionPurpose: planned.purpose,
         tplId,
-        pageContext: meta.page_purpose || "",
+        pageContext,
         priorSections: createdSections.map((s) => s.content),
         siteStyleContext,
       });
@@ -855,12 +972,15 @@ async function executeCreatePage(rec: any): Promise<void> {
     }),
   });
 
+  // Register in execution context so later recommendations can reference this page
+  ctx.createdPages.set(meta.page_purpose || meta.path, { path: meta.path, id: page.id });
+
   console.log(
     `[AiCommand] ✓ Created page at ${meta.path} with ${createdSections.length} sections (page ID: ${page.id})`
   );
 }
 
-async function executeCreatePost(rec: any): Promise<void> {
+async function executeCreatePost(rec: any, ctx: ExecutionContext): Promise<void> {
   const meta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
   const projectId = rec.target_id;
 
@@ -927,10 +1047,13 @@ async function executeCreatePost(rec: any): Promise<void> {
     execution_result: JSON.stringify({ success: true, post_id: post.id }),
   });
 
+  // Register in execution context
+  ctx.createdPosts.set(slug, { id: post.id, slug, post_type_slug: meta.post_type_slug });
+
   console.log(`[AiCommand] ✓ Created post: ${meta.title} (${meta.post_type_slug}, ID: ${post.id})`);
 }
 
-async function executeUpdateMenu(rec: any): Promise<void> {
+async function executeUpdateMenu(rec: any, _ctx: ExecutionContext): Promise<void> {
   const meta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
   const projectId = rec.target_id;
 
@@ -1054,6 +1177,151 @@ function findMenuItemByLabel(items: any[], label: string): any | null {
     }
   }
   return null;
+}
+
+async function executeCreateMenu(rec: any, ctx: ExecutionContext): Promise<void> {
+  const meta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
+  const projectId = rec.target_id;
+
+  // Check if menu with this slug already exists
+  const { menus } = await menuManager.listMenus(projectId);
+  const existing = menus.find((m: any) => m.slug === meta.slug);
+  if (existing) {
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "failed",
+      execution_result: JSON.stringify({ success: false, error: `Menu "${meta.slug}" already exists` }),
+    });
+    return;
+  }
+
+  const result = await menuManager.createMenu(projectId, { name: meta.name, slug: meta.slug });
+  if (result.error) {
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "failed",
+      execution_result: JSON.stringify({ success: false, error: result.error.message }),
+    });
+    return;
+  }
+
+  ctx.createdMenus.set(meta.slug, result.menu.id);
+
+  await db(RECS_TABLE).where("id", rec.id).update({
+    status: "executed",
+    execution_result: JSON.stringify({ success: true, menu_id: result.menu.id }),
+  });
+  console.log(`[AiCommand] ✓ Created menu: "${meta.name}" (${meta.slug})`);
+}
+
+async function executeUpdateRedirect(rec: any): Promise<void> {
+  const meta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
+
+  // Find existing redirect by from_path
+  const existing = await db("website_builder.redirects")
+    .where({ project_id: rec.target_id, from_path: meta.from_path })
+    .first();
+
+  if (!existing) {
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "failed",
+      execution_result: JSON.stringify({ success: false, error: `Redirect from "${meta.from_path}" not found` }),
+    });
+    return;
+  }
+
+  const result = await redirectsService.updateRedirect(existing.id, {
+    to_path: meta.to_path,
+    type: meta.type,
+  });
+
+  if (result.error) {
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "failed",
+      execution_result: JSON.stringify({ success: false, error: result.error.message }),
+    });
+    return;
+  }
+
+  await db(RECS_TABLE).where("id", rec.id).update({
+    status: "executed",
+    execution_result: JSON.stringify({ success: true, redirect_id: existing.id }),
+  });
+  console.log(`[AiCommand] ✓ Updated redirect: ${meta.from_path} → ${meta.to_path}`);
+}
+
+async function executeDeleteRedirect(rec: any): Promise<void> {
+  const meta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
+
+  const existing = await db("website_builder.redirects")
+    .where({ project_id: rec.target_id, from_path: meta.from_path })
+    .first();
+
+  if (!existing) {
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "failed",
+      execution_result: JSON.stringify({ success: false, error: `Redirect from "${meta.from_path}" not found` }),
+    });
+    return;
+  }
+
+  await redirectsService.deleteRedirect(existing.id);
+
+  await db(RECS_TABLE).where("id", rec.id).update({
+    status: "executed",
+    execution_result: JSON.stringify({ success: true, deleted_redirect_id: existing.id }),
+  });
+  console.log(`[AiCommand] ✓ Deleted redirect: ${meta.from_path}`);
+}
+
+async function executeUpdatePostMeta(rec: any): Promise<void> {
+  const meta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
+
+  const post = await db(POSTS_TABLE).where("id", meta.post_id).first();
+  if (!post) {
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "failed",
+      execution_result: JSON.stringify({ success: false, error: `Post ${meta.post_id} not found` }),
+    });
+    return;
+  }
+
+  const updates: Record<string, unknown> = { updated_at: db.fn.now() };
+  if (meta.title !== undefined) updates.title = meta.title;
+  if (meta.slug !== undefined) updates.slug = meta.slug;
+  if (meta.custom_fields !== undefined) updates.custom_fields = JSON.stringify(meta.custom_fields);
+  if (meta.featured_image !== undefined) updates.featured_image = meta.featured_image;
+  if (meta.status !== undefined) updates.status = meta.status;
+
+  await db(POSTS_TABLE).where("id", meta.post_id).update(updates);
+
+  await db(RECS_TABLE).where("id", rec.id).update({
+    status: "executed",
+    execution_result: JSON.stringify({ success: true, post_id: meta.post_id }),
+  });
+  console.log(`[AiCommand] ✓ Updated post meta: ${meta.post_id}`);
+}
+
+async function executeUpdatePagePath(rec: any): Promise<void> {
+  const meta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
+
+  const page = await db(PAGES_TABLE).where("id", meta.page_id).first();
+  if (!page) {
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "failed",
+      execution_result: JSON.stringify({ success: false, error: `Page ${meta.page_id} not found` }),
+    });
+    return;
+  }
+
+  const updates: Record<string, unknown> = { updated_at: db.fn.now() };
+  if (meta.new_path !== undefined) updates.path = meta.new_path;
+
+  await db(PAGES_TABLE).where("id", meta.page_id).update(updates);
+
+  await db(RECS_TABLE).where("id", rec.id).update({
+    status: "executed",
+    execution_result: JSON.stringify({ success: true, page_id: meta.page_id }),
+  });
+  console.log(`[AiCommand] ✓ Updated page path: ${page.path} → ${meta.new_path}`);
 }
 
 // ---------------------------------------------------------------------------
