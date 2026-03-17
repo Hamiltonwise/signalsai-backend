@@ -1083,7 +1083,7 @@ export interface AiCommandBatch {
 export interface AiCommandRecommendation {
   id: string;
   batch_id: string;
-  target_type: "page_section" | "layout" | "post" | "create_redirect" | "create_page" | "create_post";
+  target_type: "page_section" | "layout" | "post" | "create_redirect" | "create_page" | "create_post" | "update_menu";
   target_id: string;
   target_label: string;
   target_meta: Record<string, unknown>;

@@ -635,6 +635,7 @@ function groupKey(rec: AiCommandRecommendation): string {
   if (rec.target_type === "create_redirect") return "Redirects";
   if (rec.target_type === "create_page") return "New Pages";
   if (rec.target_type === "create_post") return "New Posts";
+  if (rec.target_type === "update_menu") return "Menu Changes";
   return "Pages";
 }
 
@@ -662,7 +663,7 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
     sub.get(sk)!.push(rec);
   }
 
-  const order = ["Layouts", "Pages", "Posts", "Redirects", "New Pages", "New Posts"];
+  const order = ["Layouts", "Pages", "Posts", "Menu Changes", "Redirects", "New Pages", "New Posts"];
 
   return (
     <div className="space-y-4">
