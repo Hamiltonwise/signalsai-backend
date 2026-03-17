@@ -102,9 +102,14 @@ export async function analyzeHtmlContent(params: {
   const { prompt, targetLabel, currentHtml } = params;
   const ai = getClient();
 
+  // Condense prompt for small sections to save tokens
+  const condensedPrompt = currentHtml.length < 3000 && prompt.length > 4000
+    ? prompt.substring(0, 3000) + "\n\n[... checklist truncated for this section — focus on what's relevant to the HTML below ...]"
+    : prompt;
+
   const userMessage = `## Requirements / Checklist
 
-${prompt}
+${condensedPrompt}
 
 ## Target: ${targetLabel}
 
@@ -243,6 +248,9 @@ Alloro is a data-driven website engine. You must recommend the RIGHT data struct
 - ALWAYS prefer posts over hardcoded HTML for repeating/collection content
 - If the checklist says "add Dr. Wang's page" and "doctors" is a post_type, recommend creating a POST, not a page
 - If the checklist says "add services pages" and "services" is a post_type, recommend creating POSTS for each service
+- Do NOT recommend redirects where from_path and to_path are the same (even with trailing slash differences — normalize both before comparing)
+- For menu items where you don't know the actual URL (e.g., external payment portals, third-party links), set the url to "NEEDS_INPUT" and note in the recommendation that the user must provide the URL. Example: "Pay Online" links to an external payment gateway — the URL is unknown.
+- For pages where the content depends on external data you don't have, still recommend creating the page but note in the recommendation what information the user needs to provide
 - When creating posts/pages, also recommend adding them to the correct menu
 - Post slugs must be URL-safe (lowercase, hyphens, no spaces)
 - Do NOT recommend content that already exists

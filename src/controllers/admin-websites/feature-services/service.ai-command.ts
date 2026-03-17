@@ -18,6 +18,7 @@ import {
 import crypto from "crypto";
 import * as redirectsService from "./service.redirects";
 import * as menuManager from "./service.menu-manager";
+import { analyzeBuiltinFlags } from "../../../utils/website-utils/builtinAnalyzer";
 
 const BATCHES_TABLE = "website_builder.ai_command_batches";
 const RECS_TABLE = "website_builder.ai_command_recommendations";
@@ -91,6 +92,72 @@ export async function analyzeBatch(batchId: string): Promise<void> {
   let totalRecommendations = 0;
 
   try {
+    // ---- Built-in flags (deterministic, no LLM) ----
+    try {
+      const existingPaths = await getExistingPaths(batch.project_id);
+      const existingPostSlugsForFlags = await getExistingPostSlugs(batch.project_id);
+
+      const builtinLayouts: Array<{ field: string; html: string; projectId: string }> = [];
+      for (const field of ["wrapper", "header", "footer"] as const) {
+        if (project[field] && typeof project[field] === "string") {
+          builtinLayouts.push({ field, html: project[field], projectId: batch.project_id });
+        }
+      }
+
+      const builtinPages: Array<{ id: string; path: string; sections: Array<{ name: string; content: string; index: number }> }> = [];
+      if (targets.pages) {
+        const pages = await resolvePages(batch.project_id, targets.pages);
+        for (const page of pages) {
+          const raw = typeof page.sections === "string" ? JSON.parse(page.sections) : page.sections;
+          const sections = normalizeSections(raw);
+          builtinPages.push({
+            id: page.id,
+            path: page.path,
+            sections: sections.map((s: any, i: number) => ({
+              name: s.name || s.label || `Section ${i + 1}`,
+              content: typeof s === "string" ? s : s.content || s.html || "",
+              index: i,
+            })),
+          });
+        }
+      }
+
+      const builtinPosts: Array<{ id: string; title: string; content: string }> = [];
+      if (targets.posts) {
+        const posts = await resolvePosts(batch.project_id, targets.posts);
+        for (const post of posts) {
+          builtinPosts.push({ id: post.id, title: post.title, content: post.content || "" });
+        }
+      }
+
+      const flags = analyzeBuiltinFlags({
+        layouts: builtinLayouts,
+        pages: builtinPages,
+        posts: builtinPosts,
+        existingPaths,
+        existingPostSlugs: existingPostSlugsForFlags.map((p) => `${p.post_type_slug}/${p.slug}`),
+      });
+
+      for (const flag of flags) {
+        await db(RECS_TABLE).insert({
+          batch_id: batchId,
+          target_type: flag.targetType,
+          target_id: flag.targetId,
+          target_label: flag.targetLabel,
+          target_meta: JSON.stringify({ ...flag.targetMeta, flag_type: flag.flagType }),
+          recommendation: flag.recommendation,
+          instruction: flag.instruction,
+          current_html: flag.currentHtml,
+          sort_order: sortOrder++,
+        });
+        totalRecommendations++;
+      }
+
+      await refreshStats(batchId);
+    } catch (err) {
+      console.error("[AiCommand] Built-in analysis failed:", err);
+    }
+
     // ---- Layouts ----
     if (targets.layouts) {
       const layoutFields =
@@ -166,6 +233,12 @@ export async function analyzeBatch(batchId: string): Promise<void> {
           );
 
           if (!sectionHtml || sectionHtml.trim().length === 0) continue;
+
+          // Skip shortcode-only sections — nothing to analyze
+          if (sectionHtml.trim().length < 100 && /\{\{.*\}\}/.test(sectionHtml)) {
+            console.log(`[AiCommand]   Skipping shortcode-only section: ${sectionName}`);
+            continue;
+          }
 
           try {
             const result = await analyzeHtmlContent({
@@ -490,29 +563,27 @@ async function executeRecommendation(rec: any, ctx: ExecutionContext): Promise<v
   if (rec.target_type === "update_post_meta") return executeUpdatePostMeta(rec);
   if (rec.target_type === "update_page_path") return executeUpdatePagePath(rec);
 
-  // Stale check — compare stored HTML with current live HTML
+  // Always use the latest HTML from DB — previous recommendations in this
+  // batch may have already modified the same target
   const currentHtml = await getCurrentHtml(rec);
 
-  if (currentHtml !== rec.current_html) {
+  if (!currentHtml) {
     await db(RECS_TABLE)
       .where("id", rec.id)
       .update({
         status: "failed",
         execution_result: JSON.stringify({
           success: false,
-          error: "Content changed since analysis — skipped to avoid overwriting recent edits.",
+          error: "Target content no longer exists.",
         }),
       });
-    console.warn(
-      `[AiCommand] Stale HTML for ${rec.target_label} — skipping`
-    );
     return;
   }
 
-  // LLM edit
+  // LLM edit — always use current HTML, not the snapshot from analysis
   const result = await editHtmlContent({
     instruction: rec.instruction,
-    currentHtml: rec.current_html,
+    currentHtml,
     targetLabel: rec.target_label,
   });
 
@@ -1070,9 +1141,20 @@ async function executeUpdateMenu(rec: any, _ctx: ExecutionContext): Promise<void
   }
 
   if (meta.action === "add") {
+    // Use reference_url if the original URL was NEEDS_INPUT
+    const itemUrl = (meta.url === "NEEDS_INPUT" && meta.reference_url) ? meta.reference_url : meta.url;
+
+    if (itemUrl === "NEEDS_INPUT") {
+      await db(RECS_TABLE).where("id", rec.id).update({
+        status: "failed",
+        execution_result: JSON.stringify({ success: false, error: "URL was not provided — this link requires user input" }),
+      });
+      return;
+    }
+
     // Check if item with same URL already exists
     const menuDetail = await menuManager.getMenu(projectId, menu.id);
-    const existingItem = findMenuItemByUrl(menuDetail.menu?.items || [], meta.url);
+    const existingItem = findMenuItemByUrl(menuDetail.menu?.items || [], itemUrl);
     if (existingItem) {
       await db(RECS_TABLE).where("id", rec.id).update({
         status: "failed",
@@ -1083,7 +1165,7 @@ async function executeUpdateMenu(rec: any, _ctx: ExecutionContext): Promise<void
 
     const result = await menuManager.createMenuItem(projectId, menu.id, {
       label: meta.label,
-      url: meta.url,
+      url: itemUrl,
       target: meta.target || "_self",
       parent_id: meta.parent_id || null,
     });
