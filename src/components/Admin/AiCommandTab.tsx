@@ -258,9 +258,38 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
     [projectId, batch, recommendations],
   );
 
+  const NEEDS_INPUT_TYPES = new Set(["create_page", "create_post"]);
+  const needsInputCheck = (rec: AiCommandRecommendation) => {
+    if (!NEEDS_INPUT_TYPES.has(rec.target_type)) return false;
+    const meta = rec.target_meta as Record<string, unknown>;
+    return !meta?.reference_url && !meta?.reference_content;
+  };
+  const needsUrlCheck = (rec: AiCommandRecommendation) => {
+    if (rec.target_type !== "update_menu") return false;
+    const meta = rec.target_meta as Record<string, unknown>;
+    return meta?.url === "NEEDS_INPUT";
+  };
+
   const handleBulkAction = useCallback(
     async (status: "approved" | "rejected") => {
       if (!batch) return;
+
+      // Block approve if items need user input
+      if (status === "approved") {
+        const pendingRecs = recommendations.filter((r) => r.status === "pending");
+        const needInput = pendingRecs.filter((r) => needsInputCheck(r) || needsUrlCheck(r));
+        if (needInput.length > 0) {
+          toast.error(
+            `${needInput.length} item${needInput.length > 1 ? "s" : ""} need${needInput.length === 1 ? "s" : ""} your input before approval (reference URLs, external links). Handle those individually first.`,
+            { duration: 5000 }
+          );
+          // Expand groups containing items that need input
+          const groups = new Set(needInput.map((r) => subGroupKey(r)));
+          setExpandedGroups((prev) => new Set([...prev, ...groups]));
+          return;
+        }
+      }
+
       try {
         await bulkUpdateAiCommandRecommendations(projectId, batch.id, status);
         const [batchRes, recsRes] = await Promise.all([
@@ -269,13 +298,12 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
         ]);
         setBatch(batchRes.data);
         setRecommendations(recsRes.data);
-        // Collapse all groups after bulk action
         setExpandedGroups(new Set());
       } catch {
         toast.error("Failed to bulk update");
       }
     },
-    [projectId, batch],
+    [projectId, batch, recommendations],
   );
 
   const handleExecute = useCallback(async () => {
@@ -640,6 +668,15 @@ function groupKey(rec: AiCommandRecommendation): string {
   return "Pages";
 }
 
+// Flag-specific labels override target_type labels
+const FLAG_LABELS: Record<string, { label: string; color: string }> = {
+  fix_broken_link: { label: "Broken Link", color: "bg-red-50 text-red-600" },
+  fix_html: { label: "Fix HTML", color: "bg-amber-50 text-amber-700" },
+  fix_seo: { label: "SEO Issue", color: "bg-blue-50 text-blue-600" },
+  fix_architecture: { label: "Architecture", color: "bg-purple-50 text-purple-600" },
+  fix_content: { label: "Content Issue", color: "bg-amber-50 text-amber-600" },
+};
+
 const TOOL_LABELS: Record<string, { label: string; color: string }> = {
   page_section: { label: "Edit HTML", color: "bg-gray-100 text-gray-600" },
   layout: { label: "Edit Layout", color: "bg-gray-100 text-gray-600" },
@@ -654,6 +691,13 @@ const TOOL_LABELS: Record<string, { label: string; color: string }> = {
   update_post_meta: { label: "Update Post", color: "bg-gray-100 text-gray-600" },
   update_page_path: { label: "Update Page", color: "bg-gray-100 text-gray-600" },
 };
+
+function getToolLabel(rec: AiCommandRecommendation): { label: string; color: string } | null {
+  const meta = rec.target_meta as Record<string, unknown>;
+  const flagType = meta?.flag_type as string | undefined;
+  if (flagType && FLAG_LABELS[flagType]) return FLAG_LABELS[flagType];
+  return TOOL_LABELS[rec.target_type] || null;
+}
 
 function subGroupKey(rec: AiCommandRecommendation): string {
   return rec.target_label;
@@ -765,9 +809,9 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
   const [showInstruction, setShowInstruction] = useState(false);
   const [refUrl, setRefUrl] = useState("");
   const [refContent, setRefContent] = useState("");
-  const [showRefInput, setShowRefInput] = useState(false);
 
   const needsReference = rec.target_type === "create_page" || rec.target_type === "create_post";
+  const needsUrlInput = rec.target_type === "update_menu" && (rec.target_meta as Record<string, unknown>)?.url === "NEEDS_INPUT";
   const meta = rec.target_meta as Record<string, unknown>;
   const hasReference = !!(meta?.reference_url || meta?.reference_content);
 
@@ -786,14 +830,14 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
 
   const handleApprove = () => {
     if (needsReference && !hasReference) {
-      if (!refUrl.trim() && !refContent.trim()) {
-        setShowRefInput(true);
-        return;
-      }
+      // Can't approve without reference — input is already visible
+      if (!refUrl.trim() && !refContent.trim()) return;
       onApproveReject(rec.id, "approved", {
         reference_url: refUrl.trim() || undefined,
         reference_content: refContent.trim() || undefined,
       });
+    } else if (needsUrlInput) {
+      return; // URL input is inline
     } else {
       onApproveReject(rec.id, rec.status === "approved" ? "rejected" : "approved");
     }
@@ -815,13 +859,16 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
           <div className="flex items-start gap-2 mb-1">
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" /> : statusIcon}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                {TOOL_LABELS[rec.target_type] && (
-                  <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${TOOL_LABELS[rec.target_type].color} shrink-0`}>
-                    {TOOL_LABELS[rec.target_type].label}
-                  </span>
-                )}
-              </div>
+              {(() => {
+                const tool = getToolLabel(rec);
+                return tool ? (
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${tool.color} shrink-0`}>
+                      {tool.label}
+                    </span>
+                  </div>
+                ) : null;
+              })()}
               <p className={`text-sm leading-relaxed ${rec.status === "rejected" ? "text-gray-400 line-through" : "text-gray-700"}`}>
                 {rec.recommendation}
               </p>
@@ -838,7 +885,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
           )}
 
           {/* Reference input for create_page/create_post */}
-          {needsReference && showRefInput && rec.status === "pending" && (
+          {needsReference && !hasReference && rec.status === "pending" && (
             <div className="ml-6 mt-2 space-y-2 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
               <p className="text-[11px] font-medium text-gray-500">Reference content required for page creation:</p>
               <input
@@ -866,6 +913,38 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
                 <Check className="w-3 h-3" /> Approve with Reference
               </button>
             </div>
+          )}
+
+          {/* URL input for menu items with NEEDS_INPUT */}
+          {needsUrlInput && rec.status === "pending" && (
+            <div className="ml-6 mt-2 space-y-2 p-2.5 bg-amber-50/50 rounded-lg border border-amber-200/50">
+              <p className="text-[11px] font-medium text-amber-700">URL required — the AI doesn't know this link:</p>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={refUrl}
+                  onChange={(e) => setRefUrl(e.target.value)}
+                  placeholder="https://payment-portal.example.com or /internal-page"
+                  className="flex-1 px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-alloro-orange/20 focus:border-alloro-orange"
+                />
+                <button
+                  onClick={() => {
+                    if (!refUrl.trim()) return;
+                    // Store the URL in target_meta by approving with updated meta
+                    onApproveReject(rec.id, "approved", { reference_url: refUrl.trim() });
+                  }}
+                  disabled={!refUrl.trim()}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+                >
+                  <Check className="w-3 h-3" /> Approve
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Needs input indicator — only show for non-visible inputs */}
+          {needsUrlInput && rec.status === "pending" && (
+            <p className="text-[11px] text-amber-600 mt-1 ml-6">Requires URL before approval</p>
           )}
 
           {rec.status !== "rejected" && (
