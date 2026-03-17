@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -63,6 +63,7 @@ import RecipientsConfig from "../../components/Admin/RecipientsConfig";
 import FormSubmissionsTab from "../../components/Admin/FormSubmissionsTab";
 import PostsTab from "../../components/Admin/PostsTab";
 import MenusTab from "../../components/Admin/MenusTab";
+import BackupsTab from "../../components/Admin/BackupsTab";
 import { fetchProjectCodeSnippets } from "../../api/codeSnippets";
 import type { CodeSnippet } from "../../api/codeSnippets";
 import { useConfirm } from "../../components/ui/ConfirmModal";
@@ -312,10 +313,23 @@ export default function WebsiteDetail() {
   const [dataSource, setDataSource] = useState<"website" | "pasted">("website");
   const [scrapedData, setScrapedData] = useState("");
 
-  // Detail tab: pages vs layouts vs media vs code-manager vs posts
-  const [detailTab, setDetailTab] = useState<
-    "pages" | "layouts" | "media" | "code-manager" | "form-submissions" | "posts" | "menus"
-  >("pages");
+  // Detail tab: persisted in URL search params so refresh preserves tab
+  const VALID_TABS = ["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "backups"] as const;
+  type DetailTab = typeof VALID_TABS[number];
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const detailTab: DetailTab = VALID_TABS.includes(rawTab as DetailTab) ? (rawTab as DetailTab) : "pages";
+  const setDetailTab = (tab: DetailTab) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === "pages") {
+        next.delete("tab");
+      } else {
+        next.set("tab", tab);
+      }
+      return next;
+    }, { replace: true });
+  };
 
   // Code snippets state
   const [codeSnippets, setCodeSnippets] = useState<CodeSnippet[]>([]);
@@ -1717,7 +1731,7 @@ export default function WebsiteDetail() {
 
       {/* Tab bar: Pages | Layouts | Code Manager | Media | Form Submissions */}
       <div className="flex items-stretch gap-1 p-1.5 bg-gray-100 rounded-xl mb-4">
-        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus"] as const).map((tab) => {
+        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "backups"] as const).map((tab) => {
           const isActive = detailTab === tab;
           return (
             <motion.button
@@ -2123,6 +2137,17 @@ export default function WebsiteDetail() {
           transition={{ delay: 0.2 }}
         >
           <MenusTab projectId={id!} templateId={website.template_id} />
+        </motion.div>
+      )}
+
+      {/* Backups Section */}
+      {detailTab === "backups" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <BackupsTab projectId={id!} projectName={website.name || website.display_name || ""} />
         </motion.div>
       )}
 
