@@ -225,10 +225,10 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
   }, [prompt, projectId, isSubmitting, pagesMode, postsMode, layoutsMode, selectedPageIds, selectedPostIds, selectedLayouts]);
 
   const handleApproveReject = useCallback(
-    async (recId: string, status: "approved" | "rejected") => {
+    async (recId: string, status: "approved" | "rejected", referenceData?: { reference_url?: string; reference_content?: string }) => {
       setLoadingRecId(recId);
       try {
-        await updateAiCommandRecommendation(projectId, batch!.id, recId, status);
+        await updateAiCommandRecommendation(projectId, batch!.id, recId, status, referenceData);
         setRecommendations((prev) =>
           prev.map((r) => (r.id === recId ? { ...r, status } : r)),
         );
@@ -631,13 +631,29 @@ function StatBadge({ label, count, color }: { label: string; count: number; colo
 
 function groupKey(rec: AiCommandRecommendation): string {
   if (rec.target_type === "layout") return "Layouts";
-  if (rec.target_type === "post") return "Posts";
-  if (rec.target_type === "create_redirect") return "Redirects";
+  if (rec.target_type === "post" || rec.target_type === "update_post_meta") return "Posts";
+  if (rec.target_type === "create_redirect" || rec.target_type === "update_redirect" || rec.target_type === "delete_redirect") return "Redirects";
   if (rec.target_type === "create_page") return "New Pages";
   if (rec.target_type === "create_post") return "New Posts";
-  if (rec.target_type === "update_menu") return "Menu Changes";
+  if (rec.target_type === "create_menu" || rec.target_type === "update_menu") return "Menu Changes";
+  if (rec.target_type === "update_page_path") return "Pages";
   return "Pages";
 }
+
+const TOOL_LABELS: Record<string, { label: string; color: string }> = {
+  page_section: { label: "Edit HTML", color: "bg-gray-100 text-gray-600" },
+  layout: { label: "Edit Layout", color: "bg-gray-100 text-gray-600" },
+  post: { label: "Edit Post", color: "bg-gray-100 text-gray-600" },
+  create_page: { label: "Create Page", color: "bg-blue-50 text-blue-600" },
+  create_post: { label: "Create Post", color: "bg-blue-50 text-blue-600" },
+  create_menu: { label: "Create Menu", color: "bg-purple-50 text-purple-600" },
+  update_menu: { label: "Update Menu", color: "bg-purple-50 text-purple-600" },
+  create_redirect: { label: "Create Redirect", color: "bg-green-50 text-green-600" },
+  update_redirect: { label: "Update Redirect", color: "bg-green-50 text-green-600" },
+  delete_redirect: { label: "Delete Redirect", color: "bg-red-50 text-red-500" },
+  update_post_meta: { label: "Update Post", color: "bg-gray-100 text-gray-600" },
+  update_page_path: { label: "Update Page", color: "bg-gray-100 text-gray-600" },
+};
 
 function subGroupKey(rec: AiCommandRecommendation): string {
   return rec.target_label;
@@ -647,7 +663,7 @@ interface RecommendationListProps {
   recommendations: AiCommandRecommendation[];
   expandedGroups: Set<string>;
   toggleGroup: (key: string) => void;
-  onApproveReject: (id: string, status: "approved" | "rejected") => void;
+  onApproveReject: (id: string, status: "approved" | "rejected", referenceData?: { reference_url?: string; reference_content?: string }) => void;
   readonly?: boolean;
   loadingRecId: string | null;
 }
@@ -663,7 +679,7 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
     sub.get(sk)!.push(rec);
   }
 
-  const order = ["Layouts", "Pages", "Posts", "Menu Changes", "Redirects", "New Pages", "New Posts"];
+  const order = ["Layouts", "Pages", "Posts", "New Posts", "New Pages", "Menu Changes", "Redirects"];
 
   return (
     <div className="space-y-4">
@@ -742,11 +758,18 @@ function StatusDot({ status }: { status: string }) {
 
 function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
   rec: AiCommandRecommendation;
-  onApproveReject: (id: string, status: "approved" | "rejected") => void;
+  onApproveReject: (id: string, status: "approved" | "rejected", referenceData?: { reference_url?: string; reference_content?: string }) => void;
   readonly?: boolean;
   isLoading: boolean;
 }) {
   const [showInstruction, setShowInstruction] = useState(false);
+  const [refUrl, setRefUrl] = useState("");
+  const [refContent, setRefContent] = useState("");
+  const [showRefInput, setShowRefInput] = useState(false);
+
+  const needsReference = rec.target_type === "create_page" || rec.target_type === "create_post";
+  const meta = rec.target_meta as Record<string, unknown>;
+  const hasReference = !!(meta?.reference_url || meta?.reference_content);
 
   const statusIcon = {
     pending: null,
@@ -760,6 +783,21 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
     rec.status === "failed" && rec.execution_result
       ? (typeof rec.execution_result === "string" ? JSON.parse(rec.execution_result) : rec.execution_result).error
       : null;
+
+  const handleApprove = () => {
+    if (needsReference && !hasReference) {
+      if (!refUrl.trim() && !refContent.trim()) {
+        setShowRefInput(true);
+        return;
+      }
+      onApproveReject(rec.id, "approved", {
+        reference_url: refUrl.trim() || undefined,
+        reference_content: refContent.trim() || undefined,
+      });
+    } else {
+      onApproveReject(rec.id, rec.status === "approved" ? "rejected" : "approved");
+    }
+  };
 
   return (
     <motion.div
@@ -776,12 +814,59 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
         <div className={`flex-1 min-w-0 ${rec.status === "rejected" ? "opacity-50" : ""}`}>
           <div className="flex items-start gap-2 mb-1">
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" /> : statusIcon}
-            <p className={`text-sm leading-relaxed ${rec.status === "rejected" ? "text-gray-400 line-through" : "text-gray-700"}`}>
-              {rec.recommendation}
-            </p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                {TOOL_LABELS[rec.target_type] && (
+                  <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${TOOL_LABELS[rec.target_type].color} shrink-0`}>
+                    {TOOL_LABELS[rec.target_type].label}
+                  </span>
+                )}
+              </div>
+              <p className={`text-sm leading-relaxed ${rec.status === "rejected" ? "text-gray-400 line-through" : "text-gray-700"}`}>
+                {rec.recommendation}
+              </p>
+            </div>
           </div>
 
           {executionError && <p className="text-xs text-red-500 mt-1 ml-6">{executionError}</p>}
+
+          {/* Reference data indicator for approved create_page/create_post */}
+          {needsReference && hasReference && rec.status === "approved" && (
+            <p className="text-[11px] text-green-600 mt-1 ml-6">
+              Reference: {meta.reference_url ? (meta.reference_url as string) : "Content provided"}
+            </p>
+          )}
+
+          {/* Reference input for create_page/create_post */}
+          {needsReference && showRefInput && rec.status === "pending" && (
+            <div className="ml-6 mt-2 space-y-2 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+              <p className="text-[11px] font-medium text-gray-500">Reference content required for page creation:</p>
+              <input
+                type="url"
+                value={refUrl}
+                onChange={(e) => setRefUrl(e.target.value)}
+                placeholder="Old site URL to scrape (e.g., https://oldsite.com/pricing)"
+                className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-alloro-orange/20 focus:border-alloro-orange"
+              />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-400">or</span>
+              </div>
+              <textarea
+                value={refContent}
+                onChange={(e) => setRefContent(e.target.value)}
+                placeholder="Paste content text directly..."
+                rows={3}
+                className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-alloro-orange/20 focus:border-alloro-orange"
+              />
+              <button
+                onClick={handleApprove}
+                disabled={!refUrl.trim() && !refContent.trim()}
+                className="inline-flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Check className="w-3 h-3" /> Approve with Reference
+              </button>
+            </div>
+          )}
 
           {rec.status !== "rejected" && (
             <button onClick={() => setShowInstruction(!showInstruction)}
@@ -800,7 +885,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
         {!readonly && rec.status !== "executed" && rec.status !== "failed" && !isLoading && (
           <div className="flex gap-0.5 shrink-0">
             <button
-              onClick={() => onApproveReject(rec.id, rec.status === "approved" ? "rejected" : "approved")}
+              onClick={handleApprove}
               disabled={isLoading}
               className={`p-1.5 rounded-md transition-all ${
                 rec.status === "approved"

@@ -1083,7 +1083,7 @@ export interface AiCommandBatch {
 export interface AiCommandRecommendation {
   id: string;
   batch_id: string;
-  target_type: "page_section" | "layout" | "post" | "create_redirect" | "create_page" | "create_post" | "update_menu";
+  target_type: "page_section" | "layout" | "post" | "create_redirect" | "update_redirect" | "delete_redirect" | "create_page" | "create_post" | "create_menu" | "update_menu" | "update_post_meta" | "update_page_path";
   target_id: string;
   target_label: string;
   target_meta: Record<string, unknown>;
@@ -1140,13 +1140,14 @@ export const updateAiCommandRecommendation = async (
   batchId: string,
   recId: string,
   status: "approved" | "rejected",
+  referenceData?: { reference_url?: string; reference_content?: string },
 ): Promise<{ success: boolean; data: AiCommandRecommendation }> => {
   const response = await fetch(
     `${API_BASE}/${projectId}/ai-command/${batchId}/recommendations/${recId}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...referenceData }),
     },
   );
   if (!response.ok) throw new Error("Failed to update recommendation");
