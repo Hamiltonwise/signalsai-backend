@@ -32,6 +32,8 @@ import * as postTaxonomyManager from "./feature-services/service.post-taxonomy-m
 import * as postManager from "./feature-services/service.post-manager";
 import * as menuManager from "./feature-services/service.menu-manager";
 import * as reviewBlockManager from "./feature-services/service.review-block-manager";
+import * as aiCommand from "./feature-services/service.ai-command";
+import * as redirectsService from "./feature-services/service.redirects";
 import { db } from "../../database/connection";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
@@ -2801,5 +2803,245 @@ export async function triggerReviewSync(req: Request, res: Response): Promise<Re
   } catch (error: any) {
     console.error("[Admin Websites] Error triggering review sync:", error);
     return res.status(500).json({ success: false, error: "SYNC_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
+// AI COMMAND
+// =====================================================================
+
+/** POST /:id/ai-command — Create a new AI command batch and start analysis */
+export async function createAiCommandBatch(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId } = req.params;
+    const { prompt, targets } = req.body;
+
+    if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "prompt is required" });
+    }
+
+    const batch = await aiCommand.createBatch(
+      projectId,
+      prompt.trim(),
+      targets || { pages: "all", posts: "all", layouts: "all" },
+      (req as any).userId
+    );
+
+    // Fire-and-forget analysis — don't await
+    aiCommand.analyzeBatch(batch.id).catch((err) => {
+      console.error(`[Admin Websites] Background analysis failed for batch ${batch.id}:`, err);
+    });
+
+    return res.status(201).json({ success: true, data: batch });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating AI command batch:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/ai-command/:batchId — Get batch status and stats */
+export async function getAiCommandBatch(req: Request, res: Response): Promise<Response> {
+  try {
+    const { batchId } = req.params;
+    const batch = await aiCommand.getBatch(batchId);
+
+    if (!batch) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Batch not found" });
+    }
+
+    return res.json({ success: true, data: batch });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching AI command batch:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/ai-command/:batchId/recommendations — List recommendations */
+export async function getAiCommandRecommendations(req: Request, res: Response): Promise<Response> {
+  try {
+    const { batchId } = req.params;
+    const { status, target_type } = req.query;
+
+    const recommendations = await aiCommand.getBatchRecommendations(batchId, {
+      status: status as string | undefined,
+      target_type: target_type as string | undefined,
+    });
+
+    return res.json({ success: true, data: recommendations });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching recommendations:", error);
+    return res.status(500).json({ success: false, error: "FETCH_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /:id/ai-command/:batchId/recommendations/:recId — Update recommendation status */
+export async function updateAiCommandRecommendation(req: Request, res: Response): Promise<Response> {
+  try {
+    const { recId } = req.params;
+    const { status } = req.body;
+
+    if (!status || !["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "status must be 'approved' or 'rejected'" });
+    }
+
+    const rec = await aiCommand.updateRecommendationStatus(recId, status);
+    if (!rec) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Recommendation not found" });
+    }
+
+    return res.json({ success: true, data: rec });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating recommendation:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /:id/ai-command/:batchId/recommendations/bulk — Bulk approve/reject */
+export async function bulkUpdateAiCommandRecommendations(req: Request, res: Response): Promise<Response> {
+  try {
+    const { batchId } = req.params;
+    const { status, target_type } = req.body;
+
+    if (!status || !["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "status must be 'approved' or 'rejected'" });
+    }
+
+    const updated = await aiCommand.bulkUpdateStatus(batchId, status, {
+      target_type,
+    });
+
+    return res.json({ success: true, data: { updated } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error bulk updating recommendations:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/ai-command/:batchId/execute — Execute approved recommendations */
+export async function executeAiCommandBatch(req: Request, res: Response): Promise<Response> {
+  try {
+    const { batchId } = req.params;
+
+    const batch = await aiCommand.getBatch(batchId);
+    if (!batch) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Batch not found" });
+    }
+
+    if (batch.status !== "ready") {
+      return res.status(400).json({ success: false, error: "INVALID_STATUS", message: `Batch status is "${batch.status}", expected "ready"` });
+    }
+
+    const stats = typeof batch.stats === "string" ? JSON.parse(batch.stats) : batch.stats;
+    if (!stats.approved || stats.approved === 0) {
+      return res.status(400).json({ success: false, error: "NO_APPROVED", message: "No approved recommendations to execute" });
+    }
+
+    // Fire-and-forget execution — don't await
+    aiCommand.executeBatch(batchId).catch((err) => {
+      console.error(`[Admin Websites] Background execution failed for batch ${batchId}:`, err);
+    });
+
+    return res.json({ success: true, data: { status: "executing" } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error executing AI command batch:", error);
+    return res.status(500).json({ success: false, error: "EXECUTE_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/ai-command — List all batches for a project */
+export async function listAiCommandBatches(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId } = req.params;
+    const batches = await aiCommand.listBatches(projectId);
+    return res.json({ success: true, data: batches });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing AI command batches:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /:id/ai-command/:batchId — Delete a batch */
+export async function deleteAiCommandBatch(req: Request, res: Response): Promise<Response> {
+  try {
+    const { batchId } = req.params;
+    await aiCommand.deleteBatch(batchId);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting AI command batch:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
+// REDIRECTS
+// =====================================================================
+
+/** GET /:id/redirects — List redirects for a project */
+export async function listRedirects(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId } = req.params;
+    const { type } = req.query;
+    const redirects = await redirectsService.listRedirects(projectId, {
+      type: type ? parseInt(type as string, 10) : undefined,
+    });
+    return res.json({ success: true, data: redirects });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error listing redirects:", error);
+    return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/redirects — Create a redirect */
+export async function createRedirect(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId } = req.params;
+    const result = await redirectsService.createRedirect(projectId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.status(201).json({ success: true, data: result.redirect });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error creating redirect:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** POST /:id/redirects/bulk — Bulk create redirects */
+export async function bulkCreateRedirects(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId } = req.params;
+    const { redirects } = req.body;
+    if (!Array.isArray(redirects)) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "redirects array is required" });
+    }
+    const result = await redirectsService.bulkCreateRedirects(projectId, redirects);
+    return res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error bulk creating redirects:", error);
+    return res.status(500).json({ success: false, error: "CREATE_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /:id/redirects/:redirectId — Update a redirect */
+export async function updateRedirect(req: Request, res: Response): Promise<Response> {
+  try {
+    const { redirectId } = req.params;
+    const result = await redirectsService.updateRedirect(redirectId, req.body);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true, data: result.redirect });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating redirect:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+/** DELETE /:id/redirects/:redirectId — Delete a redirect */
+export async function deleteRedirect(req: Request, res: Response): Promise<Response> {
+  try {
+    const { redirectId } = req.params;
+    const result = await redirectsService.deleteRedirect(redirectId);
+    if (result.error) return res.status(result.error.status).json({ success: false, ...result.error });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error deleting redirect:", error);
+    return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message });
   }
 }

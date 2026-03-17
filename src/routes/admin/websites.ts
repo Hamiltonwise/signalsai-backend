@@ -459,6 +459,53 @@ router.patch("/:projectId/code-snippets/:id", controller.updateProjectSnippet);
 router.delete("/:projectId/code-snippets/:id", controller.deleteProjectSnippet);
 
 // =====================================================================
+// REDIRECTS
+// =====================================================================
+
+// POST /:id/redirects/bulk — Bulk create redirects (before :redirectId)
+router.post("/:id/redirects/bulk", controller.bulkCreateRedirects);
+
+// GET  /:id/redirects — List redirects
+router.get("/:id/redirects", controller.listRedirects);
+
+// POST /:id/redirects — Create a redirect
+router.post("/:id/redirects", controller.createRedirect);
+
+// PATCH /:id/redirects/:redirectId — Update a redirect
+router.patch("/:id/redirects/:redirectId", controller.updateRedirect);
+
+// DELETE /:id/redirects/:redirectId — Delete a redirect
+router.delete("/:id/redirects/:redirectId", controller.deleteRedirect);
+
+// =====================================================================
+// AI COMMAND
+// =====================================================================
+
+// GET  /:id/ai-command — List all batches for a project (before :batchId)
+router.get("/:id/ai-command", controller.listAiCommandBatches);
+
+// POST /:id/ai-command — Create a new AI command batch
+router.post("/:id/ai-command", controller.createAiCommandBatch);
+
+// DELETE /:id/ai-command/:batchId — Delete a batch
+router.delete("/:id/ai-command/:batchId", controller.deleteAiCommandBatch);
+
+// GET  /:id/ai-command/:batchId — Get batch status and stats
+router.get("/:id/ai-command/:batchId", controller.getAiCommandBatch);
+
+// PATCH /:id/ai-command/:batchId/recommendations/bulk — Bulk approve/reject (before :recId)
+router.patch("/:id/ai-command/:batchId/recommendations/bulk", controller.bulkUpdateAiCommandRecommendations);
+
+// GET  /:id/ai-command/:batchId/recommendations — List recommendations
+router.get("/:id/ai-command/:batchId/recommendations", controller.getAiCommandRecommendations);
+
+// PATCH /:id/ai-command/:batchId/recommendations/:recId — Update single recommendation
+router.patch("/:id/ai-command/:batchId/recommendations/:recId", controller.updateAiCommandRecommendation);
+
+// POST /:id/ai-command/:batchId/execute — Execute approved recommendations
+router.post("/:id/ai-command/:batchId/execute", controller.executeAiCommandBatch);
+
+// =====================================================================
 // PROJECTS (parameterized — last to avoid matching other routes)
 // =====================================================================
 
