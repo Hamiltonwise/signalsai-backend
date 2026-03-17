@@ -9,6 +9,7 @@
 
 import express from "express";
 import * as controller from "../../controllers/admin-websites/AdminWebsitesController";
+import * as backupController from "../../controllers/admin-websites/BackupController";
 import importsRouter from "./imports";
 
 const router = express.Router();
@@ -233,6 +234,28 @@ router.post("/scrape", controller.scrapeWebsite);
 // =====================================================================
 
 router.use("/imports", importsRouter);
+
+// =====================================================================
+// BACKUPS (before other /:id parameterized routes)
+// =====================================================================
+
+// POST /:id/backups — Create a new backup
+router.post("/:id/backups", backupController.createBackup);
+
+// GET  /:id/backups — List backups for a project
+router.get("/:id/backups", backupController.listBackups);
+
+// GET  /:id/backups/:jobId/status — Poll backup/restore status
+router.get("/:id/backups/:jobId/status", backupController.getBackupStatus);
+
+// GET  /:id/backups/:jobId/download — Get pre-signed download URL
+router.get("/:id/backups/:jobId/download", backupController.downloadBackup);
+
+// POST /:id/backups/:jobId/restore — Restore from a backup
+router.post("/:id/backups/:jobId/restore", backupController.restoreBackup);
+
+// DELETE /:id/backups/:jobId — Delete a backup
+router.delete("/:id/backups/:jobId", backupController.deleteBackup);
 
 // =====================================================================
 // PROJECTS (parameterized routes — must come after literal paths)

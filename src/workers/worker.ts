@@ -14,7 +14,10 @@ import { processWorksDigest } from "./processors/worksDigest.processor";
 import { processSeoBulkGenerate } from "./processors/seoBulkGenerate.processor";
 import { processReviewSync } from "./processors/reviewSync.processor";
 import { processSchedulerTick } from "./processors/scheduler.processor";
+import { processWebsiteBackup } from "./processors/websiteBackup.processor";
+import { processWebsiteRestore } from "./processors/websiteRestore.processor";
 import { getMindsQueue } from "./queues";
+import { closeWbQueues } from "./wb-queues";
 
 const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
 const REDIS_PORT = parseInt(process.env.REDIS_PORT || "6379", 10);
@@ -190,8 +193,34 @@ const schedulerWorker = new Worker(
   }
 );
 
+// Website Builder — Backup worker
+const wbBackupWorker = new Worker(
+  "wb-backup",
+  async (job) => {
+    await processWebsiteBackup(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{wb}',
+  }
+);
+
+// Website Builder — Restore worker
+const wbRestoreWorker = new Worker(
+  "wb-restore",
+  async (job) => {
+    await processWebsiteRestore(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{wb}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -216,6 +245,9 @@ async function shutdown(): Promise<void> {
   await seoBulkGenerateWorker.close();
   await reviewSyncWorker.close();
   await schedulerWorker.close();
+  await wbBackupWorker.close();
+  await wbRestoreWorker.close();
+  await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
   process.exit(0);

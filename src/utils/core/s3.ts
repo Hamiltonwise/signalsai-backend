@@ -11,6 +11,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const bucket = process.env.AWS_S3_IMPORTS_BUCKET || "alloro-imports";
 const region = process.env.AWS_S3_IMPORTS_REGION || "us-east-1";
@@ -82,6 +83,17 @@ export function buildS3Key(
   originalFilename: string
 ): string {
   return `imports/${filename}/v${version}/${originalFilename}`;
+}
+
+/**
+ * Generate a pre-signed URL for downloading an S3 object
+ */
+export async function generatePresignedUrl(
+  key: string,
+  expiresInSeconds: number = 3600
+): Promise<string> {
+  const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+  return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
 }
 
 export { bucket };
