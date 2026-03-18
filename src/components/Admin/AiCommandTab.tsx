@@ -23,8 +23,8 @@ import {
   Layout,
   Newspaper,
   Trash2,
-  Plus,
   ArrowLeft,
+  Pencil,
 } from "lucide-react";
 import {
   createAiCommandBatch,
@@ -35,6 +35,7 @@ import {
   executeAiCommandBatch,
   listAiCommandBatches,
   deleteAiCommandBatch,
+  renameAiCommandBatch,
 } from "../../api/websites";
 import type {
   AiCommandBatch,
@@ -166,12 +167,16 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
           setViewState("results");
           refreshBatchList();
         }
-        if (viewState === "executing" && (updated.status === "completed" || updated.status === "failed")) {
-          clearInterval(interval);
+        if (viewState === "executing") {
+          // Refresh individual recommendation statuses in real-time
           const recsRes = await fetchAiCommandRecommendations(projectId, batch.id);
           setRecommendations(recsRes.data);
-          setViewState("completed");
-          refreshBatchList();
+
+          if (updated.status === "completed" || updated.status === "failed") {
+            clearInterval(interval);
+            setViewState("completed");
+            refreshBatchList();
+          }
         }
       } catch { /* retry */ }
     }, 2000);
@@ -337,13 +342,42 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
   const goToInput = () => {
     setViewState("input");
     setPrompt("");
+    setPendingToolType(null);
   };
+
+  const [pendingToolType, setPendingToolType] = useState<"ui_checker" | "link_checker" | null>(null);
+
+  const handleQuickAnalysis = (type: "ui_checker" | "link_checker") => {
+    setPendingToolType(type);
+    setViewState("input"); // Reuse input view for target selection
+  };
+
+  const handleToolSubmit = useCallback(async () => {
+    if (!pendingToolType || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const res = await createAiCommandBatch(projectId, {
+        batch_type: pendingToolType,
+        targets: buildTargets(),
+      });
+      setBatch(res.data);
+      setViewState("analyzing");
+      setPendingToolType(null);
+      refreshBatchList();
+    } catch (err) {
+      toast.error(`Failed to start ${pendingToolType === "ui_checker" ? "UI Check" : "Link Check"}`);
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [pendingToolType, projectId, isSubmitting, pagesMode, postsMode, layoutsMode, selectedPageIds, selectedPostIds, selectedLayouts]);
 
   const goToHistory = () => {
     setViewState("history");
     setBatch(null);
     setRecommendations([]);
     setExpandedGroups(new Set());
+    setPendingToolType(null);
     refreshBatchList();
   };
 
@@ -375,12 +409,26 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
           )}
         </div>
         {viewState === "history" && (
-          <button
-            onClick={goToInput}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-alloro-orange text-white rounded-lg hover:brightness-110 transition-all"
-          >
-            <Plus className="w-3.5 h-3.5" /> New Analysis
-          </button>
+          <div className="flex gap-1.5">
+            <button
+              onClick={goToInput}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-alloro-orange text-white rounded-lg hover:brightness-110 transition-all"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> AI Editor
+            </button>
+            <button
+              onClick={() => handleQuickAnalysis("ui_checker")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Layout className="w-3.5 h-3.5" /> UI Check
+            </button>
+            <button
+              onClick={() => handleQuickAnalysis("link_checker")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5" /> Link Check
+            </button>
+          </div>
         )}
       </div>
 
@@ -410,12 +458,13 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
                     >
                       <div className="flex-1 min-w-0 mr-3">
                         <div className="flex items-center gap-2 mb-1">
+                          <BatchTypeBadge targets={b.targets} />
                           <StatusPill status={b.status} />
                           <span className="text-[11px] text-gray-400">
                             {new Date(b.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-700 truncate">{b.prompt.slice(0, 100)}</p>
+                        <p className="text-sm text-gray-700 truncate">{b.summary || b.prompt.slice(0, 100) || "Untitled"}</p>
                         {s.total > 0 && (
                           <div className="flex gap-1.5 mt-1.5">
                             {s.pending > 0 && <span className="text-[10px] text-gray-400">{s.pending} pending</span>}
@@ -425,13 +474,28 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteBatch(b.id); }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
-                        title="Delete batch"
-                      >
-                        {deletingBatchId === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                      </button>
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newName = window.prompt("Rename batch:", b.summary || "");
+                            if (newName !== null && newName.trim()) {
+                              renameAiCommandBatch(projectId, b.id, newName.trim()).then(() => refreshBatchList());
+                            }
+                          }}
+                          className="p-1.5 rounded-md text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-all"
+                          title="Rename"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteBatch(b.id); }}
+                          className="p-1.5 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                          title="Delete batch"
+                        >
+                          {deletingBatchId === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -442,12 +506,27 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
           {/* ---- INPUT STATE ---- */}
           {viewState === "input" && (
             <motion.div key="input" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-5">
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Paste a QA checklist, describe changes, or give a simple instruction..."
-                className="w-full min-h-[180px] p-4 border border-gray-200 rounded-lg text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange transition-colors"
-              />
+              {/* Tool type header */}
+              {pendingToolType && (
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                  {pendingToolType === "ui_checker" ? <Layout className="w-4 h-4 text-purple-500" /> : <FileText className="w-4 h-4 text-blue-500" />}
+                  <span className="text-sm font-medium text-gray-700">
+                    {pendingToolType === "ui_checker" ? "UI Check" : "Link Check"} — select targets
+                  </span>
+                </div>
+              )}
+
+              {/* Prompt textarea — only for AI Editor */}
+              {!pendingToolType && (
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Paste a QA checklist, describe changes, or give a simple instruction..."
+                  className="w-full min-h-[180px] p-4 border border-gray-200 rounded-lg text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange transition-colors"
+                />
+              )}
+
+              {/* Target selection — shared by all tools */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Targets</p>
                 <TargetSection icon={<FileText className="w-3.5 h-3.5" />} label="Pages" mode={pagesMode} onModeChange={setPagesMode}>
@@ -460,16 +539,19 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
                     </div>
                   )}
                 </TargetSection>
-                <TargetSection icon={<Newspaper className="w-3.5 h-3.5" />} label="Posts" mode={postsMode} onModeChange={setPostsMode}>
-                  {postsMode === "specific" && (
-                    <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t border-gray-100">
-                      {posts.length > 0 ? posts.map((post) => (
-                        <SelectChip key={post.id} label={post.title} selected={selectedPostIds.has(post.id)}
-                          onClick={() => setSelectedPostIds((prev) => { const n = new Set(prev); n.has(post.id) ? n.delete(post.id) : n.add(post.id); return n; })} />
-                      )) : <span className="text-xs text-gray-400 italic">No posts found</span>}
-                    </div>
-                  )}
-                </TargetSection>
+                {/* Posts — only for AI Editor and Link Checker (not UI Checker since posts have their own templates) */}
+                {pendingToolType !== "ui_checker" && (
+                  <TargetSection icon={<Newspaper className="w-3.5 h-3.5" />} label="Posts" mode={postsMode} onModeChange={setPostsMode}>
+                    {postsMode === "specific" && (
+                      <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t border-gray-100">
+                        {posts.length > 0 ? posts.map((post) => (
+                          <SelectChip key={post.id} label={post.title} selected={selectedPostIds.has(post.id)}
+                            onClick={() => setSelectedPostIds((prev) => { const n = new Set(prev); n.has(post.id) ? n.delete(post.id) : n.add(post.id); return n; })} />
+                        )) : <span className="text-xs text-gray-400 italic">No posts found</span>}
+                      </div>
+                    )}
+                  </TargetSection>
+                )}
                 <TargetSection icon={<Layout className="w-3.5 h-3.5" />} label="Layouts" mode={layoutsMode} onModeChange={setLayoutsMode}>
                   {layoutsMode === "specific" && (
                     <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t border-gray-100">
@@ -482,11 +564,21 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
                 </TargetSection>
               </div>
               <div className="flex justify-end">
-                <button onClick={handleSubmit} disabled={!prompt.trim() || isSubmitting || !hasAnyTarget()}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-alloro-orange text-white rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  Analyze
-                </button>
+                {pendingToolType ? (
+                  <button onClick={handleToolSubmit} disabled={isSubmitting || !hasAnyTarget()}
+                    className={`inline-flex items-center gap-2 px-5 py-2.5 text-white rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
+                      pendingToolType === "ui_checker" ? "bg-purple-500" : "bg-blue-500"
+                    }`}>
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : pendingToolType === "ui_checker" ? <Layout className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                    {pendingToolType === "ui_checker" ? "Run UI Check" : "Run Link Check"}
+                  </button>
+                ) : (
+                  <button onClick={handleSubmit} disabled={!prompt.trim() || isSubmitting || !hasAnyTarget()}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-alloro-orange text-white rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    Analyze
+                  </button>
+                )}
               </div>
             </motion.div>
           )}
@@ -587,6 +679,18 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
 // Status pill
 // ---------------------------------------------------------------------------
 
+function BatchTypeBadge({ targets }: { targets: AiCommandTargets | string }) {
+  const parsed = typeof targets === "string" ? JSON.parse(targets) : targets;
+  const type = (parsed as any)?.type || "ai_editor";
+  const map: Record<string, { label: string; color: string }> = {
+    ai_editor: { label: "AI Editor", color: "bg-alloro-orange/10 text-alloro-orange" },
+    ui_checker: { label: "UI Check", color: "bg-purple-50 text-purple-600" },
+    link_checker: { label: "Link Check", color: "bg-blue-50 text-blue-600" },
+  };
+  const badge = map[type] || map.ai_editor;
+  return <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${badge.color}`}>{badge.label}</span>;
+}
+
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, { bg: string; text: string; label: string }> = {
     analyzing: { bg: "bg-amber-50", text: "text-amber-600", label: "Analyzing" },
@@ -675,6 +779,9 @@ const FLAG_LABELS: Record<string, { label: string; color: string }> = {
   fix_seo: { label: "SEO Issue", color: "bg-blue-50 text-blue-600" },
   fix_architecture: { label: "Architecture", color: "bg-purple-50 text-purple-600" },
   fix_content: { label: "Content Issue", color: "bg-amber-50 text-amber-600" },
+  fix_ui: { label: "UI Issue", color: "bg-amber-50 text-amber-700" },
+  fix_visual: { label: "Visual Issue", color: "bg-rose-50 text-rose-600" },
+  fix_orphan_page: { label: "Orphan Page", color: "bg-orange-50 text-orange-600" },
 };
 
 const TOOL_LABELS: Record<string, { label: string; color: string }> = {
@@ -700,6 +807,12 @@ function getToolLabel(rec: AiCommandRecommendation): { label: string; color: str
 }
 
 function subGroupKey(rec: AiCommandRecommendation): string {
+  // Group page sections by their page path, not individual section
+  if (rec.target_type === "page_section") {
+    const meta = rec.target_meta as Record<string, unknown>;
+    const pagePath = meta?.page_path as string;
+    if (pagePath) return pagePath === "/" ? "/ (Homepage)" : pagePath;
+  }
   return rec.target_label;
 }
 
@@ -807,12 +920,16 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
   isLoading: boolean;
 }) {
   const [showInstruction, setShowInstruction] = useState(false);
-  const [refUrl, setRefUrl] = useState("");
+  const meta = rec.target_meta as Record<string, unknown>;
+  const suggestedHref = meta?.suggested_href as string | undefined;
+  const brokenHref = meta?.broken_href as string | undefined;
+  const isBrokenLink = meta?.flag_type === "fix_broken_link" && brokenHref;
+  const hasSuggestion = isBrokenLink && suggestedHref && suggestedHref !== "NEEDS_INPUT";
+  const [refUrl, setRefUrl] = useState(hasSuggestion ? suggestedHref! : "");
   const [refContent, setRefContent] = useState("");
 
   const needsReference = rec.target_type === "create_page" || rec.target_type === "create_post";
-  const needsUrlInput = rec.target_type === "update_menu" && (rec.target_meta as Record<string, unknown>)?.url === "NEEDS_INPUT";
-  const meta = rec.target_meta as Record<string, unknown>;
+  const needsUrlInput = rec.target_type === "update_menu" && meta?.url === "NEEDS_INPUT";
   const hasReference = !!(meta?.reference_url || meta?.reference_content);
 
   const statusIcon = {
@@ -823,21 +940,28 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
     failed: <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />,
   }[rec.status];
 
-  const executionError =
-    rec.status === "failed" && rec.execution_result
-      ? (typeof rec.execution_result === "string" ? JSON.parse(rec.execution_result) : rec.execution_result).error
-      : null;
+  const parsedResult = rec.execution_result
+    ? (typeof rec.execution_result === "string" ? JSON.parse(rec.execution_result) : rec.execution_result)
+    : null;
+  const executionError = rec.status === "failed" ? parsedResult?.error : null;
+  const pipelineMessage = parsedResult?.in_progress ? parsedResult.message : null;
+  const pipelineStats = rec.status === "executed" && parsedResult?.iterations > 1
+    ? `${parsedResult.iterations} rounds, ${parsedResult.ui_fixes || 0} UI fix(es), ${parsedResult.link_fixes || 0} link fix(es)`
+    : null;
 
   const handleApprove = () => {
     if (needsReference && !hasReference) {
-      // Can't approve without reference — input is already visible
       if (!refUrl.trim() && !refContent.trim()) return;
       onApproveReject(rec.id, "approved", {
         reference_url: refUrl.trim() || undefined,
         reference_content: refContent.trim() || undefined,
       });
     } else if (needsUrlInput) {
-      return; // URL input is inline
+      return;
+    } else if (isBrokenLink && rec.status !== "approved") {
+      // For broken links, approve with the replacement URL
+      if (!refUrl.trim()) return;
+      onApproveReject(rec.id, "approved", { reference_url: refUrl.trim() });
     } else {
       onApproveReject(rec.id, rec.status === "approved" ? "rejected" : "approved");
     }
@@ -869,6 +993,11 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
                   </div>
                 ) : null;
               })()}
+              {rec.target_type === "page_section" && !!(rec.target_meta as Record<string, unknown>)?.section_name && (
+                <span className="text-[10px] text-gray-400 font-mono">
+                  {String((rec.target_meta as Record<string, unknown>).section_name)}
+                </span>
+              )}
               <p className={`text-sm leading-relaxed ${rec.status === "rejected" ? "text-gray-400 line-through" : "text-gray-700"}`}>
                 {rec.recommendation}
               </p>
@@ -876,6 +1005,15 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
           </div>
 
           {executionError && <p className="text-xs text-red-500 mt-1 ml-6">{executionError}</p>}
+          {pipelineMessage && (
+            <p className="text-[11px] text-alloro-orange mt-1 ml-6 flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              {pipelineMessage}
+            </p>
+          )}
+          {pipelineStats && (
+            <p className="text-[10px] text-gray-400 mt-0.5 ml-6">{pipelineStats}</p>
+          )}
 
           {/* Reference data indicator for approved create_page/create_post */}
           {needsReference && hasReference && rec.status === "approved" && (
@@ -912,6 +1050,40 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
               >
                 <Check className="w-3 h-3" /> Approve with Reference
               </button>
+            </div>
+          )}
+
+          {/* Broken link fix — show suggested URL or manual input */}
+          {isBrokenLink && rec.status === "pending" && (
+            <div className="ml-6 mt-2 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[10px] font-mono text-red-400 line-through">{brokenHref}</span>
+                <span className="text-[10px] text-gray-400">→</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={refUrl}
+                  onChange={(e) => setRefUrl(e.target.value)}
+                  placeholder="/correct-path"
+                  className={`flex-1 px-2.5 py-1.5 border rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-alloro-orange/20 focus:border-alloro-orange ${
+                    hasSuggestion ? "border-green-300 bg-green-50/50" : "border-gray-200"
+                  }`}
+                />
+                <button
+                  onClick={() => {
+                    if (!refUrl.trim()) return;
+                    onApproveReject(rec.id, "approved", { reference_url: refUrl.trim() });
+                  }}
+                  disabled={!refUrl.trim()}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+                >
+                  <Check className="w-3 h-3" /> Fix Link
+                </button>
+              </div>
+              {hasSuggestion && (
+                <p className="text-[10px] text-green-600 mt-1">Auto-suggested based on existing pages</p>
+              )}
             </div>
           )}
 

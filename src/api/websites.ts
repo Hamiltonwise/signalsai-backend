@@ -57,6 +57,7 @@ export interface WebsitePage {
   id: string;
   project_id: string;
   path: string;
+  display_name: string | null;
   version: number;
   status: string;
   generation_status?: PageGenerationStatus | null;
@@ -969,15 +970,30 @@ export const analyzeSeo = async (
 /**
  * Start a bulk SEO generation job
  */
+export const updatePageDisplayName = async (
+  projectId: string,
+  path: string,
+  displayName: string | null,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/pages/display-name`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, display_name: displayName }),
+  });
+  if (!response.ok) throw new Error("Failed to update display name");
+  return response.json();
+};
+
 export const startBulkSeoGenerate = async (
   projectId: string,
   entityType: "page" | "post",
   postTypeId?: string,
+  pagePaths?: string[],
 ): Promise<{ success: boolean; job_id: string; already_active?: boolean }> => {
   const response = await fetch(`${API_BASE}/${projectId}/seo/bulk-generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entity_type: entityType, post_type_id: postTypeId }),
+    body: JSON.stringify({ entity_type: entityType, post_type_id: postTypeId, page_paths: pagePaths }),
   });
   if (!response.ok) {
     const error = await response.json();
@@ -1098,7 +1114,7 @@ export interface AiCommandRecommendation {
 
 export const createAiCommandBatch = async (
   projectId: string,
-  data: { prompt: string; targets?: AiCommandTargets },
+  data: { prompt?: string; targets?: AiCommandTargets; batch_type?: "ai_editor" | "ui_checker" | "link_checker" },
 ): Promise<{ success: boolean; data: AiCommandBatch }> => {
   const response = await fetch(`${API_BASE}/${projectId}/ai-command`, {
     method: "POST",
@@ -1253,6 +1269,23 @@ export const listAiCommandBatches = async (
 ): Promise<{ success: boolean; data: AiCommandBatch[] }> => {
   const response = await fetch(`${API_BASE}/${projectId}/ai-command`);
   if (!response.ok) throw new Error("Failed to list AI command batches");
+  return response.json();
+};
+
+export const renameAiCommandBatch = async (
+  projectId: string,
+  batchId: string,
+  summary: string,
+): Promise<{ success: boolean; data: AiCommandBatch }> => {
+  const response = await fetch(
+    `${API_BASE}/${projectId}/ai-command/${batchId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ summary }),
+    },
+  );
+  if (!response.ok) throw new Error("Failed to rename batch");
   return response.json();
 };
 

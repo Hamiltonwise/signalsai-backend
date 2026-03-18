@@ -24,6 +24,14 @@ import {
   Hash,
   Sparkles,
   RefreshCw,
+  Layout,
+  Image,
+  Inbox,
+  Newspaper,
+  Menu,
+  ArrowRightLeft,
+  Archive,
+  Wrench,
 } from "lucide-react";
 import {
   fetchWebsiteDetail,
@@ -39,6 +47,7 @@ import {
   startBulkSeoGenerate,
   getBulkSeoStatus,
   getActiveBulkSeoJob,
+  updatePageDisplayName,
 } from "../../api/websites";
 import type { WebsiteProjectWithPages, WebsitePage, PageGenerationStatusItem, BulkSeoStatus } from "../../api/websites";
 import { toast } from "react-hot-toast";
@@ -53,6 +62,7 @@ import type { Template, TemplatePage } from "../../api/templates";
 import {
   AdminPageHeader,
   ActionButton,
+  BulkActionBar,
 } from "../../components/ui/DesignSystem";
 import CreatePageModal from "../../components/Admin/CreatePageModal";
 import MediaTab from "../../components/Admin/MediaTab";
@@ -207,6 +217,10 @@ export default function WebsiteDetail() {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
   const [deletingPageId, setDeletingPageId] = useState<string | null>(null);
   const [deletingPagePath, setDeletingPagePath] = useState<string | null>(null);
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState("");
+  const [savingName, setSavingName] = useState<string | null>(null);
 
   // GBP Selector state
   const [searchQuery, setSearchQuery] = useState("");
@@ -267,10 +281,10 @@ export default function WebsiteDetail() {
     }
   }, [id, stopBulkSeoPoll, invalidateWebsite]);
 
-  const startBulkPageSeo = useCallback(async () => {
+  const startBulkPageSeo = useCallback(async (paths?: string[]) => {
     if (!id) return;
     try {
-      const res = await startBulkSeoGenerate(id, "page");
+      const res = await startBulkSeoGenerate(id, "page", undefined, paths);
       setBulkSeoJobId(res.job_id);
       setBulkSeoStatus({ id: res.job_id, status: "queued", total_count: 0, completed_count: 0, failed_count: 0, failed_items: null });
       stopBulkSeoPoll();
@@ -316,7 +330,7 @@ export default function WebsiteDetail() {
   const [scrapedData, setScrapedData] = useState("");
 
   // Detail tab: persisted in URL search params so refresh preserves tab
-  const VALID_TABS = ["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "redirects", "ai-command", "backups"] as const;
+  const VALID_TABS = ["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "redirects", "backups", "advanced-tools"] as const;
   type DetailTab = typeof VALID_TABS[number];
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get("tab");
@@ -805,6 +819,7 @@ export default function WebsiteDetail() {
         const error = await response.json();
         throw new Error(error.message || "Failed to delete page version");
       }
+      invalidateWebsite(id!);
       await loadWebsite();
     } catch (err) {
       console.error("Failed to delete page version:", err);
@@ -824,6 +839,7 @@ export default function WebsiteDetail() {
     try {
       setDeletingPagePath(path);
       await deletePageByPath(id, path);
+      invalidateWebsite(id);
       await loadWebsite();
     } catch (err) {
       console.error("Failed to delete page:", err);
@@ -1733,13 +1749,26 @@ export default function WebsiteDetail() {
 
       {/* Tab bar: Pages | Layouts | Code Manager | Media | Form Submissions */}
       <div className="flex items-stretch gap-1 p-1.5 bg-gray-100 rounded-xl mb-4">
-        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "redirects", "ai-command", "backups"] as const).map((tab) => {
+        {(["pages", "layouts", "code-manager", "media", "form-submissions", "posts", "menus", "redirects", "backups", "advanced-tools"] as const).map((tab) => {
           const isActive = detailTab === tab;
+          const tabConfig: Record<string, { label: string; icon: React.ReactNode }> = {
+            "pages": { label: "Pages", icon: <FileText className="w-3.5 h-3.5" /> },
+            "layouts": { label: "Layouts", icon: <Layout className="w-3.5 h-3.5" /> },
+            "code-manager": { label: "Code Manager", icon: <Code className="w-3.5 h-3.5" /> },
+            "media": { label: "Media", icon: <Image className="w-3.5 h-3.5" /> },
+            "form-submissions": { label: "Forms", icon: <Inbox className="w-3.5 h-3.5" /> },
+            "posts": { label: "Posts", icon: <Newspaper className="w-3.5 h-3.5" /> },
+            "menus": { label: "Menus", icon: <Menu className="w-3.5 h-3.5" /> },
+            "redirects": { label: "Redirects", icon: <ArrowRightLeft className="w-3.5 h-3.5" /> },
+            "backups": { label: "Backups", icon: <Archive className="w-3.5 h-3.5" /> },
+            "advanced-tools": { label: "Advanced Tools", icon: <Wrench className="w-3.5 h-3.5" /> },
+          };
+          const config = tabConfig[tab] || { label: tab, icon: null };
           return (
             <motion.button
               key={tab}
               onClick={() => setDetailTab(tab)}
-              className={`group relative flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors capitalize ${
+              className={`group relative flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-700"
               }`}
               whileHover={{ scale: 1.02 }}
@@ -1752,8 +1781,9 @@ export default function WebsiteDetail() {
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
-              <span className="relative z-10">
-                {tab === "form-submissions" ? "Form Submissions" : tab === "code-manager" ? "Code Manager" : tab === "ai-command" ? "AI Command" : tab === "redirects" ? "Redirects" : tab}
+              <span className="relative z-10 flex items-center gap-1.5">
+                {config.icon}
+                {config.label}
               </span>
             </motion.button>
           );
@@ -1791,7 +1821,7 @@ export default function WebsiteDetail() {
               ) : (
                 pageGroups.length > 0 && (
                   <button
-                    onClick={startBulkPageSeo}
+                    onClick={() => startBulkPageSeo()}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-orange-50 hover:text-alloro-orange rounded-lg transition-colors"
                     title="Generate SEO for all pages"
                   >
@@ -1831,21 +1861,106 @@ export default function WebsiteDetail() {
                 return (
                   <div key={group.path}>
                     {/* Page row (click to expand) */}
-                    <button
-                      onClick={() => togglePath(group.path)}
-                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors text-left"
+                    <div
+                      className={`w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-all text-left ${
+                        selectedPaths.has(group.path) ? "bg-alloro-orange/5 border-l-2 border-l-alloro-orange" : ""
+                      }`}
                     >
                       <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-gray-400 shrink-0" />
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {group.path}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {group.pages.length}{" "}
-                            {group.pages.length === 1 ? "version" : "versions"}
-                          </p>
-                        </div>
+                        {/* Selection checkbox */}
+                        <motion.button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPaths((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(group.path)) next.delete(group.path);
+                              else next.add(group.path);
+                              return next;
+                            });
+                          }}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          className="shrink-0"
+                        >
+                          {selectedPaths.has(group.path) ? (
+                            <CheckCircle className="h-5 w-5 text-alloro-orange" />
+                          ) : (
+                            <div className="h-5 w-5 rounded-full border-2 border-gray-300 hover:border-gray-400 transition-colors" />
+                          )}
+                        </motion.button>
+                        <button onClick={() => togglePath(group.path)} className="flex items-center gap-3 text-left flex-1 min-w-0">
+                          <FileText className="h-5 w-5 text-gray-400 shrink-0" />
+                          <div className="min-w-0">
+                            {editingName === group.path ? (
+                              <form
+                                onSubmit={async (e) => {
+                                  e.preventDefault();
+                                  const newName = nameInput.trim() || null;
+                                  setSavingName(group.path);
+                                  // Optimistic update — set name in cache immediately
+                                  setWebsiteCache(id!, {
+                                    ...website,
+                                    pages: website.pages.map((p) =>
+                                      p.path === group.path ? { ...p, display_name: newName } : p
+                                    ),
+                                  });
+                                  try {
+                                    await updatePageDisplayName(id!, group.path, newName);
+                                  } finally {
+                                    setSavingName(null);
+                                    setEditingName(null);
+                                  }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5"
+                              >
+                                <input
+                                  type="text"
+                                  value={nameInput}
+                                  onChange={(e) => setNameInput(e.target.value)}
+                                  autoFocus
+                                  placeholder={group.path}
+                                  onKeyDown={(e) => { if (e.key === "Escape") setEditingName(null); }}
+                                  className="text-sm font-medium px-2 py-0.5 border border-alloro-orange/30 rounded focus:outline-none focus:ring-1 focus:ring-alloro-orange/30 w-48"
+                                  disabled={savingName === group.path}
+                                />
+                                {savingName === group.path ? (
+                                  <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />
+                                ) : (
+                                  <>
+                                    <button type="submit" className="p-0.5 text-green-500 hover:text-green-600 transition-colors" title="Save">
+                                      <Check className="w-4 h-4" />
+                                    </button>
+                                    <button type="button" onClick={() => setEditingName(null)} className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors" title="Cancel">
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </form>
+                            ) : (
+                              <div
+                                className="flex items-baseline gap-1.5 cursor-text truncate"
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingName(group.path);
+                                  setNameInput(displayPage.display_name || "");
+                                }}
+                                title="Double-click to rename"
+                              >
+                                <span className="font-medium text-gray-900">
+                                  {displayPage.display_name || group.path}
+                                </span>
+                                {displayPage.display_name && (
+                                  <span className="text-xs text-gray-400 font-normal">{group.path}</span>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-xs text-gray-500">
+                              {group.pages.length}{" "}
+                              {group.pages.length === 1 ? "version" : "versions"}
+                            </p>
+                          </div>
+                        </button>
                       </div>
                       <div className="flex items-center gap-3">
                         {/* SEO Score — use displayPage (published or latest) */}
@@ -1899,11 +2014,13 @@ export default function WebsiteDetail() {
                             )}
                           </>
                         )}
-                        <ChevronDown
-                          className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                        />
+                        <button onClick={() => togglePath(group.path)}>
+                          <ChevronDown
+                            className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                          />
+                        </button>
                       </div>
-                    </button>
+                    </div>
 
                     {/* Expanded version list */}
                     <AnimatePresence>
@@ -2021,6 +2138,79 @@ export default function WebsiteDetail() {
               </div>
             )}
           </div>
+
+          {/* Bulk action bar — uses shared BulkActionBar component */}
+          <BulkActionBar
+            selectedCount={selectedPaths.size}
+            totalCount={pageGroups.length}
+            onSelectAll={() => setSelectedPaths(new Set(pageGroups.map((g) => g.path)))}
+            onDeselectAll={() => setSelectedPaths(new Set())}
+            isAllSelected={selectedPaths.size === pageGroups.length && pageGroups.length > 0}
+            actions={[
+              {
+                label: "Generate SEO",
+                icon: <Sparkles className="w-4 h-4" />,
+                onClick: () => {
+                  startBulkPageSeo(Array.from(selectedPaths));
+                  setSelectedPaths(new Set());
+                },
+                variant: "primary" as const,
+                disabled: isBulkSeoActive,
+              },
+              {
+                label: "Publish",
+                icon: <Check className="w-4 h-4" />,
+                onClick: async () => {
+                  let published = 0;
+                  let failed = 0;
+                  for (const path of selectedPaths) {
+                    const group = pageGroups.find((g) => g.path === path);
+                    // Find draft, or if only version exists use latest regardless of status
+                    const target = group?.pages.find((p) => p.status === "draft") || group?.pages[0];
+                    if (target && target.status !== "published") {
+                      try {
+                        const res = await fetch(`/api/admin/websites/${id}/pages/${target.id}/publish`, { method: "POST" });
+                        if (res.ok) {
+                          published++;
+                        } else {
+                          const err = await res.json().catch(() => ({}));
+                          console.error(`Failed to publish ${path}:`, err);
+                          failed++;
+                        }
+                      } catch {
+                        failed++;
+                      }
+                    }
+                  }
+                  invalidateWebsite(id!);
+                  setSelectedPaths(new Set());
+                  if (published > 0) toast.success(`Published ${published} page(s)`);
+                  if (failed > 0) toast.error(`Failed to publish ${failed} page(s)`);
+                },
+                variant: "secondary" as const,
+              },
+              {
+                label: "Delete",
+                icon: <Trash2 className="w-4 h-4" />,
+                onClick: async () => {
+                  const ok = await confirm({
+                    title: `Delete ${selectedPaths.size} page(s)?`,
+                    message: "This will delete all versions of the selected pages. This action cannot be undone.",
+                    confirmLabel: "Delete",
+                    variant: "danger",
+                  });
+                  if (!ok) return;
+                  for (const path of selectedPaths) {
+                    await deletePageByPath(id!, path);
+                  }
+                  invalidateWebsite(id!);
+                  setSelectedPaths(new Set());
+                  toast.success(`Deleted ${selectedPaths.size} page(s)`);
+                },
+                variant: "danger" as const,
+              },
+            ]}
+          />
         </motion.div>
       )}
 
@@ -2153,8 +2343,8 @@ export default function WebsiteDetail() {
         </motion.div>
       )}
 
-      {/* AI Command Section */}
-      {detailTab === "ai-command" && (
+      {/* Advanced Tools Section */}
+      {detailTab === "advanced-tools" && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

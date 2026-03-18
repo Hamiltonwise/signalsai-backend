@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ChevronDown, LogOut, User } from "lucide-react";
+import { ChevronDown, LogOut, User, RefreshCw } from "lucide-react";
+import { queryClient } from "../../lib/queryClient";
+import { toast } from "react-hot-toast";
 
 export function AdminTopBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -112,6 +114,19 @@ export function AdminTopBar() {
                     transition={{ duration: 0.15 }}
                     className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border border-gray-600 bg-[#2a3a52] shadow-lg"
                   >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        queryClient.invalidateQueries();
+                        queryClient.clear();
+                        setIsMenuOpen(false);
+                        toast.success("Cache purged — all data will refetch");
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-300 transition hover:bg-gray-700/50 hover:text-white"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Purge Cache
+                    </button>
                     <button
                       type="button"
                       onClick={handleLogoutClick}
