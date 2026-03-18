@@ -5,8 +5,17 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { loadPrompt } from "../../agents/service.prompt-loader";
 
 const MODEL = "claude-sonnet-4-6";
+
+// Load prompts from .md files (cached after first read)
+const getAnalysisPrompt = () => loadPrompt("websiteAgents/aiCommand/Analysis");
+const getStructuralPrompt = () => loadPrompt("websiteAgents/aiCommand/Structural");
+const getExecutionPrompt = () => loadPrompt("websiteAgents/aiCommand/Execution");
+const getSectionPlannerPrompt = () => loadPrompt("websiteAgents/aiCommand/SectionPlanner");
+const getSectionGeneratorPrompt = () => loadPrompt("websiteAgents/aiCommand/SectionGenerator");
+const getVisualAnalysisPrompt = () => loadPrompt("websiteAgents/aiCommand/VisualAnalysis");
 
 let client: Anthropic | null = null;
 
@@ -24,66 +33,6 @@ function getClient(): Anthropic {
 // ---------------------------------------------------------------------------
 // Analysis — produce structured recommendations from content + prompt
 // ---------------------------------------------------------------------------
-
-const ANALYSIS_SYSTEM_PROMPT = `You are a website QA analyst for the Alloro website engine. You review HTML content against requirements and recommend changes.
-
-## ALLORO ENGINE ARCHITECTURE — YOU MUST UNDERSTAND THIS
-
-Alloro websites are data-driven. Content that repeats or belongs to a collection should NEVER be hardcoded in HTML. Instead, it should be managed as **posts** (database records) rendered dynamically via **shortcodes**.
-
-**Content types that MUST be posts (not hardcoded HTML):**
-- Doctor/team member profiles → post_type "doctors" or "team"
-- Services/treatments → post_type "services"
-- Testimonials/reviews → post_type "testimonials" or "reviews"
-- Blog articles → post_type "blog"
-- Locations/offices → post_type "locations"
-- FAQs (if managed as individual items) → post_type "faqs"
-- Any repeating content cards, grids, or lists
-
-**Navigation menus MUST use the menu shortcode system:**
-- Menus are stored in the database and rendered via {{ menu id='slug' }} or {{ menu id='slug' template='template-slug' }}
-- Navigation links should NEVER be hardcoded as <a> tags in header/footer HTML
-- If you see hardcoded nav links in a header/footer, recommend replacing them with a {{ menu }} shortcode
-
-**Post blocks render posts dynamically via shortcodes:**
-- {{ post_block id='block-slug' items='post-type-slug' limit='10' }} renders a grid/list of posts
-- Posts have: title, slug, content, custom_fields, featured_image, categories, tags
-- Post blocks loop through posts using {{start_post_loop}} / {{end_post_loop}} markers
-
-**What SHOULD be hardcoded HTML (not posts):**
-- Hero sections with unique copy
-- About/mission text (unless it's a team page)
-- Contact forms
-- CTA sections
-- Page-specific content that doesn't repeat
-
-## HOW TO ANALYZE
-
-1. Read the requirements/checklist carefully
-2. Read the HTML content carefully
-3. For each requirement, check if the HTML satisfies it
-4. Flag hardcoded content that should be data-driven (see architecture rules above)
-5. If you see hardcoded nav links, recommend converting to {{ menu }} shortcode
-6. If you see a hardcoded grid of services/doctors/reviews, recommend converting to {{ post_block }} shortcode
-7. For simple style/design changes (e.g., "change rounded buttons to square") — find every matching element
-
-## RULES
-
-- NEVER return "no change needed" recommendations. If nothing applies, return empty array.
-- Do NOT recommend creating new pages, posts, redirects, or menu items. A separate structural analysis handles those.
-- DO recommend replacing hardcoded content with shortcodes (this IS an HTML edit)
-- DO recommend fixing broken HTML, incorrect content, wrong links, styling issues
-- If the HTML contains {{ menu }} or {{ post_block }} shortcodes, do NOT try to edit the content inside them — they are resolved at render time from the database
-
-RESPONSE FORMAT — return ONLY valid JSON, no markdown fences, no commentary:
-{
-  "recommendations": [
-    {
-      "recommendation": "Human-readable description of what needs to change",
-      "instruction": "Precise instruction for an AI editor: change X to Y, add Z after W, remove Q"
-    }
-  ]
-}`;
 
 export interface AnalysisResult {
   recommendations: Array<{
@@ -128,7 +77,7 @@ ${currentHtml}`;
   let response = await ai.messages.create({
     model: MODEL,
     max_tokens: 4096,
-    system: ANALYSIS_SYSTEM_PROMPT,
+    system: getAnalysisPrompt(),
     messages,
   });
 
@@ -150,7 +99,7 @@ ${currentHtml}`;
     response = await ai.messages.create({
       model: MODEL,
       max_tokens: 4096,
-      system: ANALYSIS_SYSTEM_PROMPT,
+      system: getAnalysisPrompt(),
       messages,
     });
 
@@ -205,84 +154,7 @@ ${currentHtml}`;
 // Structural analysis — detect needed pages, posts, redirects
 // ---------------------------------------------------------------------------
 
-const STRUCTURAL_SYSTEM_PROMPT = `You are a structural analyst for the Alloro website engine. You identify what needs to be CREATED or CHANGED at the data level — new pages, new posts, redirects, and menu updates.
-
-## ALLORO ENGINE ARCHITECTURE — CRITICAL
-
-Alloro is a data-driven website engine. You must recommend the RIGHT data structure for each content type:
-
-**MUST be posts (rendered via {{ post_block }} shortcodes, not hardcoded HTML):**
-- Doctor/provider profiles → post_type "doctors" or "team"
-- Services/treatments → post_type "services"
-- Testimonials/reviews → post_type "testimonials" or "reviews"
-- Blog articles → post_type "blog"
-- Locations/offices → post_type "locations"
-- Team members → post_type "team"
-- Any content that belongs to a repeating collection
-
-**MUST be pages (standalone content):**
-- Pricing/financial info pages
-- Privacy policy, accessibility notices
-- Referral forms
-- Patient information pages
-- About/mission pages
-- Any standalone content that doesn't belong to a collection
-
-**MUST be menus (not hardcoded nav links):**
-- All navigation links in headers and footers
-- If the checklist mentions adding nav items, recommend MENU CHANGES
-- When creating new pages/posts, also recommend adding them to the appropriate menu
-
-**MUST be redirects:**
-- Old URLs that changed in the migration
-- Removed pages that should point somewhere
-
-## GIVEN CONTEXT
-- Existing page paths (don't create duplicates)
-- Existing redirects (don't create duplicates)
-- Existing posts by type (don't create duplicates)
-- Available post types (use these — don't invent new ones unless one clearly doesn't exist)
-- Existing menu structure (know what's already linked)
-
-## RULES
-- ALWAYS prefer posts over hardcoded HTML for repeating/collection content
-- If the checklist says "add Dr. Wang's page" and "doctors" is a post_type, recommend creating a POST, not a page
-- If the checklist says "add services pages" and "services" is a post_type, recommend creating POSTS for each service
-- Do NOT recommend redirects where from_path and to_path are the same (even with trailing slash differences — normalize both before comparing)
-- For menu items where you don't know the actual URL (e.g., external payment portals, third-party links), set the url to "NEEDS_INPUT" and note in the recommendation that the user must provide the URL. Example: "Pay Online" links to an external payment gateway — the URL is unknown.
-- For pages where the content depends on external data you don't have, still recommend creating the page but note in the recommendation what information the user needs to provide
-- When creating posts/pages, also recommend adding them to the correct menu
-- Post slugs must be URL-safe (lowercase, hyphens, no spaces)
-- Do NOT recommend content that already exists
-- Do NOT recommend redirects that already exist or have identical from/to paths
-
-RESPONSE FORMAT — return ONLY valid JSON, no markdown fences:
-{
-  "redirects": [
-    { "from_path": "/old-url", "to_path": "/new-url", "type": 301, "recommendation": "Human-readable reason" }
-  ],
-  "pages": [
-    { "path": "/pricing", "purpose": "What this page should contain", "recommendation": "Human-readable reason" }
-  ],
-  "posts": [
-    { "post_type_slug": "doctors", "title": "Dr. Name", "slug": "dr-name", "purpose": "What this post should contain", "recommendation": "Human-readable reason" }
-  ],
-  "menuChanges": [
-    { "menu_slug": "main-nav", "action": "add", "label": "Pricing", "url": "/pricing", "target": "_self", "recommendation": "Add pricing link to main navigation" },
-    { "menu_slug": "main-nav", "action": "remove", "label": "Old Link", "recommendation": "Remove broken link" },
-    { "menu_slug": "main-nav", "action": "update", "original_label": "About", "label": "About Us", "url": "/about-us", "recommendation": "Update label and URL" }
-  ],
-  "newMenus": [
-    { "name": "Footer Menu", "slug": "footer-menu", "recommendation": "Create a separate footer navigation menu" }
-  ]
-}
-
-NOTES:
-- Menu items support any URL — internal pages (/about), post URLs (/doctors/dr-name), or external links (https://pay.example.com)
-- When recommending new pages or posts, ALSO recommend adding them to the appropriate menu
-- If a menu doesn't exist yet (e.g., footer-menu), recommend creating it in "newMenus" first
-
-If no structural changes are needed, return: { "redirects": [], "pages": [], "posts": [], "menuChanges": [], "newMenus": [] }`;
+// Structural prompt loaded from websiteAgents/aiCommand/Structural.md
 
 export interface MenuChangeRecommendation {
   menu_slug: string;
@@ -344,7 +216,7 @@ ${existingMenus.length > 0 ? existingMenus.map((m) => `Menu "${m.menu_slug}":\n$
   let response = await ai.messages.create({
     model: MODEL,
     max_tokens: 4096,
-    system: STRUCTURAL_SYSTEM_PROMPT,
+    system: getStructuralPrompt(),
     messages: [{ role: "user", content: userMessage }],
   });
 
@@ -356,7 +228,7 @@ ${existingMenus.length > 0 ? existingMenus.map((m) => `Menu "${m.menu_slug}":\n$
     response = await ai.messages.create({
       model: MODEL,
       max_tokens: 4096,
-      system: STRUCTURAL_SYSTEM_PROMPT,
+      system: getStructuralPrompt(),
       messages: [
         { role: "user", content: userMessage },
         { role: "assistant", content: text },
@@ -391,16 +263,7 @@ ${existingMenus.length > 0 ? existingMenus.map((m) => `Menu "${m.menu_slug}":\n$
 // Execution — edit HTML based on an approved instruction
 // ---------------------------------------------------------------------------
 
-const EXECUTION_SYSTEM_PROMPT = `You are a precise HTML editor. You receive an HTML snippet and an edit instruction.
-
-RULES:
-- Return ONLY the complete modified HTML
-- Do NOT wrap in code fences or markdown
-- Do NOT add commentary before or after the HTML
-- Preserve all existing CSS classes, IDs, data attributes, and structure unless the instruction specifically requires changing them
-- Preserve Tailwind CSS classes
-- If the instruction asks to add content, integrate it naturally with the existing structure and styling
-- If the instruction is unclear or impossible, return the original HTML unchanged`;
+// Execution prompt loaded from websiteAgents/aiCommand/Execution.md
 
 export interface ExecutionResult {
   editedHtml: string;
@@ -436,7 +299,7 @@ ${currentHtml}`;
   let response = await ai.messages.create({
     model: MODEL,
     max_tokens: 8192,
-    system: EXECUTION_SYSTEM_PROMPT,
+    system: getExecutionPrompt(),
     messages,
   });
 
@@ -457,7 +320,7 @@ ${currentHtml}`;
     response = await ai.messages.create({
       model: MODEL,
       max_tokens: 8192,
-      system: EXECUTION_SYSTEM_PROMPT,
+      system: getExecutionPrompt(),
       messages,
     });
 
@@ -484,22 +347,7 @@ ${currentHtml}`;
 // Page creation — section planner + HTML generator
 // ---------------------------------------------------------------------------
 
-const SECTION_PLANNER_PROMPT = `You plan the section structure for a new web page. Given the page's purpose and examples of existing pages' section structures, output a list of sections that should be created.
-
-RULES:
-- Plan 4-7 sections per page (typical for a dental/medical practice website)
-- Section names must be lowercase, hyphenated (e.g., "section-hero", "section-services-list", "section-cta")
-- Each section should have a clear purpose
-- Match the style and structure of existing pages on the site
-- Always include a hero section first and a CTA/contact section last
-
-RESPONSE FORMAT — return ONLY valid JSON:
-{
-  "sections": [
-    { "name": "section-hero", "purpose": "Hero banner with page title, subtitle, and call-to-action" },
-    { "name": "section-content", "purpose": "Main content area with detailed information" }
-  ]
-}`;
+// Section planner prompt loaded from websiteAgents/aiCommand/SectionPlanner.md
 
 export interface SectionPlan {
   sections: Array<{ name: string; purpose: string }>;
@@ -523,7 +371,7 @@ ${existingSections.map((s) => `- ${s.name}: ${s.summary}`).join("\n")}`;
   const response = await ai.messages.create({
     model: MODEL,
     max_tokens: 2048,
-    system: SECTION_PLANNER_PROMPT,
+    system: getSectionPlannerPrompt(),
     messages: [{ role: "user", content: userMessage }],
   });
 
@@ -545,26 +393,54 @@ ${existingSections.map((s) => `- ${s.name}: ${s.summary}`).join("\n")}`;
   return { sections: parsed.sections };
 }
 
-const SECTION_GENERATOR_PROMPT = `You generate HTML for a single section of a web page. The HTML must include alloro-tpl-* CSS classes for editor integration.
+// Section generator prompt loaded from websiteAgents/aiCommand/SectionGenerator.md
+// Visual analysis prompt loaded from websiteAgents/aiCommand/VisualAnalysis.md
+const __DEAD_SECTION_GEN = `DEAD
+- Root element: class="alloro-tpl-{ID}-{SECTION_NAME} ..." and data-alloro-section="{SECTION_NAME}"
+- Inner elements: class="alloro-tpl-{ID}-{SECTION_NAME}-component-{COMPONENT_NAME} ..."
+- Component names: title, subtitle, description, cta-button, image, card-1, card-2, list-item-1, etc.
+- {ID} is provided — use it exactly
+- Every heading, button, image, paragraph, and card must have its own alloro-tpl component class
 
-CRITICAL CLASS REQUIREMENTS:
-- The root element MUST have: class="alloro-tpl-{ID}-{SECTION_NAME} ..." and data-alloro-section="{SECTION_NAME}"
-- Key inner elements MUST have: class="alloro-tpl-{ID}-{SECTION_NAME}-component-{COMPONENT_NAME} ..."
-- Component names to use: title, subtitle, description, cta-button, image, card-1, card-2, card-3, list-item-1, list-item-2, etc.
-- The {ID} value will be provided — use it exactly as given
-- Every heading, button, image, and text block should have its own alloro-tpl component class
+## LAYOUT STRUCTURE (CRITICAL — DO NOT SKIP)
+- Root element MUST be a full-width section: <section class="... py-16 md:py-24">
+- Content MUST be wrapped in a container: <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+- For card grids, use: <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+- For two-column layouts, use: <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
+- For text content, use: <div class="max-w-3xl mx-auto"> or <div class="max-w-2xl">
+- NEVER let text flow without width constraints — every text block needs max-w-* or grid containment
+- NEVER use single-word line breaks — if text wraps word-by-word, the container is too narrow
 
-STYLE REQUIREMENTS:
-- Use Tailwind CSS classes for all styling
-- Match the visual style of the existing site content provided as context
-- Use responsive classes (mobile-first)
-- Use professional, clean layouts suitable for a dental/medical practice
+## TAILWIND REQUIREMENTS
+- Use responsive prefixes: base (mobile) → sm → md → lg → xl
+- Text sizing: text-base for body, text-lg md:text-xl for lead text, text-3xl md:text-4xl lg:text-5xl for headings
+- Spacing: consistent py-16 md:py-24 for sections, gap-6 md:gap-8 for grids
+- Buttons: inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-colors
 
-RULES:
-- Return ONLY the HTML for this single section — no full page, no wrapper
-- Do NOT wrap in code fences or markdown
-- Do NOT add <html>, <head>, <body> tags
-- Ensure all text content is relevant to the page purpose`;
+## COLORS (CRITICAL)
+- If brand colors are provided in the Site Style Reference, use them EXACTLY
+- Use the primary color for: dark backgrounds, headings, primary buttons, accents
+- Use the accent color for: CTAs, highlights, hover states, links
+- Match the color scheme of the existing pages — if existing pages use dark navy backgrounds with white text, your sections MUST too
+- Use inline Tailwind arbitrary values for custom hex colors: bg-[#11151C], text-[#D66853], etc.
+- Do NOT default to generic gray/white when the site uses a distinct color palette
+
+## BANNED — NEVER USE THESE:
+- position: absolute or position: fixed — use flexbox or grid instead
+- inline styles (style="...") — use Tailwind classes only
+- float: left/right — use flex or grid
+- !important — never
+- <br> tags for spacing — use margin/padding classes
+- Fixed pixel widths (width: 300px) — use Tailwind w-* classes
+
+## RULES
+- Return ONLY the section HTML — no page wrapper, no code fences, no commentary
+- Do NOT add <html>, <head>, <body>, <header>, <footer> tags
+- ALL layouts must use flexbox (flex) or CSS grid (grid) — never absolute positioning
+- ALL styling must be Tailwind utility classes — zero inline styles
+- Content must be relevant to the page purpose provided
+- Match the visual style of the existing site context provided
+- Every section must look complete and professional on its own`;
 
 export interface GeneratedSection {
   html: string;
@@ -602,7 +478,7 @@ ${siteStyleContext.substring(0, 3000)}`;
   let response = await ai.messages.create({
     model: MODEL,
     max_tokens: 4096,
-    system: SECTION_GENERATOR_PROMPT,
+    system: getSectionGeneratorPrompt(),
     messages: [{ role: "user", content: userMessage }],
   });
 
@@ -615,7 +491,7 @@ ${siteStyleContext.substring(0, 3000)}`;
     response = await ai.messages.create({
       model: MODEL,
       max_tokens: 4096,
-      system: SECTION_GENERATOR_PROMPT,
+      system: getSectionGeneratorPrompt(),
       messages: [
         { role: "user", content: userMessage },
         { role: "assistant", content: html },
@@ -639,6 +515,128 @@ ${siteStyleContext.substring(0, 3000)}`;
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Visual analysis via Sonnet vision
+// ---------------------------------------------------------------------------
+
+const VISUAL_ANALYSIS_PROMPT = `You are a UI/UX quality analyst reviewing a website screenshot. Identify EVERY visual issue you can see.
+
+You will receive BOTH a screenshot AND the HTML markup for the page sections. Use both to diagnose issues accurately.
+
+LOOK FOR:
+- Overlapping elements (text on text, cards colliding, sections bleeding into each other)
+- Broken grid layouts (columns not aligned, uneven spacing)
+- Text overflow (text spilling outside containers, truncated content)
+- Word-by-word wrapping (text breaking on every word — indicates missing container width)
+- Misaligned elements (inconsistent spacing, off-center content)
+- Broken or missing images (empty boxes, broken icons)
+- Unreadable text (too small, low contrast, obscured by other elements)
+- Responsive issues (content not adapting to viewport width)
+- Huge empty whitespace gaps
+- Elements that look out of place or unstyled
+
+ARCHITECTURE RULES (flag violations):
+- position: absolute/fixed — DISCOURAGED. Should use flexbox or grid instead. Flag any absolute/fixed positioning.
+- Inline styles (style="...") — BANNED. Must use Tailwind CSS classes only. Flag any inline styles.
+- Missing container constraints (no max-w-*) — Flag sections without width constraints.
+- Float-based layouts — OBSOLETE. Should use flex/grid. Flag any float usage.
+
+COLOR CONSISTENCY:
+- If brand colors are provided, check that the page uses them consistently
+- Flag sections that use different color schemes from the rest of the site (e.g., generic white/gray when the site uses dark navy)
+- Flag buttons, CTAs, or accents that don't match the brand accent color
+- If a section looks visually disconnected from the rest of the page (different color palette, different style), flag it as a consistency issue
+
+For each issue:
+1. WHERE — which section name and approximate position
+2. WHAT — specific visual problem AND the HTML causing it (reference specific classes or elements)
+3. HOW — specific Tailwind CSS fix (never suggest inline styles or position absolute)
+
+RESPONSE FORMAT — return ONLY valid JSON:
+{
+  "issues": [
+    {
+      "section": "Name or description of the affected section",
+      "severity": "critical" | "high" | "medium" | "low",
+      "description": "Clear description of the visual problem",
+      "suggested_fix": "Specific instruction to fix this in HTML/Tailwind"
+    }
+  ]
+}
+
+If the page looks good with no visual issues, return: { "issues": [] }`;
+
+export interface VisualIssue {
+  section: string;
+  severity: string;
+  description: string;
+  suggested_fix: string;
+}
+
+export async function analyzeScreenshot(params: {
+  screenshot: Buffer;
+  viewport: string;
+  pagePath: string;
+  sectionHtml?: string;
+}): Promise<VisualIssue[]> {
+  const { screenshot, viewport, pagePath, sectionHtml } = params;
+  const ai = getClient();
+
+  console.log(`[AiCommand] Analyzing screenshot: ${pagePath} (${viewport})${sectionHtml ? ` with ${sectionHtml.length} chars HTML` : ""}`);
+
+  const textContent = [
+    `Page: ${pagePath}`,
+    `Viewport: ${viewport}`,
+    "",
+    "Analyze this screenshot for visual/layout issues.",
+    "Brand colors use CSS classes: bg-primary, text-primary, bg-accent, text-accent. Check that pages use these instead of hardcoded hex values.",
+    sectionHtml ? `\n## Page HTML Markup (for reference)\n\n${sectionHtml.substring(0, 15000)}` : "",
+  ].join("\n");
+
+  const response = await ai.messages.create({
+    model: MODEL,
+    max_tokens: 4096,
+    system: getVisualAnalysisPrompt(),
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/jpeg",
+              data: screenshot.toString("base64"),
+            },
+          },
+          {
+            type: "text",
+            text: textContent,
+          },
+        ],
+      },
+    ],
+  });
+
+  const text = extractText(response);
+  const parsed = tryParseJson(text);
+
+  if (!parsed || !Array.isArray(parsed.issues)) {
+    console.warn(`[AiCommand] Visual analysis parse failed for ${pagePath} (${viewport})`);
+    return [];
+  }
+
+  const issues = parsed.issues.filter(
+    (i: any) => i?.description && i?.suggested_fix
+  ) as VisualIssue[];
+
+  console.log(
+    `[AiCommand] ✓ Visual ${pagePath} (${viewport}): ${issues.length} issue(s). Tokens: ${response.usage.input_tokens}/${response.usage.output_tokens}`
+  );
+
+  return issues;
 }
 
 // ---------------------------------------------------------------------------

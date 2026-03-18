@@ -19,6 +19,12 @@ import crypto from "crypto";
 import * as redirectsService from "./service.redirects";
 import * as menuManager from "./service.menu-manager";
 import { analyzeBuiltinFlags } from "../../../utils/website-utils/builtinAnalyzer";
+import { createDraft, publishPage } from "./service.page-editor";
+import { analyzeUiIntegrity } from "../../../utils/website-utils/uiChecker";
+import { analyzeBrokenLinks } from "../../../utils/website-utils/linkChecker";
+import { screenshotPage } from "../../../utils/website-utils/screenshotService";
+import { analyzeScreenshot } from "../../../utils/website-utils/aiCommandService";
+import { runAgenticPipeline } from "../../../utils/website-utils/agenticHtmlPipeline";
 
 const BATCHES_TABLE = "website_builder.ai_command_batches";
 const RECS_TABLE = "website_builder.ai_command_recommendations";
@@ -50,17 +56,20 @@ interface BatchStats {
 // Create batch
 // ---------------------------------------------------------------------------
 
+export type BatchType = "ai_editor" | "ui_checker" | "link_checker";
+
 export async function createBatch(
   projectId: string,
   prompt: string,
   targets: AiCommandTargets,
-  createdBy?: string
+  createdBy?: string,
+  batchType: BatchType = "ai_editor"
 ): Promise<any> {
   const [batch] = await db(BATCHES_TABLE)
     .insert({
       project_id: projectId,
-      prompt,
-      targets: JSON.stringify(targets),
+      prompt: prompt || "",
+      targets: JSON.stringify({ ...targets, type: batchType }),
       status: "analyzing",
       created_by: createdBy || null,
     })
@@ -87,6 +96,13 @@ export async function analyzeBatch(batchId: string): Promise<void> {
     typeof batch.targets === "string"
       ? JSON.parse(batch.targets)
       : batch.targets;
+
+  const batchType: BatchType = (targets as any).type || "ai_editor";
+
+  // Branch on batch type — UI Checker and Link Checker have their own flows
+  if (batchType === "ui_checker" || batchType === "link_checker") {
+    return analyzeSpecializedBatch(batchId, batch, project, targets, batchType);
+  }
 
   let sortOrder = 0;
   let totalRecommendations = 0;
@@ -417,11 +433,17 @@ export async function analyzeBatch(batchId: string): Promise<void> {
 
     // Finalize
     await db(BATCHES_TABLE).where("id", batchId).update({
-      status: totalRecommendations > 0 ? "ready" : "ready",
-      summary:
-        totalRecommendations > 0
-          ? `Found ${totalRecommendations} recommendation(s) across your selected targets.`
-          : "No changes recommended. The content looks good against your requirements.",
+      status: "ready",
+      summary: (() => {
+        const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        // Extract a short title from the prompt (first line, max 60 chars)
+        const promptTitle = batch.prompt
+          ? batch.prompt.split("\n")[0].replace(/^#\s*/, "").replace(/\*\*/g, "").substring(0, 60)
+          : "AI Editor";
+        return totalRecommendations > 0
+          ? `${promptTitle} — ${dateStr} — ${totalRecommendations} recommendation(s)`
+          : `${promptTitle} — ${dateStr} — No changes needed`;
+      })(),
       updated_at: db.fn.now(),
     });
 
@@ -475,6 +497,196 @@ const EXECUTION_PHASE_ORDER: Record<string, number> = {
   layout: 10,
   post: 10,
 };
+
+// ---------------------------------------------------------------------------
+// Specialized batch analysis (UI Checker / Link Checker)
+// ---------------------------------------------------------------------------
+
+async function analyzeSpecializedBatch(
+  batchId: string,
+  batch: any,
+  project: any,
+  targets: AiCommandTargets,
+  batchType: BatchType
+): Promise<void> {
+  let totalRecommendations = 0;
+
+  try {
+    // Resolve targets to actual content
+    const resolvedLayouts: Array<{ field: string; html: string; projectId: string }> = [];
+    if (targets.layouts) {
+      const fields = targets.layouts === "all"
+        ? ["wrapper", "header", "footer"]
+        : (targets.layouts as string[]);
+      for (const field of fields) {
+        if (project[field] && typeof project[field] === "string") {
+          resolvedLayouts.push({ field, html: project[field], projectId: batch.project_id });
+        }
+      }
+    }
+
+    const resolvedPages: Array<{ id: string; path: string; sections: Array<{ name: string; content: string; index: number }> }> = [];
+    if (targets.pages) {
+      const pages = await resolvePages(batch.project_id, targets.pages);
+      for (const page of pages) {
+        const raw = typeof page.sections === "string" ? JSON.parse(page.sections) : page.sections;
+        const sections = normalizeSections(raw);
+        resolvedPages.push({
+          id: page.id,
+          path: page.path,
+          sections: sections.map((s: any, i: number) => ({
+            name: s.name || s.label || `Section ${i + 1}`,
+            content: typeof s === "string" ? s : s.content || s.html || "",
+            index: i,
+          })),
+        });
+      }
+    }
+
+    const resolvedPosts: Array<{ id: string; title: string; content: string }> = [];
+    if (targets.posts) {
+      const posts = await resolvePosts(batch.project_id, targets.posts);
+      for (const post of posts) {
+        resolvedPosts.push({ id: post.id, title: post.title, content: post.content || "" });
+      }
+    }
+
+    const existingPaths = await getExistingPaths(batch.project_id);
+    const existingPostSlugs = await getExistingPostSlugs(batch.project_id);
+
+    let recommendations: Array<{
+      flagType: string; targetType: string; targetId: string; targetLabel: string;
+      targetMeta: Record<string, unknown>; recommendation: string; instruction: string; currentHtml: string;
+    }> = [];
+
+    if (batchType === "ui_checker") {
+      // Phase 1: HTML structure checks (fast, deterministic)
+      recommendations = analyzeUiIntegrity({
+        layouts: resolvedLayouts,
+        pages: resolvedPages,
+        posts: resolvedPosts,
+        brandColors: {
+          primary: project.primary_color,
+          accent: project.accent_color,
+        },
+      });
+
+      // Phase 2: Playwright visual analysis (screenshot + vision LLM)
+      try {
+        const hostname = project.custom_domain || `${project.generated_hostname}.sites.getalloro.com`;
+        const baseUrl = project.custom_domain
+          ? `https://${project.custom_domain}`
+          : `https://${project.generated_hostname}.sites.getalloro.com`;
+
+        for (const page of resolvedPages) {
+          try {
+            const pageUrl = `${baseUrl}${page.path}`;
+            const screenshots = await screenshotPage(pageUrl);
+
+            for (const ss of screenshots) {
+              // Concatenate all section HTML for this page as context
+              const pageHtml = page.sections.map((s) => s.content).join("\n\n");
+
+              const issues = await analyzeScreenshot({
+                screenshot: ss.buffer,
+                viewport: ss.viewport.label,
+                pagePath: page.path,
+                sectionHtml: pageHtml,
+              });
+
+              for (const issue of issues) {
+                // Try to match the issue to a specific section
+                const matchedSection = page.sections.find(
+                  (s) => issue.section?.toLowerCase().includes(s.name.toLowerCase().replace("section-", ""))
+                );
+
+                recommendations.push({
+                  flagType: "fix_visual",
+                  targetType: "page_section",
+                  targetId: page.id,
+                  targetLabel: `${page.path} > ${matchedSection?.name || issue.section || "page"}`,
+                  targetMeta: {
+                    section_index: matchedSection?.index ?? 0,
+                    section_name: matchedSection?.name || issue.section,
+                    page_path: page.path,
+                    viewport: ss.viewport.label,
+                    severity: issue.severity,
+                  },
+                  recommendation: `[${ss.viewport.label}] ${issue.description}`,
+                  instruction: issue.suggested_fix,
+                  currentHtml: matchedSection?.content || "",
+                });
+              }
+            }
+          } catch (err) {
+            console.error(`[AiCommand] Visual analysis failed for ${page.path}:`, (err as Error).message);
+          }
+
+          await refreshStats(batchId);
+        }
+      } catch (err) {
+        console.warn("[AiCommand] Playwright visual analysis unavailable:", (err as Error).message);
+        // HTML-only checks already ran — continue without visual
+      }
+    } else if (batchType === "link_checker") {
+      // Collect menu items for orphan page detection
+      const menuData = await getExistingMenuItems(batch.project_id);
+      const allMenuItems: Array<{ label: string; url: string; menu_slug: string }> = [];
+      for (const menu of menuData) {
+        for (const item of menu.items) {
+          allMenuItems.push({ ...item, menu_slug: menu.menu_slug });
+        }
+      }
+
+      recommendations = analyzeBrokenLinks({
+        layouts: resolvedLayouts,
+        pages: resolvedPages,
+        posts: resolvedPosts,
+        existingPaths,
+        existingPostSlugs: existingPostSlugs.map((p) => `${p.post_type_slug}/${p.slug}`),
+        existingRedirects: await redirectsService.getExistingRedirects(batch.project_id),
+        menuItems: allMenuItems,
+      });
+    }
+
+    // Insert recommendations
+    let sortOrder = 0;
+    for (const rec of recommendations) {
+      await db(RECS_TABLE).insert({
+        batch_id: batchId,
+        target_type: rec.targetType,
+        target_id: rec.targetId,
+        target_label: rec.targetLabel,
+        target_meta: JSON.stringify({ ...rec.targetMeta, flag_type: rec.flagType }),
+        recommendation: rec.recommendation,
+        instruction: rec.instruction,
+        current_html: rec.currentHtml,
+        sort_order: sortOrder++,
+      });
+      totalRecommendations++;
+    }
+
+    const typeLabel = batchType === "ui_checker" ? "UI Check" : "Link Check";
+    const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    await db(BATCHES_TABLE).where("id", batchId).update({
+      status: "ready",
+      summary: totalRecommendations > 0
+        ? `${typeLabel} — ${dateStr} — ${totalRecommendations} issue(s) found`
+        : `${typeLabel} — ${dateStr} — No issues found`,
+      updated_at: db.fn.now(),
+    });
+    await refreshStats(batchId);
+
+    console.log(`[AiCommand] ✓ ${batchType} batch ${batchId}: ${totalRecommendations} issues`);
+  } catch (err) {
+    console.error(`[AiCommand] ${batchType} batch ${batchId} failed:`, err);
+    await db(BATCHES_TABLE).where("id", batchId).update({
+      status: "failed",
+      summary: `Analysis failed: ${(err as Error).message}`,
+      updated_at: db.fn.now(),
+    });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Execute batch (Phase C)
@@ -580,15 +792,37 @@ async function executeRecommendation(rec: any, ctx: ExecutionContext): Promise<v
     return;
   }
 
+  // For broken link fixes, use the user-provided replacement URL in the instruction
+  const recMeta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
+  let finalInstruction = rec.instruction;
+  if (recMeta?.flag_type === "fix_broken_link" && recMeta?.broken_href && recMeta?.reference_url) {
+    finalInstruction = `Change href="${recMeta.broken_href}" to href="${recMeta.reference_url}". Update all occurrences of this broken link.`;
+  } else if (recMeta?.flag_type === "fix_broken_link" && recMeta?.broken_href && recMeta?.suggested_href && recMeta.suggested_href !== "NEEDS_INPUT") {
+    finalInstruction = `Change href="${recMeta.broken_href}" to href="${recMeta.suggested_href}". Update all occurrences of this broken link.`;
+  }
+
   // LLM edit — always use current HTML, not the snapshot from analysis
   const result = await editHtmlContent({
-    instruction: rec.instruction,
+    instruction: finalInstruction,
     currentHtml,
     targetLabel: rec.target_label,
   });
 
-  // Save the edited HTML
-  await saveEditedHtml(rec, result.editedHtml);
+  // Run agentic validation pipeline — auto-fix UI and link issues
+  const existingPaths = await getExistingPaths(rec.target_id.length === 36 ? rec.target_id : "");
+  const existingPostSlugsRaw = rec.target_id.length === 36 ? await getExistingPostSlugs(rec.target_id) : [];
+  const pipelineResult = await runAgenticPipeline(
+    result.editedHtml,
+    rec.target_label,
+    {
+      existingPaths,
+      existingPostSlugs: existingPostSlugsRaw.map((p: any) => `${p.post_type_slug}/${p.slug}`),
+      recId: rec.id,
+    }
+  );
+
+  // Save the validated HTML
+  await saveEditedHtml(rec, pipelineResult.html);
 
   // Mark as executed
   await db(RECS_TABLE)
@@ -597,6 +831,10 @@ async function executeRecommendation(rec: any, ctx: ExecutionContext): Promise<v
       status: "executed",
       execution_result: JSON.stringify({
         success: true,
+        iterations: pipelineResult.iterations,
+        ui_fixes: pipelineResult.uiFixAttempts,
+        link_fixes: pipelineResult.linkFixAttempts,
+        remaining_issues: pipelineResult.finalIssues.length,
         edited_html: result.editedHtml,
         tokens: {
           input: result.inputTokens,
@@ -623,11 +861,14 @@ async function getCurrentHtml(rec: any): Promise<string> {
   }
 
   if (rec.target_type === "page_section") {
-    // Prefer draft, fall back to published
+    // Get the original page to find its path, then prefer draft at that path
+    const origPage = await db(PAGES_TABLE).where("id", rec.target_id).first();
+    if (!origPage) throw new Error(`Page ${rec.target_id} not found`);
+
+    // If a draft exists for this path, use it (it may have been auto-created)
     const page = await db(PAGES_TABLE)
-      .where("id", rec.target_id)
-      .first();
-    if (!page) throw new Error(`Page ${rec.target_id} not found`);
+      .where({ project_id: origPage.project_id, path: origPage.path, status: "draft" })
+      .first() || origPage;
 
     const rawSections = typeof page.sections === "string"
       ? JSON.parse(page.sections)
@@ -667,14 +908,28 @@ async function saveEditedHtml(rec: any, editedHtml: string): Promise<void> {
   }
 
   if (rec.target_type === "page_section") {
-    const page = await db(PAGES_TABLE).where("id", rec.target_id).first();
-    if (!page) throw new Error(`Page ${rec.target_id} not found`);
+    // Find the original page to get its path
+    const origPage = await db(PAGES_TABLE).where("id", rec.target_id).first();
+    if (!origPage) throw new Error(`Page ${rec.target_id} not found`);
 
-    // Only edit drafts
-    if (page.status !== "draft") {
-      throw new Error(
-        `Page ${rec.target_id} is not a draft (status: ${page.status}). Create a draft first.`
-      );
+    // Find the current active version at this path (draft preferred, then published)
+    let page = await db(PAGES_TABLE)
+      .where({ project_id: origPage.project_id, path: origPage.path, status: "draft" })
+      .first()
+      || await db(PAGES_TABLE)
+        .where({ project_id: origPage.project_id, path: origPage.path, status: "published" })
+        .first();
+
+    if (!page) throw new Error(`No active page at path ${origPage.path}`);
+
+    // Auto-create draft from published page for version control
+    if (page.status === "published") {
+      console.log(`[AiCommand] Auto-creating draft from published page ${page.id} (${page.path})`);
+      const draftResult = await createDraft(page.project_id, page.id);
+      if (draftResult.error) {
+        throw new Error(`Failed to create draft: ${draftResult.error.message}`);
+      }
+      page = draftResult.page;
     }
 
     const rawSections = typeof page.sections === "string"
@@ -693,11 +948,20 @@ async function saveEditedHtml(rec: any, editedHtml: string): Promise<void> {
     }
 
     await db(PAGES_TABLE)
-      .where("id", rec.target_id)
+      .where("id", page.id)
       .update({
         sections: JSON.stringify(sections),
         updated_at: db.fn.now(),
       });
+
+    // Auto-publish the draft so changes go live immediately
+    const publishResult = await publishPage(page.project_id, page.id);
+    if (publishResult.error) {
+      console.warn(`[AiCommand] Auto-publish failed for page ${page.id}: ${publishResult.error.message}`);
+    } else {
+      console.log(`[AiCommand] ✓ Auto-published page ${page.path} (${page.id})`);
+    }
+
     return;
   }
 
@@ -730,6 +994,14 @@ export async function listBatches(projectId: string): Promise<any[]> {
 
 export async function deleteBatch(batchId: string): Promise<void> {
   await db(BATCHES_TABLE).where("id", batchId).del();
+}
+
+export async function updateBatchSummary(batchId: string, summary: string): Promise<any> {
+  const [batch] = await db(BATCHES_TABLE)
+    .where("id", batchId)
+    .update({ summary, updated_at: db.fn.now() })
+    .returning("*");
+  return batch;
 }
 
 export async function getBatchRecommendations(
@@ -921,13 +1193,16 @@ async function executeCreatePage(rec: any, ctx: ExecutionContext): Promise<void>
     return;
   }
 
+  // Fetch project
+  const project = await db(PROJECTS_TABLE).where("id", projectId).first();
+
   // Fetch existing pages for style context
   const existingPages = await db(PAGES_TABLE)
     .where({ project_id: projectId, status: "published" })
     .limit(3);
 
   const existingSections: Array<{ name: string; summary: string }> = [];
-  let siteStyleContext = "";
+  let siteStyleContext = `## Brand Color Classes\nUse these CSS classes for brand colors — they resolve to the project's configured palette at render time:\n- bg-primary / text-primary — primary brand color\n- bg-accent / text-accent — accent brand color\n- border-primary / border-accent — for borders\nNEVER hardcode hex color values. Always use bg-primary, text-primary, bg-accent, text-accent.\n\n`;
 
   for (const page of existingPages) {
     const raw = typeof page.sections === "string" ? JSON.parse(page.sections) : page.sections;
@@ -1008,10 +1283,24 @@ async function executeCreatePage(rec: any, ctx: ExecutionContext): Promise<void>
         siteStyleContext,
       });
 
-      createdSections.push({ name: planned.name, content: result.html });
+      // Run agentic pipeline on generated section
+      const pipelineResult = await runAgenticPipeline(
+        result.html,
+        `${meta.path} > ${planned.name}`,
+        {
+          existingPaths: await getExistingPaths(projectId),
+          existingPostSlugs: (await getExistingPostSlugs(projectId)).map((p: any) => `${p.post_type_slug}/${p.slug}`),
+          recId: rec.id,
+        }
+      );
+
+      createdSections.push({ name: planned.name, content: pipelineResult.html });
+
+      if (pipelineResult.iterations > 1) {
+        console.log(`[AiCommand] Section ${planned.name}: ${pipelineResult.iterations} iterations, ${pipelineResult.uiFixAttempts} UI fixes, ${pipelineResult.linkFixAttempts} link fixes`);
+      }
     } catch (err) {
       console.error(`[AiCommand] Failed to generate section ${planned.name}:`, err);
-      // Continue with remaining sections
     }
   }
 

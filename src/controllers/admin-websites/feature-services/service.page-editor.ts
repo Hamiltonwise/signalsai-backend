@@ -696,3 +696,26 @@ async function buildMediaContext(projectId: string): Promise<string> {
 
   return mediaContext;
 }
+
+// ---------------------------------------------------------------------------
+// Update page display name (propagates to all versions at same path)
+// ---------------------------------------------------------------------------
+
+export async function updatePageDisplayName(
+  projectId: string,
+  path: string,
+  displayName: string | null
+): Promise<number> {
+  const updated = await db(PAGES_TABLE)
+    .where({ project_id: projectId, path })
+    .update({
+      display_name: displayName,
+      updated_at: db.fn.now(),
+    });
+
+  console.log(
+    `[Admin Websites] ✓ Updated display_name for path "${path}" to "${displayName}" (${updated} version(s))`
+  );
+
+  return updated;
+}

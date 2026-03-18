@@ -19,10 +19,11 @@ export interface SeoBulkGenerateData {
   projectId: string;
   entityType: "page" | "post";
   postTypeId?: string;
+  pagePaths?: string[];
 }
 
 export async function processSeoBulkGenerate(job: Job<SeoBulkGenerateData>): Promise<void> {
-  const { jobRecordId, projectId, entityType, postTypeId } = job.data;
+  const { jobRecordId, projectId, entityType, postTypeId, pagePaths } = job.data;
 
   const jobStart = Date.now();
   console.log(`[SEO-BULK] ▶ Starting bulk SEO generation`);
@@ -56,7 +57,7 @@ export async function processSeoBulkGenerate(job: Job<SeoBulkGenerateData>): Pro
   let entities: Array<{ id: string; title: string; content: string; path?: string }>;
 
   if (entityType === "page") {
-    entities = await getPageEntities(projectId);
+    entities = await getPageEntities(projectId, pagePaths);
   } else {
     entities = await getPostEntities(projectId, postTypeId!);
   }
@@ -156,12 +157,19 @@ export async function processSeoBulkGenerate(job: Job<SeoBulkGenerateData>): Pro
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function getPageEntities(projectId: string) {
-  // Get all pages ordered by path, then version desc
-  const pages = await db(PAGES_TABLE)
+async function getPageEntities(projectId: string, pagePaths?: string[]) {
+  // Get pages — filtered by paths if specified, otherwise all
+  let pagesQuery = db(PAGES_TABLE)
     .where({ project_id: projectId })
     .orderBy("path", "asc")
     .orderBy("version", "desc");
+
+  if (pagePaths && pagePaths.length > 0) {
+    pagesQuery = pagesQuery.whereIn("path", pagePaths);
+    console.log(`[SEO-BULK]   Filtering to ${pagePaths.length} selected paths`);
+  }
+
+  const pages = await pagesQuery;
 
   // Group by path: prefer published, fallback to draft, then highest version
   const grouped = new Map<string, any[]>();

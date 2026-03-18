@@ -2534,7 +2534,7 @@ export async function analyzePostSeo(req: Request, res: Response): Promise<Respo
 export async function startBulkSeoGenerate(req: Request, res: Response): Promise<Response> {
   try {
     const projectId = req.params.id;
-    const { entity_type, post_type_id } = req.body;
+    const { entity_type, post_type_id, page_paths } = req.body;
 
     if (!entity_type || !["page", "post"].includes(entity_type)) {
       return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "entity_type must be 'page' or 'post'" });
@@ -2555,12 +2555,18 @@ export async function startBulkSeoGenerate(req: Request, res: Response): Promise
 
     // Count entities
     let totalCount: number;
+    const selectedPaths: string[] | undefined = Array.isArray(page_paths) && page_paths.length > 0 ? page_paths : undefined;
+
     if (entity_type === "page") {
-      const pages = await db("website_builder.pages")
-        .where({ project_id: projectId })
-        .select("path");
-      const uniquePaths = new Set(pages.map((p: any) => p.path));
-      totalCount = uniquePaths.size;
+      if (selectedPaths) {
+        totalCount = selectedPaths.length;
+      } else {
+        const pages = await db("website_builder.pages")
+          .where({ project_id: projectId })
+          .select("path");
+        const uniquePaths = new Set(pages.map((p: any) => p.path));
+        totalCount = uniquePaths.size;
+      }
     } else {
       const countResult = await db("website_builder.posts")
         .where({ project_id: projectId, post_type_id })
@@ -2589,6 +2595,7 @@ export async function startBulkSeoGenerate(req: Request, res: Response): Promise
       projectId,
       entityType: entity_type,
       postTypeId: post_type_id,
+      pagePaths: selectedPaths,
     }, { jobId: jobRecord.id });
     console.log(`[BULK-SEO] Enqueued to BullMQ queue: minds-seo-bulk-generate`);
 
@@ -2807,6 +2814,26 @@ export async function triggerReviewSync(req: Request, res: Response): Promise<Re
 }
 
 // =====================================================================
+// PAGE DISPLAY NAME
+// =====================================================================
+
+/** PATCH /:id/pages/display-name — Update page display name for a path */
+export async function updatePageDisplayName(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId } = req.params;
+    const { path: pagePath, display_name } = req.body;
+    if (!pagePath) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "path is required" });
+    }
+    const updated = await pageEditor.updatePageDisplayName(projectId, pagePath, display_name || null);
+    return res.json({ success: true, data: { updated } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error updating display name:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
 // AI COMMAND
 // =====================================================================
 
@@ -2814,17 +2841,20 @@ export async function triggerReviewSync(req: Request, res: Response): Promise<Re
 export async function createAiCommandBatch(req: Request, res: Response): Promise<Response> {
   try {
     const { id: projectId } = req.params;
-    const { prompt, targets } = req.body;
+    const { prompt, targets, batch_type } = req.body;
 
-    if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
-      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "prompt is required" });
+    // Prompt is optional for ui_checker and link_checker
+    const bType = batch_type || "ai_editor";
+    if (bType === "ai_editor" && (!prompt || typeof prompt !== "string" || prompt.trim().length === 0)) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "prompt is required for AI Editor" });
     }
 
     const batch = await aiCommand.createBatch(
       projectId,
-      prompt.trim(),
+      (prompt || "").trim(),
       targets || { pages: "all", posts: "all", layouts: "all" },
-      (req as any).userId
+      (req as any).userId,
+      bType
     );
 
     // Fire-and-forget analysis — don't await
@@ -2961,6 +2991,22 @@ export async function listAiCommandBatches(req: Request, res: Response): Promise
   } catch (error: any) {
     console.error("[Admin Websites] Error listing AI command batches:", error);
     return res.status(500).json({ success: false, error: "LIST_ERROR", message: error?.message });
+  }
+}
+
+/** PATCH /:id/ai-command/:batchId — Rename a batch */
+export async function renameAiCommandBatch(req: Request, res: Response): Promise<Response> {
+  try {
+    const { batchId } = req.params;
+    const { summary } = req.body;
+    if (!summary || typeof summary !== "string") {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "summary is required" });
+    }
+    const batch = await aiCommand.updateBatchSummary(batchId, summary.trim());
+    return res.json({ success: true, data: batch });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error renaming batch:", error);
+    return res.status(500).json({ success: false, error: "UPDATE_ERROR", message: error?.message });
   }
 }
 

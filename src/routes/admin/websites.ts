@@ -402,6 +402,9 @@ router.post("/:id/posts/:postId/seo/analyze", controller.analyzePostSeo);
 // PROJECT PAGES
 // =====================================================================
 
+// PATCH /:id/pages/display-name — Update page display name (before :pageId)
+router.patch("/:id/pages/display-name", controller.updatePageDisplayName);
+
 // DELETE /:id/pages/by-path — Delete all versions at path (before :pageId)
 router.delete("/:id/pages/by-path", controller.deletePagesByPath);
 
@@ -486,6 +489,9 @@ router.get("/:id/ai-command", controller.listAiCommandBatches);
 
 // POST /:id/ai-command — Create a new AI command batch
 router.post("/:id/ai-command", controller.createAiCommandBatch);
+
+// PATCH /:id/ai-command/:batchId — Rename a batch
+router.patch("/:id/ai-command/:batchId", controller.renameAiCommandBatch);
 
 // DELETE /:id/ai-command/:batchId — Delete a batch
 router.delete("/:id/ai-command/:batchId", controller.deleteAiCommandBatch);
