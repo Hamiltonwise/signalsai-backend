@@ -44,8 +44,6 @@ import { showWarningToast } from "../../lib/toast";
 
 const PLAN = {
   name: "Alloro Intelligence",
-  price: "$2,000",
-  period: "/month",
   features: [
     { icon: BarChart3, label: "Practice rankings tracking" },
     { icon: FileText, label: "Task management" },
@@ -294,25 +292,15 @@ export const BillingTab: React.FC = () => {
                 </p>
               </div>
 
-              <div className="text-right">
-                <div className="flex items-baseline gap-0.5 justify-end">
-                  <span className="text-3xl font-black text-white tracking-tighter">
-                    {PLAN.price}
-                  </span>
-                  <span className="text-white/50 font-bold text-sm">
-                    {PLAN.period}
-                  </span>
-                </div>
-                {billing?.currentPeriodEnd && (
-                  <p className="text-white/40 text-xs font-medium mt-1">
-                    {isCancellingAtPeriodEnd ? "Ends" : "Renews"}{" "}
-                    {new Date(billing.currentPeriodEnd).toLocaleDateString(
-                      "en-US",
-                      { month: "short", day: "numeric", year: "numeric" }
-                    )}
-                  </p>
-                )}
-              </div>
+              {billing?.currentPeriodEnd && (
+                <p className="text-white/40 text-xs font-medium mt-1 text-right">
+                  {isCancellingAtPeriodEnd ? "Ends" : "Renews"}{" "}
+                  {new Date(billing.currentPeriodEnd).toLocaleDateString(
+                    "en-US",
+                    { month: "short", day: "numeric", year: "numeric" }
+                  )}
+                </p>
+              )}
             </div>
           </div>
 

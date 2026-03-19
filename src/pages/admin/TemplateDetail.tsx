@@ -22,6 +22,7 @@ import {
   Pencil,
   Layers,
   Menu,
+  Star,
 } from "lucide-react";
 import {
   fetchTemplate,
@@ -38,6 +39,7 @@ import type { CodeSnippet } from "../../api/codeSnippets";
 import CodeManagerTab from "../../components/Admin/CodeManagerTab";
 import PostBlocksTab from "../../components/Admin/PostBlocksTab";
 import MenuTemplatesTab from "../../components/Admin/MenuTemplatesTab";
+import ReviewBlocksTab from "../../components/Admin/ReviewBlocksTab";
 import { renderPage, parseSectionsJs, serializeSectionsJs, normalizeSections } from "../../utils/templateRenderer";
 import {
   useIframeSelector,
@@ -537,6 +539,7 @@ export default function TemplateDetail() {
     { id: "code-manager", label: "Code Manager", icon: <FileCode className="w-4 h-4" /> },
     { id: "post-blocks", label: "Post Blocks", icon: <Layers className="w-4 h-4" /> },
     { id: "menu-templates", label: "Menu Templates", icon: <Menu className="w-4 h-4" /> },
+    { id: "review-blocks", label: "Review Blocks", icon: <Star className="w-4 h-4" /> },
     {
       id: "settings",
       label: "Settings",
@@ -1298,6 +1301,22 @@ export default function TemplateDetail() {
           transition={{ duration: 0.3 }}
         >
           <MenuTemplatesTab
+            templateId={id!}
+            wrapper={wrapperContent}
+            header={headerContent}
+            footer={footerContent}
+          />
+        </motion.div>
+      )}
+
+      {/* Review Blocks Tab */}
+      {activeTab === "review-blocks" && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <ReviewBlocksTab
             templateId={id!}
             wrapper={wrapperContent}
             header={headerContent}

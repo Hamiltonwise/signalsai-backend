@@ -438,7 +438,7 @@ export default function MenuTemplatesTab({
                 ref={iframeRef}
                 title="Menu Template Preview"
                 className="w-full h-full border-0"
-                sandbox="allow-same-origin"
+                sandbox="allow-scripts allow-same-origin"
                 style={{ width: `${DEVICE_WIDTHS[device]}px`, minHeight: "100%" }}
               />
             </div>
