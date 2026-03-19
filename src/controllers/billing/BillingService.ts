@@ -10,7 +10,7 @@
 
 import Stripe from "stripe";
 import { db } from "../../database/connection";
-import { getStripe, getPriceIdByOrgType, getWebhookSecret } from "../../config/stripe";
+import { getStripe, getDefaultPriceId, getWebhookSecret } from "../../config/stripe";
 import {
   OrganizationModel,
   IOrganization,
@@ -100,9 +100,8 @@ export async function createCheckoutSession(
     throw { statusCode: 404, message: "Organization not found" };
   }
 
-  // Resolve price by organization type (null defaults to health)
-  const orgType = org.organization_type || "health";
-  const priceId = getPriceIdByOrgType(orgType);
+  // Use org-specific price override, or fall back to default ($2,000/location)
+  const priceId = org.stripe_price_id || getDefaultPriceId();
 
   // Quantity = number of locations for this org (minimum 1)
   const locationCountResult = await db("locations")
@@ -135,7 +134,6 @@ export async function createCheckoutSession(
     metadata: {
       organization_id: orgId.toString(),
       tier: "DFY",
-      organization_type: orgType,
       location_count: locationCount.toString(),
       is_onboarding: isOnboarding ? "true" : "false",
     },
@@ -621,10 +619,6 @@ export async function syncSubscriptionQuantity(
         ? ((item.price.unit_amount / 100) * newQuantity).toLocaleString()
         : "—";
       const direction = newQuantity > oldQuantity ? "added" : "removed";
-      const locationLabel =
-        org.organization_type === "saas" ? "team" : "location";
-      const locationLabelPlural =
-        org.organization_type === "saas" ? "teams" : "locations";
 
       await sendEmail({
         subject: `Your Alloro subscription has been updated`,
@@ -632,11 +626,11 @@ export async function syncSubscriptionQuantity(
           <div style="font-family: sans-serif; padding: 20px; max-width: 600px;">
             <h2 style="color: #1a1a1a;">Subscription Updated</h2>
             <p style="color: #4a5568; font-size: 16px;">
-              A ${locationLabel} was ${direction} for <strong>${org.name}</strong>, and your subscription has been automatically adjusted.
+              A location was ${direction} for <strong>${org.name}</strong>, and your subscription has been automatically adjusted.
             </p>
             <div style="background: #f7f7f7; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
-              <p style="margin: 4px 0; color: #4a5568;">Previous: <strong>${oldQuantity}</strong> ${oldQuantity === 1 ? locationLabel : locationLabelPlural} × $${unitPrice}/mo</p>
-              <p style="margin: 4px 0; color: #4a5568;">Updated: <strong>${newQuantity}</strong> ${newQuantity === 1 ? locationLabel : locationLabelPlural} × $${unitPrice}/mo</p>
+              <p style="margin: 4px 0; color: #4a5568;">Previous: <strong>${oldQuantity}</strong> ${oldQuantity === 1 ? "location" : "locations"} × $${unitPrice}/mo</p>
+              <p style="margin: 4px 0; color: #4a5568;">Updated: <strong>${newQuantity}</strong> ${newQuantity === 1 ? "location" : "locations"} × $${unitPrice}/mo</p>
               <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 12px 0;" />
               <p style="margin: 4px 0; color: #1a1a1a; font-weight: bold;">New monthly total: $${newTotal}/mo</p>
             </div>

@@ -2793,23 +2793,90 @@ export async function deleteReviewBlock(req: Request, res: Response): Promise<Re
   }
 }
 
-/** POST /reviews/sync — Trigger manual review sync for the authenticated user's org */
+/** POST /:id/reviews/sync — Trigger manual review sync for a project's org */
 export async function triggerReviewSync(req: Request, res: Response): Promise<Response> {
   try {
-    const orgId = (req as any).organizationId;
-    if (!orgId) {
-      return res.status(400).json({ success: false, error: "NO_ORG", message: "Organization context required" });
+    const { id } = req.params;
+
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("organization_id")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Project not found" });
+    }
+
+    if (!project.organization_id) {
+      return res.status(400).json({ success: false, error: "NO_ORG", message: "Project has no linked organization" });
     }
 
     const { getMindsQueue } = await import("../../workers/queues");
     const queue = getMindsQueue("review-sync");
-    const job = await queue.add("manual-review-sync", { organizationId: orgId });
+    const job = await queue.add("manual-review-sync", { organizationId: project.organization_id });
 
-    console.log(`[Admin Websites] Triggered manual review sync for org ${orgId}, job ${job.id}`);
+    console.log(`[Admin Websites] Triggered manual review sync for project ${id} (org ${project.organization_id}), job ${job.id}`);
     return res.json({ success: true, data: { jobId: job.id } });
   } catch (error: any) {
     console.error("[Admin Websites] Error triggering review sync:", error);
     return res.status(500).json({ success: false, error: "SYNC_ERROR", message: error?.message });
+  }
+}
+
+/** GET /:id/reviews/stats — Get review stats for a project's org locations */
+export async function getReviewStats(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id } = req.params;
+
+    const project = await db("website_builder.projects")
+      .where("id", id)
+      .select("organization_id")
+      .first();
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Project not found" });
+    }
+
+    if (!project.organization_id) {
+      return res.json({ success: true, data: { total: 0, average: 0, distribution: {} } });
+    }
+
+    const locationIds = await db("locations")
+      .where("organization_id", project.organization_id)
+      .pluck("id");
+
+    if (locationIds.length === 0) {
+      return res.json({ success: true, data: { total: 0, average: 0, distribution: {} } });
+    }
+
+    const [countResult, avgResult, distRows] = await Promise.all([
+      db("website_builder.reviews")
+        .whereIn("location_id", locationIds)
+        .count("* as count")
+        .first(),
+      db("website_builder.reviews")
+        .whereIn("location_id", locationIds)
+        .avg("stars as avg")
+        .first(),
+      db("website_builder.reviews")
+        .whereIn("location_id", locationIds)
+        .select("stars")
+        .count("* as count")
+        .groupBy("stars")
+        .orderBy("stars"),
+    ]);
+
+    const total = parseInt(countResult?.count as string, 10) || 0;
+    const average = parseFloat(avgResult?.avg as string) || 0;
+    const distribution: Record<number, number> = {};
+    for (const row of distRows) {
+      distribution[Number(row.stars)] = parseInt(row.count as string, 10);
+    }
+
+    return res.json({ success: true, data: { total, average, distribution } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error fetching review stats:", error);
+    return res.status(500).json({ success: false, error: "STATS_ERROR", message: error?.message });
   }
 }
 

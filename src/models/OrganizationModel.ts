@@ -11,6 +11,7 @@ export interface IOrganization {
   subscription_updated_at: Date | null;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  stripe_price_id: string | null;
   operational_jurisdiction: string | null;
   onboarding_completed: boolean;
   onboarding_wizard_completed: boolean;

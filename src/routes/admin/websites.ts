@@ -152,13 +152,6 @@ router.patch("/templates/:templateId/review-blocks/:reviewBlockId", controller.u
 router.delete("/templates/:templateId/review-blocks/:reviewBlockId", controller.deleteReviewBlock);
 
 // =====================================================================
-// REVIEW SYNC
-// =====================================================================
-
-// POST /reviews/sync — Trigger manual review sync
-router.post("/reviews/sync", controller.triggerReviewSync);
-
-// =====================================================================
 // TEMPLATE MENU TEMPLATES (must come before /templates/:templateId)
 // =====================================================================
 
@@ -307,6 +300,16 @@ router.patch("/:id/form-submissions/:submissionId/read", controller.toggleFormSu
 
 // DELETE /:id/form-submissions/:submissionId — Delete a submission
 router.delete("/:id/form-submissions/:submissionId", controller.deleteFormSubmission);
+
+// =====================================================================
+// REVIEW SYNC (project-scoped)
+// =====================================================================
+
+// GET  /:id/reviews/stats — Get review stats for project's org
+router.get("/:id/reviews/stats", controller.getReviewStats);
+
+// POST /:id/reviews/sync — Trigger manual review sync for project's org
+router.post("/:id/reviews/sync", controller.triggerReviewSync);
 
 // =====================================================================
 // PROJECT POSTS

@@ -372,29 +372,33 @@ async function resolveReviewBlocks(
       continue;
     }
 
-    // Resolve location
-    let location;
-    if (!sc.location || sc.location === "primary") {
-      location = locations.find((l: any) => l.is_primary) || locations[0];
-    } else {
-      location = locations.find(
-        (l: any) => l.name === sc.location || l.domain === sc.location
-      );
-    }
-
-    if (!location) {
-      html = html.replace(sc.raw, wrapResolved(sc.raw, ""));
-      continue;
-    }
-
-    // Fetch reviews from local DB
+    // Resolve location(s)
     const minRating = parseInt(sc.min_rating || "1", 10);
     const limit = parseInt(sc.limit || "10", 10);
     const offset = parseInt(sc.offset || "0", 10);
     const order = sc.order || "desc";
 
+    let locationIds: number[];
+
+    if (sc.location === "all") {
+      locationIds = locations.map((l: any) => l.id);
+    } else if (!sc.location || sc.location === "primary") {
+      const loc = locations.find((l: any) => l.is_primary) || locations[0];
+      locationIds = [loc.id];
+    } else {
+      const loc = locations.find(
+        (l: any) => l.name === sc.location || l.domain === sc.location
+      );
+      if (!loc) {
+        html = html.replace(sc.raw, wrapResolved(sc.raw, ""));
+        continue;
+      }
+      locationIds = [loc.id];
+    }
+
+    // Fetch reviews from local DB
     const reviews = await db("website_builder.reviews")
-      .where("location_id", location.id)
+      .whereIn("location_id", locationIds)
       .where("stars", ">=", minRating)
       .orderBy("review_created_at", order)
       .limit(limit)
