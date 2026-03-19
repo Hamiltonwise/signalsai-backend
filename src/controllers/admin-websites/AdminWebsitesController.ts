@@ -2814,6 +2814,66 @@ export async function triggerReviewSync(req: Request, res: Response): Promise<Re
 }
 
 // =====================================================================
+// AI POST GENERATION
+// =====================================================================
+
+/** POST /:id/posts/ai-generate — Generate post content with AI */
+export async function aiGeneratePost(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id: projectId } = req.params;
+    const { post_type_id, title, reference_url, reference_content } = req.body;
+
+    if (!title || !post_type_id) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "title and post_type_id are required" });
+    }
+
+    if (!reference_url && !reference_content) {
+      return res.status(400).json({ success: false, error: "INVALID_INPUT", message: "reference_url or reference_content is required" });
+    }
+
+    // Resolve reference content
+    let refContent = reference_content || "";
+    if (reference_url && !refContent) {
+      try {
+        const scrapeResponse = await fetch(reference_url, {
+          headers: { "User-Agent": "AlloroBot/1.0" },
+          signal: AbortSignal.timeout(15000),
+        });
+        if (scrapeResponse.ok) {
+          const html = await scrapeResponse.text();
+          refContent = html
+            .replace(/<script[\s\S]*?<\/script>/gi, "")
+            .replace(/<style[\s\S]*?<\/style>/gi, "")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .substring(0, 8000);
+        }
+      } catch {
+        // Scrape failed — continue with empty content
+      }
+    }
+
+    // Get post type info
+    const postType = await db("website_builder.post_types").where("id", post_type_id).first();
+    const typeName = postType?.name || "post";
+
+    // Generate content via LLM
+    const { editHtmlContent } = await import("../../utils/website-utils/aiCommandService");
+    const result = await editHtmlContent({
+      instruction: `Create professional HTML content for a ${typeName} titled "${title}". ${refContent ? `Use this reference content:\n\n${refContent}` : ""}. Write informative, well-structured HTML with headings, paragraphs, and lists. Use Tailwind CSS for styling. Use font-serif for headings, font-sans for body. Use bg-primary/bg-accent classes for brand colors. Use rounded-full on buttons. Never use inline font references or position absolute.`,
+      currentHtml: "<div></div>",
+      targetLabel: `Post: ${title}`,
+    });
+
+    return res.json({ success: true, data: { content: result.editedHtml } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error generating post content:", error);
+    return res.status(500).json({ success: false, error: "GENERATE_ERROR", message: error?.message });
+  }
+}
+
+// =====================================================================
 // PAGE DISPLAY NAME
 // =====================================================================
 

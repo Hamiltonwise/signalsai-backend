@@ -1380,14 +1380,99 @@ async function executeCreatePost(rec: any, ctx: ExecutionContext): Promise<void>
     return;
   }
 
-  // Generate post content via LLM
+  // Require reference data
+  let referenceContent = "";
+  if (meta.reference_content) {
+    referenceContent = meta.reference_content;
+  } else if (meta.reference_url) {
+    try {
+      console.log(`[AiCommand] Scraping reference for post: ${meta.reference_url}`);
+      const scrapeResponse = await fetch(meta.reference_url, {
+        headers: { "User-Agent": "AlloroBot/1.0" },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (scrapeResponse.ok) {
+        const html = await scrapeResponse.text();
+        referenceContent = html
+          .replace(/<script[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[\s\S]*?<\/style>/gi, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .substring(0, 8000);
+        console.log(`[AiCommand] ✓ Scraped ${referenceContent.length} chars for post reference`);
+      }
+    } catch (err) {
+      console.warn(`[AiCommand] Failed to scrape post reference: ${(err as Error).message}`);
+    }
+  }
+
+  if (!referenceContent && !meta.reference_url) {
+    await db(RECS_TABLE).where("id", rec.id).update({
+      status: "failed",
+      execution_result: JSON.stringify({
+        success: false,
+        error: "Reference URL or content is required for post creation. Provide it when approving this recommendation.",
+      }),
+    });
+    return;
+  }
+
+  // Fetch existing posts of same type as style context
+  const existingPosts = await db(POSTS_TABLE)
+    .where({ project_id: projectId, post_type_id: postType.id })
+    .limit(2);
+
+  let styleContext = "";
+  for (const ep of existingPosts) {
+    if (ep.content && styleContext.length < 2000) {
+      styleContext += `\n--- Existing ${meta.post_type_slug}: ${ep.title} ---\n${ep.content.substring(0, 800)}\n`;
+    }
+  }
+
+  // Build custom fields context from post type schema
+  const schema = typeof postType.schema === "string" ? JSON.parse(postType.schema) : postType.schema;
+  let customFieldsInstruction = "";
+  if (Array.isArray(schema) && schema.length > 0) {
+    customFieldsInstruction = `\n\nThis post type has custom fields: ${schema.map((f: any) => `${f.label || f.name} (${f.type || "text"})`).join(", ")}. Include relevant information that could populate these fields in the content.`;
+  }
+
+  // Generate content with full context
   const { editHtmlContent: generateContent } = await import("../../../utils/website-utils/aiCommandService");
 
+  const instruction = [
+    `Create professional HTML content for a ${postType.name} (${meta.post_type_slug}) post titled "${meta.title}".`,
+    meta.purpose ? `Purpose: ${meta.purpose}` : "",
+    referenceContent ? `\n\nReference content (use this as the primary data source):\n${referenceContent}` : "",
+    styleContext ? `\n\nExisting posts of the same type (match this style and structure):\n${styleContext}` : "",
+    customFieldsInstruction,
+    `\n\nRules:`,
+    `- Write informative, well-structured HTML with headings, paragraphs, and lists`,
+    `- Use font-serif for headings, font-sans for body`,
+    `- Use bg-primary, bg-accent, text-primary, text-accent for brand colors`,
+    `- Use rounded-full on buttons, px-6 md:px-12 lg:px-20 for padding`,
+    `- Never use inline font references, position absolute, or hex colors`,
+    `- Match the tone and detail level of existing posts`,
+  ].filter(Boolean).join("\n");
+
   const result = await generateContent({
-    instruction: `Create content for a ${meta.post_type_slug} post titled "${meta.title}". ${meta.purpose || ""}. Write professional, informative HTML content suitable for a dental/medical practice website. Include relevant headings, paragraphs, and lists. Use Tailwind CSS classes for styling.`,
+    instruction,
     currentHtml: "<div></div>",
     targetLabel: `Post: ${meta.title}`,
   });
+
+  // Run agentic pipeline
+  const existingPaths = await getExistingPaths(projectId);
+  const existingPostSlugsRaw = await getExistingPostSlugs(projectId);
+  const pipelineResult = await runAgenticPipeline(
+    result.editedHtml,
+    `Post: ${meta.title}`,
+    {
+      existingPaths,
+      existingPostSlugs: existingPostSlugsRaw.map((p: any) => `${p.post_type_slug}/${p.slug}`),
+      recId: rec.id,
+    }
+  );
 
   // Create the post
   const [post] = await db(POSTS_TABLE)
@@ -1396,7 +1481,7 @@ async function executeCreatePost(rec: any, ctx: ExecutionContext): Promise<void>
       post_type_id: postType.id,
       title: meta.title,
       slug,
-      content: result.editedHtml,
+      content: pipelineResult.html,
       status: "draft",
       sort_order: 0,
     })
@@ -1404,10 +1489,15 @@ async function executeCreatePost(rec: any, ctx: ExecutionContext): Promise<void>
 
   await db(RECS_TABLE).where("id", rec.id).update({
     status: "executed",
-    execution_result: JSON.stringify({ success: true, post_id: post.id }),
+    execution_result: JSON.stringify({
+      success: true,
+      post_id: post.id,
+      iterations: pipelineResult.iterations,
+      ui_fixes: pipelineResult.uiFixAttempts,
+      link_fixes: pipelineResult.linkFixAttempts,
+    }),
   });
 
-  // Register in execution context
   ctx.createdPosts.set(slug, { id: post.id, slug, post_type_slug: meta.post_type_slug });
 
   console.log(`[AiCommand] ✓ Created post: ${meta.title} (${meta.post_type_slug}, ID: ${post.id})`);
@@ -1452,11 +1542,28 @@ async function executeUpdateMenu(rec: any, _ctx: ExecutionContext): Promise<void
       return;
     }
 
+    // Resolve parent_label to parent_id if specified
+    let parentId = meta.parent_id || null;
+    if (!parentId && meta.parent_label) {
+      const menuDetail = await menuManager.getMenu(projectId, menu.id);
+      const parentItem = findMenuItemByLabel(menuDetail.menu?.items || [], meta.parent_label);
+      if (parentItem) parentId = parentItem.id;
+    }
+
+    // Resolve after_label to order_index
+    let orderIndex: number | undefined;
+    if (meta.after_label) {
+      const menuDetail2 = await menuManager.getMenu(projectId, menu.id);
+      const afterItem = findMenuItemByLabel(menuDetail2.menu?.items || [], meta.after_label);
+      if (afterItem) orderIndex = (afterItem.order_index || 0) + 1;
+    }
+
     const result = await menuManager.createMenuItem(projectId, menu.id, {
       label: meta.label,
       url: itemUrl,
       target: meta.target || "_self",
-      parent_id: meta.parent_id || null,
+      parent_id: parentId,
+      order_index: orderIndex,
     });
 
     if (result.error) {

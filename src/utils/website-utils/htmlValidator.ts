@@ -70,6 +70,54 @@ function checkColors(html: string): ValidationIssue[] {
       fixInstruction: "Use bg-primary, text-primary, bg-accent, text-accent instead." });
   }
 
+  // ANY color/opacity variant — all fail with CDN Tailwind
+  const colorOpacity = html.match(/(?:bg|text|border|from|to|via)-(?:primary|accent|white|black|gray-\d+|slate-\d+)\/\d+/g) || [];
+  if (colorOpacity.length > 0) {
+    issues.push({ type: "ui",
+      description: `Color opacity variants (${[...new Set(colorOpacity)].slice(0, 4).join(", ")}) fail with Tailwind CDN.`,
+      fixInstruction: "Replace ALL color/opacity variants with inline style. bg-primary/10 → style=\"background:rgba(35,35,35,0.1)\". text-white/80 → style=\"color:rgba(255,255,255,0.8)\". bg-white/10 → style=\"background:rgba(255,255,255,0.1)\"." });
+  }
+
+  // bg-opacity-*, border-opacity-* utilities
+  const legacyOpacity = html.match(/(?:bg|border|text)-opacity-\d+/g) || [];
+  if (legacyOpacity.length > 0) {
+    issues.push({ type: "ui",
+      description: `Legacy opacity utilities (${[...new Set(legacyOpacity)].join(", ")}) fail with CDN.`,
+      fixInstruction: "Replace bg-opacity-10 with inline style=\"background:rgba(...)\"." });
+  }
+
+  // Gradient classes with brand colors
+  const brandGradients = html.match(/(?:from|to|via)-(?:primary|accent)(?:\/\d+)?/g) || [];
+  if (brandGradients.length > 0) {
+    issues.push({ type: "ui",
+      description: `Gradient with brand colors (${[...new Set(brandGradients)].join(", ")}) fails with CSS custom properties.`,
+      fixInstruction: "Replace gradient classes with inline style=\"background:linear-gradient(...)\". Use solid bg-primary or bg-accent for non-gradient backgrounds." });
+  }
+
+  // Non-standard Tailwind opacity steps
+  const nonStandardOpacity = html.match(/\/(?:8|15|35|45|55|65|85)\b/g) || [];
+  if (nonStandardOpacity.length > 0) {
+    issues.push({ type: "ui",
+      description: `Non-standard opacity steps (${[...new Set(nonStandardOpacity)].join(", ")}). Only 5,10,20,25,30,40,50,60,70,75,80,90,95 valid.`,
+      fixInstruction: "Replace with nearest valid Tailwind step." });
+  }
+
+  // Inline font-family references (both quoted and unquoted)
+  const inlineFonts = html.match(/font-\[['"]?[A-Z][a-zA-Z_]+/g) || [];
+  if (inlineFonts.length > 0) {
+    issues.push({ type: "ui",
+      description: `Inline font references: ${[...new Set(inlineFonts)].slice(0, 3).join(", ")}.`,
+      fixInstruction: "WRONG: font-['Cormorant_Garamond',serif] RIGHT: font-serif. WRONG: font-['DM_Sans',sans-serif] RIGHT: font-sans" });
+  }
+
+  // rounded-lg on buttons (should be rounded-full)
+  const buttonsWithRoundedLg = html.match(/<(?:a|button)[^>]*rounded-lg[^>]*>/gi) || [];
+  if (buttonsWithRoundedLg.length > 0) {
+    issues.push({ type: "ui",
+      description: `${buttonsWithRoundedLg.length} button(s) use rounded-lg — should be rounded-full.`,
+      fixInstruction: "Replace rounded-lg with rounded-full on all buttons and CTA links." });
+  }
+
   const hasDarkBg = /bg-(?:gray-[789]00|slate-[789]00|black|primary)\b/.test(html);
   if (hasDarkBg && (html.match(/\btext-gray-[4-7]00\b/g) || []).length > 0) {
     issues.push({ type: "ui", description: "Low-contrast text on dark background.",
@@ -89,6 +137,28 @@ function checkBannedPatterns(html: string): ValidationIssue[] {
   if (/!important/.test(html)) {
     issues.push({ type: "ui", description: "Uses !important.",
       fixInstruction: "Remove !important." });
+  }
+
+  // Orphaned content before <section> tag
+  const trimmed = html.trim();
+  if (trimmed.length > 0 && !trimmed.startsWith("<section") && !trimmed.startsWith("<!--")) {
+    const firstSection = trimmed.indexOf("<section");
+    if (firstSection > 0) {
+      issues.push({ type: "ui", description: "Orphaned HTML content before the <section> tag.",
+        fixInstruction: "Remove all content before the opening <section> tag. Each section must start with <section>." });
+    }
+  }
+
+  // Anchor hrefs (#something) — these often point to non-existent IDs
+  const anchorHrefs = html.match(/href="#[^"]+"/g) || [];
+  for (const anchor of anchorHrefs) {
+    const id = anchor.match(/#([^"]+)/)?.[1];
+    if (id && !html.includes(`id="${id}"`) && !html.includes(`id='${id}'`)) {
+      issues.push({ type: "link",
+        description: `Anchor href="#${id}" but no matching id="${id}" exists in this section.`,
+        fixInstruction: `Replace href="#${id}" with a link to an actual page path (e.g., /consultation or /contact).` });
+      break; // One is enough to trigger a fix
+    }
   }
 
   return issues;

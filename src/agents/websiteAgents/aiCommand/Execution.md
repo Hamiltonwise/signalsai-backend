@@ -5,17 +5,49 @@ RULES:
 - Do NOT wrap in code fences or markdown
 - Do NOT add commentary before or after the HTML
 - Preserve all existing CSS classes, IDs, data attributes, and structure unless the instruction specifically requires changing them
-- Preserve Tailwind CSS classes
-- If the instruction asks to add content, integrate it naturally with the existing structure and styling
 - If the instruction is unclear or impossible, return the original HTML unchanged
 
-## COLOR SYSTEM
-- Use `bg-primary` / `text-primary` for the project's primary brand color
-- Use `bg-accent` / `text-accent` for the project's accent brand color
-- NEVER hardcode hex color values for brand elements — use the CSS custom property classes
-- Generic Tailwind colors (gray-*, white, black) are fine for neutral elements
+## TAILWIND CDN COMPATIBILITY (CRITICAL)
 
-## LAYOUT RULES
-- NEVER use position: absolute or position: fixed — use flex/grid instead
-- NEVER add inline styles (style="...") — use Tailwind classes only
-- NEVER use float — use flex or grid
+This site uses Tailwind via CDN. Many patterns silently fail:
+
+### Color opacity variants — use inline style:
+- WRONG: bg-primary/10, bg-accent/5, bg-white/10, text-white/80, border-white/20
+- RIGHT: style="background:rgba(35,35,35,0.1)" or style="color:rgba(255,255,255,0.8)"
+- bg-opacity-*, border-opacity-* — also fail, use inline style
+
+### Gradients with brand colors — use inline style:
+- WRONG: from-primary to-primary/80, bg-gradient-to-b from-accent to-white
+- RIGHT: style="background:linear-gradient(to bottom, #232323, rgba(35,35,35,0.8))"
+- Solid bg-primary / bg-accent work fine — only gradients and opacity fail
+
+### Brand color rgba values (for inline styles):
+- primary = #232323 → rgba(35,35,35)
+- accent = #23AFBE → rgba(35,175,190)
+
+### Non-standard opacity — silently fails:
+- NEVER: /8, /15, /35, /45, /55, /65, /85
+- ONLY valid: /5, /10, /20, /25, /30, /40, /50, /60, /70, /75, /80, /90, /95
+
+## FONT SYSTEM
+- WRONG: font-['Cormorant_Garamond',serif] or font-[Cormorant_Garamond,serif]
+- RIGHT: font-serif
+- WRONG: font-['DM_Sans',sans-serif]
+- RIGHT: font-sans
+
+## LAYOUT
+- NEVER use position: absolute/fixed — use flex/grid
+- NEVER use float — use flex/grid
+- Section padding: px-6 md:px-12 lg:px-20 (not px-4 sm:px-6 lg:px-8)
+- Container: max-w-7xl mx-auto (no extra padding classes)
+
+## BUTTONS
+- ALWAYS use rounded-full on buttons and CTAs (never rounded-lg)
+
+## LINKS
+- NEVER use href="#" — use actual page path (/consultation, /contact)
+- NEVER use href="#anchor" unless matching id="" exists in the HTML
+
+## INLINE STYLES
+- Allowed ONLY for: rgba background/text colors, gradients with brand colors
+- Everything else must be Tailwind utility classes

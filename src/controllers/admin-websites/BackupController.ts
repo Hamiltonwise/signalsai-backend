@@ -208,11 +208,12 @@ export async function restoreBackup(
     }
 
     // Confirmation gate — must type the project name
-    if (!confirmation || confirmation.trim() !== project.name.trim()) {
+    const projectName = project.display_name || project.generated_hostname || project.id;
+    if (!confirmation || confirmation.trim() !== projectName.trim()) {
       return res.status(400).json({
         success: false,
         error: "CONFIRMATION_REQUIRED",
-        message: `Type the project name "${project.name}" to confirm restore. This will wipe all existing data.`,
+        message: `Type the project name "${projectName}" to confirm restore. This will wipe all existing data.`,
       });
     }
 

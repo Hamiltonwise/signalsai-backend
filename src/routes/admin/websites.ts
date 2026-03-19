@@ -315,6 +315,9 @@ router.delete("/:id/form-submissions/:submissionId", controller.deleteFormSubmis
 // GET  /:id/posts — List posts for a project
 router.get("/:id/posts", controller.listPosts);
 
+// POST /:id/posts/ai-generate — AI generate post content (before :postId)
+router.post("/:id/posts/ai-generate", controller.aiGeneratePost);
+
 // POST /:id/posts — Create a post
 router.post("/:id/posts", controller.createPost);
 
