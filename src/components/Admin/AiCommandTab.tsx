@@ -16,7 +16,6 @@ import {
   ChevronRight,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Zap,
   FileText,
   Layout,
@@ -148,39 +147,48 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
            (layoutsMode === "all") || (layoutsMode === "specific" && selectedLayouts.size > 0);
   };
 
-  // Poll batch status
+  // Poll batch status — interval-based with cleanup
   useEffect(() => {
     if (!batch || (viewState !== "analyzing" && viewState !== "executing")) return;
-    const interval = setInterval(async () => {
+
+    let active = true;
+    const pollInterval = viewState === "executing" ? 1500 : 2500;
+
+    const tick = async () => {
+      if (!active) return;
       try {
         const res = await fetchAiCommandBatch(projectId, batch.id);
-        const updated = res.data;
-        setBatch(updated);
-        if (viewState === "analyzing" && (updated.status === "ready" || updated.status === "failed")) {
-          clearInterval(interval);
-          if (updated.status === "ready") {
-            const recsRes = await fetchAiCommandRecommendations(projectId, batch.id);
-            setRecommendations(recsRes.data);
-            setExpandedGroups(new Set(recsRes.data.map((r) => subGroupKey(r))));
-          }
-          setViewState("results");
-          refreshBatchList();
-        }
-        if (viewState === "executing") {
-          // Refresh individual recommendation statuses in real-time
-          const recsRes = await fetchAiCommandRecommendations(projectId, batch.id);
-          setRecommendations(recsRes.data);
+        if (!active) return;
+        setBatch(res.data);
 
-          if (updated.status === "completed" || updated.status === "failed") {
-            clearInterval(interval);
-            setViewState("completed");
-            refreshBatchList();
+        if (viewState === "analyzing" && (res.data.status === "ready" || res.data.status === "failed")) {
+          if (res.data.status === "ready") {
+            const recsRes = await fetchAiCommandRecommendations(projectId, batch.id);
+            if (active) {
+              setRecommendations(recsRes.data);
+              setExpandedGroups(new Set(recsRes.data.map((r) => subGroupKey(r))));
+            }
+          }
+          if (active) { setViewState("results"); refreshBatchList(); }
+          return; // Stop polling
+        }
+
+        if (viewState === "executing") {
+          const recsRes = await fetchAiCommandRecommendations(projectId, batch.id);
+          if (active) setRecommendations(recsRes.data);
+
+          if (res.data.status === "completed" || res.data.status === "failed") {
+            if (active) { setViewState("completed"); refreshBatchList(); }
+            return; // Stop polling
           }
         }
-      } catch { /* retry */ }
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [batch, viewState, projectId]);
+      } catch { /* retry next tick */ }
+    };
+
+    tick(); // Initial fetch
+    const id = setInterval(tick, pollInterval);
+    return () => { active = false; clearInterval(id); };
+  }, [batch?.id, viewState, projectId]);
 
   const refreshBatchList = async () => {
     try {
@@ -602,19 +610,41 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
           )}
 
           {/* ---- EXECUTING STATE ---- */}
-          {viewState === "executing" && (
+          {viewState === "executing" && (() => {
+            const done = (stats.executed || 0) + (stats.failed || 0);
+            const totalToProcess = done + (stats.approved || 0);
+            const pct = totalToProcess > 0 ? Math.round((done / totalToProcess) * 100) : 0;
+            return (
             <motion.div key="executing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-sm text-gray-800 font-medium">Executing approved changes...</p>
-                <p className="text-xs text-gray-500 mt-1">{stats.executed || 0} of {approvedCount} completed{stats.failed > 0 && ` (${stats.failed} failed)`}</p>
-              </div>
-              <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <motion.div className="h-full bg-alloro-orange rounded-full transition-all duration-500"
-                  style={{ width: approvedCount > 0 ? `${(((stats.executed || 0) + (stats.failed || 0)) / approvedCount) * 100}%` : "0%" }} />
+              <div className="bg-alloro-orange/5 border border-alloro-orange/20 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-alloro-orange" />
+                  <p className="text-sm text-gray-800 font-medium">Executing approved changes...</p>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  {stats.executed || 0} completed{stats.failed > 0 ? `, ${stats.failed} failed` : ""} — {stats.approved || 0} remaining of {totalToProcess} total
+                </p>
+                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500 flex">
+                    {(stats.executed || 0) > 0 && (
+                      <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${totalToProcess > 0 ? ((stats.executed || 0) / totalToProcess) * 100 : 0}%` }} />
+                    )}
+                    {(stats.failed || 0) > 0 && (
+                      <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${totalToProcess > 0 ? ((stats.failed || 0) / totalToProcess) * 100 : 0}%` }} />
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 mt-2 text-[10px]">
+                  {(stats.executed || 0) > 0 && <span className="flex items-center gap-1 text-green-600"><span className="w-2 h-2 rounded-full bg-green-500" />{stats.executed} done</span>}
+                  {(stats.failed || 0) > 0 && <span className="flex items-center gap-1 text-red-500"><span className="w-2 h-2 rounded-full bg-red-500" />{stats.failed} failed</span>}
+                  {(stats.approved || 0) > 0 && <span className="flex items-center gap-1 text-gray-400"><span className="w-2 h-2 rounded-full bg-gray-300" />{stats.approved} queued</span>}
+                  <span className="ml-auto text-gray-400 font-mono">{pct}%</span>
+                </div>
               </div>
               <RecommendationList recommendations={recommendations} expandedGroups={expandedGroups} toggleGroup={toggleGroup} onApproveReject={handleApproveReject} readonly loadingRecId={null} />
             </motion.div>
-          )}
+            );
+          })()}
 
           {/* ---- RESULTS / COMPLETED STATE ---- */}
           {(viewState === "results" || viewState === "completed") && (
@@ -845,9 +875,49 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
         const subGroups = groups.get(gk);
         if (!subGroups || subGroups.size === 0) return null;
 
+        // Collect all recs in this top-level group for batch actions
+        const allGroupRecs: AiCommandRecommendation[] = [];
+        for (const [, recs] of subGroups) allGroupRecs.push(...recs);
+        const groupPending = allGroupRecs.filter((r) => r.status === "pending").length;
+        const groupTotal = allGroupRecs.length;
+        const groupExecuted = allGroupRecs.filter((r) => r.status === "executed").length;
+        const groupProcessing = allGroupRecs.some((r) => {
+          if (r.execution_result) {
+            const res = typeof r.execution_result === "string" ? JSON.parse(r.execution_result) : r.execution_result;
+            if (res?.in_progress) return true;
+          }
+          return false;
+        });
+
         return (
           <div key={gk}>
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.12em] mb-2 pl-1">{gk}</h4>
+            <div className="flex items-center justify-between mb-2 pl-1 pr-1">
+              <div className="flex items-center gap-2">
+                {groupProcessing && <Loader2 className="w-3.5 h-3.5 animate-spin text-alloro-orange" />}
+                <h4 className={`text-[10px] font-bold uppercase tracking-[0.12em] ${groupProcessing ? "text-alloro-orange" : "text-gray-400"}`}>{gk}</h4>
+                <span className="text-[10px] text-gray-300">{groupTotal}</span>
+                {groupExecuted > 0 && <span className="text-[9px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">{groupExecuted} done</span>}
+              </div>
+              {!readonly && groupPending > 0 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => allGroupRecs.filter((r) => r.status === "pending").forEach((r) => onApproveReject(r.id, "approved"))}
+                    className="text-[10px] text-gray-400 hover:text-green-600 transition-colors flex items-center gap-0.5"
+                    title={`Approve all ${groupPending} pending in ${gk}`}
+                  >
+                    <Check className="w-3 h-3" /> Approve {gk}
+                  </button>
+                  <span className="text-gray-200">|</span>
+                  <button
+                    onClick={() => allGroupRecs.filter((r) => r.status === "pending").forEach((r) => onApproveReject(r.id, "rejected"))}
+                    className="text-[10px] text-gray-400 hover:text-red-500 transition-colors flex items-center gap-0.5"
+                    title={`Reject all ${groupPending} pending in ${gk}`}
+                  >
+                    <X className="w-3 h-3" /> Reject
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="space-y-1.5">
               {Array.from(subGroups.entries()).map(([sk, recs]) => {
                 const isExpanded = expandedGroups.has(sk);
@@ -859,14 +929,23 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
                   failed: recs.filter((r) => r.status === "failed").length,
                 };
                 const statusSummary = getStatusSummary(recs);
-                const isProcessing = recs.some((r) => loadingRecId === r.id);
+                const isProcessing = recs.some((r) => {
+                  if (loadingRecId === r.id) return true;
+                  // Check execution_result.in_progress for items being worked on during batch execution
+                  if (r.execution_result) {
+                    const res = typeof r.execution_result === "string" ? JSON.parse(r.execution_result) : r.execution_result;
+                    if (res?.in_progress) return true;
+                  }
+                  return false;
+                });
 
                 return (
                   <div key={sk} className={`border rounded-lg overflow-hidden transition-all ${
-                    statusSummary === "executed" ? "border-green-200 bg-green-50/20" :
-                    statusSummary === "approved" ? "border-green-200/60" :
-                    statusSummary === "rejected" ? "border-red-100/40 opacity-50" :
-                    statusSummary === "failed" ? "border-red-300" :
+                    statusSummary === "executed" ? "border-green-300 bg-green-50/30" :
+                    statusSummary === "approved" ? "border-purple-200 bg-purple-50/20" :
+                    statusSummary === "rejected" ? "border-red-100/40 opacity-40" :
+                    statusSummary === "failed" ? "border-red-400 bg-red-50/20" :
+                    isProcessing ? "border-alloro-orange/30 bg-alloro-orange/5" :
                     "border-gray-200"
                   }`}>
                     {/* Accordion header */}
@@ -888,20 +967,33 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
                         {recs.length > 1 && (
                           <div className="flex items-center gap-px h-1.5 rounded-full overflow-hidden w-16 bg-gray-100">
                             {counts.executed > 0 && <div className="h-full bg-green-500 transition-all" style={{ width: `${(counts.executed / recs.length) * 100}%` }} />}
-                            {counts.approved > 0 && <div className="h-full bg-green-300 transition-all" style={{ width: `${(counts.approved / recs.length) * 100}%` }} />}
+                            {counts.approved > 0 && <div className="h-full bg-purple-400 transition-all" style={{ width: `${(counts.approved / recs.length) * 100}%` }} />}
                             {counts.pending > 0 && <div className="h-full bg-amber-300 transition-all" style={{ width: `${(counts.pending / recs.length) * 100}%` }} />}
-                            {counts.rejected > 0 && <div className="h-full bg-red-200 transition-all" style={{ width: `${(counts.rejected / recs.length) * 100}%` }} />}
-                            {counts.failed > 0 && <div className="h-full bg-red-500 transition-all" style={{ width: `${(counts.failed / recs.length) * 100}%` }} />}
+                            {counts.rejected > 0 && <div className="h-full bg-red-300 transition-all" style={{ width: `${(counts.rejected / recs.length) * 100}%` }} />}
+                            {counts.failed > 0 && <div className="h-full bg-red-600 transition-all" style={{ width: `${(counts.failed / recs.length) * 100}%` }} />}
                           </div>
                         )}
 
-                        {/* Count chips */}
+                        {/* Count chips — distinct colors per status */}
                         <div className="flex items-center gap-0.5">
-                          {counts.executed > 0 && <span className="text-[9px] font-bold bg-green-100 text-green-700 w-5 h-5 rounded-full flex items-center justify-center">{counts.executed}</span>}
-                          {counts.approved > 0 && <span className="text-[9px] font-bold bg-green-50 text-green-600 w-5 h-5 rounded-full flex items-center justify-center">{counts.approved}</span>}
-                          {counts.pending > 0 && <span className="text-[9px] font-bold bg-amber-50 text-amber-600 w-5 h-5 rounded-full flex items-center justify-center">{counts.pending}</span>}
-                          {counts.rejected > 0 && <span className="text-[9px] font-bold bg-red-50 text-red-400 w-5 h-5 rounded-full flex items-center justify-center">{counts.rejected}</span>}
-                          {counts.failed > 0 && <span className="text-[9px] font-bold bg-red-100 text-red-600 w-5 h-5 rounded-full flex items-center justify-center">{counts.failed}</span>}
+                          {counts.executed > 0 && (
+                            <span className="w-5 h-5 rounded-full flex items-center justify-center bg-green-100 text-green-700">
+                              <Check className="w-3 h-3" />
+                            </span>
+                          )}
+                          {isProcessing && (
+                            <span className="w-5 h-5 rounded-full flex items-center justify-center bg-alloro-orange/10 text-alloro-orange">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            </span>
+                          )}
+                          {counts.approved > 0 && <span className="text-[9px] font-bold bg-purple-50 text-purple-600 w-5 h-5 rounded-full flex items-center justify-center">{counts.approved}</span>}
+                          {counts.pending > 0 && !isProcessing && <span className="text-[9px] font-bold bg-amber-50 text-amber-600 w-5 h-5 rounded-full flex items-center justify-center">{counts.pending}</span>}
+                          {counts.rejected > 0 && <span className="text-[9px] font-bold bg-red-50 text-red-300 w-5 h-5 rounded-full flex items-center justify-center">{counts.rejected}</span>}
+                          {counts.failed > 0 && (
+                            <span className="w-5 h-5 rounded-full flex items-center justify-center bg-red-100 text-red-600">
+                              <X className="w-3 h-3" />
+                            </span>
+                          )}
                         </div>
 
                         {/* Batch approve/reject per group */}
@@ -956,6 +1048,59 @@ function getStatusSummary(recs: AiCommandRecommendation[]): string {
   return "mixed";
 }
 
+function AdditionalNotesInput({ recId, onApproveReject }: {
+  recId: string;
+  onApproveReject: (id: string, status: "approved" | "rejected", referenceData?: { reference_url?: string; reference_content?: string }) => void;
+}) {
+  const [showNotes, setShowNotes] = useState(false);
+  const [notes, setNotes] = useState("");
+
+  if (!showNotes) {
+    return (
+      <button
+        onClick={() => setShowNotes(true)}
+        className="text-[11px] text-gray-400 hover:text-alloro-orange mt-1 ml-6 transition-colors flex items-center gap-1"
+      >
+        <Pencil className="w-3 h-3" />
+        Add notes for execution
+      </button>
+    );
+  }
+
+  return (
+    <div className="ml-6 mt-2 space-y-1.5">
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Add context, data, or instructions for the AI agent to use when executing this task..."
+        rows={2}
+        autoFocus
+        className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs resize-y focus:outline-none focus:ring-1 focus:ring-alloro-orange/20 focus:border-alloro-orange"
+      />
+      <div className="flex gap-1.5">
+        <button
+          onClick={() => {
+            if (notes.trim()) {
+              onApproveReject(recId, "approved", { reference_content: notes.trim() });
+            }
+            setShowNotes(false);
+          }}
+          disabled={!notes.trim()}
+          className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-500 text-white text-[11px] rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <Check className="w-3 h-3" /> Approve with Notes
+        </button>
+        <button
+          onClick={() => setShowNotes(false)}
+          className="px-2.5 py-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
   rec: AiCommandRecommendation;
   onApproveReject: (id: string, status: "approved" | "rejected", referenceData?: { reference_url?: string; reference_content?: string }) => void;
@@ -977,10 +1122,10 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
 
   const statusIcon = {
     pending: <div className="w-3.5 h-3.5 rounded-full border-2 border-amber-300 shrink-0" />,
-    approved: <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />,
-    rejected: <XCircle className="w-4 h-4 text-red-300/60 shrink-0" />,
+    approved: <CheckCircle className="w-4 h-4 text-purple-500 shrink-0" />,
+    rejected: <div className="w-3.5 h-3.5 rounded-full border-2 border-red-200 bg-red-50 shrink-0" />,
     executed: <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />,
-    failed: <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />,
+    failed: <XCircle className="w-4 h-4 text-red-600 shrink-0" />,
   }[rec.status];
 
   const parsedResult = rec.execution_result
@@ -1014,18 +1159,18 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
     <motion.div
       layout
       className={`rounded-lg border p-3 transition-all ${
-        rec.status === "executed" ? "border-green-200 bg-green-50/30"
-        : rec.status === "approved" ? "border-green-200/50 bg-green-50/20"
-        : rec.status === "rejected" ? "border-red-100/30 bg-red-50/10 opacity-40"
-        : rec.status === "failed" ? "border-red-400 bg-red-50/40"
-        : isLoading ? "border-amber-200 bg-amber-50/20"
+        rec.status === "executed" ? "border-green-300 bg-green-50/40"
+        : rec.status === "approved" ? "border-purple-200 bg-purple-50/20"
+        : rec.status === "rejected" ? "border-red-100/30 bg-red-50/10 opacity-35"
+        : rec.status === "failed" ? "border-red-500 bg-red-50/50"
+        : (isLoading || pipelineMessage) ? "border-alloro-orange/40 bg-alloro-orange/5"
         : "border-gray-100 bg-white hover:border-gray-200"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className={`flex-1 min-w-0 ${rec.status === "rejected" ? "opacity-50" : ""}`}>
           <div className="flex items-start gap-2 mb-1">
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" /> : statusIcon}
+            {(isLoading || pipelineMessage) ? <Loader2 className="w-4 h-4 animate-spin text-alloro-orange shrink-0" /> : statusIcon}
             <div className="flex-1 min-w-0">
               {(() => {
                 const tool = getToolLabel(rec);
@@ -1042,7 +1187,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
                   {String((rec.target_meta as Record<string, unknown>).section_name)}
                 </span>
               )}
-              <p className={`text-sm leading-relaxed ${rec.status === "rejected" ? "text-gray-400 line-through" : "text-gray-700"}`}>
+              <p className={`text-sm leading-relaxed ${rec.status === "rejected" ? "text-red-300 line-through" : rec.status === "failed" ? "text-red-700" : "text-gray-700"}`}>
                 {rec.recommendation}
               </p>
             </div>
@@ -1182,6 +1327,11 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
             <p className="text-[11px] text-gray-500 mt-1.5 ml-6 font-mono bg-gray-50 p-2 rounded border border-gray-100">
               {rec.instruction}
             </p>
+          )}
+
+          {/* Additional notes input */}
+          {rec.status === "pending" && !readonly && (
+            <AdditionalNotesInput recId={rec.id} onApproveReject={onApproveReject} />
           )}
         </div>
 
