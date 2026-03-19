@@ -19,10 +19,11 @@ import {
 import MediaBrowser from "../PageEditor/MediaBrowser";
 import type { MediaItem } from "../PageEditor/MediaBrowser";
 import RichTextEditor from "../ui/RichTextEditor";
+import { toast } from "react-hot-toast";
 import AnimatedSelect from "../ui/AnimatedSelect";
 import SeoPanel from "../PageEditor/SeoPanel";
 import type { SeoData } from "../../api/websites";
-import { updatePostSeo as defaultUpdatePostSeo } from "../../api/websites";
+import { updatePostSeo as defaultUpdatePostSeo, aiGeneratePostContent } from "../../api/websites";
 import {
   fetchPosts as defaultFetchPosts,
   createPost as defaultCreatePost,
@@ -333,6 +334,10 @@ export default function PostsTab({
   const [formExcerpt, setFormExcerpt] = useState("");
   const [formFeaturedImage, setFormFeaturedImage] = useState("");
   const [formStatus, setFormStatus] = useState<"draft" | "published">("draft");
+  const [showAiGenerate, setShowAiGenerate] = useState(false);
+  const [aiRefUrl, setAiRefUrl] = useState("");
+  const [aiRefContent, setAiRefContent] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [formPostTypeId, setFormPostTypeId] = useState("");
   const [formCustomFields, setFormCustomFields] = useState<Record<string, unknown>>({});
   const [formCategoryIds, setFormCategoryIds] = useState<string[]>([]);
@@ -934,7 +939,83 @@ export default function PostsTab({
 
           {/* Content */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Content</label>
+              {!editingPost && (
+                <button
+                  type="button"
+                  onClick={() => setShowAiGenerate(!showAiGenerate)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-alloro-orange hover:text-alloro-orange/80 transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {showAiGenerate ? "Hide AI Generate" : "Generate with AI"}
+                </button>
+              )}
+            </div>
+
+            {/* AI Generate panel */}
+            <AnimatePresence>
+              {showAiGenerate && !editingPost && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-2">
+                    <p className="text-[11px] font-medium text-gray-500">Provide a reference URL to scrape or paste content directly:</p>
+                    <input
+                      type="url"
+                      value={aiRefUrl}
+                      onChange={(e) => setAiRefUrl(e.target.value)}
+                      placeholder="https://oldsite.com/page-to-reference"
+                      className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-alloro-orange/20 focus:border-alloro-orange"
+                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-400">or</span>
+                    </div>
+                    <textarea
+                      value={aiRefContent}
+                      onChange={(e) => setAiRefContent(e.target.value)}
+                      placeholder="Paste reference content text..."
+                      rows={3}
+                      className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-alloro-orange/20 focus:border-alloro-orange"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!formTitle.trim()) { toast.error("Enter a title first"); return; }
+                        if (!formPostTypeId) { toast.error("Select a post type first"); return; }
+                        if (!aiRefUrl.trim() && !aiRefContent.trim()) { toast.error("Provide a reference URL or content"); return; }
+                        setAiGenerating(true);
+                        try {
+                          const res = await aiGeneratePostContent(projectId, {
+                            post_type_id: formPostTypeId,
+                            title: formTitle,
+                            reference_url: aiRefUrl.trim() || undefined,
+                            reference_content: aiRefContent.trim() || undefined,
+                          });
+                          setFormContent(res.data.content);
+                          setShowAiGenerate(false);
+                          toast.success("Content generated");
+                        } catch (err: any) {
+                          toast.error(err.message || "Failed to generate content");
+                        } finally {
+                          setAiGenerating(false);
+                        }
+                      }}
+                      disabled={aiGenerating || (!aiRefUrl.trim() && !aiRefContent.trim()) || !formTitle.trim()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-alloro-orange text-white text-xs font-medium rounded-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                      {aiGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      {aiGenerating ? "Generating..." : "Generate Content"}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <RichTextEditor content={formContent} onChange={setFormContent} />
           </div>
 

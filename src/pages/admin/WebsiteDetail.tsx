@@ -24,6 +24,7 @@ import {
   Hash,
   Sparkles,
   RefreshCw,
+  RotateCcw,
   Layout,
   Image,
   Inbox,
@@ -2080,6 +2081,38 @@ export default function WebsiteDetail() {
                                         <Pencil className="h-3 w-3" />
                                       </Link>
                                     )}
+                                    {page.status === "inactive" && (
+                                      <button
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          const ok = await confirm({
+                                            title: `Revert to v${page.version}?`,
+                                            message: "This will create a new draft from this version's content. The current published version will remain live until you publish the draft.",
+                                            confirmLabel: "Revert",
+                                          });
+                                          if (!ok) return;
+                                          try {
+                                            // Create a new page version with this version's sections
+                                            await fetch(`/api/admin/websites/${id}/pages`, {
+                                              method: "POST",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({
+                                                path: page.path,
+                                                sections: page.sections,
+                                              }),
+                                            });
+                                            invalidateWebsite(id!);
+                                            toast.success(`Created draft from v${page.version}`);
+                                          } catch {
+                                            toast.error("Failed to revert");
+                                          }
+                                        }}
+                                        className="text-xs text-gray-400 hover:text-alloro-orange transition-colors"
+                                        title="Revert to this version"
+                                      >
+                                        <RotateCcw className="h-3 w-3" />
+                                      </button>
+                                    )}
                                     {canDelete && (
                                       <button
                                         onClick={() =>
@@ -2123,6 +2156,30 @@ export default function WebsiteDetail() {
                                 )}
                                 Delete page and all versions
                               </button>
+                              {group.pages.filter((p) => p.status === "inactive").length > 5 && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    const inactiveVersions = group.pages.filter((p) => p.status === "inactive");
+                                    const toDelete = inactiveVersions.slice(5); // Keep latest 5 inactive
+                                    const ok = await confirm({
+                                      title: `Clean up ${toDelete.length} old version(s)?`,
+                                      message: `Keep the 5 most recent inactive versions and delete ${toDelete.length} older ones. Published and draft versions are not affected.`,
+                                      confirmLabel: "Clean Up",
+                                    });
+                                    if (!ok) return;
+                                    for (const v of toDelete) {
+                                      await fetch(`/api/admin/websites/${id}/pages/${v.id}`, { method: "DELETE" }).catch(() => {});
+                                    }
+                                    invalidateWebsite(id!);
+                                    toast.success(`Cleaned up ${toDelete.length} old version(s)`);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-alloro-orange transition-colors ml-4"
+                                >
+                                  <RefreshCw className="h-3 w-3" />
+                                  Clean up old versions ({group.pages.filter((p) => p.status === "inactive").length - 5} removable)
+                                </button>
+                              )}
                             </div>
                           </div>
                         </motion.div>

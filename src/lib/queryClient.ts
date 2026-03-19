@@ -5,13 +5,14 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes — data is "fresh"
+      staleTime: 0, // Always stale — show cached instantly, refetch silently in background
       gcTime: 24 * 60 * 60 * 1000, // 24 hours — cache retention
       refetchOnWindowFocus: false,
-      refetchOnMount: true, // silent background refetch if stale
-      refetchOnReconnect: false,
+      refetchOnMount: true, // silent background refetch on every mount
+      refetchOnReconnect: true, // refetch when network reconnects
       retry: 1,
       retryDelay: 1000,
+      placeholderData: (previousData: unknown) => previousData, // show previous data while refetching
     },
   },
 });

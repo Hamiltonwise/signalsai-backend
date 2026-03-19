@@ -970,6 +970,22 @@ export const analyzeSeo = async (
 /**
  * Start a bulk SEO generation job
  */
+export const aiGeneratePostContent = async (
+  projectId: string,
+  data: { post_type_id: string; title: string; reference_url?: string; reference_content?: string },
+): Promise<{ success: boolean; data: { content: string } }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/posts/ai-generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to generate post content");
+  }
+  return response.json();
+};
+
 export const updatePageDisplayName = async (
   projectId: string,
   path: string,
