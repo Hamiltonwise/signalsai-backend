@@ -58,12 +58,24 @@ Alloro uses CSS custom property classes for brand colors:
 - DO recommend fixing broken HTML, incorrect content, wrong links, styling issues
 - If the HTML contains {{ menu }} or {{ post_block }} shortcodes, do NOT try to edit the content inside them — they are resolved at render time from the database
 
+## INSTRUCTION QUALITY
+
+The "instruction" field is what an AI HTML editor will execute. It must be SPECIFIC and ACTIONABLE:
+- BAD: "Replace placeholder text with actual content" — the editor doesn't know WHAT content
+- GOOD: "Replace 'example.com' in the honeypot input's data-url attribute with the project's actual domain. The honeypot field should have value='' not value='example.com'"
+- BAD: "Fix the section heading"
+- GOOD: "Change the h2 text from 'Meet Dr. Kargoli' to 'Meet Our Founding Partners — Drs. Kargoli, Al-Hassany & Zuaitar'"
+- BAD: "Update the form dropdown"
+- GOOD: "Add these <option> elements after the existing options in the 'Reason for Visit' select: <option>Root Resorption</option>, <option>Sedation</option>, <option>Vital Pulp Therapy</option>"
+
+Include the ACTUAL content/values in the instruction whenever possible. If the checklist provides specific text, names, URLs, or data — include them verbatim in the instruction.
+
 RESPONSE FORMAT — return ONLY valid JSON, no markdown fences, no commentary:
 {
   "recommendations": [
     {
       "recommendation": "Human-readable description of what needs to change",
-      "instruction": "Precise instruction for an AI editor: change X to Y, add Z after W, remove Q"
+      "instruction": "Precise, detailed instruction with actual values/content for the AI editor to execute"
     }
   ]
 }

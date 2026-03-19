@@ -61,7 +61,11 @@ When recommending menu changes:
 - ALWAYS prefer posts over hardcoded HTML for repeating/collection content
 - If the checklist says "add Dr. Wang's page" and "doctors" is a post_type, recommend creating a POST, not a page
 - If the checklist says "add services pages" and "services" is a post_type, recommend creating POSTS for each service
+- If the checklist lists MULTIPLE items to create (e.g., 8 missing service posts), create a separate `create_post` recommendation for EACH one — do not summarize them into a single recommendation
+- Be thorough: scan the ENTIRE checklist for every item that requires creating content. Do not stop after finding a few — process ALL items
 - Do NOT recommend redirects where from_path and to_path are the same (even with trailing slash differences)
+- For redirects, only create ONE entry per old URL — do NOT create separate trailing-slash and non-trailing-slash variants. The redirect resolver normalizes trailing slashes automatically. Use the trailing-slash form from the checklist as the canonical from_path.
+- Do NOT create redirects where the from_path only differs from to_path by a trailing slash (e.g., /referring-doctors/referral-form/ → /referring-doctors/referral-form is pointless)
 - For menu items where you don't know the actual URL, set url to "NEEDS_INPUT" and note it in the recommendation
 - For pages/posts where content depends on external data, note what information the user needs to provide
 - When creating posts/pages, also recommend adding them to the correct menu in the correct position

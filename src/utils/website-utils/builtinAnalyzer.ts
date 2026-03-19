@@ -138,16 +138,19 @@ export function analyzeBuiltinFlags(input: AnalyzerInput): BuiltinRecommendation
   }
 
   // --- Cross-target: phone inconsistency ---
+  // Multi-location practices legitimately have different numbers (one per office).
+  // Only flag if there are more than 6 unique numbers (likely a data issue) or if
+  // a number appears only once (possible typo).
   const uniquePhones = new Set(allPhones.map((p) => normalizePhone(p.phone)));
-  if (uniquePhones.size > 1 && input.layouts.length > 0) {
+  if (uniquePhones.size > 6 && input.layouts.length > 0) {
     results.push({
       flagType: "fix_content",
       targetType: "layout",
       targetId: input.layouts[0].projectId,
       targetLabel: "Site-wide",
       targetMeta: {},
-      recommendation: `Found ${uniquePhones.size} different phone numbers across the site: ${[...uniquePhones].map(formatPhone).join(", ")}. Verify which is correct.`,
-      instruction: `Multiple phone numbers detected. Verify the correct number and standardize across all pages.`,
+      recommendation: `Found ${uniquePhones.size} different phone numbers across the site — this seems unusually high. Verify all numbers are correct.`,
+      instruction: `${uniquePhones.size} unique phone numbers detected. Verify each belongs to a real office location.`,
       currentHtml: "",
     });
   }

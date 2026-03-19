@@ -792,9 +792,16 @@ async function executeRecommendation(rec: any, ctx: ExecutionContext): Promise<v
     return;
   }
 
-  // For broken link fixes, use the user-provided replacement URL in the instruction
+  // Build final instruction with user-provided context
   const recMeta = typeof rec.target_meta === "string" ? JSON.parse(rec.target_meta) : rec.target_meta;
   let finalInstruction = rec.instruction;
+
+  // Append user-provided additional notes/context
+  if (recMeta?.reference_content && !recMeta?.flag_type) {
+    finalInstruction += `\n\nAdditional context from user:\n${recMeta.reference_content}`;
+  }
+
+  // For broken link fixes, use the user-provided replacement URL
   if (recMeta?.flag_type === "fix_broken_link" && recMeta?.broken_href && recMeta?.reference_url) {
     finalInstruction = `Change href="${recMeta.broken_href}" to href="${recMeta.reference_url}". Update all occurrences of this broken link.`;
   } else if (recMeta?.flag_type === "fix_broken_link" && recMeta?.broken_href && recMeta?.suggested_href && recMeta.suggested_href !== "NEEDS_INPUT") {

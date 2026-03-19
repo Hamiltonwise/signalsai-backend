@@ -190,49 +190,120 @@ export async function analyzeForStructuralChanges(params: {
   existingMenus: Array<{ menu_slug: string; items: Array<{ label: string; url: string }> }>;
 }): Promise<StructuralAnalysisResult> {
   const { prompt, existingPaths, existingRedirects, existingPostSlugs, postTypes, existingMenus } = params;
+
+  console.log(`[AiCommand] Analyzing structural changes (3 parallel focused calls)...`);
+
+  // Run three focused calls in parallel — each only outputs one type
+  const [redirectsResult, contentResult, menusResult] = await Promise.allSettled([
+    analyzeStructuralFocused(prompt, "redirects", {
+      context: `## Existing Pages\n${existingPaths.join("\n") || "(none)"}\n\n## Existing Redirects\n${existingRedirects.join("\n") || "(none)"}`,
+      responseFormat: `{ "redirects": [{ "from_path": "/old", "to_path": "/new", "type": 301, "recommendation": "reason" }] }`,
+      instruction: "Identify ONLY URL redirects needed. Check every old URL mentioned in the checklist. Do NOT include pages, posts, or menu changes.",
+    }),
+    analyzeStructuralFocused(prompt, "content", {
+      context: `## Existing Pages\n${existingPaths.join("\n") || "(none)"}\n\n## Existing Posts\n${existingPostSlugs.join("\n") || "(none)"}\n\n## Available Post Types\n${postTypes.join("\n") || "(none)"}`,
+      responseFormat: `{ "pages": [{ "path": "/pricing", "purpose": "description", "recommendation": "reason" }], "posts": [{ "post_type_slug": "services", "title": "Name", "slug": "slug", "purpose": "description", "recommendation": "Create as 'services' post because..." }] }`,
+      instruction: "Identify ONLY new pages and posts to create. For EACH missing item in the checklist, create a separate entry. Posts go to the matching post_type. Pages are for standalone content. Be thorough — process EVERY item in the checklist that needs creation. This includes service posts, doctor posts, patient education posts, blog posts, and any other content type mentioned. If the checklist says 'create as post' or mentions a post type, it MUST be a create_post entry.",
+    }),
+    analyzeStructuralFocused(prompt, "menus", {
+      context: `## Existing Pages\n${existingPaths.join("\n") || "(none)"}\n\n## Existing Menus & Items\n${existingMenus.length > 0 ? existingMenus.map((m) => `Menu "${m.menu_slug}":\n${m.items.map((i) => `  - ${i.label} → ${i.url}`).join("\n") || "  (empty)"}`).join("\n\n") : "(no menus)"}`,
+      responseFormat: `{ "menuChanges": [{ "menu_slug": "main-menu", "action": "add", "label": "Name", "url": "/path", "target": "_self", "after_label": "Services", "recommendation": "reason" }], "newMenus": [{ "name": "Footer Menu", "slug": "footer-menu", "recommendation": "reason" }] }`,
+      instruction: "Identify ONLY menu changes needed — new menus to create and items to add/remove/update. Study the existing menu structure and place items in the correct position.",
+    }),
+  ]);
+
+  const result: StructuralAnalysisResult = {
+    redirects: [],
+    pages: [],
+    posts: [],
+    menuChanges: [],
+    newMenus: [],
+  };
+
+  // Merge redirects
+  if (redirectsResult.status === "fulfilled" && redirectsResult.value) {
+    const r = redirectsResult.value;
+    if (r.redirects) result.redirects = r.redirects.filter((x: any) => x?.from_path && x?.to_path);
+  }
+
+  // Merge content (pages + posts)
+  if (contentResult.status === "fulfilled" && contentResult.value) {
+    const c = contentResult.value;
+    if (c.pages) result.pages = c.pages.filter((x: any) => x?.path && x?.purpose);
+    if (c.posts) result.posts = c.posts.filter((x: any) => x?.post_type_slug && x?.title);
+  }
+
+  // Merge menus
+  if (menusResult.status === "fulfilled" && menusResult.value) {
+    const m = menusResult.value;
+    if (m.menuChanges) result.menuChanges = m.menuChanges.filter((x: any) => x?.menu_slug && x?.action && x?.label);
+    if (m.newMenus) result.newMenus = m.newMenus.filter((x: any) => x?.name && x?.slug);
+  }
+
+  // Log failures
+  if (redirectsResult.status === "rejected") console.error("[AiCommand] Redirects analysis failed:", redirectsResult.reason?.message);
+  if (contentResult.status === "rejected") console.error("[AiCommand] Content analysis failed:", contentResult.reason?.message);
+  if (menusResult.status === "rejected") console.error("[AiCommand] Menus analysis failed:", menusResult.reason?.message);
+
+  console.log(
+    `[AiCommand] ✓ Structural: ${result.redirects.length} redirects, ${result.pages.length} pages, ${result.posts.length} posts, ${result.menuChanges.length} menu changes, ${result.newMenus.length} new menus`
+  );
+
+  return result;
+}
+
+/**
+ * Focused structural analysis — one call per output type.
+ * Each call gets the full checklist but only outputs one category.
+ */
+async function analyzeStructuralFocused(
+  prompt: string,
+  focusArea: string,
+  params: { context: string; responseFormat: string; instruction: string }
+): Promise<any> {
   const ai = getClient();
 
   const userMessage = `## Requirements / Checklist
 
 ${prompt}
 
-## Existing Pages
-${existingPaths.length > 0 ? existingPaths.join("\n") : "(none)"}
+${params.context}
 
-## Existing Redirects
-${existingRedirects.length > 0 ? existingRedirects.join("\n") : "(none)"}
+## Task
+${params.instruction}
 
-## Existing Posts
-${existingPostSlugs.length > 0 ? existingPostSlugs.join("\n") : "(none)"}
+## Response Format — return ONLY this JSON structure:
+${params.responseFormat}
 
-## Available Post Types
-${postTypes.length > 0 ? postTypes.join("\n") : "(none)"}
+If nothing is needed, return the structure with empty arrays.`;
 
-## Existing Menus & Items
-${existingMenus.length > 0 ? existingMenus.map((m) => `Menu "${m.menu_slug}":\n${m.items.map((i) => `  - ${i.label} → ${i.url}`).join("\n") || "  (empty)"}`).join("\n\n") : "(no menus)"}`;
-
-  console.log(`[AiCommand] Analyzing structural changes...`);
+  console.log(`[AiCommand] Structural/${focusArea}: starting...`);
 
   let response = await ai.messages.create({
     model: MODEL,
-    max_tokens: 4096,
+    max_tokens: 8192,
     system: getStructuralPrompt(),
     messages: [{ role: "user", content: userMessage }],
   });
 
   let text = extractText(response);
+
+  if (response.stop_reason === "max_tokens") {
+    console.warn(`[AiCommand] Structural/${focusArea}: truncated at ${text.length} chars`);
+  }
+
   let parsed = tryParseJson(text);
 
   if (!parsed) {
-    console.warn("[AiCommand] Structural analysis parse failed, retrying...");
+    console.warn(`[AiCommand] Structural/${focusArea}: parse failed, retrying...`);
     response = await ai.messages.create({
       model: MODEL,
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: getStructuralPrompt(),
       messages: [
         { role: "user", content: userMessage },
         { role: "assistant", content: text },
-        { role: "user", content: "Your previous response was not valid JSON. Respond ONLY with the JSON object." },
+        { role: "user", content: "Your response was not valid JSON. Return ONLY the JSON object." },
       ],
     });
     text = extractText(response);
@@ -240,23 +311,12 @@ ${existingMenus.length > 0 ? existingMenus.map((m) => `Menu "${m.menu_slug}":\n$
   }
 
   if (!parsed) {
-    console.error("[AiCommand] Structural analysis failed to parse:", text.substring(0, 300));
-    return { redirects: [], pages: [], posts: [], menuChanges: [], newMenus: [] };
+    console.error(`[AiCommand] Structural/${focusArea}: failed after retry. Raw: ${text.substring(0, 300)}`);
+    return {};
   }
 
-  const result: StructuralAnalysisResult = {
-    redirects: Array.isArray(parsed.redirects) ? parsed.redirects.filter((r: any) => r?.from_path && r?.to_path) : [],
-    pages: Array.isArray(parsed.pages) ? parsed.pages.filter((p: any) => p?.path && p?.purpose) : [],
-    posts: Array.isArray(parsed.posts) ? parsed.posts.filter((p: any) => p?.post_type_slug && p?.title) : [],
-    menuChanges: Array.isArray(parsed.menuChanges) ? parsed.menuChanges.filter((m: any) => m?.menu_slug && m?.action && m?.label) : [],
-    newMenus: Array.isArray(parsed.newMenus) ? parsed.newMenus.filter((m: any) => m?.name && m?.slug) : [],
-  };
-
-  console.log(
-    `[AiCommand] ✓ Structural: ${result.redirects.length} redirects, ${result.pages.length} pages, ${result.posts.length} posts, ${result.menuChanges.length} menu changes, ${result.newMenus.length} new menus`
-  );
-
-  return result;
+  console.log(`[AiCommand] Structural/${focusArea}: ✓ done`);
+  return parsed;
 }
 
 // ---------------------------------------------------------------------------
