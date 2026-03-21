@@ -7,6 +7,9 @@ build/
 
 # Environment variables
 .env
+.env.sandbox
+.env.live
+.env.active
 .env.*.local
 .env.local
 

@@ -1,0 +1,96 @@
+name: Build and Deploy to Sandbox EC2
+
+on:
+  push:
+    branches: [sandbox]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout backend repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Create .env file
+        run: |
+          echo "${{ secrets.SANDBOX_ENV_FILE }}" > .env
+
+      - name: Create signals-google-key.json file
+        run: |
+          echo '${{ secrets.SANDBOX_SIGNALS_GOOGLE_KEY }}' > signals-google-key.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Build backend
+        run: npm run build
+
+      - name: Clone frontend repo
+        run: |
+          git clone https://github.com/Hamiltonwise/signalsai.git frontend
+          cd frontend
+          git checkout sandbox
+          echo "VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}" > .env
+          npm ci
+          npm run build
+          cd ..
+
+      - name: Move frontend build into backend
+        run: |
+          rm -rf public || true
+          mkdir -p public
+          cp -r frontend/dist/* public/
+
+      - name: Prepare deploy bundle
+        run: |
+          mkdir -p bundle
+          cp -r dist bundle/
+          cp -r public bundle/
+          cp -r ecosystem.config.js bundle/
+          cp package*.json bundle/
+          cp .env bundle/
+          cp signals-google-key.json bundle/
+
+      - name: Clean remote target dir
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SANDBOX_EC2_HOST }}
+          username: ${{ secrets.SANDBOX_EC2_USER }}
+          port: ${{ secrets.SANDBOX_EC2_PORT }}
+          key: ${{ secrets.SANDBOX_EC2_KEY }}
+          script: |
+            rm -rf ${{ secrets.SANDBOX_TARGET_DIR }}/*
+            mkdir -p ${{ secrets.SANDBOX_TARGET_DIR }}
+
+      - name: Upload bundle to EC2
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.SANDBOX_EC2_HOST }}
+          username: ${{ secrets.SANDBOX_EC2_USER }}
+          port: ${{ secrets.SANDBOX_EC2_PORT }}
+          key: ${{ secrets.SANDBOX_EC2_KEY }}
+          source: "bundle/**"
+          target: ${{ secrets.SANDBOX_TARGET_DIR }}
+          strip_components: 1
+
+      - name: Start/Reload PM2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SANDBOX_EC2_HOST }}
+          username: ${{ secrets.SANDBOX_EC2_USER }}
+          port: ${{ secrets.SANDBOX_EC2_PORT }}
+          key: ${{ secrets.SANDBOX_EC2_KEY }}
+          script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+            nvm use node
+            cd ${{ secrets.SANDBOX_TARGET_DIR }}
+            npm install --production
+            pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
