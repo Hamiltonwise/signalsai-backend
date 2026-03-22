@@ -34,10 +34,10 @@ jobs:
       - name: Build backend
         run: npm run build
 
-      # 📦 Build frontend (monorepo — signalsai/ is in this repo)
+      # 📦 Build frontend (monorepo — frontend/ is in this repo)
       - name: Build frontend
         run: |
-          cd signalsai
+          cd frontend
           echo "VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}" > .env
           npm ci
           npm run build
@@ -48,7 +48,7 @@ jobs:
         run: |
           rm -rf public || true
           mkdir -p public
-          cp -r signalsai/dist/* public/
+          cp -r frontend/dist/* public/
 
       # 📦 Prepare deployment bundle
       - name: Prepare deploy bundle
@@ -63,7 +63,7 @@ jobs:
 
       # 🧹 Clean EC2 target directory
       - name: Clean remote target dir
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
@@ -87,7 +87,7 @@ jobs:
 
       # 🔁 Restart Node app with PM2
       - name: Start/Reload PM2
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}

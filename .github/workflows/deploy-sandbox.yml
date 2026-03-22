@@ -33,7 +33,7 @@ jobs:
 
       - name: Build frontend
         run: |
-          cd signalsai
+          cd frontend
           echo "VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}" > .env
           npm ci
           npm run build
@@ -43,7 +43,7 @@ jobs:
         run: |
           rm -rf public || true
           mkdir -p public
-          cp -r signalsai/dist/* public/
+          cp -r frontend/dist/* public/
 
       - name: Prepare deploy bundle
         run: |
@@ -56,7 +56,7 @@ jobs:
           cp signals-google-key.json bundle/
 
       - name: Clean remote target dir
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.1
         with:
           host: ${{ secrets.SANDBOX_EC2_HOST }}
           username: ${{ secrets.SANDBOX_EC2_USER }}
@@ -78,7 +78,7 @@ jobs:
           strip_components: 1
 
       - name: Start/Reload PM2
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.1
         with:
           host: ${{ secrets.SANDBOX_EC2_HOST }}
           username: ${{ secrets.SANDBOX_EC2_USER }}
