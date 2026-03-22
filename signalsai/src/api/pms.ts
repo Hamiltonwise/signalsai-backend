@@ -1,0 +1,704 @@
+import { apiDelete, apiGet, apiPatch, apiPost } from "./index";
+
+// =====================================================================
+// AUTOMATION STATUS TYPES
+// =====================================================================
+
+export type AutomationStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "awaiting_approval";
+
+export type StepStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "skipped";
+
+export type StepKey =
+  | "file_upload"
+  | "pms_parser"
+  | "admin_approval"
+  | "client_approval"
+  | "monthly_agents"
+  | "task_creation"
+  | "complete";
+
+export type MonthlyAgentKey =
+  | "data_fetch"
+  | "summary_agent"
+  | "referral_engine"
+  | "opportunity_agent"
+  | "cro_optimizer";
+
+export interface StepDetail {
+  status: StepStatus;
+  startedAt?: string;
+  completedAt?: string;
+  error?: string;
+  subStep?: MonthlyAgentKey;
+  agentsCompleted?: MonthlyAgentKey[];
+  currentAgent?: MonthlyAgentKey;
+}
+
+export interface AgentResult {
+  success: boolean;
+  resultId?: number;
+  error?: string;
+}
+
+export interface TasksCreatedSummary {
+  user: number;
+  alloro: number;
+  total: number;
+}
+
+export interface AutomationSummary {
+  tasksCreated: TasksCreatedSummary;
+  agentResults: {
+    summary?: AgentResult;
+    referral_engine?: AgentResult;
+    opportunity?: AgentResult;
+    cro_optimizer?: AgentResult;
+  };
+  duration?: string;
+}
+
+export interface AutomationStatusDetail {
+  status: AutomationStatus;
+  currentStep: StepKey;
+  currentSubStep?: string;
+  message: string;
+  progress: number;
+  steps: Record<StepKey, StepDetail>;
+  summary?: AutomationSummary;
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+}
+
+export interface AutomationStatusResponse {
+  success: boolean;
+  data?: {
+    jobId: number;
+    organization_id: number | null;
+    jobStatus: string;
+    isAdminApproved: boolean;
+    isClientApproved: boolean;
+    timestamp: string;
+    automationStatus: AutomationStatusDetail | null;
+  };
+  error?: string;
+  message?: string;
+}
+
+export interface ActiveAutomationJobsResponse {
+  success: boolean;
+  data?: {
+    jobs: Array<{
+      jobId: number;
+      organization_id: number | null;
+      jobStatus: string;
+      isAdminApproved: boolean;
+      isClientApproved: boolean;
+      timestamp: string;
+      automationStatus: AutomationStatusDetail | null;
+    }>;
+    count: number;
+  };
+  error?: string;
+  message?: string;
+}
+
+// =====================================================================
+// EXISTING TYPES
+// =====================================================================
+
+export interface PmsJob {
+  id: number;
+  time_elapsed: number | null;
+  status: string;
+  response_log: unknown;
+  timestamp: string;
+  is_approved: boolean;
+  is_client_approved: boolean;
+  organization_id?: number | null;
+  location_name?: string | null;
+  automation_status_detail?: AutomationStatusDetail | null;
+}
+
+export interface FetchPmsJobsParams {
+  page?: number;
+  status?: string[];
+  isApproved?: boolean;
+  organization_id?: number;
+  location_id?: number;
+}
+
+export interface FetchPmsJobsResponse {
+  success: boolean;
+  data?: {
+    jobs: PmsJob[];
+    pagination: {
+      page: number;
+      perPage: number;
+      total: number;
+      totalPages: number;
+      hasNextPage: boolean;
+    };
+    filters?: {
+      statuses?: string[];
+      isApproved?: boolean;
+      organization_id?: number;
+    };
+  };
+  error?: string;
+  message?: string;
+}
+
+export interface PMSRecord {
+  date: string;
+  referral_type: string;
+  referral_source?: string;
+  production_amount: number;
+  appointment_type?: string;
+  treatment_category?: string;
+  notes?: string;
+}
+
+export interface PMSUploadRequest {
+  domain: string;
+  file: File;
+  pmsType?: string;
+  locationId?: number | null;
+}
+
+export interface PMSUploadResponse {
+  success: boolean;
+  data?: {
+    recordsProcessed: number;
+    recordsStored: number;
+    entryType?: "csv" | "manual";
+    jobId?: number;
+  };
+  error?: string;
+  message?: string;
+}
+
+// =====================================================================
+// MANUAL ENTRY TYPES
+// =====================================================================
+
+export interface ManualSourceEntry {
+  name: string;
+  referrals: number;
+  production: number;
+  inferred_referral_type?: "self" | "doctor";
+}
+
+export interface ManualMonthEntry {
+  month: string;
+  self_referrals: number;
+  doctor_referrals: number;
+  total_referrals: number;
+  production_total: number;
+  sources: ManualSourceEntry[];
+}
+
+export interface PMSManualEntryRequest {
+  domain: string;
+  monthlyData: ManualMonthEntry[];
+  locationId?: number | null;
+}
+
+export interface PmsKeyDataMonth {
+  month: string;
+  selfReferrals: number;
+  doctorReferrals: number;
+  totalReferrals: number;
+  productionTotal: number;
+}
+
+export interface PmsKeyDataSource {
+  rank: number;
+  name: string;
+  referrals: number;
+  production: number;
+  percentage: number;
+}
+
+export interface PmsKeyDataResponse {
+  success: boolean;
+  data?: {
+    organizationId: number;
+    months: PmsKeyDataMonth[];
+    sources: PmsKeyDataSource[];
+    totals: {
+      totalReferrals: number;
+      totalProduction: number;
+    };
+    stats: {
+      jobCount: number;
+      earliestJobTimestamp: string | null;
+      latestJobTimestamp: string | null;
+      distinctMonths: number;
+      latestJobStatus: string | null;
+      latestJobIsApproved: boolean | null;
+      latestJobIsClientApproved: boolean | null;
+      latestJobId: number | null;
+    };
+    latestJobRaw: unknown;
+  };
+  error?: string;
+  message?: string;
+}
+
+/**
+ * Fetch paginated PMS job records
+ */
+export async function fetchPmsJobs(
+  params: FetchPmsJobsParams = {}
+): Promise<FetchPmsJobsResponse> {
+  const query = new URLSearchParams();
+
+  if (params.page && params.page > 1) {
+    query.set("page", String(params.page));
+  }
+
+  if (params.status?.length) {
+    query.set("status", params.status.join(","));
+  }
+
+  if (typeof params.isApproved === "boolean") {
+    query.set("isApproved", params.isApproved ? "1" : "0");
+  }
+
+  if (params.organization_id) {
+    query.set("organization_id", String(params.organization_id));
+  }
+
+  if (params.location_id) {
+    query.set("location_id", String(params.location_id));
+  }
+
+  const queryString = query.toString();
+
+  return apiGet({
+    path: `/pms/jobs${queryString ? `?${queryString}` : ""}`,
+  });
+}
+
+/**
+ * Upload PMS data via CSV file
+ * @param request - Contains clientId and file
+ * @returns Promise with upload result
+ */
+export async function uploadPMSData(
+  request: PMSUploadRequest
+): Promise<PMSUploadResponse> {
+  try {
+    // Create FormData to send the file
+    const formData = new FormData();
+    formData.append("csvFile", request.file);
+    formData.append("domain", request.domain);
+    if (request.pmsType) {
+      formData.append("pmsType", request.pmsType);
+    }
+    if (request.locationId) {
+      formData.append("locationId", String(request.locationId));
+    }
+
+    // Use apiPost with FormData support
+    const result = await apiPost({
+      path: "/pms/upload",
+      passedData: formData,
+      additionalHeaders: {
+        Accept: "application/json",
+      },
+    });
+
+    return result;
+  } catch (error) {
+    console.error("PMS upload API error:", error);
+    return {
+      success: false,
+      error: "Failed to upload PMS data. Please try again.",
+    };
+  }
+}
+
+/**
+ * Submit manually entered PMS data (no file upload)
+ * Data goes directly to monthly agents, skipping admin/client approval
+ * @param request - Contains domain and structured monthly data
+ * @returns Promise with submission result
+ */
+export async function submitManualPMSData(
+  request: PMSManualEntryRequest
+): Promise<PMSUploadResponse> {
+  try {
+    const result = await apiPost({
+      path: "/pms/upload",
+      passedData: {
+        domain: request.domain,
+        manualData: request.monthlyData,
+        entryType: "manual",
+        locationId: request.locationId || undefined,
+      },
+      additionalHeaders: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+
+    return result;
+  } catch (error) {
+    console.error("PMS manual entry API error:", error);
+    return {
+      success: false,
+      error: "Failed to submit PMS data. Please try again.",
+    };
+  }
+}
+
+// =====================================================================
+// PASTE-PARSE TYPES AND API FUNCTION
+// =====================================================================
+
+export interface SanitizationRow {
+  source: string;
+  type: "self" | "doctor";
+  referrals: number;
+  production: number;
+  month: string;
+}
+
+export interface PasteParseApiResponse {
+  success: boolean;
+  data?: {
+    rows: SanitizationRow[];
+    warnings: string[];
+    rowsParsed: number;
+    monthsDetected: number;
+  };
+  error?: string;
+}
+
+/**
+ * Send pasted text batch for JS parsing (fixed columns: Date, Source, Type, Production).
+ */
+export async function parsePastedData(
+  rawText: string,
+  currentMonth: string
+): Promise<PasteParseApiResponse> {
+  try {
+    const result = await apiPost({
+      path: "/pms/parse-paste",
+      passedData: { rawText, currentMonth },
+      additionalHeaders: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+    return result as PasteParseApiResponse;
+  } catch (error) {
+    console.error("PMS paste-parse API error:", error);
+    return {
+      success: false,
+      error: "Failed to parse pasted data. Please try again.",
+    };
+  }
+}
+
+// =====================================================================
+// PASTE SANITIZATION TYPES AND API FUNCTION
+// =====================================================================
+
+export interface MergeGroup {
+  canonicalName: string;
+  canonicalType: "self" | "doctor";
+  sourceNames: string[];
+  rows: SanitizationRow[];
+}
+
+export interface SanitizationStats {
+  totalInputRows: number;
+  exactGroupsMerged: number;
+  fuzzyGroupsFound: number;
+  fuzzyGroupsConfirmed: number;
+  uniqueSourcesAfter: number;
+}
+
+export interface PasteSanitizeApiResponse {
+  success: boolean;
+  data?: {
+    allRows: SanitizationRow[];
+    mergeGroups: MergeGroup[];
+    reasoning: string[];
+    warnings: string[];
+    stats: SanitizationStats;
+  };
+  error?: string;
+}
+
+/**
+ * Deduplicate and sanitize parsed PMS rows (exact + AI fuzzy dedup).
+ */
+export async function sanitizePastedData(
+  rows: SanitizationRow[]
+): Promise<PasteSanitizeApiResponse> {
+  try {
+    const result = await apiPost({
+      path: "/pms/sanitize-paste",
+      passedData: { rows },
+      additionalHeaders: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+    return result as PasteSanitizeApiResponse;
+  } catch (error) {
+    console.error("PMS sanitize-paste API error:", error);
+    return {
+      success: false,
+      error: "Failed to sanitize pasted data. Please try again.",
+    };
+  }
+}
+
+/**
+ * Get PMS data summary for a client
+ * @param clientId - Client identifier
+ * @returns Promise with PMS data summary
+ */
+export async function getPMSDataSummary(clientId: string) {
+  try {
+    const response = await apiPost({
+      path: "/pms/summary",
+      passedData: { clientId },
+      additionalHeaders: {
+        Accept: "application/json",
+      },
+    });
+
+    return response;
+  } catch (error) {
+    console.error("PMS summary API error:", error);
+    return {
+      success: false,
+      error: "Failed to fetch PMS data summary.",
+    };
+  }
+}
+
+/**
+ * Toggle or set the approval state for a PMS job
+ */
+export async function togglePmsJobApproval(jobId: number, isApproved: boolean) {
+  return apiPatch({
+    path: `/pms/jobs/${jobId}/approval`,
+    passedData: { isApproved },
+  });
+}
+
+/**
+ * Persist updates to a PMS job response log
+ */
+export async function updatePmsJobResponse(
+  jobId: number,
+  responseLog: string | null
+) {
+  return apiPatch({
+    path: `/pms/jobs/${jobId}/response`,
+    passedData: { responseLog },
+  });
+}
+
+export async function updatePmsJobClientApproval(
+  jobId: number,
+  isClientApproved: boolean
+) {
+  return apiPatch({
+    path: `/pms/jobs/${jobId}/client-approval`,
+    passedData: { isClientApproved },
+  });
+}
+
+/**
+ * Delete a PMS job entry permanently.
+ */
+export async function deletePmsJob(jobId: number) {
+  return apiDelete({
+    path: `/pms/jobs/${jobId}`,
+  });
+}
+
+/**
+ * Fetch PMS key data aggregation for an organization.
+ */
+export async function fetchPmsKeyData(
+  organizationId?: number,
+  locationId?: number | null
+): Promise<PmsKeyDataResponse> {
+  const params = new URLSearchParams();
+  if (organizationId) params.set("organization_id", String(organizationId));
+  if (locationId) params.set("location_id", String(locationId));
+  const query = params.toString();
+  return apiGet({
+    path: `/pms/keyData${query ? `?${query}` : ""}`,
+  }) as Promise<PmsKeyDataResponse>;
+}
+
+// =====================================================================
+// AUTOMATION STATUS API FUNCTIONS
+// =====================================================================
+
+/**
+ * Fetch automation status for a specific PMS job
+ */
+export async function fetchAutomationStatus(
+  jobId: number
+): Promise<AutomationStatusResponse> {
+  return apiGet({
+    path: `/pms/jobs/${jobId}/automation-status`,
+  }) as Promise<AutomationStatusResponse>;
+}
+
+/**
+ * Fetch all active (non-completed) automation jobs
+ */
+export async function fetchActiveAutomationJobs(
+  organizationId?: number,
+  locationId?: number | null
+): Promise<ActiveAutomationJobsResponse> {
+  const params = new URLSearchParams();
+  if (organizationId) params.set("organization_id", String(organizationId));
+  if (locationId) params.set("location_id", String(locationId));
+  const query = params.toString();
+  return apiGet({
+    path: `/pms/automation/active${query ? `?${query}` : ""}`,
+  }) as Promise<ActiveAutomationJobsResponse>;
+}
+
+// =====================================================================
+// RETRY TYPES AND API FUNCTIONS
+// =====================================================================
+
+export type RetryableStep = "pms_parser" | "monthly_agents";
+
+export interface RetryStepResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    jobId: number;
+    stepRetried: RetryableStep;
+    organization_id?: number;
+  };
+  error?: string;
+}
+
+/**
+ * Retry a failed automation step
+ * @param jobId - The PMS job ID
+ * @param stepToRetry - Either 'pms_parser' or 'monthly_agents'
+ */
+export async function retryPmsStep(
+  jobId: number,
+  stepToRetry: RetryableStep
+): Promise<RetryStepResponse> {
+  try {
+    const result = await apiPost({
+      path: `/pms/jobs/${jobId}/retry`,
+      passedData: { stepToRetry },
+    });
+    return result as RetryStepResponse;
+  } catch (error) {
+    console.error("PMS retry API error:", error);
+    return {
+      success: false,
+      error: "Failed to retry step. Please try again.",
+    };
+  }
+}
+
+/**
+ * Restart a completed monthly agents run.
+ * Deletes all data from the run and re-triggers from scratch.
+ */
+export async function restartPmsJob(
+  jobId: number
+): Promise<{
+  success: boolean;
+  message?: string;
+  data?: { jobId: number; restarted: boolean; deletionCounts: Record<string, number> };
+  error?: string;
+}> {
+  try {
+    const result = await apiPost({
+      path: `/pms/jobs/${jobId}/restart`,
+      passedData: {},
+    });
+    return result as any;
+  } catch (error) {
+    console.error("PMS restart API error:", error);
+    return {
+      success: false,
+      error: "Failed to restart run. Please try again.",
+    };
+  }
+}
+
+/**
+ * Get the retryable step for a failed automation
+ * Returns the step that can be retried based on current failure state
+ */
+export function getRetryableStep(
+  automationStatus: AutomationStatusDetail | null
+): RetryableStep | null {
+  if (!automationStatus || automationStatus.status !== "failed") {
+    return null;
+  }
+
+  const { currentStep, steps } = automationStatus;
+
+  // Check if pms_parser failed
+  if (currentStep === "pms_parser" || steps.pms_parser?.status === "failed") {
+    return "pms_parser";
+  }
+
+  // Check if monthly_agents failed
+  if (
+    currentStep === "monthly_agents" ||
+    steps.monthly_agents?.status === "failed"
+  ) {
+    return "monthly_agents";
+  }
+
+  return null;
+}
+
+// =====================================================================
+// STEP CONFIGURATION (for UI display)
+// =====================================================================
+
+export const STEP_CONFIG: Record<StepKey, { label: string; icon: string }> = {
+  file_upload: { label: "File Upload", icon: "📤" },
+  pms_parser: { label: "PMS Parser", icon: "🔄" },
+  admin_approval: { label: "Admin Approval", icon: "✅" },
+  client_approval: { label: "Client Approval", icon: "✅" },
+  monthly_agents: { label: "Monthly Agents", icon: "🤖" },
+  task_creation: { label: "Task Creation", icon: "📋" },
+  complete: { label: "Complete", icon: "✓" },
+};
+
+export const MONTHLY_AGENT_CONFIG: Record<MonthlyAgentKey, { label: string }> =
+  {
+    data_fetch: { label: "Fetching data" },
+    summary_agent: { label: "Summary Agent" },
+    referral_engine: { label: "Referral Engine" },
+    opportunity_agent: { label: "Opportunity Agent" },
+    cro_optimizer: { label: "CRO Optimizer" },
+  };
