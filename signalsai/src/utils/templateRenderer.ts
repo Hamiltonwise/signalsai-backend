@@ -1,0 +1,255 @@
+import type { Section } from "../api/templates";
+import type { CodeSnippet } from "../api/codeSnippets";
+
+/**
+ * Unwrap sections whether stored as Section[] or { sections: Section[] }.
+ * N8N writes directly to the DB with the wrapped format; our API writes the bare array.
+ */
+export function normalizeSections(raw: unknown): Section[] {
+  if (Array.isArray(raw)) return raw;
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "sections" in raw &&
+    Array.isArray((raw as { sections: unknown }).sections)
+  ) {
+    return (raw as { sections: Section[] }).sections;
+  }
+  return [];
+}
+
+/**
+ * Build the inline form-handler script for a given project.
+ * Mirrors the backend buildFormScript() — kept here because the frontend
+ * cannot import from signalsai-backend.
+ */
+function buildFormScript(projectId: string): string {
+  const apiBase = "https://app.getalloro.com";
+  return `<script data-alloro-form-handler>
+(function(){
+  'use strict';
+  var _ts=Date.now();
+  var _jsc=_ts;for(var i=0;i<1000;i++){_jsc=((_jsc*1103515245+12345)&0x7fffffff);}
+  document.addEventListener('DOMContentLoaded',function(){
+    var API='${apiBase}';
+    var PID='${projectId}';
+    var forms=document.querySelectorAll('form:not([data-alloro-ignore])');
+    forms.forEach(function(form){
+      form.addEventListener('submit',function(e){
+        e.preventDefault();
+        var formName=form.getAttribute('data-form-name')||form.getAttribute('name')||'Contact Form';
+        var formType=form.getAttribute('data-form-type')||'contact';
+        var contents={};
+        var inputs=form.querySelectorAll('input,select,textarea');
+        inputs.forEach(function(el){
+          if(el.tabIndex===-1||el.type==='submit'||el.type==='hidden'||el.type==='button')return;
+          var label=el.getAttribute('data-label')||el.getAttribute('name')||el.getAttribute('placeholder')||'';
+          if(!label)return;
+          if(el.type==='checkbox'){
+            if(el.checked){
+              contents[label]=contents[label]?contents[label]+', '+el.value:el.value;
+            }
+          }else if(el.type==='radio'){
+            if(el.checked){
+              contents[label]=el.value;
+            }
+          }else if(el.tagName==='SELECT'){
+            var opt=el.options[el.selectedIndex];
+            if(opt&&opt.value){
+              contents[label]=opt.textContent.trim();
+            }
+          }else{
+            var v=el.value.trim();
+            if(v)contents[label]=v;
+          }
+        });
+        var btn=form.querySelector('button[type="submit"],input[type="submit"]');
+        var origText=btn?btn.textContent:'';
+        if(btn){btn.disabled=true;btn.textContent='Sending...';}
+        fetch(API+'/api/websites/form-submission',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({projectId:PID,formName:formName,formType:formType,contents:contents,_hp:'',_ts:_ts,_jsc:_jsc})
+        })
+        .then(function(r){if(!r.ok)throw new Error('fail');return r.json();})
+        .then(function(){
+          window.location.href=formType==='newsletter'?'/newsletter-success':'/success';
+        })
+        .catch(function(){
+          if(btn){btn.textContent='Error — Try Again';btn.style.backgroundColor='#dc2626';}
+          setTimeout(function(){if(btn){btn.disabled=false;btn.textContent=origText;btn.style.backgroundColor='';}},3000);
+        });
+      });
+    });
+  });
+})();
+</script>`;
+}
+
+/**
+ * Inject code snippets into HTML at specified locations
+ */
+function injectCodeSnippets(
+  html: string,
+  snippets: CodeSnippet[],
+  currentPageId?: string
+): string {
+  // 1. Filter enabled snippets
+  const enabled = snippets.filter((s) => s.is_enabled);
+
+  // 2. Filter by page targeting
+  const targeted = enabled.filter((s) => {
+    if (s.page_ids.length === 0) return true; // All pages
+    if (!currentPageId) return true; // Preview mode, show all
+    return s.page_ids.includes(currentPageId);
+  });
+
+  // 3. Group by location and sort by order_index
+  const byLocation = {
+    head_start: targeted
+      .filter((s) => s.location === "head_start")
+      .sort((a, b) => a.order_index - b.order_index),
+    head_end: targeted
+      .filter((s) => s.location === "head_end")
+      .sort((a, b) => a.order_index - b.order_index),
+    body_start: targeted
+      .filter((s) => s.location === "body_start")
+      .sort((a, b) => a.order_index - b.order_index),
+    body_end: targeted
+      .filter((s) => s.location === "body_end")
+      .sort((a, b) => a.order_index - b.order_index),
+  };
+
+  // 4. Inject at each location
+  let result = html;
+
+  if (byLocation.head_start.length > 0) {
+    const code = byLocation.head_start.map((s) => s.code).join("\n");
+    result = result.replace(/<head>/i, `<head>\n${code}`);
+  }
+
+  if (byLocation.head_end.length > 0) {
+    const code = byLocation.head_end.map((s) => s.code).join("\n");
+    result = result.replace(/<\/head>/i, `${code}\n</head>`);
+  }
+
+  if (byLocation.body_start.length > 0) {
+    const code = byLocation.body_start.map((s) => s.code).join("\n");
+    result = result.replace(/<body([^>]*)>/i, `<body$1>\n${code}`);
+  }
+
+  if (byLocation.body_end.length > 0) {
+    const code = byLocation.body_end.map((s) => s.code).join("\n");
+    result = result.replace(/<\/body>/i, `${code}\n</body>`);
+  }
+
+  return result;
+}
+
+/**
+ * Inject a `data-alloro-section` attribute on the root element of a section's HTML.
+ * This gives extractSectionsFromDom a reliable way to find each section in the
+ * live iframe DOM, regardless of whether the template uses alloro-tpl-* classes.
+ */
+function tagSectionRoot(sectionName: string, html: string): string {
+  // Match the first opening HTML tag (e.g., <section ...>, <div ...>)
+  return html.replace(/^(\s*<\w+)/, `$1 data-alloro-section="${sectionName}"`);
+}
+
+/**
+ * Assemble a full HTML page from template parts.
+ *
+ * wrapper.replace('{{slot}}', header + sections + footer)
+ *
+ * @param sectionFilter – optional list of section names to include (omit for all)
+ * @param codeSnippets – optional code snippets to inject
+ * @param currentPageId – optional page ID for snippet targeting
+ * @param projectId – optional project ID; when provided, the form-handler script is injected
+ */
+export function renderPage(
+  wrapper: string,
+  header: string,
+  footer: string,
+  sections: Section[],
+  sectionFilter?: string[],
+  codeSnippets?: CodeSnippet[],
+  currentPageId?: string,
+  projectId?: string
+): string {
+  const sectionsToRender = sectionFilter
+    ? sections.filter((s) => sectionFilter.includes(s.name))
+    : sections;
+
+  // Inject a data-alloro-section marker on each section's root element
+  // so extractSectionsFromDom can reliably find them after DOM mutation.
+  const mainContent = sectionsToRender
+    .map((s) => tagSectionRoot(s.name, s.content))
+    .join("\n");
+  const pageContent = [header, mainContent, footer].join("\n");
+  let finalHtml = wrapper.replace("{{slot}}", pageContent);
+
+  // Inject code snippets
+  if (codeSnippets && codeSnippets.length > 0) {
+    finalHtml = injectCodeSnippets(finalHtml, codeSnippets, currentPageId);
+  }
+
+  // Inject form-handler script when a projectId is provided
+  // Skip if the deployment pipeline already baked it into the wrapper
+  if (projectId && !finalHtml.includes('data-alloro-form-handler')) {
+    const formScript = buildFormScript(projectId);
+    finalHtml = finalHtml.replace(/<\/body>/i, `${formScript}\n</body>`);
+  }
+
+  return finalHtml;
+}
+
+/**
+ * Parse a JS expression that returns a Section[].
+ * Supports backtick template literals for content values.
+ * Falls back to JSON.parse for strict JSON input.
+ */
+export function parseSectionsJs(input: string): Section[] {
+  try {
+    return JSON.parse(input);
+  } catch {
+    // Fall back to JS eval for backtick template literal syntax
+    try {
+      // eslint-disable-next-line no-new-func
+      const result = new Function(`"use strict"; return (${input});`)();
+      if (!Array.isArray(result)) throw new Error("Sections must be an array");
+      return result as Section[];
+    } catch (evalErr) {
+      // Try to extract a useful line number from the SyntaxError.
+      // new Function() wraps input with a prefix (`"use strict"; return (`)
+      // which adds 1 line, so subtract 1 from any reported line number.
+      if (evalErr instanceof SyntaxError) {
+        // V8 includes line/col in the stack, e.g. "<anonymous>:5:12"
+        const stackMatch = evalErr.stack?.match(/<anonymous>:(\d+):(\d+)/);
+        if (stackMatch) {
+          const line = Math.max(1, parseInt(stackMatch[1], 10) - 1);
+          const col = parseInt(stackMatch[2], 10);
+          throw new Error(`Line ${line}, col ${col}: ${evalErr.message}`);
+        }
+      }
+      throw evalErr;
+    }
+  }
+}
+
+/**
+ * Serialize sections to JS format with backtick content values.
+ * This is the inverse of parseSectionsJs — produces human-friendly
+ * editor content where HTML doesn't need quote escaping.
+ */
+export function serializeSectionsJs(sections: Section[]): string {
+  if (sections.length === 0) return "[]";
+
+  const entries = sections.map((s) => {
+    const escaped = s.content
+      .replace(/\\/g, "\\\\")
+      .replace(/`/g, "\\`")
+      .replace(/\$\{/g, "\\${");
+    return `  {\n    "name": "${s.name}",\n    "content": \`${escaped}\`\n  }`;
+  });
+  return `[\n${entries.join(",\n")}\n]`;
+}

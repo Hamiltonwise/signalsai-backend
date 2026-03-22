@@ -1,0 +1,17 @@
+# Enable Rewrite Engine
+RewriteEngine On
+RewriteBase /
+
+# Don’t rewrite API calls
+RewriteCond %{REQUEST_URI} !^/api/
+
+# Avoid breaking routes like /users/1.json
+Options -Multiviews
+
+# Serve existing files if they exist
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Fallback to index.html for React Router
+RewriteRule ^ index.html [L]
