@@ -1,0 +1,36 @@
+gantt
+    title Data Revamp Migration Sequence
+    dateFormat YYYY-MM-DD
+    axisFormat %b %d
+
+    section Plan 01 - Foundation
+    Create locations table           :p1a, 2026-02-23, 1d
+    Create google_properties table   :p1b, after p1a, 1d
+    Create user_locations table      :p1c, after p1b, 1d
+    Seed locations from GBP data     :p1d, after p1c, 1d
+
+    section Plan 02 - Schema
+    Add location_id columns          :p2a, after p1d, 1d
+    Add org_id to pms_jobs           :p2b, after p1d, 1d
+
+    section Plan 03 - Backfill
+    Backfill org_id on pms_jobs      :p3a, after p2b, 1d
+    Backfill location_id all tables  :p3b, after p3a, 1d
+    Add composite indexes            :p3c, after p3b, 1d
+
+    section Plan 04 - Agents
+    Create resolveLocationId utility :p4a, after p3c, 1d
+    Update AgentsController          :p4b, after p4a, 2d
+    Update task-creator service      :p4c, after p4b, 1d
+    Update PMS upload service        :p4d, after p4c, 1d
+
+    section Plan 05 - API
+    Location-aware RBAC middleware   :p5a, after p4d, 2d
+    Migrate client endpoints         :p5b, after p5a, 3d
+    Add model query methods          :p5c, after p5a, 2d
+
+    section Plan 06 - Frontend
+    LocationContext + Provider        :p6a, after p5b, 2d
+    Location Switcher UI             :p6b, after p6a, 1d
+    Update API modules               :p6c, after p6a, 2d
+    Update data-fetching hooks       :p6d, after p6c, 2d

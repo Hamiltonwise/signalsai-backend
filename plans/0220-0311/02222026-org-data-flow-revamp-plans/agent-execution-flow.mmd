@@ -1,0 +1,22 @@
+flowchart TD
+    subgraph "Agent Trigger"
+        A[Cron / PMS Upload / Manual] --> B[Fetch google_connection]
+        B --> C[Get organization_id from connection]
+        C --> D[resolveLocationId\nfrom GBP location being processed]
+    end
+
+    subgraph "Agent Processing"
+        D --> E[Run agent\nproofline / monthly / ranking / etc]
+        E --> F{Agent type?}
+        F -->|Per-location| G[Process specific GBP location]
+        F -->|Per-org| H[Process primary location]
+        F -->|SYSTEM| I[No org/location - global]
+    end
+
+    subgraph "Data Storage"
+        G --> J[INSERT agent_results\norg_id + location_id]
+        H --> J
+        I --> K[INSERT agent_results\norg_id=NULL, location_id=NULL]
+        J --> L[INSERT tasks via task-creator\norg_id + location_id]
+        J --> M[INSERT notifications\norg_id + location_id]
+    end
