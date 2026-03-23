@@ -12,6 +12,7 @@ export interface IOrganization {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   stripe_price_id: string | null;
+  billing_quantity_override: number | null;
   operational_jurisdiction: string | null;
   onboarding_completed: boolean;
   onboarding_wizard_completed: boolean;
