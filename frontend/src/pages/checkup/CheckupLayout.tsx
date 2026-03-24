@@ -2,27 +2,34 @@ import { Outlet } from "react-router-dom";
 
 /**
  * Public layout for the Checkup flow — no sidebar, no auth.
- * Centered, mobile-first, branded.
+ * Centered, mobile-first, branded. $2,000/month product feel.
  */
 export default function CheckupLayout() {
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-slate-50 to-white flex flex-col">
-      {/* Minimal branded header */}
-      <header className="flex items-center justify-center pt-8 pb-4 px-4">
-        <span className="text-[22px] font-bold tracking-tight text-slate-900">
-          alloro
-        </span>
+    <div className="min-h-dvh bg-[#FAFAF8] flex flex-col">
+      {/* Branded header — Navy wordmark with Terracotta accent */}
+      <header className="flex items-center justify-center pt-10 pb-6 px-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9"/>
+            </svg>
+          </div>
+          <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+            alloro
+          </span>
+        </div>
       </header>
 
       {/* Flow content */}
-      <main className="flex-1 flex flex-col items-center px-4 pb-8">
+      <main className="flex-1 flex flex-col items-center px-5 pb-10">
         <Outlet />
       </main>
 
-      {/* Minimal footer */}
-      <footer className="py-6 text-center">
-        <p className="text-xs text-slate-400">
-          Powered by Alloro &middot; Business Clarity
+      {/* Refined footer */}
+      <footer className="py-8 text-center border-t border-slate-100">
+        <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
+          Alloro &middot; Business Clarity
         </p>
       </footer>
     </div>

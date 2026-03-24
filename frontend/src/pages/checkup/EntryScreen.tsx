@@ -155,28 +155,31 @@ export default function EntryScreen() {
   };
 
   return (
-    <div className="w-full max-w-md mt-4 sm:mt-12">
+    <div className="w-full max-w-md mt-2 sm:mt-8">
       {/* Referral banner */}
       {referrerName && (
-        <div className="flex items-center justify-center gap-2 mb-4 text-sm text-[#212D40] bg-[#D56753]/5 border border-[#D56753]/15 rounded-xl px-4 py-2.5">
+        <div className="flex items-center justify-center gap-2 mb-6 text-sm text-[#212D40] bg-[#D56753]/5 border border-[#D56753]/15 rounded-xl px-4 py-2.5">
           <UserCheck className="w-4 h-4 text-[#D56753] shrink-0" />
           <span>Referred by <strong>{referrerName}</strong></span>
         </div>
       )}
 
-      {/* Headline — updates with dynamic specialty after place selection */}
-      <div className="text-center mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-          Free Referral Base Checkup
+      {/* Headline — strong hierarchy, updates with specialty */}
+      <div className="text-center mb-10">
+        <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-3">
+          Free Practice Analysis
+        </p>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight leading-tight">
+          How does your practice<br />stack up?
         </h1>
-        <p className="mt-3 text-base text-slate-500 leading-relaxed">
+        <p className="mt-4 text-base text-slate-500 leading-relaxed max-w-sm mx-auto">
           {selectedPlace
             ? `See how you rank against every ${competitorTerm(selectedPlace.category, selectedPlace.types, selectedPlace.name)} in ${selectedPlace.city || "your market"}.`
-            : "See how your practice stacks up — in 60 seconds."}
+            : "Get your Business Health Score in 60 seconds. No login required."}
         </p>
       </div>
 
-      {/* Search input */}
+      {/* Search input — premium styling */}
       <div className="relative">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
@@ -187,26 +190,26 @@ export default function EntryScreen() {
             onChange={(e) => handleInputChange(e.target.value)}
             placeholder="Search your practice name..."
             autoComplete="off"
-            className="w-full h-14 pl-12 pr-12 rounded-2xl bg-white border border-slate-200 text-base text-slate-900 placeholder:text-slate-400 shadow-premium transition-all focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/10"
+            className="w-full h-[56px] pl-12 pr-12 rounded-2xl bg-white border border-slate-200 text-base text-[#212D40] placeholder:text-slate-400 shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-all focus:outline-none focus:border-[#D56753] focus:ring-4 focus:ring-[#D56753]/8 focus:shadow-[0_2px_20px_rgba(213,103,83,0.12)]"
           />
           {isSearching && (
-            <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 animate-spin" />
+            <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#D56753] animate-spin" />
           )}
         </div>
 
-        {/* Autocomplete dropdown — z-30 to stay above selected place card */}
+        {/* Autocomplete dropdown */}
         {suggestions.length > 0 && !selectedPlace && (
-          <ul className="absolute z-30 top-full mt-2 w-full bg-white border border-slate-200 rounded-2xl shadow-premium overflow-hidden max-h-[60vh] overflow-y-auto">
+          <ul className="absolute z-30 top-full mt-2 w-full bg-white border border-slate-200 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] overflow-hidden max-h-[60vh] overflow-y-auto">
             {suggestions.map((s) => (
               <li key={s.placeId}>
                 <button
                   type="button"
                   onClick={() => handleSelect(s)}
-                  className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                  className="w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-[#D56753]/3 transition-colors"
                 >
-                  <MapPin className="w-4 h-4 text-alloro-orange mt-0.5 shrink-0" />
+                  <MapPin className="w-4 h-4 text-[#D56753] mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">
+                    <p className="text-sm font-semibold text-[#212D40] truncate">
                       {s.mainText}
                     </p>
                     <p className="text-xs text-slate-500 truncate">
@@ -220,9 +223,9 @@ export default function EntryScreen() {
         )}
       </div>
 
-      {/* Intent chips — shown before place selection */}
+      {/* Intent chips */}
       {!selectedPlace && !isSelecting && (
-        <div className="mt-5 flex flex-wrap gap-2 justify-center">
+        <div className="mt-6 flex flex-wrap gap-2 justify-center">
           {[
             "Who's beating me in my market?",
             "What's my online presence score?",
@@ -235,10 +238,10 @@ export default function EntryScreen() {
                 setIntent(label);
                 searchInputRef.current?.focus();
               }}
-              className={`text-xs px-3.5 py-2 rounded-full border transition-all ${
+              className={`text-[13px] px-4 py-2 rounded-full border transition-all duration-200 ${
                 intent === label
-                  ? "border-[#D56753] bg-[#D56753]/5 text-[#D56753] font-semibold"
-                  : "border-[#212D40]/20 text-[#212D40] hover:border-[#D56753] hover:text-[#D56753]"
+                  ? "border-[#D56753] bg-[#D56753]/5 text-[#D56753] font-semibold shadow-sm"
+                  : "border-slate-200 text-[#212D40]/70 hover:border-[#D56753]/40 hover:text-[#D56753]"
               }`}
             >
               {label}
@@ -249,26 +252,26 @@ export default function EntryScreen() {
 
       {/* Selected place card */}
       {isSelecting && (
-        <div className="mt-6 flex justify-center">
-          <Loader2 className="w-6 h-6 text-alloro-orange animate-spin" />
+        <div className="mt-8 flex justify-center">
+          <Loader2 className="w-6 h-6 text-[#D56753] animate-spin" />
         </div>
       )}
 
       {selectedPlace && !isSelecting && (
-        <div className="mt-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-premium animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-alloro-orange/10 flex items-center justify-center shrink-0">
-              <MapPin className="w-5 h-5 text-alloro-orange" />
+        <div className="mt-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="flex items-start gap-4">
+            <div className="w-11 h-11 rounded-xl bg-[#D56753]/8 flex items-center justify-center shrink-0">
+              <MapPin className="w-5 h-5 text-[#D56753]" />
             </div>
             <div className="min-w-0">
-              <p className="text-base font-semibold text-slate-900">
+              <p className="text-base font-bold text-[#212D40]">
                 {selectedPlace.name}
               </p>
               <p className="text-sm text-slate-500 mt-0.5">
                 {selectedPlace.formattedAddress}
               </p>
               {selectedPlace.category && (
-                <span className="inline-block mt-2 text-xs font-medium text-alloro-orange bg-alloro-orange/10 rounded-full px-2.5 py-0.5">
+                <span className="inline-block mt-2 text-xs font-semibold text-[#D56753] bg-[#D56753]/8 rounded-full px-2.5 py-0.5">
                   {selectedPlace.category}
                 </span>
               )}
@@ -278,7 +281,7 @@ export default function EntryScreen() {
           <button
             type="button"
             onClick={handleContinue}
-            className="mt-5 w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-alloro-orange text-white text-sm font-semibold shadow-soft-glow hover:brightness-105 active:scale-[0.98] transition-all"
+            className="mt-6 w-full h-13 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all"
           >
             Run My Checkup
             <ArrowRight className="w-4 h-4" />
@@ -286,11 +289,14 @@ export default function EntryScreen() {
         </div>
       )}
 
-      {/* Trust signals */}
-      <div className="mt-10 text-center space-y-2">
-        <p className="text-xs text-slate-400">
-          No login required &middot; Free &middot; Takes 60 seconds
-        </p>
+      {/* Trust signals — refined */}
+      <div className="mt-12 flex items-center justify-center gap-4">
+        {["No login required", "Free", "60 seconds"].map((text, i) => (
+          <span key={text} className="flex items-center gap-1.5 text-xs text-slate-400">
+            {i > 0 && <span className="w-1 h-1 rounded-full bg-slate-300" />}
+            {text}
+          </span>
+        ))}
       </div>
     </div>
   );

@@ -303,21 +303,24 @@ export default function ScanningTheater() {
   ];
 
   return (
-    <div className="w-full max-w-4xl mt-4 sm:mt-8">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+    <div className="w-full max-w-4xl mt-2 sm:mt-6">
+      {/* Header — dramatic, branded */}
+      <div className="text-center mb-8">
+        <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-2">
+          Market Analysis
+        </p>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight">
           Scanning {place.name}
         </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Analyzing your market in {place.city || "your area"}...
+        <p className="text-sm text-slate-500 mt-2">
+          Analyzing {place.city ? `the ${place.city} market` : "your market"} in real time
         </p>
       </div>
 
       {/* Two-panel layout */}
       <div className="flex flex-col lg:flex-row gap-5">
         {/* Left panel — Animated Checklist */}
-        <div className="lg:w-[320px] shrink-0 bg-white border border-slate-200 rounded-2xl p-6 shadow-premium">
+        <div className="lg:w-[340px] shrink-0 bg-white border border-slate-200 rounded-2xl p-7 shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
           <div className="space-y-4">
             {CHECKLIST_ITEMS.map((text, i) => (
               <ChecklistItem
@@ -335,7 +338,7 @@ export default function ScanningTheater() {
           </div>
 
           {/* Progress indicator */}
-          <div className="mt-6 pt-4 border-t border-slate-100">
+          <div className="mt-7 pt-5 border-t border-slate-100">
             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#D56753] rounded-full transition-all duration-700 ease-out"
@@ -344,7 +347,7 @@ export default function ScanningTheater() {
                 }}
               />
             </div>
-            <p className="text-xs text-slate-400 mt-2 text-center">
+            <p className="text-xs font-medium text-slate-400 mt-2.5 text-center">
               {activeIndex < CHECKLIST_ITEMS.length
                 ? `Step ${Math.max(1, activeIndex + 1)} of ${CHECKLIST_ITEMS.length}`
                 : "Analysis complete"}
@@ -353,7 +356,7 @@ export default function ScanningTheater() {
         </div>
 
         {/* Right panel — Live Map */}
-        <div className="flex-1 min-h-[300px] lg:min-h-0 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-premium">
+        <div className="flex-1 min-h-[300px] lg:min-h-0 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
           <MapContainer
             center={center}
             zoom={12}

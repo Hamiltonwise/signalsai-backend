@@ -332,11 +332,11 @@ export default function ResultsScreen() {
     : "See what's holding your score back.";
 
   return (
-    <div className="w-full max-w-md mt-4 sm:mt-8 space-y-6 pb-4">
+    <div className="w-full max-w-md mt-2 sm:mt-6 space-y-7 pb-6">
       {/* Intent context chip */}
       {state.intent && (
         <div className="text-center">
-          <span className="inline-block text-xs font-medium text-[#212D40] bg-[#212D40]/5 border border-[#212D40]/15 rounded-full px-3 py-1">
+          <span className="inline-block text-xs font-semibold text-[#212D40]/60 bg-[#212D40]/4 border border-[#212D40]/10 rounded-full px-3.5 py-1.5">
             {state.intent}
           </span>
         </div>
@@ -344,24 +344,24 @@ export default function ResultsScreen() {
 
       {/* Practice name + market context */}
       <div className="text-center">
-        <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">
+        <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-2">
           Business Health Score
         </p>
-        <h2 className="text-xl font-bold text-slate-900 mt-1">{place.name}</h2>
+        <h2 className="text-2xl font-extrabold text-[#212D40]">{place.name}</h2>
         {market && (
-          <p className="text-sm text-slate-400 mt-0.5">
+          <p className="text-sm text-slate-400 mt-1.5">
             vs. {market.totalCompetitors} competitors in {market.city}
           </p>
         )}
       </div>
 
-      {/* Composite Score Ring */}
-      <div className="flex justify-center">
-        <ScoreRing score={score.composite} />
+      {/* Composite Score Ring — larger, more prominent */}
+      <div className="flex justify-center py-2">
+        <ScoreRing score={score.composite} size={180} strokeWidth={12} />
       </div>
 
-      {/* Sub-scores: Local Visibility (40pts), Online Presence (40pts), Review Health (20pts) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-premium space-y-4">
+      {/* Sub-scores */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] space-y-5">
         <SubScoreBar
           label="Local Visibility"
           score={score.localVisibility}
@@ -384,7 +384,7 @@ export default function ResultsScreen() {
 
       {/* Findings — first visible, rest blurred */}
       <div className="space-y-3">
-        <h2 className="text-base font-semibold text-slate-900">Key Findings</h2>
+        <h2 className="text-sm font-bold text-[#212D40] uppercase tracking-wide">Key Findings</h2>
         {findings.map((f, i) => (
           <FindingCard
             key={f.type}
@@ -416,14 +416,16 @@ export default function ResultsScreen() {
 
       {/* Blur Gate — Email Capture */}
       {!emailSubmitted ? (
-        <div className="bg-white border-2 border-[#D56753]/30 rounded-2xl p-6 shadow-premium">
-          <div className="flex items-center gap-2 mb-3">
-            <Lock className="w-4 h-4 text-[#D56753]" />
-            <span className="text-sm font-semibold text-slate-900">
+        <div className="bg-white border-2 border-[#D56753]/25 rounded-2xl p-7 shadow-[0_8px_30px_rgba(213,103,83,0.1)]">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-[#D56753]/8 flex items-center justify-center">
+              <Lock className="w-4 h-4 text-[#D56753]" />
+            </div>
+            <span className="text-base font-bold text-[#212D40]">
               Unlock Full Report
             </span>
           </div>
-          <p className="text-sm text-slate-600 mb-4">{blurGateCta}</p>
+          <p className="text-sm text-slate-600 mb-5 leading-relaxed">{blurGateCta}</p>
           <form onSubmit={handleEmailSubmit} className="space-y-3">
             <div>
               <input
@@ -478,13 +480,13 @@ export default function ResultsScreen() {
             <button
               type="submit"
               disabled={emailSending}
-              className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-sm font-semibold shadow-soft-glow hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-70"
+              className="w-full h-13 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-70"
             >
               {emailSending ? "Sending..." : "Unlock My Full Report"}
               {!emailSending && <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
-          <p className="text-xs text-slate-400 text-center mt-4">
+          <p className="text-[11px] text-slate-400 text-center mt-5 leading-relaxed">
             Your practice operates on a deterministic system. Alloro tracks all
             of it.
           </p>
