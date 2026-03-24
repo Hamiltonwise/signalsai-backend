@@ -25,6 +25,8 @@ import LayoutEditor from "./admin/LayoutEditor";
 import AdminSettings from "./admin/AdminSettings";
 import Schedules from "./admin/Schedules";
 import MindsList from "./admin/MindsList";
+import TheTeam from "./admin/TheTeam";
+import YourMarket from "./admin/YourMarket";
 import MindDetail from "./admin/MindDetail";
 import AlloroPostsDocs from "./admin/AlloroPostsDocs";
 
@@ -87,13 +89,13 @@ function AdminWithLayout() {
           path="organizations/:id/manage"
           element={<OrganizationDetail />}
         />
-        <Route path="practice-ranking" element={<PracticeRanking />} />
+        <Route path="practice-ranking" element={<YourMarket />} />
         <Route path="websites" element={<WebsitesList />} />
         <Route path="websites/:id" element={<WebsiteDetail />} />
         <Route path="templates" element={<TemplatesList />} />
         <Route path="templates/imports/:id" element={<ImportDetail />} />
         <Route path="templates/:id" element={<TemplateDetail />} />
-        <Route path="minds" element={<MindsList />} />
+        <Route path="minds" element={<TheTeam />} />
         <Route path="minds/:mindId" element={<MindDetail />} />
         <Route path="documentation/alloro-posts" element={<AlloroPostsDocs />} />
         <Route path="schedules" element={<Schedules />} />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import LeaderboardSection from "../../components/Admin/LeaderboardSection";
 import {
   TrendingUp,
   Play,
@@ -1142,6 +1143,9 @@ export function PracticeRanking() {
           />
         }
       />
+
+      {/* Leaderboard — WO13 */}
+      <LeaderboardSection jobs={jobs} />
 
       {/* Summary Stats Bar */}
       <motion.div
