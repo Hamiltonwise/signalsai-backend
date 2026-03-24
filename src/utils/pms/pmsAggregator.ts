@@ -226,11 +226,39 @@ export async function aggregatePmsData(
     }
   }
 
-  // Now aggregate sources from the final month map
+  // Now aggregate sources from the final month map.
+  // DEDUP: If patient records exist, count unique patients per source
+  // instead of summing treatment-level referral counts.
   const sourceMap = new Map<
     string,
     { name: string; referrals: number; production: number }
   >();
+
+  // Build a dedup map: source name (lowercase) → Set of patient identifiers
+  const patientDedupMap = new Map<string, Set<string>>();
+  if (allPatientRecords.length > 0) {
+    for (const rec of allPatientRecords) {
+      const sourceName =
+        (rec.referring_doctor || rec.source || rec.referral_source || "")
+          .toString()
+          .trim()
+          .toLowerCase();
+      const patientKey =
+        (rec.patient_id || rec.patient_name || rec.PatientID || rec.Patient || "")
+          .toString()
+          .trim()
+          .toLowerCase();
+
+      if (sourceName && patientKey) {
+        if (!patientDedupMap.has(sourceName)) {
+          patientDedupMap.set(sourceName, new Set());
+        }
+        patientDedupMap.get(sourceName)!.add(patientKey);
+      }
+    }
+  }
+
+  const hasPatientData = patientDedupMap.size > 0;
 
   let totalReferrals = 0;
   let totalProduction = 0;
@@ -251,10 +279,29 @@ export async function aggregatePmsData(
         production: 0,
       };
 
-      existing.referrals += toNumber(source.referrals);
       existing.production += toNumber(source.production);
 
+      // Use deduped patient count when available, otherwise fall back to stored count
+      if (hasPatientData) {
+        const dedupKey = name.toLowerCase();
+        const uniquePatients = patientDedupMap.get(dedupKey);
+        // Only set once (not per-month) — the dedup map is across all months
+        if (uniquePatients && existing.referrals === 0) {
+          existing.referrals = uniquePatients.size;
+        }
+      } else {
+        existing.referrals += toNumber(source.referrals);
+      }
+
       sourceMap.set(name, existing);
+    }
+  }
+
+  // Recalculate total referrals from deduped source data if patient data was available
+  if (hasPatientData) {
+    totalReferrals = 0;
+    for (const source of sourceMap.values()) {
+      totalReferrals += source.referrals;
     }
   }
 

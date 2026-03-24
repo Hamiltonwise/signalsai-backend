@@ -27,6 +27,7 @@ export interface SanitizationRow {
   referrals: number;
   production: number;
   month: string;
+  patient_id?: string; // optional patient identifier for dedup
 }
 
 export interface DuplicateGroup {
@@ -127,13 +128,17 @@ interface GroupedSource {
   type: "self" | "doctor";
   totalReferrals: number;
   totalProduction: number;
-  months: Map<string, { referrals: number; production: number }>;
+  months: Map<string, { referrals: number; production: number; seenPatients: Set<string> }>;
   originalRows: SanitizationRow[];
 }
 
 /**
  * Group rows by exact source name (case-insensitive).
- * Each group aggregates referrals + production per month.
+ * Each group aggregates production per month.
+ *
+ * REFERRAL DEDUP: If patient_id is present, one referring source + one patient
+ * = one referral, regardless of how many treatment rows exist. Production still
+ * sums across all treatments.
  */
 function groupByExactName(rows: SanitizationRow[]): Map<string, GroupedSource> {
   const groups = new Map<string, GroupedSource>();
@@ -157,16 +162,32 @@ function groupByExactName(rows: SanitizationRow[]): Map<string, GroupedSource> {
     // doctor takes priority
     if (row.type === "doctor") group.type = "doctor";
 
-    group.totalReferrals += row.referrals;
     group.totalProduction += row.production;
     group.originalRows.push(row);
 
-    const monthData = group.months.get(row.month);
-    if (monthData) {
-      monthData.referrals += row.referrals;
-      monthData.production += row.production;
+    let monthData = group.months.get(row.month);
+    if (!monthData) {
+      monthData = { referrals: 0, production: 0, seenPatients: new Set() };
+      group.months.set(row.month, monthData);
+    }
+
+    monthData.production += row.production;
+
+    // Dedup referrals by patient_id: if we have a patient identifier,
+    // only count unique patients as referrals. Multiple treatments for
+    // the same patient from the same source = 1 referral.
+    if (row.patient_id) {
+      const patientKey = row.patient_id.toLowerCase().trim();
+      if (!monthData.seenPatients.has(patientKey)) {
+        monthData.seenPatients.add(patientKey);
+        monthData.referrals += 1;
+        group.totalReferrals += 1;
+      }
+      // else: same patient, same source, same month — skip referral count, still add production
     } else {
-      group.months.set(row.month, { referrals: row.referrals, production: row.production });
+      // No patient_id — fall back to 1 referral per row (legacy behavior)
+      monthData.referrals += row.referrals;
+      group.totalReferrals += row.referrals;
     }
   }
 
@@ -185,6 +206,7 @@ function groupToRows(group: GroupedSource): SanitizationRow[] {
       referrals: data.referrals,
       production: data.production,
       month,
+      // patient_id not needed in output — dedup already applied
     });
   }
   return rows;
