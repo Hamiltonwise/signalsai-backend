@@ -81,6 +81,9 @@ import dashboardContextRoutes from "./routes/user/dashboardContext";
 import gbpAuthRoutes from "./routes/auth/gbp";
 import oneActionCardRoutes from "./routes/user/oneActionCard";
 import userPreferencesRoutes from "./routes/user/preferences";
+import adminBehavioralEventsRoutes from "./routes/admin/behavioralEvents";
+import adminCaseStudiesRoutes from "./routes/admin/caseStudies";
+import gpDiscoveryRoutes from "./routes/partner/gpDiscovery";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -234,6 +237,9 @@ app.use("/api/user/dashboard-context", dashboardContextRoutes); // WO-CHECKUP-SE
 app.use("/api/auth/google", gbpAuthRoutes); // T6: GBP OAuth connect + callback
 app.use("/api/user/one-action-card", oneActionCardRoutes); // T3: One Action Card deterministic engine
 app.use("/api/user", userPreferencesRoutes); // WO-NOTIFICATION-PREFS + WO-STRIPE-PORTAL
+app.use("/api/admin/behavioral-events", adminBehavioralEventsRoutes); // WO-ADMIN-BEHAVIORAL-EVENTS: T4 SessionIntelligence + MorningBrief
+app.use("/api/admin/case-studies", adminCaseStudiesRoutes); // T6: Case study CRUD + publish
+app.use("/api/partner", gpDiscoveryRoutes); // T5: GP Discovery + referral form
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);

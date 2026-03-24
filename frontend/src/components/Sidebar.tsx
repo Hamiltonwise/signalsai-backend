@@ -293,6 +293,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/dashboard/progress",
       showDuringOnboarding: false,
     },
+    // Locations: owner + manager only (multi-location management)
+    ...(isManagerOrAbove
+      ? [
+          {
+            label: "Locations",
+            icon: <MapPin size={18} />,
+            path: "/dashboard/locations",
+            showDuringOnboarding: false,
+          },
+        ]
+      : []),
   ];
 
   // Execution & Alerts items - dynamic badges and notifications
