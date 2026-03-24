@@ -39,6 +39,9 @@ import { ConfirmProvider } from "./components/ui/ConfirmModal";
 import { DFYRoute } from "./components/DFYRoute";
 import { PilotHandler } from "./components/PilotHandler";
 import { PilotBanner } from "./components/Admin/PilotBanner";
+import CheckupLayout from "./pages/checkup/CheckupLayout";
+import EntryScreen from "./pages/checkup/EntryScreen";
+import ScanningPlaceholder from "./pages/checkup/ScanningPlaceholder";
 
 // AppProviders wrapper - now used as a layout route to avoid remounting on navigation
 function AppProviders({ children }: { children: ReactNode }) {
@@ -92,6 +95,12 @@ function App() {
             <WizardController />
             <SetupProgressWizard />
             <Routes>
+              {/* Public checkup flow — no auth required */}
+              <Route path="/checkup" element={<CheckupLayout />}>
+                <Route index element={<EntryScreen />} />
+                <Route path="scanning" element={<ScanningPlaceholder />} />
+              </Route>
+
               <Route path="/" element={<Navigate to="/signin" replace />} />
               <Route
                 path="/signin"
