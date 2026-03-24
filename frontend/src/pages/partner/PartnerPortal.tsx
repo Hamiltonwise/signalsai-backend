@@ -9,7 +9,7 @@
  * Separate surface from Doctor Dashboard and HQ Admin.
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase,
@@ -27,6 +27,9 @@ import {
   CheckCircle2,
   Pencil,
   Loader2,
+  Sparkles,
+  Zap,
+  MessageSquare,
 } from "lucide-react";
 import { apiGet, apiPost, apiPatch } from "@/api/index";
 
@@ -78,7 +81,7 @@ function getSidebarItems(role: PartnerRole) {
     { key: "portfolio", label: "Portfolio", icon: Briefcase },
     { key: "checkup", label: "Checkup", icon: Search },
     { key: "performance", label: "Performance", icon: BarChart3 },
-    { key: "write", label: "Write an Email", icon: Pencil },
+    { key: "write", label: "CMO Agent", icon: Sparkles },
   ];
 
   if (role === "sales" || role === "jay") {
@@ -560,10 +563,17 @@ Be specific. Every line should be true only of me, not most people.`;
 
 // ─── Voice Profile Onboarding ───────────────────────────────────────
 
-function VoiceProfileSetup({ onSaved }: { onSaved: () => void }) {
-  const [profileText, setProfileText] = useState("");
+function VoiceProfileSetup({
+  onSaved,
+  existingProfile,
+}: {
+  onSaved: () => void;
+  existingProfile?: string | null;
+}) {
+  const [profileText, setProfileText] = useState(existingProfile || "");
   const [saving, setSaving] = useState(false);
   const [promptCopied, setPromptCopied] = useState(false);
+  const [showFullPrompt, setShowFullPrompt] = useState(false);
 
   const handleSave = async () => {
     if (!profileText.trim() || saving) return;
@@ -581,22 +591,32 @@ function VoiceProfileSetup({ onSaved }: { onSaved: () => void }) {
     }
   };
 
+  // Count how many sections the pasted profile contains
+  const sectionCount = ["RHYTHM", "TONE", "NEVER SAYS", "ALWAYS DOES", "VOCABULARY", "WHAT I CARE", "SAMPLE SENTENCES"]
+    .filter((s) => profileText.toUpperCase().includes(s)).length;
+  const isValidProfile = profileText.trim().length > 100 && sectionCount >= 3;
+
   return (
     <div className="space-y-6">
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
         <h3 className="text-base font-bold text-[#212D40] mb-2">
-          Let's make sure every email sounds like you.
+          {existingProfile ? "Update your voice profile" : "Let's make sure every email sounds like you."}
         </h3>
         <p className="text-sm text-gray-500 mb-5 leading-relaxed">
-          Paste your Voice Profile below. If you don't have one, copy this prompt into ChatGPT or Claude and paste the result back.
+          {existingProfile
+            ? "Edit your voice profile below. Changes apply to all future emails."
+            : "Paste your Voice Profile below. If you don't have one, copy this prompt into ChatGPT or Claude and paste the result back."}
         </p>
 
-        {/* Extraction prompt with copy button */}
+        {/* Extraction prompt — collapsible, shows full text */}
         <div className="bg-[#212D40]/[0.03] rounded-xl p-4 mb-5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-              Voice Extraction Prompt
-            </p>
+            <button
+              onClick={() => setShowFullPrompt(!showFullPrompt)}
+              className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              Voice Extraction Prompt {showFullPrompt ? "▾" : "▸"}
+            </button>
             <button
               onClick={() => {
                 navigator.clipboard.writeText(EXTRACTION_PROMPT).then(() => {
@@ -614,33 +634,39 @@ function VoiceProfileSetup({ onSaved }: { onSaved: () => void }) {
               {promptCopied ? "Copied!" : "Copy prompt"}
             </button>
           </div>
-          <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-line line-clamp-4">
-            {EXTRACTION_PROMPT.slice(0, 200)}...
-          </p>
+          {showFullPrompt ? (
+            <pre className="text-[11px] text-gray-500 leading-relaxed whitespace-pre-wrap font-mono max-h-60 overflow-y-auto">
+              {EXTRACTION_PROMPT}
+            </pre>
+          ) : (
+            <p className="text-xs text-gray-500">
+              Copy this into ChatGPT or Claude where it has your conversation history. Paste the result below.
+            </p>
+          )}
         </div>
 
         {/* Textarea for paste */}
         <label className="block text-sm font-semibold text-[#212D40] mb-2">
-          Paste your Voice Profile
+          {existingProfile ? "Your Voice Profile" : "Paste your Voice Profile"}
         </label>
         <textarea
           value={profileText}
           onChange={(e) => setProfileText(e.target.value)}
-          placeholder="VOICE PROFILE: Your Name&#10;&#10;RHYTHM:&#10;..."
-          rows={8}
-          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none font-mono text-xs"
+          placeholder={"VOICE PROFILE: Your Name\n\nRHYTHM:\n..."}
+          rows={10}
+          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-y font-mono text-xs leading-relaxed"
         />
 
-        {/* Preview sentence */}
-        {profileText.trim().length > 50 && (
-          <div className="mt-3 bg-[#D56753]/[0.04] rounded-lg p-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#D56753] mb-1">
-              Profile detected
+        {/* Profile quality indicator */}
+        {profileText.trim().length > 30 && (
+          <div className={`mt-3 rounded-lg p-3 ${isValidProfile ? "bg-[#D56753]/[0.04]" : "bg-amber-50"}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isValidProfile ? "text-[#D56753]" : "text-amber-600"}`}>
+              {isValidProfile ? `Profile detected — ${sectionCount} sections found` : "Looks incomplete"}
             </p>
             <p className="text-xs text-gray-600">
-              {profileText.includes("SAMPLE SENTENCES")
-                ? profileText.split("SAMPLE SENTENCES")[1]?.split("\n").find((l: string) => l.trim().length > 10)?.trim().slice(0, 120) || "Voice profile loaded"
-                : "Voice profile loaded — your emails will match this voice"}
+              {isValidProfile
+                ? "Your emails will match this voice."
+                : `Only ${sectionCount} section${sectionCount !== 1 ? "s" : ""} detected. A complete profile has Rhythm, Tone, Never Says, Always Does, Vocabulary, and Sample Sentences.`}
             </p>
           </div>
         )}
@@ -657,7 +683,7 @@ function VoiceProfileSetup({ onSaved }: { onSaved: () => void }) {
               Saving...
             </>
           ) : (
-            "Save my voice"
+            existingProfile ? "Update my voice" : "Save my voice"
           )}
         </button>
       </div>
@@ -665,14 +691,22 @@ function VoiceProfileSetup({ onSaved }: { onSaved: () => void }) {
   );
 }
 
-// ─── Email Writer ───────────────────────────────────────────────────
+// ─── CMO Agent ──────────────────────────────────────────────────────
 
 interface GeneratedEmail {
   subject: string;
   body: string;
 }
 
-function EmailWriter() {
+interface CMORecommendation {
+  headline: string;
+  context: string;
+  situation: string;
+  tone: "professional" | "friendly" | "urgent";
+  priority: "high" | "medium" | "low";
+}
+
+function CMOAgent() {
   const { data: voiceData, isLoading: voiceLoading, refetch: refetchVoice } = useQuery({
     queryKey: ["partner-voice-profile"],
     queryFn: async () => {
@@ -682,40 +716,60 @@ function EmailWriter() {
     staleTime: 10 * 60_000,
   });
 
+  const { data: recommendations, isLoading: recsLoading } = useQuery({
+    queryKey: ["partner-recommendations"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/partner/recommendations" });
+      return res?.success ? (res.recommendations as CMORecommendation[]) : [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
   const hasVoiceProfile = !!voiceData;
+  const [editingVoice, setEditingVoice] = useState(false);
 
   const [situation, setSituation] = useState("");
   const [tone, setTone] = useState<"professional" | "friendly" | "urgent">("professional");
   const [generating, setGenerating] = useState(false);
   const [emails, setEmails] = useState<GeneratedEmail[]>([]);
-  const [history, setHistory] = useState<{ situation: string; emails: GeneratedEmail[] }[]>([]);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [activeRec, setActiveRec] = useState<string | null>(null);
+  const [showCustom, setShowCustom] = useState(false);
 
-  // Show onboarding if no voice profile
+  // Show onboarding if no voice profile, or editing mode
   if (voiceLoading) {
     return <div className="h-40 animate-pulse rounded-2xl border border-gray-200 bg-white" />;
   }
 
-  if (!hasVoiceProfile) {
-    return <VoiceProfileSetup onSaved={() => refetchVoice()} />;
+  if (!hasVoiceProfile || editingVoice) {
+    return (
+      <VoiceProfileSetup
+        existingProfile={editingVoice ? voiceData : null}
+        onSaved={() => {
+          setEditingVoice(false);
+          refetchVoice();
+        }}
+      />
+    );
   }
 
-  const handleGenerate = async () => {
-    if (!situation.trim() || generating) return;
+  const handleGenerate = async (sit: string, t: "professional" | "friendly" | "urgent") => {
+    if (!sit.trim() || generating) return;
     setGenerating(true);
     setError("");
     setEmails([]);
+    setSituation(sit);
+    setTone(t);
 
     try {
       const res = await apiPost({
-        path: "/api/partner/write",
-        passedData: { situation: situation.trim(), tone },
+        path: "/partner/write",
+        passedData: { situation: sit.trim(), tone: t },
       });
 
       if (res?.success && res.emails?.length) {
         setEmails(res.emails);
-        setHistory((prev) => [{ situation: situation.trim(), emails: res.emails }, ...prev].slice(0, 5));
       } else {
         setError(res?.error || "Failed to generate emails. Please try again.");
       }
@@ -724,6 +778,12 @@ function EmailWriter() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleBuildCampaign = (rec: CMORecommendation) => {
+    setActiveRec(rec.headline);
+    setShowCustom(false);
+    handleGenerate(rec.situation, rec.tone);
   };
 
   const handleCopy = (idx: number) => {
@@ -735,95 +795,41 @@ function EmailWriter() {
     });
   };
 
-  const suggestedPrompts = [
-    "Doctor went quiet after pricing. Been 5 days. Need a follow-up that reopens the conversation without pressure.",
-    "Demo went well but they want to think about it. How do I stay top of mind without being annoying?",
-    "Office manager is the gatekeeper and the doctor never sees my emails. How do I get past her?",
-    "Doctor asked about ROI. Need to make the case in one paragraph.",
-  ];
+  const handleBack = () => {
+    setEmails([]);
+    setActiveRec(null);
+    setError("");
+    setSituation("");
+    setShowCustom(false);
+  };
 
-  return (
-    <div className="space-y-6">
-      {/* Empty state hero — only when no emails generated yet */}
-      {emails.length === 0 && history.length === 0 && !situation.trim() && (
-        <div className="text-center py-4">
-          <h2 className="text-2xl font-extrabold text-[#212D40]">Close this deal.</h2>
-          <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">
-            Describe where you are in the conversation and what you need to happen next. Alloro writes the message.
-          </p>
-        </div>
-      )}
+  const priorityColor = (p: string) => {
+    if (p === "high") return "bg-red-50 text-red-700 border-red-200";
+    if (p === "medium") return "bg-amber-50 text-amber-700 border-amber-200";
+    return "bg-blue-50 text-blue-700 border-blue-200";
+  };
 
-      {/* Input form */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <label className="block text-sm font-semibold text-[#212D40] mb-2">
-          What's the situation?
-        </label>
-        <textarea
-          value={situation}
-          onChange={(e) => setSituation(e.target.value)}
-          placeholder="Doctor went quiet after pricing. Been 5 days..."
-          rows={3}
-          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none"
-        />
-
-        {/* Tone selector */}
-        <div className="flex items-center gap-2 mt-3">
-          <span className="text-xs font-medium text-gray-500">Tone:</span>
-          {(["professional", "friendly", "urgent"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTone(t)}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-all capitalize ${
-                tone === t
-                  ? "border-[#D56753] bg-[#D56753]/5 text-[#D56753] font-semibold"
-                  : "border-gray-200 text-gray-500 hover:border-gray-300"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
+  // ── Email results view ──
+  if (emails.length > 0) {
+    return (
+      <div className="space-y-5">
         <button
-          onClick={handleGenerate}
-          disabled={!situation.trim() || generating}
-          className="mt-4 flex items-center gap-2 rounded-xl bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-40"
+          onClick={handleBack}
+          className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#212D40] transition-colors"
         >
-          {generating ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Writing...
-            </>
-          ) : (
-            <>
-              <Pencil className="h-4 w-4" />
-              Generate emails
-            </>
-          )}
+          <ArrowRight className="h-3 w-3 rotate-180" />
+          Back to recommendations
         </button>
 
-        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
-      </div>
+        {activeRec && (
+          <div className="rounded-xl bg-[#212D40]/[0.03] px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#D56753] mb-1">
+              Campaign built from
+            </p>
+            <p className="text-sm font-semibold text-[#212D40]">{activeRec}</p>
+          </div>
+        )}
 
-      {/* Suggested prompts — shown when textarea is empty and no results */}
-      {!situation.trim() && emails.length === 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Common situations</p>
-          {suggestedPrompts.map((prompt) => (
-            <button
-              key={prompt}
-              onClick={() => setSituation(prompt)}
-              className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 hover:border-[#D56753]/30 hover:bg-[#D56753]/[0.02] transition-colors"
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Generated emails */}
-      {emails.length > 0 && (
         <div className="space-y-4">
           {emails.map((email, idx) => (
             <div key={idx} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -863,26 +869,178 @@ function EmailWriter() {
             </div>
           ))}
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* History */}
-      {history.length > 0 && emails.length === 0 && (
-        <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Recent</p>
-          {history.map((h, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                setSituation(h.situation);
-                setEmails(h.emails);
-              }}
-              className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 hover:border-gray-300 transition-colors truncate"
-            >
-              {h.situation}
-            </button>
+  // ── Generating state ──
+  if (generating) {
+    return (
+      <div className="space-y-5">
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm flex flex-col items-center justify-center text-center">
+          <div className="w-10 h-10 rounded-full bg-[#D56753]/10 flex items-center justify-center mb-4">
+            <Loader2 className="h-5 w-5 animate-spin text-[#D56753]" />
+          </div>
+          <p className="text-sm font-semibold text-[#212D40]">Building your campaign...</p>
+          <p className="text-xs text-gray-400 mt-1">Your CMO is writing emails tailored to this situation.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Custom campaign form ──
+  if (showCustom) {
+    return (
+      <div className="space-y-5">
+        <button
+          onClick={handleBack}
+          className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#212D40] transition-colors"
+        >
+          <ArrowRight className="h-3 w-3 rotate-180" />
+          Back to recommendations
+        </button>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <MessageSquare className="h-4 w-4 text-[#D56753]" />
+            <h3 className="text-sm font-bold text-[#212D40]">Custom Campaign</h3>
+          </div>
+
+          <label className="block text-sm font-semibold text-[#212D40] mb-2">
+            Describe the situation
+          </label>
+          <textarea
+            value={situation}
+            onChange={(e) => setSituation(e.target.value)}
+            placeholder="I need to follow up with Dr. Martinez who watched our demo but mentioned the price was a concern"
+            rows={3}
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none"
+          />
+
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-xs font-medium text-gray-500">Tone:</span>
+            {(["professional", "friendly", "urgent"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTone(t)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-all capitalize ${
+                  tone === t
+                    ? "border-[#D56753] bg-[#D56753]/5 text-[#D56753] font-semibold"
+                    : "border-gray-200 text-gray-500 hover:border-gray-300"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => handleGenerate(situation, tone)}
+            disabled={!situation.trim()}
+            className="mt-4 flex items-center gap-2 rounded-xl bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-40"
+          >
+            <Sparkles className="h-4 w-4" />
+            Build this campaign
+          </button>
+
+          {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main view: CMO recommendations ──
+  return (
+    <div className="space-y-6">
+      {/* CMO header */}
+      <div className="rounded-2xl border border-[#212D40]/10 bg-[#212D40] p-5 text-white">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-8 h-8 rounded-full bg-[#D56753] flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold">Your CMO</p>
+              <p className="text-[11px] text-white/50">Analyzing your pipeline</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setEditingVoice(true)}
+            className="text-[11px] font-medium text-white/40 hover:text-white/70 transition-colors"
+          >
+            Edit voice
+          </button>
+        </div>
+        <p className="text-sm text-white/80 leading-relaxed mt-3">
+          Based on your portfolio and referral data, here's what I'd focus on this week.
+          Each recommendation has a ready-to-send campaign behind it.
+        </p>
+      </div>
+
+      {/* Recommendation cards */}
+      {recsLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-36 animate-pulse rounded-2xl border border-gray-200 bg-white" />
           ))}
         </div>
+      ) : recommendations && recommendations.length > 0 ? (
+        <div className="space-y-4">
+          {recommendations.map((rec, idx) => (
+            <div
+              key={idx}
+              className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-[#D56753] shrink-0" />
+                  <h3 className="text-sm font-bold text-[#212D40] leading-snug">
+                    {rec.headline}
+                  </h3>
+                </div>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${priorityColor(rec.priority)}`}>
+                  {rec.priority}
+                </span>
+              </div>
+
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                {rec.context}
+              </p>
+
+              <button
+                onClick={() => handleBuildCampaign(rec)}
+                className="flex items-center gap-2 rounded-xl bg-[#D56753] px-4 py-2.5 text-sm font-semibold text-white hover:brightness-105 active:scale-[0.98] transition-all"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Build this campaign
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center">
+          <p className="text-sm text-gray-500">No recommendations available right now.</p>
+        </div>
       )}
+
+      {/* Custom campaign option */}
+      <button
+        onClick={() => setShowCustom(true)}
+        className="w-full rounded-2xl border border-dashed border-gray-300 bg-white/50 p-5 text-left hover:border-gray-400 hover:bg-white transition-all group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+            <MessageSquare className="h-4 w-4 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[#212D40]">Custom campaign</p>
+            <p className="text-xs text-gray-400 mt-0.5">Have something specific in mind? Describe it and I'll build it.</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-gray-300 ml-auto group-hover:text-gray-500 transition-colors" />
+        </div>
+      </button>
+
+      {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
     </div>
   );
 }
@@ -939,20 +1097,20 @@ export default function PartnerPortal() {
                 {activeTab === "portfolio" && "Your Portfolio"}
                 {activeTab === "checkup" && "Run a Checkup"}
                 {activeTab === "performance" && "Referral Performance"}
-                {activeTab === "write" && "Write an Email"}
+                {activeTab === "write" && "CMO Agent"}
               </h1>
               <p className="text-sm text-gray-500 mt-1">
                 {activeTab === "portfolio" && "Practices you've referred to Alloro."}
                 {activeTab === "checkup" && "Scan any practice and share the results."}
                 {activeTab === "performance" && "Your referral code performance."}
-                {activeTab === "write" && "Generate follow-up emails in seconds."}
+                {activeTab === "write" && "Your strategic advisor. Reviews your pipeline, recommends campaigns."}
               </p>
             </div>
 
             {activeTab === "portfolio" && <PortfolioView />}
             {activeTab === "checkup" && <CheckupLauncher />}
             {activeTab === "performance" && <PerformanceDashboard />}
-            {activeTab === "write" && <EmailWriter />}
+            {activeTab === "write" && <CMOAgent />}
           </div>
         </div>
       </div>
