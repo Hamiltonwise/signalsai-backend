@@ -47,6 +47,7 @@ import adminDreamTeamRoutes from "./routes/admin/dreamTeam";
 import adminBatchCheckupRoutes from "./routes/admin/batchCheckup";
 import adminFirefliesRoutes from "./routes/admin/firefliesWebhook";
 import adminReviewRoutes from "./routes/admin/reviews";
+import milestoneRoutes from "./routes/admin/milestones";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
@@ -179,6 +180,7 @@ app.use("/api/admin/dream-team", adminDreamTeamRoutes);
 app.use("/api/admin/batch-checkup", adminBatchCheckupRoutes);
 app.use("/api/admin", adminFirefliesRoutes); // Fireflies webhook + dream team tasks
 app.use("/api/admin/reviews", adminReviewRoutes); // Review notifications + AI responses
+app.use("/api", milestoneRoutes); // Milestone notifications (admin + client routes)
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest
 app.use("/api/admin", adminAuthRoutes);
