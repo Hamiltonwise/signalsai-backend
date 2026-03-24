@@ -55,6 +55,7 @@ import scraperRoutes from "./routes/scraper";
 import placesRoutes from "./routes/places";
 import checkupRoutes from "./routes/checkup";
 import progressReportRoutes from "./routes/progressReport";
+import vocabularyRoutes from "./routes/vocabulary";
 import reviewRequestRoutes from "./routes/reviewRequests";
 import csAgentRoutes from "./routes/csAgent";
 import ttfvRoutes from "./routes/ttfv";
@@ -194,6 +195,8 @@ app.use("/api/scraper", scraperRoutes); // Website scraper for n8n webhooks
 app.use("/api/places", placesRoutes); // Google Places API for GBP search
 app.use("/api/checkup", checkupRoutes); // Free Referral Base Checkup analysis
 app.use("/api/progress-report", progressReportRoutes); // 365-day progress report
+app.use("/api/org", vocabularyRoutes); // Vocabulary config per org
+app.use("/api/vocabulary", vocabularyRoutes); // Vocabulary defaults (public)
 app.use("/api/review-requests", reviewRequestRoutes); // Post-appointment review generation
 app.use("/api/cs-agent", csAgentRoutes); // Account-aware Claude chat for doctors
 app.use("/api/org", ttfvRoutes); // TTFV sensor + billing prompt
