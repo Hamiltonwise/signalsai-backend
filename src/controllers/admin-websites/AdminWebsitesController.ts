@@ -1104,6 +1104,51 @@ export async function uploadArtifactPage(
   }
 }
 
+/** PUT /:id/pages/:pageId/artifact — Replace artifact page build */
+export async function replaceArtifactBuild(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id, pageId } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        error: "NO_FILE",
+        message: "No zip file provided",
+      });
+    }
+
+    const { page, error } = await artifactUpload.replaceArtifactBuild(
+      id,
+      pageId,
+      file.buffer
+    );
+
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        error: error.code,
+        message: error.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: page,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error replacing artifact build:", error);
+    return res.status(500).json({
+      success: false,
+      error: "ARTIFACT_REPLACE_ERROR",
+      message: error?.message || "Failed to replace artifact build",
+    });
+  }
+}
+
 /** POST /:id/pages/:pageId/publish — Publish a page */
 export async function publishPage(
   req: Request,

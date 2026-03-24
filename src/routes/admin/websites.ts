@@ -430,6 +430,9 @@ router.post("/:id/pages", controller.createPage);
 // POST /:id/pages/artifact — Upload artifact page (React app zip) — before :pageId
 router.post("/:id/pages/artifact", artifactUpload.single("file"), controller.uploadArtifactPage);
 
+// PUT /:id/pages/:pageId/artifact — Replace artifact page build
+router.put("/:id/pages/:pageId/artifact", artifactUpload.single("file"), controller.replaceArtifactBuild);
+
 // POST /:id/pages/:pageId/publish — Publish a page
 router.post("/:id/pages/:pageId/publish", controller.publishPage);
 

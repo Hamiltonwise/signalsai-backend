@@ -254,3 +254,77 @@ export async function uploadArtifactPage(
 
   return { page };
 }
+
+/**
+ * Replace an existing artifact page's build files.
+ * Re-uploads to the same S3 prefix, overwriting existing files.
+ */
+export async function replaceArtifactBuild(
+  projectId: string,
+  pageId: string,
+  zipBuffer: Buffer
+): Promise<UploadResult> {
+  // 1. Fetch the existing artifact page
+  const page = await db(PAGES_TABLE)
+    .where({ id: pageId, project_id: projectId })
+    .first();
+
+  if (!page) {
+    return {
+      page: null,
+      error: { status: 404, code: "PAGE_NOT_FOUND", message: "Page not found" },
+    };
+  }
+
+  if (page.page_type !== "artifact") {
+    return {
+      page: null,
+      error: {
+        status: 400,
+        code: "NOT_ARTIFACT",
+        message: "This page is not an artifact page",
+      },
+    };
+  }
+
+  // 2. Extract zip
+  const files = await extractZip(zipBuffer);
+  if (files.length === 0) {
+    return {
+      page: null,
+      error: {
+        status: 400,
+        code: "EMPTY_ARCHIVE",
+        message: "The zip archive is empty or contains no valid files",
+      },
+    };
+  }
+
+  // 3. Validate base path
+  const validation = validateBasePath(files, page.path);
+  if (!validation.valid) {
+    return {
+      page: null,
+      error: {
+        status: 422,
+        code: "BASE_PATH_MISMATCH",
+        message: validation.errors.join("; "),
+      },
+    };
+  }
+
+  // 4. Upload to same S3 prefix (overwrites existing files)
+  await uploadFilesToS3(files, page.artifact_s3_prefix);
+
+  console.log(
+    `[Artifact] Replaced ${files.length} files at S3 prefix: ${page.artifact_s3_prefix}`
+  );
+
+  // 5. Touch updated_at
+  const [updated] = await db(PAGES_TABLE)
+    .where({ id: pageId })
+    .update({ updated_at: db.fn.now() })
+    .returning("*");
+
+  return { page: updated };
+}

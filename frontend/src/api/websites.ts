@@ -61,6 +61,8 @@ export interface WebsitePage {
   version: number;
   status: string;
   generation_status?: PageGenerationStatus | null;
+  page_type?: "sections" | "artifact";
+  artifact_s3_prefix?: string | null;
   sections: Section[];
   seo_data: SeoData | null;
   edit_chat_history: EditChatHistory | null;
@@ -537,6 +539,33 @@ export const uploadArtifactPage = async (
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || "Failed to upload artifact page");
+  }
+
+  return response.json();
+};
+
+/**
+ * Replace an artifact page's build with a new zip
+ */
+export const replaceArtifactBuild = async (
+  projectId: string,
+  pageId: string,
+  file: File,
+): Promise<{ success: boolean; data: WebsitePage }> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${API_BASE}/${projectId}/pages/${pageId}/artifact`,
+    {
+      method: "PUT",
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to replace artifact build");
   }
 
   return response.json();
