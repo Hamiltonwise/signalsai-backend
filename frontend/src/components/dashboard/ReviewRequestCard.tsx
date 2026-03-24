@@ -1,13 +1,21 @@
 /**
- * ReviewRequestCard — Doctor-facing card for sending review requests to patients.
+ * ReviewRequestCard — Doctor-facing card for sending review requests.
  *
- * Shows a simple email input, send button, recent history, and conversion stats.
- * Appears on the Doctor Dashboard below the referral card.
+ * Supports email and SMS delivery. Shows toggle, patient input,
+ * recent history with status badges, and conversion stats.
  */
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Star, Send, CheckCircle2, Loader2, MousePointerClick } from "lucide-react";
+import {
+  Star,
+  Send,
+  CheckCircle2,
+  Loader2,
+  MousePointerClick,
+  Mail,
+  Phone,
+} from "lucide-react";
 import {
   sendReviewRequest,
   listReviewRequests,
@@ -25,8 +33,8 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-function statusBadge(status: ReviewRequest["status"]) {
-  switch (status) {
+function statusBadge(r: ReviewRequest) {
+  switch (r.status) {
     case "converted":
       return { label: "Review left", class: "bg-emerald-50 text-emerald-700" };
     case "clicked":
@@ -34,6 +42,14 @@ function statusBadge(status: ReviewRequest["status"]) {
     default:
       return { label: "Sent", class: "bg-gray-50 text-gray-500" };
   }
+}
+
+function deliveryIcon(method: "email" | "sms") {
+  return method === "sms" ? (
+    <Phone className="w-3 h-3 text-gray-400" />
+  ) : (
+    <Mail className="w-3 h-3 text-gray-400" />
+  );
 }
 
 export default function ReviewRequestCard({
@@ -44,7 +60,8 @@ export default function ReviewRequestCard({
   practiceName: string;
 }) {
   const queryClient = useQueryClient();
-  const [email, setEmail] = useState("");
+  const [mode, setMode] = useState<"email" | "sms">("email");
+  const [contact, setContact] = useState("");
   const [name, setName] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -57,16 +74,25 @@ export default function ReviewRequestCard({
   });
 
   const stats = data?.stats;
-  const recent = data?.requests?.slice(0, 3) || [];
+  const smsConfigured = data?.smsConfigured ?? false;
+  const recent = data?.requests?.slice(0, 5) || [];
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !placeId || sending) return;
+    if (!contact.trim() || !placeId || sending) return;
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    if (!emailRegex.test(email.trim())) {
-      setError("Enter a valid email address");
-      return;
+    // Validate
+    if (mode === "email") {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(contact.trim())) {
+        setError("Enter a valid email address");
+        return;
+      }
+    } else {
+      const cleaned = contact.replace(/[\s()-]/g, "");
+      if (!/^\+?[1-9]\d{6,14}$/.test(cleaned)) {
+        setError("Enter a valid phone number (e.g. +12025551234)");
+        return;
+      }
     }
 
     setError("");
@@ -74,7 +100,8 @@ export default function ReviewRequestCard({
 
     try {
       const result = await sendReviewRequest({
-        recipientEmail: email.trim(),
+        recipientEmail: mode === "email" ? contact.trim() : undefined,
+        recipientPhone: mode === "sms" ? contact.replace(/[\s()-]/g, "").trim() : undefined,
         recipientName: name.trim() || undefined,
         placeId,
         practiceName,
@@ -82,7 +109,7 @@ export default function ReviewRequestCard({
 
       if (result.success) {
         setSent(true);
-        setEmail("");
+        setContact("");
         setName("");
         queryClient.invalidateQueries({ queryKey: ["review-requests"] });
         setTimeout(() => setSent(false), 3000);
@@ -112,6 +139,7 @@ export default function ReviewRequestCard({
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      {/* Header + stats */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Star className="w-5 h-5 text-[#D56753]" />
@@ -128,21 +156,52 @@ export default function ReviewRequestCard({
 
       {/* Send form */}
       <form onSubmit={handleSend} className="space-y-3">
+        {/* Patient name */}
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Patient name (optional)"
+          className="w-full h-10 px-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
+        />
+
+        {/* Email / SMS toggle + contact input */}
         <div className="flex gap-2">
+          {/* Mode toggle */}
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
+            <button
+              type="button"
+              onClick={() => { setMode("email"); setContact(""); setError(""); }}
+              className={`flex items-center gap-1 px-2.5 py-2 text-xs font-medium transition-colors ${
+                mode === "email"
+                  ? "bg-[#D56753] text-white"
+                  : "bg-white text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5" />
+              Email
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("sms"); setContact(""); setError(""); }}
+              className={`flex items-center gap-1 px-2.5 py-2 text-xs font-medium transition-colors ${
+                mode === "sms"
+                  ? "bg-[#D56753] text-white"
+                  : "bg-white text-gray-500 hover:bg-gray-50"
+              }${!smsConfigured ? " opacity-50" : ""}`}
+              title={!smsConfigured ? "SMS not configured — add Twilio credentials" : ""}
+            >
+              <Phone className="w-3.5 h-3.5" />
+              SMS
+            </button>
+          </div>
+
+          {/* Contact input */}
           <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Patient name (optional)"
-            className="flex-1 h-10 px-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
-          />
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); setError(""); }}
-            placeholder="Patient email"
+            type={mode === "email" ? "email" : "tel"}
+            value={contact}
+            onChange={(e) => { setContact(e.target.value); setError(""); }}
+            placeholder={mode === "email" ? "patient@email.com" : "+1 (202) 555-1234"}
             required
             className={`flex-1 h-10 px-3 rounded-lg bg-gray-50 border text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
               error
@@ -150,9 +209,11 @@ export default function ReviewRequestCard({
                 : "border-gray-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
             }`}
           />
+
+          {/* Send button */}
           <button
             type="submit"
-            disabled={sending || !email.trim()}
+            disabled={sending || !contact.trim() || (mode === "sms" && !smsConfigured)}
             className="h-10 px-4 rounded-lg bg-[#D56753] text-white text-sm font-semibold flex items-center gap-1.5 hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-50"
           >
             {sending ? (
@@ -165,7 +226,13 @@ export default function ReviewRequestCard({
             {sent ? "Sent!" : "Send"}
           </button>
         </div>
+
         {error && <p className="text-xs text-red-500">{error}</p>}
+        {mode === "sms" && !smsConfigured && (
+          <p className="text-xs text-amber-500">
+            SMS requires Twilio configuration. Contact your admin to enable.
+          </p>
+        )}
       </form>
 
       {/* Recent requests */}
@@ -173,7 +240,7 @@ export default function ReviewRequestCard({
         <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Recent</p>
           {recent.map((r) => {
-            const badge = statusBadge(r.status);
+            const badge = statusBadge(r);
             return (
               <div key={r.id} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2 min-w-0">
@@ -183,8 +250,9 @@ export default function ReviewRequestCard({
                     <Send className="w-3.5 h-3.5 text-gray-300 shrink-0" />
                   )}
                   <span className="text-[#212D40] truncate">
-                    {r.recipient_name || r.recipient_email}
+                    {r.recipient_name || r.recipient_email || r.recipient_phone}
                   </span>
+                  {deliveryIcon(r.delivery_method)}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.class}`}>

@@ -6,7 +6,9 @@ export interface IReviewRequest {
   location_id: number | null;
   place_id: string | null;
   recipient_email: string;
+  recipient_phone: string | null;
   recipient_name: string | null;
+  delivery_method: "email" | "sms";
   google_review_url: string;
   status: "sent" | "clicked" | "converted";
   sent_at: Date;
@@ -25,8 +27,10 @@ export class ReviewRequestModel {
     organization_id: number;
     location_id?: number | null;
     place_id?: string | null;
-    recipient_email: string;
+    recipient_email?: string | null;
+    recipient_phone?: string | null;
     recipient_name?: string | null;
+    delivery_method: "email" | "sms";
     google_review_url: string;
   }): Promise<IReviewRequest> {
     const [row] = await this.table()
@@ -34,8 +38,10 @@ export class ReviewRequestModel {
         organization_id: data.organization_id,
         location_id: data.location_id ?? null,
         place_id: data.place_id ?? null,
-        recipient_email: data.recipient_email,
+        recipient_email: data.recipient_email ?? "",
+        recipient_phone: data.recipient_phone ?? null,
         recipient_name: data.recipient_name ?? null,
+        delivery_method: data.delivery_method,
         google_review_url: data.google_review_url,
         status: "sent",
         sent_at: new Date(),

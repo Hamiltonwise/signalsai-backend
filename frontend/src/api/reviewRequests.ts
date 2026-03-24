@@ -1,5 +1,5 @@
 /**
- * Review Requests API — post-appointment review generation
+ * Review Requests API — post-appointment review generation (email + SMS)
  */
 
 import { apiGet, apiPost } from "./index";
@@ -10,7 +10,9 @@ export interface ReviewRequest {
   location_id: number | null;
   place_id: string | null;
   recipient_email: string;
+  recipient_phone: string | null;
   recipient_name: string | null;
+  delivery_method: "email" | "sms";
   google_review_url: string;
   status: "sent" | "clicked" | "converted";
   sent_at: string;
@@ -26,12 +28,19 @@ export interface ReviewRequestStats {
 }
 
 export async function sendReviewRequest(params: {
-  recipientEmail: string;
+  recipientEmail?: string;
+  recipientPhone?: string;
   recipientName?: string;
   placeId: string;
   locationId?: number;
   practiceName: string;
-}): Promise<{ success: boolean; requestId?: string; error?: string }> {
+}): Promise<{
+  success: boolean;
+  requestId?: string;
+  deliveryMethod?: "email" | "sms";
+  smsConfigured?: boolean;
+  error?: string;
+}> {
   return apiPost({
     path: "/api/review-requests/send",
     passedData: params,
@@ -46,6 +55,7 @@ export async function listReviewRequests(params?: {
   requests: ReviewRequest[];
   total: number;
   stats: ReviewRequestStats;
+  smsConfigured: boolean;
 }> {
   const query = new URLSearchParams();
   if (params?.limit) query.set("limit", String(params.limit));
