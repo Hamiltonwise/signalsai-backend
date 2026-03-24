@@ -16,10 +16,10 @@ async function verifyEmail(email: string, code: string) {
   });
 }
 
-async function login(email: string, password: string) {
+async function login(email: string, password: string, rememberMe?: boolean) {
   return apiPost({
     path: `${baseurl}/login`,
-    passedData: { email, password },
+    passedData: { email, password, rememberMe },
   });
 }
 

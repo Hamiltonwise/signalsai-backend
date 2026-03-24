@@ -191,7 +191,7 @@ export async function verifyEmail(req: Request, res: Response) {
  */
 export async function login(req: Request, res: Response) {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
@@ -232,13 +232,13 @@ export async function login(req: Request, res: Response) {
       }
     }
 
-    // Generate JWT
-    const token = generateToken(user.id, user.email);
+    // Generate JWT (30-day expiry if "remember me" checked)
+    const token = generateToken(user.id, user.email, !!rememberMe);
 
     // Set cookie for cross-app auth sync
     res.cookie("auth_token", token, buildAuthCookieOptions());
 
-    console.log(`[AUTH] User logged in: ${normalizedEmail}`);
+    console.log(`[AUTH] User logged in: ${normalizedEmail} (remember: ${!!rememberMe})`);
 
     return res.json({
       success: true,

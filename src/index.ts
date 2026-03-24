@@ -57,6 +57,7 @@ import checkupRoutes from "./routes/checkup";
 import progressReportRoutes from "./routes/progressReport";
 import reviewRequestRoutes from "./routes/reviewRequests";
 import csAgentRoutes from "./routes/csAgent";
+import ttfvRoutes from "./routes/ttfv";
 import auditRoutes from "./routes/audit";
 import importsRoutes from "./routes/imports";
 import websiteContactRoutes from "./routes/websiteContact";
@@ -195,6 +196,7 @@ app.use("/api/checkup", checkupRoutes); // Free Referral Base Checkup analysis
 app.use("/api/progress-report", progressReportRoutes); // 365-day progress report
 app.use("/api/review-requests", reviewRequestRoutes); // Post-appointment review generation
 app.use("/api/cs-agent", csAgentRoutes); // Account-aware Claude chat for doctors
+app.use("/api/org", ttfvRoutes); // TTFV sensor + billing prompt
 app.use("/api/audit", auditRoutes); // Audit process tracking for leadgen tool
 app.use("/api/imports", importsRoutes); // Public file serving for self-hosted imports
 app.use("/api/websites", websiteContactRoutes); // Public contact form for rendered sites
