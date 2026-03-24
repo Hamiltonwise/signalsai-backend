@@ -121,6 +121,7 @@ partnerRoutes.get(
           avgScore,
           referralCode: partnerOrg.referral_code,
         },
+        partnerRole: partnerOrg.partner_role || null,
       });
     } catch (error: any) {
       console.error("[Partner] Portfolio error:", error.message);

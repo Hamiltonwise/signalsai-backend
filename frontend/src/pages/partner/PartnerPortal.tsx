@@ -9,7 +9,7 @@
  * Separate surface from Doctor Dashboard and HQ Admin.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase,
@@ -64,20 +64,46 @@ interface PerformanceData {
 // ─── Sidebar ────────────────────────────────────────────────────────
 
 type PartnerTab = "portfolio" | "checkup" | "performance" | "write";
+type PartnerRole = "cmo" | "sales" | "owner" | "jay" | null;
 
-function PartnerSidebar({
-  active,
-  onChange,
-}: {
-  active: PartnerTab;
-  onChange: (tab: PartnerTab) => void;
-}) {
-  const items: { key: PartnerTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+/** Determine default landing tab based on partner role */
+function getDefaultTab(role: PartnerRole): PartnerTab {
+  if (role === "sales" || role === "jay") return "write";
+  return "portfolio"; // cmo, owner, or unset
+}
+
+/** Reorder sidebar items based on role — default tools surface first */
+function getSidebarItems(role: PartnerRole) {
+  const all: { key: PartnerTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: "portfolio", label: "Portfolio", icon: Briefcase },
     { key: "checkup", label: "Checkup", icon: Search },
     { key: "performance", label: "Performance", icon: BarChart3 },
     { key: "write", label: "Write an Email", icon: Pencil },
   ];
+
+  if (role === "sales" || role === "jay") {
+    // Sales: write + checkup first, portfolio accessible but not default
+    return [
+      all.find((i) => i.key === "write")!,
+      all.find((i) => i.key === "checkup")!,
+      all.find((i) => i.key === "portfolio")!,
+      all.find((i) => i.key === "performance")!,
+    ];
+  }
+
+  return all; // cmo/owner/default: portfolio first
+}
+
+function PartnerSidebar({
+  active,
+  onChange,
+  role,
+}: {
+  active: PartnerTab;
+  onChange: (tab: PartnerTab) => void;
+  role: PartnerRole;
+}) {
+  const items = getSidebarItems(role);
 
   return (
     <nav className="flex lg:flex-col gap-1 lg:w-56 lg:shrink-0">
@@ -831,7 +857,23 @@ function EmailWriter() {
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function PartnerPortal() {
+  const [partnerRole, setPartnerRole] = useState<PartnerRole>(null);
+  const [roleLoaded, setRoleLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<PartnerTab>("portfolio");
+
+  // Fetch partner role on mount and set default tab
+  useEffect(() => {
+    apiGet({ path: "/partner/portfolio" })
+      .then((res: any) => {
+        const role = res?.partnerRole as PartnerRole;
+        setPartnerRole(role);
+        if (!roleLoaded) {
+          setActiveTab(getDefaultTab(role));
+          setRoleLoaded(true);
+        }
+      })
+      .catch(() => setRoleLoaded(true));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-dvh bg-[#FAFAF8]">
@@ -855,7 +897,7 @@ export default function PartnerPortal() {
       <div className="mx-auto max-w-5xl px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
-          <PartnerSidebar active={activeTab} onChange={setActiveTab} />
+          <PartnerSidebar active={activeTab} onChange={setActiveTab} role={partnerRole} />
 
           {/* Content */}
           <div className="flex-1 min-w-0">
