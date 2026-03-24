@@ -49,6 +49,7 @@ async function saveProfile(data: {
     operationalJurisdiction: string;
     domainName: string;
   };
+  referralCode?: string;
 }) {
   try {
     return await apiPost({

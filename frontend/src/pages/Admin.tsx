@@ -14,6 +14,7 @@ import { OrganizationManagement } from "./admin/OrganizationManagement";
 import AgentOutputsList from "./admin/AgentOutputsList";
 import { PracticeRanking } from "./admin/PracticeRanking";
 import OrganizationDetail from "./admin/OrganizationDetail";
+import PracticeStory from "./admin/PracticeStory";
 import WebsitesList from "./admin/WebsitesList";
 import WebsiteDetail from "./admin/WebsiteDetail";
 import TemplatesList from "./admin/TemplatesList";
@@ -80,6 +81,10 @@ function AdminWithLayout() {
         />
         <Route
           path="organizations/:id"
+          element={<PracticeStory />}
+        />
+        <Route
+          path="organizations/:id/manage"
           element={<OrganizationDetail />}
         />
         <Route path="practice-ranking" element={<PracticeRanking />} />

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import onboarding from "../api/onboarding";
 import { createCheckoutSession } from "../api/billing";
 
@@ -11,6 +11,12 @@ interface GBPSelection {
 export const useOnboarding = (initialStep: number = 1) => {
   const [currentStep, setCurrentStep] = useState(initialStep);
   const totalSteps = 4;
+
+  // Capture ?ref= code from URL (persists across steps)
+  const referralCode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("ref") || undefined;
+  }, []);
 
   // Profile state
   const [firstName, setFirstName] = useState("");
@@ -78,6 +84,7 @@ export const useOnboarding = (initialStep: number = 1) => {
           operationalJurisdiction: "",
           domainName,
         },
+        referralCode,
       });
 
       if (response.success) {
@@ -93,7 +100,7 @@ export const useOnboarding = (initialStep: number = 1) => {
     } finally {
       setIsSavingProfile(false);
     }
-  }, [firstName, lastName, practiceName, domainName]);
+  }, [firstName, lastName, practiceName, domainName, referralCode]);
 
   /**
    * Step 3: Mark onboarding as complete.

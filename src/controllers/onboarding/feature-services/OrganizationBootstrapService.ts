@@ -3,6 +3,7 @@ import { OrganizationModel } from "../../../models/OrganizationModel";
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
 import { InvitationModel } from "../../../models/InvitationModel";
 import { UserModel } from "../../../models/UserModel";
+import { generateReferralCode } from "../../../utils/referralCode";
 
 export interface BootstrapResult {
   organizationId: number;
@@ -21,7 +22,8 @@ export async function bootstrapOrganization(
   userId: number,
   practiceName: string,
   domain: string | undefined,
-  trx: Knex.Transaction
+  trx: Knex.Transaction,
+  referralCode?: string
 ): Promise<BootstrapResult> {
   // Guard: check if the user already has an org (retry safety)
   const existing = await OrganizationUserModel.findByUserId(userId, trx);
@@ -50,10 +52,22 @@ export async function bootstrapOrganization(
     }
   }
 
+  // Look up referring org if a referral code was provided
+  let referredByOrgId: number | undefined;
+  if (referralCode) {
+    const referrer = await OrganizationModel.findByReferralCode(referralCode, trx);
+    if (referrer) {
+      referredByOrgId = referrer.id;
+      console.log(`[Onboarding] Referral attribution: code ${referralCode} → org ${referrer.id} (${referrer.name})`);
+    }
+  }
+
   const newOrg = await OrganizationModel.create(
     {
       name: practiceName || `User ${userId}'s Organization`,
       domain: domain,
+      referral_code: generateReferralCode(),
+      referred_by_org_id: referredByOrgId,
     },
     trx
   );

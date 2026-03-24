@@ -316,6 +316,52 @@ checkupRoutes.post("/email", async (req, res) => {
 });
 
 /**
+ * POST /api/checkup/build-trigger
+ *
+ * Triggers ClearPath website build after email capture.
+ * Logs intent to behavioral_events. In production, kicks off the pipeline.
+ * For now: logs the intent, returns queued status.
+ */
+checkupRoutes.post("/build-trigger", async (req, res) => {
+  try {
+    const { email, placeId, practiceName, specialty, city } = req.body;
+
+    if (!practiceName) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required field: practiceName",
+      });
+    }
+
+    console.log(`[Checkup] ClearPath build triggered for ${practiceName}`);
+
+    // Log the build request (no PII — email not stored in properties)
+    await BehavioralEventModel.create({
+      event_type: "clearpath.build_triggered",
+      session_id: req.body.sessionId || null,
+      properties: {
+        place_id: placeId,
+        practice_name: practiceName,
+        specialty: specialty || null,
+        city: city || null,
+      },
+    });
+
+    return res.json({
+      success: true,
+      status: "queued",
+      estimated_minutes: 60,
+    });
+  } catch (error: any) {
+    console.error("[Checkup] Build trigger error:", error.message);
+    return res.status(500).json({
+      success: false,
+      error: "Build trigger failed.",
+    });
+  }
+});
+
+/**
  * POST /api/checkup/track
  *
  * Records a behavioral event from the checkup flow.

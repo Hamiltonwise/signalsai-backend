@@ -43,6 +43,7 @@ import CheckupLayout from "./pages/checkup/CheckupLayout";
 import EntryScreen from "./pages/checkup/EntryScreen";
 import ScanningTheater from "./pages/checkup/ScanningTheater";
 import ResultsScreen from "./pages/checkup/ResultsScreen";
+import BuildingScreen from "./pages/checkup/BuildingScreen";
 
 // AppProviders wrapper - now used as a layout route to avoid remounting on navigation
 function AppProviders({ children }: { children: ReactNode }) {
@@ -101,6 +102,7 @@ function App() {
                 <Route index element={<EntryScreen />} />
                 <Route path="scanning" element={<ScanningTheater />} />
                 <Route path="results" element={<ResultsScreen />} />
+                <Route path="building" element={<BuildingScreen />} />
               </Route>
 
               <Route path="/" element={<Navigate to="/signin" replace />} />

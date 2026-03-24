@@ -92,3 +92,22 @@ export async function sendCheckupEmail(params: {
 
   return response.json();
 }
+
+/**
+ * Trigger ClearPath website build after email capture
+ */
+export async function triggerBuild(params: {
+  email: string;
+  placeId: string;
+  practiceName: string;
+  specialty: string;
+  city: string;
+}): Promise<{ success: boolean; status?: string; estimated_minutes?: number }> {
+  const response = await fetch("/api/checkup/build-trigger", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+
+  return response.json();
+}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, Navigate } from "react-router-dom";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import {
   Eye,
   Globe,
@@ -14,7 +14,7 @@ import {
   Share2,
 } from "lucide-react";
 import type { PlaceDetails } from "../../api/places";
-import { sendCheckupEmail } from "../../api/checkup";
+import { sendCheckupEmail, triggerBuild } from "../../api/checkup";
 import { trackEvent } from "../../api/tracking";
 
 // ---------------------------------------------------------------------------
@@ -239,6 +239,7 @@ function FindingCard({
 
 export default function ResultsScreen() {
   const location = useLocation();
+  const navigate = useNavigate();
   const state = location.state as CheckupResults | undefined;
 
   const [email, setEmail] = useState("");
@@ -297,8 +298,23 @@ export default function ResultsScreen() {
       intent: state.intent || null,
     });
 
-    setEmailSubmitted(true);
-    setEmailSending(false);
+    // Trigger ClearPath build and navigate to building screen
+    triggerBuild({
+      email: email.trim(),
+      placeId: place.placeId,
+      practiceName: place.name,
+      specialty: place.category || "",
+      city: place.city || "",
+    }).catch(() => {});
+
+    navigate("/checkup/building", {
+      state: {
+        practiceName: place.name,
+        specialty: place.category || "",
+        email: email.trim(),
+      },
+      replace: true,
+    });
   };
 
   // Blur gate CTA — WO4: use real competitor name
