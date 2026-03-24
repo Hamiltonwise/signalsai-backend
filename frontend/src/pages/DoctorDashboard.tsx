@@ -34,6 +34,7 @@ import { useLocationContext } from "@/contexts/locationContext";
 import { apiGet } from "@/api/index";
 import agents from "@/api/agents";
 import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
+import CSAgentChat from "@/components/dashboard/CSAgentChat";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ function PositionCard({ ranking }: { ranking: RankingData | null }) {
             }`}
           >
             {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {delta > 0 ? "+" : ""}{delta} since last scan
+            {delta > 0 ? "+" : ""}{delta} position{Math.abs(delta) !== 1 ? "s" : ""} since last scan
           </span>
         )}
       </div>
@@ -362,7 +363,7 @@ function GapToNext({ ranking }: { ranking: RankingData | null }) {
   return (
     <div className="rounded-2xl border-2 border-[#D56753]/20 bg-white p-6">
       <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-3">
-        Gap to Position #{ranking.rankPosition - 1}
+        What It Takes to Reach Position #{ranking.rankPosition - 1}
       </p>
       {comp && (
         <p className="text-base font-semibold text-[#212D40] mb-4">
@@ -386,7 +387,7 @@ function RecommendedMove({ ranking, findings }: { ranking: RankingData | null; f
   let move = {
     title: "Ask 3 happy patients for a Google review this week",
     detail: "Review velocity is the fastest lever. Send the link right after their appointment.",
-    cta: "Open Review Requests",
+    cta: "Send review requests to 3 patients",
   };
 
   if (ranking?.topCompetitor) {
@@ -395,13 +396,13 @@ function RecommendedMove({ ranking, findings }: { ranking: RankingData | null; f
       move = {
         title: `Get ${reviewGap} review${reviewGap !== 1 ? "s" : ""} to pass ${ranking.topCompetitor.name}`,
         detail: `You're ${reviewGap} away. That's one good week.`,
-        cta: "Send Review Requests Now",
+        cta: `Send ${reviewGap} review request${reviewGap !== 1 ? "s" : ""} to close the gap`,
       };
     }
   }
 
   if (findings.length > 0 && findings[0].detail && /photo/i.test(findings[0].detail)) {
-    move = { title: "Add 5 new photos to your Google Business Profile", detail: findings[0].detail, cta: "Open Google Business Profile" };
+    move = { title: "Add 5 new photos to your Google Business Profile", detail: findings[0].detail, cta: "Upload 5 photos to your profile" };
   }
 
   return (
@@ -648,6 +649,13 @@ export default function DoctorDashboard() {
           {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
         </>
       )}
+
+      {/* CS Agent — floating chat */}
+      <CSAgentChat
+        practiceName={practiceName}
+        score={rankingData?.rankScore ?? null}
+        locationId={locationId}
+      />
     </div>
   );
 }
