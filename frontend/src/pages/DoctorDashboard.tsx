@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import { apiGet } from "@/api/index";
 import agents from "@/api/agents";
+import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ interface RankingData {
   rankScore: number | null;
   specialty: string | null;
   location: string | null;
+  placeId?: string | null;
   topCompetitor?: {
     name: string;
     reviewCount: number;
@@ -286,6 +288,7 @@ export default function DoctorDashboard() {
         rankScore: latest.rank_score ?? latest.rankScore ?? null,
         specialty: latest.specialty || null,
         location: latest.location || null,
+        placeId: latest.raw_data?.client_gbp?.placeId ?? latest.gbp_location_id ?? null,
         topCompetitor: null,
         clientReviews: null,
         previousPosition: null,
@@ -381,6 +384,12 @@ export default function DoctorDashboard() {
 
       {/* Website Card */}
       <WebsiteCard website={websiteData ?? null} />
+
+      {/* Review Requests */}
+      <ReviewRequestCard
+        placeId={rankingData?.placeId ?? null}
+        practiceName={practiceName}
+      />
 
       {/* Referral Card */}
       <ReferralCard referralCode={referralCode} />

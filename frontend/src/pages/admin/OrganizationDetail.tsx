@@ -24,6 +24,7 @@ import {
   Settings,
   BarChart3,
   ChevronDown,
+  Star,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { AdminPageHeader, Badge } from "../../components/ui/DesignSystem";
@@ -37,6 +38,7 @@ import { OrgSubscriptionSection } from "../../components/Admin/OrgSubscriptionSe
 import { OrgUsersSection } from "../../components/Admin/OrgUsersSection";
 import { OrgConnectionsSection } from "../../components/Admin/OrgConnectionsSection";
 import { OrgSettingsSection } from "../../components/Admin/OrgSettingsSection";
+import { OrgReviewRequestsTab } from "../../components/Admin/OrgReviewRequestsTab";
 import type { AdminLocation } from "../../api/admin-organizations";
 
 // ---------------------------------------------------------------------------
@@ -90,6 +92,7 @@ const AGENT_TAB_KEYS = [
   "opportunity",
   "cro",
   "referral",
+  "reviews",
 ] as const;
 type AgentTabKey = (typeof AGENT_TAB_KEYS)[number];
 
@@ -117,6 +120,10 @@ const AGENT_TAB_CONFIG: Record<
   referral: {
     label: "Referral Engine",
     icon: <Share2 className="h-3.5 w-3.5" />,
+  },
+  reviews: {
+    label: "Review Requests",
+    icon: <Star className="h-3.5 w-3.5" />,
   },
 };
 
@@ -393,6 +400,9 @@ export default function OrganizationDetail() {
                     agentType="referral_engine"
                     locationId={selectedLocation?.id ?? null}
                   />
+                )}
+                {activeAgentTab === "reviews" && (
+                  <OrgReviewRequestsTab organizationId={orgId} />
                 )}
               </div>
             </div>

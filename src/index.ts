@@ -45,11 +45,14 @@ import adminSchedulesRoutes from "./routes/admin/schedules";
 import adminSignalRoutes from "./routes/admin/signal";
 import adminDreamTeamRoutes from "./routes/admin/dreamTeam";
 import adminBatchCheckupRoutes from "./routes/admin/batchCheckup";
+import adminFirefliesRoutes from "./routes/admin/firefliesWebhook";
+import adminReviewRoutes from "./routes/admin/reviews";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
 import placesRoutes from "./routes/places";
 import checkupRoutes from "./routes/checkup";
+import reviewRequestRoutes from "./routes/reviewRequests";
 import auditRoutes from "./routes/audit";
 import importsRoutes from "./routes/imports";
 import websiteContactRoutes from "./routes/websiteContact";
@@ -174,6 +177,8 @@ app.use("/api/admin/schedules", adminSchedulesRoutes);
 app.use("/api/admin/signal", adminSignalRoutes);
 app.use("/api/admin/dream-team", adminDreamTeamRoutes);
 app.use("/api/admin/batch-checkup", adminBatchCheckupRoutes);
+app.use("/api/admin", adminFirefliesRoutes); // Fireflies webhook + dream team tasks
+app.use("/api/admin/reviews", adminReviewRoutes); // Review notifications + AI responses
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest
 app.use("/api/admin", adminAuthRoutes);
@@ -181,6 +186,7 @@ app.use("/api/support", supportRoutes); // Help form / support inquiries
 app.use("/api/scraper", scraperRoutes); // Website scraper for n8n webhooks
 app.use("/api/places", placesRoutes); // Google Places API for GBP search
 app.use("/api/checkup", checkupRoutes); // Free Referral Base Checkup analysis
+app.use("/api/review-requests", reviewRequestRoutes); // Post-appointment review generation
 app.use("/api/audit", auditRoutes); // Audit process tracking for leadgen tool
 app.use("/api/imports", importsRoutes); // Public file serving for self-hosted imports
 app.use("/api/websites", websiteContactRoutes); // Public contact form for rendered sites
