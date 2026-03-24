@@ -33,6 +33,17 @@ export interface CheckupMarket {
   rank: number;
 }
 
+export interface CheckupGapItem {
+  id: string;
+  label: string;
+  current: number;
+  target: number;
+  unit: string;
+  action: string;
+  timeEstimate: string;
+  competitorName: string | null;
+}
+
 export interface CheckupAnalysis {
   success: boolean;
   score: CheckupScore;
@@ -41,6 +52,7 @@ export interface CheckupAnalysis {
   findings: CheckupFinding[];
   totalImpact: number;
   market: CheckupMarket;
+  gaps: CheckupGapItem[];
 }
 
 /**

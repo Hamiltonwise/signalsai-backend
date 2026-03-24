@@ -210,6 +210,93 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
     // Total estimated annual impact
     const totalImpact = findings.reduce((s, f) => s + f.impact, 0);
 
+    // --- Gap-to-next: concrete closeable units ---
+    // Find the competitor directly above client in the ranking
+    const clientRankIndex = allWithClient.findIndex(
+      (c) => c.name.toLowerCase() === name.toLowerCase()
+    );
+    const nextAbove = clientRankIndex > 0 ? allWithClient[clientRankIndex - 1] : null;
+    const nextAboveFull = nextAbove
+      ? otherCompetitors.find(
+          (c) => c.name.toLowerCase() === nextAbove.name.toLowerCase()
+        )
+      : null;
+
+    interface GapItem {
+      id: string;
+      label: string;
+      current: number;
+      target: number;
+      unit: string;
+      action: string;
+      timeEstimate: string;
+      competitorName: string | null;
+    }
+
+    const gaps: GapItem[] = [];
+
+    // Gap 1: Reviews to overtake next competitor
+    if (nextAbove && nextAbove.reviewsCount > clientReviews) {
+      const reviewGap = nextAbove.reviewsCount - clientReviews + 1; // +1 to overtake
+      gaps.push({
+        id: "reviews",
+        label: `${reviewGap} more review${reviewGap !== 1 ? "s" : ""} puts you above ${nextAbove.name}`,
+        current: clientReviews,
+        target: nextAbove.reviewsCount + 1,
+        unit: "reviews",
+        action: "Ask your 3 most recent happy customers for a Google review today.",
+        timeEstimate: reviewGap <= 5 ? "1-2 weeks" : reviewGap <= 15 ? "1-2 months" : "3-6 months",
+        competitorName: nextAbove.name,
+      });
+    }
+
+    // Gap 2: Rating improvement needed
+    if (clientRating < avgRating) {
+      const starsNeeded = Math.round((avgRating - clientRating) * 10) / 10;
+      gaps.push({
+        id: "rating",
+        label: `${starsNeeded} star improvement matches the market average`,
+        current: clientRating,
+        target: Math.round(avgRating * 10) / 10,
+        unit: "stars",
+        action: "Respond to every negative review within 24 hours. Ask satisfied customers to share their experience.",
+        timeEstimate: starsNeeded <= 0.2 ? "1-2 months" : "3-6 months",
+        competitorName: null,
+      });
+    }
+
+    // Gap 3: Review velocity (if competitor has more reviews, estimate monthly pace)
+    if (topCompetitor && topCompetitor.reviewsCount > clientReviews) {
+      const monthlyTarget = Math.max(3, Math.ceil(topCompetitor.reviewsCount / 24)); // assume 2yr accumulation
+      gaps.push({
+        id: "velocity",
+        label: `${monthlyTarget} reviews per month closes the gap with ${topCompetitor.name}`,
+        current: 0, // we don't have velocity data yet
+        target: monthlyTarget,
+        unit: "reviews/month",
+        action: "Set up an automated review request after every appointment or service.",
+        timeEstimate: "Ongoing",
+        competitorName: topCompetitor.name,
+      });
+    }
+
+    // Gap 4: GBP completeness (we know if they have website/phone from Places data)
+    const missingGbpItems: string[] = [];
+    if (!req.body.websiteUri) missingGbpItems.push("website");
+    if (!req.body.phone) missingGbpItems.push("phone number");
+    if (missingGbpItems.length > 0) {
+      gaps.push({
+        id: "gbp_completeness",
+        label: `Add your ${missingGbpItems.join(" and ")} to your Google Business Profile`,
+        current: 0,
+        target: missingGbpItems.length,
+        unit: "items",
+        action: `Log into Google Business Profile and add your ${missingGbpItems.join(" and ")}. Complete profiles rank higher.`,
+        timeEstimate: "10 minutes",
+        competitorName: null,
+      });
+    }
+
     console.log(
       `[Checkup] Score: ${compositeScore} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}`
     );
@@ -248,6 +335,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
         avgReviews: Math.round(avgReviews),
         rank,
       },
+      gaps,
     });
   } catch (error: any) {
     console.error("[Checkup] Analysis error:", error.message);

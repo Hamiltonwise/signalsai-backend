@@ -37,6 +37,17 @@ export interface CheckupFinding {
   impact: number;
 }
 
+export interface CheckupGapItem {
+  id: string;
+  label: string;
+  current: number;
+  target: number;
+  unit: string;
+  action: string;
+  timeEstimate: string;
+  competitorName: string | null;
+}
+
 export interface CheckupResults {
   place: PlaceDetails;
   score: {
@@ -56,6 +67,7 @@ export interface CheckupResults {
     avgReviews: number;
     rank: number;
   };
+  gaps?: CheckupGapItem[];
   refCode?: string;
   intent?: string;
 }
@@ -234,6 +246,74 @@ function FindingCard({
 }
 
 // ---------------------------------------------------------------------------
+// Gap Progress Bar — concrete closeable units, not percentages
+// ---------------------------------------------------------------------------
+
+function GapBar({ gap }: { gap: CheckupGapItem }) {
+  const pct =
+    gap.target > 0 ? Math.min(100, Math.round((gap.current / gap.target) * 100)) : 0;
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-4">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full text-left"
+      >
+        <p className="text-sm font-semibold text-[#212D40] leading-snug">
+          {gap.label}
+        </p>
+        <div className="mt-3 flex items-center gap-3">
+          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#D56753] rounded-full transition-all duration-1000 ease-out"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className="text-xs font-bold text-[#212D40] shrink-0 tabular-nums">
+            {gap.current}/{gap.target}
+          </span>
+        </div>
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-[11px] text-slate-400">
+            {gap.timeEstimate}
+          </span>
+          <span className="text-[11px] text-[#D56753] font-medium">
+            {expanded ? "Hide action" : "What to do"}
+          </span>
+        </div>
+      </button>
+      {expanded && (
+        <div className="mt-3 pt-3 border-t border-slate-100">
+          <p className="text-xs text-slate-600 leading-relaxed">
+            {gap.action}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GapSection({ gaps }: { gaps: CheckupGapItem[] }) {
+  if (!gaps || gaps.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-sm font-bold text-[#212D40] uppercase tracking-wide">
+        How to Move Up
+      </h2>
+      <p className="text-xs text-slate-400 -mt-1">
+        Concrete steps to improve your position. Real numbers, not percentages.
+      </p>
+      {gaps.map((gap) => (
+        <GapBar key={gap.id} gap={gap} />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Component — all data arrives via React Router state
 // ---------------------------------------------------------------------------
 
@@ -381,6 +461,11 @@ export default function ResultsScreen() {
           icon={MessageSquare}
         />
       </div>
+
+      {/* Gap Progress Bars — concrete closeable units */}
+      {state.gaps && state.gaps.length > 0 && (
+        <GapSection gaps={state.gaps} />
+      )}
 
       {/* Findings — first visible, rest blurred */}
       <div className="space-y-3">

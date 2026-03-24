@@ -360,6 +360,7 @@ export default function ScanningTheater() {
       findings: result.findings,
       totalImpact: result.totalImpact,
       market: result.market,
+      gaps: (result as any).gaps || [],
       refCode,
       intent,
     };
