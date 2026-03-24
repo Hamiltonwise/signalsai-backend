@@ -103,8 +103,9 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
     );
 
     // --- Sub-scores (WO4 spec: Local Visibility /40, Online Presence /40, Review Health /20) ---
+    // Calibrated for real spread: most businesses should land 40-70, not 85-95.
 
-    // Local Visibility (0-40) — rank in market + review volume relative to competitors
+    // Local Visibility (0-40) — rank position is king, reviews are secondary
     const allWithClient = [
       { name, reviewsCount: clientReviews, totalScore: clientRating },
       ...otherCompetitors,
@@ -118,27 +119,39 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
         (c) => c.name.toLowerCase() === name.toLowerCase()
       ) + 1;
     const totalInMarket = allWithClient.length;
+    // Top position = 1.0, last = 0.0. Weighted heavily toward rank.
     const rankPct = (totalInMarket - rank) / Math.max(totalInMarket - 1, 1);
-    const reviewRatio = clientReviews / maxReviews;
+    // Review ratio uses max reviews — most businesses are well below the leader
+    const reviewRatio = Math.min(1, clientReviews / maxReviews);
+    // Rank is 70% of the score, reviews 30%. Being #5 of 10 = ~50% rank component.
     const localVisibility = Math.round(
-      Math.min(40, Math.max(0, (rankPct * 0.5 + reviewRatio * 0.5) * 40))
+      Math.min(40, Math.max(0, (rankPct * 0.7 + reviewRatio * 0.3) * 40))
     );
 
-    // Online Presence (0-40) — rating relative to competitors + website presence
+    // Online Presence (0-40) — rating gap matters more, no free baseline
     const ratingDiff = clientRating - avgRating;
-    const ratingPct = Math.min(1, Math.max(0, 0.5 + ratingDiff * 0.2 + (clientRating >= 4.5 ? 0.1 : 0)));
+    // Center at 0.35 (not 0.5), so average = 14/40. Must beat average to score well.
+    // Each 0.1 star above average adds ~0.04 (was 0.02). 4.5+ bonus removed.
+    const ratingPct = Math.min(1, Math.max(0, 0.35 + ratingDiff * 0.4));
     const onlinePresence = Math.round(
       Math.min(40, Math.max(0, ratingPct * 40))
     );
 
-    // Review Health (0-20) — review count vs market average
-    const reviewHealthPct = avgReviews > 0 ? Math.min(1, clientReviews / avgReviews) : 0.5;
+    // Review Health (0-20) — penalize for being below average, cap well below max
+    // At average = 10/20, double average = 16/20, triple = 20/20
+    const reviewHealthRaw = avgReviews > 0
+      ? Math.pow(clientReviews / avgReviews, 0.6) // diminishing returns above average
+      : 0.3;
     const reviewHealth = Math.round(
-      Math.min(20, Math.max(0, reviewHealthPct * 20))
+      Math.min(20, Math.max(0, Math.min(1, reviewHealthRaw) * 20))
     );
 
     // Composite score (sum of sub-scores, 0-100)
     const compositeScore = localVisibility + onlinePresence + reviewHealth;
+
+    console.log(
+      `[Checkup] Score breakdown: LV=${localVisibility}/40 OP=${onlinePresence}/40 RH=${reviewHealth}/20 = ${compositeScore}/100 | rank #${rank}/${totalInMarket} | rating ${clientRating} vs avg ${avgRating.toFixed(1)} | reviews ${clientReviews} vs avg ${Math.round(avgReviews)} (max ${maxReviews})`
+    );
 
     // Top competitor (for blur gate CTA)
     const topCompetitor = otherCompetitors[0] || null;
