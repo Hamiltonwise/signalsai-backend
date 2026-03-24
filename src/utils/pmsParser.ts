@@ -21,6 +21,7 @@ export interface ParsedRow {
   referrals: number;
   production: number;
   month: string; // YYYY-MM
+  patient_id?: string; // optional patient identifier for dedup
 }
 
 export interface ColumnMapping {
@@ -29,6 +30,7 @@ export interface ColumnMapping {
   type: number | null;
   production: number | null;
   referrals: number | null;
+  patient: number | null;
 }
 
 export interface ParseResult {
@@ -105,6 +107,15 @@ const HEADER_PATTERNS: [RegExp, ColumnSignal][] = [
   [/new[\s_-]?patients?/i, { field: "referrals", score: 8 }],
   [/^#$/i, { field: "referrals", score: 5 }],
   [/qty|quantity/i, { field: "referrals", score: 5 }],
+
+  // Patient name/ID (for dedup)
+  [/^patient$/i, { field: "patient", score: 10 }],
+  [/patient[\s_-]?(name|id)/i, { field: "patient", score: 10 }],
+  [/^(first|last)[\s_-]?name$/i, { field: "patient", score: 7 }],
+  [/^name$/i, { field: "patient", score: 3 }], // low score — ambiguous
+  [/chart[\s_-]?(number|#|id)/i, { field: "patient", score: 9 }],
+  [/^id$/i, { field: "patient", score: 4 }],
+  [/account[\s_-]?(number|#)/i, { field: "patient", score: 7 }],
 ];
 
 // ---------------------------------------------------------------------------
@@ -302,7 +313,7 @@ export function detectColumns(
 
   if (rows.length === 0) {
     return {
-      mapping: { date: null, source: null, type: null, production: null, referrals: null },
+      mapping: { date: null, source: null, type: null, production: null, referrals: null, patient: null },
       headerRow: -1,
       warnings: ["No data rows found in upload."],
     };
@@ -369,9 +380,9 @@ export function detectColumns(
   }
 
   // Phase 3: Greedy assignment — highest score per field, no column reuse
-  const mapping: ColumnMapping = { date: null, source: null, type: null, production: null, referrals: null };
+  const mapping: ColumnMapping = { date: null, source: null, type: null, production: null, referrals: null, patient: null };
   const usedCols = new Set<number>();
-  const fields: (keyof ColumnMapping)[] = ["date", "source", "production", "type", "referrals"];
+  const fields: (keyof ColumnMapping)[] = ["date", "source", "production", "type", "referrals", "patient"];
 
   // Sort fields by their best available score (descending) so highest-confidence fields claim columns first
   const fieldBestScores = fields.map((field) => {
@@ -480,6 +491,7 @@ export function parseRows(
     const typeVal = mapping.type !== null ? (row[mapping.type] || "") : "";
     const prodVal = mapping.production !== null ? (row[mapping.production] || "") : "";
     const refVal = mapping.referrals !== null ? (row[mapping.referrals] || "") : "";
+    const patientVal = mapping.patient !== null ? (row[mapping.patient] || "") : "";
 
     // Parse date → month
     const month = parseDateToMonth(dateVal) || fallbackMonth;
@@ -499,7 +511,10 @@ export function parseRows(
     // Parse referrals (default 1 per row if no referrals column)
     const referrals = refVal ? (parseInt(refVal.replace(/[,\s]/g, ""), 10) || 1) : 1;
 
-    parsed.push({ source, type, referrals, production, month });
+    // Patient ID for dedup (one patient = one referral regardless of treatment count)
+    const patient_id = patientVal.trim() || undefined;
+
+    parsed.push({ source, type, referrals, production, month, patient_id });
   }
 
   return { parsed, warnings, skipped };
@@ -528,7 +543,7 @@ export async function parsePmsUpload(
   if (rows.length === 0) {
     return {
       rows: [],
-      mapping: { date: null, source: null, type: null, production: null, referrals: null },
+      mapping: { date: null, source: null, type: null, production: null, referrals: null, patient: null },
       warnings: ["Upload appears empty. No data rows could be extracted."],
       totalInputRows: 0,
       rowsParsed: 0,
@@ -550,7 +565,7 @@ export async function parsePmsUpload(
   // 4. Compute stats
   const months = new Set(parsed.map((r) => r.month));
 
-  const fields: (keyof ColumnMapping)[] = ["date", "source", "type", "production", "referrals"];
+  const fields: (keyof ColumnMapping)[] = ["date", "source", "type", "production", "referrals", "patient"];
   const columnsFound = fields.filter((f) => mapping[f] !== null);
   const columnsMissing = fields.filter((f) => mapping[f] === null);
 
@@ -576,7 +591,7 @@ export function parsePmsText(text: string): ParseResult {
   if (rows.length === 0) {
     return {
       rows: [],
-      mapping: { date: null, source: null, type: null, production: null, referrals: null },
+      mapping: { date: null, source: null, type: null, production: null, referrals: null, patient: null },
       warnings: ["No data could be extracted from pasted text."],
       totalInputRows: 0,
       rowsParsed: 0,
@@ -590,7 +605,7 @@ export function parsePmsText(text: string): ParseResult {
   const { mapping, headerRow, warnings: detectWarnings } = detectColumns(rows);
   const { parsed, warnings: parseWarnings, skipped } = parseRows(rows, mapping, headerRow);
   const months = new Set(parsed.map((r) => r.month));
-  const fields: (keyof ColumnMapping)[] = ["date", "source", "type", "production", "referrals"];
+  const fields: (keyof ColumnMapping)[] = ["date", "source", "type", "production", "referrals", "patient"];
 
   return {
     rows: parsed,
