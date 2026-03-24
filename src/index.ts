@@ -78,8 +78,9 @@ import billingRoutes from "./routes/billing";
 import founderSettingsRoutes from "./routes/admin/founderSettings";
 import clientHealthRoutes from "./routes/admin/clientHealth";
 import dashboardContextRoutes from "./routes/user/dashboardContext";
-// T2 registers /api/auth/google routes
-// import gbpAuthRoutes from "./routes/auth/gbp";
+import gbpAuthRoutes from "./routes/auth/gbp";
+import oneActionCardRoutes from "./routes/user/oneActionCard";
+import userPreferencesRoutes from "./routes/user/preferences";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -230,7 +231,9 @@ app.use("/api/billing", billingRoutes); // Stripe billing & subscription managem
 app.use("/api/founder/settings", founderSettingsRoutes); // Founder Mode personal settings
 app.use("/api/admin/client-health", clientHealthRoutes); // WO-T5: CS Pulse health grid for IntegratorView
 app.use("/api/user/dashboard-context", dashboardContextRoutes); // WO-CHECKUP-SESSION-KEY: pre-populate dashboard from checkup data
-// T2 registers POST /api/webhooks/stripe in src/index.ts (currently at /api/billing/webhook)
+app.use("/api/auth/google", gbpAuthRoutes); // T6: GBP OAuth connect + callback
+app.use("/api/user/one-action-card", oneActionCardRoutes); // T3: One Action Card deterministic engine
+app.use("/api/user", userPreferencesRoutes); // WO-NOTIFICATION-PREFS + WO-STRIPE-PORTAL
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);
