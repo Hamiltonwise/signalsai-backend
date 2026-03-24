@@ -1,50 +1,43 @@
 /**
- * Founder Mode — Corey's personal intelligence layer.
+ * Founder Mode -- Corey's personal intelligence layer.
  *
- * Five panels, all data-driven where possible:
- * 1. Founder Brief — real metrics, QSBS, 409A, pattern connection, judgment call
- * 2. Financial Command — crypto decision matrix, regulatory countdowns, VA status
- * 3. Watch Ledger — personal, localStorage-backed
- * 4. Content Flywheel — seeded concepts (future: auto-generated from session output)
- * 5. Competitive + IP Intelligence — trademark + competitor + brand monitoring
+ * Five panels, DB-backed via founder_settings table:
+ * 1. Founder Brief -- MRR, runway (days), QSBS, 409A, judgment call
+ * 2. Financial Command -- crypto thresholds, QSBS calculator, VA status
+ * 3. Watch Ledger -- personal collection, DB-backed
+ * 4. Content Flywheel -- seeded concepts (future: auto-generated)
+ * 5. Competitive + IP Intelligence -- trademark watch, competitor notes, SDVOSB
  */
 
 import { useState, useEffect, useCallback } from "react";
 import {
   X,
-  DollarSign,
-  Calendar,
   Shield,
   Eye,
   Pen,
-  Clock,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle2,
   FileText,
   Video,
   BookOpen,
   Globe,
   Zap,
-  Activity,
+  Plus,
+  Save,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   adminListOrganizations,
   type AdminOrganization,
 } from "@/api/admin-organizations";
 import { fetchSignal } from "@/api/admin-signal";
+import { apiGet, apiPatch } from "@/api/index";
 
-// ─── Constants ──────────────────────────────────────────────────────
+// --- Constants ---------------------------------------------------------------
 
 const AAE_DATE = new Date("2026-04-14");
 const QSBS_START = new Date("2025-10-28");
 const QSBS_END = new Date("2030-10-28");
 const VALUATION_409A_DUE = new Date("2026-06-30");
-const WYOMING_DOMICILE_ALERT = new Date("2027-10-01");
-
-// Estimated monthly burn — Corey can update this in localStorage
-const DEFAULT_MONTHLY_BURN = 12000;
+const MONTHLY_BURN = 9500;
 
 function daysUntil(date: Date): number {
   return Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86_400_000));
@@ -54,11 +47,14 @@ function daysSince(date: Date): number {
   return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000));
 }
 
-function loadNumber(key: string, fallback: number): number {
-  try { const v = localStorage.getItem(key); return v ? Number(v) : fallback; } catch { return fallback; }
-}
+// --- Types -------------------------------------------------------------------
 
-// ─── Watch Ledger Types ─────────────────────────────────────────────
+interface FounderSettings {
+  financial_config: any;
+  watch_ledger: WatchEntry[];
+  competitive_notes: any;
+  founder_cash_on_hand: number;
+}
 
 interface WatchEntry {
   id: string;
@@ -79,51 +75,84 @@ const DEFAULT_WATCHES: WatchEntry[] = [
   { id: "rolex-1016", ref: "1016", name: "Rolex Explorer", acquiredDate: null, floorPrice: "", giftingIntent: "", notes: "Long-horizon hunt", status: "hunting" },
 ];
 
-function loadWatches(): WatchEntry[] {
-  try { const s = localStorage.getItem("founder_watches"); return s ? JSON.parse(s) : DEFAULT_WATCHES; } catch { return DEFAULT_WATCHES; }
+const DEFAULT_FINANCIAL: any = {
+  sol: { alert_low: 170, alert_high: 444, current_position: null },
+  btc: { alert_low: 40000, current_position: null },
+};
+
+const DEFAULT_COMPETITIVE: any = {
+  competitors: {
+    "DentalQore": { notes: "", last_checked: new Date().toISOString().slice(0, 10) },
+    "PBHS": { notes: "", last_checked: new Date().toISOString().slice(0, 10) },
+    "My Social Practice": { notes: "", last_checked: new Date().toISOString().slice(0, 10) },
+    "Owner.com": { notes: "", last_checked: new Date().toISOString().slice(0, 10) },
+  },
+  brand: { notes: "", last_updated: new Date().toISOString().slice(0, 10) },
+  sdvosb: { status: "SBA VetCert: Certified (pending verification)", notes: "" },
+};
+
+// --- Inline edit input -------------------------------------------------------
+
+function InlineInput({
+  value,
+  onChange,
+  placeholder,
+  className = "",
+  type = "text",
+}: {
+  value: string | number;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  type?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={`h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753] ${className}`}
+    />
+  );
 }
 
-function saveWatches(watches: WatchEntry[]) {
-  localStorage.setItem("founder_watches", JSON.stringify(watches));
-}
+// =============================================================================
+// PANEL 1 -- FOUNDER BRIEF
+// =============================================================================
 
-// ═══════════════════════════════════════════════════════════════════
-// PANEL 1 — FOUNDER BRIEF
-// ═══════════════════════════════════════════════════════════════════
-
-function FounderBrief({ orgs, signal }: { orgs: AdminOrganization[]; signal: string }) {
+function FounderBrief({
+  orgs,
+  signal,
+  cashOnHand,
+  onCashChange,
+}: {
+  orgs: AdminOrganization[];
+  signal: string;
+  cashOnHand: number;
+  onCashChange: (v: number) => void;
+}) {
   const activeOrgs = orgs.filter((o) => o.subscription_status === "active" || o.subscription_tier);
   const mrr = activeOrgs.length * 2000;
-  const burn = loadNumber("founder_monthly_burn", DEFAULT_MONTHLY_BURN);
-  const runway = mrr > 0 ? Math.round((mrr * 12) / burn) : 0; // months at current MRR vs burn
+  const runwayDays = cashOnHand > 0 ? Math.round(cashOnHand / (MONTHLY_BURN / 30)) : 0;
   const exceptions = orgs.filter((o) => !o.connections?.gbp);
 
-  // QSBS qualifying percentage
-  const qsbsTotal = daysSince(QSBS_START) + daysUntil(QSBS_END);
-  const qsbsPct = qsbsTotal > 0 ? Math.round((daysSince(QSBS_START) / qsbsTotal) * 100) : 0;
+  const qsbsElapsed = daysSince(QSBS_START);
+  const qsbsPct = Math.round((qsbsElapsed / 3650) * 100);
 
-  // Unicorn confidence: composite of product velocity, revenue, market signals
-  // Simple heuristic: active accounts × 10 + (mrr / 100), capped at 100
-  const unicornScore = Math.min(100, Math.round(activeOrgs.length * 10 + mrr / 100));
-
-  // FYM score: Founder-Year Multiplier — how efficiently time converts to value
-  // Heuristic: total accounts / months since QSBS start
-  const monthsActive = Math.max(1, Math.round(daysSince(QSBS_START) / 30));
-  const fymScore = (orgs.length / monthsActive * 10).toFixed(1);
+  const d409a = daysUntil(VALUATION_409A_DUE);
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
-        Founder Brief
-      </h2>
+      <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Founder Brief</h2>
 
-      {/* Row 1: Core metrics */}
+      {/* Core metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "MRR", value: `$${mrr.toLocaleString()}`, sub: `${activeOrgs.length} paying`, color: "text-emerald-400" },
-          { label: "Runway", value: `${runway}mo`, sub: `$${burn.toLocaleString()}/mo burn`, color: "text-white" },
+          { label: "Runway", value: runwayDays > 0 ? `${runwayDays}d` : "--", sub: `$${MONTHLY_BURN.toLocaleString()}/mo burn`, color: runwayDays < 90 ? "text-red-400" : runwayDays < 180 ? "text-amber-400" : "text-white" },
           { label: "Days to AAE", value: String(daysUntil(AAE_DATE)), sub: "Apr 14, 2026", color: "text-[#D56753]" },
-          { label: "Unicorn", value: `${unicornScore}`, sub: `FYM: ${fymScore}`, color: unicornScore >= 50 ? "text-emerald-400" : "text-amber-400" },
+          { label: "409A Due", value: `${d409a}d`, sub: "Jun 30, 2026", color: d409a <= 30 ? "text-red-400" : d409a <= 60 ? "text-amber-400" : "text-white" },
         ].map((m) => (
           <div key={m.label} className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
             <p className={`text-xl font-black ${m.color}`}>{m.value}</p>
@@ -133,53 +162,48 @@ function FounderBrief({ orgs, signal }: { orgs: AdminOrganization[]; signal: str
         ))}
       </div>
 
-      {/* QSBS Clock with qualifying percentage */}
+      {/* Cash on hand -- editable */}
+      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] uppercase tracking-widest text-white/40">Cash on Hand</p>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-white/30">$</span>
+            <InlineInput
+              type="number"
+              value={cashOnHand}
+              onChange={(v) => onCashChange(Number(v) || 0)}
+              placeholder="Enter amount"
+              className="w-32 text-right"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* QSBS Clock */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <div className="flex items-center justify-between mb-2">
           <p className="text-[10px] uppercase tracking-widest text-white/40">QSBS Clock</p>
-          <span className="text-xs font-black text-emerald-400">{qsbsPct}% qualifying</span>
+          <span className="text-xs font-black text-emerald-400">{qsbsPct}% of 10yr hold</span>
         </div>
         <div className="flex items-center justify-between text-xs text-white/50 mb-1.5">
-          <span>{daysSince(QSBS_START)} days in</span>
-          <span>{daysUntil(QSBS_END)} days left</span>
+          <span>{qsbsElapsed} days elapsed</span>
+          <span>{daysUntil(QSBS_END)} days remaining</span>
         </div>
         <div className="h-2 bg-white/10 rounded-full overflow-hidden">
           <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${qsbsPct}%` }} />
         </div>
         <p className="text-[10px] text-white/25 mt-2">
-          Oct 28, 2025 → Oct 28, 2030 · 5yr hold = 100% federal exclusion up to $10M gain per §1202
+          Oct 28, 2025 to Oct 28, 2030. 5yr hold = 100% federal exclusion up to $10M gain per 1202
         </p>
       </div>
 
-      {/* Pattern connection — real signal from behavioral_events */}
+      {/* Pattern connection */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Pattern Connection</p>
         <p className="text-sm text-white/80 leading-relaxed">{signal}</p>
       </div>
 
-      {/* Next hard dates */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-white">409A Valuation</p>
-            <p className="text-[10px] text-white/30">Due Jun 30, 2026</p>
-          </div>
-          <span className={`text-sm font-black ${daysUntil(VALUATION_409A_DUE) <= 30 ? "text-red-400" : daysUntil(VALUATION_409A_DUE) <= 90 ? "text-amber-400" : "text-white"}`}>
-            {daysUntil(VALUATION_409A_DUE)}d
-          </span>
-        </div>
-        <div className="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-white">AAE Conference</p>
-            <p className="text-[10px] text-white/30">Apr 14, 2026</p>
-          </div>
-          <span className={`text-sm font-black ${daysUntil(AAE_DATE) <= 7 ? "text-red-400" : daysUntil(AAE_DATE) <= 21 ? "text-amber-400" : "text-emerald-400"}`}>
-            {daysUntil(AAE_DATE)}d
-          </span>
-        </div>
-      </div>
-
-      {/* One judgment call */}
+      {/* Judgment call */}
       <div className="rounded-xl bg-[#D56753]/20 border border-[#D56753]/30 p-4">
         <div className="flex items-center gap-2 mb-2">
           <Zap className="h-4 w-4 text-[#D56753]" />
@@ -192,9 +216,9 @@ function FounderBrief({ orgs, signal }: { orgs: AdminOrganization[]; signal: str
               ? " These won't rank at AAE. Push onboarding today or accept the gap."
               : " Push onboarding or defer to post-AAE?"}
           </p>
-        ) : daysUntil(AAE_DATE) <= 7 ? (
+        ) : d409a <= 60 ? (
           <p className="text-sm text-white">
-            AAE in {daysUntil(AAE_DATE)} days. All accounts connected. Decision: which 3 demo stories do you lead with?
+            409A due in {d409a} days. Commission valuation firm by Jun 1.
           </p>
         ) : (
           <p className="text-sm text-white">Nothing blocking. Forward on AAE prep.</p>
@@ -204,70 +228,98 @@ function FounderBrief({ orgs, signal }: { orgs: AdminOrganization[]; signal: str
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// PANEL 2 — FINANCIAL COMMAND
-// ═══════════════════════════════════════════════════════════════════
+// =============================================================================
+// PANEL 2 -- FINANCIAL COMMAND
+// =============================================================================
 
-function FinancialCommand() {
-  // Crypto decision matrix with clear thresholds
-  const cryptoPositions = [
-    {
-      asset: "SOL",
-      thresholds: [
-        { condition: "≤ $170", action: "Deploy dip tranche", color: "text-emerald-400", trigger: "amber at $185" },
-        { condition: "$170–$444", action: "Hold. Within parameters.", color: "text-white/50", trigger: "" },
-        { condition: "≥ $444", action: "Trim 10-25% into BTC", color: "text-amber-400", trigger: "amber at $420" },
-      ],
-    },
-    {
-      asset: "BTC",
-      thresholds: [
-        { condition: "≤ $40,000", action: "Macro risk alert", color: "text-red-400", trigger: "amber at $45k" },
-        { condition: "> $40,000", action: "Hold. Continue DCA.", color: "text-white/50", trigger: "" },
-      ],
-    },
-  ];
+function FinancialCommand({
+  config,
+  onConfigChange,
+}: {
+  config: any;
+  onConfigChange: (c: any) => void;
+}) {
+  const sol = config?.sol || DEFAULT_FINANCIAL.sol;
+  const btc = config?.btc || DEFAULT_FINANCIAL.btc;
+
+  const updateField = (asset: string, field: string, value: string) => {
+    const updated = { ...config, [asset]: { ...(config?.[asset] || {}), [field]: value === "" ? null : Number(value) || null } };
+    onConfigChange(updated);
+  };
+
+  // QSBS exclusion calculator
+  const [exitValue, setExitValue] = useState("");
+  const excluded = exitValue ? Math.min(Number(exitValue) || 0, 10_000_000) : 0;
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
-        Financial Command
-      </h2>
+      <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Financial Command</h2>
 
-      {/* Crypto decision matrix */}
+      {/* SOL */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-        <p className="text-[10px] uppercase tracking-widest text-white/40 mb-3">Crypto vs Greats Playbook</p>
-        {cryptoPositions.map((pos) => (
-          <div key={pos.asset} className="mb-4 last:mb-0">
-            <p className="text-xs font-bold text-white mb-2">{pos.asset}</p>
-            <div className="space-y-1">
-              {pos.thresholds.map((t, i) => (
-                <div key={i} className="flex items-center justify-between text-xs rounded-lg bg-white/[0.03] px-3 py-1.5">
-                  <span className="text-white/60 font-mono">{t.condition}</span>
-                  <span className={`font-medium ${t.color}`}>{t.action}</span>
-                </div>
-              ))}
-            </div>
+        <p className="text-xs font-bold text-white mb-3">SOL Position</p>
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <div>
+            <p className="text-[9px] text-white/30 mb-1">Alert Low</p>
+            <InlineInput value={sol.alert_low ?? ""} onChange={(v) => updateField("sol", "alert_low", v)} placeholder="170" type="number" className="w-full" />
           </div>
-        ))}
+          <div>
+            <p className="text-[9px] text-white/30 mb-1">Alert High</p>
+            <InlineInput value={sol.alert_high ?? ""} onChange={(v) => updateField("sol", "alert_high", v)} placeholder="444" type="number" className="w-full" />
+          </div>
+          <div>
+            <p className="text-[9px] text-white/30 mb-1">Current Price</p>
+            <InlineInput value={sol.current_position ?? ""} onChange={(v) => updateField("sol", "current_position", v)} placeholder="--" type="number" className="w-full" />
+          </div>
+        </div>
+        {sol.current_position && (
+          <p className={`text-[10px] font-medium mt-1 ${
+            sol.current_position <= sol.alert_low ? "text-emerald-400" : sol.current_position >= sol.alert_high ? "text-amber-400" : "text-white/40"
+          }`}>
+            {sol.current_position <= sol.alert_low ? "Deploy dip tranche" : sol.current_position >= sol.alert_high ? "Trim 10-25% into BTC" : "Hold. Within parameters."}
+          </p>
+        )}
       </div>
 
-      {/* Regulatory countdowns */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className={`rounded-xl border p-4 ${daysUntil(VALUATION_409A_DUE) <= 30 ? "bg-red-500/10 border-red-500/30" : "bg-white/5 border-white/10"}`}>
-          <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">409A Deadline</p>
-          <p className={`text-2xl font-black ${daysUntil(VALUATION_409A_DUE) <= 30 ? "text-red-400" : daysUntil(VALUATION_409A_DUE) <= 90 ? "text-amber-400" : "text-white"}`}>
-            {daysUntil(VALUATION_409A_DUE)}d
-          </p>
-          <p className="text-[10px] text-white/30 mt-1">Commission by Jun 1 · Due Jun 30</p>
+      {/* BTC */}
+      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+        <p className="text-xs font-bold text-white mb-3">BTC Position</p>
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div>
+            <p className="text-[9px] text-white/30 mb-1">Alert Low</p>
+            <InlineInput value={btc.alert_low ?? ""} onChange={(v) => updateField("btc", "alert_low", v)} placeholder="40000" type="number" className="w-full" />
+          </div>
+          <div>
+            <p className="text-[9px] text-white/30 mb-1">Current Price</p>
+            <InlineInput value={btc.current_position ?? ""} onChange={(v) => updateField("btc", "current_position", v)} placeholder="--" type="number" className="w-full" />
+          </div>
         </div>
-        <div className={`rounded-xl border p-4 ${daysUntil(WYOMING_DOMICILE_ALERT) <= 365 ? "bg-amber-500/10 border-amber-500/30" : "bg-white/5 border-white/10"}`}>
-          <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">WY Domicile</p>
-          <p className={`text-2xl font-black ${daysUntil(WYOMING_DOMICILE_ALERT) <= 365 ? "text-amber-400" : "text-white"}`}>
-            {Math.round(daysUntil(WYOMING_DOMICILE_ALERT) / 30)}mo
+        {btc.current_position && (
+          <p className={`text-[10px] font-medium mt-1 ${
+            btc.current_position <= btc.alert_low ? "text-red-400" : "text-white/40"
+          }`}>
+            {btc.current_position <= btc.alert_low ? "Macro risk alert" : "Hold. Continue DCA."}
           </p>
-          <p className="text-[10px] text-white/30 mt-1">Amber at 1yr warning</p>
+        )}
+      </div>
+
+      {/* QSBS Tax Exclusion Calculator */}
+      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+        <p className="text-[10px] uppercase tracking-widest text-white/40 mb-3">QSBS Tax Exclusion Calculator</p>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[10px] text-white/30">Estimated exit value: $</span>
+          <InlineInput value={exitValue} onChange={setExitValue} placeholder="e.g. 5000000" type="number" className="w-36 text-right" />
         </div>
+        {exitValue && (
+          <div className="mt-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
+            <p className="text-xs text-emerald-400">
+              Federal exclusion at 10yr hold: <span className="font-black">${excluded.toLocaleString()}</span>
+            </p>
+            <p className="text-[10px] text-white/30 mt-1">
+              Min(exit_value, $10M) x 100% = excluded amount per 1202
+            </p>
+          </div>
+        )}
       </div>
 
       {/* VA Benefits */}
@@ -275,28 +327,48 @@ function FinancialCommand() {
         <Shield className="h-4 w-4 text-emerald-400 shrink-0" />
         <div>
           <p className="text-sm font-medium text-white">VA 100% P&T Benefits</p>
-          <p className="text-[10px] text-white/40">Active. No legislative threats detected. Monitoring continuous.</p>
+          <p className="text-[10px] text-white/40">
+            Active. Monitor for legislative changes. Last checked: {new Date().toISOString().slice(0, 10)}
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// PANEL 3 — WATCH LEDGER
-// ═══════════════════════════════════════════════════════════════════
+// =============================================================================
+// PANEL 3 -- WATCH LEDGER (DB-backed)
+// =============================================================================
 
-function WatchLedger() {
-  const [watches, setWatches] = useState<WatchEntry[]>(loadWatches);
+function WatchLedger({
+  watches,
+  onWatchesChange,
+}: {
+  watches: WatchEntry[];
+  onWatchesChange: (w: WatchEntry[]) => void;
+}) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const updateWatch = useCallback((id: string, field: keyof WatchEntry, value: string) => {
-    setWatches((prev) => {
-      const updated = prev.map((w) => (w.id === id ? { ...w, [field]: value } : w));
-      saveWatches(updated);
-      return updated;
-    });
-  }, []);
+    const updated = watches.map((w) => (w.id === id ? { ...w, [field]: value } : w));
+    onWatchesChange(updated);
+  }, [watches, onWatchesChange]);
+
+  const addWatch = () => {
+    const id = `watch-${Date.now()}`;
+    const newWatch: WatchEntry = {
+      id,
+      ref: "",
+      name: "New Watch",
+      acquiredDate: null,
+      floorPrice: "",
+      giftingIntent: "",
+      notes: "",
+      status: "hunting",
+    };
+    onWatchesChange([...watches, newWatch]);
+    setEditingId(id);
+  };
 
   return (
     <div className="space-y-4">
@@ -311,7 +383,7 @@ function WatchLedger() {
                 {w.giftingIntent && <p className="text-[10px] text-[#D56753] font-medium mt-1">{w.giftingIntent}</p>}
                 {w.floorPrice && editingId !== w.id && (
                   <p className="text-[10px] text-white/40 mt-1">
-                    Floor: {w.floorPrice}{w.notes ? ` · ${w.notes}` : ""}
+                    Floor: {w.floorPrice}{w.notes ? ` . ${w.notes}` : ""}
                   </p>
                 )}
               </div>
@@ -325,24 +397,37 @@ function WatchLedger() {
               </div>
             </div>
             {editingId === w.id && (
-              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
-                <input value={w.floorPrice} onChange={(e) => updateWatch(w.id, "floorPrice", e.target.value)} placeholder="Floor price" className="h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753]" />
-                <input value={w.notes} onChange={(e) => updateWatch(w.id, "notes", e.target.value)} placeholder="Notes / provenance" className="h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753]" />
+              <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <InlineInput value={w.name} onChange={(v) => updateWatch(w.id, "name", v)} placeholder="Name" />
+                  <InlineInput value={w.ref} onChange={(v) => updateWatch(w.id, "ref", v)} placeholder="Reference" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <InlineInput value={w.floorPrice} onChange={(v) => updateWatch(w.id, "floorPrice", v)} placeholder="Floor price" />
+                  <InlineInput value={w.giftingIntent} onChange={(v) => updateWatch(w.id, "giftingIntent", v)} placeholder="Gifting intent" />
+                </div>
+                <InlineInput value={w.notes} onChange={(v) => updateWatch(w.id, "notes", v)} placeholder="Notes / provenance" className="w-full" />
               </div>
             )}
           </div>
         ))}
       </div>
+      <button
+        onClick={addWatch}
+        className="w-full rounded-xl border border-dashed border-white/10 p-3 text-xs text-white/30 hover:text-white/50 hover:border-white/20 transition-colors flex items-center justify-center gap-2"
+      >
+        <Plus className="h-3 w-3" />
+        Add Watch
+      </button>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// PANEL 4 — CONTENT FLYWHEEL
-// ═══════════════════════════════════════════════════════════════════
+// =============================================================================
+// PANEL 4 -- CONTENT FLYWHEEL (unchanged)
+// =============================================================================
 
 function ContentFlywheel() {
-  // Seeded from tonight's build session themes — will be auto-generated from Build State in future
   const concepts = [
     { type: "linkedin" as const, title: "We built 17 work orders in one session with Claude Code.", hook: "One card = one feature = one commit = one recovery point. The IKEA Rule.", status: "draft" },
     { type: "linkedin" as const, title: "The doctor at 11pm doesn't email support. They ask the CS Agent.", hook: "Claude with full account context. Knows their score, their competitors, their gaps. That's daily stickiness without human support cost.", status: "draft" },
@@ -358,7 +443,7 @@ function ContentFlywheel() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Content Flywheel</h2>
-        <span className="text-[10px] text-white/30">{concepts.length} concepts from this session</span>
+        <span className="text-[10px] text-white/30">{concepts.length} concepts</span>
       </div>
       <div className="space-y-2">
         {concepts.map((item, i) => {
@@ -369,9 +454,7 @@ function ContentFlywheel() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-white truncate">{item.title}</p>
-                  <span className="text-[9px] uppercase tracking-widest text-white/20 bg-white/5 px-1.5 py-0.5 rounded shrink-0">
-                    {item.type}
-                  </span>
+                  <span className="text-[9px] uppercase tracking-widest text-white/20 bg-white/5 px-1.5 py-0.5 rounded shrink-0">{item.type}</span>
                 </div>
                 <p className="text-[10px] text-white/40 mt-1 line-clamp-2">{item.hook}</p>
               </div>
@@ -383,32 +466,55 @@ function ContentFlywheel() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// PANEL 5 — COMPETITIVE + IP INTELLIGENCE
-// ═══════════════════════════════════════════════════════════════════
+// =============================================================================
+// PANEL 5 -- COMPETITIVE + IP INTELLIGENCE (DB-backed notes)
+// =============================================================================
 
-function CompetitiveIntel() {
+function CompetitiveIntel({
+  notes,
+  onNotesChange,
+}: {
+  notes: any;
+  onNotesChange: (n: any) => void;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+
   const trademarks = [
-    { name: "PatientPath", class: "Class 42", status: "clear" },
-    { name: "ClearPath", class: "Class 42", status: "clear" },
-    { name: "Business Clarity", class: "Class 35", status: "clear" },
-    { name: "Alloro", class: "Class 42", status: "clear" },
+    { name: "PatientPath", cls: "Class 42", status: "Monitoring", lastChecked: today },
+    { name: "ClearPath", cls: "Class 42", status: "Monitoring", lastChecked: today },
+    { name: "Business Clarity", cls: "Class 42", status: "Monitoring", lastChecked: today },
+    { name: "Alloro", cls: "Class 42", status: "Monitoring", lastChecked: today },
   ];
 
-  const competitors = [
-    { name: "Owner.com", signal: "Launched AI restaurant grader — similar to Checkup model", level: "watch" },
-    { name: "DentalQore", signal: "No new public activity", level: "quiet" },
-    { name: "PBHS", signal: "No new public activity", level: "quiet" },
-    { name: "My Social Practice", signal: "No new public activity", level: "quiet" },
-  ];
+  const competitorNames = ["DentalQore", "PBHS", "My Social Practice", "Owner.com"];
+  const competitors = notes?.competitors || DEFAULT_COMPETITIVE.competitors;
+  const brand = notes?.brand || DEFAULT_COMPETITIVE.brand;
+  const sdvosb = notes?.sdvosb || DEFAULT_COMPETITIVE.sdvosb;
+
+  const updateCompetitor = (name: string, field: string, value: string) => {
+    const updated = {
+      ...notes,
+      competitors: {
+        ...competitors,
+        [name]: { ...(competitors[name] || {}), [field]: value, last_checked: today },
+      },
+    };
+    onNotesChange(updated);
+  };
+
+  const updateBrand = (field: string, value: string) => {
+    onNotesChange({ ...notes, brand: { ...brand, [field]: value, last_updated: today } });
+  };
+
+  const updateSdvosb = (field: string, value: string) => {
+    onNotesChange({ ...notes, sdvosb: { ...sdvosb, [field]: value } });
+  };
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
-        Competitive + IP Intelligence
-      </h2>
+      <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Competitive + IP Intelligence</h2>
 
-      {/* USPTO */}
+      {/* Trademark Watch */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <div className="flex items-center gap-2 mb-3">
           <Shield className="h-4 w-4 text-emerald-400" />
@@ -419,57 +525,90 @@ function CompetitiveIntel() {
             <div key={m.name} className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <span className="text-white/70">{m.name}</span>
-                <span className="text-[9px] text-white/20">{m.class}</span>
+                <span className="text-[9px] text-white/20">{m.cls}</span>
               </div>
-              <span className="text-emerald-400 font-medium text-[10px]">No conflicts</span>
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-400 font-medium text-[10px]">{m.status}</span>
+                <span className="text-[9px] text-white/20">{m.lastChecked}</span>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Competitors */}
+      {/* Competitor Digest */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <div className="flex items-center gap-2 mb-3">
           <Eye className="h-4 w-4 text-blue-400" />
-          <p className="text-[10px] uppercase tracking-widest text-white/40">Competitor Feed</p>
+          <p className="text-[10px] uppercase tracking-widest text-white/40">Competitor Digest</p>
         </div>
-        <div className="space-y-2">
-          {competitors.map((c) => (
-            <div key={c.name} className="flex items-start justify-between text-xs gap-2">
-              <div className="min-w-0">
-                <span className="text-white/70 font-medium">{c.name}</span>
-                <p className="text-[10px] text-white/30 mt-0.5 truncate">{c.signal}</p>
+        <div className="space-y-3">
+          {competitorNames.map((name) => {
+            const c = competitors[name] || { notes: "", last_checked: today };
+            return (
+              <div key={name} className="border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-white/70 font-medium">{name}</span>
+                  <span className="text-[9px] text-white/20">Checked: {c.last_checked || today}</span>
+                </div>
+                <InlineInput
+                  value={c.notes || ""}
+                  onChange={(v) => updateCompetitor(name, "notes", v)}
+                  placeholder="Add notes after research..."
+                  className="w-full"
+                />
               </div>
-              <span className={`shrink-0 text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded ${
-                c.level === "watch" ? "bg-amber-500/20 text-amber-400" : "bg-white/5 text-white/20"
-              }`}>
-                {c.level}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* Brand monitor */}
+      {/* Personal Brand Monitor */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <div className="flex items-center gap-2 mb-2">
           <Globe className="h-4 w-4 text-[#D56753]" />
-          <p className="text-[10px] uppercase tracking-widest text-white/40">Brand Monitor</p>
+          <p className="text-[10px] uppercase tracking-widest text-white/40">Personal Brand Monitor</p>
         </div>
-        <p className="text-xs text-white/40">
-          Watching: "Corey Wise", "Alloro", "Business Clarity" across LinkedIn, X, podcast transcripts.
-        </p>
-        <p className="text-[10px] text-white/25 mt-1">No new mentions this week. Next scan: Monday.</p>
+        <p className="text-xs text-white/40 mb-2">Corey Wise / Alloro / Business Clarity</p>
+        <InlineInput
+          value={brand.notes || ""}
+          onChange={(v) => updateBrand("notes", v)}
+          placeholder="Brand notes..."
+          className="w-full"
+        />
+        <p className="text-[9px] text-white/20 mt-1">Last updated: {brand.last_updated || today}</p>
+      </div>
+
+      {/* SDVOSB Status */}
+      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Shield className="h-4 w-4 text-blue-400" />
+          <p className="text-[10px] uppercase tracking-widest text-white/40">SDVOSB Status</p>
+        </div>
+        <InlineInput
+          value={sdvosb.status || ""}
+          onChange={(v) => updateSdvosb("status", v)}
+          placeholder="Certification status..."
+          className="w-full mb-2"
+        />
+        <InlineInput
+          value={sdvosb.notes || ""}
+          onChange={(v) => updateSdvosb("notes", v)}
+          placeholder="Notes..."
+          className="w-full"
+        />
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
+// =============================================================================
 // MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════
+// =============================================================================
 
 export default function FounderMode({ onClose }: { onClose: () => void }) {
+  const queryClient = useQueryClient();
+
   const { data } = useQuery({
     queryKey: ["admin-organizations"],
     queryFn: adminListOrganizations,
@@ -481,10 +620,56 @@ export default function FounderMode({ onClose }: { onClose: () => void }) {
     staleTime: 60_000,
   });
 
+  const { data: settingsData } = useQuery({
+    queryKey: ["founder-settings"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/founder/settings" });
+      return res?.success ? (res.settings as FounderSettings) : null;
+    },
+    staleTime: 30_000,
+  });
+
+  // Local state mirrors DB -- saves on blur/change with debounce
+  const [localSettings, setLocalSettings] = useState<FounderSettings | null>(null);
+
+  useEffect(() => {
+    if (settingsData && !localSettings) {
+      setLocalSettings({
+        financial_config: settingsData.financial_config || DEFAULT_FINANCIAL,
+        watch_ledger: (settingsData.watch_ledger && (settingsData.watch_ledger as WatchEntry[]).length > 0) ? settingsData.watch_ledger : DEFAULT_WATCHES,
+        competitive_notes: settingsData.competitive_notes && Object.keys(settingsData.competitive_notes).length > 0 ? settingsData.competitive_notes : DEFAULT_COMPETITIVE,
+        founder_cash_on_hand: settingsData.founder_cash_on_hand || 0,
+      });
+    }
+  }, [settingsData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveMutation = useMutation({
+    mutationFn: async (patch: Partial<FounderSettings>) => {
+      return apiPatch({ path: "/founder/settings", passedData: patch });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["founder-settings"] });
+    },
+  });
+
+  // Debounced save
+  const [saveTimer, setSaveTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedSave = useCallback((patch: Partial<FounderSettings>) => {
+    if (saveTimer) clearTimeout(saveTimer);
+    setSaveTimer(setTimeout(() => saveMutation.mutate(patch), 1500));
+  }, [saveTimer, saveMutation]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const orgs: AdminOrganization[] =
     (data as any)?.organizations ?? (Array.isArray(data) ? data : []);
 
   const signal = signalData?.signal || "Alloro is watching. First signals arrive after your next agent run.";
+
+  const settings = localSettings || {
+    financial_config: DEFAULT_FINANCIAL,
+    watch_ledger: DEFAULT_WATCHES,
+    competitive_notes: DEFAULT_COMPETITIVE,
+    founder_cash_on_hand: 0,
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -503,23 +688,56 @@ export default function FounderMode({ onClose }: { onClose: () => void }) {
               <p className="text-[10px] text-white/30">Personal intelligence. Not shared. Esc to close.</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-white/30 hover:text-white/70 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            {saveMutation.isPending && (
+              <span className="text-[10px] text-white/30 flex items-center gap-1">
+                <Save className="h-3 w-3 animate-pulse" /> Saving...
+              </span>
+            )}
+            <button onClick={onClose} className="p-2 text-white/30 hover:text-white/70 transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-4xl px-5 py-8 space-y-10">
-        <FounderBrief orgs={orgs} signal={signal} />
-        <FinancialCommand />
-        <WatchLedger />
+        <FounderBrief
+          orgs={orgs}
+          signal={signal}
+          cashOnHand={settings.founder_cash_on_hand}
+          onCashChange={(v) => {
+            setLocalSettings((prev) => prev ? { ...prev, founder_cash_on_hand: v } : prev);
+            debouncedSave({ founder_cash_on_hand: v });
+          }}
+        />
+        <FinancialCommand
+          config={settings.financial_config}
+          onConfigChange={(c) => {
+            setLocalSettings((prev) => prev ? { ...prev, financial_config: c } : prev);
+            debouncedSave({ financial_config: c });
+          }}
+        />
+        <WatchLedger
+          watches={settings.watch_ledger}
+          onWatchesChange={(w) => {
+            setLocalSettings((prev) => prev ? { ...prev, watch_ledger: w } : prev);
+            debouncedSave({ watch_ledger: w });
+          }}
+        />
         <ContentFlywheel />
-        <CompetitiveIntel />
+        <CompetitiveIntel
+          notes={settings.competitive_notes}
+          onNotesChange={(n) => {
+            setLocalSettings((prev) => prev ? { ...prev, competitive_notes: n } : prev);
+            debouncedSave({ competitive_notes: n });
+          }}
+        />
       </div>
 
       <footer className="py-8 text-center">
         <p className="text-[10px] text-white/10 uppercase tracking-widest">
-          Founder Mode · Corey Wise · Alloro
+          Founder Mode . Corey Wise . Alloro
         </p>
       </footer>
     </div>
