@@ -54,7 +54,7 @@ import GPReferralIntelligenceContent from "./pages/content/GPReferralIntelligenc
 import PatientPathWebsite from "./pages/dashboard/PatientPathWebsite";
 import ReviewRequests from "./pages/dashboard/ReviewRequests";
 import DashboardSettings from "./pages/dashboard/DashboardSettings";
-import GPDiscoveryPage from "./pages/partner/GPDiscoveryPage";
+// import GPDiscoveryPage from "./pages/partner/GPDiscoveryPage"; // T5 building -- wire after syntax fix
 import CheckupLayout from "./pages/checkup/CheckupLayout";
 import EntryScreen from "./pages/checkup/EntryScreen";
 import ScanningTheater from "./pages/checkup/ScanningTheater";
@@ -209,7 +209,7 @@ function App() {
                 <Route path="/dashboard/reviews" element={<ReviewRequests />} />
                 <Route path="/dashboard/settings" element={<DashboardSettings />} />
                 <Route path="/dashboard/website" element={<PatientPathWebsite />} />
-                <Route path="/dashboard/refer" element={<GPDiscoveryPage />} />
+                {/* <Route path="/dashboard/refer" element={<GPDiscoveryPage />} /> -- T5 file has syntax issue, will wire after fix */}
                 <Route path="/patientJourneyInsights" element={<Dashboard />} />
                 <Route path="/pmsStatistics" element={<Dashboard />} />
                 <Route path="/tasks" element={<Dashboard />} />
