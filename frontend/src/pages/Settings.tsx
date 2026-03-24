@@ -8,9 +8,12 @@ import {
 } from "lucide-react";
 import { Outlet, NavLink, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { getPriorityItem } from "../hooks/useLocalStorage";
 
 export const Settings: React.FC = () => {
   const { userProfile } = useAuth();
+  const userRole = getPriorityItem("user_role") as string | null;
+  const isOwner = userRole === "admin";
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -70,20 +73,24 @@ export const Settings: React.FC = () => {
               <Link2 className="w-4 h-4" />
               Integrations
             </NavLink>
-            <NavLink
-              to="/settings/users"
-              className={({ isActive }) => tabClass(isActive)}
-            >
-              <Users className="w-4 h-4" />
-              Users & Roles
-            </NavLink>
-            <NavLink
-              to="/settings/billing"
-              className={({ isActive }) => tabClass(isActive)}
-            >
-              <Shield className="w-4 h-4" />
-              Billing
-            </NavLink>
+            {isOwner && (
+              <NavLink
+                to="/settings/users"
+                className={({ isActive }) => tabClass(isActive)}
+              >
+                <Users className="w-4 h-4" />
+                Users & Roles
+              </NavLink>
+            )}
+            {isOwner && (
+              <NavLink
+                to="/settings/billing"
+                className={({ isActive }) => tabClass(isActive)}
+              >
+                <Shield className="w-4 h-4" />
+                Billing
+              </NavLink>
+            )}
             <NavLink
               to="/settings/account"
               className={({ isActive }) => tabClass(isActive)}

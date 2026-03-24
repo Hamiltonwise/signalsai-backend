@@ -27,6 +27,7 @@ import YourMarket from "./admin/YourMarket";
 import MindDetail from "./admin/MindDetail";
 import AlloroPostsDocs from "./admin/AlloroPostsDocs";
 import BatchCheckup from "./admin/BatchCheckup";
+import AccountOverview from "./admin/AccountOverview";
 
 function WebDevEngine() {
   return (
@@ -79,6 +80,7 @@ function AdminWithLayout() {
           path="organization-management"
           element={<OrganizationManagement />}
         />
+        <Route path="accounts" element={<AccountOverview />} />
         <Route
           path="organizations/:id"
           element={<PracticeStory />}

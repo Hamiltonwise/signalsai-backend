@@ -25,6 +25,7 @@ import { useLocationContext } from "@/contexts/locationContext";
 import { apiGet } from "@/api/index";
 import agents from "@/api/agents";
 import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
+import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -543,7 +544,13 @@ export default function DoctorDashboard() {
   const orgId = userProfile?.organizationId || null;
   const locationId = selectedLocation?.id ?? null;
   const firstName = userProfile?.firstName || "Doctor";
-  const practiceName = userProfile?.practiceName || "Your Practice";
+  const practiceName = selectedLocation?.name || userProfile?.practiceName || "Your Practice";
+  const locationName = selectedLocation?.name || null;
+
+  // Role-based gating
+  const userRole = getPriorityItem("user_role") as string | null;
+  const isOwnerOrManager = userRole === "admin" || userRole === "manager";
+  const canSendReviews = userRole !== "viewer"; // owner + manager + staff
 
   // Ranking data
   const { data: rankingData } = useQuery({
@@ -643,6 +650,12 @@ export default function DoctorDashboard() {
               ? `Here's exactly what stands between ${practiceName} and the next position.`
               : `Here's what Alloro found this week for ${practiceName}.`}
           </p>
+          {locationName && (
+            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+              Viewing: {locationName}
+            </p>
+          )}
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
       </div>
@@ -664,13 +677,15 @@ export default function DoctorDashboard() {
           {/* ── Standard Mode ── */}
           <PositionCard ranking={rankingData ?? null} />
           <CompetitorGap ranking={rankingData ?? null} />
-          <ProoflineFindings findings={prooflineFindings} />
-          <WebsiteCard website={websiteData ?? null} />
-          <ReviewRequestCard
-            placeId={rankingData?.placeId ?? null}
-            practiceName={practiceName}
-          />
-          <ReferralCard referralCode={referralCode} />
+          {isOwnerOrManager && <ProoflineFindings findings={prooflineFindings} />}
+          {isOwnerOrManager && <WebsiteCard website={websiteData ?? null} />}
+          {canSendReviews && (
+            <ReviewRequestCard
+              placeId={rankingData?.placeId ?? null}
+              practiceName={practiceName}
+            />
+          )}
+          {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
         </>
       ) : (
         <>
@@ -682,11 +697,13 @@ export default function DoctorDashboard() {
             findings={prooflineFindings}
           />
           <CompetitorActivityFeed ranking={rankingData ?? null} />
-          <ReviewRequestCard
-            placeId={rankingData?.placeId ?? null}
-            practiceName={practiceName}
-          />
-          <ReferralCard referralCode={referralCode} />
+          {canSendReviews && (
+            <ReviewRequestCard
+              placeId={rankingData?.placeId ?? null}
+              practiceName={practiceName}
+            />
+          )}
+          {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
         </>
       )}
     </div>

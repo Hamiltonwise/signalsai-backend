@@ -258,8 +258,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const canSeeNotifications = userRole !== "viewer";
+  const isOwnerOrAdmin = userRole === "admin";
+  const isManagerOrAbove = userRole === "admin" || userRole === "manager";
 
-  // Main navigation items
+  // Main navigation items — role-gated
   const mainNavItems = [
     {
       label: "Practice Hub",
@@ -267,12 +269,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/dashboard",
       showDuringOnboarding: true,
     },
-    {
-      label: "Referrals Hub",
-      icon: <Activity size={18} />,
-      path: "/pmsStatistics",
-      showDuringOnboarding: false,
-    },
+    // Referrals Hub: owner + manager only (contains referral intelligence)
+    ...(isManagerOrAbove
+      ? [
+          {
+            label: "Referrals Hub",
+            icon: <Activity size={18} />,
+            path: "/pmsStatistics",
+            showDuringOnboarding: false,
+          },
+        ]
+      : []),
     {
       label: "Local Rankings",
       icon: <Trophy size={18} />,
@@ -499,8 +506,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
 
-          {/* Websites */}
-          {!isLockedOut && onboardingCompleted && hasWebsite && (
+          {/* Websites — owner + manager only */}
+          {!isLockedOut && onboardingCompleted && hasWebsite && isManagerOrAbove && (
             <div className="space-y-1.5">
               <NavItem
                 icon={<Globe size={18} />}
