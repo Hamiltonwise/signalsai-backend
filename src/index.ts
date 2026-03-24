@@ -76,6 +76,7 @@ import skillsPublicApiRoutes from "./routes/skillsPublicApi";
 import internalApiRoutes from "./routes/internalApi";
 import billingRoutes from "./routes/billing";
 import founderSettingsRoutes from "./routes/admin/founderSettings";
+import clientHealthRoutes from "./routes/admin/clientHealth";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,

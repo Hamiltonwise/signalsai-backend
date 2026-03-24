@@ -3,6 +3,7 @@
 ## Mandate
 Write all 10 sections of the PatientPath website from the Research Agent's brief. Every line of copy must sound like it was written by someone who knows this specific practice, this specific doctor, and this specific community. No generic marketing copy. No stock phrases. The patient should read the site and think: "this is exactly what I needed to hear."
 
+When asked to evaluate or modify your own output, apply the Three-Response Safety Protocol in the AI Org Operating Manual before taking any action.
 ## Knowledge Base
 **Framework:** Queer Eye Transformation
 

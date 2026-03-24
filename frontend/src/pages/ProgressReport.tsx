@@ -59,11 +59,38 @@ interface Goals {
   sellBy?: string;
 }
 
+interface Milestone {
+  id: string;
+  type: string;
+  headline: string;
+  detail: string | null;
+  competitor: string | null;
+  date: string;
+}
+
+interface EnhancedYearSummary {
+  start_date: string;
+  days_active: number;
+  positions_gained: number | null;
+  start_position: number | null;
+  current_position: number | null;
+  reviews_gained: number | null;
+  current_reviews: number | null;
+  gps_retained: number;
+  gps_lost: number;
+}
+
 interface ProgressData {
   yearInReview: YearInReview;
   goals: Goals | null;
   topMoves: TopMove[];
   next90Days: Next90Action[];
+}
+
+interface EnhancedProgressData {
+  year_summary: EnhancedYearSummary;
+  milestones: Milestone[];
+  trajectory_statements: string[];
 }
 
 // ─── Stat Card ──────────────────────────────────────────────────────
@@ -393,6 +420,127 @@ function Next90DaysSection({ actions }: { actions: Next90Action[] }) {
   );
 }
 
+// ─── Section: Your Year (Enhanced) ──────────────────────────────────
+
+function YourYearSection({ data }: { data: EnhancedYearSummary }) {
+  const startStr = new Date(data.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Calendar className="h-5 w-5 text-[#D56753]" />
+        <h2 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">Your Year</h2>
+      </div>
+
+      <div className="bg-[#212D40] rounded-2xl p-6 text-center text-white">
+        <p className="text-5xl font-black tabular-nums">{data.days_active}</p>
+        <p className="text-sm font-medium text-white/70 mt-1">days active since {startStr}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {data.current_position != null && (
+          <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
+            <div className="flex items-center justify-center gap-1.5">
+              <p className="text-2xl font-black text-[#212D40]">#{data.current_position}</p>
+              {data.positions_gained != null && data.positions_gained > 0 && (
+                <span className="flex items-center text-xs font-bold text-emerald-600">
+                  <TrendingUp className="h-3 w-3" />+{data.positions_gained}
+                </span>
+              )}
+              {data.positions_gained != null && data.positions_gained < 0 && (
+                <span className="flex items-center text-xs font-bold text-red-500">
+                  <TrendingDown className="h-3 w-3" />{data.positions_gained}
+                </span>
+              )}
+            </div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Current Rank</p>
+            {data.start_position && <p className="text-[11px] text-gray-400 mt-0.5">Started at #{data.start_position}</p>}
+          </div>
+        )}
+
+        {data.reviews_gained != null && (
+          <StatCard label="Reviews Gained" value={`+${data.reviews_gained}`} detail="New Google reviews" color="text-emerald-600" />
+        )}
+
+        <StatCard label="GPs Retained" value={String(data.gps_retained)} detail="Active first 30d and last 30d" />
+        <StatCard label="GPs Lost" value={String(data.gps_lost)} detail="Active first 30d, not last 30d" color={data.gps_lost > 0 ? "text-red-500" : "text-emerald-600"} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Section: Key Moments ───────────────────────────────────────────
+
+const MILESTONE_EMOJI: Record<string, string> = {
+  rank_up: "📈",
+  passed_competitor: "🏆",
+  review_count_milestone: "⭐",
+};
+
+function KeyMomentsSection({ milestones }: { milestones: Milestone[] }) {
+  if (milestones.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Award className="h-5 w-5 text-[#D56753]" />
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">Key Moments</h2>
+        </div>
+        <div className="border border-dashed border-gray-200 rounded-2xl p-6 text-center text-gray-400">
+          <p className="text-sm">Your milestones will appear here as they happen.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Award className="h-5 w-5 text-[#D56753]" />
+        <h2 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">Key Moments</h2>
+      </div>
+      <div className="space-y-3">
+        {milestones.map((m) => (
+          <div key={m.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-2xl shrink-0">{MILESTONE_EMOJI[m.type] || "📌"}</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-[#212D40]">{m.headline}</p>
+              {m.detail && <p className="text-xs text-gray-500 mt-0.5">{m.detail}</p>}
+              <p className="text-[11px] text-gray-400 mt-1">
+                {new Date(m.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Section: Trajectory ────────────────────────────────────────────
+
+function TrajectorySection({ statements }: { statements: string[] }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Zap className="h-5 w-5 text-[#D56753]" />
+        <h2 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">Next 90 Days</h2>
+      </div>
+      <div className="space-y-3">
+        {statements.map((stmt, i) => (
+          <div key={i} className="bg-white border border-gray-200 rounded-xl p-5">
+            <div className="flex items-start gap-3">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-[#D56753] text-white flex items-center justify-center text-xs font-bold mt-0.5">
+                {i + 1}
+              </span>
+              <p className="text-sm font-semibold text-[#212D40] leading-relaxed">{stmt}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function ProgressReport() {
@@ -405,6 +553,15 @@ export default function ProgressReport() {
     queryFn: async () => {
       const res = await apiGet({ path: "/progress-report" });
       return res?.success ? res.data as ProgressData : null;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: enhanced } = useQuery({
+    queryKey: ["user-progress-report"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/progress-report" });
+      return res?.success ? res.data as EnhancedProgressData : null;
     },
     staleTime: 5 * 60_000,
   });
@@ -444,10 +601,25 @@ export default function ProgressReport() {
       {/* Content */}
       {data && (
         <>
-          <YearInReviewSection data={data.yearInReview} />
+          {/* Enhanced Your Year section if available, else original */}
+          {enhanced?.year_summary ? (
+            <YourYearSection data={enhanced.year_summary} />
+          ) : (
+            <YearInReviewSection data={data.yearInReview} />
+          )}
+
+          {/* Key Moments from milestones */}
+          {enhanced?.milestones && <KeyMomentsSection milestones={enhanced.milestones} />}
+
           <GoalProgressSection goals={data.goals} onSetGoals={handleSetGoals} />
           <TopMovesSection moves={data.topMoves} />
-          <Next90DaysSection actions={data.next90Days} />
+
+          {/* Trajectory statements if available, else original Next 90 */}
+          {enhanced?.trajectory_statements && enhanced.trajectory_statements.length > 0 ? (
+            <TrajectorySection statements={enhanced.trajectory_statements} />
+          ) : (
+            <Next90DaysSection actions={data.next90Days} />
+          )}
         </>
       )}
 

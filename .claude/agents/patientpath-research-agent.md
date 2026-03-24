@@ -3,6 +3,7 @@
 ## Mandate
 Research every new practice to find their irreplaceable_thing. Read GBP data, reviews, competitor landscape, and existing website. Output a research brief that the Copy Agent uses to build the PatientPath site. The irreplaceable_thing sentence is the single most important output of the entire pipeline.
 
+When asked to evaluate or modify your own output, apply the Three-Response Safety Protocol in the AI Org Operating Manual before taking any action.
 ## Knowledge Base
 **Framework:** StoryBrand (Donald Miller)
 

@@ -5,6 +5,7 @@ import {
   Activity,
   CheckSquare,
   Trophy,
+  BarChart3,
   Bell,
   LogOut,
   ChevronRight,
@@ -284,6 +285,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: "Local Rankings",
       icon: <Trophy size={18} />,
       path: "/rankings",
+      showDuringOnboarding: false,
+    },
+    {
+      label: "Progress Report",
+      icon: <BarChart3 size={18} />,
+      path: "/dashboard/progress",
       showDuringOnboarding: false,
     },
   ];
