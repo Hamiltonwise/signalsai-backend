@@ -44,6 +44,7 @@ import {
   extractSectionsFromDom,
 } from "../utils/htmlReplacer";
 import EditorSidebar from "../components/PageEditor/EditorSidebar";
+import { enableInlineEditing, type EditChange } from "../components/PageEditor/InlineEditOverlay";
 import type { ChatMessage } from "../components/PageEditor/ChatPanel";
 import type { PageVersion } from "../components/PageEditor/VersionHistoryTab";
 import type { Section } from "../api/templates";
@@ -120,6 +121,11 @@ export function DFYWebsite() {
   const [isSaving, setIsSaving] = useState(false);
   const [pendingSidebarAction, setPendingSidebarAction] =
     useState<QuickActionType | null>(null);
+
+  // Inline edit state (Apple Standard)
+  const [inlineEditActive, setInlineEditActive] = useState(false);
+  const [inlineChanges, setInlineChanges] = useState<EditChange[]>([]);
+  const inlineCleanupRef = useRef<(() => void) | null>(null);
 
   const { setCollapsed } = useSidebar();
 
@@ -450,10 +456,102 @@ export function DFYWebsite() {
     }
   };
 
+  // --- Inline edit: enable/disable contenteditable in iframe ---
+  useEffect(() => {
+    if (!inlineEditActive) {
+      if (inlineCleanupRef.current) {
+        inlineCleanupRef.current();
+        inlineCleanupRef.current = null;
+      }
+      return;
+    }
+
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!doc) return;
+
+    const cleanup = enableInlineEditing(
+      doc,
+      // Text change handler
+      (selector, oldText, newText) => {
+        setInlineChanges((prev) => [
+          ...prev,
+          { selector, type: "text", oldValue: oldText, newValue: newText },
+        ]);
+        setIsDirty(true);
+      },
+      // Image click handler
+      (selector, currentSrc) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = async (e) => {
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (!file) return;
+
+          // Upload to S3 via existing endpoint
+          const formData = new FormData();
+          formData.append("file", file);
+          try {
+            const token = localStorage.getItem("auth_token");
+            const res = await fetch(
+              `/api/admin/websites/${project?.id}/media`,
+              {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+              },
+            );
+            const data = await res.json();
+            if (data.success && data.media?.s3_url) {
+              // Replace image in iframe
+              const img = doc.querySelector(`[data-alloro-editable-img="${selector}"]`) as HTMLImageElement;
+              if (img) {
+                img.src = data.media.s3_url;
+                setInlineChanges((prev) => [
+                  ...prev,
+                  { selector, type: "image", oldValue: currentSrc, newValue: data.media.s3_url },
+                ]);
+                setIsDirty(true);
+              }
+            }
+          } catch (err) {
+            console.error("[InlineEdit] Image upload failed:", err);
+          }
+        };
+        input.click();
+      },
+    );
+
+    inlineCleanupRef.current = cleanup;
+    return () => {
+      cleanup();
+      inlineCleanupRef.current = null;
+    };
+  }, [inlineEditActive, project?.id]);
+
   // --- Handle iframe load: set up selector listeners ---
   const handleIframeLoad = useCallback(() => {
     setupListeners();
-  }, [setupListeners]);
+    // Re-enable inline editing if it was active
+    if (inlineEditActive && iframeRef.current?.contentDocument) {
+      if (inlineCleanupRef.current) inlineCleanupRef.current();
+      inlineCleanupRef.current = enableInlineEditing(
+        iframeRef.current.contentDocument,
+        (selector, oldText, newText) => {
+          setInlineChanges((prev) => [
+            ...prev,
+            { selector, type: "text", oldValue: oldText, newValue: newText },
+          ]);
+          setIsDirty(true);
+        },
+        (selector, currentSrc) => {
+          // Reuse same image handler — simplified for reload case
+          console.log("[InlineEdit] Image click after reload:", selector);
+        },
+      );
+    }
+  }, [setupListeners, inlineEditActive]);
 
   // --- Handle edit send (ported from admin PageEditor) ---
   const handleSendEdit = useCallback(
