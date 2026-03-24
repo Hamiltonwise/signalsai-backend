@@ -22,7 +22,7 @@ export default function BuildingScreen() {
   }
 
   const { practiceName, specialty, email } = state;
-  const specialtyLabel = specialty || "practice";
+  const specialtyLabel = specialty || "business";
 
   return (
     <div className="w-full max-w-md mt-4 sm:mt-12 text-center space-y-10">

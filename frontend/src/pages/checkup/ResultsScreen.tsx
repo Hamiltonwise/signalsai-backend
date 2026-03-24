@@ -447,12 +447,12 @@ export default function ResultsScreen() {
             {/* Relationship question — segmentation data */}
             <fieldset className="space-y-1.5">
               <legend className="text-xs font-medium text-slate-600 mb-1.5">
-                Are you the practice owner?
+                Are you the business owner?
               </legend>
               {[
-                { value: "owner", label: "Yes, this is my practice" },
-                { value: "manager", label: "I manage this practice" },
-                { value: "vendor", label: "I provide services to this practice" },
+                { value: "owner", label: "Yes, this is my business" },
+                { value: "manager", label: "I manage this business" },
+                { value: "vendor", label: "I provide services to this business" },
               ].map((opt) => (
                 <label
                   key={opt.value}
@@ -487,7 +487,7 @@ export default function ResultsScreen() {
             </button>
           </form>
           <p className="text-[11px] text-slate-400 text-center mt-5 leading-relaxed">
-            Your practice operates on a deterministic system. Alloro tracks all
+            Your business operates on a deterministic system. Alloro tracks all
             of it.
           </p>
         </div>
@@ -508,7 +508,7 @@ export default function ResultsScreen() {
           <div className="flex items-center gap-2 mb-2">
             <Share2 className="w-4 h-4 text-slate-400" />
             <span className="text-sm font-medium text-slate-700">
-              Show a colleague what we found about their practice.
+              Show a colleague what we found about their business.
             </span>
           </div>
           <button

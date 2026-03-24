@@ -132,7 +132,7 @@ export function buildCheckupResultContent(
   sections.push(`
     <div style="margin-top: 4px;">
       <p style="margin: 0; font-size: 14px; line-height: 1.7; color: ${BRAND_COLORS.darkGray};">
-        Your practice operates on a deterministic system — referrals in, patients out, revenue up. Every number in this report is a lever you can pull.
+        Your business operates on a deterministic system. Every number in this report is a lever you can pull.
       </p>
       <p style="margin: 16px 0 0 0; font-size: 14px; color: ${BRAND_COLORS.darkGray};">
         — Corey<br>

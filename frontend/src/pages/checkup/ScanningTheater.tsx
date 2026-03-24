@@ -20,7 +20,7 @@ const MIN_THEATER_MS = 15000; // minimum 15s theater
 const ITEM_INTERVAL_MS = 2200; // ~2.2s per checklist item
 
 const CHECKLIST_ITEMS = [
-  "Finding your practice...",
+  "Finding your business...",
   "Scanning Google Business Profile",
   "Locating nearby competitors",
   "Analyzing review velocity",
@@ -376,7 +376,7 @@ export default function ScanningTheater() {
               <Popup>
                 <div className="text-center">
                   <p className="font-semibold text-sm">{place.name}</p>
-                  <p className="text-xs text-slate-500">Your practice</p>
+                  <p className="text-xs text-slate-500">Your business</p>
                 </div>
               </Popup>
             </Marker>

@@ -167,10 +167,10 @@ export default function EntryScreen() {
       {/* Headline — strong hierarchy, updates with specialty */}
       <div className="text-center mb-10">
         <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-3">
-          Free Practice Analysis
+          Free Business Analysis
         </p>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight leading-tight">
-          How does your practice<br />stack up?
+          How does your business<br />stack up?
         </h1>
         <p className="mt-4 text-base text-slate-500 leading-relaxed max-w-sm mx-auto">
           {selectedPlace
@@ -188,7 +188,7 @@ export default function EntryScreen() {
             type="text"
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
-            placeholder="Search your practice name..."
+            placeholder="Search your business name..."
             autoComplete="off"
             className="w-full h-[56px] pl-12 pr-12 rounded-2xl bg-white border border-slate-200 text-base text-[#212D40] placeholder:text-slate-400 shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-all focus:outline-none focus:border-[#D56753] focus:ring-4 focus:ring-[#D56753]/8 focus:shadow-[0_2px_20px_rgba(213,103,83,0.12)]"
           />
@@ -229,7 +229,7 @@ export default function EntryScreen() {
           {[
             "Who's beating me in my market?",
             "What's my online presence score?",
-            "How do I get more patients?",
+            "How do I get more customers?",
           ].map((label) => (
             <button
               key={label}
