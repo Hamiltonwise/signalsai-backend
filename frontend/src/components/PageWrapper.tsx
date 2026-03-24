@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, Bell, Lock, CreditCard } from "lucide-react";
+import { Menu, Lock, CreditCard } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { LocationTransitionOverlay } from "./LocationTransitionOverlay";
+import { NotificationPopover } from "./NotificationPopover";
 import { SidebarProvider, useSidebar } from "./Admin/SidebarContext";
 import { useAuth } from "../hooks/useAuth";
 import { useSession } from "../contexts/sessionContext";
@@ -67,12 +68,9 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
 
         <div className="flex items-center gap-2">
           {!isLockedOut && (
-            <button
-              onClick={() => navigate("/notifications")}
-              className="p-2 text-slate-400 hover:text-alloro-orange transition-colors relative"
-            >
-              <Bell size={20} />
-            </button>
+            <NotificationPopover
+              organizationId={userProfile?.organizationId || null}
+            />
           )}
           <button
             onClick={() => navigate("/settings")}

@@ -63,7 +63,8 @@ function healthIndicator(rankings: RankingJob[]): {
     return { color: "bg-emerald-500", label: "Strong" };
   if (latest.rank_score >= 50)
     return { color: "bg-amber-400", label: "Getting there" };
-  return { color: "bg-red-500", label: "Needs attention" };
+  // Low score is not "money at risk today" — use amber, not red
+  return { color: "bg-amber-400", label: "Needs attention" };
 }
 
 // ─── Sparkline (pure SVG) ───────────────────────────────────────────
@@ -162,7 +163,9 @@ function PositionCard({ rankings }: { rankings: RankingJob[] }) {
               className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                 delta > 0
                   ? "bg-emerald-50 text-emerald-700"
-                  : "bg-red-50 text-red-600"
+                  : delta <= -2
+                    ? "bg-amber-50 text-amber-700"
+                    : "bg-gray-100 text-gray-600"
               }`}
             >
               {delta > 0 ? (

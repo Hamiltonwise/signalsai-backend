@@ -64,7 +64,8 @@ function healthDot(org: AdminOrganization): {
   if (hoursAgo < 48) {
     return { color: "bg-amber-400", label: "Needs attention" };
   }
-  return { color: "bg-red-500", label: "Urgent" };
+  // No GBP after 48h — needs setup, not urgent. Amber, not red.
+  return { color: "bg-amber-400", label: "Needs setup" };
 }
 
 function specialtyIcon(name: string): string {
