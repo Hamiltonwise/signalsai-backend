@@ -4,6 +4,7 @@ import {
   discoverCompetitorsViaPlaces,
   filterBySpecialty,
 } from "../controllers/practice-ranking/feature-services/service.places-competitor-discovery";
+import { filterByDriveTime } from "../utils/driveTimeMarket";
 import { OrganizationModel } from "../models/OrganizationModel";
 import { sendCheckupResultEmail } from "../emails/templates/CheckupResultEmail";
 import { BehavioralEventModel } from "../models/BehavioralEventModel";
@@ -69,12 +70,22 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
     );
 
     // Filter to relevant specialty
-    const competitors = filterBySpecialty(allCompetitors, specialty);
+    const specialtyFiltered = filterBySpecialty(allCompetitors, specialty);
 
     // Remove the practice itself from competitors
-    const otherCompetitors = competitors.filter(
+    const selfFiltered = specialtyFiltered.filter(
       (c) => c.placeId !== placeId && c.name.toLowerCase() !== name.toLowerCase()
     );
+
+    // Filter by drive time — only competitors within specialty threshold
+    const otherCompetitors = locationBias
+      ? await filterByDriveTime(
+          locationBias.lat,
+          locationBias.lng,
+          specialty,
+          selfFiltered
+        )
+      : selfFiltered.map((c) => ({ ...c, driveTimeMinutes: 0 }));
 
     // --- Score Calculation ---
     const clientRating = rating ?? 0;
@@ -213,6 +224,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
         reviewCount: c.reviewsCount,
         placeId: c.placeId,
         location: c.location,
+        driveTimeMinutes: (c as any).driveTimeMinutes ?? null,
       })),
       findings,
       totalImpact,
