@@ -16,6 +16,7 @@ import { processReviewSync } from "./processors/reviewSync.processor";
 import { processSchedulerTick } from "./processors/scheduler.processor";
 import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
+import { processGbpRefresh } from "./processors/gbpRefresh.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -319,10 +320,45 @@ async function setupSchedulerTick(): Promise<void> {
   }
 }
 
+// GBP Token Refresh worker
+const gbpRefreshWorker = new Worker(
+  "minds-gbp-refresh",
+  async (job) => {
+    await processGbpRefresh(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Set up GBP token refresh schedule (daily 3 AM PT = 10 AM UTC)
+async function setupGbpRefreshSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("gbp-refresh");
+    await queue.add(
+      "daily-gbp-refresh",
+      {},
+      {
+        repeat: {
+          pattern: "0 10 * * *", // 10 AM UTC = 3 AM PT
+          tz: "UTC",
+        },
+        jobId: "daily-gbp-refresh",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily GBP token refresh scheduled (3 AM PT / 10 AM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up GBP refresh schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
 setupReviewSyncSchedule();
 setupSchedulerTick();
+setupGbpRefreshSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");

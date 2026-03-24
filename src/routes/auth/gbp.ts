@@ -1,3 +1,4 @@
+// T2 registers any new endpoints
 import express, { Request, Response } from "express";
 import { google } from "googleapis";
 import { db } from "../../database/connection";
