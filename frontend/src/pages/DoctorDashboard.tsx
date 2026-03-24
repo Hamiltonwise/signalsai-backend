@@ -607,7 +607,11 @@ export default function DoctorDashboard() {
   return (
     <>
     {/* Billing prompt bar — top of dashboard, quiet, dismissable */}
-    <BillingPromptBar orgId={orgId} />
+    <BillingPromptBar
+      orgId={orgId}
+      score={rankingData?.rankScore ?? null}
+      finding={prooflineFindings[0]?.detail || null}
+    />
 
     <div className="mx-auto max-w-2xl space-y-5 px-4 py-6 sm:py-8">
       {/* Header */}
@@ -712,7 +716,7 @@ export default function DoctorDashboard() {
       />
 
       {/* TTFV Sensor — bottom bar, 60s after first load */}
-      <TTFVSensor orgId={orgId} />
+      <TTFVSensor orgId={orgId} onYes={() => { /* billing prompt auto-shows via ttfv-status check */ }} />
     </div>
     </>
   );

@@ -1,74 +1,90 @@
 /**
- * Billing Prompt Bar — appears after TTFV "Yes" response.
+ * Billing Prompt — shown after TTFV "Yes" response.
  *
- * Quiet bar at top of dashboard (NOT modal).
- * "You said this told you something. Keep it telling you.
- * $1,500/month for your first 3 months, then $2,000. [Keep it running →]"
- *
- * Dismissable. Reappears on next login until billing activated.
+ * Card with score, one finding, pricing CTA.
+ * Dismissable. Only shown once (marks billing_prompt_shown_at).
  */
 
 import { useState, useEffect } from "react";
 import { X, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { apiGet } from "../../api/index";
 
-interface BillingPromptBarProps {
+interface BillingPromptProps {
   orgId: number | null;
+  score?: number | null;
+  finding?: string | null;
 }
 
-export default function BillingPromptBar({ orgId }: BillingPromptBarProps) {
-  const navigate = useNavigate();
+export default function BillingPromptBar({ orgId, score, finding }: BillingPromptProps) {
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     if (!orgId || dismissed) return;
-
     let cancelled = false;
 
     async function check() {
       try {
-        const state = await apiGet({ path: `/api/org/${orgId}/ttfv` });
-        if (cancelled) return;
-
-        if (state?.showBillingPrompt) {
-          setVisible(true);
-        }
-      } catch {
-        // Silently fail
-      }
+        const token = localStorage.getItem("auth_token");
+        const res = await fetch("/api/checkup/ttfv-status", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (data.showBilling) setVisible(true);
+      } catch { /* non-critical */ }
     }
 
     check();
     return () => { cancelled = true; };
   }, [orgId, dismissed]);
 
+  const handleDismiss = async () => {
+    setDismissed(true);
+    setVisible(false);
+    try {
+      const token = localStorage.getItem("auth_token");
+      await fetch("/api/checkup/billing-prompt-shown", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+    } catch { /* non-critical */ }
+  };
+
   if (!visible || dismissed) return null;
 
   return (
-    <div className="w-full bg-[#212D40] text-white px-4 py-3">
-      <div className="mx-auto max-w-2xl flex items-center gap-3">
-        <p className="flex-1 text-sm leading-snug">
-          <span className="font-medium">You said this told you something.</span>{" "}
-          <span className="text-white/70">
-            Keep it telling you. $1,500/month for your first 3 months, then $2,000.
-          </span>
-        </p>
+    <div className="mx-auto max-w-2xl px-4 mb-4">
+      <div className="rounded-2xl border border-[#212D40]/10 bg-[#212D40] p-5 text-white relative">
         <button
-          onClick={() => navigate("/settings/billing")}
-          className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[#D56753] px-4 py-2 text-xs font-semibold text-white hover:brightness-105 active:scale-[0.98] transition-all"
-        >
-          Keep it running
-          <ArrowRight className="h-3 w-3" />
-        </button>
-        <button
-          onClick={() => setDismissed(true)}
-          className="shrink-0 p-1 text-white/40 hover:text-white/70 transition-colors"
+          onClick={handleDismiss}
+          className="absolute top-3 right-3 p-1 text-white/30 hover:text-white/60 transition-colors"
           aria-label="Dismiss"
         >
           <X className="h-4 w-4" />
         </button>
+
+        {score != null && (
+          <p className="text-3xl font-black mb-1">{score}<span className="text-lg text-white/50">/100</span></p>
+        )}
+
+        {finding && (
+          <p className="text-sm text-white/70 leading-relaxed mb-4">{finding}</p>
+        )}
+
+        <p className="text-sm font-medium text-white/90 mb-3">
+          Continue seeing your full picture -- $2,000/month.
+        </p>
+
+        <a
+          href="/settings/billing"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-105 active:scale-[0.98] transition-all"
+        >
+          Keep it running
+          <ArrowRight className="h-4 w-4" />
+        </a>
       </div>
     </div>
   );

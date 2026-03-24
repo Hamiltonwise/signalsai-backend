@@ -5,9 +5,15 @@ import {
   filterBySpecialty,
 } from "../controllers/practice-ranking/feature-services/service.places-competitor-discovery";
 import { filterByDriveTime } from "../utils/driveTimeMarket";
+import bcrypt from "bcrypt";
 import { OrganizationModel } from "../models/OrganizationModel";
+import { UserModel } from "../models/UserModel";
+import { OrganizationUserModel } from "../models/OrganizationUserModel";
+import { generateReferralCode } from "../utils/referralCode";
+import { generateToken } from "../controllers/auth-otp/feature-services/service.jwt-management";
 import { sendCheckupResultEmail } from "../emails/templates/CheckupResultEmail";
 import { BehavioralEventModel } from "../models/BehavioralEventModel";
+import { db } from "../database/connection";
 
 const checkupRoutes = express.Router();
 
@@ -572,6 +578,228 @@ checkupRoutes.post("/track", async (req, res) => {
     // Never block the user flow for tracking failures
     console.error("[Checkup] Track error:", error.message);
     return res.json({ success: true });
+  }
+});
+
+/**
+ * POST /api/checkup/create-account
+ *
+ * Streamlined account creation from the Checkup gate.
+ * Creates user + org + returns JWT. No email verification.
+ * If email exists: returns token for existing account (auto-login).
+ */
+checkupRoutes.post("/create-account", emailLimiter, async (req, res) => {
+  try {
+    const {
+      email,
+      password,
+      practice_name,
+      place_id,
+      relationship,
+      checkup_score,
+      checkup_data,
+    } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: "Email and password are required" });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ success: false, error: "Invalid email format" });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, error: "Password must be at least 8 characters" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if user exists -- if so, verify password and return token
+    const existing = await UserModel.findByEmail(normalizedEmail);
+    if (existing) {
+      if (!existing.password_hash) {
+        return res.status(409).json({
+          success: false,
+          error: "Account exists via Google sign-in. Please sign in with Google.",
+          existingAccount: true,
+        });
+      }
+      const passwordMatch = await bcrypt.compare(password, existing.password_hash);
+      if (!passwordMatch) {
+        return res.status(409).json({
+          success: false,
+          error: "An account with this email already exists. Sign in instead.",
+          existingAccount: true,
+        });
+      }
+      // Password matches -- auto-login
+      const token = generateToken(existing.id, normalizedEmail, true);
+      return res.json({ success: true, token, userId: existing.id, existingAccount: true });
+    }
+
+    // Create new user
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await UserModel.create({
+      email: normalizedEmail,
+      password_hash: passwordHash,
+    });
+
+    // Mark email as verified (skip verification for Checkup gate)
+    await db("users").where({ id: user.id }).update({ email_verified: true });
+
+    // Create organization
+    const org = await OrganizationModel.create({
+      name: practice_name || `${normalizedEmail.split("@")[0]}'s Practice`,
+      referral_code: generateReferralCode(),
+    });
+
+    // Set session_checkup_key if checkup data provided
+    if (checkup_score || checkup_data || place_id) {
+      await db("organizations").where({ id: org.id }).update({
+        business_data: JSON.stringify({
+          checkup_score,
+          checkup_place_id: place_id,
+          checkup_relationship: relationship,
+          checkup_data: checkup_data || null,
+        }),
+      });
+    }
+
+    // Link user to org
+    await OrganizationUserModel.create({
+      organization_id: org.id,
+      user_id: user.id,
+      role: "admin",
+    });
+
+    // Generate JWT
+    const token = generateToken(user.id, normalizedEmail, true);
+
+    // Track event
+    BehavioralEventModel.create({
+      event_type: "checkup.account_created",
+      org_id: org.id,
+      properties: {
+        practice_name,
+        place_id,
+        relationship,
+        checkup_score,
+      },
+    }).catch(() => {});
+
+    console.log(`[Checkup] Account created: ${normalizedEmail} -> org ${org.id}`);
+
+    return res.json({
+      success: true,
+      token,
+      userId: user.id,
+      organizationId: org.id,
+      existingAccount: false,
+    });
+  } catch (error: any) {
+    console.error("[Checkup] Create account error:", error.message);
+    return res.status(500).json({ success: false, error: "Failed to create account" });
+  }
+});
+
+/**
+ * PATCH /api/checkup/first-login
+ * Sets first_login_at on the org if not already set. Requires auth.
+ */
+checkupRoutes.patch("/first-login", async (req: any, res) => {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(401).json({ success: false, error: "Auth required" });
+
+    await db("organizations")
+      .where({ id: orgId })
+      .whereNull("first_login_at")
+      .update({ first_login_at: new Date() });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[TTFV] First login error:", error.message);
+    return res.status(500).json({ success: false, error: "Failed" });
+  }
+});
+
+/**
+ * PATCH /api/checkup/ttfv
+ * Records TTFV response. Body: { response: 'yes' | 'not_yet' }
+ */
+checkupRoutes.patch("/ttfv", async (req: any, res) => {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(401).json({ success: false, error: "Auth required" });
+
+    const { response } = req.body;
+    if (response !== "yes" && response !== "not_yet") {
+      return res.status(400).json({ success: false, error: "Invalid response" });
+    }
+
+    await db("organizations")
+      .where({ id: orgId })
+      .whereNull("ttfv_response")
+      .update({ ttfv_response: response, ttfv_responded_at: new Date() });
+
+    BehavioralEventModel.create({
+      event_type: `ttfv.${response}`,
+      org_id: orgId,
+    }).catch(() => {});
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[TTFV] Response error:", error.message);
+    return res.status(500).json({ success: false, error: "Failed" });
+  }
+});
+
+/**
+ * PATCH /api/checkup/billing-prompt-shown
+ * Sets billing_prompt_shown_at so it doesn't show again.
+ */
+checkupRoutes.patch("/billing-prompt-shown", async (req: any, res) => {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(401).json({ success: false, error: "Auth required" });
+
+    await db("organizations")
+      .where({ id: orgId })
+      .whereNull("billing_prompt_shown_at")
+      .update({ billing_prompt_shown_at: new Date() });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: "Failed" });
+  }
+});
+
+/**
+ * GET /api/checkup/ttfv-status
+ * Returns TTFV state for the authenticated org.
+ */
+checkupRoutes.get("/ttfv-status", async (req: any, res) => {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(401).json({ success: false, error: "Auth required" });
+
+    const org = await db("organizations")
+      .where({ id: orgId })
+      .select("first_login_at", "ttfv_response", "billing_prompt_shown_at", "subscription_status")
+      .first();
+
+    if (!org) return res.status(404).json({ success: false });
+
+    return res.json({
+      success: true,
+      firstLoginAt: org.first_login_at,
+      ttfvResponse: org.ttfv_response,
+      billingPromptShownAt: org.billing_prompt_shown_at,
+      showTtfv: !!org.first_login_at && !org.ttfv_response,
+      showBilling: org.ttfv_response === "yes" && !org.billing_prompt_shown_at && org.subscription_status !== "active",
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: "Failed" });
   }
 });
 

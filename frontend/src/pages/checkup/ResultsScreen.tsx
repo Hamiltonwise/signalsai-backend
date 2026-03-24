@@ -489,34 +489,43 @@ export default function ResultsScreen() {
 
     setEmailSending(true);
 
-    // Step 1: Create account directly via auth register
+    // Step 1: Create account via Checkup gate endpoint (no email verification)
     try {
-      const registerRes = await fetch("/api/auth/register", {
+      const createRes = await fetch("/api/checkup/create-account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim(),
           password,
-          practiceName: place.name,
+          practice_name: place.name,
+          place_id: place.placeId,
+          relationship,
+          checkup_score: score.composite,
+          checkup_data: {
+            score,
+            topCompetitor: topCompetitor?.name || null,
+            market: market || null,
+            findingSummary: findings[0]?.detail || null,
+          },
         }),
       });
-      const registerData = await registerRes.json();
+      const createData = await createRes.json();
 
-      if (!registerRes.ok || !registerData.success) {
-        if (registerData.error?.includes("exists") || registerData.message?.includes("exists")) {
-          setEmailError('You already have an account. Sign in at /signin');
+      if (!createRes.ok || !createData.success) {
+        if (createData.existingAccount) {
+          setEmailError("Welcome back! Sign in at /signin to see your dashboard.");
           setEmailSending(false);
           return;
         }
-        setEmailError(registerData.error || registerData.message || "Account creation failed.");
+        setEmailError(createData.error || "Account creation failed.");
         setEmailSending(false);
         return;
       }
 
-      // Store token if returned
-      if (registerData.token) {
-        localStorage.setItem("auth_token", registerData.token);
-        localStorage.setItem("token", registerData.token);
+      // Store token -- user is now logged in
+      if (createData.token) {
+        localStorage.setItem("auth_token", createData.token);
+        localStorage.setItem("token", createData.token);
       }
     } catch {
       setEmailError("Something went wrong. Please try again.");
