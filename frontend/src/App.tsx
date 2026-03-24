@@ -12,6 +12,7 @@ import NewAccountOnboarding from "./pages/NewAccountOnboarding";
 import Dashboard from "./pages/Dashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import ProgressReport from "./pages/ProgressReport";
+import RankingsScreen from "./pages/RankingsScreen";
 import Demo from "./pages/Demo";
 import PartnerPortal from "./pages/partner/PartnerPortal";
 import ReferralIntelligence from "./pages/ReferralIntelligence";
@@ -183,6 +184,7 @@ function App() {
               <Route element={<ProtectedLayout />}>
                 <Route path="/dashboard" element={<DoctorDashboard />} />
                 <Route path="/dashboard/progress" element={<ProgressReport />} />
+                <Route path="/dashboard/rankings" element={<RankingsScreen />} />
                 <Route path="/dashboard/referrals" element={<ReferralIntelligence />} />
                 <Route path="/patientJourneyInsights" element={<Dashboard />} />
                 <Route path="/pmsStatistics" element={<Dashboard />} />

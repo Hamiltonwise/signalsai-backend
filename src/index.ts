@@ -49,6 +49,7 @@ import adminFirefliesRoutes from "./routes/admin/firefliesWebhook";
 import adminReviewRoutes from "./routes/admin/reviews";
 import milestoneRoutes from "./routes/admin/milestones";
 import referralIntelligenceRoutes from "./routes/referralIntelligence";
+import intelligenceIntakeRoutes from "./routes/admin/intelligenceIntake";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
@@ -57,6 +58,7 @@ import checkupRoutes from "./routes/checkup";
 import progressReportRoutes from "./routes/progressReport";
 import vocabularyRoutes from "./routes/vocabulary";
 import partnerRoutes from "./routes/partner";
+import rankingsIntelligenceRoutes from "./routes/rankingsIntelligence";
 import reviewRequestRoutes from "./routes/reviewRequests";
 import csAgentRoutes from "./routes/csAgent";
 import ttfvRoutes from "./routes/ttfv";
@@ -188,6 +190,7 @@ app.use("/api/admin", adminFirefliesRoutes); // Fireflies webhook + dream team t
 app.use("/api/admin/reviews", adminReviewRoutes); // Review notifications + AI responses
 app.use("/api", milestoneRoutes); // Milestone notifications (admin + client routes)
 app.use("/api/referral-intelligence", referralIntelligenceRoutes); // GP referral intelligence
+app.use("/api/admin/intelligence", intelligenceIntakeRoutes); // Founder Mode intelligence intake
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest
 app.use("/api/admin", adminAuthRoutes);
@@ -199,6 +202,7 @@ app.use("/api/progress-report", progressReportRoutes); // 365-day progress repor
 app.use("/api/org", vocabularyRoutes); // Vocabulary config per org
 app.use("/api/vocabulary", vocabularyRoutes); // Vocabulary defaults (public)
 app.use("/api/partner", partnerRoutes); // Partner Portal API
+app.use("/api/rankings-intelligence", rankingsIntelligenceRoutes); // Weekly ranking snapshots + drift
 app.use("/api/review-requests", reviewRequestRoutes); // Post-appointment review generation
 app.use("/api/cs-agent", csAgentRoutes); // Account-aware Claude chat for doctors
 app.use("/api/org", ttfvRoutes); // TTFV sensor + billing prompt
