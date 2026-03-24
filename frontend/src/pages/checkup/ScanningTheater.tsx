@@ -8,6 +8,7 @@ import type { PlaceDetails } from "../../api/places";
 import { analyzeCheckup } from "../../api/checkup";
 import type { CheckupAnalysis, CheckupCompetitor } from "../../api/checkup";
 import type { CheckupResults } from "./ResultsScreen";
+import { trackEvent } from "../../api/tracking";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -171,6 +172,13 @@ export default function ScanningTheater() {
     if (!place) return;
     let cancelled = false;
 
+    // Track: checkup.started
+    trackEvent("checkup.started", {
+      practice_name: place.name,
+      city: place.city,
+      specialty: place.category,
+    });
+
     async function analyze() {
       try {
         const result = await analyzeCheckup({
@@ -189,6 +197,13 @@ export default function ScanningTheater() {
         if (result.success) {
           analysisRef.current = result;
           setApiDone(true);
+
+          // Track: checkup.scan_completed
+          trackEvent("checkup.scan_completed", {
+            score: result.score.composite,
+            competitor_count: result.competitors.length,
+            top_competitor_name: result.topCompetitor?.name || null,
+          });
         } else {
           setError("Analysis failed. Please try again.");
         }

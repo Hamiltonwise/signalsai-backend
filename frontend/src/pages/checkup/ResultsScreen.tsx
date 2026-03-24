@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Navigate } from "react-router-dom";
 import {
   Eye,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { PlaceDetails } from "../../api/places";
 import { sendCheckupEmail } from "../../api/checkup";
+import { trackEvent } from "../../api/tracking";
 
 // ---------------------------------------------------------------------------
 // Types — passed via React Router state from the scanning phase
@@ -241,6 +242,17 @@ export default function ResultsScreen() {
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
 
+  // Track: checkup.gate_viewed (fires once when results render)
+  useEffect(() => {
+    if (!state?.place || !state?.score) return;
+    trackEvent("checkup.gate_viewed", {
+      score: state.score.composite,
+      blur_gate_cta_text: state.topCompetitor
+        ? `See why ${state.topCompetitor.name} ranks above you in ${state.place.city || "your market"}.`
+        : "See what's holding your score back.",
+    });
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
   // Redirect if no data (user navigated directly)
   if (!state?.place || !state?.score) {
     return <Navigate to="/checkup" replace />;
@@ -268,6 +280,14 @@ export default function ResultsScreen() {
       totalCompetitors: market?.totalCompetitors || 0,
     }).catch(() => {
       // Email send failed silently — prospect still sees results
+    });
+
+    // Track: checkup.email_captured (no PII — no email stored)
+    trackEvent("checkup.email_captured", {
+      score: score.composite,
+      specialty: place.category,
+      city: place.city,
+      ref_code: state.refCode || null,
     });
 
     setEmailSubmitted(true);

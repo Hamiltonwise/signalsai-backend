@@ -5,6 +5,7 @@ import {
 } from "../controllers/practice-ranking/feature-services/service.places-competitor-discovery";
 import { OrganizationModel } from "../models/OrganizationModel";
 import { sendCheckupResultEmail } from "../emails/templates/CheckupResultEmail";
+import { BehavioralEventModel } from "../models/BehavioralEventModel";
 
 const checkupRoutes = express.Router();
 
@@ -284,6 +285,22 @@ checkupRoutes.post("/email", async (req, res) => {
 
     if (result.success) {
       console.log(`[Checkup] Result email sent to ${email}`);
+
+      // Track: result_email.sent (no PII — no email address stored)
+      BehavioralEventModel.create({
+        event_type: "result_email.sent",
+        session_id: req.body.sessionId || null,
+        properties: {
+          practice_name: practiceName,
+          city,
+          score: compositeScore,
+          competitor_name: topCompetitorName || null,
+          subject: topCompetitorName
+            ? `Your score vs ${topCompetitorName} in ${city}`
+            : `Your Business Health Score: ${compositeScore}`,
+        },
+      }).catch(() => {}); // Fire-and-forget
+
       return res.json({ success: true, messageId: result.messageId });
     } else {
       console.error(`[Checkup] Email send failed: ${result.error}`);
@@ -295,6 +312,34 @@ checkupRoutes.post("/email", async (req, res) => {
       success: false,
       error: "Failed to send email. Please try again.",
     });
+  }
+});
+
+/**
+ * POST /api/checkup/track
+ *
+ * Records a behavioral event from the checkup flow.
+ * No PII. No patient data. Only behavioral signals.
+ */
+checkupRoutes.post("/track", async (req, res) => {
+  try {
+    const { eventType, sessionId, properties } = req.body;
+
+    if (!eventType) {
+      return res.status(400).json({ success: false, error: "Missing eventType" });
+    }
+
+    await BehavioralEventModel.create({
+      event_type: eventType,
+      session_id: sessionId || null,
+      properties: properties || {},
+    });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    // Never block the user flow for tracking failures
+    console.error("[Checkup] Track error:", error.message);
+    return res.json({ success: true });
   }
 });
 
