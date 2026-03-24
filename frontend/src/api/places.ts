@@ -9,6 +9,19 @@ export interface PlaceSuggestion {
   description: string;
 }
 
+export interface PlaceReview {
+  authorName: string;
+  rating: number;
+  text: string;
+  relativeTime: string;
+}
+
+export interface PlacePhoto {
+  url: string;
+  widthPx: number;
+  heightPx: number;
+}
+
 export interface PlaceDetails {
   placeId: string;
   name: string;
@@ -25,6 +38,8 @@ export interface PlaceDetails {
   category: string;
   types: string[];
   location: { latitude: number; longitude: number } | null;
+  reviews?: PlaceReview[];
+  photos?: PlacePhoto[];
 }
 
 export interface AutocompleteResponse {

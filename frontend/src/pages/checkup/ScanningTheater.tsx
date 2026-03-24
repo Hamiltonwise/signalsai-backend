@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
-import { Check, Loader2, Star, MessageSquare, Globe, Phone, Camera, MapPin as MapPinIcon } from "lucide-react";
+import { Check, Loader2, Star, MessageSquare, Globe, Phone, Camera, MapPin as MapPinIcon, Quote } from "lucide-react";
+import type { PlaceReview, PlacePhoto } from "../../api/places";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -85,32 +86,31 @@ function MapAnimator({
   const lastFlyRef = useRef<number>(-1);
   const hasZoomedIn = useRef(false);
 
-  // Phase 1: Slow cinematic zoom into the practice pin
+  // Phase 1: Cinematic zoom into the practice pin
   useEffect(() => {
     if (hasZoomedIn.current) return;
     hasZoomedIn.current = true;
-    // Start at zoom 11 (regional), gentle fly to zoom 14 (close)
     map.setView(center, 11, { animate: false });
     setTimeout(() => {
-      map.flyTo(center, 14, { duration: 4 });
-    }, 800);
-    // After close-up hold, ease back to neighborhood view
+      map.flyTo(center, 14.5, { duration: 3 });
+    }, 600);
+    // Pull back to neighborhood after close-up
     setTimeout(() => {
-      map.flyTo(center, 12.5, { duration: 3 });
-    }, 6500);
+      map.flyTo(center, 12.5, { duration: 2.5 });
+    }, 5000);
   }, [map, center]);
 
-  // Phase 2: When a competitor is highlighted, smooth fly to it
+  // Phase 2: Fly to each competitor as it's revealed
   useEffect(() => {
     if (highlightIndex === null || highlightIndex === lastFlyRef.current) return;
     const comp = competitors[highlightIndex];
     if (!comp?.location) return;
     lastFlyRef.current = highlightIndex;
 
-    // Gentle fly to the competitor
-    map.flyTo([comp.location.lat, comp.location.lng], 13.5, { duration: 2 });
+    // Fly to the competitor
+    map.flyTo([comp.location.lat, comp.location.lng], 13.5, { duration: 1.5 });
 
-    // After holding, ease back out to show all revealed pins
+    // Pull back to show all revealed pins
     const timer = setTimeout(() => {
       if (competitors.length > 1) {
         const allPoints = [
@@ -121,14 +121,14 @@ function MapAnimator({
             .map((c) => [c.location!.lat, c.location!.lng] as [number, number]),
         ];
         const bounds = L.latLngBounds(allPoints);
-        map.flyToBounds(bounds, { padding: [60, 60], maxZoom: 13, duration: 2.5 });
+        map.flyToBounds(bounds, { padding: [60, 60], maxZoom: 13, duration: 2 });
       }
-    }, 3000);
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, [highlightIndex, competitors, map, center]);
 
-  // Phase 3: Final slow pull-back to show full market
+  // Phase 3: Final pull-back to show full market
   useEffect(() => {
     if (!scanComplete || competitors.length === 0) return;
     const timer = setTimeout(() => {
@@ -139,8 +139,8 @@ function MapAnimator({
           .map((c) => [c.location!.lat, c.location!.lng] as [number, number]),
       ];
       const bounds = L.latLngBounds(allPoints);
-      map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 12, duration: 3 });
-    }, 1000);
+      map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 12, duration: 2.5 });
+    }, 800);
     return () => clearTimeout(timer);
   }, [scanComplete, competitors, map, center]);
 
@@ -344,6 +344,97 @@ function DiscoveryFeed({
           Mapping competitors...
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Review Ticker — real reviews scroll through during scan
+// ---------------------------------------------------------------------------
+
+function ReviewTicker({ reviews }: { reviews: PlaceReview[] }) {
+  const [visibleIndex, setVisibleIndex] = useState(-1);
+
+  useEffect(() => {
+    if (reviews.length === 0) return;
+    // Show first review after 3s, then rotate every 3s
+    const timers = reviews.slice(0, 4).map((_, i) =>
+      setTimeout(() => setVisibleIndex(i), 3000 + i * 3500)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [reviews]);
+
+  if (reviews.length === 0 || visibleIndex < 0) return null;
+  const review = reviews[visibleIndex];
+  if (!review) return null;
+
+  return (
+    <div
+      key={visibleIndex}
+      className="mt-3 bg-slate-50 rounded-lg p-3 animate-in fade-in slide-in-from-bottom-1 duration-500"
+    >
+      <div className="flex items-start gap-2">
+        <Quote className="w-3 h-3 text-[#D56753] shrink-0 mt-0.5 rotate-180" />
+        <div className="min-w-0">
+          <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-2">
+            {review.text || "Great experience!"}
+          </p>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <div className="flex">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-2.5 h-2.5 ${i < review.rating ? "text-amber-400 fill-amber-400" : "text-slate-200"}`}
+                />
+              ))}
+            </div>
+            <span className="text-[10px] text-slate-400">{review.authorName}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Photo Strip — real GBP photos appear during scan
+// ---------------------------------------------------------------------------
+
+function PhotoStrip({ photos }: { photos: PlacePhoto[] }) {
+  const [visibleCount, setVisibleCount] = useState(0);
+
+  useEffect(() => {
+    if (photos.length === 0) return;
+    // Reveal photos one by one starting at 5s
+    const timers = photos.slice(0, 4).map((_, i) =>
+      setTimeout(() => setVisibleCount(i + 1), 5000 + i * 2000)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [photos]);
+
+  if (photos.length === 0 || visibleCount === 0) return null;
+
+  return (
+    <div className="mt-3">
+      <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">
+        GBP Photos
+      </p>
+      <div className="flex gap-1.5 overflow-hidden">
+        {photos.slice(0, visibleCount).map((photo, i) => (
+          <div
+            key={i}
+            className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-slate-100 animate-in fade-in zoom-in-90 duration-500"
+          >
+            <img
+              src={photo.url}
+              alt=""
+              className="w-full h-full object-cover"
+              loading="eager"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -570,7 +661,7 @@ export default function ScanningTheater() {
       {/* Two-panel layout */}
       <div className="flex flex-col lg:flex-row gap-5">
         {/* Left panel — Animated Checklist */}
-        <div className="lg:w-[340px] shrink-0 bg-white border border-slate-200 rounded-2xl p-7 shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
+        <div className="lg:w-[340px] shrink-0 bg-white border border-slate-200 rounded-2xl p-7 shadow-[0_4px_20px_rgba(0,0,0,0.06)] lg:max-h-[520px] lg:overflow-y-auto">
           <div className="space-y-4">
             {CHECKLIST_ITEMS.map((text, i) => (
               <ChecklistItem
@@ -595,6 +686,16 @@ export default function ScanningTheater() {
             onRevealCompetitor={handleRevealCompetitor}
             highlightedCompetitorIndex={highlightedCompetitorIndex}
           />
+
+          {/* Real reviews scrolling through */}
+          {place.reviews && place.reviews.length > 0 && (
+            <ReviewTicker reviews={place.reviews} />
+          )}
+
+          {/* Real GBP photos appearing */}
+          {place.photos && place.photos.length > 0 && (
+            <PhotoStrip photos={place.photos} />
+          )}
 
           {/* Progress indicator */}
           <div className="mt-5 pt-4 border-t border-slate-100">

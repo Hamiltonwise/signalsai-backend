@@ -5,6 +5,19 @@ import { extractDomainFromUrl } from "../feature-utils/domainExtractor";
  * Full place details returned by GET /:placeId.
  * Includes `types` array and full phone/category fallbacks.
  */
+export interface PlaceReview {
+  authorName: string;
+  rating: number;
+  text: string;
+  relativeTime: string;
+}
+
+export interface PlacePhoto {
+  url: string;
+  widthPx: number;
+  heightPx: number;
+}
+
 export interface PlaceDetails {
   placeId: string;
   name: string;
@@ -21,6 +34,8 @@ export interface PlaceDetails {
   category: string;
   types: string[];
   location: any | null;
+  reviews: PlaceReview[];
+  photos: PlacePhoto[];
 }
 
 /**
@@ -96,6 +111,19 @@ export function transformPlaceDetailsResponse(
     category: data.primaryTypeDisplayName?.text || data.primaryType || "",
     types: data.types || [],
     location: data.location || null,
+    reviews: (data.reviews || []).slice(0, 5).map((r: any) => ({
+      authorName: r.authorAttribution?.displayName || "Anonymous",
+      rating: r.rating || 0,
+      text: r.text?.text || r.originalText?.text || "",
+      relativeTime: r.relativePublishTimeDescription || "",
+    })),
+    photos: (data.photos || []).slice(0, 6).map((p: any) => ({
+      url: p.name
+        ? `https://places.googleapis.com/v1/${p.name}/media?maxWidthPx=400&key=${process.env.GOOGLE_PLACES_API}`
+        : "",
+      widthPx: p.widthPx || 400,
+      heightPx: p.heightPx || 300,
+    })),
   };
 }
 
