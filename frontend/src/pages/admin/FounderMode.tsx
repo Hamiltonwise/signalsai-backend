@@ -150,7 +150,7 @@ function FounderBrief({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "MRR", value: `$${mrr.toLocaleString()}`, sub: `${activeOrgs.length} paying`, color: "text-emerald-400" },
-          { label: "Runway", value: runwayDays > 0 ? `${runwayDays}d` : "--", sub: `$${MONTHLY_BURN.toLocaleString()}/mo burn`, color: runwayDays < 90 ? "text-red-400" : runwayDays < 180 ? "text-amber-400" : "text-white" },
+          { label: "Rev. Coverage", value: runwayDays > 0 ? `${runwayDays}d` : "--", sub: `MRR/$${MONTHLY_BURN.toLocaleString()} burn (not cash)`, color: runwayDays < 90 ? "text-red-400" : runwayDays < 180 ? "text-amber-400" : "text-white" },
           { label: "Days to AAE", value: String(daysUntil(AAE_DATE)), sub: "Apr 14, 2026", color: "text-[#D56753]" },
           { label: "409A Due", value: `${d409a}d`, sub: "Jun 30, 2026", color: d409a <= 30 ? "text-red-400" : d409a <= 60 ? "text-amber-400" : "text-white" },
         ].map((m) => (
@@ -483,7 +483,7 @@ function CompetitiveIntel({
     { name: "PatientPath", cls: "Class 42", status: "Monitoring", lastChecked: today },
     { name: "ClearPath", cls: "Class 42", status: "Monitoring", lastChecked: today },
     { name: "Business Clarity", cls: "Class 42", status: "Monitoring", lastChecked: today },
-    { name: "Alloro", cls: "Class 42", status: "Monitoring", lastChecked: today },
+    { name: "Alloro", cls: "TBD (per attorney)", status: "Monitoring", lastChecked: today },
   ];
 
   const competitorNames = ["DentalQore", "PBHS", "My Social Practice", "Owner.com"];

@@ -51,6 +51,7 @@ import milestoneRoutes from "./routes/admin/milestones";
 import referralIntelligenceRoutes from "./routes/referralIntelligence";
 import intelligenceIntakeRoutes from "./routes/admin/intelligenceIntake";
 import rankingsSnapshotRoutes from "./routes/admin/rankingsSnapshot";
+import patientpathBuildRoutes from "./routes/admin/patientpathBuild";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
@@ -194,6 +195,7 @@ app.use("/api", milestoneRoutes); // Milestone notifications (admin + client rou
 app.use("/api/referral-intelligence", referralIntelligenceRoutes); // GP referral intelligence
 app.use("/api/admin/intelligence", intelligenceIntakeRoutes); // Founder Mode intelligence intake
 app.use("/api/admin", rankingsSnapshotRoutes); // WO31/33: rankings snapshot + Monday email manual triggers
+app.use("/api/admin/patientpath", patientpathBuildRoutes); // WO19: PatientPath build pipeline
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest
 app.use("/api/admin", adminAuthRoutes);
