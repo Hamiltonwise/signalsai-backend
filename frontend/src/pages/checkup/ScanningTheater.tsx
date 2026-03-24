@@ -50,6 +50,22 @@ function createPinIcon(color: string) {
 const practiceIcon = createPinIcon(TERRACOTTA);
 const competitorIcon = createPinIcon(NAVY);
 
+function createHighlightedPinIcon(color: string) {
+  return L.divIcon({
+    className: "",
+    iconSize: [48, 58],
+    iconAnchor: [24, 58],
+    popupAnchor: [0, -58],
+    html: `<svg width="48" height="58" viewBox="0 0 48 58" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="24" cy="24" r="22" fill="${color}" opacity="0.15"/>
+      <path d="M24 4C14.059 4 6 12.059 6 22c0 16 18 32 18 32s18-16 18-32C42 12.059 33.941 4 24 4z" fill="${color}"/>
+      <circle cx="24" cy="22" r="8" fill="white" opacity="0.9"/>
+    </svg>`,
+  });
+}
+
+const highlightedCompetitorIcon = createHighlightedPinIcon(NAVY);
+
 // ---------------------------------------------------------------------------
 // Map auto-fit helper
 // ---------------------------------------------------------------------------
@@ -117,71 +133,154 @@ function ChecklistItem({
 }
 
 // ---------------------------------------------------------------------------
-// Live Data Discovery Feed — reveals real GBP data as scanning progresses
+// Unified Discovery Feed — business data first, then competitors with map pins
 // ---------------------------------------------------------------------------
 
-interface DataPoint {
+interface FeedItem {
+  type: "data" | "competitor";
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
-  delay: number; // ms after mount
+  competitorIndex?: number; // index into competitors array
 }
 
-function buildDataPoints(place: PlaceDetails): DataPoint[] {
-  const points: DataPoint[] = [];
-
+function buildBusinessDataItems(place: PlaceDetails): FeedItem[] {
+  const items: FeedItem[] = [];
   if (place.rating) {
-    points.push({ icon: Star, label: "Rating found", value: `${place.rating}★`, delay: 2500 });
+    items.push({ type: "data", icon: Star, label: "Rating found", value: `${place.rating}★` });
   }
   if (place.reviewCount > 0) {
-    points.push({ icon: MessageSquare, label: "Reviews detected", value: `${place.reviewCount} reviews`, delay: 4500 });
+    items.push({ type: "data", icon: MessageSquare, label: "Reviews detected", value: `${place.reviewCount} reviews` });
   }
   if (place.websiteUri) {
-    points.push({ icon: Globe, label: "Website found", value: new URL(place.websiteUri).hostname, delay: 7000 });
+    items.push({ type: "data", icon: Globe, label: "Website found", value: new URL(place.websiteUri).hostname });
   } else {
-    points.push({ icon: Globe, label: "Website", value: "Not found", delay: 7000 });
-  }
-  if (place.phone) {
-    points.push({ icon: Phone, label: "Phone listed", value: "Verified", delay: 9000 });
+    items.push({ type: "data", icon: Globe, label: "Website", value: "Not found" });
   }
   if (place.category) {
-    points.push({ icon: Camera, label: "Category", value: place.category, delay: 11000 });
+    items.push({ type: "data", icon: Camera, label: "Category", value: place.category });
   }
-  points.push({ icon: MapPinIcon, label: "Market area", value: place.city || "Detected", delay: 13000 });
-
-  return points;
+  return items;
 }
 
-function DataDiscoveryFeed({ place }: { place: PlaceDetails }) {
-  const [visibleCount, setVisibleCount] = useState(0);
-  const dataPoints = useRef(buildDataPoints(place)).current;
+function buildCompetitorItems(competitors: CheckupCompetitor[]): FeedItem[] {
+  return competitors.slice(0, 5).map((c, i) => ({
+    type: "competitor" as const,
+    icon: MapPinIcon,
+    label: c.name,
+    value: `${c.rating}★ · ${c.reviewCount} reviews`,
+    competitorIndex: i,
+  }));
+}
 
+function DiscoveryFeed({
+  place,
+  competitors,
+  apiDone,
+  onRevealCompetitor,
+  highlightedCompetitorIndex,
+}: {
+  place: PlaceDetails;
+  competitors: CheckupCompetitor[];
+  apiDone: boolean;
+  onRevealCompetitor: (index: number) => void;
+  highlightedCompetitorIndex: number | null;
+}) {
+  const [visibleBusinessItems, setVisibleBusinessItems] = useState(0);
+  const [visibleCompetitorItems, setVisibleCompetitorItems] = useState(0);
+  const businessItems = useRef(buildBusinessDataItems(place)).current;
+  const competitorItems = useRef<FeedItem[]>([]);
+
+  // Update competitor items when API returns
   useEffect(() => {
-    const timers = dataPoints.map((dp, i) =>
-      setTimeout(() => setVisibleCount(i + 1), dp.delay)
+    if (apiDone && competitors.length > 0) {
+      competitorItems.current = buildCompetitorItems(competitors);
+    }
+  }, [apiDone, competitors]);
+
+  // Reveal business data items progressively
+  useEffect(() => {
+    const timers = businessItems.map((_, i) =>
+      setTimeout(() => setVisibleBusinessItems(i + 1), 2000 + i * 2000)
     );
     return () => timers.forEach(clearTimeout);
-  }, [dataPoints]);
+  }, [businessItems]);
+
+  // Reveal competitor items progressively once API is done and business data shown
+  useEffect(() => {
+    if (!apiDone || competitors.length === 0) return;
+    const compItems = buildCompetitorItems(competitors);
+    competitorItems.current = compItems;
+
+    // Start after business data is mostly revealed
+    const startDelay = Math.max(0, (businessItems.length * 2000 + 2000) - (Date.now() % 100000));
+    const timers = compItems.map((_, i) =>
+      setTimeout(() => {
+        setVisibleCompetitorItems(i + 1);
+        onRevealCompetitor(i);
+      }, 1200 * (i + 1))
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [apiDone, competitors, businessItems.length, onRevealCompetitor]);
 
   return (
-    <div className="space-y-2 mt-5 pt-5 border-t border-slate-100">
+    <div className="space-y-1.5 mt-5 pt-5 border-t border-slate-100 max-h-[220px] overflow-y-auto">
+      {/* Business data section */}
       <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">
-        Discovered
+        Your Profile
       </p>
-      {dataPoints.slice(0, visibleCount).map((dp, i) => (
+      {businessItems.slice(0, visibleBusinessItems).map((item, i) => (
         <div
-          key={i}
-          className="flex items-center gap-2.5 text-xs animate-in fade-in slide-in-from-left-2 duration-300"
+          key={`biz-${i}`}
+          className="flex items-center gap-2.5 text-xs py-1 animate-in fade-in slide-in-from-left-2 duration-300"
         >
-          <dp.icon className="w-3.5 h-3.5 text-[#D56753] shrink-0" />
-          <span className="text-slate-500">{dp.label}</span>
-          <span className="ml-auto font-semibold text-[#212D40] truncate max-w-[120px]">{dp.value}</span>
+          <item.icon className="w-3.5 h-3.5 text-[#D56753] shrink-0" />
+          <span className="text-slate-500">{item.label}</span>
+          <span className="ml-auto font-semibold text-[#212D40] truncate max-w-[120px]">{item.value}</span>
         </div>
       ))}
-      {visibleCount === 0 && (
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+      {visibleBusinessItems === 0 && (
+        <div className="flex items-center gap-2 text-xs text-slate-400 py-1">
           <Loader2 className="w-3 h-3 animate-spin" />
           Scanning profile data...
+        </div>
+      )}
+
+      {/* Competitors section */}
+      {visibleCompetitorItems > 0 && (
+        <>
+          <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mt-3 mb-2">
+            Competitors Found
+          </p>
+          {competitorItems.current.slice(0, visibleCompetitorItems).map((item, i) => {
+            const isHighlighted = highlightedCompetitorIndex === i;
+            return (
+              <div
+                key={`comp-${i}`}
+                className={`flex items-center gap-2.5 text-xs py-1.5 px-2 -mx-2 rounded-lg transition-all duration-500 animate-in fade-in slide-in-from-left-2 ${
+                  isHighlighted ? "bg-[#212D40]/5" : ""
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
+                  isHighlighted ? "bg-[#212D40]" : "bg-[#212D40]/20"
+                }`}>
+                  <span className="text-[8px] font-bold text-white">{i + 1}</span>
+                </div>
+                <span className={`font-semibold truncate max-w-[110px] ${isHighlighted ? "text-[#212D40]" : "text-slate-600"}`}>
+                  {item.label}
+                </span>
+                <span className="ml-auto text-slate-400 truncate max-w-[100px]">{item.value}</span>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {/* Searching for competitors indicator */}
+      {apiDone && visibleCompetitorItems === 0 && competitors.length > 0 && (
+        <div className="flex items-center gap-2 text-xs text-slate-400 py-1 mt-2">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Mapping competitors...
         </div>
       )}
     </div>
@@ -230,6 +329,8 @@ export default function ScanningTheater() {
   const [visibleCompetitors, setVisibleCompetitors] = useState<
     CheckupCompetitor[]
   >([]);
+  // Index of the competitor currently being highlighted (just revealed)
+  const [highlightedCompetitorIndex, setHighlightedCompetitorIndex] = useState<number | null>(null);
 
   // API result (stored until theater finishes)
   const analysisRef = useRef<CheckupAnalysis | null>(null);
@@ -334,25 +435,20 @@ export default function ScanningTheater() {
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  // --- Progressively reveal competitor pins once API returns ---
-  useEffect(() => {
-    if (!apiDone || !analysisRef.current) return;
-
-    const competitors = analysisRef.current.competitors;
-    if (competitors.length === 0) return;
-
-    // Reveal one pin every ~800ms for drama
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    competitors.forEach((comp, i) => {
-      timers.push(
-        setTimeout(() => {
-          setVisibleCompetitors((prev) => [...prev, comp]);
-        }, 800 * (i + 1))
-      );
-    });
-
-    return () => timers.forEach(clearTimeout);
-  }, [apiDone]);
+  // Competitor reveal is now driven by the DiscoveryFeed via onRevealCompetitor
+  const handleRevealCompetitor = useCallback((index: number) => {
+    if (!analysisRef.current) return;
+    const comp = analysisRef.current.competitors[index];
+    if (comp) {
+      setVisibleCompetitors((prev) => {
+        if (prev.some((c) => c.placeId === comp.placeId)) return prev;
+        return [...prev, comp];
+      });
+      setHighlightedCompetitorIndex(index);
+      // Clear highlight after 2s
+      setTimeout(() => setHighlightedCompetitorIndex((prev) => prev === index ? null : prev), 2000);
+    }
+  }, []);
 
   // --- Transition when both checklist done AND API done AND min time elapsed ---
   useEffect(() => {
@@ -433,8 +529,14 @@ export default function ScanningTheater() {
             ))}
           </div>
 
-          {/* Live Data Discovery Feed */}
-          <DataDiscoveryFeed place={place} />
+          {/* Unified Discovery Feed — business data + competitors synced to map */}
+          <DiscoveryFeed
+            place={place}
+            competitors={analysisRef.current?.competitors || []}
+            apiDone={apiDone}
+            onRevealCompetitor={handleRevealCompetitor}
+            highlightedCompetitorIndex={highlightedCompetitorIndex}
+          />
 
           {/* Progress indicator */}
           <div className="mt-5 pt-4 border-t border-slate-100">
@@ -480,14 +582,15 @@ export default function ScanningTheater() {
               </Popup>
             </Marker>
 
-            {/* Competitor pins — Navy, appear progressively */}
-            {visibleCompetitors.map(
-              (comp) =>
+            {/* Competitor pins — Navy, synced with discovery feed */}
+            {visibleCompetitors.map((comp, i) => {
+              const isHighlighted = highlightedCompetitorIndex === i;
+              return (
                 comp.location && (
                   <Marker
                     key={comp.placeId}
                     position={[comp.location.lat, comp.location.lng]}
-                    icon={competitorIcon}
+                    icon={isHighlighted ? highlightedCompetitorIcon : competitorIcon}
                   >
                     <Popup>
                       <div className="text-center">
@@ -499,7 +602,8 @@ export default function ScanningTheater() {
                     </Popup>
                   </Marker>
                 )
-            )}
+              );
+            })}
           </MapContainer>
         </div>
       </div>
