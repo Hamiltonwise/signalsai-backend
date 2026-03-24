@@ -102,7 +102,7 @@ function PositionTrack({ entry }: { entry: LeaderboardEntry }) {
     <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
       {/* Org name + specialty */}
       <div className="w-40 shrink-0 min-w-0">
-        <p className="text-sm font-bold text-[#212D40] truncate">
+        <p className="text-sm font-bold text-[#212D40] truncate" title={entry.orgName}>
           {entry.orgName}
         </p>
         <p className="text-xs text-gray-400 truncate">

@@ -77,7 +77,7 @@ function OrgCard({ org }: { org: AdminOrganization }) {
       className="flex w-full flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition-all hover:border-gray-300 hover:shadow-md"
     >
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold text-[#212D40] truncate pr-3">
+        <h3 className="text-base font-bold text-[#212D40] truncate pr-3" title={org.name}>
           {org.name}
         </h3>
         <div className="flex items-center gap-2 shrink-0">
@@ -93,7 +93,7 @@ function OrgCard({ org }: { org: AdminOrganization }) {
           : "No tier assigned"}{" "}
         &middot; {org.userCount} user{org.userCount !== 1 ? "s" : ""}
       </p>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-gray-500">
         {org.connections?.gbp
           ? "GBP connected"
           : "Connecting to data\u2026 First briefing arrives after next agent run."}

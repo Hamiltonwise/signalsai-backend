@@ -76,7 +76,7 @@ function NodeCard({
     >
       <HealthDot status={node.health_status} />
       <div className="min-w-0">
-        <p className="text-sm font-bold text-[#212D40] truncate">
+        <p className="text-sm font-bold text-[#212D40] truncate" title={node.role_title}>
           {node.role_title}
         </p>
         <p className="text-xs text-gray-400 truncate">

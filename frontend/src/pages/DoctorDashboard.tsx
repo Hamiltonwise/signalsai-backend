@@ -343,6 +343,9 @@ export default function DoctorDashboard() {
 
   const referralCode = profileData?.referral_code || profileData?.organization?.referral_code || null;
 
+  const isLoading =
+    !rankingData && !agentData && !websiteData && !profileData;
+
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
       {/* Greeting */}
@@ -354,6 +357,18 @@ export default function DoctorDashboard() {
           Here's what Alloro found this week for {practiceName}.
         </p>
       </div>
+
+      {/* Loading skeleton */}
+      {isLoading && (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-28 animate-pulse rounded-2xl border border-gray-200 bg-white"
+            />
+          ))}
+        </div>
+      )}
 
       {/* Position Card */}
       <PositionCard ranking={rankingData ?? null} />

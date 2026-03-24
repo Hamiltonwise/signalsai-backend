@@ -354,7 +354,10 @@ function OneAction({ rankings }: { rankings: RankingJob[] }) {
           improvement is review velocity — ask happy patients to leave a Google
           review this week.
         </p>
-        <button className="mt-4 rounded-xl bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98]">
+        <button
+          onClick={() => navigate(`/admin/organizations/${id}/manage`)}
+          className="mt-4 rounded-xl bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98]"
+        >
           View full analysis
         </button>
       </div>

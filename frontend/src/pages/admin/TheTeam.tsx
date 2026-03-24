@@ -163,7 +163,7 @@ function AgentCard({
             <span className="absolute inline-flex h-full w-full animate-[heartbeat_1s_ease-in-out_infinite] rounded-full bg-[#D56753] opacity-75" />
             <span className="relative inline-flex h-3 w-3 rounded-full bg-[#D56753]" />
           </span>
-          <h3 className="text-base font-bold text-[#212D40] truncate">
+          <h3 className="text-base font-bold text-[#212D40] truncate" title={schedule.display_name || agentDisplayName(schedule.agent_key)}>
             {schedule.display_name || agentDisplayName(schedule.agent_key)}
           </h3>
         </div>

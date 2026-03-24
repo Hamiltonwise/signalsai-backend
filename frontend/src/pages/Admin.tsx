@@ -4,7 +4,6 @@ import {
   PMSAutomationCards,
   AgentInsights,
 } from "../components/Admin";
-import { ActionItemsHub } from "@/components/Admin/ActionItemsHub";
 import MorningBrief from "./admin/MorningBrief";
 import { AdminGuard } from "@/components/Admin/AdminGuard";
 import AIDataInsightsList from "./admin/AIDataInsightsList";
@@ -12,7 +11,6 @@ import AIDataInsightsDetail from "./admin/AIDataInsightsDetail";
 import AppLogs from "./admin/AppLogs";
 import { OrganizationManagement } from "./admin/OrganizationManagement";
 import AgentOutputsList from "./admin/AgentOutputsList";
-import { PracticeRanking } from "./admin/PracticeRanking";
 import OrganizationDetail from "./admin/OrganizationDetail";
 import PracticeStory from "./admin/PracticeStory";
 import WebsitesList from "./admin/WebsitesList";
@@ -24,8 +22,6 @@ import PageEditor from "./admin/PageEditor";
 import LayoutEditor from "./admin/LayoutEditor";
 import AdminSettings from "./admin/AdminSettings";
 import Schedules from "./admin/Schedules";
-import MindsList from "./admin/MindsList";
-import TheTeam from "./admin/TheTeam";
 import DreamTeam from "./admin/DreamTeam";
 import YourMarket from "./admin/YourMarket";
 import MindDetail from "./admin/MindDetail";
