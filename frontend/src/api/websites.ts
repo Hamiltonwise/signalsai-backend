@@ -848,11 +848,19 @@ export interface FileValue {
   s3Key: string;
 }
 
+export interface FormSection {
+  title: string;
+  fields: [string, string | FileValue][];
+}
+
+/** Contents can be flat key-value (legacy) or ordered sections array (new) */
+export type FormContents = Record<string, string | FileValue> | FormSection[];
+
 export interface FormSubmission {
   id: string;
   project_id: string;
   form_name: string;
-  contents: Record<string, string | FileValue>;
+  contents: FormContents;
   recipients_sent_to: string[];
   submitted_at: string;
   is_read: boolean;

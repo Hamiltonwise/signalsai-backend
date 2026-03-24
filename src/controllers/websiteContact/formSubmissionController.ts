@@ -29,7 +29,7 @@ import { analyzeContent } from "./websiteContact-services/aiContentAnalysisServi
 import { getSiteUrl, sendConfirmationEmail } from "./websiteContact-services/newsletterConfirmationService";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
-import { FormSubmissionModel, type FileValue } from "../../models/website-builder/FormSubmissionModel";
+import { FormSubmissionModel, type FileValue, type FormSection, type FormContents } from "../../models/website-builder/FormSubmissionModel";
 import { NewsletterSignupModel } from "../../models/website-builder/NewsletterSignupModel";
 import { uploadToS3 } from "../../utils/core/s3";
 
@@ -231,10 +231,13 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       return silentOk(res);
     }
 
-    if (typeof contents !== "object" || Array.isArray(contents)) {
+    // Contents can be a flat object (legacy contact forms) or sections array (onboarding)
+    const isSectionsFormat = Array.isArray(contents);
+
+    if (typeof contents !== "object") {
       return res
         .status(400)
-        .json({ error: "contents must be a JSON object of field label/value pairs" });
+        .json({ error: "contents must be a JSON object or sections array" });
     }
 
     // ── 5. Origin validation ──
@@ -264,54 +267,81 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
     }
     // If no origin/referer header, skip check (privacy tools strip them)
 
-    // ── 6. Payload caps ──
-    const fieldKeys = Object.keys(contents);
-    if (fieldKeys.length > MAX_FIELDS) {
-      return res.status(400).json({ error: `Too many fields (max ${MAX_FIELDS})` });
-    }
-
-    if (String(formName).length > MAX_FORM_NAME_LENGTH) {
+    // ── 6. Sanitize form name ──
+    const sanitizedFormName = sanitize(String(formName));
+    if (sanitizedFormName.length > MAX_FORM_NAME_LENGTH) {
       return res.status(400).json({ error: `Form name too long (max ${MAX_FORM_NAME_LENGTH} chars)` });
     }
 
-    for (const [key, value] of Object.entries(contents)) {
-      if (String(key).length > MAX_KEY_LENGTH) {
-        return res.status(400).json({ error: `Field name too long (max ${MAX_KEY_LENGTH} chars)` });
-      }
-      if (typeof value === "string" && value.length > MAX_VALUE_LENGTH) {
-        return res.status(400).json({ error: `Field value too long (max ${MAX_VALUE_LENGTH} chars)` });
-      }
-    }
+    // Trusted form types skip spam scoring and AI analysis
+    const isTrustedFormType = formType === "onboarding";
 
-    // ── 7. Sanitize text values (skip file/object values) ──
-    const sanitizedFormName = sanitize(String(formName));
-    const sanitizedContents: Record<string, string | FileValue> = {};
-    for (const [key, value] of Object.entries(contents)) {
-      if (typeof value === "string") {
-        sanitizedContents[sanitize(String(key))] = sanitize(value);
+    // ── 7. Process contents based on format ──
+    let finalContents: FormContents;
+    let textContents: Record<string, string> = {}; // Flat text for spam scoring / email (legacy only)
+
+    if (isSectionsFormat) {
+      // Sections array format — sanitize all text values within sections
+      const sanitizedSections: FormSection[] = (contents as FormSection[]).map((section: FormSection) => ({
+        title: sanitize(section.title || ""),
+        fields: section.fields.map(([key, value]) => [
+          sanitize(String(key)),
+          typeof value === "string" ? sanitize(value) : value,
+        ] as [string, string | FileValue]),
+      }));
+      finalContents = sanitizedSections;
+
+      // Extract flat text for duplicate detection hash
+      for (const section of sanitizedSections) {
+        for (const [key, value] of section.fields) {
+          if (typeof value === "string") {
+            textContents[`${section.title} - ${key}`] = value;
+          }
+        }
       }
+    } else {
+      // Legacy flat object format — payload caps + sanitize
+      const fieldKeys = Object.keys(contents);
+      if (fieldKeys.length > MAX_FIELDS) {
+        return res.status(400).json({ error: `Too many fields (max ${MAX_FIELDS})` });
+      }
+
+      for (const [key, value] of Object.entries(contents)) {
+        if (String(key).length > MAX_KEY_LENGTH) {
+          return res.status(400).json({ error: `Field name too long (max ${MAX_KEY_LENGTH} chars)` });
+        }
+        if (typeof value === "string" && value.length > MAX_VALUE_LENGTH) {
+          return res.status(400).json({ error: `Field value too long (max ${MAX_VALUE_LENGTH} chars)` });
+        }
+      }
+
+      const sanitizedFlat: Record<string, string | FileValue> = {};
+      for (const [key, value] of Object.entries(contents)) {
+        if (typeof value === "string") {
+          const sKey = sanitize(String(key));
+          const sVal = sanitize(value);
+          sanitizedFlat[sKey] = sVal;
+          textContents[sKey] = sVal;
+        }
+      }
+      finalContents = sanitizedFlat;
     }
 
     // ── BRANCH: Newsletter double opt-in ──
     if (formType === "newsletter") {
-      return handleNewsletterSignup(res, project, sanitizedContents as Record<string, string>);
+      return handleNewsletterSignup(res, project, textContents);
     }
 
-    // ── 8. Content pattern scoring (only on text values) ──
-    const textContents: Record<string, string> = {};
-    for (const [key, value] of Object.entries(sanitizedContents)) {
-      if (typeof value === "string") {
-        textContents[key] = value;
-      }
-    }
-
-    const patternResult = analyzePatterns(textContents);
+    // ── 8. Content pattern scoring (skip for trusted form types) ──
     let flagged = false;
     let flagReason = "";
 
-    if (patternResult.score >= SPAM_THRESHOLD) {
-      flagged = true;
-      flagReason = `[content_pattern] Score ${patternResult.score}: ${patternResult.reasons.join("; ")}`;
+    if (!isTrustedFormType) {
+      const patternResult = analyzePatterns(textContents);
+      if (patternResult.score >= SPAM_THRESHOLD) {
+        flagged = true;
+        flagReason = `[content_pattern] Score ${patternResult.score}: ${patternResult.reasons.join("; ")}`;
+      }
     }
 
     // ── 9. Flood detection ──
@@ -328,8 +358,8 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       return silentOk(res);
     }
 
-    // ── 10. AI content analysis (skip if already flagged by patterns) ──
-    if (!flagged) {
+    // ── 10. AI content analysis (skip for trusted form types) ──
+    if (!flagged && !isTrustedFormType) {
       const aiResult = await analyzeContent(sanitizedFormName, textContents);
       if (aiResult.flagged) {
         flagged = true;
@@ -337,11 +367,23 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       }
     }
 
-    // ── 11. File uploads — upload to S3 and merge into contents ──
+    // ── 11. File uploads — upload to S3 ──
     const uploadedFiles = req.files as Express.Multer.File[] | undefined;
     if (uploadedFiles && uploadedFiles.length > 0) {
       const fileEntries = await uploadFormFiles(uploadedFiles, project.organization_id);
-      Object.assign(sanitizedContents, fileEntries);
+
+      if (isSectionsFormat) {
+        // Append files as their own section
+        const fileFields: [string, FileValue][] = Object.entries(fileEntries).map(
+          ([, fv]) => [fv.name, fv] as [string, FileValue],
+        );
+        (finalContents as FormSection[]).push({
+          title: "Uploaded Files",
+          fields: fileFields,
+        });
+      } else {
+        Object.assign(finalContents, fileEntries);
+      }
     }
 
     // ── 12. Resolve recipients: project.recipients → org admins → fallback ──
@@ -375,7 +417,7 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       await FormSubmissionModel.create({
         project_id: String(projectId),
         form_name: sanitizedFormName,
-        contents: sanitizedContents,
+        contents: finalContents,
         recipients_sent_to: recipients,
         sender_ip: senderIp,
         content_hash: contentHash,
@@ -386,28 +428,65 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       console.error("[Form Submission] Failed to save submission:", saveErr);
     }
 
-    // ── 14. Email (only if not flagged) — only include text fields ──
+    // ── 14. Email (only if not flagged) ──
     if (!flagged) {
-      const rows = Object.entries(textContents)
-        .map(
-          ([label, value]) =>
-            `<tr>
-              <td style="padding:8px 12px 8px 0;color:#6b7280;vertical-align:top;white-space:nowrap;">${label}</td>
-              <td style="padding:8px 0;color:#111827;font-weight:600;">${value}</td>
-            </tr>`,
-        )
-        .join("");
+      let emailTableHtml: string;
 
-      // Add file names to the email
-      const fileRows = uploadedFiles && uploadedFiles.length > 0
-        ? uploadedFiles.map(
-            (f) =>
+      if (isSectionsFormat) {
+        // Sections-aware email: grouped with headers
+        emailTableHtml = (finalContents as FormSection[])
+          .map((section) => {
+            const sectionHeader = `<tr><td colspan="2" style="padding:16px 0 8px 0;font-size:16px;font-weight:700;color:#007693;border-bottom:1px solid #e5e7eb;">${section.title}</td></tr>`;
+            const fieldRows = section.fields
+              .filter(([, value]) => typeof value === "string") // skip file values in email
+              .map(
+                ([label, value]) =>
+                  `<tr>
+                    <td style="padding:6px 12px 6px 0;color:#6b7280;vertical-align:top;white-space:nowrap;width:40%;">${label}</td>
+                    <td style="padding:6px 0;color:#111827;font-weight:600;">${value}</td>
+                  </tr>`,
+              )
+              .join("");
+            // File names listed separately
+            const fileFieldRows = section.fields
+              .filter(([, value]) => typeof value === "object" && value !== null)
+              .map(
+                ([, value]) => {
+                  const fv = value as FileValue;
+                  return `<tr>
+                    <td style="padding:6px 12px 6px 0;color:#6b7280;vertical-align:top;white-space:nowrap;">Attached File</td>
+                    <td style="padding:6px 0;color:#111827;font-weight:600;">${fv.name}</td>
+                  </tr>`;
+                },
+              )
+              .join("");
+            return sectionHeader + fieldRows + fileFieldRows;
+          })
+          .join("");
+      } else {
+        // Legacy flat format email
+        const rows = Object.entries(textContents)
+          .map(
+            ([label, value]) =>
               `<tr>
-                <td style="padding:8px 12px 8px 0;color:#6b7280;vertical-align:top;white-space:nowrap;">Attached File</td>
-                <td style="padding:8px 0;color:#111827;font-weight:600;">${f.originalname} (${(f.size / 1024).toFixed(0)} KB)</td>
+                <td style="padding:8px 12px 8px 0;color:#6b7280;vertical-align:top;white-space:nowrap;">${label}</td>
+                <td style="padding:8px 0;color:#111827;font-weight:600;">${value}</td>
               </tr>`,
-          ).join("")
-        : "";
+          )
+          .join("");
+
+        const fileRows = uploadedFiles && uploadedFiles.length > 0
+          ? uploadedFiles.map(
+              (f) =>
+                `<tr>
+                  <td style="padding:8px 12px 8px 0;color:#6b7280;vertical-align:top;white-space:nowrap;">Attached File</td>
+                  <td style="padding:8px 0;color:#111827;font-weight:600;">${f.originalname} (${(f.size / 1024).toFixed(0)} KB)</td>
+                </tr>`,
+            ).join("")
+          : "";
+
+        emailTableHtml = rows + fileRows;
+      }
 
       const emailBody = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
       <div style="background:#0e8988;color:#fff;padding:24px 32px;border-radius:16px 16px 0 0;">
@@ -415,8 +494,7 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       </div>
       <div style="background:#f9fafb;padding:24px 32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;">
         <table style="width:100%;border-collapse:collapse;font-size:15px;">
-          ${rows}
-          ${fileRows}
+          ${emailTableHtml}
         </table>
       </div>
       <p style="margin-top:16px;font-size:12px;color:#9ca3af;text-align:center;">Sent via ${sanitizedFormName} form</p>

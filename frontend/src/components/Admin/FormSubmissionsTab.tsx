@@ -23,7 +23,7 @@ import {
   toggleFormSubmissionRead,
   deleteFormSubmission,
 } from "../../api/websites";
-import type { FormSubmission, FileValue } from "../../api/websites";
+import type { FormSubmission, FileValue, FormSection, FormContents } from "../../api/websites";
 
 function isFileValue(value: unknown): value is FileValue {
   return (
@@ -32,6 +32,33 @@ function isFileValue(value: unknown): value is FileValue {
     "s3Key" in value &&
     "name" in value
   );
+}
+
+function isSectionsFormat(contents: FormContents): contents is FormSection[] {
+  return Array.isArray(contents);
+}
+
+/** Extract preview text from either format */
+function previewFields(contents: FormContents): string {
+  if (isSectionsFormat(contents)) {
+    // Grab first 2 text fields from first section
+    const textFields: string[] = [];
+    for (const section of contents) {
+      for (const [k, v] of section.fields) {
+        if (typeof v === "string" && v.trim()) {
+          textFields.push(`${k}: ${v}`);
+          if (textFields.length >= 2) break;
+        }
+      }
+      if (textFields.length >= 2) break;
+    }
+    return textFields.join(" \u00b7 ");
+  }
+  // Legacy flat format
+  const textEntries = Object.entries(contents).filter(
+    ([, v]) => typeof v === "string",
+  ) as [string, string][];
+  return textEntries.slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(" \u00b7 ");
 }
 
 interface Props {
@@ -88,7 +115,14 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
     load();
   }, [load]);
 
-  // Fetch full submission detail (with pre-signed URLs) when selecting
+  /** Check if contents has any file values that need pre-signed URLs */
+  const hasFiles = (contents: FormContents): boolean => {
+    if (isSectionsFormat(contents)) {
+      return contents.some((s) => s.fields.some(([, v]) => isFileValue(v)));
+    }
+    return Object.values(contents).some(isFileValue);
+  };
+
   const handleSelect = async (sub: FormSubmission) => {
     if (selectedId === sub.id) {
       setSelectedId(null);
@@ -99,9 +133,7 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
     setSelectedId(sub.id);
     if (!sub.is_read) handleToggleRead(sub);
 
-    // Check if this submission has file values that need pre-signed URLs
-    const hasFiles = Object.values(sub.contents).some(isFileValue);
-    if (hasFiles) {
+    if (hasFiles(sub.contents)) {
       setDetailLoading(true);
       try {
         const res = await fetchFormSubmission(projectId, sub.id);
@@ -166,13 +198,6 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
     const days = Math.floor(hrs / 24);
     if (days < 7) return `${days}d ago`;
     return new Date(dateStr).toLocaleDateString();
-  };
-
-  const previewFields = (contents: Record<string, string | FileValue>) => {
-    const textEntries = Object.entries(contents).filter(
-      ([, v]) => typeof v === "string",
-    ) as [string, string][];
-    return textEntries.slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(" \u00b7 ");
   };
 
   const currentDetail = detailSubmission && detailSubmission.id === selectedId ? detailSubmission : null;
@@ -293,7 +318,6 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
                 } ${sub.is_flagged ? "bg-amber-50/50" : ""}`}
                 onClick={() => handleSelect(sub)}
               >
-                {/* Read indicator */}
                 <div className="flex-shrink-0">
                   {sub.is_flagged ? (
                     <ShieldAlert size={16} className="text-amber-500" />
@@ -304,42 +328,32 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
                   )}
                 </div>
 
-                {/* Form name */}
                 <div className="w-36 flex-shrink-0">
                   <span className={`text-sm ${!sub.is_read ? "font-semibold text-gray-900" : "text-gray-600"}`}>
                     {sub.form_name}
                   </span>
                 </div>
 
-                {/* Preview */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-400 truncate">
                     {previewFields(sub.contents)}
                   </p>
                 </div>
 
-                {/* Time */}
                 <div className="flex-shrink-0 text-xs text-gray-400">
                   {relativeTime(sub.submitted_at)}
                 </div>
 
-                {/* Actions */}
                 <div className="flex-shrink-0 flex items-center gap-1">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleRead(sub);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleToggleRead(sub); }}
                     className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
                     title={sub.is_read ? "Mark unread" : "Mark read"}
                   >
                     <Eye size={14} />
                   </button>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(sub.id);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(sub.id); }}
                     className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
                     title="Delete"
                   >
@@ -377,7 +391,6 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
                     </button>
                   </div>
 
-                  {/* Flag reason banner */}
                   {currentDetail.is_flagged && currentDetail.flag_reason && (
                     <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 flex items-start gap-2">
                       <ShieldAlert size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
@@ -390,19 +403,10 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
 
                   {detailLoading ? (
                     <div className="text-sm text-gray-400 py-4">Loading file details...</div>
+                  ) : isSectionsFormat(currentDetail.contents) ? (
+                    <SectionsView sections={currentDetail.contents} />
                   ) : (
-                    <div className="space-y-2">
-                      {Object.entries(currentDetail.contents).map(([key, value]) => (
-                        <div key={key} className="flex gap-3">
-                          <span className="text-sm text-gray-400 w-40 flex-shrink-0">{key}</span>
-                          {isFileValue(value) ? (
-                            <FileValueDisplay file={value} />
-                          ) : (
-                            <span className="text-sm text-gray-900 font-medium">{value}</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                    <FlatView contents={currentDetail.contents} />
                   )}
                 </div>
               </motion.div>
@@ -435,6 +439,51 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/** Render sections-format contents with grouped headers */
+function SectionsView({ sections }: { sections: FormSection[] }) {
+  return (
+    <div className="space-y-5">
+      {sections.map((section, si) => (
+        <div key={si}>
+          <h5 className="text-sm font-semibold text-gray-700 border-b border-gray-100 pb-1.5 mb-2">
+            {section.title}
+          </h5>
+          <div className="space-y-1.5">
+            {section.fields.map(([key, value], fi) => (
+              <div key={fi} className="flex gap-3">
+                <span className="text-sm text-gray-400 w-44 flex-shrink-0">{key}</span>
+                {isFileValue(value) ? (
+                  <FileValueDisplay file={value} />
+                ) : (
+                  <span className="text-sm text-gray-900 font-medium">{value}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Render legacy flat key-value contents */
+function FlatView({ contents }: { contents: Record<string, string | FileValue> }) {
+  return (
+    <div className="space-y-2">
+      {Object.entries(contents).map(([key, value]) => (
+        <div key={key} className="flex gap-3">
+          <span className="text-sm text-gray-400 w-40 flex-shrink-0">{key}</span>
+          {isFileValue(value) ? (
+            <FileValueDisplay file={value} />
+          ) : (
+            <span className="text-sm text-gray-900 font-medium">{value}</span>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

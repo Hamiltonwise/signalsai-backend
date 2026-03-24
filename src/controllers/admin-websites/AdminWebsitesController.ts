@@ -1952,13 +1952,31 @@ export async function getFormSubmission(
     }
 
     // Resolve pre-signed URLs for any file values in contents
-    if (submission.contents && typeof submission.contents === "object") {
-      for (const [key, value] of Object.entries(submission.contents)) {
-        if (value && typeof value === "object" && "s3Key" in value) {
-          try {
-            value.url = await generatePresignedUrl(value.s3Key, 3600);
-          } catch (err) {
-            console.error(`[Form Submission] Failed to generate pre-signed URL for ${value.s3Key}:`, err);
+    if (submission.contents) {
+      if (Array.isArray(submission.contents)) {
+        // Sections format
+        for (const section of submission.contents) {
+          if (section && typeof section === "object" && Array.isArray((section as any).fields)) {
+            for (const field of (section as any).fields) {
+              if (Array.isArray(field) && field[1] && typeof field[1] === "object" && "s3Key" in field[1]) {
+                try {
+                  field[1].url = await generatePresignedUrl(field[1].s3Key, 3600);
+                } catch (err) {
+                  console.error(`[Form Submission] Failed to generate pre-signed URL for ${field[1].s3Key}:`, err);
+                }
+              }
+            }
+          }
+        }
+      } else if (typeof submission.contents === "object") {
+        // Legacy flat format
+        for (const [, value] of Object.entries(submission.contents)) {
+          if (value && typeof value === "object" && "s3Key" in value) {
+            try {
+              (value as any).url = await generatePresignedUrl((value as any).s3Key, 3600);
+            } catch (err) {
+              console.error(`[Form Submission] Failed to generate pre-signed URL for ${(value as any).s3Key}:`, err);
+            }
           }
         }
       }
