@@ -38,6 +38,7 @@ import * as artifactUpload from "./feature-services/service.artifact-upload";
 import { db } from "../../database/connection";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
+import { generatePresignedUrl } from "../../utils/core/s3";
 
 // =====================================================================
 // PROJECTS
@@ -1948,6 +1949,19 @@ export async function getFormSubmission(
 
     if (!submission) {
       return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Submission not found" });
+    }
+
+    // Resolve pre-signed URLs for any file values in contents
+    if (submission.contents && typeof submission.contents === "object") {
+      for (const [key, value] of Object.entries(submission.contents)) {
+        if (value && typeof value === "object" && "s3Key" in value) {
+          try {
+            value.url = await generatePresignedUrl(value.s3Key, 3600);
+          } catch (err) {
+            console.error(`[Form Submission] Failed to generate pre-signed URL for ${value.s3Key}:`, err);
+          }
+        }
+      }
     }
 
     return res.json({ success: true, data: submission });

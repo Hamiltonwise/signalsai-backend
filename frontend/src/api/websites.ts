@@ -841,11 +841,18 @@ export const updateRecipients = async (
 // FORM SUBMISSIONS
 // =====================================================================
 
+export interface FileValue {
+  url: string;
+  name: string;
+  type: string;
+  s3Key: string;
+}
+
 export interface FormSubmission {
   id: string;
   project_id: string;
   form_name: string;
-  contents: Record<string, string>;
+  contents: Record<string, string | FileValue>;
   recipients_sent_to: string[];
   submitted_at: string;
   is_read: boolean;

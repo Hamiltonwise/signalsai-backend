@@ -13,14 +13,26 @@ import {
   Download,
   ShieldAlert,
   CheckCircle2,
+  FileText,
+  Image,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
   fetchFormSubmissions,
+  fetchFormSubmission,
   toggleFormSubmissionRead,
   deleteFormSubmission,
 } from "../../api/websites";
-import type { FormSubmission } from "../../api/websites";
+import type { FormSubmission, FileValue } from "../../api/websites";
+
+function isFileValue(value: unknown): value is FileValue {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "s3Key" in value &&
+    "name" in value
+  );
+}
 
 interface Props {
   projectId: string;
@@ -45,6 +57,8 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
   const [optinsCount, setOptinsCount] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
+  const [detailSubmission, setDetailSubmission] = useState<FormSubmission | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -74,10 +88,43 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
     load();
   }, [load]);
 
+  // Fetch full submission detail (with pre-signed URLs) when selecting
+  const handleSelect = async (sub: FormSubmission) => {
+    if (selectedId === sub.id) {
+      setSelectedId(null);
+      setDetailSubmission(null);
+      return;
+    }
+
+    setSelectedId(sub.id);
+    if (!sub.is_read) handleToggleRead(sub);
+
+    // Check if this submission has file values that need pre-signed URLs
+    const hasFiles = Object.values(sub.contents).some(isFileValue);
+    if (hasFiles) {
+      setDetailLoading(true);
+      try {
+        const res = await fetchFormSubmission(projectId, sub.id);
+        if (res.success && res.data) {
+          setDetailSubmission(res.data);
+        } else {
+          setDetailSubmission(sub);
+        }
+      } catch {
+        setDetailSubmission(sub);
+      } finally {
+        setDetailLoading(false);
+      }
+    } else {
+      setDetailSubmission(sub);
+    }
+  };
+
   const handleTabChange = (tab: TabFilter) => {
     setActiveTab(tab);
     setPage(1);
     setSelectedId(null);
+    setDetailSubmission(null);
   };
 
   const handleToggleRead = async (sub: FormSubmission) => {
@@ -99,14 +146,15 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
       await deleteFn(projectId, id);
       setSubmissions((prev) => prev.filter((s) => s.id !== id));
       setTotal((t) => t - 1);
-      if (selectedId === id) setSelectedId(null);
+      if (selectedId === id) {
+        setSelectedId(null);
+        setDetailSubmission(null);
+      }
       toast.success("Deleted");
     } catch {
       toast.error("Failed to delete");
     }
   };
-
-  const selectedSubmission = submissions.find((s) => s.id === selectedId);
 
   const relativeTime = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -120,10 +168,14 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
     return new Date(dateStr).toLocaleDateString();
   };
 
-  const previewFields = (contents: Record<string, string>) => {
-    const entries = Object.entries(contents);
-    return entries.slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(" · ");
+  const previewFields = (contents: Record<string, string | FileValue>) => {
+    const textEntries = Object.entries(contents).filter(
+      ([, v]) => typeof v === "string",
+    ) as [string, string][];
+    return textEntries.slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(" \u00b7 ");
   };
+
+  const currentDetail = detailSubmission && detailSubmission.id === selectedId ? detailSubmission : null;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -239,10 +291,7 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
                 className={`px-5 py-3 flex items-center gap-4 hover:bg-gray-50 cursor-pointer transition ${
                   !sub.is_read ? "bg-alloro-orange/5" : ""
                 } ${sub.is_flagged ? "bg-amber-50/50" : ""}`}
-                onClick={() => {
-                  setSelectedId(selectedId === sub.id ? null : sub.id);
-                  if (!sub.is_read) handleToggleRead(sub);
-                }}
+                onClick={() => handleSelect(sub)}
               >
                 {/* Read indicator */}
                 <div className="flex-shrink-0">
@@ -303,7 +352,7 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
 
           {/* Detail panel */}
           <AnimatePresence>
-            {selectedSubmission && (
+            {currentDetail && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
@@ -313,15 +362,15 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
                 <div className="p-5">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h4 className="font-semibold text-gray-900">{selectedSubmission.form_name}</h4>
+                      <h4 className="font-semibold text-gray-900">{currentDetail.form_name}</h4>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(selectedSubmission.submitted_at).toLocaleString()}
-                        {" · Sent to: "}
-                        {selectedSubmission.recipients_sent_to.join(", ")}
+                        {new Date(currentDetail.submitted_at).toLocaleString()}
+                        {" \u00b7 Sent to: "}
+                        {currentDetail.recipients_sent_to.join(", ")}
                       </p>
                     </div>
                     <button
-                      onClick={() => setSelectedId(null)}
+                      onClick={() => { setSelectedId(null); setDetailSubmission(null); }}
                       className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"
                     >
                       <X size={16} />
@@ -329,24 +378,32 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
                   </div>
 
                   {/* Flag reason banner */}
-                  {selectedSubmission.is_flagged && selectedSubmission.flag_reason && (
+                  {currentDetail.is_flagged && currentDetail.flag_reason && (
                     <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 flex items-start gap-2">
                       <ShieldAlert size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
                       <div>
                         <p className="text-sm font-medium text-amber-700">Flagged by AI</p>
-                        <p className="text-xs text-amber-600 mt-0.5">{selectedSubmission.flag_reason}</p>
+                        <p className="text-xs text-amber-600 mt-0.5">{currentDetail.flag_reason}</p>
                       </div>
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    {Object.entries(selectedSubmission.contents).map(([key, value]) => (
-                      <div key={key} className="flex gap-3">
-                        <span className="text-sm text-gray-400 w-40 flex-shrink-0">{key}</span>
-                        <span className="text-sm text-gray-900 font-medium">{value}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {detailLoading ? (
+                    <div className="text-sm text-gray-400 py-4">Loading file details...</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {Object.entries(currentDetail.contents).map(([key, value]) => (
+                        <div key={key} className="flex gap-3">
+                          <span className="text-sm text-gray-400 w-40 flex-shrink-0">{key}</span>
+                          {isFileValue(value) ? (
+                            <FileValueDisplay file={value} />
+                          ) : (
+                            <span className="text-sm text-gray-900 font-medium">{value}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -379,5 +436,47 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
         </>
       )}
     </div>
+  );
+}
+
+function FileValueDisplay({ file }: { file: FileValue }) {
+  const isImage = file.type.startsWith("image/");
+
+  if (isImage && file.url) {
+    return (
+      <div className="flex flex-col gap-2">
+        <img
+          src={file.url}
+          alt={file.name}
+          className="max-w-48 max-h-32 rounded-lg border border-gray-200 object-contain"
+        />
+        <a
+          href={file.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm text-alloro-orange hover:text-orange-700 font-medium transition"
+        >
+          <Download size={14} />
+          {file.name}
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <a
+      href={file.url || "#"}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`inline-flex items-center gap-1.5 text-sm font-medium transition ${
+        file.url
+          ? "text-alloro-orange hover:text-orange-700"
+          : "text-gray-400 cursor-not-allowed"
+      }`}
+    >
+      {file.type === "application/pdf" ? <FileText size={14} /> : <Image size={14} />}
+      {file.name}
+      {file.url && <Download size={12} />}
+    </a>
   );
 }
