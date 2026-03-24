@@ -194,9 +194,9 @@ export default function EntryScreen() {
           )}
         </div>
 
-        {/* Autocomplete dropdown */}
-        {suggestions.length > 0 && (
-          <ul className="absolute z-20 top-full mt-2 w-full bg-white border border-slate-200 rounded-2xl shadow-premium overflow-hidden">
+        {/* Autocomplete dropdown — z-30 to stay above selected place card */}
+        {suggestions.length > 0 && !selectedPlace && (
+          <ul className="absolute z-30 top-full mt-2 w-full bg-white border border-slate-200 rounded-2xl shadow-premium overflow-hidden max-h-[60vh] overflow-y-auto">
             {suggestions.map((s) => (
               <li key={s.placeId}>
                 <button

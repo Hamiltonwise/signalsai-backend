@@ -34,14 +34,15 @@ const CHECKLIST_ITEMS = [
 // ---------------------------------------------------------------------------
 
 function createPinIcon(color: string) {
+  // 44px minimum tap target for mobile (WCAG 2.5.8)
   return L.divIcon({
     className: "",
-    iconSize: [28, 36],
-    iconAnchor: [14, 36],
-    popupAnchor: [0, -36],
-    html: `<svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.268 21.732 0 14 0z" fill="${color}"/>
-      <circle cx="14" cy="14" r="6" fill="white" opacity="0.9"/>
+    iconSize: [40, 50],
+    iconAnchor: [20, 50],
+    popupAnchor: [0, -50],
+    html: `<svg width="40" height="50" viewBox="0 0 40 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 0C8.954 0 0 8.954 0 20c0 15 20 30 20 30s20-15 20-30C40 8.954 31.046 0 20 0z" fill="${color}"/>
+      <circle cx="20" cy="20" r="8" fill="white" opacity="0.9"/>
     </svg>`,
   });
 }
