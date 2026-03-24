@@ -28,7 +28,7 @@ import {
   Pencil,
   Loader2,
 } from "lucide-react";
-import { apiGet, apiPost } from "@/api/index";
+import { apiGet, apiPost, apiPatch } from "@/api/index";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -498,6 +498,147 @@ function PerformanceDashboard() {
   );
 }
 
+// ─── Voice Profile Extraction Prompt ─────────────────────────────────
+
+const EXTRACTION_PROMPT = `Analyze everything you know about how I communicate -- from our conversations, my messages, my writing style, and any preferences I've shared.
+
+Generate my Voice Profile as a single code block I can copy and paste into other AI tools to make them write in my voice.
+
+Format exactly as follows:
+
+VOICE PROFILE: [Name]
+
+RHYTHM:
+[How I structure sentences. Where the point lands. Length patterns.]
+
+TONE:
+[Emotional register. How it shifts by audience. What it never is.]
+
+NEVER SAYS:
+[10-15 specific phrases, words, or patterns I consistently avoid.]
+
+ALWAYS DOES:
+[5-8 consistent patterns in how I open, emphasize, land a point, or close.]
+
+VOCABULARY:
+[Words and phrases distinctly mine.]
+
+WHAT I CARE ABOUT:
+[3-5 things that consistently show up in my writing.]
+
+SAMPLE SENTENCES:
+[3 sentences synthesized from my patterns that sound exactly like me.]
+
+Output the entire profile in a single code block.
+Be specific. Every line should be true only of me, not most people.`;
+
+// ─── Voice Profile Onboarding ───────────────────────────────────────
+
+function VoiceProfileSetup({ onSaved }: { onSaved: () => void }) {
+  const [profileText, setProfileText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [promptCopied, setPromptCopied] = useState(false);
+
+  const handleSave = async () => {
+    if (!profileText.trim() || saving) return;
+    setSaving(true);
+    try {
+      await apiPatch({
+        path: "/partner/voice-profile",
+        passedData: { voiceProfile: profileText.trim() },
+      });
+      onSaved();
+    } catch {
+      // silent
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <h3 className="text-base font-bold text-[#212D40] mb-2">
+          Let's make sure every email sounds like you.
+        </h3>
+        <p className="text-sm text-gray-500 mb-5 leading-relaxed">
+          Paste your Voice Profile below. If you don't have one, copy this prompt into ChatGPT or Claude and paste the result back.
+        </p>
+
+        {/* Extraction prompt with copy button */}
+        <div className="bg-[#212D40]/[0.03] rounded-xl p-4 mb-5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+              Voice Extraction Prompt
+            </p>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(EXTRACTION_PROMPT).then(() => {
+                  setPromptCopied(true);
+                  setTimeout(() => setPromptCopied(false), 2000);
+                });
+              }}
+              className={`flex items-center gap-1.5 text-[11px] font-semibold rounded-lg px-3 py-1.5 transition-all ${
+                promptCopied
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              <Copy className="h-3 w-3" />
+              {promptCopied ? "Copied!" : "Copy prompt"}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-line line-clamp-4">
+            {EXTRACTION_PROMPT.slice(0, 200)}...
+          </p>
+        </div>
+
+        {/* Textarea for paste */}
+        <label className="block text-sm font-semibold text-[#212D40] mb-2">
+          Paste your Voice Profile
+        </label>
+        <textarea
+          value={profileText}
+          onChange={(e) => setProfileText(e.target.value)}
+          placeholder="VOICE PROFILE: Your Name&#10;&#10;RHYTHM:&#10;..."
+          rows={8}
+          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none font-mono text-xs"
+        />
+
+        {/* Preview sentence */}
+        {profileText.trim().length > 50 && (
+          <div className="mt-3 bg-[#D56753]/[0.04] rounded-lg p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#D56753] mb-1">
+              Profile detected
+            </p>
+            <p className="text-xs text-gray-600">
+              {profileText.includes("SAMPLE SENTENCES")
+                ? profileText.split("SAMPLE SENTENCES")[1]?.split("\n").find((l: string) => l.trim().length > 10)?.trim().slice(0, 120) || "Voice profile loaded"
+                : "Voice profile loaded — your emails will match this voice"}
+            </p>
+          </div>
+        )}
+
+        {/* Save button */}
+        <button
+          onClick={handleSave}
+          disabled={!profileText.trim() || saving}
+          className="mt-4 flex items-center gap-2 rounded-xl bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-40"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save my voice"
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Email Writer ───────────────────────────────────────────────────
 
 interface GeneratedEmail {
@@ -506,6 +647,17 @@ interface GeneratedEmail {
 }
 
 function EmailWriter() {
+  const { data: voiceData, isLoading: voiceLoading, refetch: refetchVoice } = useQuery({
+    queryKey: ["partner-voice-profile"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/partner/voice-profile" });
+      return res?.success ? res.voiceProfile : null;
+    },
+    staleTime: 10 * 60_000,
+  });
+
+  const hasVoiceProfile = !!voiceData;
+
   const [situation, setSituation] = useState("");
   const [tone, setTone] = useState<"professional" | "friendly" | "urgent">("professional");
   const [generating, setGenerating] = useState(false);
@@ -513,6 +665,15 @@ function EmailWriter() {
   const [history, setHistory] = useState<{ situation: string; emails: GeneratedEmail[] }[]>([]);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [error, setError] = useState("");
+
+  // Show onboarding if no voice profile
+  if (voiceLoading) {
+    return <div className="h-40 animate-pulse rounded-2xl border border-gray-200 bg-white" />;
+  }
+
+  if (!hasVoiceProfile) {
+    return <VoiceProfileSetup onSaved={() => refetchVoice()} />;
+  }
 
   const handleGenerate = async () => {
     if (!situation.trim() || generating) return;

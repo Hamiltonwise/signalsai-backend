@@ -189,9 +189,72 @@ partnerRoutes.get(
 );
 
 /**
+ * GET /api/partner/voice-profile
+ *
+ * Returns the stored voice profile for the partner's org.
+ */
+partnerRoutes.get(
+  "/voice-profile",
+  authenticateToken,
+  rbacMiddleware,
+  async (req: RBACRequest, res) => {
+    try {
+      if (!req.organizationId) {
+        return res.status(401).json({ success: false, error: "Authentication required" });
+      }
+      const org = await db("organizations").where({ id: req.organizationId }).first();
+      return res.json({
+        success: true,
+        voiceProfile: org?.voice_profile || null,
+      });
+    } catch (error: any) {
+      console.error("[Partner] Voice profile fetch error:", error.message);
+      return res.status(500).json({ success: false, error: "Failed to load voice profile" });
+    }
+  },
+);
+
+/**
+ * PATCH /api/partner/voice-profile
+ *
+ * Save or update the voice profile for the partner's org.
+ * Body: { voiceProfile: string }
+ */
+partnerRoutes.patch(
+  "/voice-profile",
+  authenticateToken,
+  rbacMiddleware,
+  async (req: RBACRequest, res) => {
+    try {
+      if (!req.organizationId) {
+        return res.status(401).json({ success: false, error: "Authentication required" });
+      }
+      const { voiceProfile } = req.body;
+      if (!voiceProfile || typeof voiceProfile !== "string") {
+        return res.status(400).json({ success: false, error: "voiceProfile is required" });
+      }
+      if (voiceProfile.length > 10000) {
+        return res.status(400).json({ success: false, error: "Voice profile too long (max 10,000 characters)" });
+      }
+
+      await db("organizations")
+        .where({ id: req.organizationId })
+        .update({ voice_profile: voiceProfile.trim() });
+
+      console.log(`[Partner] Voice profile saved for org ${req.organizationId}`);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Partner] Voice profile save error:", error.message);
+      return res.status(500).json({ success: false, error: "Failed to save voice profile" });
+    }
+  },
+);
+
+/**
  * POST /api/partner/write
  *
  * Email writing assistant — generates 2 follow-up email options via Claude.
+ * Prepends the stored voice profile to the system prompt.
  * Body: { situation: string, tone: "professional" | "friendly" | "urgent" }
  */
 partnerRoutes.post(
@@ -214,6 +277,10 @@ partnerRoutes.post(
         return res.status(400).json({ success: false, error: "Too long (max 1000 characters)" });
       }
 
+      // Load voice profile for this org
+      const org = await db("organizations").where({ id: req.organizationId }).first();
+      const voiceProfile = org?.voice_profile || null;
+
       const toneInstruction =
         tone === "urgent"
           ? "Write with urgency — time-sensitive, action needed soon."
@@ -221,7 +288,14 @@ partnerRoutes.post(
             ? "Write casually and warmly — like texting a colleague you respect."
             : "Write professionally — polished but approachable.";
 
-      const systemPrompt = `You write emails for a partner marketing director whose audience is dental practice owners and endodontists. Her tone is warm, direct, and professional — never pushy. She is building trust, not closing sales. Alloro is a business intelligence platform that shows practices their competitive position and automatically builds their online presence.
+      // Build system prompt — prepend voice profile if available
+      let systemPrompt = "";
+
+      if (voiceProfile) {
+        systemPrompt += `[VOICE PROFILE]\n${voiceProfile}\n[END VOICE PROFILE]\n\nWrite in this person's voice exactly. Every email must sound like them, not like software.\n\n`;
+      }
+
+      systemPrompt += `You write emails for a partner whose audience is dental practice owners and specialists. ${voiceProfile ? "Match the voice profile above precisely." : "Tone: warm, direct, professional — never pushy."} She is building trust, not closing sales. Alloro is a business intelligence platform that shows practices their competitive position and automatically builds their online presence.
 
 Rules:
 - Write emails that feel personal and specific, never like a template
