@@ -55,6 +55,7 @@ export async function analyzeCheckup(params: {
   rating: number | null;
   reviewCount: number;
   placeId: string;
+  location?: { latitude: number; longitude: number } | null;
 }): Promise<CheckupAnalysis> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000); // 45s timeout

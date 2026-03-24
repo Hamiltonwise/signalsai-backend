@@ -193,6 +193,7 @@ export default function ScanningTheater() {
           rating: place.rating,
           reviewCount: place.reviewCount,
           placeId: place.placeId,
+          location: place.location,
         });
 
         if (cancelled) return;

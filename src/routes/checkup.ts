@@ -38,7 +38,7 @@ const emailLimiter = rateLimit({
  */
 checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
   try {
-    const { name, city, state, category, types, rating, reviewCount, placeId } =
+    const { name, city, state, category, types, rating, reviewCount, placeId, location } =
       req.body;
 
     if (!name || !city) {
@@ -51,15 +51,21 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
     const marketLocation = state ? `${city}, ${state}` : city;
     const specialty = category || "dentist";
 
+    // Build location bias from practice coordinates (25-mile radius)
+    const locationBias = location?.latitude && location?.longitude
+      ? { lat: location.latitude, lng: location.longitude, radiusMeters: 40234 }
+      : undefined;
+
     console.log(
-      `[Checkup] Analyzing: ${name} in ${marketLocation} (${specialty})`
+      `[Checkup] Analyzing: ${name} in ${marketLocation} (${specialty})${locationBias ? ` [${locationBias.lat.toFixed(4)},${locationBias.lng.toFixed(4)}]` : " [no coordinates]"}`
     );
 
-    // Discover competitors
+    // Discover competitors — biased to practice's actual location
     const allCompetitors = await discoverCompetitorsViaPlaces(
       specialty,
       marketLocation,
-      15
+      15,
+      locationBias
     );
 
     // Filter to relevant specialty

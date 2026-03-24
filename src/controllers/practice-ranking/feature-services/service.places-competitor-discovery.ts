@@ -110,13 +110,12 @@ export async function discoverCompetitorsViaPlaces(
   specialty: string,
   marketLocation: string,
   limit: number = 20,
+  locationBias?: { lat: number; lng: number; radiusMeters?: number },
 ): Promise<DiscoveredCompetitor[]> {
-  // TODO: Add locationBias using client's lat/lng to prioritize nearby competitors
-  // Google Text Search supports locationBias: { circle: { center: { lat, lng }, radius } }
   const searchQuery = `${specialty} in ${marketLocation}`;
-  log(`Searching: "${searchQuery}" (limit: ${limit})`);
+  log(`Searching: "${searchQuery}" (limit: ${limit})${locationBias ? ` [biased to ${locationBias.lat.toFixed(4)},${locationBias.lng.toFixed(4)}]` : ""}`);
 
-  const places = await textSearch(searchQuery, limit);
+  const places = await textSearch(searchQuery, limit, locationBias);
   log(`Found ${places.length} raw results`);
 
   const competitors: DiscoveredCompetitor[] = places.map((place: any) => {
