@@ -60,3 +60,31 @@ git checkout [last-good-commit] and you're back. Always.
 
 ## The Test
 Corey gives a doctor a link at AAE. Goes home. Tuesday morning: new account, PatientPath building, Monday brief queued. He did nothing after handing over the link. Every build decision points toward that state.
+
+## Session End Protocol (Required — Every Session)
+
+After every build, run these verification checks and post all results to the Build State page:
+https://www.notion.so/32dfdaf120c4810f908ee3a1ea7452b7
+
+Checks to run before posting:
+1. `npx tsc --noEmit` — TypeScript clean?
+2. `curl localhost:3000/api/health` — backend responding?
+3. Test the specific endpoint built — paste the response
+4. Any migration errors from `npx knex migrate:latest`?
+
+Post format:
+- PASS/FAIL per check
+- Error output if any check failed
+- Commit hash
+- Files created/modified with one-sentence description each
+- New environment variables required
+
+Then update the Known Issues section: remove anything fixed, add anything new found.
+
+This runs at the end of every session without exception.
+
+## File Ownership Protocol (Prevents Merge Conflicts)
+
+When starting a build, check the Build State page for any file marked "In Progress".
+Do not modify any file currently marked In Progress by another terminal session.
+When your build is complete, update the file status to "Ready to merge".
