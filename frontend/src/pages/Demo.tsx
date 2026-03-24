@@ -4,8 +4,9 @@
  * Pre-seeded Mountain View Endodontics. No auth. No API calls.
  * Corey says "let me show you what it looks like fully running" and opens this.
  *
- * Practice: Mountain View Endodontics, Bend, Oregon
+ * Practice: Mountain View Endodontics, Salt Lake City, Utah
  * Score: 61. Rank: #3 of 9 endodontists.
+ * All competitor names are FICTIONAL to avoid showing real practice data in a demo.
  */
 
 import { useState } from "react";
@@ -34,15 +35,15 @@ import {
 
 const PRACTICE = {
   name: "Mountain View Endodontics",
-  city: "Bend",
-  state: "Oregon",
+  city: "Salt Lake City",
+  state: "Utah",
   score: 61,
   rank: 3,
   totalCompetitors: 9,
   specialty: "endodontist",
   reviews: 34,
   rating: 4.6,
-  competitorName: "Cascade Endodontics",
+  competitorName: "Valley Endodontics SLC",
   competitorReviews: 61,
   competitorRating: 4.8,
   startRank: 6,
@@ -88,7 +89,7 @@ const REFERRING_GPS = [
   },
   {
     name: "Dr. Lisa Park",
-    practice: "Bend Family Dental",
+    practice: "Park Dental Group",
     referrals: 6,
     trend: "down" as const,
     trendLabel: "Silent for 74 days",
@@ -100,7 +101,7 @@ const REFERRING_GPS = [
 const TASKS = [
   {
     title: "Request 3 reviews this week",
-    why: "Getting from 34 to 62 reviews passes Cascade Endodontics on Google. That closes one of the three reasons GPs choose them over you when they hand out referral cards.",
+    why: "Getting from 34 to 62 reviews passes Valley Endodontics SLC on Google. That closes one of the three reasons GPs choose them over you when they hand out referral cards.",
     status: "active",
   },
   {
@@ -131,7 +132,7 @@ const TOP_MOVES = [
 const NEXT_90 = [
   {
     title: "Collect 28 new Google reviews (3/week for 10 weeks)",
-    why: "At current pace you'll pass Cascade Endodontics by June. That makes you the #1 reviewed endodontist in Bend.",
+    why: "At current pace you'll pass Valley Endodontics SLC by June. That makes you the #1 reviewed endodontist in Salt Lake City.",
     impact: "Projected move to #1 position",
   },
   {
@@ -141,7 +142,7 @@ const NEXT_90 = [
   },
   {
     title: "Add 10 new procedure photos to GBP",
-    why: "Cascade has 45 photos. You have 8. Businesses with 20+ photos get 35% more website clicks from Google.",
+    why: "Valley Endo has 45 photos. You have 8. Businesses with 20+ photos get 35% more website clicks from Google.",
     impact: "5-10 point score improvement",
   },
 ];
@@ -503,7 +504,7 @@ export default function Demo() {
 
         {/* Footer */}
         <p className="text-center text-[11px] text-gray-300 uppercase tracking-wide pt-4">
-          Demo account &middot; Mountain View Endodontics &middot; Bend, OR
+          Demo account &middot; Mountain View Endodontics &middot; Salt Lake City, UT
         </p>
       </div>
     </div>
