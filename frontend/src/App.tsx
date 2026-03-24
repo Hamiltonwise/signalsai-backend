@@ -12,6 +12,7 @@ import NewAccountOnboarding from "./pages/NewAccountOnboarding";
 import Dashboard from "./pages/Dashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import ProgressReport from "./pages/ProgressReport";
+import Demo from "./pages/Demo";
 import ReferralIntelligence from "./pages/ReferralIntelligence";
 import Admin from "./pages/Admin";
 import { Settings } from "./pages/Settings";
@@ -107,6 +108,9 @@ function App() {
                 <Route path="results" element={<ResultsScreen />} />
                 <Route path="building" element={<BuildingScreen />} />
               </Route>
+
+              {/* Public demo — no auth required */}
+              <Route path="/demo" element={<Demo />} />
 
               <Route path="/" element={<Navigate to="/signin" replace />} />
               <Route
