@@ -56,6 +56,7 @@ import placesRoutes from "./routes/places";
 import checkupRoutes from "./routes/checkup";
 import progressReportRoutes from "./routes/progressReport";
 import vocabularyRoutes from "./routes/vocabulary";
+import partnerRoutes from "./routes/partner";
 import reviewRequestRoutes from "./routes/reviewRequests";
 import csAgentRoutes from "./routes/csAgent";
 import ttfvRoutes from "./routes/ttfv";
@@ -197,6 +198,7 @@ app.use("/api/checkup", checkupRoutes); // Free Referral Base Checkup analysis
 app.use("/api/progress-report", progressReportRoutes); // 365-day progress report
 app.use("/api/org", vocabularyRoutes); // Vocabulary config per org
 app.use("/api/vocabulary", vocabularyRoutes); // Vocabulary defaults (public)
+app.use("/api/partner", partnerRoutes); // Partner Portal API
 app.use("/api/review-requests", reviewRequestRoutes); // Post-appointment review generation
 app.use("/api/cs-agent", csAgentRoutes); // Account-aware Claude chat for doctors
 app.use("/api/org", ttfvRoutes); // TTFV sensor + billing prompt

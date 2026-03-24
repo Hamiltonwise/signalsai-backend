@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import ProgressReport from "./pages/ProgressReport";
 import Demo from "./pages/Demo";
+import PartnerPortal from "./pages/partner/PartnerPortal";
 import ReferralIntelligence from "./pages/ReferralIntelligence";
 import Admin from "./pages/Admin";
 import { Settings } from "./pages/Settings";
@@ -111,6 +112,16 @@ function App() {
 
               {/* Public demo — no auth required */}
               <Route path="/demo" element={<Demo />} />
+
+              {/* Partner Portal — auth required, own layout */}
+              <Route
+                path="/partner"
+                element={
+                  <ProtectedRoute>
+                    <PartnerPortal />
+                  </ProtectedRoute>
+                }
+              />
 
               <Route path="/" element={<Navigate to="/signin" replace />} />
               <Route
