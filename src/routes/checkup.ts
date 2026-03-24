@@ -103,9 +103,9 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
     );
 
     // --- Sub-scores (WO4 spec: Local Visibility /40, Online Presence /40, Review Health /20) ---
-    // Calibrated for real spread: most businesses should land 40-70, not 85-95.
+    // Balanced: average business = 50-65. Leaders = 75-85. Struggling = 35-50.
 
-    // Local Visibility (0-40) — rank position is king, reviews are secondary
+    // Local Visibility (0-40) — rank + review volume
     const allWithClient = [
       { name, reviewsCount: clientReviews, totalScore: clientRating },
       ...otherCompetitors,
@@ -119,29 +119,29 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
         (c) => c.name.toLowerCase() === name.toLowerCase()
       ) + 1;
     const totalInMarket = allWithClient.length;
-    // Top position = 1.0, last = 0.0. Weighted heavily toward rank.
     const rankPct = (totalInMarket - rank) / Math.max(totalInMarket - 1, 1);
-    // Review ratio uses max reviews — most businesses are well below the leader
     const reviewRatio = Math.min(1, clientReviews / maxReviews);
-    // Rank is 70% of the score, reviews 30%. Being #5 of 10 = ~50% rank component.
+    // 60% rank, 40% reviews. Mid-pack with decent reviews = ~18/40.
     const localVisibility = Math.round(
-      Math.min(40, Math.max(0, (rankPct * 0.7 + reviewRatio * 0.3) * 40))
+      Math.min(40, Math.max(0, (rankPct * 0.6 + reviewRatio * 0.4) * 40))
     );
 
-    // Online Presence (0-40) — rating gap matters more, no free baseline
+    // Online Presence (0-40) — rating relative to market
     const ratingDiff = clientRating - avgRating;
-    // Center at 0.35 (not 0.5), so average = 14/40. Must beat average to score well.
-    // Each 0.1 star above average adds ~0.04 (was 0.02). 4.5+ bonus removed.
-    const ratingPct = Math.min(1, Math.max(0, 0.35 + ratingDiff * 0.4));
+    // Baseline 0.42 (average = ~17/40). Beat average to go higher.
+    // 4.5+ gets a small bonus (these are genuinely strong).
+    const ratingPct = Math.min(1, Math.max(0,
+      0.42 + ratingDiff * 0.3 + (clientRating >= 4.5 ? 0.05 : 0)
+    ));
     const onlinePresence = Math.round(
       Math.min(40, Math.max(0, ratingPct * 40))
     );
 
-    // Review Health (0-20) — penalize for being below average, cap well below max
-    // At average = 10/20, double average = 16/20, triple = 20/20
+    // Review Health (0-20) — ratio to market average with diminishing returns
+    // At average = 12/20. 1.5x average = 16/20. 2x+ = 20/20.
     const reviewHealthRaw = avgReviews > 0
-      ? Math.pow(clientReviews / avgReviews, 0.6) // diminishing returns above average
-      : 0.3;
+      ? Math.pow(clientReviews / avgReviews, 0.5) // gentle diminishing returns
+      : 0.4;
     const reviewHealth = Math.round(
       Math.min(20, Math.max(0, Math.min(1, reviewHealthRaw) * 20))
     );

@@ -85,32 +85,32 @@ function MapAnimator({
   const lastFlyRef = useRef<number>(-1);
   const hasZoomedIn = useRef(false);
 
-  // Phase 1: Zoom into the practice pin on mount (dramatic close-up)
+  // Phase 1: Slow cinematic zoom into the practice pin
   useEffect(() => {
     if (hasZoomedIn.current) return;
     hasZoomedIn.current = true;
-    // Start at zoom 10 (wide), then fly to zoom 15 (close-up)
-    map.setView(center, 10, { animate: false });
+    // Start at zoom 11 (regional), gentle fly to zoom 14 (close)
+    map.setView(center, 11, { animate: false });
     setTimeout(() => {
-      map.flyTo(center, 15, { duration: 2.5 });
-    }, 500);
-    // After close-up, pull back to neighborhood view
+      map.flyTo(center, 14, { duration: 4 });
+    }, 800);
+    // After close-up hold, ease back to neighborhood view
     setTimeout(() => {
-      map.flyTo(center, 13, { duration: 2 });
-    }, 4000);
+      map.flyTo(center, 12.5, { duration: 3 });
+    }, 6500);
   }, [map, center]);
 
-  // Phase 2: When a new competitor is highlighted, fly to it
+  // Phase 2: When a competitor is highlighted, smooth fly to it
   useEffect(() => {
     if (highlightIndex === null || highlightIndex === lastFlyRef.current) return;
     const comp = competitors[highlightIndex];
     if (!comp?.location) return;
     lastFlyRef.current = highlightIndex;
 
-    // Fly to the competitor
-    map.flyTo([comp.location.lat, comp.location.lng], 14, { duration: 1.2 });
+    // Gentle fly to the competitor
+    map.flyTo([comp.location.lat, comp.location.lng], 13.5, { duration: 2 });
 
-    // After a beat, zoom back out to show the full picture
+    // After holding, ease back out to show all revealed pins
     const timer = setTimeout(() => {
       if (competitors.length > 1) {
         const allPoints = [
@@ -121,24 +121,27 @@ function MapAnimator({
             .map((c) => [c.location!.lat, c.location!.lng] as [number, number]),
         ];
         const bounds = L.latLngBounds(allPoints);
-        map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 13, duration: 1.5 });
+        map.flyToBounds(bounds, { padding: [60, 60], maxZoom: 13, duration: 2.5 });
       }
-    }, 1800);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [highlightIndex, competitors, map, center]);
 
-  // Phase 3: When scan is complete, final dramatic zoom to show full market
+  // Phase 3: Final slow pull-back to show full market
   useEffect(() => {
     if (!scanComplete || competitors.length === 0) return;
-    const allPoints = [
-      center,
-      ...competitors
-        .filter((c) => c.location)
-        .map((c) => [c.location!.lat, c.location!.lng] as [number, number]),
-    ];
-    const bounds = L.latLngBounds(allPoints);
-    map.flyToBounds(bounds, { padding: [40, 40], maxZoom: 12, duration: 2 });
+    const timer = setTimeout(() => {
+      const allPoints = [
+        center,
+        ...competitors
+          .filter((c) => c.location)
+          .map((c) => [c.location!.lat, c.location!.lng] as [number, number]),
+      ];
+      const bounds = L.latLngBounds(allPoints);
+      map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 12, duration: 3 });
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [scanComplete, competitors, map, center]);
 
   return null;
