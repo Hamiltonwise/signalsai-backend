@@ -596,6 +596,19 @@ export default function ResultsScreen() {
         <ScoreRing score={score.composite} size={180} strokeWidth={12} />
       </div>
 
+      {/* Diagnostic sentence — the difference between a number and a diagnosis */}
+      {market && topCompetitor && market.rank > 0 && topCompetitor.reviewCount > place.reviewCount && (
+        <p className="text-sm text-slate-600 text-center leading-relaxed -mt-2">
+          <span className="font-semibold text-[#212D40]">{place.name}</span> ranks
+          #{market.rank} in {market.city}.{" "}
+          {topCompetitor.name} has{" "}
+          <span className="font-semibold text-[#D56753]">
+            {topCompetitor.reviewCount - place.reviewCount} more review{topCompetitor.reviewCount - place.reviewCount !== 1 ? "s" : ""}
+          </span>.
+          Here's the one move that changes it.
+        </p>
+      )}
+
       {/* Sub-scores — honest names for what we actually measure */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] space-y-5">
         <SubScoreBar
