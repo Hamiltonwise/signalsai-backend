@@ -187,6 +187,139 @@ dreamTeamRoutes.post(
   },
 );
 
+// ─── GET /tasks — list all tasks (filterable) ───────────────────────
+
+dreamTeamRoutes.get(
+  "/tasks",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const { owner, status, node_id, limit = "100" } = req.query;
+
+      let query = db("dream_team_tasks")
+        .orderBy([
+          { column: "status", order: "asc" }, // open first
+          { column: "priority", order: "desc" },
+          { column: "created_at", order: "desc" },
+        ])
+        .limit(Number(limit));
+
+      if (owner) query = query.where({ owner_name: owner });
+      if (status) query = query.where({ status });
+      if (node_id) query = query.where({ node_id });
+
+      const tasks = await query;
+
+      // Stats for Jo's dashboard
+      const stats = await db("dream_team_tasks")
+        .select("status")
+        .count("id as count")
+        .groupBy("status");
+
+      const statMap: Record<string, number> = {};
+      for (const s of stats) statMap[s.status] = Number(s.count);
+
+      const overdue = await db("dream_team_tasks")
+        .where("status", "!=", "done")
+        .whereNotNull("due_date")
+        .where("due_date", "<", new Date().toISOString().slice(0, 10))
+        .count("id as count")
+        .first();
+
+      return res.json({
+        success: true,
+        tasks,
+        stats: {
+          open: statMap.open || 0,
+          in_progress: statMap.in_progress || 0,
+          done: statMap.done || 0,
+          overdue: Number((overdue as any)?.count || 0),
+          total: Object.values(statMap).reduce((a, b) => a + b, 0),
+        },
+      });
+    } catch (err) {
+      console.error("Dream Team tasks list error:", err);
+      return res.status(500).json({ success: false, error: "Failed to list tasks" });
+    }
+  },
+);
+
+// ─── POST /tasks — create task ──────────────────────────────────────
+
+dreamTeamRoutes.post(
+  "/tasks",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const { node_id, title, owner_name, description, priority, due_date } = req.body;
+
+      if (!title?.trim()) {
+        return res.status(400).json({ success: false, error: "Title is required" });
+      }
+
+      const [task] = await db("dream_team_tasks")
+        .insert({
+          node_id: node_id || null,
+          title: title.trim(),
+          owner_name: owner_name || "Unassigned",
+          description: description?.trim() || null,
+          priority: priority || "normal",
+          due_date: due_date || null,
+          status: "open",
+          source_type: "manual",
+        })
+        .returning("*");
+
+      // Log to resume if node assigned
+      if (node_id) {
+        await db("dream_team_resume_entries").insert({
+          node_id,
+          entry_type: "task_assigned",
+          summary: `Task created: ${title.trim()}`,
+          created_by: owner_name || "admin",
+        });
+      }
+
+      return res.json({ success: true, task });
+    } catch (err) {
+      console.error("Dream Team task create error:", err);
+      return res.status(500).json({ success: false, error: "Failed to create task" });
+    }
+  },
+);
+
+// ─── PATCH /tasks/:id — update task ─────────────────────────────────
+
+dreamTeamRoutes.patch(
+  "/tasks/:id",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, priority, title, owner_name, due_date, node_id } = req.body;
+
+      const updates: Record<string, unknown> = { updated_at: new Date() };
+      if (status !== undefined) updates.status = status;
+      if (priority !== undefined) updates.priority = priority;
+      if (title !== undefined) updates.title = title;
+      if (owner_name !== undefined) updates.owner_name = owner_name;
+      if (due_date !== undefined) updates.due_date = due_date;
+      if (node_id !== undefined) updates.node_id = node_id;
+
+      await db("dream_team_tasks").where({ id }).update(updates);
+
+      const task = await db("dream_team_tasks").where({ id }).first();
+      return res.json({ success: true, task });
+    } catch (err) {
+      console.error("Dream Team task update error:", err);
+      return res.status(500).json({ success: false, error: "Failed to update task" });
+    }
+  },
+);
+
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 async function computeAgentHealth(agentId: string): Promise<string> {

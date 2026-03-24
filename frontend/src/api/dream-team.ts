@@ -70,3 +70,58 @@ export async function addResumeNote(
 ): Promise<{ success: boolean; entry: ResumeEntry }> {
   return apiPost({ path: `/admin/dream-team/${id}/resume`, passedData: { summary, created_by } });
 }
+
+// ─── Tasks ──────────────────────────────────────────────────────────
+
+export interface DreamTeamTask {
+  id: string;
+  node_id: string | null;
+  title: string;
+  description: string | null;
+  owner_name: string;
+  status: "open" | "in_progress" | "done";
+  priority: "low" | "normal" | "high" | "urgent";
+  source_type: string;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskStats {
+  open: number;
+  in_progress: number;
+  done: number;
+  overdue: number;
+  total: number;
+}
+
+export async function fetchDreamTeamTasks(filters?: {
+  owner?: string;
+  status?: string;
+  node_id?: string;
+}): Promise<{ success: boolean; tasks: DreamTeamTask[]; stats: TaskStats }> {
+  const params = new URLSearchParams();
+  if (filters?.owner) params.set("owner", filters.owner);
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.node_id) params.set("node_id", filters.node_id);
+  const qs = params.toString();
+  return apiGet({ path: `/admin/dream-team/tasks${qs ? `?${qs}` : ""}` });
+}
+
+export async function createDreamTeamTask(data: {
+  node_id?: string;
+  title: string;
+  owner_name: string;
+  description?: string;
+  priority?: string;
+  due_date?: string;
+}): Promise<{ success: boolean; task: DreamTeamTask }> {
+  return apiPost({ path: "/admin/dream-team/tasks", passedData: data });
+}
+
+export async function updateDreamTeamTask(
+  id: string,
+  data: Partial<Pick<DreamTeamTask, "status" | "priority" | "title" | "owner_name" | "due_date">>,
+): Promise<{ success: boolean; task: DreamTeamTask }> {
+  return apiPatch({ path: `/admin/dream-team/tasks/${id}`, passedData: data });
+}
