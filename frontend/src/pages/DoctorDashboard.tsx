@@ -135,7 +135,9 @@ function PositionCard({ ranking }: { ranking: RankingData | null }) {
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
               delta > 0
                 ? "bg-emerald-50 text-emerald-700"
-                : "bg-red-50 text-red-600"
+                : delta <= -2
+                  ? "bg-amber-50 text-amber-700"
+                  : "bg-gray-100 text-gray-600"
             }`}
           >
             {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -637,31 +639,40 @@ export default function DoctorDashboard() {
         </div>
       )}
 
-      {/* One Action Card — always visible, deterministic rule engine */}
-      <OneActionCard
-        billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
-        driftGP={null /* TODO: wire to referral drift data when available */}
-        rankingDrop={
-          rankingData?.previousPosition && rankingData?.rankPosition &&
-          rankingData.rankPosition - rankingData.previousPosition >= 2
-            ? {
-                previousPosition: rankingData.previousPosition,
-                currentPosition: rankingData.rankPosition,
-                keyword: rankingData.specialty || undefined,
-              }
-            : null
-        }
-        competitorVelocity={null /* TODO: wire when review velocity data is available */}
-        gbpConnected={hasGoogleConnection}
-        topCompetitorName={rankingData?.topCompetitor?.name}
-      />
-
       {mode === "standard" ? (
         <>
+          {/* ══ ABOVE THE FOLD — spec layer order ══ */}
+
+          {/* 1. Practice Health Score ring */}
           <PositionCard ranking={rankingData ?? null} />
+
+          {/* 2. One sentence finding */}
           <CompetitorGap ranking={rankingData ?? null} />
-          {isOwnerOrManager && <ProoflineFindings findings={prooflineFindings} />}
+
+          {/* 3. One Action Card — deterministic rule engine */}
+          <OneActionCard
+            billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
+            driftGP={null /* TODO: wire to referral drift data when available */}
+            rankingDrop={
+              rankingData?.previousPosition && rankingData?.rankPosition &&
+              rankingData.rankPosition - rankingData.previousPosition >= 2
+                ? {
+                    previousPosition: rankingData.previousPosition,
+                    currentPosition: rankingData.rankPosition,
+                    keyword: rankingData.specialty || undefined,
+                  }
+                : null
+            }
+            competitorVelocity={null /* TODO: wire when review velocity data is available */}
+            gbpConnected={hasGoogleConnection}
+            topCompetitorName={rankingData?.topCompetitor?.name}
+          />
+
+          {/* 4. PatientPath breadcrumb — quiet, lower */}
           {isOwnerOrManager && <WebsiteCard website={websiteData ?? null} />}
+
+          {/* ══ BELOW THE FOLD ══ */}
+          {isOwnerOrManager && <ProoflineFindings findings={prooflineFindings} />}
           {canSendReviews && <ReviewRequestCard placeId={rankingData?.placeId ?? null} practiceName={practiceName} />}
           {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
         </>
@@ -669,6 +680,24 @@ export default function DoctorDashboard() {
         <>
           <GrowthPositionTrack ranking={rankingData ?? null} />
           <GapToNext ranking={rankingData ?? null} />
+          {/* One Action Card in growth mode too */}
+          <OneActionCard
+            billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
+            driftGP={null}
+            rankingDrop={
+              rankingData?.previousPosition && rankingData?.rankPosition &&
+              rankingData.rankPosition - rankingData.previousPosition >= 2
+                ? {
+                    previousPosition: rankingData.previousPosition,
+                    currentPosition: rankingData.rankPosition,
+                    keyword: rankingData.specialty || undefined,
+                  }
+                : null
+            }
+            competitorVelocity={null}
+            gbpConnected={hasGoogleConnection}
+            topCompetitorName={rankingData?.topCompetitor?.name}
+          />
           <CompetitorActivityFeed ranking={rankingData ?? null} />
           {canSendReviews && <ReviewRequestCard placeId={rankingData?.placeId ?? null} practiceName={practiceName} />}
           {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
