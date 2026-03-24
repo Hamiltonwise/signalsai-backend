@@ -10,6 +10,8 @@ import {
   MapPin,
   CheckCircle2,
   Target,
+  Copy,
+  Share2,
 } from "lucide-react";
 import type { PlaceDetails } from "../../api/places";
 import { sendCheckupEmail } from "../../api/checkup";
@@ -55,6 +57,7 @@ export interface CheckupResults {
     rank: number;
   };
   refCode?: string;
+  intent?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -241,6 +244,8 @@ export default function ResultsScreen() {
   const [email, setEmail] = useState("");
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
+  const [relationship, setRelationship] = useState("owner");
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Track: checkup.gate_viewed (fires once when results render)
   useEffect(() => {
@@ -288,6 +293,8 @@ export default function ResultsScreen() {
       specialty: place.category,
       city: place.city,
       ref_code: state.refCode || null,
+      gate_relationship: relationship,
+      intent: state.intent || null,
     });
 
     setEmailSubmitted(true);
@@ -301,6 +308,15 @@ export default function ResultsScreen() {
 
   return (
     <div className="w-full max-w-md mt-4 sm:mt-8 space-y-6 pb-4">
+      {/* Intent context chip */}
+      {state.intent && (
+        <div className="text-center">
+          <span className="inline-block text-xs font-medium text-[#212D40] bg-[#212D40]/5 border border-[#212D40]/15 rounded-full px-3 py-1">
+            {state.intent}
+          </span>
+        </div>
+      )}
+
       {/* Practice name + market context */}
       <div className="text-center">
         <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">
@@ -392,6 +408,32 @@ export default function ResultsScreen() {
               required
               className="w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#D56753] focus:ring-4 focus:ring-[#D56753]/10"
             />
+            {/* Relationship question — segmentation data */}
+            <fieldset className="space-y-1.5">
+              <legend className="text-xs font-medium text-slate-600 mb-1.5">
+                Are you the practice owner?
+              </legend>
+              {[
+                { value: "owner", label: "Yes, this is my practice" },
+                { value: "manager", label: "I manage this practice" },
+                { value: "vendor", label: "I provide services to this practice" },
+              ].map((opt) => (
+                <label
+                  key={opt.value}
+                  className="flex items-center gap-2.5 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="relationship"
+                    value={opt.value}
+                    checked={relationship === opt.value}
+                    onChange={(e) => setRelationship(e.target.value)}
+                    className="w-4 h-4 text-[#D56753] border-slate-300 focus:ring-[#D56753]/20"
+                  />
+                  <span className="text-sm text-slate-700">{opt.label}</span>
+                </label>
+              ))}
+            </fieldset>
             {topCompetitor && (
               <p className="text-xs text-slate-400">
                 Includes detailed comparison with {topCompetitor.name}
@@ -414,6 +456,7 @@ export default function ResultsScreen() {
           </p>
         </div>
       ) : (
+        <>
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
           <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
           <p className="text-base font-semibold text-emerald-900 mt-2">
@@ -423,6 +466,33 @@ export default function ResultsScreen() {
             We&apos;ll send a detailed breakdown to {email}
           </p>
         </div>
+
+        {/* Share prompt — quiet, not primary CTA */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Share2 className="w-4 h-4 text-slate-400" />
+            <span className="text-sm font-medium text-slate-700">
+              Show a colleague what we found about their practice.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const shareUrl = state.refCode
+                ? `https://getalloro.com/checkup?ref=${state.refCode}`
+                : "https://getalloro.com/checkup";
+              navigator.clipboard.writeText(shareUrl).then(() => {
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+              });
+            }}
+            className="flex items-center gap-2 text-sm font-medium text-[#212D40] border border-[#212D40]/20 rounded-lg px-4 py-2.5 hover:border-[#212D40]/40 transition-colors"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            {linkCopied ? "Copied!" : "Copy link"}
+          </button>
+        </div>
+        </>
       )}
     </div>
   );

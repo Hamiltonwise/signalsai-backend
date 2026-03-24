@@ -42,6 +42,7 @@ import adminWebsitesRoutes from "./routes/admin/websites";
 import adminMediaRoutes from "./routes/admin/media";
 import adminSettingsRoutes from "./routes/admin/settings";
 import adminSchedulesRoutes from "./routes/admin/schedules";
+import adminSignalRoutes from "./routes/admin/signal";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
@@ -168,6 +169,7 @@ app.use("/api/admin/websites", adminWebsitesRoutes);
 app.use("/api/admin/websites/:projectId/media", adminMediaRoutes);
 app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin/schedules", adminSchedulesRoutes);
+app.use("/api/admin/signal", adminSignalRoutes);
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest
 app.use("/api/admin", adminAuthRoutes);

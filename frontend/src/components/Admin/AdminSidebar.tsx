@@ -44,11 +44,11 @@ interface NavItem {
 }
 
 const AGENTS_GROUP_ITEMS: NavItem[] = [
-  { key: "agent-outputs", label: "Agent Outputs", icon: Database },
-  { key: "ai-pms-automation", label: "AI PMS Automation", icon: Cpu },
-  { key: "ai-data-insights", label: "Agent Enhancements", icon: LineChart },
-  { key: "practice-ranking", label: "Practice Ranking", icon: TrendingUp },
-  { key: "minds", label: "Minds", icon: Brain },
+  { key: "agent-outputs", label: "What the Agents Found", icon: Database },
+  { key: "ai-pms-automation", label: "Referral Intelligence", icon: Cpu },
+  { key: "ai-data-insights", label: "Monthly Intelligence", icon: LineChart },
+  { key: "practice-ranking", label: "Your Market", icon: TrendingUp },
+  { key: "minds", label: "The Team", icon: Brain },
 ];
 
 const DONE_FOR_YOU_ITEMS: NavItem[] = [
@@ -57,11 +57,11 @@ const DONE_FOR_YOU_ITEMS: NavItem[] = [
 ];
 
 const TOP_ITEMS: NavItem[] = [
-  { key: "action-items", label: "Action Items Hub", icon: CheckSquare },
+  { key: "action-items", label: "Morning Brief", icon: CheckSquare },
 ];
 
 const BOTTOM_ITEMS: NavItem[] = [
-  { key: "app-logs", label: "App Logs", icon: FileText },
+  { key: "app-logs", label: "System Health", icon: FileText },
   { key: "organization-management", label: "Organizations", icon: Building },
   { key: "schedules", label: "Schedules", icon: Clock },
   { key: "settings", label: "Settings", icon: Settings },

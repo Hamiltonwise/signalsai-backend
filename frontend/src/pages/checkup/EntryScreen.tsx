@@ -79,9 +79,11 @@ export default function EntryScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
+  const [intent, setIntent] = useState<string | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionTokenRef = useRef(crypto.randomUUID());
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleInputChange = useCallback((value: string) => {
     setQuery(value);
@@ -137,7 +139,7 @@ export default function EntryScreen() {
 
   const handleContinue = () => {
     if (!selectedPlace) return;
-    navigate("/checkup/scanning", { state: { place: selectedPlace, refCode } });
+    navigate("/checkup/scanning", { state: { place: selectedPlace, refCode, intent } });
   };
 
   return (
@@ -159,6 +161,7 @@ export default function EntryScreen() {
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
           <input
+            ref={searchInputRef}
             type="text"
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
@@ -196,6 +199,33 @@ export default function EntryScreen() {
           </ul>
         )}
       </div>
+
+      {/* Intent chips — shown before place selection */}
+      {!selectedPlace && !isSelecting && (
+        <div className="mt-5 flex flex-wrap gap-2 justify-center">
+          {[
+            "Who's beating me in my market?",
+            "What's my online presence score?",
+            "How do I get more patients?",
+          ].map((label) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => {
+                setIntent(label);
+                searchInputRef.current?.focus();
+              }}
+              className={`text-xs px-3.5 py-2 rounded-full border transition-all ${
+                intent === label
+                  ? "border-[#D56753] bg-[#D56753]/5 text-[#D56753] font-semibold"
+                  : "border-[#212D40]/20 text-[#212D40] hover:border-[#D56753] hover:text-[#D56753]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Selected place card */}
       {isSelecting && (

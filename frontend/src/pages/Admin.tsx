@@ -5,6 +5,7 @@ import {
   AgentInsights,
 } from "../components/Admin";
 import { ActionItemsHub } from "@/components/Admin/ActionItemsHub";
+import MorningBrief from "./admin/MorningBrief";
 import { AdminGuard } from "@/components/Admin/AdminGuard";
 import AIDataInsightsList from "./admin/AIDataInsightsList";
 import AIDataInsightsDetail from "./admin/AIDataInsightsDetail";
@@ -63,7 +64,7 @@ function AdminWithLayout() {
       <Routes>
         <Route path="/" element={<Navigate to="action-items" replace />} />
         <Route path="ai-pms-automation" element={<PMSAutomationCards />} />
-        <Route path="action-items" element={<ActionItemsHub />} />
+        <Route path="action-items" element={<MorningBrief />} />
         <Route path="agent-outputs" element={<AgentOutputsList />} />
         <Route path="ai-data-insight" element={<AgentInsights />} />
         <Route path="ai-data-insights" element={<AIDataInsightsList />} />

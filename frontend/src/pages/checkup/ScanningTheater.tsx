@@ -122,9 +122,10 @@ function ChecklistItem({
 export default function ScanningTheater() {
   const location = useLocation();
   const navigate = useNavigate();
-  const stateData = location.state as { place?: PlaceDetails; refCode?: string } | undefined;
+  const stateData = location.state as { place?: PlaceDetails; refCode?: string; intent?: string } | undefined;
   const place = stateData?.place;
   const refCode = stateData?.refCode;
+  const intent = stateData?.intent;
 
   // Checklist progress (index of the currently active item, -1 = not started)
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -163,9 +164,10 @@ export default function ScanningTheater() {
       totalImpact: result.totalImpact,
       market: result.market,
       refCode,
+      intent,
     };
     navigate("/checkup/results", { state: resultsState, replace: true });
-  }, [place, navigate, refCode]);
+  }, [place, navigate, refCode, intent]);
 
   // --- Fire API call on mount ---
   useEffect(() => {
