@@ -87,22 +87,32 @@ function generateSignalSentence(
     case "checkup.email_captured": {
       const city = props.city || "their market";
       const specialty = props.specialty || "practice";
+      const score = props.score;
       const totalCaptures = allEvents.filter(
         (e: any) => e.event_type === "checkup.email_captured",
       ).length;
       if (totalCaptures > 1) {
-        return `${totalCaptures} practices captured their email through the Checkup this week — ${specialty} owners in ${city} want to know where they stand.`;
+        return `${totalCaptures} ${specialty} owners in ${city} captured their email this week. The funnel is converting.`;
       }
-      return `A ${specialty} in ${city} just captured their email through the Checkup. The funnel is live.`;
+      return `A ${specialty} owner in ${city} unlocked their full report${score ? ` (scored ${score}/100)` : ""}. Lead captured.`;
     }
     case "checkup.scan_completed": {
-      const name = props.top_competitor_name || "a competitor";
+      const practiceName = props.practice_name || null;
+      const competitorName = props.top_competitor_name || null;
       const score = props.score;
-      const competitorCount = props.competitor_count || "several";
-      if (score) {
-        return `A practice scored ${score} against ${competitorCount} competitors — ${name} is the one to beat.`;
+      const city = props.city || null;
+      const competitorCount = props.competitor_count || 0;
+      // Always named, always specific
+      if (practiceName && competitorName && score && city) {
+        return `${practiceName} scored ${score}/100 in ${city}. ${competitorName} holds position 1 with ${competitorCount} competitors in the market.`;
       }
-      return `A scan just completed against ${competitorCount} competitors. ${name} leads the pack.`;
+      if (practiceName && score && city) {
+        return `${practiceName} scored ${score}/100 in ${city} against ${competitorCount} competitors.`;
+      }
+      if (score && competitorName) {
+        return `A practice scored ${score}/100. ${competitorName} holds the top position.`;
+      }
+      return "Alloro is watching. First signals arrive after your next agent run.";
     }
     case "checkup.gate_viewed": {
       const totalViews = allEvents.filter(

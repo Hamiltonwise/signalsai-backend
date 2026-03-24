@@ -67,6 +67,16 @@ function healthDot(org: AdminOrganization): {
   return { color: "bg-red-500", label: "Urgent" };
 }
 
+function specialtyIcon(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes("endodon")) return "\uD83E\uDDB7"; // 🦷
+  if (lower.includes("orthodon")) return "\u2728"; // ✨ (braces sparkle)
+  if (lower.includes("pediatric")) return "\uD83D\uDC76"; // 👶
+  if (lower.includes("oral surg")) return "\u2695\uFE0F"; // ⚕️
+  if (lower.includes("periodon")) return "\uD83E\uDDB7"; // 🦷
+  return "\uD83C\uDFE2"; // 🏢
+}
+
 function OrgCard({ org }: { org: AdminOrganization }) {
   const navigate = useNavigate();
   const dot = healthDot(org);
@@ -77,26 +87,29 @@ function OrgCard({ org }: { org: AdminOrganization }) {
       className="flex w-full flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 text-left shadow-sm transition-all hover:border-gray-300 hover:shadow-md"
     >
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold text-[#212D40] truncate pr-3" title={org.name}>
-          {org.name}
-        </h3>
-        <div className="flex items-center gap-2 shrink-0">
-          <span
-            className={`h-2.5 w-2.5 rounded-full ${dot.color}`}
-            title={dot.label}
-          />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-lg shrink-0" role="img">
+            {specialtyIcon(org.name)}
+          </span>
+          <h3 className="text-base font-bold text-[#212D40] truncate" title={org.name}>
+            {org.name}
+          </h3>
         </div>
+        <span
+          className={`h-2.5 w-2.5 rounded-full shrink-0 ${dot.color}`}
+          title={dot.label}
+        />
       </div>
-      <p className="text-sm text-gray-500 truncate">
-        {org.subscription_tier
-          ? `${org.subscription_tier} tier`
-          : "No tier assigned"}{" "}
-        &middot; {org.userCount} user{org.userCount !== 1 ? "s" : ""}
-      </p>
-      <p className="text-xs text-gray-500">
+      <p className="text-sm text-[#212D40] truncate">
         {org.connections?.gbp
           ? "GBP connected"
-          : "Connecting to data\u2026 First briefing arrives after next agent run."}
+          : "Waiting for data connection"}
+        {org.subscription_tier ? ` \u00B7 ${org.subscription_tier}` : ""}
+      </p>
+      <p className="text-xs text-gray-400">
+        {org.connections?.gbp
+          ? "Agents monitoring. Tap to see what they found."
+          : "First briefing arrives after next agent run."}
       </p>
     </button>
   );
@@ -170,17 +183,30 @@ function formatTimeAgo(dateStr: string | null): string {
 function formatNextRun(dateStr: string | null): string {
   if (!dateStr) return "not scheduled";
   const d = new Date(dateStr);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const now = new Date();
+  const diffMs = d.getTime() - now.getTime();
+  if (diffMs < 0) return "overdue";
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 60) return `in ${diffMins}m`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `in ${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "tomorrow";
+  return `in ${diffDays} days`;
 }
 
-function statusBadge(schedule: Schedule): { text: string; className: string } {
+function statusDot(schedule: Schedule): { color: string; label: string } {
   const run = schedule.latest_run;
-  if (!run) return { text: "No runs yet", className: "text-gray-400" };
-  if (run.status === "completed")
-    return { text: "Completed", className: "text-emerald-600" };
-  if (run.status === "running")
-    return { text: "Running", className: "text-blue-500" };
-  return { text: "Failed", className: "text-red-500" };
+  if (!run) return { color: "bg-gray-300", label: "Never run" };
+  if (run.status === "running") return { color: "bg-blue-500", label: "Running" };
+  if (run.status === "completed") {
+    // Check if overdue (next_run_at is in the past)
+    if (schedule.next_run_at && new Date(schedule.next_run_at) < new Date()) {
+      return { color: "bg-amber-400", label: "Overdue" };
+    }
+    return { color: "bg-emerald-500", label: "Healthy" };
+  }
+  return { color: "bg-red-500", label: "Failed" };
 }
 
 function AgentQueueStrip() {
@@ -226,7 +252,11 @@ function AgentQueueStrip() {
   return (
     <div className="flex gap-4 overflow-x-auto pb-2">
       {schedules.map((schedule) => {
-        const badge = statusBadge(schedule);
+        const dot = statusDot(schedule);
+        const lastRan = schedule.last_run_at
+          ? `ran ${formatTimeAgo(schedule.last_run_at)}`
+          : "never run";
+        const nextRun = `next run ${formatNextRun(schedule.next_run_at)}`;
         const runSummary = schedule.latest_run?.summary;
         const signalCount =
           runSummary && typeof runSummary === "object"
@@ -238,28 +268,25 @@ function AgentQueueStrip() {
         return (
           <div
             key={schedule.id}
-            className="flex w-72 shrink-0 flex-col gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            className="flex w-72 shrink-0 flex-col gap-2.5 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
           >
-            <p className="text-sm font-semibold text-[#212D40] truncate">
-              {schedule.display_name}
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2 w-2 rounded-full shrink-0 ${dot.color}`}
+                title={dot.label}
+              />
+              <p className="text-sm font-semibold text-[#212D40] truncate">
+                {schedule.display_name}
+              </p>
+            </div>
+            <p className="text-xs text-gray-500">
+              {lastRan}
+              {signalCount !== null &&
+                ` \u2014 ${signalCount} signal${signalCount !== 1 ? "s" : ""} found`}
             </p>
-            <div className="flex items-center gap-2 text-xs">
-              <span className={badge.className}>{badge.text}</span>
-              <span className="text-gray-300">&middot;</span>
-              <span className="text-gray-400">
-                ran {formatTimeAgo(schedule.last_run_at)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-gray-400">
-              {signalCount !== null && (
-                <span>
-                  {signalCount} signal{signalCount !== 1 ? "s" : ""} found
-                </span>
-              )}
-              <span className="ml-auto">
-                next: {formatNextRun(schedule.next_run_at)}
-              </span>
-            </div>
+            <p className="text-xs text-gray-400">
+              {nextRun}
+            </p>
           </div>
         );
       })}
