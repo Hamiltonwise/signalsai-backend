@@ -41,7 +41,8 @@ import { PilotHandler } from "./components/PilotHandler";
 import { PilotBanner } from "./components/Admin/PilotBanner";
 import CheckupLayout from "./pages/checkup/CheckupLayout";
 import EntryScreen from "./pages/checkup/EntryScreen";
-import ScanningPlaceholder from "./pages/checkup/ScanningPlaceholder";
+import ScanningTheater from "./pages/checkup/ScanningTheater";
+import ResultsScreen from "./pages/checkup/ResultsScreen";
 
 // AppProviders wrapper - now used as a layout route to avoid remounting on navigation
 function AppProviders({ children }: { children: ReactNode }) {
@@ -98,7 +99,8 @@ function App() {
               {/* Public checkup flow — no auth required */}
               <Route path="/checkup" element={<CheckupLayout />}>
                 <Route index element={<EntryScreen />} />
-                <Route path="scanning" element={<ScanningPlaceholder />} />
+                <Route path="scanning" element={<ScanningTheater />} />
+                <Route path="results" element={<ResultsScreen />} />
               </Route>
 
               <Route path="/" element={<Navigate to="/signin" replace />} />

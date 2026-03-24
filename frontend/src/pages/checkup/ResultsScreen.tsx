@@ -1,0 +1,409 @@
+import { useState } from "react";
+import { useLocation, Navigate } from "react-router-dom";
+import {
+  Eye,
+  Globe,
+  MessageSquare,
+  Lock,
+  ArrowRight,
+  Star,
+  MapPin,
+  CheckCircle2,
+  Target,
+} from "lucide-react";
+import type { PlaceDetails } from "../../api/places";
+import { sendCheckupEmail } from "../../api/checkup";
+
+// ---------------------------------------------------------------------------
+// Types — passed via React Router state from the scanning phase
+// ---------------------------------------------------------------------------
+
+export interface CheckupCompetitor {
+  name: string;
+  rating: number;
+  reviewCount: number;
+  placeId: string;
+  location?: { lat: number; lng: number };
+}
+
+export interface CheckupFinding {
+  type: string;
+  title: string;
+  detail: string;
+  value: number;
+  impact: number;
+}
+
+export interface CheckupResults {
+  place: PlaceDetails;
+  score: {
+    composite: number;
+    localVisibility: number;
+    onlinePresence: number;
+    reviewHealth: number;
+  };
+  topCompetitor: CheckupCompetitor | null;
+  competitors: CheckupCompetitor[];
+  findings: CheckupFinding[];
+  totalImpact: number;
+  market: {
+    city: string;
+    totalCompetitors: number;
+    avgRating: number;
+    avgReviews: number;
+    rank: number;
+  };
+  refCode?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Score Labels — WO4: Never use "Poor", "Fair", "Good"
+// ---------------------------------------------------------------------------
+
+function getScoreLabel(score: number): string {
+  if (score >= 80) return "Strong Position";
+  if (score >= 60) return "Getting There";
+  return "Room to Grow";
+}
+
+function getScoreLabelColor(score: number): string {
+  if (score >= 80) return "text-emerald-600";
+  if (score >= 60) return "text-amber-600";
+  return "text-[#D56753]";
+}
+
+function getScoreRingColor(score: number): string {
+  if (score >= 80) return "stroke-emerald-500";
+  if (score >= 60) return "stroke-amber-500";
+  return "stroke-[#D56753]";
+}
+
+// ---------------------------------------------------------------------------
+// Score Ring — animated circular gauge
+// ---------------------------------------------------------------------------
+
+function ScoreRing({
+  score,
+  size = 160,
+  strokeWidth = 10,
+}: {
+  score: number;
+  size?: number;
+  strokeWidth?: number;
+}) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = (score / 100) * circumference;
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="#f1f5f9"
+          strokeWidth={strokeWidth}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          className={`${getScoreRingColor(score)} transition-all duration-1000 ease-out`}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference - progress}
+          strokeLinecap="round"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-4xl font-bold text-slate-900">{score}</span>
+        <span className={`text-sm font-semibold ${getScoreLabelColor(score)}`}>
+          {getScoreLabel(score)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-score Bar — shows label, points out of max, and fill bar
+// ---------------------------------------------------------------------------
+
+function SubScoreBar({
+  label,
+  score,
+  maxScore,
+  icon: Icon,
+}: {
+  label: string;
+  score: number;
+  maxScore: number;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  const pct = Math.round((score / maxScore) * 100);
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4 text-slate-600" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm font-medium text-slate-700">{label}</span>
+          <span className="text-sm font-semibold text-slate-900">
+            {score}/{maxScore}
+          </span>
+        </div>
+        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-1000 ease-out ${
+              pct >= 80
+                ? "bg-emerald-500"
+                : pct >= 60
+                  ? "bg-amber-500"
+                  : "bg-[#D56753]"
+            }`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Finding Card
+// ---------------------------------------------------------------------------
+
+function FindingCard({
+  finding,
+  blurred,
+}: {
+  finding: CheckupFinding;
+  blurred: boolean;
+}) {
+  const isPositive =
+    finding.type.includes("lead") || finding.type.includes("strong");
+  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    review_gap: MessageSquare,
+    review_lead: MessageSquare,
+    rating_gap: Star,
+    rating_strong: Star,
+    market_rank: MapPin,
+  };
+  const Icon = iconMap[finding.type] || Target;
+
+  return (
+    <div
+      className={`relative bg-white border border-slate-200 rounded-xl p-4 ${blurred ? "select-none" : ""}`}
+    >
+      {blurred && (
+        <div className="absolute inset-0 backdrop-blur-[6px] bg-white/60 rounded-xl z-10" />
+      )}
+      <div className="flex items-start gap-3">
+        <div
+          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+            isPositive ? "bg-emerald-50" : "bg-red-50"
+          }`}
+        >
+          <Icon
+            className={`w-4 h-4 ${isPositive ? "text-emerald-600" : "text-red-500"}`}
+          />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">
+            {finding.title}
+          </p>
+          <p className="text-sm text-slate-500 mt-0.5">{finding.detail}</p>
+          {finding.impact > 0 && (
+            <p className="text-xs font-medium text-red-500 mt-1.5">
+              Est. ${finding.impact.toLocaleString()}/yr at risk
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Component — all data arrives via React Router state
+// ---------------------------------------------------------------------------
+
+export default function ResultsScreen() {
+  const location = useLocation();
+  const state = location.state as CheckupResults | undefined;
+
+  const [email, setEmail] = useState("");
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+
+  // Redirect if no data (user navigated directly)
+  if (!state?.place || !state?.score) {
+    return <Navigate to="/checkup" replace />;
+  }
+
+  const { place, score, topCompetitor, findings, totalImpact, market } = state;
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || emailSending) return;
+
+    setEmailSending(true);
+
+    // Fire email send — don't block UI on it
+    sendCheckupEmail({
+      email: email.trim(),
+      practiceName: place.name,
+      city: place.city || "",
+      compositeScore: score.composite,
+      topCompetitorName: topCompetitor?.name || null,
+      topCompetitorReviews: topCompetitor?.reviewCount || null,
+      practiceReviews: place.reviewCount,
+      finding: findings[0]?.detail || "",
+      rank: market?.rank || 0,
+      totalCompetitors: market?.totalCompetitors || 0,
+    }).catch(() => {
+      // Email send failed silently — prospect still sees results
+    });
+
+    setEmailSubmitted(true);
+    setEmailSending(false);
+  };
+
+  // Blur gate CTA — WO4: use real competitor name
+  const blurGateCta = topCompetitor
+    ? `See why ${topCompetitor.name} ranks above you in ${place.city || "your market"}.`
+    : "See what's holding your score back.";
+
+  return (
+    <div className="w-full max-w-md mt-4 sm:mt-8 space-y-6 pb-4">
+      {/* Practice name + market context */}
+      <div className="text-center">
+        <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">
+          Business Health Score
+        </p>
+        <h2 className="text-xl font-bold text-slate-900 mt-1">{place.name}</h2>
+        {market && (
+          <p className="text-sm text-slate-400 mt-0.5">
+            vs. {market.totalCompetitors} competitors in {market.city}
+          </p>
+        )}
+      </div>
+
+      {/* Composite Score Ring */}
+      <div className="flex justify-center">
+        <ScoreRing score={score.composite} />
+      </div>
+
+      {/* Sub-scores: Local Visibility (40pts), Online Presence (40pts), Review Health (20pts) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-premium space-y-4">
+        <SubScoreBar
+          label="Local Visibility"
+          score={score.localVisibility}
+          maxScore={40}
+          icon={Eye}
+        />
+        <SubScoreBar
+          label="Online Presence"
+          score={score.onlinePresence}
+          maxScore={40}
+          icon={Globe}
+        />
+        <SubScoreBar
+          label="Review Health"
+          score={score.reviewHealth}
+          maxScore={20}
+          icon={MessageSquare}
+        />
+      </div>
+
+      {/* Findings — first visible, rest blurred */}
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold text-slate-900">Key Findings</h2>
+        {findings.map((f, i) => (
+          <FindingCard
+            key={f.type}
+            finding={f}
+            blurred={i > 0 && !emailSubmitted}
+          />
+        ))}
+      </div>
+
+      {/* Dollar figure — blurred until email captured */}
+      {totalImpact > 0 && (
+        <div
+          className={`relative text-center bg-red-50 border border-red-100 rounded-2xl p-5 ${!emailSubmitted ? "select-none" : ""}`}
+        >
+          {!emailSubmitted && (
+            <div className="absolute inset-0 backdrop-blur-[6px] bg-white/60 rounded-2xl z-10" />
+          )}
+          <p className="text-sm font-medium text-red-600">
+            Estimated Annual Risk
+          </p>
+          <p className="text-3xl font-bold text-red-700 mt-1">
+            ${totalImpact.toLocaleString()}
+          </p>
+          <p className="text-xs text-red-500 mt-1">
+            in potential revenue you may be leaving on the table
+          </p>
+        </div>
+      )}
+
+      {/* Blur Gate — Email Capture */}
+      {!emailSubmitted ? (
+        <div className="bg-white border-2 border-[#D56753]/30 rounded-2xl p-6 shadow-premium">
+          <div className="flex items-center gap-2 mb-3">
+            <Lock className="w-4 h-4 text-[#D56753]" />
+            <span className="text-sm font-semibold text-slate-900">
+              Unlock Full Report
+            </span>
+          </div>
+          <p className="text-sm text-slate-600 mb-4">{blurGateCta}</p>
+          <form onSubmit={handleEmailSubmit} className="space-y-3">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              required
+              className="w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#D56753] focus:ring-4 focus:ring-[#D56753]/10"
+            />
+            {topCompetitor && (
+              <p className="text-xs text-slate-400">
+                Includes detailed comparison with {topCompetitor.name}
+                {findings.length > 1 &&
+                  ` and ${findings.length - 1} more finding${findings.length > 2 ? "s" : ""}`}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={emailSending}
+              className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-sm font-semibold shadow-soft-glow hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-70"
+            >
+              {emailSending ? "Sending..." : "Unlock My Full Report"}
+              {!emailSending && <ArrowRight className="w-4 h-4" />}
+            </button>
+          </form>
+          <p className="text-xs text-slate-400 text-center mt-4">
+            Your practice operates on a deterministic system. Alloro tracks all
+            of it.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+          <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+          <p className="text-base font-semibold text-emerald-900 mt-2">
+            Full report unlocked
+          </p>
+          <p className="text-sm text-emerald-700 mt-1">
+            We&apos;ll send a detailed breakdown to {email}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

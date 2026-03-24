@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, MapPin, Loader2, ArrowRight } from "lucide-react";
 import { searchPlaces, getPlaceDetails } from "../../api/places";
 import type { PlaceSuggestion, PlaceDetails } from "../../api/places";
@@ -71,6 +71,8 @@ function competitorTerm(
 
 export default function EntryScreen() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const refCode = searchParams.get("ref") || undefined;
 
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -135,7 +137,7 @@ export default function EntryScreen() {
 
   const handleContinue = () => {
     if (!selectedPlace) return;
-    navigate("/checkup/scanning", { state: { place: selectedPlace } });
+    navigate("/checkup/scanning", { state: { place: selectedPlace, refCode } });
   };
 
   return (
