@@ -200,10 +200,11 @@ export default function BatchCheckup() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#212D40] flex items-center gap-3">
           <BarChart3 className="h-6 w-6 text-[#D56753]" />
-          Batch Analysis
+          Market Checkup
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Analyze multiple practices at once. Paste a CSV or upload a file.
+          See how any practice stacks up against its competition — in seconds.
+          Enter up to 50 practices.
         </p>
       </div>
 
@@ -211,21 +212,24 @@ export default function BatchCheckup() {
       {!batchId && (
         <div className="space-y-4">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <label className="block text-sm font-medium text-[#212D40] mb-2">
-              Paste practice list (name, city, state — one per line)
+            <label className="block text-sm font-semibold text-[#212D40] mb-2">
+              Practices to analyze
             </label>
             <textarea
               value={csvText}
               onChange={(e) => setCsvText(e.target.value)}
               placeholder={`Cascade Endodontics, Bend, OR\nSmith Orthodontics, Portland, OR\nMountain View Dental, Denver, CO`}
               rows={8}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 font-mono"
+              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
             />
+            <p className="text-xs text-gray-400 mt-1.5">
+              One per line: Practice Name, City, State
+            </p>
 
-            <div className="flex items-center gap-3 mt-3">
+            <div className="flex items-center gap-3 mt-4">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-[#212D40] transition-colors"
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#212D40] hover:border-gray-300 hover:shadow-sm transition-all"
               >
                 <Upload className="h-4 w-4" />
                 Upload CSV
@@ -254,21 +258,69 @@ export default function BatchCheckup() {
 
           <button
             onClick={handleSubmit}
-            disabled={practices.length === 0 || submitting}
-            className="flex items-center gap-2 rounded-xl bg-[#D56753] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-40"
+            disabled={practices.length === 0 || submitting || practices.length > 50}
+            className="flex items-center gap-2 rounded-xl bg-[#D56753] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Starting...
+              </>
+            ) : practices.length === 0 ? (
+              "Enter practices above to begin"
             ) : (
-              <Play className="h-4 w-4" />
+              <>
+                <Play className="h-4 w-4" />
+                Analyze {practices.length} Practice{practices.length !== 1 ? "s" : ""} &rarr;
+              </>
             )}
-            {submitting ? "Starting..." : `Run Analysis (${practices.length})`}
           </button>
 
-          {practices.length > 100 && (
+          {practices.length > 50 && (
             <p className="text-xs text-red-500">
-              Maximum 100 practices per batch. Please reduce your list.
+              Maximum 50 practices per batch. Please reduce your list.
             </p>
+          )}
+
+          {/* Empty state — blurred sample result */}
+          {practices.length === 0 && !batchId && (
+            <div className="relative mt-2 select-none" aria-hidden="true">
+              <div className="absolute inset-0 backdrop-blur-[3px] bg-white/40 rounded-2xl z-10 flex items-center justify-center">
+                <span className="text-sm font-medium text-gray-400">
+                  Your results will appear here
+                </span>
+              </div>
+              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden opacity-60">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 text-left">
+                      <th className="px-4 py-3 font-medium text-gray-400 w-8"></th>
+                      <th className="px-4 py-3 font-medium text-gray-400">Practice</th>
+                      <th className="px-4 py-3 font-medium text-gray-400">City</th>
+                      <th className="px-4 py-3 font-medium text-gray-400 text-right">Score</th>
+                      <th className="px-4 py-3 font-medium text-gray-400">Top Competitor</th>
+                      <th className="px-4 py-3 font-medium text-gray-400">Gap</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { name: "Cascade Endodontics", city: "Bend, OR", score: 72, comp: "High Desert Endo", gap: "14 more reviews" },
+                      { name: "Smith Orthodontics", city: "Portland, OR", score: 58, comp: "Rose City Braces", gap: "32 more reviews" },
+                      { name: "Mountain View Dental", city: "Denver, CO", score: 81, comp: "Mile High Dental", gap: "Leading market" },
+                    ].map((r, i) => (
+                      <tr key={i} className="border-t border-gray-100">
+                        <td className="px-4 py-3"><CheckCircle2 className="h-4 w-4 text-gray-300" /></td>
+                        <td className="px-4 py-3 font-medium text-gray-400">{r.name}</td>
+                        <td className="px-4 py-3 text-gray-300">{r.city}</td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-300">{r.score}</td>
+                        <td className="px-4 py-3 text-gray-300">{r.comp}</td>
+                        <td className="px-4 py-3 text-gray-300">{r.gap}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
       )}
