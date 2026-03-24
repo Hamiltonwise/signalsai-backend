@@ -1,8 +1,14 @@
 /**
- * Doctor Dashboard — Client-Facing Intelligence Layer (WO17)
+ * Doctor Dashboard — Client-Facing Intelligence Layer
  *
- * What a logged-in doctor sees. Their practice data, not the agent management layer.
- * Read-only. Only their organization's data. No admin controls visible.
+ * UX Rules enforced:
+ * - Every card has ONE job.
+ * - Every number has a label.
+ * - Every action has a specific outcome.
+ * - Empty states are never dead ends.
+ * - Mobile first.
+ *
+ * A front desk employee should know what to do in under 10 seconds.
  */
 
 import { useState } from "react";
@@ -19,6 +25,9 @@ import {
   Target,
   Zap,
   ChevronRight,
+  Star,
+  MapPin,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
@@ -66,15 +75,41 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-// ─── Position Card ──────────────────────────────────────────────────
+// ─── Score Helpers ──────────────────────────────────────────────────
+
+function scoreColor(score: number | null): string {
+  if (!score) return "text-gray-400";
+  if (score >= 80) return "text-emerald-600";
+  if (score >= 60) return "text-amber-600";
+  return "text-[#D56753]";
+}
+
+function scoreBg(score: number | null): string {
+  if (!score) return "bg-gray-100";
+  if (score >= 80) return "bg-emerald-50";
+  if (score >= 60) return "bg-amber-50";
+  return "bg-[#D56753]/5";
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// POSITION CARD — One job: show where you rank
+// ═══════════════════════════════════════════════════════════════════
 
 function PositionCard({ ranking }: { ranking: RankingData | null }) {
   if (!ranking || !ranking.rankPosition) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center">
-        <p className="text-lg font-bold text-[#212D40]">Your Market Position</p>
-        <p className="text-sm text-gray-400 mt-2">
-          Your first market scan runs tonight.
+      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+            <MapPin className="w-5 h-5 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#212D40]">Market Position</p>
+            <p className="text-xs text-gray-400">Not available yet</p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-500">
+          Your first market scan is scheduled. Check back tomorrow to see where you rank.
         </p>
       </div>
     );
@@ -87,43 +122,51 @@ function PositionCard({ ranking }: { ranking: RankingData | null }) {
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-        Your Market Position
-      </p>
-      <div className="flex items-center gap-4">
-        <div className="text-center">
-          <span className="text-5xl font-bold text-[#212D40]">
-            #{ranking.rankPosition}
-          </span>
-          <p className="text-sm text-gray-400 mt-1">
-            of {ranking.totalCompetitors}{" "}
-            {ranking.specialty ? `${ranking.specialty}s` : "competitors"} in{" "}
-            {ranking.location || "your market"}
-          </p>
-        </div>
+      <div className="flex items-start justify-between mb-1">
+        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+          Market Position
+        </p>
         {delta !== null && delta !== 0 && (
-          <div
-            className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-bold ${
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
               delta > 0
                 ? "bg-emerald-50 text-emerald-700"
                 : "bg-red-50 text-red-600"
             }`}
           >
-            {delta > 0 ? (
-              <TrendingUp className="h-4 w-4" />
-            ) : (
-              <TrendingDown className="h-4 w-4" />
-            )}
-            {delta > 0 ? "+" : ""}
-            {delta}
-          </div>
+            {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {delta > 0 ? "+" : ""}{delta} since last scan
+          </span>
         )}
       </div>
+
+      <div className="mt-2">
+        <span className="text-5xl font-black text-[#212D40]">
+          #{ranking.rankPosition}
+        </span>
+        <span className="text-lg text-gray-400 ml-2">
+          of {ranking.totalCompetitors}
+        </span>
+      </div>
+
+      <p className="text-sm text-gray-500 mt-2">
+        {ranking.totalCompetitors} {ranking.specialty || "competitor"}s in {ranking.location || "your market"}
+      </p>
+
+      {ranking.rankScore != null && (
+        <div className="mt-4">
+          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${scoreBg(ranking.rankScore)} ${scoreColor(ranking.rankScore)}`}>
+            Score: {ranking.rankScore}/100
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Competitor Gap ─────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// COMPETITOR GAP — One job: name who's beating you and by how much
+// ═══════════════════════════════════════════════════════════════════
 
 function CompetitorGap({ ranking }: { ranking: RankingData | null }) {
   if (!ranking?.topCompetitor) return null;
@@ -135,87 +178,44 @@ function CompetitorGap({ ranking }: { ranking: RankingData | null }) {
       : null;
 
   return (
-    <div
-      className="rounded-2xl p-5"
-      style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
-    >
-      <p className="text-base font-medium text-[#212D40] leading-relaxed">
-        <span className="font-bold">{comp.name}</span> holds position #1
-        {reviewGap && reviewGap > 0
-          ? ` with ${reviewGap} more reviews than you`
-          : ""}
-        {comp.rating ? ` and a ${comp.rating}★ rating` : ""}.
+    <div className="rounded-2xl px-5 py-4" style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}>
+      <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-2">
+        Your Top Competitor
       </p>
+      <p className="text-base font-semibold text-[#212D40] leading-relaxed">
+        <span className="font-bold">{comp.name}</span>{" "}
+        {ranking.rankPosition === 1 ? "is closest to your position" : "holds position #1"}
+        {comp.rating ? ` with a ${comp.rating}-star rating` : ""}
+        {reviewGap != null && reviewGap > 0 ? ` and ${reviewGap} more review${reviewGap !== 1 ? "s" : ""} than you` : ""}.
+      </p>
+      {reviewGap != null && reviewGap > 0 && reviewGap <= 10 && (
+        <p className="text-xs text-[#D56753] font-medium mt-2">
+          {reviewGap} review{reviewGap !== 1 ? "s" : ""} to close the gap. That's {Math.ceil(reviewGap / 3)} weeks at 3 per week.
+        </p>
+      )}
     </div>
   );
 }
 
-// ─── Why Generator — every task gets a predicted outcome ─────────────
+// ═══════════════════════════════════════════════════════════════════
+// PROOFLINE FINDINGS — One job: show what the agents discovered
+// ═══════════════════════════════════════════════════════════════════
 
-function generateFindingWhy(
-  finding: ProoflineFinding,
-  ranking: RankingData | null,
-): string {
-  const comp = ranking?.topCompetitor;
-  const compName = comp?.name || "your top competitor";
-  const position = ranking?.rankPosition;
-  const reviewGap = comp?.reviewCount && ranking?.clientReviews
-    ? comp.reviewCount - ranking.clientReviews
-    : null;
-
-  // Match finding type to a specific, outcome-driven "why"
-  if (/review/i.test(finding.detail || finding.title || finding.type)) {
-    if (reviewGap && reviewGap > 0) {
-      return `Getting from ${ranking?.clientReviews} to ${comp?.reviewCount! + 1} reviews passes ${compName} on Google. That closes one of the three reasons patients choose them over you when they search.`;
-    }
-    return `Practices that actively collect reviews rank higher in local search. Every new review directly improves your visibility to patients searching right now.`;
-  }
-
-  if (/rating|star/i.test(finding.detail || finding.title || finding.type)) {
-    return `Practices that respond to reviews rank higher and convert more referrals from doctors who research you before sending a patient.`;
-  }
-
-  if (/photo|image/i.test(finding.detail || finding.title || finding.type)) {
-    return `Businesses with 20+ photos get 35% more clicks to their website from Google. Most of your competitors already have them.`;
-  }
-
-  if (/hour|schedule/i.test(finding.detail || finding.title || finding.type)) {
-    return `Incomplete business profiles rank lower in local search. This fix takes 2 minutes and directly improves your position.`;
-  }
-
-  if (/website|web/i.test(finding.detail || finding.title || finding.type)) {
-    return `A website linked in your Google profile is a ranking signal. Without one, you're giving that advantage to every competitor who has one.`;
-  }
-
-  if (/rank|position/i.test(finding.detail || finding.title || finding.type)) {
-    if (position && position > 3) {
-      return `Top 3 positions capture 70% of new patient clicks. Moving from #${position} to #${position - 1} means more patients see you first.`;
-    }
-    return `Your market position directly affects how many new patients find you through Google search.`;
-  }
-
-  // Generic fallback — still outcome-driven
-  return `This directly affects where you appear when patients search for a ${ranking?.specialty || "provider"} in ${ranking?.location || "your area"}. Closing this gap moves you up.`;
-}
-
-// ─── Proofline Findings ─────────────────────────────────────────────
-
-function ProoflineFindings({
-  findings,
-  ranking,
-}: {
-  findings: ProoflineFinding[];
-  ranking: RankingData | null;
-}) {
+function ProoflineFindings({ findings }: { findings: ProoflineFinding[] }) {
   if (findings.length === 0) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-6">
-        <h3 className="text-sm font-bold text-[#212D40] mb-2">
-          What We Found This Week
-        </h3>
-        <p className="text-sm text-gray-400">
-          Alloro is monitoring your market. First findings arrive after your next
-          agent run.
+      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+            <Star className="w-5 h-5 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#212D40]">Agent Findings</p>
+            <p className="text-xs text-gray-400">Scanning your market</p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-500">
+          Alloro agents are analyzing your competitors. First findings appear after the next scheduled run.
         </p>
       </div>
     );
@@ -223,21 +223,16 @@ function ProoflineFindings({
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <h3 className="text-sm font-bold text-[#212D40] mb-4">
-        What We Found This Week
-      </h3>
-      <div className="space-y-4">
+      <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+        This Week's Findings
+      </p>
+      <div className="space-y-3">
         {findings.slice(0, 3).map((f, i) => (
-          <div key={i} className="space-y-1.5">
-            <div className="flex gap-3 text-sm">
-              <span className="shrink-0 w-5 h-5 rounded-full bg-[#D56753]/10 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
-                {i + 1}
-              </span>
-              <p className="text-[#212D40] font-medium">{f.detail || f.title}</p>
-            </div>
-            <p className="text-xs text-slate-500 leading-relaxed ml-8">
-              {generateFindingWhy(f, ranking)}
-            </p>
+          <div key={i} className="flex gap-3">
+            <span className="shrink-0 w-6 h-6 rounded-lg bg-[#D56753]/10 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
+              {i + 1}
+            </span>
+            <p className="text-sm text-gray-700 leading-relaxed">{f.detail || f.title}</p>
           </div>
         ))}
       </div>
@@ -245,18 +240,25 @@ function ProoflineFindings({
   );
 }
 
-// ─── Website Card ───────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// WEBSITE CARD — One job: link to your live site
+// ═══════════════════════════════════════════════════════════════════
 
 function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
   if (!website) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-6">
-        <div className="flex items-center gap-2 mb-2">
-          <Globe className="h-4 w-4 text-gray-400" />
-          <h3 className="text-sm font-bold text-[#212D40]">Your PatientPath Site</h3>
+      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+            <Globe className="w-5 h-5 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#212D40]">Your Website</p>
+            <p className="text-xs text-gray-400">In progress</p>
+          </div>
         </div>
-        <p className="text-sm text-gray-400">
-          Your PatientPath website is being prepared.
+        <p className="text-sm text-gray-500">
+          Your PatientPath website is being built. You'll get a notification when it's live.
         </p>
       </div>
     );
@@ -266,47 +268,56 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <div className="flex items-center gap-2 mb-3">
-        <Globe className="h-4 w-4 text-[#D56753]" />
-        <h3 className="text-sm font-bold text-[#212D40]">Your PatientPath Site</h3>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+            <Globe className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#212D40]">Your Website</p>
+            <p className="text-xs text-gray-500">{website.generated_hostname}</p>
+          </div>
+        </div>
+        <a
+          href={siteUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 rounded-lg bg-[#212D40] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#212D40]/90 transition-colors"
+        >
+          View site
+          <ExternalLink className="h-3 w-3" />
+        </a>
       </div>
-      <p className="text-sm text-gray-500 mb-3">{website.generated_hostname}</p>
-      <a
-        href={siteUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D56753] hover:text-[#D56753]/80 transition-colors"
-      >
-        View your site
-        <ExternalLink className="h-3.5 w-3.5" />
-      </a>
     </div>
   );
 }
 
-// ─── Referral Card ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// REFERRAL CARD — One job: let you share your referral link
+// ═══════════════════════════════════════════════════════════════════
 
 function ReferralCard({ referralCode }: { referralCode: string | null }) {
   const [copied, setCopied] = useState(false);
-
   if (!referralCode) return null;
 
-  const link = `https://getalloro.com/checkup?ref=${referralCode}`;
+  const link = `${window.location.origin}/checkup?ref=${referralCode}`;
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <div className="flex items-center gap-2 mb-2">
-        <Share2 className="h-4 w-4 text-gray-400" />
-        <h3 className="text-sm font-bold text-[#212D40]">Refer a Colleague</h3>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-xl bg-[#212D40]/5 flex items-center justify-center">
+          <Share2 className="w-5 h-5 text-[#212D40]" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-[#212D40]">Refer a Colleague</p>
+          <p className="text-xs text-gray-500">You both get one month free</p>
+        </div>
       </div>
-      <p className="text-sm text-gray-500 mb-3">
-        Know another doctor flying blind? Share this. You both get one month free.
-      </p>
       <div className="flex gap-2">
         <input
           readOnly
           value={link}
-          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500 truncate"
+          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-500 truncate"
         />
         <button
           onClick={() => {
@@ -315,24 +326,30 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
               setTimeout(() => setCopied(false), 2000);
             });
           }}
-          className="flex items-center gap-1.5 rounded-lg border border-[#212D40]/20 px-3 py-2 text-xs font-medium text-[#212D40] hover:border-[#212D40]/40 transition-colors"
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-semibold transition-all ${
+            copied
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              : "bg-[#212D40] text-white hover:bg-[#212D40]/90"
+          }`}
         >
           <Copy className="h-3 w-3" />
-          {copied ? "Copied!" : "Copy"}
+          {copied ? "Copied!" : "Copy link"}
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Growth Mode: Gap-to-Next ────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// GROWTH MODE CARDS
+// ═══════════════════════════════════════════════════════════════════
 
 function GapToNext({ ranking }: { ranking: RankingData | null }) {
   if (!ranking?.rankPosition || ranking.rankPosition <= 1) {
     return (
-      <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-6 text-center">
-        <p className="text-lg font-bold text-emerald-800">You're #1.</p>
-        <p className="text-sm text-emerald-600 mt-1">Defend the position. Every review keeps you there.</p>
+      <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-6">
+        <p className="text-lg font-bold text-emerald-800">You're #1</p>
+        <p className="text-sm text-emerald-600 mt-1">Every review keeps you there. Don't stop.</p>
       </div>
     );
   }
@@ -344,186 +361,97 @@ function GapToNext({ ranking }: { ranking: RankingData | null }) {
 
   return (
     <div className="rounded-2xl border-2 border-[#D56753]/20 bg-white p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Target className="h-5 w-5 text-[#D56753]" />
-        <h3 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">
-          Gap to #{ranking.rankPosition - 1}
-        </h3>
-      </div>
-
+      <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-3">
+        Gap to Position #{ranking.rankPosition - 1}
+      </p>
       {comp && (
         <p className="text-base font-semibold text-[#212D40] mb-4">
-          {comp.name} is {ranking.rankPosition === 2 ? "the only one" : "one spot"} ahead of you.
+          {comp.name} is one spot ahead.
         </p>
       )}
-
-      {/* Closeable units — each with a "why" */}
-      <div className="space-y-4">
-        {reviewGap != null && reviewGap > 0 && (
-          <div className="bg-[#212D40]/[0.03] rounded-xl px-4 py-3.5 space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-[#212D40]">
-                  {reviewGap} review{reviewGap !== 1 ? "s" : ""}
-                </p>
-                <p className="text-xs text-gray-500">
-                  They have {comp?.reviewCount}. You have {ranking.clientReviews}.
-                </p>
-              </div>
-              <span className="text-xs font-bold text-[#D56753] bg-[#D56753]/10 px-2.5 py-1 rounded-full">
-                Closeable
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Getting from {ranking.clientReviews} to {(comp?.reviewCount || 0) + 1} reviews passes {comp?.name} on Google. That closes one of the three reasons patients choose them over you when they search.
-            </p>
+      {reviewGap != null && reviewGap > 0 && (
+        <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-[#212D40]">Reviews needed</p>
+            <p className="text-xs text-gray-500">They have {comp?.reviewCount}. You have {ranking.clientReviews}.</p>
           </div>
-        )}
-
-        {comp?.rating && ranking.rankScore != null && (
-          <div className="bg-[#212D40]/[0.03] rounded-xl px-4 py-3.5 space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-[#212D40]">
-                  {comp.rating}★ vs your {(ranking.rankScore / 20).toFixed(1)}★
-                </p>
-                <p className="text-xs text-gray-500">
-                  Rating gap affects search ranking
-                </p>
-              </div>
-              <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
-                Long-term
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Practices that respond to every review see their average rating climb over 3-6 months. Each 0.1★ improvement directly affects where Google places you in local search results.
-            </p>
-          </div>
-        )}
-      </div>
+          <span className="text-lg font-black text-[#D56753]">{reviewGap}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Growth Mode: This Week's Move ──────────────────────────────────
-
-function RecommendedMove({
-  ranking,
-  findings,
-}: {
-  ranking: RankingData | null;
-  findings: ProoflineFinding[];
-}) {
-  const comp = ranking?.topCompetitor;
-  const compName = comp?.name || "your nearest competitor";
-  const reviewGap = comp ? (comp.reviewCount || 0) - (ranking?.clientReviews || 0) : 0;
-
-  // Pick the most impactful action with a specific "why"
+function RecommendedMove({ ranking, findings }: { ranking: RankingData | null; findings: ProoflineFinding[] }) {
   let move = {
-    title: "Ask 3 happy customers for a Google review this week",
-    why: `Review velocity is the fastest way to climb in local search. Every new review is a signal to Google that your business is active and trusted.`,
+    title: "Ask 3 happy patients for a Google review this week",
+    detail: "Review velocity is the fastest lever. Send the link right after their appointment.",
+    cta: "Open Review Requests",
   };
 
-  if (reviewGap > 0 && reviewGap <= 5) {
-    move = {
-      title: `Get ${reviewGap} review${reviewGap !== 1 ? "s" : ""} to pass ${compName}`,
-      why: `You're ${reviewGap} away from overtaking ${compName}. Getting from ${ranking?.clientReviews} to ${(comp?.reviewCount || 0) + 1} reviews changes your rank on Google. That's one good week of asking.`,
-    };
-  } else if (reviewGap > 5 && reviewGap <= 15) {
-    move = {
-      title: `Request 3 reviews this week to close the gap with ${compName}`,
-      why: `Getting from ${ranking?.clientReviews} to ${(comp?.reviewCount || 0) + 1} reviews passes ${compName} on Google. At 3 per week, that's ${Math.ceil(reviewGap / 3)} weeks. Start with your most recent happy customer.`,
-    };
+  if (ranking?.topCompetitor) {
+    const reviewGap = (ranking.topCompetitor.reviewCount || 0) - (ranking.clientReviews || 0);
+    if (reviewGap > 0 && reviewGap <= 5) {
+      move = {
+        title: `Get ${reviewGap} review${reviewGap !== 1 ? "s" : ""} to pass ${ranking.topCompetitor.name}`,
+        detail: `You're ${reviewGap} away. That's one good week.`,
+        cta: "Send Review Requests Now",
+      };
+    }
   }
 
-  if (findings.length > 0 && findings[0].detail) {
-    const finding = findings[0];
-    if (/photo/i.test(finding.detail)) {
-      move = {
-        title: "Add 5 new photos to your Google Business Profile",
-        why: `Businesses with 20+ photos get 35% more clicks from Google. ${compName} likely already has them. This takes 10 minutes and works immediately.`,
-      };
-    }
-    if (/hour|schedule/i.test(finding.detail)) {
-      move = {
-        title: "Update your GBP hours",
-        why: `Incomplete business profiles rank 23% lower in local search. This fix takes 2 minutes and directly improves your position.`,
-      };
-    }
-    if (/respond|reply.*review/i.test(finding.detail)) {
-      move = {
-        title: "Respond to your last 5 reviews",
-        why: `Practices that respond to reviews rank higher and convert more referrals from doctors who research you before sending a patient.`,
-      };
-    }
+  if (findings.length > 0 && findings[0].detail && /photo/i.test(findings[0].detail)) {
+    move = { title: "Add 5 new photos to your Google Business Profile", detail: findings[0].detail, cta: "Open Google Business Profile" };
   }
 
   return (
     <div className="rounded-2xl border border-[#D56753]/20 bg-[#D56753]/[0.03] p-6">
       <div className="flex items-center gap-2 mb-3">
         <Zap className="h-5 w-5 text-[#D56753]" />
-        <h3 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">
-          This Week's Move
-        </h3>
+        <p className="text-xs font-bold uppercase tracking-wider text-[#D56753]">This Week's Move</p>
       </div>
       <p className="text-base font-bold text-[#212D40]">{move.title}</p>
-      <p className="text-sm text-slate-500 mt-2 leading-relaxed">{move.why}</p>
+      <p className="text-sm text-gray-600 mt-1 mb-4">{move.detail}</p>
+      <button className="text-xs font-semibold text-[#D56753] flex items-center gap-1 hover:underline">
+        {move.cta}
+        <ChevronRight className="h-3 w-3" />
+      </button>
     </div>
   );
 }
 
-// ─── Growth Mode: Competitor Activity Feed ──────────────────────────
-
 function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
   if (!ranking?.topCompetitor) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-6">
-        <h3 className="text-sm font-bold text-[#212D40] mb-2">Competitor Activity</h3>
-        <p className="text-sm text-gray-400">Market data appears after your first scan.</p>
+      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+            <Users className="w-5 h-5 text-gray-400" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#212D40]">Competitor Activity</p>
+            <p className="text-xs text-gray-400">Market data appears after your first scan.</p>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // Build activity items from available data
-  const activities: { text: string; type: "warning" | "info" | "neutral" }[] = [];
-
   const comp = ranking.topCompetitor;
-  if (comp.reviewCount > 0) {
-    activities.push({
-      text: `${comp.name} has ${comp.reviewCount} reviews with a ${comp.rating}★ rating`,
-      type: "warning",
-    });
-  }
-  if (ranking.totalCompetitors && ranking.totalCompetitors > 5) {
-    activities.push({
-      text: `${ranking.totalCompetitors} ${ranking.specialty || "practice"}s compete in ${ranking.location || "your market"}`,
-      type: "info",
-    });
-  }
-  if (ranking.rankPosition && ranking.rankPosition > 3) {
-    activities.push({
-      text: `Top 3 positions get 70% of new patient clicks`,
-      type: "neutral",
-    });
-  }
+  const activities: { text: string; dot: string }[] = [];
+  if (comp.reviewCount > 0) activities.push({ text: `${comp.name} has ${comp.reviewCount} reviews at ${comp.rating} stars`, dot: "bg-amber-400" });
+  if (ranking.totalCompetitors && ranking.totalCompetitors > 5) activities.push({ text: `${ranking.totalCompetitors} practices compete in ${ranking.location || "your market"}`, dot: "bg-blue-400" });
+  if (ranking.rankPosition && ranking.rankPosition > 3) activities.push({ text: "Top 3 positions get 70% of new patient search clicks", dot: "bg-gray-300" });
 
   if (activities.length === 0) return null;
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <h3 className="text-sm font-bold text-[#212D40] mb-4">Competitor Activity</h3>
+      <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Competitor Activity</p>
       <div className="space-y-3">
         {activities.map((a, i) => (
           <div key={i} className="flex items-start gap-3 text-sm">
-            <span
-              className={`mt-1 shrink-0 w-2 h-2 rounded-full ${
-                a.type === "warning"
-                  ? "bg-amber-400"
-                  : a.type === "info"
-                    ? "bg-blue-400"
-                    : "bg-gray-300"
-              }`}
-            />
+            <span className={`mt-1.5 shrink-0 w-2 h-2 rounded-full ${a.dot}`} />
             <p className="text-gray-600">{a.text}</p>
           </div>
         ))}
@@ -532,41 +460,20 @@ function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
   );
 }
 
-// ─── Growth Mode: Position Track ────────────────────────────────────
-
 function GrowthPositionTrack({ ranking }: { ranking: RankingData | null }) {
   if (!ranking?.rankPosition || !ranking.totalCompetitors) return null;
 
   const maxPos = Math.min(ranking.totalCompetitors, 10);
   const positions = Array.from({ length: maxPos }, (_, i) => i + 1);
-  const practicePos = ranking.rankPosition;
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
-        Your Position Track
-      </h3>
+      <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Your Position</p>
       <div className="flex items-center gap-1">
         {positions.map((pos) => (
           <div key={pos} className="flex-1 flex flex-col items-center gap-1.5">
-            <div
-              className={`w-full h-2 rounded-full ${
-                pos === practicePos
-                  ? "bg-[#D56753]"
-                  : pos < practicePos
-                    ? "bg-[#212D40]/15"
-                    : "bg-gray-100"
-              }`}
-            />
-            <span
-              className={`text-[10px] font-bold ${
-                pos === practicePos
-                  ? "text-[#D56753]"
-                  : "text-gray-300"
-              }`}
-            >
-              {pos}
-            </span>
+            <div className={`w-full h-2.5 rounded-full ${pos === ranking.rankPosition ? "bg-[#D56753]" : pos < ranking.rankPosition! ? "bg-[#212D40]/15" : "bg-gray-100"}`} />
+            <span className={`text-[10px] font-bold ${pos === ranking.rankPosition ? "text-[#D56753]" : "text-gray-300"}`}>{pos}</span>
           </div>
         ))}
       </div>
@@ -578,35 +485,23 @@ function GrowthPositionTrack({ ranking }: { ranking: RankingData | null }) {
   );
 }
 
-// ─── Mode Toggle ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// MODE TOGGLE
+// ═══════════════════════════════════════════════════════════════════
 
-function ModeToggle({
-  mode,
-  onChange,
-}: {
-  mode: "standard" | "growth";
-  onChange: (mode: "standard" | "growth") => void;
-}) {
+function ModeToggle({ mode, onChange }: { mode: "standard" | "growth"; onChange: (m: "standard" | "growth") => void }) {
   return (
-    <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
+    <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1 shrink-0">
       <button
         onClick={() => onChange("standard")}
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-          mode === "standard"
-            ? "bg-white text-[#212D40] shadow-sm"
-            : "text-gray-500 hover:text-gray-700"
-        }`}
+        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${mode === "standard" ? "bg-white text-[#212D40] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
       >
         <Shield className="h-3.5 w-3.5" />
-        Standard
+        Overview
       </button>
       <button
         onClick={() => onChange("growth")}
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-          mode === "growth"
-            ? "bg-[#D56753] text-white shadow-sm"
-            : "text-gray-500 hover:text-gray-700"
-        }`}
+        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${mode === "growth" ? "bg-[#D56753] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
       >
         <Flame className="h-3.5 w-3.5" />
         Growth
@@ -615,7 +510,9 @@ function ModeToggle({
   );
 }
 
-// ─── Main Component ─────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════
 
 export default function DoctorDashboard() {
   const { userProfile } = useAuth();
@@ -627,12 +524,10 @@ export default function DoctorDashboard() {
   const practiceName = selectedLocation?.name || userProfile?.practiceName || "Your Practice";
   const locationName = selectedLocation?.name || null;
 
-  // Role-based gating
   const userRole = getPriorityItem("user_role") as string | null;
   const isOwnerOrManager = userRole === "admin" || userRole === "manager";
-  const canSendReviews = userRole !== "viewer"; // owner + manager + staff
+  const canSendReviews = userRole !== "viewer";
 
-  // Ranking data
   const { data: rankingData } = useQuery({
     queryKey: ["client-ranking", orgId, locationId],
     queryFn: async (): Promise<RankingData | null> => {
@@ -662,7 +557,6 @@ export default function DoctorDashboard() {
     staleTime: 10 * 60_000,
   });
 
-  // Agent data (Proofline findings)
   const { data: agentData } = useQuery({
     queryKey: ["client-agent-data", orgId, locationId],
     queryFn: () => agents.getLatestAgentData(orgId!, locationId),
@@ -670,26 +564,19 @@ export default function DoctorDashboard() {
     staleTime: 10 * 60_000,
   });
 
-  // Extract proofline findings from agent data
   const prooflineFindings: ProoflineFinding[] = (() => {
     if (!agentData?.successful) return [];
     const results = agentData.results || agentData.data || [];
-    const proofline = Array.isArray(results)
-      ? results.find((r: any) => r.agent_type === "proofline")
-      : null;
+    const proofline = Array.isArray(results) ? results.find((r: any) => r.agent_type === "proofline") : null;
     if (!proofline?.agent_output) return [];
-    const output =
-      typeof proofline.agent_output === "string"
-        ? tryParse(proofline.agent_output)
-        : proofline.agent_output;
+    const output = typeof proofline.agent_output === "string" ? tryParse(proofline.agent_output) : proofline.agent_output;
     if (typeof output === "object" && output !== null) {
-      const findings = (output as any).findings || (output as any).items || [];
-      if (Array.isArray(findings)) return findings.slice(0, 3);
+      const f = (output as any).findings || (output as any).items || [];
+      if (Array.isArray(f)) return f.slice(0, 3);
     }
     return [];
   })();
 
-  // Website info
   const { data: websiteData } = useQuery({
     queryKey: ["client-website", orgId],
     queryFn: async (): Promise<WebsiteInfo | null> => {
@@ -701,7 +588,6 @@ export default function DoctorDashboard() {
     staleTime: 10 * 60_000,
   });
 
-  // Referral code
   const { data: profileData } = useQuery({
     queryKey: ["client-profile"],
     queryFn: async () => apiGet({ path: "/profile" }),
@@ -709,80 +595,56 @@ export default function DoctorDashboard() {
   });
 
   const referralCode = profileData?.referral_code || profileData?.organization?.referral_code || null;
-
   const [mode, setMode] = useState<"standard" | "growth">("standard");
-
-  const isLoading =
-    !rankingData && !agentData && !websiteData && !profileData;
+  const isLoading = !rankingData && !agentData && !websiteData && !profileData;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
-      {/* Header: Greeting + Mode Toggle */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#212D40]">
-            {mode === "growth"
-              ? `Let's close the gap, ${firstName}.`
-              : `${getGreeting()}, ${firstName}.`}
+    <div className="mx-auto max-w-2xl space-y-5 px-4 py-6 sm:py-8">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#212D40] truncate">
+            {mode === "growth" ? `Close the gap, ${firstName}.` : `${getGreeting()}, ${firstName}.`}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 mt-0.5">
             {mode === "growth"
-              ? `Here's exactly what stands between ${practiceName} and the next position.`
-              : `Here's what Alloro found this week for ${practiceName}.`}
+              ? `What stands between ${practiceName} and the next position.`
+              : `What Alloro found this week for ${practiceName}.`}
           </p>
           {locationName && (
-            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-              Viewing: {locationName}
+            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              {locationName}
             </p>
           )}
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
       </div>
 
-      {/* Loading skeleton */}
       {isLoading && (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-28 animate-pulse rounded-2xl border border-gray-200 bg-white"
-            />
+            <div key={i} className="h-28 animate-pulse rounded-2xl border border-gray-200 bg-white" />
           ))}
         </div>
       )}
 
       {mode === "standard" ? (
         <>
-          {/* ── Standard Mode ── */}
           <PositionCard ranking={rankingData ?? null} />
           <CompetitorGap ranking={rankingData ?? null} />
-          {isOwnerOrManager && <ProoflineFindings findings={prooflineFindings} ranking={rankingData ?? null} />}
+          {isOwnerOrManager && <ProoflineFindings findings={prooflineFindings} />}
           {isOwnerOrManager && <WebsiteCard website={websiteData ?? null} />}
-          {canSendReviews && (
-            <ReviewRequestCard
-              placeId={rankingData?.placeId ?? null}
-              practiceName={practiceName}
-            />
-          )}
+          {canSendReviews && <ReviewRequestCard placeId={rankingData?.placeId ?? null} practiceName={practiceName} />}
           {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
         </>
       ) : (
         <>
-          {/* ── Growth Mode ── */}
           <GrowthPositionTrack ranking={rankingData ?? null} />
           <GapToNext ranking={rankingData ?? null} />
-          <RecommendedMove
-            ranking={rankingData ?? null}
-            findings={prooflineFindings}
-          />
+          <RecommendedMove ranking={rankingData ?? null} findings={prooflineFindings} />
           <CompetitorActivityFeed ranking={rankingData ?? null} />
-          {canSendReviews && (
-            <ReviewRequestCard
-              placeId={rankingData?.placeId ?? null}
-              practiceName={practiceName}
-            />
-          )}
+          {canSendReviews && <ReviewRequestCard placeId={rankingData?.placeId ?? null} practiceName={practiceName} />}
           {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
         </>
       )}
