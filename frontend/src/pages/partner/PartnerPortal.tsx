@@ -24,8 +24,11 @@ import {
   DollarSign,
   Target,
   ArrowRight,
+  CheckCircle2,
+  Pencil,
+  Loader2,
 } from "lucide-react";
-import { apiGet } from "@/api/index";
+import { apiGet, apiPost } from "@/api/index";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -60,7 +63,7 @@ interface PerformanceData {
 
 // ─── Sidebar ────────────────────────────────────────────────────────
 
-type PartnerTab = "portfolio" | "checkup" | "performance";
+type PartnerTab = "portfolio" | "checkup" | "performance" | "write";
 
 function PartnerSidebar({
   active,
@@ -73,6 +76,7 @@ function PartnerSidebar({
     { key: "portfolio", label: "Portfolio", icon: Briefcase },
     { key: "checkup", label: "Checkup", icon: Search },
     { key: "performance", label: "Performance", icon: BarChart3 },
+    { key: "write", label: "Write an Email", icon: Pencil },
   ];
 
   return (
@@ -95,6 +99,146 @@ function PartnerSidebar({
   );
 }
 
+// ─── Partner Progress Tracker ────────────────────────────────────────
+
+function ProgressTracker() {
+  const { data: perfData } = useQuery({
+    queryKey: ["partner-performance"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/partner/performance" });
+      return res?.success ? res.performance as PerformanceData : null;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const scans = perfData?.totalScans || 0;
+  const shares = perfData?.emailsCaptured || 0; // shares tracked as email captures with ref code
+  const accounts = perfData?.accountsCreated || 0;
+  const hasActive = (perfData?.activeSubscriptions || 0) > 0;
+
+  const steps: {
+    label: string;
+    reward: string;
+    complete: boolean;
+    progress?: string;
+    cta: string;
+    ctaAction?: string;
+  }[] = [
+    {
+      label: "Set up your partner profile",
+      reward: "Unlocks your referral code and portfolio tracking",
+      complete: true, // they're here, so it's done
+      cta: "Edit profile",
+      ctaAction: "/partner",
+    },
+    {
+      label: "Run your first 5 Checkups",
+      reward: "Each scan adds a practice to your portfolio with a live score",
+      complete: scans >= 5,
+      progress: `${Math.min(scans, 5)}/5`,
+      cta: scans >= 5 ? "Done" : "Run a Checkup",
+      ctaAction: "/checkup",
+    },
+    {
+      label: "Share 3 results with doctors",
+      reward: "Shared results convert at 3x the rate of cold outreach",
+      complete: shares >= 3,
+      progress: `${Math.min(shares, 3)}/3`,
+      cta: shares >= 3 ? "Done" : "Share a result",
+    },
+    {
+      label: "Get your first practice signed up",
+      reward: "Your first referred account earns you a free month",
+      complete: accounts >= 1,
+      progress: accounts >= 1 ? undefined : `${accounts}/1`,
+      cta: accounts >= 1 ? "Done" : "Keep sharing",
+    },
+    {
+      label: "Earn your first referral month",
+      reward: "One free month of Alloro for every practice that signs up",
+      complete: hasActive,
+      cta: hasActive ? "Earned" : "Unlocks after step 4",
+    },
+  ];
+
+  const completedCount = steps.filter((s) => s.complete).length;
+
+  // Hide tracker if all steps complete
+  if (completedCount === steps.length) return null;
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+          Getting Started
+        </p>
+        <span className="text-xs font-bold text-[#D56753]">
+          {completedCount}/{steps.length}
+        </span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-5">
+        <div
+          className="h-full bg-[#D56753] rounded-full transition-all duration-700"
+          style={{ width: `${(completedCount / steps.length) * 100}%` }}
+        />
+      </div>
+
+      <div className="space-y-3">
+        {steps.map((step, i) => (
+          <div
+            key={i}
+            className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-all ${
+              step.complete
+                ? "bg-[#D56753]/[0.04]"
+                : "bg-gray-50"
+            }`}
+          >
+            {/* Step indicator */}
+            <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              step.complete
+                ? "bg-[#D56753] text-white"
+                : "bg-[#212D40]/10 text-[#212D40]/40"
+            }`}>
+              {step.complete ? (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              ) : (
+                i + 1
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className={`text-sm font-semibold ${step.complete ? "text-[#D56753]" : "text-[#212D40]"}`}>
+                  {step.label}
+                </p>
+                {step.progress && !step.complete && (
+                  <span className="text-[10px] font-bold text-[#212D40]/40 bg-[#212D40]/5 px-1.5 py-0.5 rounded">
+                    {step.progress}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">{step.reward}</p>
+            </div>
+
+            {/* CTA */}
+            {!step.complete && step.ctaAction && (
+              <a
+                href={step.ctaAction}
+                className="shrink-0 text-[11px] font-semibold text-[#D56753] hover:underline"
+              >
+                {step.cta} →
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Screen 1: Portfolio View ───────────────────────────────────────
 
 function PortfolioView() {
@@ -112,6 +256,9 @@ function PortfolioView() {
 
   return (
     <div className="space-y-6">
+      {/* Progress tracker — above everything */}
+      <ProgressTracker />
+
       {/* Stats header */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
@@ -351,6 +498,175 @@ function PerformanceDashboard() {
   );
 }
 
+// ─── Email Writer ───────────────────────────────────────────────────
+
+interface GeneratedEmail {
+  subject: string;
+  body: string;
+}
+
+function EmailWriter() {
+  const [situation, setSituation] = useState("");
+  const [tone, setTone] = useState<"professional" | "friendly" | "urgent">("professional");
+  const [generating, setGenerating] = useState(false);
+  const [emails, setEmails] = useState<GeneratedEmail[]>([]);
+  const [history, setHistory] = useState<{ situation: string; emails: GeneratedEmail[] }[]>([]);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [error, setError] = useState("");
+
+  const handleGenerate = async () => {
+    if (!situation.trim() || generating) return;
+    setGenerating(true);
+    setError("");
+    setEmails([]);
+
+    try {
+      const res = await apiPost({
+        path: "/api/partner/write",
+        passedData: { situation: situation.trim(), tone },
+      });
+
+      if (res?.success && res.emails?.length) {
+        setEmails(res.emails);
+        setHistory((prev) => [{ situation: situation.trim(), emails: res.emails }, ...prev].slice(0, 5));
+      } else {
+        setError(res?.error || "Failed to generate emails. Please try again.");
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCopy = (idx: number) => {
+    const email = emails[idx];
+    const text = `Subject: ${email.subject}\n\n${email.body}`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Input form */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <label className="block text-sm font-semibold text-[#212D40] mb-2">
+          Describe your situation
+        </label>
+        <textarea
+          value={situation}
+          onChange={(e) => setSituation(e.target.value)}
+          placeholder="I need to follow up with Dr. Martinez who watched our demo but mentioned the price was a concern"
+          rows={3}
+          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none"
+        />
+
+        {/* Tone selector */}
+        <div className="flex items-center gap-2 mt-3">
+          <span className="text-xs font-medium text-gray-500">Tone:</span>
+          {(["professional", "friendly", "urgent"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTone(t)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-all capitalize ${
+                tone === t
+                  ? "border-[#D56753] bg-[#D56753]/5 text-[#D56753] font-semibold"
+                  : "border-gray-200 text-gray-500 hover:border-gray-300"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={handleGenerate}
+          disabled={!situation.trim() || generating}
+          className="mt-4 flex items-center gap-2 rounded-xl bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-40"
+        >
+          {generating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Writing...
+            </>
+          ) : (
+            <>
+              <Pencil className="h-4 w-4" />
+              Generate emails
+            </>
+          )}
+        </button>
+
+        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+      </div>
+
+      {/* Generated emails */}
+      {emails.length > 0 && (
+        <div className="space-y-4">
+          {emails.map((email, idx) => (
+            <div key={idx} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    Option {idx + 1}
+                  </span>
+                  <p className="text-sm font-bold text-[#212D40] mt-1">
+                    {email.subject}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleCopy(idx)}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all shrink-0 ${
+                    copiedIdx === idx
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {copiedIdx === idx ? (
+                    <>
+                      <CheckCircle2 className="h-3 w-3" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                {email.body}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* History */}
+      {history.length > 0 && emails.length === 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Recent</p>
+          {history.map((h, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                setSituation(h.situation);
+                setEmails(h.emails);
+              }}
+              className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 hover:border-gray-300 transition-colors truncate"
+            >
+              {h.situation}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function PartnerPortal() {
@@ -387,17 +703,20 @@ export default function PartnerPortal() {
                 {activeTab === "portfolio" && "Your Portfolio"}
                 {activeTab === "checkup" && "Run a Checkup"}
                 {activeTab === "performance" && "Referral Performance"}
+                {activeTab === "write" && "Write an Email"}
               </h1>
               <p className="text-sm text-gray-500 mt-1">
                 {activeTab === "portfolio" && "Practices you've referred to Alloro."}
                 {activeTab === "checkup" && "Scan any practice and share the results."}
                 {activeTab === "performance" && "Your referral code performance."}
+                {activeTab === "write" && "Generate follow-up emails in seconds."}
               </p>
             </div>
 
             {activeTab === "portfolio" && <PortfolioView />}
             {activeTab === "checkup" && <CheckupLauncher />}
             {activeTab === "performance" && <PerformanceDashboard />}
+            {activeTab === "write" && <EmailWriter />}
           </div>
         </div>
       </div>

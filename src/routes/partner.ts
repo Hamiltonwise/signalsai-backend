@@ -6,11 +6,27 @@
  */
 
 import express from "express";
+import Anthropic from "@anthropic-ai/sdk";
+import rateLimit from "express-rate-limit";
 import { authenticateToken } from "../middleware/auth";
 import { rbacMiddleware, type RBACRequest } from "../middleware/rbac";
 import { db } from "../database/connection";
 
 const partnerRoutes = express.Router();
+
+let llmClient: Anthropic | null = null;
+function getLLM(): Anthropic {
+  if (!llmClient) llmClient = new Anthropic();
+  return llmClient;
+}
+
+const writeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many requests. Try again later." },
+});
 
 /**
  * Middleware: verify the user's org has partner_type set
@@ -168,6 +184,88 @@ partnerRoutes.get(
     } catch (error: any) {
       console.error("[Partner] Performance error:", error.message);
       return res.status(500).json({ success: false, error: "Failed to load performance" });
+    }
+  },
+);
+
+/**
+ * POST /api/partner/write
+ *
+ * Email writing assistant — generates 2 follow-up email options via Claude.
+ * Body: { situation: string, tone: "professional" | "friendly" | "urgent" }
+ */
+partnerRoutes.post(
+  "/write",
+  authenticateToken,
+  rbacMiddleware,
+  writeLimiter,
+  async (req: RBACRequest, res) => {
+    try {
+      if (!req.organizationId) {
+        return res.status(401).json({ success: false, error: "Authentication required" });
+      }
+
+      const { situation, tone = "professional" } = req.body;
+
+      if (!situation || typeof situation !== "string" || situation.trim().length === 0) {
+        return res.status(400).json({ success: false, error: "Situation is required" });
+      }
+      if (situation.trim().length > 1000) {
+        return res.status(400).json({ success: false, error: "Too long (max 1000 characters)" });
+      }
+
+      const toneInstruction =
+        tone === "urgent"
+          ? "Write with urgency — time-sensitive, action needed soon."
+          : tone === "friendly"
+            ? "Write casually and warmly — like texting a colleague you respect."
+            : "Write professionally — polished but approachable.";
+
+      const systemPrompt = `You write emails for a partner marketing director whose audience is dental practice owners and endodontists. Her tone is warm, direct, and professional — never pushy. She is building trust, not closing sales. Alloro is a business intelligence platform that shows practices their competitive position and automatically builds their online presence.
+
+Rules:
+- Write emails that feel personal and specific, never like a template
+- Always under 150 words per email
+- Always include a clear single call to action
+- Never use exclamation marks excessively
+- Subject lines should be conversational, not salesy
+- Sign off with first name only
+
+Respond with EXACTLY 2 email options as a JSON array:
+[{"subject":"...","body":"..."},{"subject":"...","body":"..."}]
+Return only the JSON array. No markdown, no explanation.`;
+
+      const anthropic = getLLM();
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [
+          { role: "user", content: `Tone: ${toneInstruction}\n\nSituation: ${situation.trim()}` },
+        ],
+      });
+
+      const text = response.content[0]?.type === "text" ? response.content[0].text : "";
+
+      let emails: { subject: string; body: string }[] = [];
+      try {
+        const cleaned = text.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
+        emails = JSON.parse(cleaned);
+        if (!Array.isArray(emails) || emails.length === 0) throw new Error("Bad format");
+        emails = emails.slice(0, 2).map((e) => ({
+          subject: String(e.subject || "Follow-up"),
+          body: String(e.body || ""),
+        }));
+      } catch {
+        console.error("[Partner] Parse fail:", text.slice(0, 200));
+        return res.status(500).json({ success: false, error: "Failed to generate. Try again." });
+      }
+
+      console.log(`[Partner] Generated ${emails.length} emails for org ${req.organizationId}`);
+      return res.json({ success: true, emails });
+    } catch (error: any) {
+      console.error("[Partner] Write error:", error.message);
+      return res.status(500).json({ success: false, error: "Something went wrong." });
     }
   },
 );
