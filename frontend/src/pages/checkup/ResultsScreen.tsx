@@ -37,6 +37,14 @@ export interface CheckupFinding {
   impact: number;
 }
 
+export interface CheckupGapVelocity {
+  clientWeekly: number;
+  competitorWeekly: number;
+  weeksToPass: number | null;
+  thisWeekAsk: number;
+  competitorName: string;
+}
+
 export interface CheckupGapItem {
   id: string;
   label: string;
@@ -46,6 +54,7 @@ export interface CheckupGapItem {
   action: string;
   timeEstimate: string;
   competitorName: string | null;
+  velocity?: CheckupGapVelocity;
 }
 
 export interface CheckupResults {
@@ -249,6 +258,103 @@ function FindingCard({
 // Gap Progress Bar — concrete closeable units, not percentages
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Review Race Card — velocity-based progress, framed as a race
+// ---------------------------------------------------------------------------
+
+function ReviewRaceCard({ gap }: { gap: CheckupGapItem }) {
+  const v = gap.velocity;
+  const [expanded, setExpanded] = useState(false);
+  const pct =
+    gap.target > 0 ? Math.min(100, Math.round((gap.current / gap.target) * 100)) : 0;
+  const isLeading = gap.current >= gap.target;
+
+  return (
+    <div className={`rounded-xl border p-5 ${isLeading ? "border-emerald-200 bg-emerald-50/50" : "border-[#D56753]/20 bg-white"}`}>
+      {/* Race header */}
+      <p className={`text-sm font-bold leading-snug ${isLeading ? "text-emerald-800" : "text-[#212D40]"}`}>
+        {gap.label}
+      </p>
+
+      {/* Race track */}
+      <div className="mt-4 relative">
+        <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-1000 ease-out ${isLeading ? "bg-emerald-500" : "bg-[#D56753]"}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between mt-1.5">
+          <span className="text-[11px] font-semibold text-[#212D40] tabular-nums">
+            You: {gap.current}
+          </span>
+          <span className="text-[11px] font-semibold text-slate-400 tabular-nums">
+            {gap.competitorName}: {gap.target > gap.current ? gap.target - 1 : gap.target}
+          </span>
+        </div>
+      </div>
+
+      {/* Velocity stats */}
+      {v && (
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+            <p className="text-lg font-bold text-[#212D40] tabular-nums">{v.clientWeekly}</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Your weekly pace</p>
+          </div>
+          <div className="bg-slate-50 rounded-lg p-2.5 text-center">
+            <p className="text-lg font-bold text-slate-500 tabular-nums">{v.competitorWeekly}</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Their weekly pace</p>
+          </div>
+          <div className={`rounded-lg p-2.5 text-center ${v.weeksToPass ? "bg-[#D56753]/5" : "bg-emerald-50"}`}>
+            <p className={`text-lg font-bold tabular-nums ${v.weeksToPass ? "text-[#D56753]" : "text-emerald-600"}`}>
+              {v.weeksToPass ? `${v.weeksToPass}w` : "---"}
+            </p>
+            <p className="text-[10px] text-slate-400 leading-tight">
+              {v.weeksToPass ? "To pass" : isLeading ? "Leading" : "Increase pace"}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* This week's ask */}
+      {v && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="mt-4 w-full text-left"
+        >
+          <div className={`rounded-lg p-3 border transition-colors ${
+            expanded ? "border-[#D56753]/20 bg-[#D56753]/3" : "border-slate-200 bg-slate-50 hover:border-[#D56753]/20"
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-[#212D40]">
+                  This week's target: {v.thisWeekAsk} review{v.thisWeekAsk !== 1 ? "s" : ""}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {gap.timeEstimate}
+                </p>
+              </div>
+              <span className="text-[11px] text-[#D56753] font-medium shrink-0">
+                {expanded ? "Hide" : "How"}
+              </span>
+            </div>
+            {expanded && (
+              <p className="text-xs text-slate-600 leading-relaxed mt-2.5 pt-2.5 border-t border-slate-200">
+                {gap.action}
+              </p>
+            )}
+          </div>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Standard Gap Bar (for non-velocity gaps like rating, GBP completeness)
+// ---------------------------------------------------------------------------
+
 function GapBar({ gap }: { gap: CheckupGapItem }) {
   const pct =
     gap.target > 0 ? Math.min(100, Math.round((gap.current / gap.target) * 100)) : 0;
@@ -295,20 +401,28 @@ function GapBar({ gap }: { gap: CheckupGapItem }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Gap Section — routes review_race to ReviewRaceCard, others to GapBar
+// ---------------------------------------------------------------------------
+
 function GapSection({ gaps }: { gaps: CheckupGapItem[] }) {
   if (!gaps || gaps.length === 0) return null;
 
   return (
     <div className="space-y-3">
       <h2 className="text-sm font-bold text-[#212D40] uppercase tracking-wide">
-        How to Move Up
+        The Race
       </h2>
       <p className="text-xs text-slate-400 -mt-1">
-        Concrete steps to improve your position. Real numbers, not percentages.
+        Real numbers. Real competitors. Here's exactly what it takes to move up.
       </p>
-      {gaps.map((gap) => (
-        <GapBar key={gap.id} gap={gap} />
-      ))}
+      {gaps.map((gap) =>
+        gap.velocity ? (
+          <ReviewRaceCard key={gap.id} gap={gap} />
+        ) : (
+          <GapBar key={gap.id} gap={gap} />
+        ),
+      )}
     </div>
   );
 }

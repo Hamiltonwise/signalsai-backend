@@ -33,6 +33,14 @@ export interface CheckupMarket {
   rank: number;
 }
 
+export interface CheckupGapVelocity {
+  clientWeekly: number;
+  competitorWeekly: number;
+  weeksToPass: number | null;
+  thisWeekAsk: number;
+  competitorName: string;
+}
+
 export interface CheckupGapItem {
   id: string;
   label: string;
@@ -42,6 +50,7 @@ export interface CheckupGapItem {
   action: string;
   timeEstimate: string;
   competitorName: string | null;
+  velocity?: CheckupGapVelocity;
 }
 
 export interface CheckupAnalysis {

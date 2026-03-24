@@ -231,22 +231,76 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
       action: string;
       timeEstimate: string;
       competitorName: string | null;
+      velocity?: {
+        clientWeekly: number;
+        competitorWeekly: number;
+        weeksToPass: number | null;
+        thisWeekAsk: number;
+        competitorName: string;
+      };
     }
 
     const gaps: GapItem[] = [];
 
-    // Gap 1: Reviews to overtake next competitor
+    // Gap 1: Review Race — velocity-based model to pass next competitor
     if (nextAbove && nextAbove.reviewsCount > clientReviews) {
-      const reviewGap = nextAbove.reviewsCount - clientReviews + 1; // +1 to overtake
+      const reviewsNeeded = nextAbove.reviewsCount - clientReviews + 1;
+
+      // Estimate current velocity: assume ~2 year accumulation for both parties
+      // With no real velocity data, estimate from total count
+      const clientWeeklyVelocity = Math.max(0.2, clientReviews / 104); // ~2 years of weeks
+      const competitorWeeklyVelocity = Math.max(0.2, nextAbove.reviewsCount / 104);
+
+      // Net weekly gain needed: must outpace competitor's velocity + close the gap
+      const netWeeklyGain = Math.max(0.1, clientWeeklyVelocity - competitorWeeklyVelocity);
+      const weeksToPass = netWeeklyGain > 0
+        ? Math.ceil(reviewsNeeded / netWeeklyGain)
+        : null; // never catches up at current pace
+
+      // This week's target: how many reviews to ask for this week
+      const thisWeekAsk = Math.max(1, Math.ceil(competitorWeeklyVelocity + 1));
+
       gaps.push({
-        id: "reviews",
-        label: `${reviewGap} more review${reviewGap !== 1 ? "s" : ""} puts you above ${nextAbove.name}`,
+        id: "review_race",
+        label: `${reviewsNeeded} review${reviewsNeeded !== 1 ? "s" : ""} to pass ${nextAbove.name}`,
         current: clientReviews,
         target: nextAbove.reviewsCount + 1,
         unit: "reviews",
-        action: "Ask your 3 most recent happy customers for a Google review today.",
-        timeEstimate: reviewGap <= 5 ? "1-2 weeks" : reviewGap <= 15 ? "1-2 months" : "3-6 months",
+        action: `Ask ${thisWeekAsk} customer${thisWeekAsk !== 1 ? "s" : ""} for a Google review this week. Start with your most recent happy customer — they remember you best.`,
+        timeEstimate: weeksToPass
+          ? weeksToPass <= 4 ? `~${weeksToPass} week${weeksToPass !== 1 ? "s" : ""} at current pace`
+            : weeksToPass <= 12 ? `~${Math.ceil(weeksToPass / 4)} months at current pace`
+            : `${Math.ceil(weeksToPass / 4)} months — increase to ${thisWeekAsk + 1}/week to cut that in half`
+          : `You need to increase your review pace to close this gap`,
         competitorName: nextAbove.name,
+        // Extra velocity fields for the frontend race display
+        velocity: {
+          clientWeekly: Math.round(clientWeeklyVelocity * 10) / 10,
+          competitorWeekly: Math.round(competitorWeeklyVelocity * 10) / 10,
+          weeksToPass,
+          thisWeekAsk,
+          competitorName: nextAbove.name,
+        },
+      });
+    } else if (nextAbove) {
+      // Client leads in reviews — show the lead
+      const lead = clientReviews - nextAbove.reviewsCount;
+      gaps.push({
+        id: "review_race",
+        label: `You lead ${nextAbove.name} by ${lead} review${lead !== 1 ? "s" : ""}`,
+        current: clientReviews,
+        target: nextAbove.reviewsCount,
+        unit: "reviews",
+        action: "Keep your pace up. One review per week maintains your lead.",
+        timeEstimate: "Leading",
+        competitorName: nextAbove.name,
+        velocity: {
+          clientWeekly: Math.round(Math.max(0.2, clientReviews / 104) * 10) / 10,
+          competitorWeekly: Math.round(Math.max(0.2, nextAbove.reviewsCount / 104) * 10) / 10,
+          weeksToPass: null,
+          thisWeekAsk: 1,
+          competitorName: nextAbove.name,
+        },
       });
     }
 
@@ -262,21 +316,6 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
         action: "Respond to every negative review within 24 hours. Ask satisfied customers to share their experience.",
         timeEstimate: starsNeeded <= 0.2 ? "1-2 months" : "3-6 months",
         competitorName: null,
-      });
-    }
-
-    // Gap 3: Review velocity (if competitor has more reviews, estimate monthly pace)
-    if (topCompetitor && topCompetitor.reviewsCount > clientReviews) {
-      const monthlyTarget = Math.max(3, Math.ceil(topCompetitor.reviewsCount / 24)); // assume 2yr accumulation
-      gaps.push({
-        id: "velocity",
-        label: `${monthlyTarget} reviews per month closes the gap with ${topCompetitor.name}`,
-        current: 0, // we don't have velocity data yet
-        target: monthlyTarget,
-        unit: "reviews/month",
-        action: "Set up an automated review request after every appointment or service.",
-        timeEstimate: "Ongoing",
-        competitorName: topCompetitor.name,
       });
     }
 
