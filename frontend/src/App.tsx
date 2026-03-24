@@ -14,6 +14,7 @@ import DoctorDashboard from "./pages/DoctorDashboard";
 import ProgressReport from "./pages/ProgressReport";
 import RankingsScreen from "./pages/RankingsScreen";
 import Demo from "./pages/Demo";
+import BusinessClarity from "./pages/BusinessClarity";
 import PartnerPortal from "./pages/partner/PartnerPortal";
 import ReferralIntelligence from "./pages/ReferralIntelligence";
 import Admin from "./pages/Admin";
@@ -113,6 +114,9 @@ function App() {
 
               {/* Public demo — no auth required */}
               <Route path="/demo" element={<Demo />} />
+
+              {/* Business Clarity content page — SEO, no auth */}
+              <Route path="/business-clarity" element={<BusinessClarity />} />
 
               {/* Partner Portal — auth required, own layout */}
               <Route

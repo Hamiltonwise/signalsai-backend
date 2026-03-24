@@ -10,6 +10,11 @@ import { analyzeCheckup } from "../../api/checkup";
 import type { CheckupAnalysis, CheckupCompetitor } from "../../api/checkup";
 import type { CheckupResults } from "./ResultsScreen";
 import { trackEvent } from "../../api/tracking";
+import {
+  isConferenceMode,
+  withTimeout,
+  CONFERENCE_ANALYSIS,
+} from "./conferenceFallback";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -532,8 +537,12 @@ export default function ScanningTheater() {
     });
 
     async function analyze() {
+      const conferenceActive = isConferenceMode();
+      const timeoutMs = conferenceActive ? 5000 : 45000;
+
       try {
-        const result = await analyzeCheckup({
+        // In conference mode: race API against 5s timeout, fallback to pre-seeded data
+        const apiCall = analyzeCheckup({
           name: place.name,
           city: place.city,
           state: place.state,
@@ -545,23 +554,34 @@ export default function ScanningTheater() {
           location: place.location,
         });
 
+        const result = conferenceActive
+          ? await withTimeout(apiCall, timeoutMs)
+          : await apiCall;
+
         if (cancelled) return;
 
-        if (result.success) {
-          analysisRef.current = result;
-          setApiDone(true);
+        // Use real result if available, otherwise fall back to conference data
+        const finalResult = (result && result.success) ? result : CONFERENCE_ANALYSIS;
 
-          // Track: checkup.scan_completed
-          trackEvent("checkup.scan_completed", {
-            score: result.score.composite,
-            competitor_count: result.competitors.length,
-            top_competitor_name: result.topCompetitor?.name || null,
-          });
-        } else {
-          setError("Analysis failed. Please try again.");
-        }
+        analysisRef.current = finalResult;
+        setApiDone(true);
+
+        trackEvent("checkup.scan_completed", {
+          score: finalResult.score.composite,
+          competitor_count: finalResult.competitors.length,
+          top_competitor_name: finalResult.topCompetitor?.name || null,
+          conference_fallback: result === null || !result?.success,
+        });
       } catch {
-        if (!cancelled) setError("Something went wrong. Please try again.");
+        if (cancelled) return;
+
+        // On any error in conference mode: use fallback seamlessly
+        if (conferenceActive) {
+          analysisRef.current = CONFERENCE_ANALYSIS;
+          setApiDone(true);
+        } else {
+          setError("Something went wrong. Please try again.");
+        }
       }
     }
 
