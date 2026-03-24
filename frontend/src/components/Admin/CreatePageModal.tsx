@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   X,
   Loader2,
@@ -9,9 +9,15 @@ import {
   Search,
   MapPin,
   FilePlus2,
+  Upload,
+  Archive,
 } from "lucide-react";
 import { fetchTemplatePages } from "../../api/templates";
-import { startPipeline, createBlankPage } from "../../api/websites";
+import {
+  startPipeline,
+  createBlankPage,
+  uploadArtifactPage,
+} from "../../api/websites";
 import type { TemplatePage } from "../../api/templates";
 import { searchPlaces, getPlaceDetails } from "../../api/places";
 import type { PlaceSuggestion } from "../../api/places";
@@ -30,7 +36,7 @@ export interface CreatePageModalProps {
   onClose: () => void;
 }
 
-type CreateMode = "template" | "blank";
+type CreateMode = "template" | "blank" | "artifact";
 
 export default function CreatePageModal({
   projectId,
@@ -44,7 +50,9 @@ export default function CreatePageModal({
   onBlankPageCreated,
   onClose,
 }: CreatePageModalProps) {
-  const [mode, setMode] = useState<CreateMode>(templateId ? "template" : "blank");
+  const [mode, setMode] = useState<CreateMode>(
+    templateId ? "template" : "blank"
+  );
   const [templatePages, setTemplatePages] = useState<TemplatePage[]>([]);
   const [loadingPages, setLoadingPages] = useState(true);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
@@ -77,6 +85,11 @@ export default function CreatePageModal({
     string,
     string | number | null
   > | null>(null);
+
+  // Artifact upload state
+  const [artifactFile, setArtifactFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!templateId) {
@@ -185,7 +198,8 @@ export default function CreatePageModal({
         templatePageId: selectedPageId,
         path: slug,
         placeId: overridePlaceId,
-        websiteUrl: dataSource === "website" ? (overrideWebsiteUrl || null) : null,
+        websiteUrl:
+          dataSource === "website" ? overrideWebsiteUrl || null : null,
         pageContext: pageContext.trim() || undefined,
         businessName: effectiveGbpData?.name
           ? String(effectiveGbpData.name)
@@ -213,7 +227,8 @@ export default function CreatePageModal({
           : undefined,
         primaryColor: pagePrimaryColor,
         accentColor: pageAccentColor,
-        scrapedData: dataSource === "pasted" ? (scrapedData.trim() || null) : null,
+        scrapedData:
+          dataSource === "pasted" ? scrapedData.trim() || null : null,
       });
       onSuccess();
     } catch (err) {
@@ -243,10 +258,81 @@ export default function CreatePageModal({
     }
   };
 
-  const handleSubmit = mode === "template" ? handleSubmitTemplate : handleSubmitBlank;
+  const handleSubmitArtifact = async () => {
+    if (submitting || !artifactFile) return;
+    if (!validateSlug(slug)) return;
+    if (slug === "/") {
+      setSlugError("Artifact pages cannot use the homepage path");
+      return;
+    }
 
-  const isTemplateDisabled = submitting || !selectedPageId || !slug || !!slugError;
+    try {
+      setSubmitting(true);
+      setError(null);
+      const result = await uploadArtifactPage(projectId, {
+        file: artifactFile,
+        path: slug,
+        display_name: displayName.trim() || undefined,
+      });
+      onBlankPageCreated?.(result.data.id);
+      onClose();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to upload artifact page"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmit =
+    mode === "template"
+      ? handleSubmitTemplate
+      : mode === "blank"
+        ? handleSubmitBlank
+        : handleSubmitArtifact;
+
+  const isTemplateDisabled =
+    submitting || !selectedPageId || !slug || !!slugError;
   const isBlankDisabled = submitting || !slug || !!slugError;
+  const isArtifactDisabled =
+    submitting || !artifactFile || !slug || slug === "/" || !!slugError;
+
+  // Drag-and-drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith(".zip") || file.type === "application/zip")) {
+      setArtifactFile(file);
+    } else {
+      setError("Please upload a .zip file");
+    }
+  }, []);
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) setArtifactFile(file);
+    },
+    []
+  );
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -260,7 +346,9 @@ export default function CreatePageModal({
         <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h2 className="text-lg font-bold text-gray-900">Create New Page</h2>
+            <h2 className="text-lg font-bold text-gray-900">
+              Create New Page
+            </h2>
             <button
               onClick={onClose}
               disabled={submitting}
@@ -278,26 +366,38 @@ export default function CreatePageModal({
                 type="button"
                 onClick={() => setMode("template")}
                 disabled={!templateId}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium transition ${
+                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-sm font-medium transition ${
                   mode === "template"
                     ? "bg-alloro-orange text-white"
                     : "bg-white text-gray-600 hover:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed"
                 }`}
               >
                 <FileText className="w-4 h-4" />
-                From Template
+                Template
               </button>
               <button
                 type="button"
                 onClick={() => setMode("blank")}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium transition ${
+                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-sm font-medium transition ${
                   mode === "blank"
                     ? "bg-alloro-orange text-white"
                     : "bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 <FilePlus2 className="w-4 h-4" />
-                Blank Page
+                Blank
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("artifact")}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-sm font-medium transition ${
+                  mode === "artifact"
+                    ? "bg-alloro-orange text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <Upload className="w-4 h-4" />
+                Upload App
               </button>
             </div>
 
@@ -314,7 +414,9 @@ export default function CreatePageModal({
                       Loading pages...
                     </div>
                   ) : templatePages.length === 0 ? (
-                    <p className="text-sm text-red-500">No template pages found.</p>
+                    <p className="text-sm text-red-500">
+                      No template pages found.
+                    </p>
                   ) : (
                     <div className="space-y-1.5">
                       {templatePages.map((page) => (
@@ -361,9 +463,12 @@ export default function CreatePageModal({
                         : "border-gray-200 focus:border-alloro-orange focus:ring-alloro-orange/20"
                     }`}
                   />
-                  {slugError && <p className="text-xs text-red-500">{slugError}</p>}
+                  {slugError && (
+                    <p className="text-xs text-red-500">{slugError}</p>
+                  )}
                   <p className="text-xs text-gray-400">
-                    The URL path for this page (e.g., / for homepage, /services, /about-us)
+                    The URL path for this page (e.g., / for homepage, /services,
+                    /about-us)
                   </p>
                 </div>
 
@@ -423,8 +528,8 @@ export default function CreatePageModal({
                   {showOverrides && (
                     <div className="border-t border-gray-200 px-3 py-3 space-y-3 bg-gray-50/50">
                       <p className="text-xs text-gray-500">
-                        Override the business profile and website URL for this page
-                        only. These changes are not saved to the project.
+                        Override the business profile and website URL for this
+                        page only. These changes are not saved to the project.
                       </p>
 
                       {/* GBP search */}
@@ -510,7 +615,9 @@ export default function CreatePageModal({
                             <input
                               type="url"
                               value={overrideWebsiteUrl}
-                              onChange={(e) => setOverrideWebsiteUrl(e.target.value)}
+                              onChange={(e) =>
+                                setOverrideWebsiteUrl(e.target.value)
+                              }
                               placeholder="https://example.com"
                               className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none"
                             />
@@ -529,7 +636,7 @@ export default function CreatePageModal({
                   )}
                 </div>
               </>
-            ) : (
+            ) : mode === "blank" ? (
               <>
                 {/* Blank page: slug + display name only */}
                 <div className="space-y-1.5">
@@ -547,16 +654,21 @@ export default function CreatePageModal({
                         : "border-gray-200 focus:border-alloro-orange focus:ring-alloro-orange/20"
                     }`}
                   />
-                  {slugError && <p className="text-xs text-red-500">{slugError}</p>}
+                  {slugError && (
+                    <p className="text-xs text-red-500">{slugError}</p>
+                  )}
                   <p className="text-xs text-gray-400">
-                    The URL path for this page (e.g., / for homepage, /services, /about-us)
+                    The URL path for this page (e.g., / for homepage, /services,
+                    /about-us)
                   </p>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="block text-sm font-semibold text-gray-700">
                     Display Name
-                    <span className="text-gray-400 font-normal ml-1">optional</span>
+                    <span className="text-gray-400 font-normal ml-1">
+                      optional
+                    </span>
                   </label>
                   <input
                     type="text"
@@ -566,7 +678,8 @@ export default function CreatePageModal({
                     className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none transition"
                   />
                   <p className="text-xs text-gray-400">
-                    A friendly name shown in the admin. Defaults to the slug if left empty.
+                    A friendly name shown in the admin. Defaults to the slug if
+                    left empty.
                   </p>
                 </div>
 
@@ -574,6 +687,122 @@ export default function CreatePageModal({
                   <p className="text-xs text-gray-500">
                     Creates an empty page with no sections. You can add content
                     manually using the page editor after creation.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Artifact upload mode */}
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Page Slug
+                  </label>
+                  <input
+                    type="text"
+                    value={slug}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    placeholder="/calculator"
+                    className={`w-full text-sm px-3 py-2 rounded-lg border focus:ring-2 outline-none transition ${
+                      slugError
+                        ? "border-red-300 focus:border-red-400 focus:ring-red-200"
+                        : "border-gray-200 focus:border-alloro-orange focus:ring-alloro-orange/20"
+                    }`}
+                  />
+                  {slugError && (
+                    <p className="text-xs text-red-500">{slugError}</p>
+                  )}
+                  <p className="text-xs text-gray-400">
+                    The endpoint where the app will load (e.g., /calculator,
+                    /onboarding)
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Display Name
+                    <span className="text-gray-400 font-normal ml-1">
+                      optional
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="e.g., Savings Calculator, Onboarding Form"
+                    className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none transition"
+                  />
+                </div>
+
+                {/* Drag and drop zone */}
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    App Build (zip)
+                  </label>
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 cursor-pointer transition ${
+                      isDragging
+                        ? "border-alloro-orange bg-orange-50"
+                        : artifactFile
+                          ? "border-green-300 bg-green-50"
+                          : "border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-gray-100"
+                    }`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".zip"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    {artifactFile ? (
+                      <>
+                        <Archive className="w-8 h-8 text-green-500 mb-2" />
+                        <p className="text-sm font-medium text-gray-800">
+                          {artifactFile.name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {formatFileSize(artifactFile.size)}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setArtifactFile(null);
+                          }}
+                          className="mt-2 text-xs text-red-500 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                        <p className="text-sm font-medium text-gray-600">
+                          Drop your zip here or click to browse
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          .zip files only, up to 200 MB
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+                  <p className="text-xs text-amber-800">
+                    <strong>Important:</strong> The app must be built with a base
+                    path matching the slug above. For Vite:{" "}
+                    <code className="bg-amber-100 px-1 py-0.5 rounded text-[11px]">
+                      vite build --base={slug === "/" ? "/your-slug" : slug}/
+                    </code>
+                  </p>
+                  <p className="text-xs text-amber-700 mt-1.5">
+                    The site header and footer will be injected around your app.
+                    Account for the header height with padding if needed.
                   </p>
                 </div>
               </>
@@ -598,18 +827,30 @@ export default function CreatePageModal({
             </button>
             <button
               onClick={handleSubmit}
-              disabled={mode === "template" ? isTemplateDisabled : isBlankDisabled}
+              disabled={
+                mode === "template"
+                  ? isTemplateDisabled
+                  : mode === "blank"
+                    ? isBlankDisabled
+                    : isArtifactDisabled
+              }
               className="inline-flex items-center gap-2 bg-alloro-orange hover:bg-alloro-orange/90 disabled:bg-alloro-orange/50 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  {mode === "template" ? "Generating..." : "Creating..."}
+                  {mode === "template"
+                    ? "Generating..."
+                    : mode === "blank"
+                      ? "Creating..."
+                      : "Uploading..."}
                 </>
               ) : mode === "template" ? (
                 "Generate Page"
-              ) : (
+              ) : mode === "blank" ? (
                 "Create Blank Page"
+              ) : (
+                "Upload App"
               )}
             </button>
           </div>

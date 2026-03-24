@@ -516,6 +516,33 @@ export const createBlankPage = async (
 };
 
 /**
+ * Upload an artifact page (React app zip build)
+ */
+export const uploadArtifactPage = async (
+  projectId: string,
+  data: { file: File; path: string; display_name?: string },
+): Promise<{ success: boolean; data: WebsitePage }> => {
+  const formData = new FormData();
+  formData.append("file", data.file);
+  formData.append("path", data.path);
+  if (data.display_name) {
+    formData.append("display_name", data.display_name);
+  }
+
+  const response = await fetch(`${API_BASE}/${projectId}/pages/artifact`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to upload artifact page");
+  }
+
+  return response.json();
+};
+
+/**
  * Delete a page version
  */
 export const deletePageVersion = async (

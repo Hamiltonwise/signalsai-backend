@@ -8,11 +8,18 @@
  */
 
 import express from "express";
+import multer from "multer";
 import * as controller from "../../controllers/admin-websites/AdminWebsitesController";
 import * as backupController from "../../controllers/admin-websites/BackupController";
 import importsRouter from "./imports";
 
 const router = express.Router();
+
+// Multer for artifact page zip uploads (memory storage, 200 MB limit)
+const artifactUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 200 * 1024 * 1024 },
+});
 
 // =====================================================================
 // PROJECTS (non-parameterized routes first)
@@ -419,6 +426,9 @@ router.get("/:id/pages", controller.listPages);
 
 // POST /:id/pages — Create page version
 router.post("/:id/pages", controller.createPage);
+
+// POST /:id/pages/artifact — Upload artifact page (React app zip) — before :pageId
+router.post("/:id/pages/artifact", artifactUpload.single("file"), controller.uploadArtifactPage);
 
 // POST /:id/pages/:pageId/publish — Publish a page
 router.post("/:id/pages/:pageId/publish", controller.publishPage);

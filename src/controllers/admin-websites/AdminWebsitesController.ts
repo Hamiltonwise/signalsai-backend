@@ -34,6 +34,7 @@ import * as menuManager from "./feature-services/service.menu-manager";
 import * as reviewBlockManager from "./feature-services/service.review-block-manager";
 import * as aiCommand from "./feature-services/service.ai-command";
 import * as redirectsService from "./feature-services/service.redirects";
+import * as artifactUpload from "./feature-services/service.artifact-upload";
 import { db } from "../../database/connection";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
@@ -1044,6 +1045,61 @@ export async function createPage(
       success: false,
       error: "CREATE_ERROR",
       message: error?.message || "Failed to create page",
+    });
+  }
+}
+
+/** POST /:id/pages/artifact — Upload artifact page (React app build) */
+export async function uploadArtifactPage(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+    const { path: pagePath, display_name } = req.body;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        error: "NO_FILE",
+        message: "No zip file provided",
+      });
+    }
+
+    if (!pagePath) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PATH",
+        message: "Page path is required",
+      });
+    }
+
+    const { page, error } = await artifactUpload.uploadArtifactPage(
+      id,
+      file.buffer,
+      pagePath,
+      display_name
+    );
+
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        error: error.code,
+        message: error.message,
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: page,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error uploading artifact page:", error);
+    return res.status(500).json({
+      success: false,
+      error: "ARTIFACT_UPLOAD_ERROR",
+      message: error?.message || "Failed to upload artifact page",
     });
   }
 }
