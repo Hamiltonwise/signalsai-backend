@@ -26,6 +26,7 @@ import DreamTeam from "./admin/DreamTeam";
 import YourMarket from "./admin/YourMarket";
 import MindDetail from "./admin/MindDetail";
 import AlloroPostsDocs from "./admin/AlloroPostsDocs";
+import BatchCheckup from "./admin/BatchCheckup";
 
 function WebDevEngine() {
   return (
@@ -96,6 +97,7 @@ function AdminWithLayout() {
         <Route path="minds/:mindId" element={<MindDetail />} />
         <Route path="documentation/alloro-posts" element={<AlloroPostsDocs />} />
         <Route path="schedules" element={<Schedules />} />
+        <Route path="batch-checkup" element={<BatchCheckup />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="sentry-test" element={<SentryTest />} />
       </Routes>

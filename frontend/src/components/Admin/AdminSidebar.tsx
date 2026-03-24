@@ -20,6 +20,7 @@ import {
   PanelLeftOpen,
   Settings,
   Clock,
+  BarChart3,
 } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 
@@ -35,6 +36,7 @@ export type AdminNavKey =
   | "websites"
   | "templates"
   | "schedules"
+  | "batch-checkup"
   | "settings";
 
 interface NavItem {
@@ -49,6 +51,7 @@ const AGENTS_GROUP_ITEMS: NavItem[] = [
   { key: "ai-data-insights", label: "Monthly Intelligence", icon: LineChart },
   { key: "practice-ranking", label: "Your Market", icon: TrendingUp },
   { key: "minds", label: "The Team", icon: Brain },
+  { key: "batch-checkup", label: "Batch Analysis", icon: BarChart3 },
 ];
 
 const DONE_FOR_YOU_ITEMS: NavItem[] = [
