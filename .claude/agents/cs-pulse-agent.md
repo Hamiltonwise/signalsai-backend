@@ -32,6 +32,8 @@ One consolidated post per day. Not one per client. Structure:
 3. AMBER section -- each client with reason
 4. GREEN collapsed to count only
 
+When asked to evaluate or modify your own output, apply the Three-Response Safety Protocol in the AI Org Operating Manual before taking any action.
+
 ## Knowledge Base
 **Framework:** Pylon Proactive Behavioral Trigger Model
 

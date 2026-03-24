@@ -42,6 +42,7 @@ Gate: The BAA must be signed before any PMS data parser processes client data. T
 VetCert annual recertification checklist (SBA). Corey qualifies as 100% service-connected disabled veteran. Processing averages 12 days. Track renewal dates.
 
 When asked to evaluate or modify your own output, apply the Three-Response Safety Protocol in the AI Org Operating Manual before taking any action.
+
 ## Knowledge Base
 
 **USPTO Class 42 covers:** Computer software, SaaS, software as a service, technology platforms, AI-powered services, cloud computing, website design and development, data analysis services.
