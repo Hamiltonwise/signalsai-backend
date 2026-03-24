@@ -9,6 +9,7 @@
  * Closes in 90 seconds. No agent management. No build queue.
  */
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   DollarSign,
@@ -18,6 +19,7 @@ import {
   TrendingUp,
   ChevronRight,
 } from "lucide-react";
+import FounderMode from "./FounderMode";
 import { useNavigate } from "react-router-dom";
 import {
   adminListOrganizations,
@@ -32,6 +34,7 @@ function daysUntilAAE(): number {
 
 export default function VisionaryView() {
   const navigate = useNavigate();
+  const [founderOpen, setFounderOpen] = useState(false);
 
   const { data } = useQuery({
     queryKey: ["admin-organizations"],
@@ -50,6 +53,19 @@ export default function VisionaryView() {
   const exceptions = orgs.filter((o) => !o.connections?.gbp);
 
   return (
+    <>
+    {/* Founder Mode overlay */}
+    {founderOpen && <FounderMode onClose={() => setFounderOpen(false)} />}
+
+    {/* F badge — top right, no label */}
+    <button
+      onClick={() => setFounderOpen(true)}
+      className="fixed top-4 right-4 z-40 w-8 h-8 rounded-lg bg-[#212D40] text-white text-xs font-black flex items-center justify-center hover:bg-[#D56753] transition-colors"
+      title="Founder Mode"
+    >
+      F
+    </button>
+
     <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
       {/* Panel 1: Key Numbers */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -171,5 +187,6 @@ export default function VisionaryView() {
         )}
       </div>
     </div>
+    </>
   );
 }
