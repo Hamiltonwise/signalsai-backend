@@ -50,6 +50,7 @@ import adminReviewRoutes from "./routes/admin/reviews";
 import milestoneRoutes from "./routes/admin/milestones";
 import referralIntelligenceRoutes from "./routes/referralIntelligence";
 import intelligenceIntakeRoutes from "./routes/admin/intelligenceIntake";
+import rankingsSnapshotRoutes from "./routes/admin/rankingsSnapshot";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
@@ -72,6 +73,7 @@ import mindsPublicApiRoutes from "./routes/mindsPublicApi";
 import skillsPublicApiRoutes from "./routes/skillsPublicApi";
 import internalApiRoutes from "./routes/internalApi";
 import billingRoutes from "./routes/billing";
+import founderSettingsRoutes from "./routes/admin/founderSettings";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -191,6 +193,7 @@ app.use("/api/admin/reviews", adminReviewRoutes); // Review notifications + AI r
 app.use("/api", milestoneRoutes); // Milestone notifications (admin + client routes)
 app.use("/api/referral-intelligence", referralIntelligenceRoutes); // GP referral intelligence
 app.use("/api/admin/intelligence", intelligenceIntakeRoutes); // Founder Mode intelligence intake
+app.use("/api/admin", rankingsSnapshotRoutes); // WO31/33: rankings snapshot + Monday email manual triggers
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest
 app.use("/api/admin", adminAuthRoutes);
@@ -216,6 +219,7 @@ app.use("/api/minds", mindsPublicApiRoutes); // Public skill/portal API
 app.use("/api/skills", skillsPublicApiRoutes); // Public skill portal API
 app.use("/api/internal", internalApiRoutes); // Internal API for n8n workers
 app.use("/api/billing", billingRoutes); // Stripe billing & subscription management
+app.use("/api/founder/settings", founderSettingsRoutes); // Founder Mode personal settings
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);
