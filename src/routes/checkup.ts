@@ -803,4 +803,29 @@ checkupRoutes.get("/ttfv-status", async (req: any, res) => {
   }
 });
 
+/**
+ * POST /api/checkup/vendor
+ * Saves vendor email from the Checkup gate Vendor Path.
+ */
+checkupRoutes.post("/vendor", async (req, res) => {
+  try {
+    const { email, referring_place_id, wants_checkup_for_other_practices } = req.body;
+    if (!email) return res.status(400).json({ success: false, error: "Email required" });
+
+    await db("vendors")
+      .insert({
+        email: email.toLowerCase().trim(),
+        referring_place_id: referring_place_id || null,
+        wants_checkup_for_other_practices: !!wants_checkup_for_other_practices,
+      })
+      .onConflict("email")
+      .merge({ referring_place_id, wants_checkup_for_other_practices });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Checkup] Vendor save error:", error.message);
+    return res.json({ success: true }); // Never fail visibly
+  }
+});
+
 export default checkupRoutes;

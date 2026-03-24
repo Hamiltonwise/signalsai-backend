@@ -15,6 +15,8 @@ import {
   Phone,
   CheckCircle2,
   Upload,
+  Camera,
+  FileText,
   Users,
 } from "lucide-react";
 import { apiGet } from "@/api/index";
@@ -194,23 +196,53 @@ function ThisWeeksMove({ action }: { action: RecommendedAction | null }) {
 // ─── Empty State ────────────────────────────────────────────────────
 
 function EmptyState() {
+  const isTouchDevice = typeof window !== "undefined" && "ontouchstart" in window;
+
   return (
-    <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
-      <Users className="h-10 w-10 text-gray-300 mx-auto mb-4" />
-      <h3 className="text-base font-bold text-[#212D40] mb-2">
-        Your referral graph builds after your first data upload
+    <div className="rounded-2xl border border-gray-200 bg-white p-8">
+      <h3 className="text-lg font-bold text-[#212D40] text-center mb-2">
+        See which GPs are sending you patients
       </h3>
-      <p className="text-sm text-gray-500 max-w-md mx-auto mb-5">
-        Upload 90 days of scheduling data to see which GPs are your top referrers
-        and who's fading. One upload is all it takes.
+      <p className="text-sm text-gray-500 text-center mb-6">
+        Upload your scheduling data. One file is all it takes.
       </p>
-      <a
-        href="/pmsStatistics"
-        className="inline-flex items-center gap-2 rounded-xl bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-105 transition-all"
-      >
-        <Upload className="h-4 w-4" />
-        Upload 90 days of scheduling data
-      </a>
+
+      {/* Three equal upload options */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Option 1: Drag and drop / file input */}
+        <label className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all">
+          <Upload className="h-6 w-6 text-[#D56753]" />
+          <span className="text-sm font-semibold text-[#212D40]">Drag and drop any file</span>
+          <input type="file" accept=".csv,.xlsx,.xls,.txt,.pdf,.jpg,.jpeg,.png" className="hidden" />
+        </label>
+
+        {/* Option 2: Take a photo (mobile) / Upload image (desktop) */}
+        <label className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all">
+          <Camera className="h-6 w-6 text-[#D56753]" />
+          <span className="text-sm font-semibold text-[#212D40]">
+            {isTouchDevice ? "Take a photo" : "Upload an image"}
+          </span>
+          <input
+            type="file"
+            accept="image/*"
+            capture={isTouchDevice ? "environment" : undefined}
+            className="hidden"
+          />
+        </label>
+
+        {/* Option 3: Paste text */}
+        <a
+          href="/pmsStatistics"
+          className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all"
+        >
+          <FileText className="h-6 w-6 text-[#D56753]" />
+          <span className="text-sm font-semibold text-[#212D40]">Paste text</span>
+        </a>
+      </div>
+
+      <p className="text-xs text-gray-400 text-center mt-4">
+        Works with Dentrix, Eaglesoft, OpenDental, and any spreadsheet format.
+      </p>
     </div>
   );
 }

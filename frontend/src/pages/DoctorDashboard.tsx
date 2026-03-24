@@ -38,6 +38,8 @@ import OneActionCard from "@/components/dashboard/OneActionCard";
 import CSAgentChat from "@/components/dashboard/CSAgentChat";
 import TTFVSensor from "@/components/dashboard/TTFVSensor";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
+import PatientPathBreadcrumb from "@/components/dashboard/PatientPathBreadcrumb";
+import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -174,7 +176,7 @@ function PositionCard({ ranking }: { ranking: RankingData | null }) {
 // COMPETITOR GAP — One job: name who's beating you and by how much
 // ═══════════════════════════════════════════════════════════════════
 
-function CompetitorGap({ ranking }: { ranking: RankingData | null }) {
+function CompetitorGap({ ranking, onCompetitorClick }: { ranking: RankingData | null; onCompetitorClick?: (comp: { name: string; rating: number; reviewCount: number }) => void }) {
   if (!ranking?.topCompetitor) return null;
 
   const comp = ranking.topCompetitor;
@@ -184,7 +186,12 @@ function CompetitorGap({ ranking }: { ranking: RankingData | null }) {
       : null;
 
   return (
-    <div className="rounded-2xl px-5 py-4" style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}>
+    <button
+      type="button"
+      onClick={() => onCompetitorClick?.({ name: comp.name, rating: comp.rating, reviewCount: comp.reviewCount })}
+      className="w-full text-left rounded-2xl px-5 py-4 hover:shadow-md transition-shadow"
+      style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
+    >
       <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-2">
         Your Top Competitor
       </p>
@@ -199,7 +206,7 @@ function CompetitorGap({ ranking }: { ranking: RankingData | null }) {
           {reviewGap} review{reviewGap !== 1 ? "s" : ""} to close the gap. That's {Math.ceil(reviewGap / 3)} weeks at 3 per week.
         </p>
       )}
-    </div>
+    </button>
   );
 }
 
@@ -602,6 +609,7 @@ export default function DoctorDashboard() {
 
   const referralCode = profileData?.referral_code || profileData?.organization?.referral_code || null;
   const [mode, setMode] = useState<"standard" | "growth">("standard");
+  const [drawerCompetitor, setDrawerCompetitor] = useState<{ name: string; rating: number; reviewCount: number } | null>(null);
   const isLoading = !rankingData && !agentData && !websiteData && !profileData;
 
   return (
@@ -651,7 +659,7 @@ export default function DoctorDashboard() {
           <PositionCard ranking={rankingData ?? null} />
 
           {/* 2. One sentence finding */}
-          <CompetitorGap ranking={rankingData ?? null} />
+          <CompetitorGap ranking={rankingData ?? null} onCompetitorClick={setDrawerCompetitor} />
 
           {/* 3. One Action Card — deterministic rule engine */}
           <OneActionCard
@@ -715,8 +723,25 @@ export default function DoctorDashboard() {
         locationId={locationId}
       />
 
-      {/* TTFV Sensor — bottom bar, 60s after first load */}
+      {/* TTFV Sensor — bottom bar, 90s after first load */}
       <TTFVSensor orgId={orgId} onYes={() => { /* billing prompt auto-shows via ttfv-status check */ }} />
+
+      {/* Competitor Detail Drawer */}
+      {drawerCompetitor && (
+        <CompetitorDrawer
+          competitor={drawerCompetitor}
+          clientReviews={rankingData?.clientReviews || 0}
+          clientVelocityPerWeek={0}
+          onClose={() => setDrawerCompetitor(null)}
+        />
+      )}
+
+      {/* PatientPath Breadcrumb — quiet lower-right card */}
+      <PatientPathBreadcrumb
+        status={websiteData ? "live" : null}
+        liveUrl={websiteData ? `https://${websiteData.generated_hostname}.sites.getalloro.com` : null}
+        hostname={websiteData?.generated_hostname || null}
+      />
     </div>
     </>
   );

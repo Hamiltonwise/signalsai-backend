@@ -9,6 +9,7 @@ import {
 } from "../../../utils/pms/pmsAutomationStatus";
 import { resolveLocationId } from "../../../utils/locationResolver";
 import { OrganizationModel } from "../../../models/OrganizationModel";
+import { detectSelfSufficientOperator } from "../../../services/operatorDetection";
 
 /**
  * Process a manual PMS data entry.
@@ -168,6 +169,12 @@ export async function processFileUpload(
   }
   // Use passed locationId if available, otherwise resolve from org
   const locationId = passedLocationId ?? await resolveLocationId(organizationId);
+
+  // Run self-sufficient operator detection (fire-and-forget)
+  if (organizationId && jsonData.length > 0) {
+    const headers = Object.keys(jsonData[0] || {});
+    detectSelfSufficientOperator(organizationId, headers, jsonData).catch(() => {});
+  }
 
   // Create the job record
   const job = await PmsJobModel.create({

@@ -446,6 +446,13 @@ export default function ResultsScreen() {
   const [weeklyUpdates, setWeeklyUpdates] = useState(true);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // Vendor path state
+  const [vendorEmail, setVendorEmail] = useState("");
+  const [vendorEmailError, setVendorEmailError] = useState("");
+  const [vendorWantsMore, setVendorWantsMore] = useState(true);
+  const [vendorSubmitted, setVendorSubmitted] = useState(false);
+  const [vendorShareCopied, setVendorShareCopied] = useState(false);
+
   const isValidEmail = (v: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
 
@@ -763,31 +770,113 @@ export default function ResultsScreen() {
                 </label>
               ))}
             </fieldset>
-            {/* Weekly updates checkbox — pre-checked */}
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={weeklyUpdates}
-                onChange={(e) => setWeeklyUpdates(e.target.checked)}
-                className="w-4 h-4 rounded text-[#D56753] border-slate-300 focus:ring-[#D56753]/20"
-              />
-              <span className="text-xs text-slate-600">Send me a weekly update on my score and competitors</span>
-            </label>
-            {topCompetitor && (
-              <p className="text-xs text-slate-400">
-                Includes detailed comparison with {topCompetitor.name}
-                {findings.length > 1 &&
-                  ` and ${findings.length - 1} more finding${findings.length > 2 ? "s" : ""}`}
-              </p>
+            {/* VENDOR PATH: show share flow instead of account creation */}
+            {relationship === "vendor" ? (
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                {!vendorSubmitted ? (
+                  <>
+                    <p className="text-xs text-slate-600">
+                      Your email, so we can notify you if this practice's results change.
+                    </p>
+                    <input
+                      type="email"
+                      value={vendorEmail}
+                      onChange={(e) => { setVendorEmail(e.target.value); setVendorEmailError(""); }}
+                      placeholder="Your email"
+                      className={`w-full h-12 px-4 rounded-xl bg-slate-50 border text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
+                        vendorEmailError ? "border-red-400 focus:ring-red-400/10" : "border-slate-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
+                      }`}
+                    />
+                    {vendorEmailError && <p className="text-xs text-red-500">{vendorEmailError}</p>}
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={vendorWantsMore}
+                        onChange={(e) => setVendorWantsMore(e.target.checked)}
+                        className="w-4 h-4 rounded text-[#D56753] border-slate-300 focus:ring-[#D56753]/20"
+                      />
+                      <span className="text-xs text-slate-600">I'd like to run a Checkup for my other practices</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!isValidEmail(vendorEmail)) {
+                          setVendorEmailError("Enter a valid email.");
+                          return;
+                        }
+                        // Save vendor to backend
+                        fetch("/api/checkup/vendor", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            email: vendorEmail.trim(),
+                            referring_place_id: place.placeId,
+                            wants_checkup_for_other_practices: vendorWantsMore,
+                          }),
+                        }).catch(() => {});
+                        setVendorSubmitted(true);
+                      }}
+                      className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-sm font-semibold hover:brightness-105 active:scale-[0.98] transition-all"
+                    >
+                      Get share link
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="bg-slate-50 rounded-xl p-4">
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        I ran <strong>{place.name}</strong> through Alloro's competitive analysis
+                        and thought you'd want to see what I found.
+                      </p>
+                      <p className="text-xs text-[#D56753] font-medium mt-2">
+                        {window.location.origin}/checkup
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/checkup`).then(() => {
+                          setVendorShareCopied(true);
+                          setTimeout(() => setVendorShareCopied(false), 2000);
+                        });
+                      }}
+                      className="w-full h-12 flex items-center justify-center gap-2 rounded-xl border-2 border-[#212D40]/20 text-[#212D40] text-sm font-semibold hover:border-[#212D40]/40 transition-all"
+                    >
+                      {vendorShareCopied ? "Copied!" : "Copy link"}
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* OWNER/OTHER PATH: account creation */}
+                {/* Weekly updates checkbox */}
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={weeklyUpdates}
+                    onChange={(e) => setWeeklyUpdates(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#D56753] border-slate-300 focus:ring-[#D56753]/20"
+                  />
+                  <span className="text-xs text-slate-600">Send me a weekly update on my score and competitors</span>
+                </label>
+                {topCompetitor && (
+                  <p className="text-xs text-slate-400">
+                    Includes detailed comparison with {topCompetitor.name}
+                    {findings.length > 1 &&
+                      ` and ${findings.length - 1} more finding${findings.length > 2 ? "s" : ""}`}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={emailSending}
+                  className="w-full h-13 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-70"
+                >
+                  {emailSending ? "Creating your account..." : "Unlock my report"}
+                  {!emailSending && <ArrowRight className="w-4 h-4" />}
+                </button>
+              </>
             )}
-            <button
-              type="submit"
-              disabled={emailSending}
-              className="w-full h-13 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-70"
-            >
-              {emailSending ? "Creating your account..." : "Unlock my report"}
-              {!emailSending && <ArrowRight className="w-4 h-4" />}
-            </button>
           </form>
           <p className="text-[11px] text-slate-400 text-center mt-5 leading-relaxed">
             Your full report takes 30 seconds to unlock.

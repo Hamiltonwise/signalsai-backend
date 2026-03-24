@@ -167,7 +167,8 @@ batchCheckupRoutes.post(
   superAdminMiddleware,
   async (req, res) => {
     try {
-      const { practices } = req.body;
+      const { practices, mode } = req.body;
+      const isOutreachScan = mode === "outreach_scan";
 
       if (!Array.isArray(practices) || practices.length === 0) {
         return res.status(400).json({
@@ -197,11 +198,11 @@ batchCheckupRoutes.post(
       await db("batch_checkup_results").insert(rows);
 
       console.log(
-        `[BatchCheckup] Batch ${batchId} created with ${practices.length} practices`,
+        `[BatchCheckup] Batch ${batchId} created with ${practices.length} practices (mode: ${mode || "standard"})`,
       );
 
       // Process async — don't block the response
-      processBackgroundBatch(batchId).catch((err) =>
+      processBackgroundBatch(batchId, isOutreachScan).catch((err) =>
         console.error(`[BatchCheckup] Batch ${batchId} error:`, err.message),
       );
 
@@ -210,6 +211,7 @@ batchCheckupRoutes.post(
         batchId,
         status: "processing",
         total: practices.length,
+        mode: isOutreachScan ? "outreach_scan" : "standard",
       });
     } catch (error: any) {
       console.error("[BatchCheckup] Submit error:", error.message);
@@ -272,10 +274,12 @@ batchCheckupRoutes.get(
 
 // ─── Background processor ───────────────────────────────────────────
 
-async function processBackgroundBatch(batchId: string): Promise<void> {
+async function processBackgroundBatch(batchId: string, isOutreachScan = false): Promise<void> {
   const pending = await db("batch_checkup_results")
     .where({ batch_id: batchId, status: "pending" })
     .orderBy("created_at", "asc");
+
+  const outreachResults: any[] = [];
 
   for (const row of pending) {
     try {
@@ -299,6 +303,22 @@ async function processBackgroundBatch(batchId: string): Promise<void> {
         `[BatchCheckup] ${row.practice_name}: score ${result.score}`,
       );
 
+      // Build outreach scan result
+      if (isOutreachScan) {
+        outreachResults.push({
+          practice_name: row.practice_name,
+          primary_competitor_name: result.topCompetitorName,
+          primary_competitor_review_count: result.topCompetitorReviews,
+          lead_review_count: result.practiceReviews,
+          ranking_position: result.score > 0 ? Math.ceil((100 - result.score) / 10) : null,
+          review_gap: Math.max(0, (result.topCompetitorReviews || 0) - (result.practiceReviews || 0)),
+          top_issue: result.primaryGap,
+          checkup_link: result.placeId
+            ? `https://getalloro.com/checkup?placeId=${result.placeId}`
+            : `https://getalloro.com/checkup`,
+        });
+      }
+
       // Small delay to avoid hammering Places API
       await new Promise((r) => setTimeout(r, 500));
     } catch (err: any) {
@@ -312,7 +332,27 @@ async function processBackgroundBatch(batchId: string): Promise<void> {
     }
   }
 
-  console.log(`[BatchCheckup] Batch ${batchId} complete`);
+  console.log(`[BatchCheckup] Batch ${batchId} complete (mode: ${isOutreachScan ? "outreach_scan" : "standard"})`);
+
+  // Outreach scan: POST summary to ProspectAI
+  if (isOutreachScan && outreachResults.length > 0) {
+    const PROSPECT_AI_WEBHOOK = process.env.PROSPECT_AI_WEBHOOK_URL;
+    if (PROSPECT_AI_WEBHOOK) {
+      try {
+        const axios = await import("axios");
+        await axios.default.post(PROSPECT_AI_WEBHOOK, {
+          batch_id: batchId,
+          total: outreachResults.length,
+          results: outreachResults,
+        }, { timeout: 30000 });
+        console.log(`[BatchCheckup] Outreach scan posted to ProspectAI: ${outreachResults.length} leads`);
+      } catch (err: any) {
+        console.error(`[BatchCheckup] ProspectAI webhook failed:`, err.message);
+      }
+    } else {
+      console.log(`[BatchCheckup] PROSPECT_AI_WEBHOOK_URL not set — outreach results logged only`);
+    }
+  }
 }
 
 export default batchCheckupRoutes;
