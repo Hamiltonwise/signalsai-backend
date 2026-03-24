@@ -11,6 +11,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import NewAccountOnboarding from "./pages/NewAccountOnboarding";
 import Dashboard from "./pages/Dashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import ProgressReport from "./pages/ProgressReport";
+import ReferralIntelligence from "./pages/ReferralIntelligence";
 import Admin from "./pages/Admin";
 import { Settings } from "./pages/Settings";
 import { IntegrationsRoute } from "./pages/settings/IntegrationsRoute";
@@ -165,6 +167,8 @@ function App() {
               {/* Protected routes with shared AppProviders - prevents remounting on navigation */}
               <Route element={<ProtectedLayout />}>
                 <Route path="/dashboard" element={<DoctorDashboard />} />
+                <Route path="/dashboard/progress" element={<ProgressReport />} />
+                <Route path="/dashboard/referrals" element={<ReferralIntelligence />} />
                 <Route path="/patientJourneyInsights" element={<Dashboard />} />
                 <Route path="/pmsStatistics" element={<Dashboard />} />
                 <Route path="/tasks" element={<Dashboard />} />
