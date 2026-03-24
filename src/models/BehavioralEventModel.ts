@@ -1,4 +1,5 @@
 import { db } from "../database/connection";
+import { updateEngagementScoreAsync } from "../services/behavioralIntelligence";
 
 export interface IBehavioralEvent {
   id: string;
@@ -24,6 +25,10 @@ export class BehavioralEventModel {
         properties: JSON.stringify(data.properties ?? {}),
       })
       .returning("*");
+
+    // Fire-and-forget engagement score update (debounced hourly per org)
+    updateEngagementScoreAsync(data.org_id ?? null);
+
     return row;
   }
 

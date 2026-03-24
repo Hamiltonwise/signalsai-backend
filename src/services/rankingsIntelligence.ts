@@ -9,6 +9,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db } from "../database/connection";
 import { textSearch } from "../controllers/places/feature-services/GooglePlacesApiService";
 import { checkFirstWinAttribution } from "./firstWinAttribution";
+import { computeAllVelocities } from "./reviewVelocity";
 
 let anthropic: Anthropic | null = null;
 function getAnthropic(): Anthropic {
@@ -186,6 +187,9 @@ Market: ${address || specialty}`,
 
   // Run first win check
   await checkFirstWinAttribution(orgId).catch(() => {});
+
+  // Compute review velocity from snapshot history
+  await computeAllVelocities(orgId).catch(() => {});
 
   return true;
 }

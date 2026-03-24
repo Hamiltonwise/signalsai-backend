@@ -21,11 +21,13 @@ import {
   Settings,
   Clock,
   BarChart3,
+  Activity,
 } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 
 export type AdminNavKey =
   | "action-items"
+  | "live-feed"
   | "agent-outputs"
   | "ai-pms-automation"
   | "ai-data-insights"
@@ -61,6 +63,7 @@ const DONE_FOR_YOU_ITEMS: NavItem[] = [
 
 const TOP_ITEMS: NavItem[] = [
   { key: "action-items", label: "Morning Brief", icon: CheckSquare },
+  { key: "live-feed", label: "Live Feed", icon: Activity },
 ];
 
 const BOTTOM_ITEMS: NavItem[] = [

@@ -46,6 +46,15 @@ import { ConfirmProvider } from "./components/ui/ConfirmModal";
 import { DFYRoute } from "./components/DFYRoute";
 import { PilotHandler } from "./components/PilotHandler";
 import { PilotBanner } from "./components/Admin/PilotBanner";
+import AAELanding from "./pages/AAELanding";
+import ThankYou from "./pages/ThankYou";
+import WhatIsBusinessClarity from "./pages/content/WhatIsBusinessClarity";
+import EndodontistMarketing from "./pages/content/EndodontistMarketing";
+import GPReferralIntelligenceContent from "./pages/content/GPReferralIntelligence";
+import PatientPathWebsite from "./pages/dashboard/PatientPathWebsite";
+import ReviewRequests from "./pages/dashboard/ReviewRequests";
+import DashboardSettings from "./pages/dashboard/DashboardSettings";
+import GPDiscoveryPage from "./pages/partner/GPDiscoveryPage";
 import CheckupLayout from "./pages/checkup/CheckupLayout";
 import EntryScreen from "./pages/checkup/EntryScreen";
 import ScanningTheater from "./pages/checkup/ScanningTheater";
@@ -117,6 +126,13 @@ function App() {
 
               {/* Business Clarity content page — SEO, no auth */}
               <Route path="/business-clarity" element={<BusinessClarity />} />
+              <Route path="/business-clarity/what-is" element={<WhatIsBusinessClarity />} />
+              <Route path="/endodontist-marketing" element={<EndodontistMarketing />} />
+              <Route path="/gp-referral-intelligence" element={<GPReferralIntelligenceContent />} />
+
+              {/* AAE conference pages — no auth */}
+              <Route path="/aae" element={<AAELanding />} />
+              <Route path="/thank-you" element={<ThankYou />} />
 
               {/* Partner Portal — auth required, own layout */}
               <Route
@@ -190,6 +206,10 @@ function App() {
                 <Route path="/dashboard/progress" element={<ProgressReport />} />
                 <Route path="/dashboard/rankings" element={<RankingsScreen />} />
                 <Route path="/dashboard/referrals" element={<ReferralIntelligence />} />
+                <Route path="/dashboard/reviews" element={<ReviewRequests />} />
+                <Route path="/dashboard/settings" element={<DashboardSettings />} />
+                <Route path="/dashboard/website" element={<PatientPathWebsite />} />
+                <Route path="/dashboard/refer" element={<GPDiscoveryPage />} />
                 <Route path="/patientJourneyInsights" element={<Dashboard />} />
                 <Route path="/pmsStatistics" element={<Dashboard />} />
                 <Route path="/tasks" element={<Dashboard />} />

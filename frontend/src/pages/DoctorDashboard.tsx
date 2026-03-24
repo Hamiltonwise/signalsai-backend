@@ -40,8 +40,7 @@ import TTFVSensor from "@/components/dashboard/TTFVSensor";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import PatientPathBreadcrumb from "@/components/dashboard/PatientPathBreadcrumb";
 import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
-// T1 wires GBPConnectCard into DoctorDashboard.tsx
-// import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
+import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -681,6 +680,9 @@ export default function DoctorDashboard() {
             gbpConnected={hasGoogleConnection}
             topCompetitorName={rankingData?.topCompetitor?.name}
           />
+
+          {/* GBP Connect prompt — show when not connected */}
+          {!hasGoogleConnection && <GBPConnectCard />}
 
           {/* 4. PatientPath breadcrumb — quiet, lower */}
           {isOwnerOrManager && <WebsiteCard website={websiteData ?? null} />}

@@ -15,6 +15,7 @@ import {
   type AdminOrganization,
 } from "@/api/admin-organizations";
 import { fetchSchedules, type Schedule } from "@/api/schedules";
+import { apiGet } from "@/api/index";
 
 // ─── Zone 1: The Signal ─────────────────────────────────────────────
 
@@ -47,24 +48,26 @@ function SignalZone() {
 
 // ─── Zone 2: Account Health Grid ────────────────────────────────────
 
-function healthDot(org: AdminOrganization): {
-  color: string;
-  label: string;
-} {
-  // Without agent_results data on the org list response, we use
-  // creation recency as a proxy. Future: enrich the orgs endpoint
-  // with latest agent run timestamp.
-  const created = new Date(org.created_at);
-  const now = new Date();
-  const hoursAgo = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+interface ClientHealthEntry {
+  id: number;
+  name: string;
+  health: "green" | "amber" | "red";
+  risk?: string;
+  last_login?: string;
+}
 
-  if (org.connections?.gbp) {
+function healthDotFromClientHealth(
+  org: AdminOrganization,
+  healthMap: Map<number, ClientHealthEntry>,
+): { color: string; label: string } {
+  const entry = healthMap.get(org.id);
+  if (entry) {
+    if (entry.health === "red") return { color: "bg-red-500", label: entry.risk || "Needs attention" };
+    if (entry.health === "amber") return { color: "bg-amber-400", label: entry.risk || "Needs attention" };
     return { color: "bg-emerald-500", label: "Healthy" };
   }
-  if (hoursAgo < 48) {
-    return { color: "bg-amber-400", label: "Needs attention" };
-  }
-  // No GBP after 48h — needs setup, not urgent. Amber, not red.
+  // Fallback: GBP-based proxy
+  if (org.connections?.gbp) return { color: "bg-emerald-500", label: "Healthy" };
   return { color: "bg-amber-400", label: "Needs setup" };
 }
 
@@ -78,9 +81,10 @@ function specialtyIcon(name: string): string {
   return "\uD83C\uDFE2"; // 🏢
 }
 
-function OrgCard({ org }: { org: AdminOrganization }) {
+function OrgCard({ org, healthMap }: { org: AdminOrganization; healthMap: Map<number, ClientHealthEntry> }) {
   const navigate = useNavigate();
-  const dot = healthDot(org);
+  const dot = healthDotFromClientHealth(org, healthMap);
+  const healthEntry = healthMap.get(org.id);
 
   return (
     <button
@@ -108,9 +112,11 @@ function OrgCard({ org }: { org: AdminOrganization }) {
         {org.subscription_tier ? ` \u00B7 ${org.subscription_tier}` : ""}
       </p>
       <p className="text-xs text-gray-400">
-        {org.connections?.gbp
-          ? "Agents monitoring. Tap to see what they found."
-          : "First briefing arrives after next agent run."}
+        {healthEntry?.last_login
+          ? `Last login: ${new Date(healthEntry.last_login).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+          : org.connections?.gbp
+            ? "Agents monitoring. Tap to see what they found."
+            : "First briefing arrives after next agent run."}
       </p>
     </button>
   );
@@ -122,6 +128,20 @@ function AccountHealthGrid() {
     queryFn: adminListOrganizations,
     retry: 1,
   });
+
+  // Fetch client health classification (T5 endpoint -- graceful if missing)
+  const { data: healthData } = useQuery({
+    queryKey: ["admin-client-health-brief"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/client-health" });
+      return res?.success ? (res.clients as ClientHealthEntry[]) : [];
+    },
+    staleTime: 60_000,
+    retry: false, // Don't retry if endpoint doesn't exist yet
+  });
+
+  const healthMap = new Map<number, ClientHealthEntry>();
+  (healthData || []).forEach((c) => healthMap.set(c.id, c));
 
   // The API may return orgs at data.organizations (standard) or data may
   // itself be the array if the response shape varies.
@@ -161,7 +181,7 @@ function AccountHealthGrid() {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {orgs.map((org) => (
-        <OrgCard key={org.id} org={org} />
+        <OrgCard key={org.id} org={org} healthMap={healthMap} />
       ))}
     </div>
   );
