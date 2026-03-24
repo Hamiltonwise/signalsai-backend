@@ -11,7 +11,8 @@
     "db:rollback": "knex migrate:rollback",
     "db:seed": "knex seed:run",
     "db:make-migration": "knex migrate:make",
-    "db:make-seed": "knex seed:make"
+    "db:make-seed": "knex seed:make",
+    "seed:demo": "ts-node src/scripts/seedDemoAccount.ts"
   },
   "keywords": [],
   "author": "",
