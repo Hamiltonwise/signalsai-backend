@@ -671,7 +671,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
             </div>
           </section>
 
-          {/* Referral Velocity Pipeline - matches newdesign */}
+          {/* Referral Activity Pipeline */}
           <section className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden group">
             <div className="px-10 py-8 border-b border-black/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex items-center gap-4">
@@ -680,7 +680,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                 </div>
                 <div className="text-left">
                   <h2 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
-                    Referral Velocity Pipeline
+                    Referral Activity Pipeline
                   </h2>
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
                     Trailing 6-month Synced Analysis

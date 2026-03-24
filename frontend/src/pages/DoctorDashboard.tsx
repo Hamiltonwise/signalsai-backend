@@ -34,6 +34,7 @@ import { useLocationContext } from "@/contexts/locationContext";
 import { apiGet } from "@/api/index";
 import agents from "@/api/agents";
 import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
+import OneActionCard from "@/components/dashboard/OneActionCard";
 import CSAgentChat from "@/components/dashboard/CSAgentChat";
 import TTFVSensor from "@/components/dashboard/TTFVSensor";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
@@ -518,7 +519,7 @@ function ModeToggle({ mode, onChange }: { mode: "standard" | "growth"; onChange:
 // ═══════════════════════════════════════════════════════════════════
 
 export default function DoctorDashboard() {
-  const { userProfile } = useAuth();
+  const { userProfile, billingStatus, hasGoogleConnection } = useAuth();
   const { selectedLocation } = useLocationContext();
 
   const orgId = userProfile?.organizationId || null;
@@ -636,6 +637,25 @@ export default function DoctorDashboard() {
         </div>
       )}
 
+      {/* One Action Card — always visible, deterministic rule engine */}
+      <OneActionCard
+        billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
+        driftGP={null /* TODO: wire to referral drift data when available */}
+        rankingDrop={
+          rankingData?.previousPosition && rankingData?.rankPosition &&
+          rankingData.rankPosition - rankingData.previousPosition >= 2
+            ? {
+                previousPosition: rankingData.previousPosition,
+                currentPosition: rankingData.rankPosition,
+                keyword: rankingData.specialty || undefined,
+              }
+            : null
+        }
+        competitorVelocity={null /* TODO: wire when review velocity data is available */}
+        gbpConnected={hasGoogleConnection}
+        topCompetitorName={rankingData?.topCompetitor?.name}
+      />
+
       {mode === "standard" ? (
         <>
           <PositionCard ranking={rankingData ?? null} />
@@ -649,7 +669,6 @@ export default function DoctorDashboard() {
         <>
           <GrowthPositionTrack ranking={rankingData ?? null} />
           <GapToNext ranking={rankingData ?? null} />
-          <RecommendedMove ranking={rankingData ?? null} findings={prooflineFindings} />
           <CompetitorActivityFeed ranking={rankingData ?? null} />
           {canSendReviews && <ReviewRequestCard placeId={rankingData?.placeId ?? null} practiceName={practiceName} />}
           {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}

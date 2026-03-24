@@ -1560,7 +1560,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                         : "N/A"}
                     </span>
                     <h3 className="text-2xl lg:text-3xl font-black font-heading text-alloro-navy tracking-tight">
-                      {prooflineTitle || "Practice Trajectory Update"}
+                      {prooflineTitle || "Practice Health Update"}
                     </h3>
                   </div>
                   <button
