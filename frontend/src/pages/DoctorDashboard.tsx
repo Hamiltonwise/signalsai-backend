@@ -35,6 +35,8 @@ import { apiGet } from "@/api/index";
 import agents from "@/api/agents";
 import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
 import CSAgentChat from "@/components/dashboard/CSAgentChat";
+import TTFVSensor from "@/components/dashboard/TTFVSensor";
+import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -600,6 +602,10 @@ export default function DoctorDashboard() {
   const isLoading = !rankingData && !agentData && !websiteData && !profileData;
 
   return (
+    <>
+    {/* Billing prompt bar — top of dashboard, quiet, dismissable */}
+    <BillingPromptBar orgId={orgId} />
+
     <div className="mx-auto max-w-2xl space-y-5 px-4 py-6 sm:py-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
@@ -656,7 +662,11 @@ export default function DoctorDashboard() {
         score={rankingData?.rankScore ?? null}
         locationId={locationId}
       />
+
+      {/* TTFV Sensor — bottom bar, 60s after first load */}
+      <TTFVSensor orgId={orgId} />
     </div>
+    </>
   );
 }
 

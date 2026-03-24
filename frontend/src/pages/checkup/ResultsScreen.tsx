@@ -437,10 +437,13 @@ export default function ResultsScreen() {
   const state = location.state as CheckupResults | undefined;
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [relationship, setRelationship] = useState("owner");
+  const [weeklyUpdates, setWeeklyUpdates] = useState(true);
   const [linkCopied, setLinkCopied] = useState(false);
 
   const isValidEmail = (v: string) =>
@@ -467,15 +470,61 @@ export default function ResultsScreen() {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (emailSending) return;
+
+    // Validate
+    let hasError = false;
     if (!isValidEmail(email)) {
       setEmailError("Please enter a valid email address.");
-      return;
+      hasError = true;
+    } else {
+      setEmailError("");
     }
-    setEmailError("");
+    if (password.length < 8) {
+      setPasswordError("Use at least 8 characters.");
+      hasError = true;
+    } else {
+      setPasswordError("");
+    }
+    if (hasError) return;
 
     setEmailSending(true);
 
-    // Fire email send — don't block UI on it
+    // Step 1: Create account directly via auth register
+    try {
+      const registerRes = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          practiceName: place.name,
+        }),
+      });
+      const registerData = await registerRes.json();
+
+      if (!registerRes.ok || !registerData.success) {
+        if (registerData.error?.includes("exists") || registerData.message?.includes("exists")) {
+          setEmailError('You already have an account. Sign in at /signin');
+          setEmailSending(false);
+          return;
+        }
+        setEmailError(registerData.error || registerData.message || "Account creation failed.");
+        setEmailSending(false);
+        return;
+      }
+
+      // Store token if returned
+      if (registerData.token) {
+        localStorage.setItem("auth_token", registerData.token);
+        localStorage.setItem("token", registerData.token);
+      }
+    } catch {
+      setEmailError("Something went wrong. Please try again.");
+      setEmailSending(false);
+      return;
+    }
+
+    // Step 2: Fire email send in background
     sendCheckupEmail({
       email: email.trim(),
       practiceName: place.name,
@@ -487,21 +536,20 @@ export default function ResultsScreen() {
       finding: findings[0]?.detail || "",
       rank: market?.rank || 0,
       totalCompetitors: market?.totalCompetitors || 0,
-    }).catch(() => {
-      // Email send failed silently — prospect still sees results
-    });
+    }).catch(() => {});
 
-    // Track: checkup.email_captured (no PII — no email stored)
+    // Step 3: Track event
     trackEvent("checkup.email_captured", {
       score: score.composite,
       specialty: place.category,
       city: place.city,
       ref_code: state.refCode || null,
       gate_relationship: relationship,
+      weekly_updates: weeklyUpdates,
       intent: state.intent || null,
     });
 
-    // Trigger ClearPath build and navigate to building screen
+    // Step 4: Trigger build
     triggerBuild({
       email: email.trim(),
       placeId: place.placeId,
@@ -510,14 +558,8 @@ export default function ResultsScreen() {
       city: place.city || "",
     }).catch(() => {});
 
-    navigate("/checkup/building", {
-      state: {
-        practiceName: place.name,
-        specialty: place.category || "",
-        email: email.trim(),
-      },
-      replace: true,
-    });
+    // Step 5: Navigate to dashboard (they now have an account)
+    navigate("/dashboard", { replace: true });
   };
 
   // Blur gate CTA — WO4: use real competitor name
@@ -632,12 +674,13 @@ export default function ResultsScreen() {
           </div>
           <p className="text-sm text-slate-600 mb-5 leading-relaxed">{blurGateCta}</p>
           <form onSubmit={handleEmailSubmit} className="space-y-3">
+            {/* Email */}
             <div>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
-                placeholder="Enter your email"
+                placeholder="Your email"
                 required
                 className={`w-full h-12 px-4 rounded-xl bg-slate-50 border text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
                   emailError
@@ -646,18 +689,41 @@ export default function ResultsScreen() {
                 }`}
               />
               {emailError && (
-                <p className="text-xs text-red-500 mt-1">{emailError}</p>
+                <p className="text-xs text-red-500 mt-1">
+                  {emailError.includes("already have an account") ? (
+                    <>You already have an account. <a href="/signin" className="font-semibold text-[#D56753] underline">Sign in here &rarr;</a></>
+                  ) : emailError}
+                </p>
               )}
             </div>
-            {/* Relationship question — segmentation data */}
+            {/* Password — creates account directly */}
+            <div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
+                placeholder="Create a password"
+                required
+                minLength={8}
+                className={`w-full h-12 px-4 rounded-xl bg-slate-50 border text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
+                  passwordError
+                    ? "border-red-400 focus:border-red-400 focus:ring-red-400/10"
+                    : "border-slate-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
+                }`}
+              />
+              {passwordError && (
+                <p className="text-xs text-red-500 mt-1">{passwordError}</p>
+              )}
+            </div>
+            {/* Relationship — spec: owner/vendor/other */}
             <fieldset className="space-y-1.5">
               <legend className="text-xs font-medium text-slate-600 mb-1.5">
-                Are you the business owner?
+                Are you the owner or manager of this practice?
               </legend>
               {[
-                { value: "owner", label: "Yes, this is my business" },
-                { value: "manager", label: "I manage this business" },
-                { value: "vendor", label: "I provide services to this business" },
+                { value: "owner", label: "Yes, I'm the owner or manager" },
+                { value: "vendor", label: "I provide services to this practice" },
+                { value: "other", label: "Other" },
               ].map((opt) => (
                 <label
                   key={opt.value}
@@ -675,6 +741,16 @@ export default function ResultsScreen() {
                 </label>
               ))}
             </fieldset>
+            {/* Weekly updates checkbox — pre-checked */}
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={weeklyUpdates}
+                onChange={(e) => setWeeklyUpdates(e.target.checked)}
+                className="w-4 h-4 rounded text-[#D56753] border-slate-300 focus:ring-[#D56753]/20"
+              />
+              <span className="text-xs text-slate-600">Send me a weekly update on my score and competitors</span>
+            </label>
             {topCompetitor && (
               <p className="text-xs text-slate-400">
                 Includes detailed comparison with {topCompetitor.name}
@@ -687,13 +763,12 @@ export default function ResultsScreen() {
               disabled={emailSending}
               className="w-full h-13 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-70"
             >
-              {emailSending ? "Sending..." : "Unlock My Full Report"}
+              {emailSending ? "Creating your account..." : "Unlock my report"}
               {!emailSending && <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
           <p className="text-[11px] text-slate-400 text-center mt-5 leading-relaxed">
-            Your business operates on a deterministic system. Alloro tracks all
-            of it.
+            Your full report takes 30 seconds to unlock.
           </p>
         </div>
       ) : (
