@@ -735,17 +735,34 @@ function EmailWriter() {
     });
   };
 
+  const suggestedPrompts = [
+    "Doctor went quiet after pricing. Been 5 days. Need a follow-up that reopens the conversation without pressure.",
+    "Demo went well but they want to think about it. How do I stay top of mind without being annoying?",
+    "Office manager is the gatekeeper and the doctor never sees my emails. How do I get past her?",
+    "Doctor asked about ROI. Need to make the case in one paragraph.",
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Empty state hero — only when no emails generated yet */}
+      {emails.length === 0 && history.length === 0 && !situation.trim() && (
+        <div className="text-center py-4">
+          <h2 className="text-2xl font-extrabold text-[#212D40]">Close this deal.</h2>
+          <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">
+            Describe where you are in the conversation and what you need to happen next. Alloro writes the message.
+          </p>
+        </div>
+      )}
+
       {/* Input form */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <label className="block text-sm font-semibold text-[#212D40] mb-2">
-          Describe your situation
+          What's the situation?
         </label>
         <textarea
           value={situation}
           onChange={(e) => setSituation(e.target.value)}
-          placeholder="I need to follow up with Dr. Martinez who watched our demo but mentioned the price was a concern"
+          placeholder="Doctor went quiet after pricing. Been 5 days..."
           rows={3}
           className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none"
         />
@@ -788,6 +805,22 @@ function EmailWriter() {
 
         {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
       </div>
+
+      {/* Suggested prompts — shown when textarea is empty and no results */}
+      {!situation.trim() && emails.length === 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Common situations</p>
+          {suggestedPrompts.map((prompt) => (
+            <button
+              key={prompt}
+              onClick={() => setSituation(prompt)}
+              className="w-full text-left rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 hover:border-[#D56753]/30 hover:bg-[#D56753]/[0.02] transition-colors"
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Generated emails */}
       {emails.length > 0 && (
