@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 import {
   Sparkles,
   Loader2,
@@ -650,7 +651,9 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
           {(viewState === "results" || viewState === "completed") && (
             <motion.div key="results" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
               <div className={`rounded-lg p-4 border ${viewState === "completed" ? "bg-green-50/60 border-green-200" : "bg-gray-50 border-gray-200"}`}>
-                <p className="text-sm font-medium text-gray-800">{batch?.summary || "Analysis complete."}</p>
+                <div className="text-sm text-gray-800 prose prose-sm max-w-none prose-headings:text-sm prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+                  <ReactMarkdown>{batch?.summary || "Analysis complete."}</ReactMarkdown>
+                </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {stats.total > 0 && <StatBadge label="Total" count={stats.total} color="gray" />}
                   {stats.pending > 0 && <StatBadge label="Pending" count={stats.pending} color="slate" />}

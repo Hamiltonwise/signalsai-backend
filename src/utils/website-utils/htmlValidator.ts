@@ -25,6 +25,7 @@ export function validateHtml(
   issues.push(...checkStructure(html));
   issues.push(...checkColors(html));
   issues.push(...checkBannedPatterns(html));
+  issues.push(...checkBrokenImages(html));
   issues.push(...checkLinks(html, existingPaths, existingPostSlugs));
 
   return { valid: issues.length === 0, issues };
@@ -75,7 +76,7 @@ function checkColors(html: string): ValidationIssue[] {
   if (colorOpacity.length > 0) {
     issues.push({ type: "ui",
       description: `Color opacity variants (${[...new Set(colorOpacity)].slice(0, 4).join(", ")}) fail with Tailwind CDN.`,
-      fixInstruction: "Replace ALL color/opacity variants with inline style. bg-primary/10 → style=\"background:rgba(35,35,35,0.1)\". text-white/80 → style=\"color:rgba(255,255,255,0.8)\". bg-white/10 → style=\"background:rgba(255,255,255,0.1)\"." });
+      fixInstruction: "Remove ALL color/opacity variants. Use solid Tailwind classes instead: bg-gray-50 or bg-gray-100 for light tinted backgrounds, bg-gray-900 or bg-primary for dark backgrounds, text-white or text-gray-200 for light text on dark, text-gray-600 for muted text. Never use /N opacity modifiers on any color." });
   }
 
   // bg-opacity-*, border-opacity-* utilities
@@ -83,7 +84,7 @@ function checkColors(html: string): ValidationIssue[] {
   if (legacyOpacity.length > 0) {
     issues.push({ type: "ui",
       description: `Legacy opacity utilities (${[...new Set(legacyOpacity)].join(", ")}) fail with CDN.`,
-      fixInstruction: "Replace bg-opacity-10 with inline style=\"background:rgba(...)\"." });
+      fixInstruction: "Remove legacy opacity utilities. Use solid Tailwind colors instead: bg-gray-50 for light tinted backgrounds, bg-gray-900 for dark." });
   }
 
   // Gradient classes with brand colors
@@ -91,7 +92,7 @@ function checkColors(html: string): ValidationIssue[] {
   if (brandGradients.length > 0) {
     issues.push({ type: "ui",
       description: `Gradient with brand colors (${[...new Set(brandGradients)].join(", ")}) fails with CSS custom properties.`,
-      fixInstruction: "Replace gradient classes with inline style=\"background:linear-gradient(...)\". Use solid bg-primary or bg-accent for non-gradient backgrounds." });
+      fixInstruction: "Remove gradient classes (from-primary, to-accent, via-primary etc). Use solid bg-primary or bg-accent instead. For visual depth, use separate nested elements with different solid background colors (e.g., bg-primary on outer, bg-gray-50 on inner)." });
   }
 
   // Non-standard Tailwind opacity steps
@@ -149,6 +150,21 @@ function checkBannedPatterns(html: string): ValidationIssue[] {
     }
   }
 
+  // Visible removal comments
+  const removalPattern = /\((?:empty|removed|section removed|deleted|cleared)[^)]*\)/i;
+  if (removalPattern.test(html)) {
+    issues.push({ type: "ui", description: "Visible removal comment in HTML.",
+      fixInstruction: "Remove all text like '(empty — section removed entirely)' or '(removed)'. If the section should be empty, return an empty string — literally nothing." });
+  }
+
+  // Raw shortcode template tokens in page HTML (should only be in template definitions)
+  const rawTokens = html.match(/\{\{(?:start_post_loop|end_post_loop|start_review_loop|end_review_loop|post\.[\w]+|post_content|post_title|custom_field)\b[^}]*\}\}/g) || [];
+  if (rawTokens.length > 0) {
+    issues.push({ type: "ui",
+      description: `Raw shortcode template tokens in page HTML: ${[...new Set(rawTokens)].slice(0, 3).join(", ")}`,
+      fixInstruction: "Replace raw template tokens ({{start_post_loop}}, {{post.title}}, etc.) with a complete shortcode reference: {{ post_block id='slug' items='type' }}. Template loop tokens belong in post_block template definitions, not in page HTML." });
+  }
+
   // Anchor hrefs (#something) — these often point to non-existent IDs
   const anchorHrefs = html.match(/href="#[^"]+"/g) || [];
   for (const anchor of anchorHrefs) {
@@ -159,6 +175,32 @@ function checkBannedPatterns(html: string): ValidationIssue[] {
         fixInstruction: `Replace href="#${id}" with a link to an actual page path (e.g., /consultation or /contact).` });
       break; // One is enough to trigger a fix
     }
+  }
+
+  return issues;
+}
+
+function checkBrokenImages(html: string): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+
+  // Detect <img> with relative src paths (invented/placeholder images)
+  const relativeImages = html.match(/<img[^>]*src=["']\/(?!api\/)[^"']*["'][^>]*>/gi) || [];
+  if (relativeImages.length > 0) {
+    issues.push({
+      type: "ui",
+      description: `${relativeImages.length} image(s) with local/relative src paths — these files likely don't exist.`,
+      fixInstruction: "Remove <img> tags with relative src paths (src=\"/images/...\", src=\"/assets/...\"). Replace with text content or a placeholder div with class=\"bg-gray-200 rounded-lg w-full h-48 flex items-center justify-center\". Keep images that use https:// URLs.",
+    });
+  }
+
+  // Detect common placeholder image patterns
+  const placeholderImages = html.match(/<img[^>]*src=["'](?:https?:\/\/(?:via\.placeholder|placehold|placekitten|picsum|dummyimage|fakeimg)[^"']*|data:image\/[^"']*)["'][^>]*>/gi) || [];
+  if (placeholderImages.length > 0) {
+    issues.push({
+      type: "ui",
+      description: `${placeholderImages.length} placeholder/dummy image(s) detected.`,
+      fixInstruction: "Remove placeholder images. Replace with a div with class=\"bg-gray-200 rounded-lg w-full h-48\" or omit entirely.",
+    });
   }
 
   return issues;

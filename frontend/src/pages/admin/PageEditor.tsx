@@ -29,8 +29,7 @@ import type { SeoData } from "../../api/websites";
 import type { ChatMessage } from "../../components/PageEditor/ChatPanel";
 import { ConfirmModal } from "../../components/settings/ConfirmModal";
 import { AlertModal } from "../../components/ui/AlertModal";
-import Editor from "@monaco-editor/react";
-import { serializeSectionsJs, parseSectionsJs } from "../../utils/templateRenderer";
+import SectionsEditor from "../../components/Admin/SectionsEditor";
 
 const MAX_CHAT_MESSAGES_PER_COMPONENT = 50;
 
@@ -95,8 +94,6 @@ function PageEditorInner() {
   // View state: visual (iframe), code (monaco), or seo (seo panel)
   type EditorView = "visual" | "code" | "seo";
   const [activeView, setActiveView] = useState<EditorView>("visual");
-  const codeView = activeView === "code";
-  const [codeContent, setCodeContent] = useState("");
 
   // Debug info from last LLM edit
   const [lastDebugInfo, setLastDebugInfo] = useState<EditDebugInfo | null>(null);
@@ -491,27 +488,13 @@ function PageEditorInner() {
   const handleSave = useCallback(async () => {
     if (!projectId || !draftPageId || isSaving) return;
 
-    // If in code view, parse sections from code first
-    let sectionsToSave = sections;
-    if (codeView) {
-      try {
-        sectionsToSave = parseSectionsJs(codeContent);
-        setSections(sectionsToSave);
-      } catch (err) {
-        setEditError(
-          `Code parse error: ${err instanceof Error ? err.message : String(err)}`
-        );
-        return;
-      }
-    }
-
     try {
       setIsSaving(true);
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       await updatePageSections(
         projectId,
         draftPageId,
-        sectionsToSave,
+        sections,
         chatMapToObject(chatMap)
       );
       setIsDirty(false);
@@ -523,7 +506,7 @@ function PageEditorInner() {
     } finally {
       setIsSaving(false);
     }
-  }, [projectId, draftPageId, sections, chatMap, isSaving, codeView, codeContent]);
+  }, [projectId, draftPageId, sections, chatMap, isSaving]);
 
   // --- Publish ---
   const handlePublish = useCallback(() => {
@@ -602,71 +585,38 @@ function PageEditorInner() {
   // --- View switching ---
   const handleViewChange = useCallback(
     (view: EditorView) => {
-      // Leaving code view — parse code back to sections
-      if (activeView === "code" && view !== "code") {
-        try {
-          const parsed = parseSectionsJs(codeContent);
-          setSections(parsed);
-          const assembled = renderPage(
-            project?.wrapper || "{{slot}}",
-            project?.header || "",
-            project?.footer || "",
-            parsed,
-            undefined,
-            undefined,
-            undefined,
-            projectId
-          );
-          setHtmlContent(assembled);
-          setIsDirty(true);
-          scheduleSave(assembled);
-        } catch (err) {
-          setEditError(
-            `Code parse error: ${err instanceof Error ? err.message : String(err)}`
-          );
-          return; // Stay in code view on parse error
-        }
-      }
-
-      // Entering code view — serialize
-      if (view === "code") {
-        setCodeContent(serializeSectionsJs(sections));
-        clearSelection();
-      }
-
-      // Entering SEO — clear selection
-      if (view === "seo") {
+      // Clear selection when entering code or seo view
+      if (view === "code" || view === "seo") {
         clearSelection();
       }
 
       setActiveView(view);
     },
-    [activeView, codeContent, sections, project, projectId, scheduleSave, clearSelection]
+    [clearSelection]
   );
 
-  // --- Live preview update while in code view (debounced) ---
-  useEffect(() => {
-    if (!codeView) return;
-    const timer = setTimeout(() => {
-      try {
-        const parsed = parseSectionsJs(codeContent);
-        const assembled = renderPage(
-          project?.wrapper || "{{slot}}",
-          project?.header || "",
-          project?.footer || "",
-          parsed,
-          undefined,
-          undefined,
-          undefined,
-          projectId
-        );
-        setHtmlContent(assembled);
-      } catch {
-        // Ignore parse errors while typing — preview stays at last good state
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [codeView, codeContent, project, projectId]);
+  // --- Handle sections change from SectionsEditor (code view) ---
+  const handleCodeSectionsChange = useCallback(
+    (updated: Section[]) => {
+      setSections(updated);
+      setIsDirty(true);
+
+      // Rebuild preview
+      const assembled = renderPage(
+        project?.wrapper || "{{slot}}",
+        project?.header || "",
+        project?.footer || "",
+        updated,
+        undefined,
+        undefined,
+        undefined,
+        projectId
+      );
+      setHtmlContent(assembled);
+      scheduleSave(assembled);
+    },
+    [project, projectId, scheduleSave]
+  );
 
   // --- Current chat messages for selected element ---
   const currentChatMessages = selectedInfo
@@ -807,24 +757,10 @@ function PageEditorInner() {
         ) : activeView === "code" ? (
           <>
             <div className="flex-1 overflow-hidden">
-              <Editor
-                height="100%"
-                defaultLanguage="javascript"
-                value={codeContent}
-                onChange={(v) => {
-                  setCodeContent(v || "");
-                  setIsDirty(true);
-                }}
-                theme="vs-dark"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  wordWrap: "on",
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  tabSize: 2,
-                  padding: { top: 12 },
-                }}
+              <SectionsEditor
+                sections={sections}
+                onChange={handleCodeSectionsChange}
+                onSave={handleSave}
               />
             </div>
             <div className="flex-1 bg-gray-100 p-4 overflow-hidden flex items-start justify-center">

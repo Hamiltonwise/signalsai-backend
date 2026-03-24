@@ -40,23 +40,12 @@ export async function listPages(
 
 export async function createPage(
   projectId: string,
-  data: { path?: string; sections: any; publish?: boolean }
+  data: { path?: string; sections?: any; publish?: boolean; display_name?: string }
 ): Promise<{
   page: any;
   error?: { status: number; code: string; message: string };
 }> {
-  const { path = "/", sections, publish = false } = data;
-
-  if (!sections) {
-    return {
-      page: null,
-      error: {
-        status: 400,
-        code: "INVALID_INPUT",
-        message: "sections is required",
-      },
-    };
-  }
+  const { path = "/", sections = [], publish = false, display_name } = data;
 
   console.log(
     `[Admin Websites] Creating page for project ID: ${projectId}, path: ${path}`
@@ -76,14 +65,25 @@ export async function createPage(
     .update({ status: "inactive", updated_at: db.fn.now() });
 
   // Create new page
+  const insertData: Record<string, any> = {
+    project_id: projectId,
+    path,
+    version: newVersion,
+    status: publish ? "published" : "draft",
+    sections: JSON.stringify(sections),
+  };
+
+  // Set generation_status to "ready" for blank pages (no pipeline)
+  if (Array.isArray(sections) && sections.length === 0) {
+    insertData.generation_status = "ready";
+  }
+
+  if (display_name) {
+    insertData.display_name = display_name;
+  }
+
   const [page] = await db(PAGES_TABLE)
-    .insert({
-      project_id: projectId,
-      path,
-      version: newVersion,
-      status: publish ? "published" : "draft",
-      sections: JSON.stringify(sections),
-    })
+    .insert(insertData)
     .returning("*");
 
   // If publishing, mark previous published as inactive

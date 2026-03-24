@@ -491,6 +491,31 @@ export const publishPage = async (
 };
 
 /**
+ * Create a blank page (no template, no pipeline)
+ */
+export const createBlankPage = async (
+  projectId: string,
+  data: { path: string; display_name?: string },
+): Promise<{ success: boolean; data: WebsitePage }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/pages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      path: data.path,
+      sections: [],
+      display_name: data.display_name,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to create page");
+  }
+
+  return response.json();
+};
+
+/**
  * Delete a page version
  */
 export const deletePageVersion = async (

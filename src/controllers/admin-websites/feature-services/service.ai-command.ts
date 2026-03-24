@@ -14,6 +14,7 @@ import {
   analyzeForStructuralChanges,
   planPageSections,
   generateSectionHtml,
+  generatePostContent,
 } from "../../../utils/website-utils/aiCommandService";
 import crypto from "crypto";
 import * as redirectsService from "./service.redirects";
@@ -107,6 +108,11 @@ export async function analyzeBatch(batchId: string): Promise<void> {
   let sortOrder = 0;
   let totalRecommendations = 0;
 
+  // Fetch available templates once for the entire batch
+  const templates = await getProjectTemplates(project.template_id);
+  const templateContext = buildTemplateContext(templates);
+  const promptWithTemplates = batch.prompt + templateContext;
+
   try {
     // ---- Built-in flags (deterministic, no LLM) ----
     try {
@@ -191,7 +197,7 @@ export async function analyzeBatch(batchId: string): Promise<void> {
 
         try {
           const result = await analyzeHtmlContent({
-            prompt: batch.prompt,
+            prompt: promptWithTemplates,
             targetLabel: `Layout > ${capitalize(field)}`,
             currentHtml: html,
           });
@@ -258,7 +264,7 @@ export async function analyzeBatch(batchId: string): Promise<void> {
 
           try {
             const result = await analyzeHtmlContent({
-              prompt: batch.prompt,
+              prompt: promptWithTemplates,
               targetLabel: `${page.path} > ${sectionName}`,
               currentHtml: sectionHtml,
             });
@@ -302,7 +308,7 @@ export async function analyzeBatch(batchId: string): Promise<void> {
 
         try {
           const result = await analyzeHtmlContent({
-            prompt: batch.prompt,
+            prompt: promptWithTemplates,
             targetLabel: `Post: ${post.title}`,
             currentHtml: post.content,
           });
@@ -343,7 +349,7 @@ export async function analyzeBatch(batchId: string): Promise<void> {
       const existingMenus = await getExistingMenuItems(batch.project_id);
 
       const structural = await analyzeForStructuralChanges({
-        prompt: batch.prompt,
+        prompt: promptWithTemplates,
         existingPaths,
         existingRedirects: existingRedirects.map((r) => `${r.from_path} → ${r.to_path}`),
         existingPostSlugs: existingPostSlugs.map((p) => `${p.post_type_slug}/${p.slug}`),
@@ -351,7 +357,17 @@ export async function analyzeBatch(batchId: string): Promise<void> {
         existingMenus,
       });
 
+      // Deduplicate redirects — skip if from_path already exists in DB or in this batch
+      const existingFromPaths = new Set(existingRedirects.map((r) => r.from_path));
+      const batchFromPaths = new Set<string>();
+
       for (const rec of structural.redirects) {
+        if (existingFromPaths.has(rec.from_path) || batchFromPaths.has(rec.from_path)) {
+          console.log(`[AiCommand] Skipping duplicate redirect: ${rec.from_path}`);
+          continue;
+        }
+        batchFromPaths.add(rec.from_path);
+
         await db(RECS_TABLE).insert({
           batch_id: batchId,
           target_type: "create_redirect",
@@ -360,6 +376,22 @@ export async function analyzeBatch(batchId: string): Promise<void> {
           target_meta: JSON.stringify({ from_path: rec.from_path, to_path: rec.to_path, type: rec.type || 301 }),
           recommendation: rec.recommendation,
           instruction: `Create ${rec.type || 301} redirect from ${rec.from_path} to ${rec.to_path}`,
+          current_html: "",
+          sort_order: sortOrder++,
+        });
+        totalRecommendations++;
+      }
+
+      // Delete redirect recommendations
+      for (const rec of structural.deleteRedirects) {
+        await db(RECS_TABLE).insert({
+          batch_id: batchId,
+          target_type: "delete_redirect",
+          target_id: batch.project_id,
+          target_label: `Delete redirect: ${rec.from_path}`,
+          target_meta: JSON.stringify({ from_path: rec.from_path }),
+          recommendation: rec.recommendation,
+          instruction: `Delete redirect from ${rec.from_path}`,
           current_html: "",
           sort_order: sortOrder++,
         });
@@ -748,11 +780,13 @@ export async function executeBatch(batchId: string): Promise<void> {
     await refreshStats(batchId);
   }
 
+  const executionSummary = await buildExecutionSummary(batchId);
+
   await db(BATCHES_TABLE)
     .where("id", batchId)
     .update({
       status: "completed",
-      summary: `Executed ${executedCount} change(s)${failedCount > 0 ? `, ${failedCount} failed` : ""}.`,
+      summary: executionSummary,
       updated_at: db.fn.now(),
     });
 
@@ -1203,13 +1237,25 @@ async function executeCreatePage(rec: any, ctx: ExecutionContext): Promise<void>
   // Fetch project
   const project = await db(PROJECTS_TABLE).where("id", projectId).first();
 
-  // Fetch existing pages for style context
+  // Fetch existing pages for style context (up to 5)
   const existingPages = await db(PAGES_TABLE)
     .where({ project_id: projectId, status: "published" })
-    .limit(3);
+    .limit(5);
 
   const existingSections: Array<{ name: string; summary: string }> = [];
-  let siteStyleContext = `## Brand Color Classes\nUse these CSS classes for brand colors — they resolve to the project's configured palette at render time:\n- bg-primary / text-primary — primary brand color\n- bg-accent / text-accent — accent brand color\n- border-primary / border-accent — for borders\nNEVER hardcode hex color values. Always use bg-primary, text-primary, bg-accent, text-accent.\n\n`;
+  let siteStyleContext = [
+    `## Brand Colors`,
+    `- bg-primary / text-primary — resolves to ${project.primary_color || "#232323"}`,
+    `- bg-accent / text-accent — resolves to ${project.accent_color || "#23AFBE"}`,
+    `- NEVER use these hex values directly. Always use the CSS classes.`,
+    `- For light backgrounds: bg-gray-50, bg-gray-100. For dark: bg-primary, bg-gray-900.`,
+    ``,
+    `## Site Layout (wrapper/header/footer — match this style)`,
+    project.header ? `### Header\n${String(project.header).substring(0, 3000)}` : "",
+    project.footer ? `### Footer\n${String(project.footer).substring(0, 3000)}` : "",
+    ``,
+    `## Existing Page Sections (match these patterns)`,
+  ].filter(Boolean).join("\n");
 
   for (const page of existingPages) {
     const raw = typeof page.sections === "string" ? JSON.parse(page.sections) : page.sections;
@@ -1217,9 +1263,9 @@ async function executeCreatePage(rec: any, ctx: ExecutionContext): Promise<void>
     for (const s of sections) {
       const name = s.name || s.label || "unnamed";
       const content = typeof s === "string" ? s : s.content || s.html || "";
-      existingSections.push({ name, summary: content.substring(0, 150) });
-      if (siteStyleContext.length < 3000) {
-        siteStyleContext += content.substring(0, 1000) + "\n\n";
+      existingSections.push({ name, summary: content.substring(0, 200) });
+      if (siteStyleContext.length < 20000) {
+        siteStyleContext += `\n--- ${page.path} > ${name} ---\n${content.substring(0, 3000)}\n`;
       }
     }
   }
@@ -1444,35 +1490,21 @@ async function executeCreatePost(rec: any, ctx: ExecutionContext): Promise<void>
     customFieldsInstruction = `\n\nThis post type has custom fields: ${schema.map((f: any) => `${f.label || f.name} (${f.type || "text"})`).join(", ")}. Include relevant information that could populate these fields in the content.`;
   }
 
-  // Generate content with full context
-  const { editHtmlContent: generateContent } = await import("../../../utils/website-utils/aiCommandService");
-
-  const instruction = [
-    `Create professional HTML content for a ${postType.name} (${meta.post_type_slug}) post titled "${meta.title}".`,
-    meta.purpose ? `Purpose: ${meta.purpose}` : "",
-    referenceContent ? `\n\nReference content (use this as the primary data source):\n${referenceContent}` : "",
-    styleContext ? `\n\nExisting posts of the same type (match this style and structure):\n${styleContext}` : "",
-    customFieldsInstruction,
-    `\n\nRules:`,
-    `- Write informative, well-structured HTML with headings, paragraphs, and lists`,
-    `- Use font-serif for headings, font-sans for body`,
-    `- Use bg-primary, bg-accent, text-primary, text-accent for brand colors`,
-    `- Use rounded-full on buttons, px-6 md:px-12 lg:px-20 for padding`,
-    `- Never use inline font references, position absolute, or hex colors`,
-    `- Match the tone and detail level of existing posts`,
-  ].filter(Boolean).join("\n");
-
-  const result = await generateContent({
-    instruction,
-    currentHtml: "<div></div>",
-    targetLabel: `Post: ${meta.title}`,
+  // Generate content via dedicated post content prompt
+  const result = await generatePostContent({
+    title: meta.title,
+    postTypeName: postType.name,
+    purpose: meta.purpose || "",
+    referenceContent,
+    styleContext,
+    customFieldsHint: customFieldsInstruction,
   });
 
   // Run agentic pipeline
   const existingPaths = await getExistingPaths(projectId);
   const existingPostSlugsRaw = await getExistingPostSlugs(projectId);
   const pipelineResult = await runAgenticPipeline(
-    result.editedHtml,
+    result.html,
     `Post: ${meta.title}`,
     {
       existingPaths,
@@ -1855,6 +1887,100 @@ async function getExistingMenuItems(
   return result;
 }
 
+// ---------------------------------------------------------------------------
+// Execution summary — structured markdown from recommendation results
+// ---------------------------------------------------------------------------
+
+function getStructuralIcon(targetType: string): string {
+  switch (targetType) {
+    case "create_page": return "📄";
+    case "create_post": return "📝";
+    case "create_redirect": case "update_redirect": case "delete_redirect": return "🔀";
+    case "create_menu": case "update_menu": return "📋";
+    case "update_post_meta": return "📝";
+    case "update_page_path": return "📄";
+    default: return "✅";
+  }
+}
+
+async function buildExecutionSummary(batchId: string): Promise<string> {
+  const allRecs = await db(RECS_TABLE)
+    .where("batch_id", batchId)
+    .orderBy("sort_order", "asc");
+
+  const executed = allRecs.filter((r: any) => r.status === "executed");
+  const failed = allRecs.filter((r: any) => r.status === "failed");
+  const rejected = allRecs.filter((r: any) => r.status === "rejected");
+
+  // Categorize executed items
+  const htmlEditTypes = ["page_section", "layout", "post"];
+  const htmlEdits = executed.filter((r: any) => htmlEditTypes.includes(r.target_type));
+  const structural = executed.filter((r: any) => !htmlEditTypes.includes(r.target_type));
+
+  // Items needing visual check (had remaining validation issues)
+  const needsVisualCheck = htmlEdits.filter((r: any) => {
+    try {
+      const result = typeof r.execution_result === "string" ? JSON.parse(r.execution_result) : r.execution_result;
+      return result?.remaining_issues > 0;
+    } catch { return false; }
+  });
+
+  // Manual action items (rejected with MANUAL flag)
+  const manualItems = rejected.filter((r: any) => {
+    return r.recommendation?.includes("MANUAL:") || r.recommendation?.includes("manual_action");
+  });
+
+  const lines: string[] = [];
+
+  // Overview
+  lines.push(`**${executed.length}** completed, **${failed.length}** failed, **${rejected.length}** skipped\n`);
+
+  // Completed
+  if (htmlEdits.length > 0 || structural.length > 0) {
+    lines.push("### Completed");
+    for (const r of htmlEdits) lines.push(`- ✏️ ${r.target_label}`);
+    for (const r of structural) lines.push(`- ${getStructuralIcon(r.target_type)} ${r.target_label}`);
+    lines.push("");
+  }
+
+  // Needs Visual Check
+  if (needsVisualCheck.length > 0) {
+    lines.push("### Needs Visual Check");
+    for (const r of needsVisualCheck) {
+      try {
+        const result = typeof r.execution_result === "string" ? JSON.parse(r.execution_result) : r.execution_result;
+        lines.push(`- 👁️ ${r.target_label} — ${result.remaining_issues} unresolved issue(s)`);
+      } catch {
+        lines.push(`- 👁️ ${r.target_label}`);
+      }
+    }
+    lines.push("");
+  }
+
+  // Manual Action Required
+  if (manualItems.length > 0) {
+    lines.push("### Manual Action Required");
+    for (const r of manualItems) lines.push(`- 🔧 ${r.target_label} — ${r.recommendation}`);
+    lines.push("");
+  }
+
+  // Failed
+  if (failed.length > 0) {
+    lines.push("### Failed");
+    for (const r of failed) {
+      try {
+        const result = typeof r.execution_result === "string" ? JSON.parse(r.execution_result) : r.execution_result;
+        lines.push(`- ❌ ${r.target_label} — ${result?.error || "Unknown error"}`);
+      } catch {
+        lines.push(`- ❌ ${r.target_label}`);
+      }
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
 function flattenMenuItems(items: any[]): Array<{ label: string; url: string }> {
   const flat: Array<{ label: string; url: string }> = [];
   for (const item of items) {
@@ -1864,4 +1990,84 @@ function flattenMenuItems(items: any[]): Array<{ label: string; url: string }> {
     }
   }
   return flat;
+}
+
+// ---------------------------------------------------------------------------
+// Template awareness — fetch post_block, menu, and review_block templates
+// ---------------------------------------------------------------------------
+
+interface ProjectTemplates {
+  postBlocks: Array<{ slug: string; name: string; description: string | null; postTypeSlug: string }>;
+  menuTemplates: Array<{ slug: string; name: string }>;
+  reviewBlocks: Array<{ slug: string; name: string; description: string | null }>;
+}
+
+async function getProjectTemplates(templateId: string | null): Promise<ProjectTemplates> {
+  const empty: ProjectTemplates = { postBlocks: [], menuTemplates: [], reviewBlocks: [] };
+  if (!templateId) return empty;
+
+  const [postBlocks, menuTemplates, reviewBlocks] = await Promise.all([
+    db("website_builder.post_blocks as pb")
+      .join("website_builder.post_types as pt", "pb.post_type_id", "pt.id")
+      .where("pb.template_id", templateId)
+      .select("pb.slug", "pb.name", "pb.description", "pt.slug as post_type_slug"),
+    db("website_builder.menu_templates")
+      .where("template_id", templateId)
+      .select("slug", "name"),
+    db("website_builder.review_blocks")
+      .where("template_id", templateId)
+      .select("slug", "name", "description"),
+  ]);
+
+  return {
+    postBlocks: postBlocks.map((pb: any) => ({
+      slug: pb.slug,
+      name: pb.name,
+      description: pb.description || null,
+      postTypeSlug: pb.post_type_slug,
+    })),
+    menuTemplates: menuTemplates.map((mt: any) => ({
+      slug: mt.slug,
+      name: mt.name,
+    })),
+    reviewBlocks: reviewBlocks.map((rb: any) => ({
+      slug: rb.slug,
+      name: rb.name,
+      description: rb.description || null,
+    })),
+  };
+}
+
+function buildTemplateContext(templates: ProjectTemplates): string {
+  const lines: string[] = ["\n## Available Shortcode Templates\n"];
+
+  if (templates.postBlocks.length > 0) {
+    lines.push("### Post Block Templates (use with {{ post_block id='SLUG' items='POST_TYPE' }})");
+    for (const pb of templates.postBlocks) {
+      lines.push(`- ${pb.slug} (${pb.name}) — renders '${pb.postTypeSlug}' posts${pb.description ? ` — "${pb.description}"` : ""}`);
+    }
+    lines.push("");
+  } else {
+    lines.push("### Post Block Templates\n(none available — if recommending a post_block shortcode, note that a template must be created first)\n");
+  }
+
+  if (templates.menuTemplates.length > 0) {
+    lines.push("### Menu Templates (use with {{ menu id='MENU_SLUG' template='TEMPLATE_SLUG' }})");
+    for (const mt of templates.menuTemplates) {
+      lines.push(`- ${mt.slug} (${mt.name})`);
+    }
+    lines.push("");
+  }
+
+  if (templates.reviewBlocks.length > 0) {
+    lines.push("### Review Block Templates (use with {{ review_block id='SLUG' }})");
+    for (const rb of templates.reviewBlocks) {
+      lines.push(`- ${rb.slug} (${rb.name})${rb.description ? ` — "${rb.description}"` : ""}`);
+    }
+    lines.push("");
+  } else {
+    lines.push("### Review Block Templates\n(none available — if recommending a review_block shortcode, note that a template must be created first)\n");
+  }
+
+  return lines.join("\n");
 }

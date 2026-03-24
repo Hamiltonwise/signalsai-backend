@@ -2436,10 +2436,10 @@ export default function WebsiteDetail() {
       )}
 
       {/* Create Page Modal */}
-      {showCreatePageModal && website.template_id && (
+      {showCreatePageModal && (
         <CreatePageModal
           projectId={website.id}
-          templateId={website.template_id}
+          templateId={website.template_id || undefined}
           gbpData={gbpData}
           defaultPlaceId={website.selected_place_id || ""}
           defaultWebsiteUrl={website.selected_website_url || ""}
@@ -2450,6 +2450,10 @@ export default function WebsiteDetail() {
             setIsGeneratingPage(true);
             expectedPageCountRef.current = website.pages.length;
             startPageGenerationPoll();
+          }}
+          onBlankPageCreated={(pageId) => {
+            setShowCreatePageModal(false);
+            navigate(`/admin/websites/${website.id}/pages/${pageId}/edit`);
           }}
           onClose={() => setShowCreatePageModal(false)}
         />

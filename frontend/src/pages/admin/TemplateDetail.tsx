@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Editor from "@monaco-editor/react";
+import SectionsEditor from "../../components/Admin/SectionsEditor";
 import {
   AlertCircle,
   Loader2,
@@ -40,7 +41,7 @@ import CodeManagerTab from "../../components/Admin/CodeManagerTab";
 import PostBlocksTab from "../../components/Admin/PostBlocksTab";
 import MenuTemplatesTab from "../../components/Admin/MenuTemplatesTab";
 import ReviewBlocksTab from "../../components/Admin/ReviewBlocksTab";
-import { renderPage, parseSectionsJs, serializeSectionsJs, normalizeSections } from "../../utils/templateRenderer";
+import { renderPage, normalizeSections } from "../../utils/templateRenderer";
 import {
   useIframeSelector,
   prepareHtmlForPreview,
@@ -84,7 +85,7 @@ export default function TemplateDetail() {
   const [deletingPageId, setDeletingPageId] = useState<string | null>(null);
 
   // Page editor state
-  const [editorContent, setEditorContent] = useState("");
+  const [editorSections, setEditorSections] = useState<Section[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -97,7 +98,6 @@ export default function TemplateDetail() {
   // Preview state
   const [previewContent, setPreviewContent] = useState("");
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile" | "seo">("desktop");
-  const previewDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Iframe selector for hover/click labels on alloro-tpl components
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
@@ -179,40 +179,30 @@ export default function TemplateDetail() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeTab, selectedPageId, hasUnsavedChanges, saving, editorContent, layoutsUnsaved, savingLayouts]);
+  }, [activeTab, selectedPageId, hasUnsavedChanges, saving, editorSections, layoutsUnsaved, savingLayouts]);
 
-  // Rebuild preview from the current sections JS + template layouts
+  // Rebuild preview from sections + template layouts
   const rebuildPreview = useCallback(
-    (sectionsJs: string) => {
-      try {
-        const parsed: Section[] = parseSectionsJs(sectionsJs);
-        if (!Array.isArray(parsed)) return;
-        const assembled = renderPage(
-          wrapperContent || "{{slot}}",
-          headerContent,
-          footerContent,
-          parsed
-        );
-        setPreviewContent(assembled);
-      } catch {
-        // Invalid syntax — don't update preview
-      }
+    (secs: Section[]) => {
+      const assembled = renderPage(
+        wrapperContent || "{{slot}}",
+        headerContent,
+        footerContent,
+        secs
+      );
+      setPreviewContent(assembled);
     },
     [wrapperContent, headerContent, footerContent]
   );
 
-  const handleEditorChange = (value: string | undefined) => {
-    const newContent = value || "";
-    setEditorContent(newContent);
-    setHasUnsavedChanges(true);
-
-    if (previewDebounceRef.current) {
-      clearTimeout(previewDebounceRef.current);
-    }
-    previewDebounceRef.current = setTimeout(() => {
-      rebuildPreview(newContent);
-    }, 500);
-  };
+  const handleEditorSectionsChange = useCallback(
+    (updated: Section[]) => {
+      setEditorSections(updated);
+      setHasUnsavedChanges(true);
+      rebuildPreview(updated);
+    },
+    [rebuildPreview]
+  );
 
   // Layouts editor change handler
   const handleLayoutFieldChange = (field: "wrapper" | "header" | "footer", value: string | undefined) => {
@@ -289,9 +279,9 @@ export default function TemplateDetail() {
 
   const handleSelectPage = (page: TemplatePage) => {
     setSelectedPageId(page.id);
-    const sectionsJs = serializeSectionsJs(normalizeSections(page.sections));
-    setEditorContent(sectionsJs);
-    rebuildPreview(sectionsJs);
+    const secs = normalizeSections(page.sections);
+    setEditorSections(secs);
+    rebuildPreview(secs);
     setHasUnsavedChanges(false);
     setSaveMessage(null);
     setPageNameValue(page.name);
@@ -331,17 +321,8 @@ export default function TemplateDetail() {
     try {
       setSaving(true);
       setSaveMessage(null);
-      let parsedSections: Section[];
-      try {
-        parsedSections = parseSectionsJs(editorContent);
-      } catch (parseErr) {
-        setSaveMessage(parseErr instanceof Error ? parseErr.message : "Invalid sections syntax");
-        setTimeout(() => setSaveMessage(null), 3000);
-        setSaving(false);
-        return;
-      }
       const response = await updateTemplatePage(id, selectedPageId, {
-        sections: parsedSections,
+        sections: editorSections,
       });
       setTemplatePages((prev) =>
         prev.map((p) => (p.id === selectedPageId ? response.data : p))
@@ -826,22 +807,10 @@ export default function TemplateDetail() {
                     </span>
                   </div>
                   <div className="flex-1">
-                    <Editor
-                      height="100%"
-                      defaultLanguage="javascript"
-                      value={editorContent}
-                      onChange={handleEditorChange}
-                      theme="vs-dark"
-                      options={{
-                        minimap: { enabled: false },
-                        fontSize: 13,
-                        lineNumbers: "on",
-                        wordWrap: "on",
-                        scrollBeyondLastLine: false,
-                        automaticLayout: true,
-                        tabSize: 2,
-                        padding: { top: 12 },
-                      }}
+                    <SectionsEditor
+                      sections={editorSections}
+                      onChange={handleEditorSectionsChange}
+                      onSave={handleSavePage}
                     />
                   </div>
                 </div>

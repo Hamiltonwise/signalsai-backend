@@ -16,9 +16,10 @@ LOOK FOR:
 
 ARCHITECTURE RULES (flag violations):
 - position: absolute/fixed — DISCOURAGED. Should use flexbox or grid instead. Flag any absolute/fixed positioning.
-- Inline styles (style="...") — BANNED. Must use Tailwind CSS classes only. Flag any inline styles.
+- Inline styles (style="...") — BANNED. Must use Tailwind CSS classes only. Exception: style="display:none" for hidden elements is acceptable. Flag all other inline styles.
 - Missing container constraints (no max-w-*) — Flag sections without width constraints.
 - Float-based layouts — OBSOLETE. Should use flex/grid. Flag any float usage.
+- <img> with relative src paths (src="/images/...") — BANNED. These are invented URLs that don't exist. Flag them.
 
 COLOR CONSISTENCY:
 - Alloro uses `bg-primary`/`text-primary` and `bg-accent`/`text-accent` CSS classes for brand colors
@@ -26,12 +27,13 @@ COLOR CONSISTENCY:
 - Flag sections that use hardcoded hex colors instead of the brand color classes
 - Flag sections that use generic white/gray color schemes when the rest of the site uses the brand palette
 - Flag buttons, CTAs, or accents that don't use bg-primary, bg-accent, text-primary, or text-accent
+- For light brand-tinted backgrounds, the correct approach is bg-gray-50 or bg-gray-100 — not bg-primary/10 or inline rgba styles
 - If a section looks visually disconnected from the rest of the page (different color palette, different style), flag it
 
 For each issue:
 1. WHERE — which section name and approximate position
 2. WHAT — specific visual problem AND the HTML causing it (reference specific classes or elements)
-3. HOW — specific Tailwind CSS fix (never suggest inline styles or position absolute, use bg-primary/text-accent for brand colors)
+3. HOW — specific Tailwind CSS fix (never suggest inline styles or position absolute, use bg-primary/text-accent for brand colors, use bg-gray-50/bg-gray-100 for tinted backgrounds)
 
 RESPONSE FORMAT — return ONLY valid JSON:
 {
