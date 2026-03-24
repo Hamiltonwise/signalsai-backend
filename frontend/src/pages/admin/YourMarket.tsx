@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { TrendingUp, ChevronDown, ChevronRight, History } from "lucide-react";
+import { apiGet } from "@/api/index";
 import { PracticeRanking } from "./PracticeRanking";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -174,13 +175,8 @@ export default function YourMarket() {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const token = localStorage.getItem("auth_token");
-        const response = await fetch("/api/admin/practice-ranking/list", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!response.ok) throw new Error("Failed to fetch");
-        const data = await response.json();
-        setJobs(data.rankings || []);
+        const data = await apiGet({ path: "/admin/practice-ranking/list" });
+        setJobs(data?.rankings || []);
       } catch {
         // Silently fail — leaderboard shows empty state
       } finally {

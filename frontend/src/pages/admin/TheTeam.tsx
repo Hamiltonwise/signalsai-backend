@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Brain, ExternalLink } from "lucide-react";
 import { fetchSchedules, type Schedule } from "@/api/schedules";
-import { fetchAgentOutputs } from "@/api/agentOutputs";
+import { apiGet } from "@/api/index";
 import type { AgentOutput } from "@/types/agentOutputs";
 
 // ─── Agent display names & role descriptions ────────────────────────
@@ -206,10 +206,13 @@ export default function TheTeam() {
 
   const { data: outputsData, isLoading: outputsLoading } = useQuery({
     queryKey: ["admin-agent-outputs-latest"],
-    queryFn: () => fetchAgentOutputs({ status: "success", limit: 50 }),
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/agent-outputs?status=success&limit=50" });
+      return res;
+    },
   });
 
-  const outputs = outputsData?.data || [];
+  const outputs: AgentOutput[] = outputsData?.data || [];
   const isLoading = schedulesLoading || outputsLoading;
 
   return (
