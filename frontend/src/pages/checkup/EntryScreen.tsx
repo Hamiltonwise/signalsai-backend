@@ -1,7 +1,8 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, MapPin, Loader2, ArrowRight } from "lucide-react";
+import { Search, MapPin, Loader2, ArrowRight, UserCheck } from "lucide-react";
 import { searchPlaces, getPlaceDetails } from "../../api/places";
+import { validateReferralCode } from "../../api/checkup";
 import type { PlaceSuggestion, PlaceDetails } from "../../api/places";
 
 /**
@@ -80,6 +81,17 @@ export default function EntryScreen() {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [intent, setIntent] = useState<string | null>(null);
+  const [referrerName, setReferrerName] = useState<string | null>(null);
+
+  // Validate referral code on mount
+  useEffect(() => {
+    if (!refCode || refCode.length !== 8) return;
+    validateReferralCode(refCode).then((res) => {
+      if (res.valid && res.referrerName) {
+        setReferrerName(res.referrerName);
+      }
+    });
+  }, [refCode]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionTokenRef = useRef(crypto.randomUUID());
@@ -144,6 +156,14 @@ export default function EntryScreen() {
 
   return (
     <div className="w-full max-w-md mt-4 sm:mt-12">
+      {/* Referral banner */}
+      {referrerName && (
+        <div className="flex items-center justify-center gap-2 mb-4 text-sm text-[#212D40] bg-[#D56753]/5 border border-[#D56753]/15 rounded-xl px-4 py-2.5">
+          <UserCheck className="w-4 h-4 text-[#D56753] shrink-0" />
+          <span>Referred by <strong>{referrerName}</strong></span>
+        </div>
+      )}
+
       {/* Headline — updates with dynamic specialty after place selection */}
       <div className="text-center mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">

@@ -243,10 +243,14 @@ export default function ResultsScreen() {
   const state = location.state as CheckupResults | undefined;
 
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [relationship, setRelationship] = useState("owner");
   const [linkCopied, setLinkCopied] = useState(false);
+
+  const isValidEmail = (v: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
 
   // Track: checkup.gate_viewed (fires once when results render)
   useEffect(() => {
@@ -268,7 +272,12 @@ export default function ResultsScreen() {
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || emailSending) return;
+    if (emailSending) return;
+    if (!isValidEmail(email)) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+    setEmailError("");
 
     setEmailSending(true);
 
@@ -416,14 +425,23 @@ export default function ResultsScreen() {
           </div>
           <p className="text-sm text-slate-600 mb-4">{blurGateCta}</p>
           <form onSubmit={handleEmailSubmit} className="space-y-3">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
-              className="w-full h-12 px-4 rounded-xl bg-slate-50 border border-slate-200 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#D56753] focus:ring-4 focus:ring-[#D56753]/10"
-            />
+            <div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
+                placeholder="Enter your email"
+                required
+                className={`w-full h-12 px-4 rounded-xl bg-slate-50 border text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
+                  emailError
+                    ? "border-red-400 focus:border-red-400 focus:ring-red-400/10"
+                    : "border-slate-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
+                }`}
+              />
+              {emailError && (
+                <p className="text-xs text-red-500 mt-1">{emailError}</p>
+              )}
+            </div>
             {/* Relationship question — segmentation data */}
             <fieldset className="space-y-1.5">
               <legend className="text-xs font-medium text-slate-600 mb-1.5">
@@ -444,7 +462,7 @@ export default function ResultsScreen() {
                     value={opt.value}
                     checked={relationship === opt.value}
                     onChange={(e) => setRelationship(e.target.value)}
-                    className="w-4 h-4 text-[#D56753] border-slate-300 focus:ring-[#D56753]/20"
+                    className="w-5 h-5 text-[#D56753] border-slate-300 focus:ring-[#D56753]/20"
                   />
                   <span className="text-sm text-slate-700">{opt.label}</span>
                 </label>
@@ -494,9 +512,10 @@ export default function ResultsScreen() {
           <button
             type="button"
             onClick={() => {
+              const base = window.location.origin;
               const shareUrl = state.refCode
-                ? `https://getalloro.com/checkup?ref=${state.refCode}`
-                : "https://getalloro.com/checkup";
+                ? `${base}/checkup?ref=${state.refCode}`
+                : `${base}/checkup`;
               navigator.clipboard.writeText(shareUrl).then(() => {
                 setLinkCopied(true);
                 setTimeout(() => setLinkCopied(false), 2000);

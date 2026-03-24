@@ -56,17 +56,25 @@ export async function analyzeCheckup(params: {
   reviewCount: number;
   placeId: string;
 }): Promise<CheckupAnalysis> {
-  const response = await fetch("/api/checkup/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45_000); // 45s timeout
 
-  if (!response.ok) {
-    throw new Error(`Checkup analysis failed: ${response.statusText}`);
+  try {
+    const response = await fetch("/api/checkup/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Checkup analysis failed: ${response.statusText}`);
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return response.json();
 }
 
 /**
@@ -110,4 +118,18 @@ export async function triggerBuild(params: {
   });
 
   return response.json();
+}
+
+/**
+ * Validate a referral code and get referrer info
+ */
+export async function validateReferralCode(
+  code: string
+): Promise<{ success: boolean; valid: boolean; referrerName?: string }> {
+  try {
+    const response = await fetch(`/api/checkup/referral/${encodeURIComponent(code)}`);
+    return response.json();
+  } catch {
+    return { success: false, valid: false };
+  }
 }

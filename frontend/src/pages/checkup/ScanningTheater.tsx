@@ -359,7 +359,7 @@ export default function ScanningTheater() {
             scrollWheelZoom={false}
             className="w-full h-full min-h-[300px] lg:min-h-[420px]"
             zoomControl={false}
-            attributionControl={false}
+            attributionControl={true}
           >
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"

@@ -7,7 +7,6 @@
  * Zone 3: Agent Queue Strip (horizontal scroll)
  */
 
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchSignal } from "@/api/admin-signal";
@@ -104,12 +103,17 @@ function OrgCard({ org }: { org: AdminOrganization }) {
 }
 
 function AccountHealthGrid() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["admin-organizations"],
     queryFn: adminListOrganizations,
+    retry: 1,
   });
 
-  const orgs = data?.organizations || [];
+  // The API may return orgs at data.organizations (standard) or data may
+  // itself be the array if the response shape varies.
+  const orgs: AdminOrganization[] =
+    (data as any)?.organizations ??
+    (Array.isArray(data) ? data : []);
 
   if (isLoading) {
     return (
@@ -117,16 +121,24 @@ function AccountHealthGrid() {
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="h-32 animate-pulse rounded-xl bg-gray-100"
+            className="h-32 animate-pulse rounded-xl border border-gray-200 bg-white"
           />
         ))}
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-600">
+        Failed to load accounts. {(error as Error)?.message || "Please refresh."}
+      </div>
+    );
+  }
+
   if (orgs.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 p-10 text-center text-gray-400">
+      <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center text-gray-400">
         No accounts yet. First cards appear when organizations are created.
       </div>
     );
@@ -172,12 +184,15 @@ function statusBadge(schedule: Schedule): { text: string; className: string } {
 }
 
 function AgentQueueStrip() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["admin-schedules"],
     queryFn: fetchSchedules,
+    retry: 1,
   });
 
-  const schedules = data || [];
+  // fetchSchedules returns res.data which should be Schedule[].
+  // Guard against unexpected shapes.
+  const schedules: Schedule[] = Array.isArray(data) ? data : [];
 
   if (isLoading) {
     return (
@@ -185,16 +200,24 @@ function AgentQueueStrip() {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-24 w-72 shrink-0 animate-pulse rounded-xl bg-gray-100"
+            className="h-24 w-72 shrink-0 animate-pulse rounded-xl border border-gray-200 bg-white"
           />
         ))}
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-600">
+        Failed to load agent queue. {(error as Error)?.message || "Please refresh."}
+      </div>
+    );
+  }
+
   if (schedules.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-gray-400">
+      <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-gray-400">
         No agents scheduled yet. Set up agents in Schedules.
       </div>
     );

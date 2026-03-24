@@ -26,6 +26,7 @@ import AdminSettings from "./admin/AdminSettings";
 import Schedules from "./admin/Schedules";
 import MindsList from "./admin/MindsList";
 import TheTeam from "./admin/TheTeam";
+import DreamTeam from "./admin/DreamTeam";
 import YourMarket from "./admin/YourMarket";
 import MindDetail from "./admin/MindDetail";
 import AlloroPostsDocs from "./admin/AlloroPostsDocs";
@@ -95,7 +96,7 @@ function AdminWithLayout() {
         <Route path="templates" element={<TemplatesList />} />
         <Route path="templates/imports/:id" element={<ImportDetail />} />
         <Route path="templates/:id" element={<TemplateDetail />} />
-        <Route path="minds" element={<TheTeam />} />
+        <Route path="minds" element={<DreamTeam />} />
         <Route path="minds/:mindId" element={<MindDetail />} />
         <Route path="documentation/alloro-posts" element={<AlloroPostsDocs />} />
         <Route path="schedules" element={<Schedules />} />

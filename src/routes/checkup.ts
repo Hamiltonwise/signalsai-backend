@@ -1,4 +1,5 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import {
   discoverCompetitorsViaPlaces,
   filterBySpecialty,
@@ -9,6 +10,23 @@ import { BehavioralEventModel } from "../models/BehavioralEventModel";
 
 const checkupRoutes = express.Router();
 
+// Rate limiters — protect Google Places API costs and email abuse
+const analyzeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,                   // 20 analyses per IP per 15 min
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many requests. Please try again in a few minutes." },
+});
+
+const emailLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,                    // 5 emails per IP per 15 min
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Too many requests. Please try again later." },
+});
+
 /**
  * POST /api/checkup/analyze
  *
@@ -18,7 +36,7 @@ const checkupRoutes = express.Router();
  *
  * Body: { name, city, state, category, types, rating, reviewCount, placeId }
  */
-checkupRoutes.post("/analyze", async (req, res) => {
+checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
   try {
     const { name, city, state, category, types, rating, reviewCount, placeId } =
       req.body;
@@ -246,7 +264,7 @@ checkupRoutes.get("/referral/:code", async (req, res) => {
  * Called from the blur gate email capture on ResultsScreen.
  * Must deliver in under 60 seconds (WO7).
  */
-checkupRoutes.post("/email", async (req, res) => {
+checkupRoutes.post("/email", emailLimiter, async (req, res) => {
   try {
     const {
       email,
@@ -265,6 +283,15 @@ checkupRoutes.post("/email", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Missing required fields: email, practiceName",
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid email format",
       });
     }
 
@@ -322,7 +349,7 @@ checkupRoutes.post("/email", async (req, res) => {
  * Logs intent to behavioral_events. In production, kicks off the pipeline.
  * For now: logs the intent, returns queued status.
  */
-checkupRoutes.post("/build-trigger", async (req, res) => {
+checkupRoutes.post("/build-trigger", emailLimiter, async (req, res) => {
   try {
     const { email, placeId, practiceName, specialty, city } = req.body;
 

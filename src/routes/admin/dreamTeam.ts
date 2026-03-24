@@ -1,0 +1,245 @@
+/**
+ * Dream Team API Routes (WO16)
+ *
+ * GET  /api/admin/dream-team       — full tree with computed health
+ * GET  /api/admin/dream-team/:id   — single node with KPIs, resume, outputs
+ * PATCH /api/admin/dream-team/:id  — update kpi_targets or is_active
+ * POST /api/admin/dream-team/:id/resume — add manual resume note
+ */
+
+import express from "express";
+import { authenticateToken } from "../../middleware/auth";
+import { superAdminMiddleware } from "../../middleware/superAdmin";
+import { db } from "../../database/connection";
+
+const dreamTeamRoutes = express.Router();
+
+// ─── GET / — Full tree ──────────────────────────────────────────────
+
+dreamTeamRoutes.get(
+  "/",
+  authenticateToken,
+  superAdminMiddleware,
+  async (_req, res) => {
+    try {
+      const nodes = await db("dream_team_nodes")
+        .select("*")
+        .orderBy("created_at", "asc");
+
+      // Compute health from agent_outputs for nodes with agent_key
+      for (const node of nodes) {
+        if (node.agent_key) {
+          node.health_status = await computeAgentHealth(node.agent_key);
+        } else if (node.node_type === "human") {
+          // Human health = worst child health
+          const children = nodes.filter((n: any) => n.parent_id === node.id);
+          const childStatuses = children.map((c: any) => c.health_status);
+          const redCount = childStatuses.filter((s: string) => s === "red").length;
+          const yellowCount = childStatuses.filter((s: string) => s === "yellow").length;
+          if (redCount >= 2) node.health_status = "red";
+          else if (redCount >= 1 || yellowCount >= 1) node.health_status = "yellow";
+          else if (childStatuses.some((s: string) => s === "green")) node.health_status = "green";
+          // else stays gray
+        }
+      }
+
+      return res.json({ success: true, nodes });
+    } catch (err) {
+      console.error("Dream Team list error:", err);
+      return res.status(500).json({ success: false, error: "Failed to load team" });
+    }
+  },
+);
+
+// ─── GET /:id — Single node detail ─────────────────────────────────
+
+dreamTeamRoutes.get(
+  "/:id",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const node = await db("dream_team_nodes").where({ id }).first();
+      if (!node) {
+        return res.status(404).json({ success: false, error: "Node not found" });
+      }
+
+      // Compute health
+      if (node.agent_key) {
+        node.health_status = await computeAgentHealth(node.agent_key);
+      }
+
+      // Resume entries
+      const resumeEntries = await db("dream_team_resume_entries")
+        .where({ node_id: id })
+        .orderBy("created_at", "desc")
+        .limit(50);
+
+      // Recent outputs (if agent)
+      let recentOutputs: any[] = [];
+      if (node.agent_key) {
+        recentOutputs = await db("agent_outputs")
+          .where({ agent_type: node.agent_key })
+          .whereNot("status", "archived")
+          .orderBy("created_at", "desc")
+          .limit(5)
+          .select("id", "status", "created_at", "agent_output");
+      }
+
+      // Compute KPI current values
+      const kpis = computeKpiValues(
+        typeof node.kpi_targets === "string"
+          ? JSON.parse(node.kpi_targets)
+          : node.kpi_targets || [],
+        recentOutputs,
+      );
+
+      return res.json({
+        success: true,
+        node,
+        resumeEntries,
+        recentOutputs: recentOutputs.map((o) => ({
+          id: o.id,
+          status: o.status,
+          created_at: o.created_at,
+          summary: extractOutputSummary(o.agent_output),
+        })),
+        kpis,
+      });
+    } catch (err) {
+      console.error("Dream Team detail error:", err);
+      return res.status(500).json({ success: false, error: "Failed to load node" });
+    }
+  },
+);
+
+// ─── PATCH /:id — Update node ───────────────────────────────────────
+
+dreamTeamRoutes.patch(
+  "/:id",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { kpi_targets, is_active } = req.body;
+
+      const updates: Record<string, any> = { updated_at: new Date() };
+      if (kpi_targets !== undefined) updates.kpi_targets = JSON.stringify(kpi_targets);
+      if (is_active !== undefined) updates.is_active = is_active;
+
+      await db("dream_team_nodes").where({ id }).update(updates);
+
+      // Log resume entry
+      const changes: string[] = [];
+      if (kpi_targets !== undefined) changes.push("KPI targets updated");
+      if (is_active !== undefined) changes.push(is_active ? "Agent resumed" : "Agent paused");
+
+      if (changes.length > 0) {
+        await db("dream_team_resume_entries").insert({
+          node_id: id,
+          entry_type: kpi_targets !== undefined ? "kpi_update" : "configuration",
+          summary: changes.join(". "),
+          created_by: "admin",
+        });
+      }
+
+      const node = await db("dream_team_nodes").where({ id }).first();
+      return res.json({ success: true, node });
+    } catch (err) {
+      console.error("Dream Team update error:", err);
+      return res.status(500).json({ success: false, error: "Failed to update node" });
+    }
+  },
+);
+
+// ─── POST /:id/resume — Add manual note ─────────────────────────────
+
+dreamTeamRoutes.post(
+  "/:id/resume",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { summary, created_by } = req.body;
+
+      if (!summary?.trim()) {
+        return res.status(400).json({ success: false, error: "Summary is required" });
+      }
+
+      const [entry] = await db("dream_team_resume_entries")
+        .insert({
+          node_id: id,
+          entry_type: "manual_note",
+          summary: summary.trim(),
+          created_by: created_by || "admin",
+        })
+        .returning("*");
+
+      return res.json({ success: true, entry });
+    } catch (err) {
+      console.error("Dream Team resume error:", err);
+      return res.status(500).json({ success: false, error: "Failed to add note" });
+    }
+  },
+);
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+async function computeAgentHealth(agentId: string): Promise<string> {
+  try {
+    const latest = await db("agent_outputs")
+      .where({ agent_type: agentId })
+      .whereNot("status", "archived")
+      .orderBy("created_at", "desc")
+      .first();
+
+    if (!latest) return "gray";
+
+    const hoursAgo =
+      (Date.now() - new Date(latest.created_at).getTime()) / (1000 * 60 * 60);
+
+    if (latest.status === "error") return "red";
+    if (hoursAgo > 48) return "red";
+    if (hoursAgo > 24) return "yellow";
+    if (latest.status === "success") return "green";
+    return "yellow";
+  } catch {
+    return "gray";
+  }
+}
+
+function computeKpiValues(
+  targets: Array<{ name: string; target: string; unit?: string }>,
+  outputs: any[],
+): Array<{ name: string; target: string; current: string; status: string }> {
+  // Without specific KPI calculation logic tied to each agent,
+  // return targets with placeholder current values
+  return targets.map((t) => ({
+    name: t.name,
+    target: t.target,
+    current: outputs.length > 0 ? "—" : "N/A",
+    status: outputs.length > 0 ? "green" : "gray",
+  }));
+}
+
+function extractOutputSummary(output: any): string {
+  if (!output) return "Completed. No summary available.";
+  const obj = typeof output === "string" ? tryParse(output) : output;
+  if (typeof obj === "object" && obj !== null) {
+    const text = (obj as any).summary || (obj as any).message || (obj as any).result;
+    if (typeof text === "string") {
+      return text.length > 100 ? text.slice(0, 97) + "..." : text;
+    }
+  }
+  return "Completed successfully.";
+}
+
+function tryParse(s: string): unknown {
+  try { return JSON.parse(s); } catch { return s; }
+}
+
+export default dreamTeamRoutes;
