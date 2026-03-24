@@ -225,6 +225,7 @@ app.use("/api/skills", skillsPublicApiRoutes); // Public skill portal API
 app.use("/api/internal", internalApiRoutes); // Internal API for n8n workers
 app.use("/api/billing", billingRoutes); // Stripe billing & subscription management
 app.use("/api/founder/settings", founderSettingsRoutes); // Founder Mode personal settings
+app.use("/api/admin/client-health", clientHealthRoutes); // WO-T5: CS Pulse health grid for IntegratorView
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);
