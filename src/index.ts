@@ -77,6 +77,9 @@ import internalApiRoutes from "./routes/internalApi";
 import billingRoutes from "./routes/billing";
 import founderSettingsRoutes from "./routes/admin/founderSettings";
 import clientHealthRoutes from "./routes/admin/clientHealth";
+import dashboardContextRoutes from "./routes/user/dashboardContext";
+// T2 registers /api/auth/google routes
+// import gbpAuthRoutes from "./routes/auth/gbp";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -226,6 +229,8 @@ app.use("/api/internal", internalApiRoutes); // Internal API for n8n workers
 app.use("/api/billing", billingRoutes); // Stripe billing & subscription management
 app.use("/api/founder/settings", founderSettingsRoutes); // Founder Mode personal settings
 app.use("/api/admin/client-health", clientHealthRoutes); // WO-T5: CS Pulse health grid for IntegratorView
+app.use("/api/user/dashboard-context", dashboardContextRoutes); // WO-CHECKUP-SESSION-KEY: pre-populate dashboard from checkup data
+// T2 registers POST /api/webhooks/stripe in src/index.ts (currently at /api/billing/webhook)
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);

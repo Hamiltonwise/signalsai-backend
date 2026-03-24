@@ -653,16 +653,27 @@ checkupRoutes.post("/create-account", emailLimiter, async (req, res) => {
       referral_code: generateReferralCode(),
     });
 
-    // Set session_checkup_key if checkup data provided
+    // Store checkup data on org for dashboard pre-population
     if (checkup_score || checkup_data || place_id) {
-      await db("organizations").where({ id: org.id }).update({
-        business_data: JSON.stringify({
-          checkup_score,
-          checkup_place_id: place_id,
-          checkup_relationship: relationship,
-          checkup_data: checkup_data || null,
-        }),
+      const checkupUpdates: Record<string, any> = {};
+      if (checkup_score) checkupUpdates.checkup_score = checkup_score;
+      if (checkup_data) checkupUpdates.checkup_data = JSON.stringify(checkup_data);
+      if (checkup_data?.topCompetitor?.name) {
+        checkupUpdates.top_competitor_name = checkup_data.topCompetitor.name;
+      }
+      // Session key links this org back to the checkup session
+      if (req.body.session_id) {
+        checkupUpdates.session_checkup_key = req.body.session_id;
+      }
+      // Also keep business_data for backward compat
+      checkupUpdates.business_data = JSON.stringify({
+        checkup_score,
+        checkup_place_id: place_id,
+        checkup_relationship: relationship,
+        checkup_data: checkup_data || null,
       });
+
+      await db("organizations").where({ id: org.id }).update(checkupUpdates);
     }
 
     // Link user to org

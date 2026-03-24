@@ -40,6 +40,8 @@ import TTFVSensor from "@/components/dashboard/TTFVSensor";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import PatientPathBreadcrumb from "@/components/dashboard/PatientPathBreadcrumb";
 import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
+// T1 wires GBPConnectCard into DoctorDashboard.tsx
+// import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────

@@ -21,6 +21,10 @@ export interface IOrganization {
   referred_by_org_id: number | null;
   website_edits_this_month: number;
   website_edits_reset_at: Date | null;
+  gbp_access_token: string | null;
+  gbp_refresh_token: string | null;
+  gbp_account_id: string | null;
+  gbp_connected_at: Date | null;
   created_at: Date;
   updated_at: Date;
 }
