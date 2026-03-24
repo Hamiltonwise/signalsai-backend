@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Star, MessageSquare, Globe, Phone, Camera, MapPin as MapPinIcon } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -112,6 +112,101 @@ function ChecklistItem({
       >
         {text}
       </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Live Data Discovery Feed — reveals real GBP data as scanning progresses
+// ---------------------------------------------------------------------------
+
+interface DataPoint {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  delay: number; // ms after mount
+}
+
+function buildDataPoints(place: PlaceDetails): DataPoint[] {
+  const points: DataPoint[] = [];
+
+  if (place.rating) {
+    points.push({ icon: Star, label: "Rating found", value: `${place.rating}★`, delay: 2500 });
+  }
+  if (place.reviewCount > 0) {
+    points.push({ icon: MessageSquare, label: "Reviews detected", value: `${place.reviewCount} reviews`, delay: 4500 });
+  }
+  if (place.websiteUri) {
+    points.push({ icon: Globe, label: "Website found", value: new URL(place.websiteUri).hostname, delay: 7000 });
+  } else {
+    points.push({ icon: Globe, label: "Website", value: "Not found", delay: 7000 });
+  }
+  if (place.phone) {
+    points.push({ icon: Phone, label: "Phone listed", value: "Verified", delay: 9000 });
+  }
+  if (place.category) {
+    points.push({ icon: Camera, label: "Category", value: place.category, delay: 11000 });
+  }
+  points.push({ icon: MapPinIcon, label: "Market area", value: place.city || "Detected", delay: 13000 });
+
+  return points;
+}
+
+function DataDiscoveryFeed({ place }: { place: PlaceDetails }) {
+  const [visibleCount, setVisibleCount] = useState(0);
+  const dataPoints = useRef(buildDataPoints(place)).current;
+
+  useEffect(() => {
+    const timers = dataPoints.map((dp, i) =>
+      setTimeout(() => setVisibleCount(i + 1), dp.delay)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [dataPoints]);
+
+  return (
+    <div className="space-y-2 mt-5 pt-5 border-t border-slate-100">
+      <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">
+        Discovered
+      </p>
+      {dataPoints.slice(0, visibleCount).map((dp, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-2.5 text-xs animate-in fade-in slide-in-from-left-2 duration-300"
+        >
+          <dp.icon className="w-3.5 h-3.5 text-[#D56753] shrink-0" />
+          <span className="text-slate-500">{dp.label}</span>
+          <span className="ml-auto font-semibold text-[#212D40] truncate max-w-[120px]">{dp.value}</span>
+        </div>
+      ))}
+      {visibleCount === 0 && (
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Scanning profile data...
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Radar Pulse — CSS overlay on the map that pulses from center
+// ---------------------------------------------------------------------------
+
+function RadarPulse({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <div className="absolute inset-0 pointer-events-none z-[500] flex items-center justify-center">
+      <div className="relative">
+        <div className="absolute -inset-4 w-32 h-32 rounded-full border-2 border-[#D56753]/20 animate-[radar_2s_ease-out_infinite]" />
+        <div className="absolute -inset-4 w-32 h-32 rounded-full border-2 border-[#D56753]/15 animate-[radar_2s_ease-out_infinite_0.7s]" />
+        <div className="absolute -inset-4 w-32 h-32 rounded-full border-2 border-[#D56753]/10 animate-[radar_2s_ease-out_infinite_1.4s]" />
+      </div>
+      <style>{`
+        @keyframes radar {
+          0% { transform: scale(0.3); opacity: 1; }
+          100% { transform: scale(3); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -338,8 +433,11 @@ export default function ScanningTheater() {
             ))}
           </div>
 
+          {/* Live Data Discovery Feed */}
+          <DataDiscoveryFeed place={place} />
+
           {/* Progress indicator */}
-          <div className="mt-7 pt-5 border-t border-slate-100">
+          <div className="mt-5 pt-4 border-t border-slate-100">
             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#D56753] rounded-full transition-all duration-700 ease-out"
@@ -356,8 +454,9 @@ export default function ScanningTheater() {
           </div>
         </div>
 
-        {/* Right panel — Live Map */}
-        <div className="flex-1 min-h-[300px] lg:min-h-0 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
+        {/* Right panel — Live Map with radar */}
+        <div className="relative flex-1 min-h-[300px] lg:min-h-0 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
+          <RadarPulse active={activeIndex < CHECKLIST_ITEMS.length} />
           <MapContainer
             center={center}
             zoom={12}
