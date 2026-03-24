@@ -102,10 +102,11 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
       1
     );
 
-    // --- Sub-scores (WO4 spec: Local Visibility /40, Online Presence /40, Review Health /20) ---
+    // --- Sub-scores: Market Rank /40, Rating vs Market /40, Review Volume /20 ---
+    // Honest names for what we actually measure with Stage 1 (public) data.
     // Balanced: average business = 50-65. Leaders = 75-85. Struggling = 35-50.
 
-    // Local Visibility (0-40) — rank + review volume
+    // Market Rank (0-40) — rank by review count among nearby competitors
     const allWithClient = [
       { name, reviewsCount: clientReviews, totalScore: clientRating },
       ...otherCompetitors,
@@ -126,7 +127,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
       Math.min(40, Math.max(0, (rankPct * 0.6 + reviewRatio * 0.4) * 40))
     );
 
-    // Online Presence (0-40) — rating relative to market
+    // Rating vs Market (0-40) — star rating compared to market average
     const ratingDiff = clientRating - avgRating;
     // Baseline 0.42 (average = ~17/40). Beat average to go higher.
     // 4.5+ gets a small bonus (these are genuinely strong).
@@ -137,7 +138,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
       Math.min(40, Math.max(0, ratingPct * 40))
     );
 
-    // Review Health (0-20) — ratio to market average with diminishing returns
+    // Review Volume (0-20) — review count relative to market average
     // At average = 12/20. 1.5x average = 16/20. 2x+ = 20/20.
     const reviewHealthRaw = avgReviews > 0
       ? Math.pow(clientReviews / avgReviews, 0.5) // gentle diminishing returns

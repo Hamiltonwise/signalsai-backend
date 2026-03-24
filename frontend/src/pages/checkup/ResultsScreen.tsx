@@ -554,27 +554,33 @@ export default function ResultsScreen() {
         <ScoreRing score={score.composite} size={180} strokeWidth={12} />
       </div>
 
-      {/* Sub-scores */}
+      {/* Sub-scores — honest names for what we actually measure */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] space-y-5">
         <SubScoreBar
-          label="Local Visibility"
+          label="Market Rank"
           score={score.localVisibility}
           maxScore={40}
           icon={Eye}
         />
         <SubScoreBar
-          label="Online Presence"
+          label="Rating vs Market"
           score={score.onlinePresence}
           maxScore={40}
           icon={Globe}
         />
         <SubScoreBar
-          label="Review Health"
+          label="Review Volume"
           score={score.reviewHealth}
           maxScore={20}
           icon={MessageSquare}
         />
       </div>
+
+      {/* Transparency — what this score is based on */}
+      <p className="text-[11px] text-slate-400 text-center leading-relaxed -mt-3">
+        Based on public Google data for {market?.totalCompetitors || 0} nearby competitors.
+        {" "}A full audit with connected accounts reveals more.
+      </p>
 
       {/* Gap Progress Bars — concrete closeable units */}
       {state.gaps && state.gaps.length > 0 && (
