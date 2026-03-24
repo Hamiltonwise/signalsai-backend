@@ -67,21 +67,79 @@ function createHighlightedPinIcon(color: string) {
 const highlightedCompetitorIcon = createHighlightedPinIcon(NAVY);
 
 // ---------------------------------------------------------------------------
-// Map auto-fit helper
+// Map Animator — cinematic camera for the scanning theater
 // ---------------------------------------------------------------------------
 
-function FitBounds({
-  points,
+function MapAnimator({
+  center,
+  competitors,
+  highlightIndex,
+  scanComplete,
 }: {
-  points: { lat: number; lng: number }[];
+  center: [number, number];
+  competitors: CheckupCompetitor[];
+  highlightIndex: number | null;
+  scanComplete: boolean;
 }) {
   const map = useMap();
+  const lastFlyRef = useRef<number>(-1);
+  const hasZoomedIn = useRef(false);
 
+  // Phase 1: Zoom into the practice pin on mount (dramatic close-up)
   useEffect(() => {
-    if (points.length === 0) return;
-    const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng]));
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
-  }, [points, map]);
+    if (hasZoomedIn.current) return;
+    hasZoomedIn.current = true;
+    // Start at zoom 10 (wide), then fly to zoom 15 (close-up)
+    map.setView(center, 10, { animate: false });
+    setTimeout(() => {
+      map.flyTo(center, 15, { duration: 2.5 });
+    }, 500);
+    // After close-up, pull back to neighborhood view
+    setTimeout(() => {
+      map.flyTo(center, 13, { duration: 2 });
+    }, 4000);
+  }, [map, center]);
+
+  // Phase 2: When a new competitor is highlighted, fly to it
+  useEffect(() => {
+    if (highlightIndex === null || highlightIndex === lastFlyRef.current) return;
+    const comp = competitors[highlightIndex];
+    if (!comp?.location) return;
+    lastFlyRef.current = highlightIndex;
+
+    // Fly to the competitor
+    map.flyTo([comp.location.lat, comp.location.lng], 14, { duration: 1.2 });
+
+    // After a beat, zoom back out to show the full picture
+    const timer = setTimeout(() => {
+      if (competitors.length > 1) {
+        const allPoints = [
+          center,
+          ...competitors
+            .slice(0, highlightIndex + 1)
+            .filter((c) => c.location)
+            .map((c) => [c.location!.lat, c.location!.lng] as [number, number]),
+        ];
+        const bounds = L.latLngBounds(allPoints);
+        map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 13, duration: 1.5 });
+      }
+    }, 1800);
+
+    return () => clearTimeout(timer);
+  }, [highlightIndex, competitors, map, center]);
+
+  // Phase 3: When scan is complete, final dramatic zoom to show full market
+  useEffect(() => {
+    if (!scanComplete || competitors.length === 0) return;
+    const allPoints = [
+      center,
+      ...competitors
+        .filter((c) => c.location)
+        .map((c) => [c.location!.lat, c.location!.lng] as [number, number]),
+    ];
+    const bounds = L.latLngBounds(allPoints);
+    map.flyToBounds(bounds, { padding: [40, 40], maxZoom: 12, duration: 2 });
+  }, [scanComplete, competitors, map, center]);
 
   return null;
 }
@@ -487,13 +545,9 @@ export default function ScanningTheater() {
     ? [place.location.latitude, place.location.longitude]
     : [44.0582, -121.3153]; // Bend, OR fallback
 
-  // All map points for auto-fit
-  const allPoints = [
-    { lat: center[0], lng: center[1] },
-    ...visibleCompetitors
-      .filter((c) => c.location)
-      .map((c) => ({ lat: c.location!.lat, lng: c.location!.lng })),
-  ];
+  // Track whether all competitors have been revealed for final camera move
+  const allCompetitors = analysisRef.current?.competitors || [];
+  const allRevealed = apiDone && visibleCompetitors.length >= Math.min(5, allCompetitors.length) && allCompetitors.length > 0;
 
   return (
     <div className="w-full max-w-4xl mt-2 sm:mt-6">
@@ -571,7 +625,12 @@ export default function ScanningTheater() {
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             />
-            <FitBounds points={allPoints} />
+            <MapAnimator
+              center={center}
+              competitors={visibleCompetitors}
+              highlightIndex={highlightedCompetitorIndex}
+              scanComplete={allRevealed}
+            />
 
             {/* Practice pin — Terracotta */}
             <Marker position={center} icon={practiceIcon}>
