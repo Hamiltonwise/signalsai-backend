@@ -42,6 +42,7 @@ import PatientPathBreadcrumb from "@/components/dashboard/PatientPathBreadcrumb"
 import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
 import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
+import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -662,9 +663,9 @@ export default function DoctorDashboard() {
 
       {isLoading && (
         <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl border border-gray-200 bg-white" />
-          ))}
+          <CardSkeleton height="7rem" />
+          <CardSkeleton height="5rem" />
+          <CardSkeleton height="8rem" />
         </div>
       )}
 
