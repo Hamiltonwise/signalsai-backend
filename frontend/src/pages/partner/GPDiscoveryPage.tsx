@@ -367,7 +367,6 @@ export default function GPDiscoveryPage() {
             </p>
           </div>
         </div>
-      </div>
     </div>
   );
 }

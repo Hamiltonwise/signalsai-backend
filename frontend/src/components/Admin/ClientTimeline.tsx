@@ -18,7 +18,6 @@ import {
   Mail,
   Star,
   Activity,
-  ArrowRight,
 } from "lucide-react";
 import { apiGet } from "@/api/index";
 

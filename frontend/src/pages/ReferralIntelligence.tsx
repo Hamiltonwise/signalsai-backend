@@ -17,10 +17,8 @@ import {
   Upload,
   Camera,
   FileText,
-  Users,
 } from "lucide-react";
 import { apiGet } from "@/api/index";
-import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -250,7 +248,6 @@ function EmptyState() {
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function ReferralIntelligence() {
-  const { userProfile } = useAuth();
   const { selectedLocation } = useLocationContext();
   const locationId = selectedLocation?.id ?? null;
 

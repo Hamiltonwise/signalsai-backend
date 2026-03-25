@@ -22,9 +22,6 @@ import {
   Share2,
   Flame,
   Shield,
-  Target,
-  Zap,
-  ChevronRight,
   Star,
   MapPin,
   Users,
@@ -398,44 +395,6 @@ function GapToNext({ ranking }: { ranking: RankingData | null }) {
   );
 }
 
-function RecommendedMove({ ranking, findings }: { ranking: RankingData | null; findings: ProoflineFinding[] }) {
-  let move = {
-    title: "Ask 3 happy patients for a Google review this week",
-    detail: "Review velocity is the fastest lever. Send the link right after their appointment.",
-    cta: "Send review requests to 3 patients",
-  };
-
-  if (ranking?.topCompetitor) {
-    const reviewGap = (ranking.topCompetitor.reviewCount || 0) - (ranking.clientReviews || 0);
-    if (reviewGap > 0 && reviewGap <= 5) {
-      move = {
-        title: `Get ${reviewGap} review${reviewGap !== 1 ? "s" : ""} to pass ${ranking.topCompetitor.name}`,
-        detail: `You're ${reviewGap} away. That's one good week.`,
-        cta: `Send ${reviewGap} review request${reviewGap !== 1 ? "s" : ""} to close the gap`,
-      };
-    }
-  }
-
-  if (findings.length > 0 && findings[0].detail && /photo/i.test(findings[0].detail)) {
-    move = { title: "Add 5 new photos to your Google Business Profile", detail: findings[0].detail, cta: "Upload 5 photos to your profile" };
-  }
-
-  return (
-    <div className="rounded-2xl border border-[#D56753]/20 bg-[#D56753]/[0.03] p-6">
-      <div className="flex items-center gap-2 mb-3">
-        <Zap className="h-5 w-5 text-[#D56753]" />
-        <p className="text-xs font-bold uppercase tracking-wider text-[#D56753]">This Week's Move</p>
-      </div>
-      <p className="text-base font-bold text-[#212D40]">{move.title}</p>
-      <p className="text-sm text-gray-600 mt-1 mb-4">{move.detail}</p>
-      <button className="text-xs font-semibold text-[#D56753] flex items-center gap-1 hover:underline">
-        {move.cta}
-        <ChevronRight className="h-3 w-3" />
-      </button>
-    </div>
-  );
-}
-
 function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
   if (!ranking?.topCompetitor) {
     return (
@@ -699,7 +658,7 @@ export default function DoctorDashboard() {
           />
 
           {/* GBP Connect prompt — show when not connected */}
-          {!hasGoogleConnection && <GBPConnectCard />}
+          {!hasGoogleConnection && <GBPConnectCard gbpConnected={hasGoogleConnection} orgId={orgId} />}
 
           {/* 4. PatientPath breadcrumb — quiet, lower */}
           {isOwnerOrManager && <WebsiteCard website={websiteData ?? null} />}

@@ -9,7 +9,7 @@
  * Separate surface from Doctor Dashboard and HQ Admin.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Briefcase,
@@ -25,7 +25,6 @@ import {
   Target,
   ArrowRight,
   CheckCircle2,
-  Pencil,
   Loader2,
   Sparkles,
   Zap,

@@ -14,7 +14,6 @@ import {
   Plus,
   Trash2,
   Star,
-  Edit2,
   Check,
   X,
   Clock,
@@ -311,7 +310,7 @@ function AddLocationForm({ onAdd }: { onAdd: (data: Record<string, unknown>) => 
 // ── Main Component ───────────────────────────────────────────────
 
 export default function Locations() {
-  const { userProfile } = useAuth();
+  const { userProfile: _userProfile } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: locations = [], isLoading } = useQuery({

@@ -4,7 +4,6 @@ import {
   PMSAutomationCards,
   AgentInsights,
 } from "../components/Admin";
-import MorningBrief from "./admin/MorningBrief";
 import HQRouter from "./admin/HQRouter";
 import { AdminGuard } from "@/components/Admin/AdminGuard";
 import AIDataInsightsList from "./admin/AIDataInsightsList";

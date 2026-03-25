@@ -19,14 +19,12 @@ import {
   Loader2,
   Clock,
 } from "lucide-react";
-import ClientTimeline from "@/components/admin/ClientTimeline";
+import ClientTimeline from "@/components/Admin/ClientTimeline";
 import {
   useAdminOrganization,
-  useAdminOrganizationLocations,
 } from "../../hooks/queries/useAdminQueries";
 import { useAdminOrgRankings } from "../../hooks/queries/useAdminOrgTabQueries";
 import { fetchAgentOutputs } from "../../api/agentOutputs";
-import type { AgentOutput } from "../../types/agentOutputs";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -211,7 +209,6 @@ function CompetitorGap({ rankings }: { rankings: RankingJob[] }) {
   if (!latest || latest.rank_position === 1) return null;
 
   // We need the raw data to get competitor details — fetch the full result
-  const orgId = (latest as any).organization_id;
   const { data: fullResult } = useQuery({
     queryKey: ["admin", "ranking-result", latest.id],
     queryFn: async () => {
@@ -345,7 +342,7 @@ function ProoflineAction({ orgId }: { orgId: number }) {
 
 // ─── The One Action ─────────────────────────────────────────────────
 
-function OneAction({ rankings }: { rankings: RankingJob[] }) {
+function OneAction({ rankings, orgId: _orgId, onNavigateManage }: { rankings: RankingJob[]; orgId: number; onNavigateManage: () => void }) {
   const latest = rankings.find((r) => r.status === "completed");
 
   // If score is low, suggest action
@@ -361,7 +358,7 @@ function OneAction({ rankings }: { rankings: RankingJob[] }) {
           review this week.
         </p>
         <button
-          onClick={() => navigate(`/admin/organizations/${id}/manage`)}
+          onClick={onNavigateManage}
           className="mt-4 rounded-xl bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98]"
         >
           View full analysis
@@ -391,7 +388,7 @@ export default function PracticeStory() {
   const [activeTab, setActiveTab] = useState<"story" | "timeline">("story");
 
   const { data: orgData, isLoading: orgLoading } = useAdminOrganization(orgId);
-  const { data: rankingsData, isLoading: rankingsLoading } =
+  const { data: rankingsData } =
     useAdminOrgRankings(orgId, null);
 
   const org = orgData as any;
@@ -480,7 +477,16 @@ export default function PracticeStory() {
           <PositionCard rankings={completedRankings} />
           <CompetitorGap rankings={rankings} />
           <ProoflineAction orgId={orgId} />
-          <OneAction rankings={completedRankings} />
+          <OneAction rankings={completedRankings} orgId={orgId} onNavigateManage={() => navigate(`/admin/organizations/${id}/manage`)} />
+
+          {/* Persistent link to full customer data */}
+          <button
+            onClick={() => navigate(`/admin/organizations/${id}/manage`)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-6 py-4 text-sm font-medium text-[#212D40] shadow-sm transition-colors hover:bg-gray-50"
+          >
+            <Activity className="h-4 w-4 text-gray-400" />
+            View all customer data
+          </button>
         </div>
       )}
 

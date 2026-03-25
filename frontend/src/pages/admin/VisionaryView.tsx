@@ -14,10 +14,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
   DollarSign,
   Calendar,
-  AlertTriangle,
   Zap,
   TrendingUp,
-  ChevronRight,
 } from "lucide-react";
 import FounderMode from "./FounderMode";
 import { useNavigate } from "react-router-dom";

@@ -16,8 +16,6 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  ChevronDown,
-  ChevronRight,
   Sparkles,
   BookOpen,
   Video,

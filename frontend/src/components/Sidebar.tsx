@@ -16,6 +16,7 @@ import {
   Globe,
   PanelLeftClose,
   PanelLeftOpen,
+  MapPin,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSidebar } from "./Admin/SidebarContext";
@@ -259,7 +260,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const canSeeNotifications = userRole !== "viewer";
-  const isOwnerOrAdmin = userRole === "admin";
   const isManagerOrAbove = userRole === "admin" || userRole === "manager";
 
   // Main navigation items — role-gated

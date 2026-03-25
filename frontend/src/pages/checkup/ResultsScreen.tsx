@@ -440,7 +440,7 @@ export default function ResultsScreen() {
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [emailSubmitted, _setEmailSubmitted] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [relationship, setRelationship] = useState("owner");
   const [weeklyUpdates, setWeeklyUpdates] = useState(true);

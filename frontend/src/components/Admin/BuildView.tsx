@@ -5,7 +5,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { Terminal, AlertTriangle, CheckCircle2, Shield, ExternalLink } from "lucide-react";
+import { Terminal, AlertTriangle, CheckCircle2, Shield } from "lucide-react";
 import { apiGet } from "@/api/index";
 
 interface DreamTeamTask {

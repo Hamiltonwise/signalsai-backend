@@ -3,7 +3,7 @@
  * "Something went wrong on our end. We've been notified."
  */
 
-import { ArrowRight, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 export default function ServerError() {
   return (

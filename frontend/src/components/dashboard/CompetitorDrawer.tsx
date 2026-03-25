@@ -5,7 +5,7 @@
  * Opens when a competitor is clicked in the leaderboard.
  */
 
-import { X, Star, MessageSquare, Clock, TrendingUp } from "lucide-react";
+import { X, Star, MessageSquare, Clock } from "lucide-react";
 
 interface CompetitorData {
   name: string;

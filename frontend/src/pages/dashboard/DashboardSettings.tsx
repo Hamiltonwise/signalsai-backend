@@ -31,7 +31,7 @@ export default function DashboardSettings() {
   const [mondayEmail, setMondayEmail] = useState(true);
   const [competitorAlerts, setCompetitorAlerts] = useState(true);
   const [milestones, setMilestones] = useState(true);
-  const [prefsSaving, setPrefsSaving] = useState(false);
+  const [_prefsSaving, setPrefsSaving] = useState(false);
 
   // Load existing prefs
   useEffect(() => {

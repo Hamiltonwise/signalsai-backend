@@ -16,7 +16,6 @@ import {
   Plus,
   Pause,
   Play,
-  ExternalLink,
 } from "lucide-react";
 import {
   fetchDreamTeam,
@@ -27,11 +26,8 @@ import {
   updateDreamTeamNode,
   addResumeNote,
   type DreamTeamNode,
-  type DreamTeamTask,
-  type TaskStats,
   type ResumeEntry,
   type RecentOutput,
-  type KpiRow,
 } from "@/api/dream-team";
 import {
   CheckCircle2,
@@ -413,7 +409,7 @@ const PRIORITY_BADGES: Record<string, string> = {
   low: "bg-gray-50 text-gray-400",
 };
 
-function NodeTaskList({ nodeId, nodeName }: { nodeId: string; nodeName: string }) {
+function NodeTaskList({ nodeId, nodeName: _nodeName }: { nodeId: string; nodeName: string }) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -737,7 +733,6 @@ export default function DreamTeam() {
 
   // Build tree: top-level humans, then departments under Dave
   const humans = nodes.filter((n: DreamTeamNode) => n.node_type === "human" && !n.parent_id);
-  const dave = nodes.find((n: DreamTeamNode) => n.display_name === "Dave");
 
   // Group agents by department
   const departments = new Map<string, DreamTeamNode[]>();

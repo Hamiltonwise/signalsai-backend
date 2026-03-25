@@ -12,7 +12,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   TrendingUp,
   TrendingDown,
-  Minus,
   AlertTriangle,
   DollarSign,
   X,
@@ -20,7 +19,6 @@ import {
   BarChart3,
   Calendar,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { apiGet, apiPost } from "@/api/index";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -167,8 +165,6 @@ function SnapshotCard({ snapshot, isLatest }: { snapshot: RankingSnapshot; isLat
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function RankingsScreen() {
-  const { userProfile } = useAuth();
-  const orgId = userProfile?.organizationId || null;
   const queryClient = useQueryClient();
 
   // Fetch snapshots

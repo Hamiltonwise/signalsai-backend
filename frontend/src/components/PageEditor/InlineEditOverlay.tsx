@@ -8,7 +8,6 @@
  * Layered on top of the existing iframe preview.
  */
 
-import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Save,
   Undo2,
@@ -17,7 +16,6 @@ import {
   Plus,
   X,
   Image as ImageIcon,
-  Type,
   Eye,
   EyeOff,
   Pencil,

@@ -99,7 +99,7 @@ function StatCard({
   label,
   value,
   detail,
-  color = "text-[#212D40]",
+  color: _color = "text-[#212D40]",
 }: {
   label: string;
   value: string;

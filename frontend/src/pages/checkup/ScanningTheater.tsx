@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
-import { Check, Loader2, Star, MessageSquare, Globe, Phone, Camera, MapPin as MapPinIcon, Quote } from "lucide-react";
+import { Check, Loader2, Star, MessageSquare, Globe, Camera, MapPin as MapPinIcon, Quote } from "lucide-react";
 import type { PlaceReview, PlacePhoto } from "../../api/places";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -279,7 +279,6 @@ function DiscoveryFeed({
     competitorItems.current = compItems;
 
     // Start after business data is mostly revealed
-    const startDelay = Math.max(0, (businessItems.length * 2000 + 2000) - (Date.now() % 100000));
     const timers = compItems.map((_, i) =>
       setTimeout(() => {
         setVisibleCompetitorItems(i + 1);
@@ -537,6 +536,7 @@ export default function ScanningTheater() {
     });
 
     async function analyze() {
+      if (!place) return;
       const conferenceActive = isConferenceMode();
       const timeoutMs = conferenceActive ? 5000 : 45000;
 

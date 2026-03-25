@@ -183,8 +183,6 @@ export default function BatchCheckup() {
   const results = batchStatus?.results || [];
   const completedResults = results.filter((r) => r.status === "completed");
   const isComplete = batchStatus?.status === "completed";
-  const isProcessing = batchId && !isComplete;
-
   // Summary stats
   const avgScore =
     completedResults.length > 0

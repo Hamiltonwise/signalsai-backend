@@ -123,8 +123,8 @@ export function DFYWebsite() {
     useState<QuickActionType | null>(null);
 
   // Inline edit state (Apple Standard)
-  const [inlineEditActive, setInlineEditActive] = useState(false);
-  const [inlineChanges, setInlineChanges] = useState<EditChange[]>([]);
+  const [inlineEditActive, _setInlineEditActive] = useState(false);
+  const [_inlineChanges, setInlineChanges] = useState<EditChange[]>([]);
   const inlineCleanupRef = useRef<(() => void) | null>(null);
 
   const { setCollapsed } = useSidebar();
@@ -545,7 +545,7 @@ export function DFYWebsite() {
           ]);
           setIsDirty(true);
         },
-        (selector, currentSrc) => {
+        (selector, _currentSrc) => {
           // Reuse same image handler — simplified for reload case
           console.log("[InlineEdit] Image click after reload:", selector);
         },

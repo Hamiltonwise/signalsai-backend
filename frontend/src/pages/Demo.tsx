@@ -9,25 +9,16 @@
  * All competitor names are FICTIONAL to avoid showing real practice data in a demo.
  */
 
-import { useState } from "react";
 import {
   TrendingUp,
   TrendingDown,
   AlertTriangle,
   CheckCircle2,
-  Star,
-  MapPin,
   Zap,
   Calendar,
   Target,
-  Award,
   Users,
-  MessageSquare,
   ArrowRight,
-  ChevronRight,
-  Copy,
-  BarChart3,
-  Clock,
   Activity,
 } from "lucide-react";
 

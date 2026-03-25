@@ -82,6 +82,7 @@ export interface DreamTeamTask {
   status: "open" | "in_progress" | "done";
   priority: "low" | "normal" | "high" | "urgent";
   source_type: string;
+  source_meeting_title?: string;
   due_date: string | null;
   created_at: string;
   updated_at: string;

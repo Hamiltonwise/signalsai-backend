@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   Loader2,
   Star,
-  Clock,
   MousePointerClick,
 } from "lucide-react";
 import {
