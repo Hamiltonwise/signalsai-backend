@@ -1,0 +1,71 @@
+name: E2E Tests (Playwright)
+
+on:
+  push:
+    branches: [sandbox]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      - name: Create .env file
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env
+          echo "SMOKE_ADMIN_TOKEN=${{ secrets.SMOKE_ADMIN_TOKEN }}" >> .env
+
+      - name: Start backend
+        run: npm run dev &
+        env:
+          NODE_ENV: test
+
+      - name: Wait for backend
+        run: |
+          for i in $(seq 1 30); do
+            curl -s http://localhost:3000/api/health > /dev/null && break
+            sleep 2
+          done
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          SMOKE_ADMIN_TOKEN: ${{ secrets.SMOKE_ADMIN_TOKEN }}
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: test-results/
+          retention-days: 14
+
+      - name: Post result to Slack
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          if [ "$STATUS" = "success" ]; then
+            MSG="E2E tests passed on sandbox (commit ${{ github.sha }})"
+          else
+            MSG="E2E tests FAILED on sandbox (commit ${{ github.sha }}). Check artifacts for screenshots."
+          fi
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"channel\": \"#alloro-dev\", \"text\": \"$MSG\"}"
+          fi
