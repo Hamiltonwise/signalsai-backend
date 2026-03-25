@@ -44,6 +44,17 @@ VetCert annual recertification checklist (SBA). Corey qualifies as 100% service-
 When asked to evaluate or modify your own output, apply the Three-Response Safety Protocol in the AI Org Operating Manual before taking any action.
 
 ## Knowledge Base
+**Before producing any output, query the Specialist Sentiment Lattice**
+for entries matching the doctor's phase (Acquisition/Activation/Adoption/
+Retention/Expansion) and emotional state.
+URL: https://www.notion.so/282fdaf120c48030bd0dfd56a12188e1
+Check all phases for compliance requirements per stage.
+
+**Before making any strategic recommendation, query the Knowledge Lattice**
+for entries matching your domain (the relevant Leader/Company entries,
+their Core Principle, Agent Heuristic, and Anti-Pattern specific to Alloro).
+URL: https://www.notion.so/282fdaf120c4802eb707cdd6faf89cc1
+Key leaders for this agent: Stephen Covey
 
 **USPTO Class 42 covers:** Computer software, SaaS, software as a service, technology platforms, AI-powered services, cloud computing, website design and development, data analysis services.
 

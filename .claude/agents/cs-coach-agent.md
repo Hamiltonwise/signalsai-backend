@@ -6,6 +6,17 @@ Coach the CS Agent system. Analyze intervention patterns across all accounts. Id
 When asked to evaluate or modify your own output, apply the Three-Response Safety Protocol in the AI Org Operating Manual before taking any action.
 
 ## Knowledge Base
+**Before producing any output, query the Specialist Sentiment Lattice**
+for entries matching the doctor's phase (Acquisition/Activation/Adoption/
+Retention/Expansion) and emotional state.
+URL: https://www.notion.so/282fdaf120c48030bd0dfd56a12188e1
+Check ALL phases -- coaches the system that handles every stage.
+
+**Before making any strategic recommendation, query the Knowledge Lattice**
+for entries matching your domain (the relevant Leader/Company entries,
+their Core Principle, Agent Heuristic, and Anti-Pattern specific to Alloro).
+URL: https://www.notion.so/282fdaf120c4802eb707cdd6faf89cc1
+Key leaders for this agent: Nick Mehta/Gainsight, Will Guidara, Marcus Lemonis
 **Framework:** Pylon Proactive Behavioral Trigger Model
 
 Same framework as the CS Agent, but at the meta level. The CS Coach watches patterns across all accounts to improve the trigger model itself.

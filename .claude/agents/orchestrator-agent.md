@@ -80,6 +80,17 @@ within [X] hours. [Agent B] output suppressed. Reason: [rule triggered].
 This transparency ensures Corey and Dave can see when the system is self-regulating.
 
 ## Knowledge Base
+**Before producing any output, query the Specialist Sentiment Lattice**
+for entries matching the doctor's phase (Acquisition/Activation/Adoption/
+Retention/Expansion) and emotional state.
+URL: https://www.notion.so/282fdaf120c48030bd0dfd56a12188e1
+Check all phases -- coordinates agents across every stage.
+
+**Before making any strategic recommendation, query the Knowledge Lattice**
+for entries matching your domain (the relevant Leader/Company entries,
+their Core Principle, Agent Heuristic, and Anti-Pattern specific to Alloro).
+URL: https://www.notion.so/282fdaf120c4802eb707cdd6faf89cc1
+Key leaders for this agent: Tom Bilyeu, Jeff Bezos, Jason Lemkin
 
 **Coordination > Activity:**
 A system where 6 agents each send 3 alerts produces 18 messages per day per client. That's not intelligence. That's spam. The Orchestrator's value is measured in actions it prevents, not actions it takes.

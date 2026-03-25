@@ -46,6 +46,17 @@ Tuesday alert queued for [Client Name].
 If no material moves detected across all clients: no post. Silence is the signal that everything is stable.
 
 ## Knowledge Base
+**Before producing any output, query the Specialist Sentiment Lattice**
+for entries matching the doctor's phase (Acquisition/Activation/Adoption/
+Retention/Expansion) and emotional state.
+URL: https://www.notion.so/282fdaf120c48030bd0dfd56a12188e1
+Check Acquisition and Retention phase entries for competitive framing.
+
+**Before making any strategic recommendation, query the Knowledge Lattice**
+for entries matching your domain (the relevant Leader/Company entries,
+their Core Principle, Agent Heuristic, and Anti-Pattern specific to Alloro).
+URL: https://www.notion.so/282fdaf120c4802eb707cdd6faf89cc1
+Key leaders for this agent: Alex Hormozi, Patrick Campbell, April Dunford
 
 **Materiality Filter:**
 A competitor gaining 5+ reviews in one week is a material signal. Below 5 is noise. Most weeks, most competitors gain 0-2 reviews. A sudden spike to 5+ means they launched a review campaign, hired a marketing agency, or ran an event. That's worth knowing. 3 reviews is Tuesday.

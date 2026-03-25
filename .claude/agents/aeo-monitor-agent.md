@@ -54,6 +54,17 @@ Week-over-week: [improved / stable / declined]
 Until option 1 or 2 is implemented, option 3 is the fallback. The format above applies regardless of execution method.
 
 ## Knowledge Base
+**Before producing any output, query the Specialist Sentiment Lattice**
+for entries matching the doctor's phase (Acquisition/Activation/Adoption/
+Retention/Expansion) and emotional state.
+URL: https://www.notion.so/282fdaf120c48030bd0dfd56a12188e1
+Focus on Acquisition phase entries for search presence.
+
+**Before making any strategic recommendation, query the Knowledge Lattice**
+for entries matching your domain (the relevant Leader/Company entries,
+their Core Principle, Agent Heuristic, and Anti-Pattern specific to Alloro).
+URL: https://www.notion.so/282fdaf120c4802eb707cdd6faf89cc1
+Key leaders for this agent: Kieran Flanagan, April Dunford
 
 **AEO vs SEO:**
 AEO (Answer Engine Optimization) is what happens when doctors stop searching Google and start asking ChatGPT. The ranking factors are different:

@@ -271,6 +271,65 @@ async function processSource(
     });
 
     console.log(`[Intelligence] Complete: ${title} — ${extracted.frameworks?.length || 0} frameworks, ${extracted.tactics?.length || 0} tactics`);
+
+    // ─── Knowledge Lattice Candidate Generation ───────────────────
+    // If the source mentions a named individual or company AND is a
+    // podcast/article/video, generate a lattice candidate entry.
+    const contentType = await db("knowledge_sources").where({ id }).select("content_type").first();
+    const isLatticeEligible = ["podcast", "article", "video"].includes(contentType?.content_type || "");
+
+    if (isLatticeEligible && (author || extracted.quotes?.length > 0)) {
+      try {
+        const latticeResponse = await client.messages.create({
+          model: LLM_MODEL,
+          max_tokens: 1000,
+          system: `You extract Knowledge Lattice entries from source material for Alloro's agent system.
+
+A Knowledge Lattice entry captures one leader's or company's core principle and translates it into an actionable heuristic for Alloro's AI agents.
+
+Extract from the source material:
+1. leader_name: The primary person or company discussed
+2. core_principle: Their core teaching in one sentence
+3. agent_heuristic: One actionable question Alloro agents should ask themselves (starts with "Before...")
+4. anti_pattern: What to avoid (specific to Alloro's context)
+5. why_alloro_cares: One sentence connecting this to Alloro's mission
+6. category: One of: Ops/Customer Success, Sales, Psychology, SaaS, AI Innovator, Visionary, Healthcare, Failure
+
+Return valid JSON with these exact keys. If the source doesn't contain a clear leader/principle, return {"skip": true}.`,
+          messages: [
+            {
+              role: "user",
+              content: `Source: "${title}" by ${author || "Unknown"}\n\nKey insight: ${extracted.key_insight || ""}\n\nFrameworks: ${JSON.stringify(extracted.frameworks?.slice(0, 3) || [])}`,
+            },
+          ],
+        });
+
+        const latticeText = latticeResponse.content[0]?.type === "text" ? latticeResponse.content[0].text : "";
+        let latticeCandidate: any = null;
+
+        try {
+          const jsonMatch = latticeText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (!parsed.skip) {
+              latticeCandidate = parsed;
+            }
+          }
+        } catch {
+          // Failed to parse lattice candidate, that's fine
+        }
+
+        if (latticeCandidate) {
+          await db("knowledge_sources").where({ id }).update({
+            candidate_lattice_entry: JSON.stringify(latticeCandidate),
+          });
+          console.log(`[Intelligence] Lattice candidate generated: ${latticeCandidate.leader_name}`);
+        }
+      } catch (latticeErr: any) {
+        console.error(`[Intelligence] Lattice candidate generation failed:`, latticeErr.message);
+        // Non-fatal, main extraction already saved
+      }
+    }
   } catch (err: any) {
     console.error(`[Intelligence] Processing failed for ${id}:`, err.message);
     await db("knowledge_sources").where({ id }).update({
@@ -279,5 +338,7 @@ async function processSource(
     });
   }
 }
+
+// T2 registers POST /api/admin/knowledge-lattice/add
 
 export default intelligenceRoutes;
