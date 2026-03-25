@@ -208,8 +208,9 @@ function checkBrokenImages(html: string): ValidationIssue[] {
 
 function checkLinks(html: string, existingPaths: string[], existingPostSlugs: string[]): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const validPaths = new Set(existingPaths);
-  for (const slug of existingPostSlugs) validPaths.add(`/${slug}`);
+  const allValidPaths = [...existingPaths];
+  for (const slug of existingPostSlugs) allValidPaths.push(`/${slug}`);
+  const validPathSet = new Set(allValidPaths);
 
   const hrefRegex = /href=["'](\/[^"'#?]*)["']/g;
   let match: RegExpExecArray | null;
@@ -219,13 +220,19 @@ function checkLinks(html: string, existingPaths: string[], existingPostSlugs: st
     const href = match[1];
     if (href === "/") continue;
     const norm = href.endsWith("/") && href.length > 1 ? href.slice(0, -1) : href;
-    if (!validPaths.has(norm) && !validPaths.has(href)) broken.push(href);
+    if (!validPathSet.has(norm) && !validPathSet.has(href)) broken.push(href);
   }
 
   if (broken.length > 0) {
+    // For each broken link, find the closest matching valid path
+    const suggestions = broken.map((href) => {
+      const best = findClosestPath(href, allValidPaths);
+      return best ? `${href} → ${best}` : `${href} → REMOVE (no close match)`;
+    });
+
     issues.push({ type: "link",
-      description: `${broken.length} broken link(s): ${broken.slice(0, 3).join(", ")}`,
-      fixInstruction: `Fix broken links. Valid pages: ${existingPaths.slice(0, 15).join(", ")}` });
+      description: `${broken.length} broken link(s): ${broken.slice(0, 5).join(", ")}`,
+      fixInstruction: `Fix each broken link using the suggested replacement:\n${suggestions.join("\n")}\nIf the suggestion says REMOVE, either remove the link entirely or replace with /contact.` });
   }
 
   if ((html.match(/href=["'][^"']*\.html["']/gi) || []).length > 0) {
@@ -234,4 +241,69 @@ function checkLinks(html: string, existingPaths: string[], existingPostSlugs: st
   }
 
   return issues;
+}
+
+/**
+ * Find the closest matching valid path for a broken link using segment similarity.
+ */
+function findClosestPath(broken: string, validPaths: string[]): string | null {
+  const brokenSegments = broken.toLowerCase().split("/").filter(Boolean);
+  if (brokenSegments.length === 0) return null;
+
+  let bestPath: string | null = null;
+  let bestScore = 0;
+
+  for (const valid of validPaths) {
+    const validSegments = valid.toLowerCase().split("/").filter(Boolean);
+
+    let score = 0;
+    for (const bs of brokenSegments) {
+      for (const vs of validSegments) {
+        if (bs === vs) {
+          score += 3;
+        } else if (vs.includes(bs) || bs.includes(vs)) {
+          score += 2;
+        } else if (levenshteinDistance(bs, vs) <= 2) {
+          score += 1;
+        }
+      }
+    }
+
+    if (validSegments.length === brokenSegments.length) score += 1;
+
+    const lastBroken = brokenSegments[brokenSegments.length - 1];
+    const lastValid = validSegments[validSegments.length - 1];
+    if (lastBroken && lastValid && (lastBroken === lastValid || lastValid.includes(lastBroken) || lastBroken.includes(lastValid))) {
+      score += 2;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestPath = valid;
+    }
+  }
+
+  return bestScore >= 2 ? bestPath : null;
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  if (Math.abs(a.length - b.length) > 3) return Math.max(a.length, b.length);
+
+  const matrix: number[][] = [];
+  for (let i = 0; i <= a.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return matrix[a.length][b.length];
 }
