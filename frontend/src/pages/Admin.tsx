@@ -28,6 +28,9 @@ import MindDetail from "./admin/MindDetail";
 import AlloroPostsDocs from "./admin/AlloroPostsDocs";
 import BatchCheckup from "./admin/BatchCheckup";
 import AccountOverview from "./admin/AccountOverview";
+import CaseStudies from "./admin/CaseStudies";
+import AAEDashboard from "./admin/AAEDashboard";
+import PitchRepTracker from "./admin/PitchRepTracker";
 
 function WebDevEngine() {
   return (
@@ -100,6 +103,9 @@ function AdminWithLayout() {
         <Route path="documentation/alloro-posts" element={<AlloroPostsDocs />} />
         <Route path="schedules" element={<Schedules />} />
         <Route path="batch-checkup" element={<BatchCheckup />} />
+        <Route path="case-studies" element={<CaseStudies />} />
+        <Route path="aae" element={<AAEDashboard />} />
+        <Route path="pitch-reps" element={<PitchRepTracker />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="sentry-test" element={<SentryTest />} />
       </Routes>

@@ -651,6 +651,11 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       referral_code: generateReferralCode(),
     });
 
+    // Set source_channel from referral query param
+    if (req.query.ref) {
+      await db("organizations").where({ id: org.id }).update({ source_channel: req.query.ref });
+    }
+
     // Store checkup data on org for dashboard pre-population
     if (checkup_score || checkup_data || place_id) {
       const checkupUpdates: Record<string, any> = {};
