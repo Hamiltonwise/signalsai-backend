@@ -41,6 +41,7 @@ import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import PatientPathBreadcrumb from "@/components/dashboard/PatientPathBreadcrumb";
 import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
+import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -643,6 +644,21 @@ export default function DoctorDashboard() {
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
       </div>
+
+      {/* Onboarding Checklist — shows until first value delivered */}
+      {!isLoading && (
+        <OnboardingChecklist
+          checkupScore={rankingData?.rankScore ?? null}
+          gbpConnected={hasGoogleConnection}
+          pmsUploaded={false}
+          mondayEmailOpened={false}
+          referralShared={false}
+          referralCode={referralCode}
+          onDismiss={() => {
+            // T2 registers PATCH /api/user/onboarding-step
+          }}
+        />
+      )}
 
       {isLoading && (
         <div className="space-y-4">

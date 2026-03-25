@@ -1,0 +1,34 @@
+/**
+ * 404 — Page not found.
+ * "This page doesn't exist. But your market data does."
+ */
+
+import { ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+export default function NotFound() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-dvh bg-[#FAFAF8] flex flex-col items-center justify-center px-5 text-center">
+      <p className="text-7xl font-black text-[#212D40]/10 mb-4">404</p>
+      <h1 className="text-2xl font-bold text-[#212D40]">This page doesn't exist.</h1>
+      <p className="text-base text-gray-500 mt-2 max-w-sm">
+        But your market data does.
+      </p>
+      <button
+        onClick={() => navigate("/checkup")}
+        className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#D56753] px-6 py-3 text-sm font-semibold text-white hover:brightness-105 active:scale-[0.98] transition-all"
+      >
+        Run a Checkup
+        <ArrowRight className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => navigate("/dashboard")}
+        className="mt-3 text-sm text-gray-400 hover:text-[#212D40] transition-colors"
+      >
+        Go to dashboard
+      </button>
+    </div>
+  );
+}

@@ -54,6 +54,8 @@ import GPReferralIntelligenceContent from "./pages/content/GPReferralIntelligenc
 import PatientPathWebsite from "./pages/dashboard/PatientPathWebsite";
 import ReviewRequests from "./pages/dashboard/ReviewRequests";
 import DashboardSettings from "./pages/dashboard/DashboardSettings";
+import NotFound from "./pages/NotFound";
+import ErrorBoundary from "./components/ErrorBoundary";
 // import GPDiscoveryPage from "./pages/partner/GPDiscoveryPage"; // T5 building -- wire after syntax fix
 import CheckupLayout from "./pages/checkup/CheckupLayout";
 import EntryScreen from "./pages/checkup/EntryScreen";
@@ -237,6 +239,9 @@ function App() {
               <Route element={<AdminLayout />}>
                 <Route path="/admin/*" element={<Admin />} />
               </Route>
+
+              {/* 404 catch-all */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
             <PilotBanner />
             </ConfirmProvider>
@@ -249,4 +254,12 @@ function App() {
   );
 }
 
-export default App;
+function AppWithErrorBoundary() {
+  return (
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}
+
+export default AppWithErrorBoundary;
