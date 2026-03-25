@@ -540,11 +540,11 @@ export default function DoctorDashboard() {
   });
 
   const prooflineFindings: ProoflineFinding[] = (() => {
-    if (!agentData?.successful) return [];
-    const results = agentData.results || agentData.data || [];
-    const proofline = Array.isArray(results) ? results.find((r: any) => r.agent_type === "proofline") : null;
-    if (!proofline?.agent_output) return [];
-    const output = typeof proofline.agent_output === "string" ? tryParse(proofline.agent_output) : proofline.agent_output;
+    if (!agentData?.success) return [];
+    // Backend returns { success, agents: { proofline: { results: ... } } }
+    const prooflineData = agentData.agents?.proofline;
+    if (!prooflineData?.results) return [];
+    const output = typeof prooflineData.results === "string" ? tryParse(prooflineData.results) : prooflineData.results;
     if (typeof output === "object" && output !== null) {
       const f = (output as any).findings || (output as any).items || [];
       if (Array.isArray(f)) return f.slice(0, 3);
@@ -565,7 +565,7 @@ export default function DoctorDashboard() {
 
   const { data: profileData } = useQuery({
     queryKey: ["client-profile"],
-    queryFn: async () => apiGet({ path: "/profile" }),
+    queryFn: async () => apiGet({ path: "/profile/get" }),
     staleTime: 10 * 60_000,
   });
 
