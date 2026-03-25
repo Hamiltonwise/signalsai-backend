@@ -125,6 +125,12 @@ function AddCaseStudyForm({
   const [state, setState] = useState("");
   const [startPos, setStartPos] = useState("");
   const [endPos, setEndPos] = useState("");
+  const [startReviews, setStartReviews] = useState("");
+  const [endReviews, setEndReviews] = useState("");
+  const [timeframe, setTimeframe] = useState("");
+  const [revenueImpact, setRevenueImpact] = useState("");
+  const [doctorQuote, setDoctorQuote] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   const handleSubmit = () => {
     if (!name.trim()) return;
@@ -135,13 +141,16 @@ function AddCaseStudyForm({
       state: state.trim() || null,
       starting_position: startPos ? parseInt(startPos, 10) : null,
       ending_position: endPos ? parseInt(endPos, 10) : null,
+      starting_review_count: startReviews ? parseInt(startReviews, 10) : null,
+      ending_review_count: endReviews ? parseInt(endReviews, 10) : null,
+      timeframe_weeks: timeframe ? parseInt(timeframe, 10) : null,
+      revenue_impact: revenueImpact.trim() || null,
+      doctor_quote: doctorQuote.trim() || null,
+      is_anonymous: isAnonymous,
     });
-    setName("");
-    setSpecialty("");
-    setCity("");
-    setState("");
-    setStartPos("");
-    setEndPos("");
+    setName(""); setSpecialty(""); setCity(""); setState("");
+    setStartPos(""); setEndPos(""); setStartReviews(""); setEndReviews("");
+    setTimeframe(""); setRevenueImpact(""); setDoctorQuote(""); setIsAnonymous(false);
     setOpen(false);
   };
 
@@ -192,27 +201,24 @@ function AddCaseStudyForm({
             className="w-16 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20"
           />
         </div>
-        <input
-          value={startPos}
-          onChange={(e) => setStartPos(e.target.value)}
-          placeholder="Starting position"
-          type="number"
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20"
-        />
-        <input
-          value={endPos}
-          onChange={(e) => setEndPos(e.target.value)}
-          placeholder="Ending position"
-          type="number"
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20"
-        />
+        <input value={startPos} onChange={(e) => setStartPos(e.target.value)} placeholder="Starting position" type="number" className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20" />
+        <input value={endPos} onChange={(e) => setEndPos(e.target.value)} placeholder="Ending position" type="number" className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20" />
+        <input value={startReviews} onChange={(e) => setStartReviews(e.target.value)} placeholder="Starting reviews" type="number" className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20" />
+        <input value={endReviews} onChange={(e) => setEndReviews(e.target.value)} placeholder="Ending reviews" type="number" className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20" />
+        <input value={timeframe} onChange={(e) => setTimeframe(e.target.value)} placeholder="Timeframe (weeks)" type="number" className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20" />
+        <input value={revenueImpact} onChange={(e) => setRevenueImpact(e.target.value)} placeholder="Revenue impact" className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20" />
+        <textarea value={doctorQuote} onChange={(e) => setDoctorQuote(e.target.value)} placeholder="Doctor quote" rows={2} className="col-span-2 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20 resize-none" />
       </div>
+      <label className="flex items-center gap-2 mt-3 cursor-pointer">
+        <input type="checkbox" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} className="w-4 h-4 rounded text-[#212D40] border-gray-300" />
+        <span className="text-xs text-gray-600">Publish anonymously</span>
+      </label>
       <button
         onClick={handleSubmit}
         disabled={!name.trim()}
         className="mt-3 w-full rounded-lg bg-[#212D40] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#212D40]/90 transition-colors disabled:opacity-40"
       >
-        Create
+        Save
       </button>
     </div>
   );

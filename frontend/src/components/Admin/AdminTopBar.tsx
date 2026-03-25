@@ -1,13 +1,27 @@
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ChevronDown, LogOut, User, RefreshCw } from "lucide-react";
+import { ChevronDown, LogOut, User, RefreshCw, Search } from "lucide-react";
 import { queryClient } from "../../lib/queryClient";
 import { toast } from "react-hot-toast";
+import HQSearch from "./HQSearch";
 
 export function AdminTopBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Cmd+K to open search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const toggleMenu = () => setIsMenuOpen((value) => !value);
@@ -81,6 +95,18 @@ export function AdminTopBar() {
                 </span>
               </Link>
             </div>
+
+            {/* Search trigger */}
+            <button
+              onClick={() => setShowSearch(true)}
+              className="flex items-center gap-2 rounded-lg border border-gray-600 bg-[#2a3a52] px-3 py-1.5 text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors"
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Search</span>
+              <kbd className="hidden sm:inline px-1 py-0.5 rounded bg-gray-700 text-[10px] text-gray-500 font-mono">
+                {navigator.platform?.includes("Mac") ? "\u2318" : "Ctrl"}K
+              </kbd>
+            </button>
 
             {/* User Menu */}
             <div className="relative" ref={menuRef}>
@@ -201,6 +227,9 @@ export function AdminTopBar() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* HQ Search overlay */}
+      {showSearch && <HQSearch onClose={() => setShowSearch(false)} />}
     </>
   );
 }

@@ -22,6 +22,8 @@ import {
   Clock,
   BarChart3,
   Activity,
+  DollarSign,
+  BookOpen,
 } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 
@@ -39,6 +41,8 @@ export type AdminNavKey =
   | "templates"
   | "schedules"
   | "batch-checkup"
+  | "revenue"
+  | "case-studies"
   | "settings";
 
 interface NavItem {
@@ -64,9 +68,11 @@ const DONE_FOR_YOU_ITEMS: NavItem[] = [
 const TOP_ITEMS: NavItem[] = [
   { key: "action-items", label: "Morning Brief", icon: CheckSquare },
   { key: "live-feed", label: "Live Feed", icon: Activity },
+  { key: "revenue", label: "Revenue", icon: DollarSign },
 ];
 
 const BOTTOM_ITEMS: NavItem[] = [
+  { key: "case-studies", label: "Case Studies", icon: BookOpen },
   { key: "app-logs", label: "System Health", icon: FileText },
   { key: "organization-management", label: "Organizations", icon: Building },
   { key: "schedules", label: "Schedules", icon: Clock },

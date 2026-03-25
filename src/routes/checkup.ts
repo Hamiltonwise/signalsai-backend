@@ -18,17 +18,15 @@ import { db } from "../database/connection";
 const checkupRoutes = express.Router();
 
 // Rate limiters — protect Google Places API costs and email abuse
-const analyzeLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,                   // 20 analyses per IP per 15 min
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: "Too many requests. Please try again in a few minutes." },
-});
+import {
+  checkupAnalyzeLimiter as analyzeLimiter,
+  checkupCreateAccountLimiter,
+  scraperDetection,
+} from "../middleware/publicRateLimiter";
 
 const emailLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,                    // 5 emails per IP per 15 min
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: "Too many requests. Please try again later." },
@@ -43,7 +41,7 @@ const emailLimiter = rateLimit({
  *
  * Body: { name, city, state, category, types, rating, reviewCount, placeId }
  */
-checkupRoutes.post("/analyze", analyzeLimiter, async (req, res) => {
+checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res) => {
   try {
     const { name, city, state, category, types, rating, reviewCount, placeId, location } =
       req.body;
@@ -588,7 +586,7 @@ checkupRoutes.post("/track", async (req, res) => {
  * Creates user + org + returns JWT. No email verification.
  * If email exists: returns token for existing account (auto-login).
  */
-checkupRoutes.post("/create-account", emailLimiter, async (req, res) => {
+checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, res) => {
   try {
     const {
       email,

@@ -3,6 +3,7 @@ import express, { Request, Response } from "express";
 import { google } from "googleapis";
 import { db } from "../../database/connection";
 import { getMindsQueue } from "../../workers/queues";
+import { gbpAuthLimiter } from "../../middleware/publicRateLimiter";
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ function buildOAuth2Client() {
 // Redirects the authenticated user to the Google OAuth consent screen
 // with the business.manage scope for GBP access.
 
-router.get("/google", (req: Request, res: Response) => {
+router.get("/google", gbpAuthLimiter, (req: Request, res: Response) => {
   try {
     const oauth2 = buildOAuth2Client();
 

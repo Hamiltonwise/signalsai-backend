@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /demo
+Disallow: /api
+
+Sitemap: https://getalloro.com/sitemap.xml

@@ -84,6 +84,10 @@ import userPreferencesRoutes from "./routes/user/preferences";
 import adminBehavioralEventsRoutes from "./routes/admin/behavioralEvents";
 import adminCaseStudiesRoutes from "./routes/admin/caseStudies";
 import gpDiscoveryRoutes from "./routes/partner/gpDiscovery";
+import billingAdminRoutes from "./routes/admin/billingAdmin";
+import userExportRoutes from "./routes/user/export";
+import healthRoutes from "./routes/health";
+import adminSearchRoutes from "./routes/admin/search";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -159,11 +163,14 @@ app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Database health check endpoint
+// Database health check endpoint (legacy -- kept for backward compat)
 app.get("/api/health/db", async (req, res) => {
   const health = await healthCheck();
   res.status(health.status === "healthy" ? 200 : 500).json(health);
 });
+
+// Comprehensive health checks: GET /api/health + GET /api/health/detailed
+app.use("/api/health", healthRoutes);
 
 // Sentry test endpoint — throws an error to verify Sentry is capturing
 app.get("/api/sentry-test", () => {
@@ -240,6 +247,9 @@ app.use("/api/user", userPreferencesRoutes); // WO-NOTIFICATION-PREFS + WO-STRIP
 app.use("/api/admin/behavioral-events", adminBehavioralEventsRoutes); // WO-ADMIN-BEHAVIORAL-EVENTS: T4 SessionIntelligence + MorningBrief
 app.use("/api/admin/case-studies", adminCaseStudiesRoutes); // T6: Case study CRUD + publish
 app.use("/api/partner", gpDiscoveryRoutes); // T5: GP Discovery + referral form
+app.use("/api/admin/billing", billingAdminRoutes); // WO-BILLING-RECOVERY: at-risk accounts
+app.use("/api/user/export", userExportRoutes); // WO-EXPORT-API: rankings CSV, referrals CSV, checkup JSON
+app.use("/api/admin/search", adminSearchRoutes); // WO-ADMIN-SEARCH: cross-collection search for HQ
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);

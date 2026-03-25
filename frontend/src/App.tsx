@@ -56,6 +56,7 @@ import ReviewRequests from "./pages/dashboard/ReviewRequests";
 import DashboardSettings from "./pages/dashboard/DashboardSettings";
 import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { ToastProvider } from "./contexts/ToastContext";
 // import GPDiscoveryPage from "./pages/partner/GPDiscoveryPage"; // T5 building -- wire after syntax fix
 import CheckupLayout from "./pages/checkup/CheckupLayout";
 import EntryScreen from "./pages/checkup/EntryScreen";
@@ -105,6 +106,7 @@ function App() {
       client={queryClient}
       persistOptions={persistOptions}
     >
+    <ToastProvider>
     <BrowserRouter>
       <PilotHandler />
       <AuthProvider>
@@ -249,6 +251,7 @@ function App() {
         </OnboardingWizardProvider>
       </AuthProvider>
     </BrowserRouter>
+    </ToastProvider>
     <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
     </PersistQueryClientProvider>
   );

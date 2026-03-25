@@ -6,6 +6,7 @@
  * Read-only. No new API endpoints.
  */
 
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -16,7 +17,9 @@ import {
   Activity,
   Eye,
   Loader2,
+  Clock,
 } from "lucide-react";
+import ClientTimeline from "@/components/admin/ClientTimeline";
 import {
   useAdminOrganization,
   useAdminOrganizationLocations,
@@ -385,6 +388,7 @@ export default function PracticeStory() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const orgId = Number(id);
+  const [activeTab, setActiveTab] = useState<"story" | "timeline">("story");
 
   const { data: orgData, isLoading: orgLoading } = useAdminOrganization(orgId);
   const { data: rankingsData, isLoading: rankingsLoading } =
@@ -444,20 +448,46 @@ export default function PracticeStory() {
         </div>
       </div>
 
-      {/* Story cards */}
-      <div className="space-y-5">
-        {/* 1. Position card with sparkline */}
-        <PositionCard rankings={completedRankings} />
-
-        {/* 2. Competitor gap */}
-        <CompetitorGap rankings={rankings} />
-
-        {/* 3. Proofline Agent last action */}
-        <ProoflineAction orgId={orgId} />
-
-        {/* 4. The one action */}
-        <OneAction rankings={completedRankings} />
+      {/* Tab switcher */}
+      <div className="flex items-center gap-1 mb-6">
+        <button
+          onClick={() => setActiveTab("story")}
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+            activeTab === "story"
+              ? "bg-[#212D40] text-white"
+              : "text-gray-500 hover:text-[#212D40] hover:bg-gray-100"
+          }`}
+        >
+          <Eye className="h-3.5 w-3.5" />
+          Story
+        </button>
+        <button
+          onClick={() => setActiveTab("timeline")}
+          className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+            activeTab === "timeline"
+              ? "bg-[#212D40] text-white"
+              : "text-gray-500 hover:text-[#212D40] hover:bg-gray-100"
+          }`}
+        >
+          <Clock className="h-3.5 w-3.5" />
+          Timeline
+        </button>
       </div>
+
+      {/* Story cards */}
+      {activeTab === "story" && (
+        <div className="space-y-5">
+          <PositionCard rankings={completedRankings} />
+          <CompetitorGap rankings={rankings} />
+          <ProoflineAction orgId={orgId} />
+          <OneAction rankings={completedRankings} />
+        </div>
+      )}
+
+      {/* Client Timeline */}
+      {activeTab === "timeline" && (
+        <ClientTimeline orgId={orgId} />
+      )}
     </div>
   );
 }
