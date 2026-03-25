@@ -8,6 +8,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Footer from "@/components/ui/Footer";
 
 const DEFINITION =
   "Business Clarity is knowing -- with specificity -- what is happening in your business, what it means, what it costs you, and what the one move is that changes it. Most business owners have data. None of them have clarity.";
@@ -156,12 +157,7 @@ export default function BusinessClarity() {
           </div>
         </main>
 
-        {/* Footer */}
-        <footer className="py-8 text-center border-t border-slate-100">
-          <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
-            Alloro &middot; Business Clarity
-          </p>
-        </footer>
+        <Footer />
       </div>
     </>
   );
