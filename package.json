@@ -14,7 +14,8 @@
     "db:make-seed": "knex seed:make",
     "seed:demo": "ts-node src/scripts/seedDemoAccount.ts",
     "sync:agents": "ts-node src/scripts/syncAgentRegistry.ts",
-    "benchmark:baseline": "ts-node src/scripts/captureBaseline.ts"
+    "benchmark:baseline": "ts-node src/scripts/captureBaseline.ts",
+    "smoke": "npx ts-node src/scripts/smokeTest.ts"
   },
   "keywords": [],
   "author": "",
