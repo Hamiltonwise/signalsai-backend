@@ -12,7 +12,9 @@
     "db:seed": "knex seed:run",
     "db:make-migration": "knex migrate:make",
     "db:make-seed": "knex seed:make",
-    "seed:demo": "ts-node src/scripts/seedDemoAccount.ts"
+    "seed:demo": "ts-node src/scripts/seedDemoAccount.ts",
+    "sync:agents": "ts-node src/scripts/syncAgentRegistry.ts",
+    "benchmark:baseline": "ts-node src/scripts/captureBaseline.ts"
   },
   "keywords": [],
   "author": "",

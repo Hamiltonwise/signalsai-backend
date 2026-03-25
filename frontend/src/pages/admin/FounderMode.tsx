@@ -29,7 +29,7 @@ import {
   type AdminOrganization,
 } from "@/api/admin-organizations";
 import { fetchSignal } from "@/api/admin-signal";
-import { apiGet, apiPatch } from "@/api/index";
+import { apiGet, apiPatch, apiPost } from "@/api/index";
 
 // --- Constants ---------------------------------------------------------------
 
@@ -603,6 +603,304 @@ function CompetitiveIntel({
 }
 
 // =============================================================================
+// PANEL 7 -- THE LIBRARY (Knowledge + Sentiment Lattice)
+// =============================================================================
+
+interface KnowledgeEntry {
+  id: string;
+  name: string;
+  category: string;
+  core_principle: string;
+  agent_heuristic: string | null;
+  anti_pattern: string | null;
+}
+
+interface SentimentEntry {
+  id: string;
+  quote: string;
+  phase: string;
+  agent_heuristic: string | null;
+  anti_pattern: string | null;
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  SaaS: "bg-blue-500/20 text-blue-400",
+  Psychology: "bg-purple-500/20 text-purple-400",
+  Sales: "bg-emerald-500/20 text-emerald-400",
+  Visionary: "bg-amber-500/20 text-amber-400",
+  Operations: "bg-cyan-500/20 text-cyan-400",
+  Marketing: "bg-pink-500/20 text-pink-400",
+  Finance: "bg-green-500/20 text-green-400",
+  Uncategorized: "bg-white/10 text-white/40",
+};
+
+const PHASE_COLORS: Record<string, string> = {
+  Acquisition: "bg-blue-500/20 text-blue-400",
+  Activation: "bg-emerald-500/20 text-emerald-400",
+  Adoption: "bg-amber-500/20 text-amber-400",
+  Retention: "bg-purple-500/20 text-purple-400",
+  Expansion: "bg-pink-500/20 text-pink-400",
+  Uncategorized: "bg-white/10 text-white/40",
+};
+
+function ExpandableField({ label, content }: { label: string; content: string | null }) {
+  const [open, setOpen] = useState(false);
+  if (!content) return null;
+  return (
+    <button onClick={() => setOpen(!open)} className="w-full text-left mt-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
+        {label} {open ? "\u25B4" : "\u25BE"}
+      </p>
+      {open && <p className="text-xs text-white/50 mt-1 leading-relaxed">{content}</p>}
+    </button>
+  );
+}
+
+function KnowledgeAddForm({ onAdd }: { onAdd: (data: any) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("");
+  const [principle, setPrinciple] = useState("");
+  const [heuristic, setHeuristic] = useState("");
+  const [antiPattern, setAntiPattern] = useState("");
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors">
+        <Plus className="h-3 w-3" /> Add Entry
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Leader/Company" className="h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753]" />
+        <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category (SaaS, Psychology...)" className="h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753]" />
+      </div>
+      <input value={principle} onChange={(e) => setPrinciple(e.target.value)} placeholder="Core Principle" className="w-full h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753]" />
+      <input value={heuristic} onChange={(e) => setHeuristic(e.target.value)} placeholder="Agent Heuristic (optional)" className="w-full h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753]" />
+      <input value={antiPattern} onChange={(e) => setAntiPattern(e.target.value)} placeholder="Anti-Pattern (optional)" className="w-full h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753]" />
+      <div className="flex gap-2">
+        <button
+          onClick={() => {
+            if (!name.trim() || !principle.trim()) return;
+            onAdd({ name: name.trim(), category: category.trim() || "Uncategorized", core_principle: principle.trim(), agent_heuristic: heuristic.trim() || null, anti_pattern: antiPattern.trim() || null });
+            setName(""); setCategory(""); setPrinciple(""); setHeuristic(""); setAntiPattern(""); setOpen(false);
+          }}
+          disabled={!name.trim() || !principle.trim()}
+          className="text-xs font-semibold text-white bg-[#D56753] px-3 py-1.5 rounded-lg disabled:opacity-40"
+        >
+          Save
+        </button>
+        <button onClick={() => setOpen(false)} className="text-xs text-white/30 hover:text-white/50">Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function SentimentAddForm({ onAdd }: { onAdd: (data: any) => void }) {
+  const [open, setOpen] = useState(false);
+  const [quote, setQuote] = useState("");
+  const [phase, setPhase] = useState("");
+  const [heuristic, setHeuristic] = useState("");
+  const [antiPattern, setAntiPattern] = useState("");
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors">
+        <Plus className="h-3 w-3" /> Add Entry
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-2">
+      <textarea value={quote} onChange={(e) => setQuote(e.target.value)} placeholder="Doctor's exact words..." rows={2} className="w-full px-2 py-1.5 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753] resize-none" />
+      <select value={phase} onChange={(e) => setPhase(e.target.value)} className="w-full h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white focus:outline-none focus:border-[#D56753]">
+        <option value="">Phase...</option>
+        {["Acquisition", "Activation", "Adoption", "Retention", "Expansion"].map((p) => (
+          <option key={p} value={p}>{p}</option>
+        ))}
+      </select>
+      <input value={heuristic} onChange={(e) => setHeuristic(e.target.value)} placeholder="Agent Heuristic" className="w-full h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753]" />
+      <input value={antiPattern} onChange={(e) => setAntiPattern(e.target.value)} placeholder="Anti-Pattern" className="w-full h-8 px-2 rounded bg-white/10 border border-white/10 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#D56753]" />
+      <div className="flex gap-2">
+        <button
+          onClick={() => {
+            if (!quote.trim()) return;
+            onAdd({ quote: quote.trim(), phase: phase || "Uncategorized", agent_heuristic: heuristic.trim() || null, anti_pattern: antiPattern.trim() || null });
+            setQuote(""); setPhase(""); setHeuristic(""); setAntiPattern(""); setOpen(false);
+          }}
+          disabled={!quote.trim()}
+          className="text-xs font-semibold text-white bg-[#D56753] px-3 py-1.5 rounded-lg disabled:opacity-40"
+        >
+          Save
+        </button>
+        <button onClick={() => setOpen(false)} className="text-xs text-white/30 hover:text-white/50">Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function TheLibrary() {
+  const [tab, setTab] = useState<"leaders" | "sentiment">("leaders");
+  const [catFilter, setCatFilter] = useState("All");
+  const [phaseFilter, setPhaseFilter] = useState("All");
+  const queryClient = useQueryClient();
+
+  const { data: knowledgeData } = useQuery({
+    queryKey: ["knowledge-lattice"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/knowledge-lattice/entries" });
+      return res?.success ? (res.entries as KnowledgeEntry[]) : [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: sentimentData } = useQuery({
+    queryKey: ["sentiment-lattice"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/sentiment-lattice/entries" });
+      return res?.success ? (res.entries as SentimentEntry[]) : [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const addKnowledge = async (data: any) => {
+    await apiPost({ path: "/admin/knowledge-lattice/add", passedData: data });
+    queryClient.invalidateQueries({ queryKey: ["knowledge-lattice"] });
+  };
+
+  const addSentiment = async (data: any) => {
+    await apiPost({ path: "/admin/sentiment-lattice/add", passedData: data });
+    queryClient.invalidateQueries({ queryKey: ["sentiment-lattice"] });
+  };
+
+  const knowledge = knowledgeData || [];
+  const sentiment = sentimentData || [];
+
+  const categories = ["All", ...new Set(knowledge.map((e) => e.category))];
+  const phases = ["All", "Acquisition", "Activation", "Adoption", "Retention", "Expansion"];
+
+  const filteredKnowledge = catFilter === "All" ? knowledge : knowledge.filter((e) => e.category === catFilter);
+  const filteredSentiment = phaseFilter === "All" ? sentiment : sentiment.filter((e) => e.phase === phaseFilter);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Knowledge Lattice</h2>
+        <p className="text-[10px] text-white/30 mt-1">The intellectual backbone. Read before building. Updated monthly.</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1">
+        {(["leaders", "sentiment"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`text-xs font-semibold px-4 py-2 rounded-lg transition-colors capitalize ${
+              tab === t ? "bg-white/10 text-white" : "text-white/30 hover:text-white/50"
+            }`}
+          >
+            {t === "leaders" ? "Leaders" : "Sentiment"}
+          </button>
+        ))}
+      </div>
+
+      {/* Leaders tab */}
+      {tab === "leaders" && (
+        <div className="space-y-3">
+          {/* Category filter */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {categories.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCatFilter(c)}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${
+                  catFilter === c ? "bg-[#D56753] text-white" : "bg-white/5 text-white/30 hover:text-white/50"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
+          {/* Cards */}
+          {filteredKnowledge.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/10 p-6 text-center">
+              <p className="text-xs text-white/30">No entries yet. Add leaders and frameworks from your research.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {filteredKnowledge.map((entry) => (
+                <div key={entry.id} className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-bold text-white">{entry.name}</p>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${CATEGORY_COLORS[entry.category] || CATEGORY_COLORS.Uncategorized}`}>
+                      {entry.category}
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/60 leading-relaxed">{entry.core_principle}</p>
+                  <ExpandableField label="Agent Heuristic" content={entry.agent_heuristic} />
+                  <ExpandableField label="Anti-Pattern" content={entry.anti_pattern} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <KnowledgeAddForm onAdd={addKnowledge} />
+        </div>
+      )}
+
+      {/* Sentiment tab */}
+      {tab === "sentiment" && (
+        <div className="space-y-3">
+          {/* Phase filter */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {phases.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPhaseFilter(p)}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${
+                  phaseFilter === p ? "bg-[#D56753] text-white" : "bg-white/5 text-white/30 hover:text-white/50"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          {/* Entries */}
+          {filteredSentiment.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/10 p-6 text-center">
+              <p className="text-xs text-white/30">No sentiment entries yet. Capture doctor quotes from calls and transcripts.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredSentiment.map((entry) => (
+                <div key={entry.id} className="rounded-xl bg-white/5 border border-white/10 p-4">
+                  <p className="text-sm text-white italic leading-relaxed">"{entry.quote}"</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${PHASE_COLORS[entry.phase] || PHASE_COLORS.Uncategorized}`}>
+                      {entry.phase}
+                    </span>
+                  </div>
+                  <ExpandableField label="Agent Heuristic" content={entry.agent_heuristic} />
+                  <ExpandableField label="Anti-Pattern" content={entry.anti_pattern} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <SentimentAddForm onAdd={addSentiment} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 
@@ -733,6 +1031,7 @@ export default function FounderMode({ onClose }: { onClose: () => void }) {
             debouncedSave({ competitive_notes: n });
           }}
         />
+        <TheLibrary />
       </div>
 
       <footer className="py-8 text-center">

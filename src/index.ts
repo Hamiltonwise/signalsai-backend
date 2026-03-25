@@ -88,6 +88,12 @@ import billingAdminRoutes from "./routes/admin/billingAdmin";
 import userExportRoutes from "./routes/user/export";
 import healthRoutes from "./routes/health";
 import adminSearchRoutes from "./routes/admin/search";
+import adminUserManagementRoutes from "./routes/admin/userManagement";
+import adminFeatureFlagRoutes from "./routes/admin/featureFlags";
+import adminWebhookHealthRoutes from "./routes/admin/webhookHealth";
+import adminAuditLogRoutes from "./routes/admin/auditLog";
+import mailgunInboundRoutes from "./routes/webhooks/mailgunInbound";
+import adminKnowledgeLatticeRoutes from "./routes/admin/knowledgeLattice";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -250,6 +256,12 @@ app.use("/api/partner", gpDiscoveryRoutes); // T5: GP Discovery + referral form
 app.use("/api/admin/billing", billingAdminRoutes); // WO-BILLING-RECOVERY: at-risk accounts
 app.use("/api/user/export", userExportRoutes); // WO-EXPORT-API: rankings CSV, referrals CSV, checkup JSON
 app.use("/api/admin/search", adminSearchRoutes); // WO-ADMIN-SEARCH: cross-collection search for HQ
+app.use("/api/admin/users", adminUserManagementRoutes); // T6: User CRUD (GET/POST/PATCH/DELETE)
+app.use("/api/admin/feature-flags", adminFeatureFlagRoutes); // T6: Feature flag management
+app.use("/api/admin/webhooks", adminWebhookHealthRoutes); // T6: Webhook health monitoring
+app.use("/api/admin/audit-log", adminAuditLogRoutes); // T6: Audit log viewer
+app.use("/api/webhooks/mailgun", mailgunInboundRoutes); // T3: Mailgun inbound email processing
+app.use("/api/admin", adminKnowledgeLatticeRoutes); // T3: Knowledge + Sentiment Lattice CRUD
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);

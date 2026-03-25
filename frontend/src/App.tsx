@@ -58,6 +58,18 @@ import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./contexts/ToastContext";
 // import GPDiscoveryPage from "./pages/partner/GPDiscoveryPage"; // T5 building -- wire after syntax fix
+import Changelog from "./pages/Changelog";
+import Pricing from "./pages/Pricing";
+import ReferralProgram from "./pages/ReferralProgram";
+import Compare from "./pages/Compare";
+import LegalPracticeMarketing from "./pages/content/LegalPracticeMarketing";
+import FinancialAdvisorMarketing from "./pages/content/FinancialAdvisorMarketing";
+import OptometristMarketing from "./pages/content/OptometristMarketing";
+import Locations from "./pages/dashboard/Locations";
+// import About from "./pages/About"; // Not built yet
+// import TermsOfService from "./pages/TermsOfService"; // Not built yet
+// import PrivacyPolicy from "./pages/PrivacyPolicy"; // Not built yet
+// import PhysicalTherapistMarketing from "./pages/content/PhysicalTherapistMarketing"; // Not built yet
 import CheckupLayout from "./pages/checkup/CheckupLayout";
 import EntryScreen from "./pages/checkup/EntryScreen";
 import ScanningTheater from "./pages/checkup/ScanningTheater";
@@ -133,6 +145,21 @@ function App() {
               <Route path="/business-clarity/what-is" element={<WhatIsBusinessClarity />} />
               <Route path="/endodontist-marketing" element={<EndodontistMarketing />} />
               <Route path="/gp-referral-intelligence" element={<GPReferralIntelligenceContent />} />
+
+              {/* SEO content pages — vertical marketing */}
+              <Route path="/law-firm-marketing" element={<LegalPracticeMarketing />} />
+              <Route path="/financial-advisor-marketing" element={<FinancialAdvisorMarketing />} />
+              <Route path="/optometrist-marketing" element={<OptometristMarketing />} />
+              {/* <Route path="/physical-therapist-marketing" element={<PhysicalTherapistMarketing />} /> -- not built yet */}
+
+              {/* Public pages — no auth */}
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/changelog" element={<Changelog />} />
+              <Route path="/referral-program" element={<ReferralProgram />} />
+              <Route path="/compare" element={<Compare />} />
+              {/* <Route path="/about" element={<About />} /> -- not built yet */}
+              {/* <Route path="/terms" element={<TermsOfService />} /> -- not built yet */}
+              {/* <Route path="/privacy" element={<PrivacyPolicy />} /> -- not built yet */}
 
               {/* AAE conference pages — no auth */}
               <Route path="/aae" element={<AAELanding />} />
@@ -213,6 +240,7 @@ function App() {
                 <Route path="/dashboard/reviews" element={<ReviewRequests />} />
                 <Route path="/dashboard/settings" element={<DashboardSettings />} />
                 <Route path="/dashboard/website" element={<PatientPathWebsite />} />
+                <Route path="/dashboard/locations" element={<Locations />} />
                 {/* <Route path="/dashboard/refer" element={<GPDiscoveryPage />} /> -- T5 file has syntax issue, will wire after fix */}
                 <Route path="/patientJourneyInsights" element={<Dashboard />} />
                 <Route path="/pmsStatistics" element={<Dashboard />} />
