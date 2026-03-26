@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -67,7 +67,7 @@ import LegalPracticeMarketing from "./pages/content/LegalPracticeMarketing";
 import FinancialAdvisorMarketing from "./pages/content/FinancialAdvisorMarketing";
 import OptometristMarketing from "./pages/content/OptometristMarketing";
 import Locations from "./pages/dashboard/Locations";
-import Intelligence from "./pages/dashboard/Intelligence";
+// Intelligence replaced by IntelligenceDashboard (WO-8: uses /api/intelligence, not admin API)
 // import About from "./pages/About"; // Not built yet
 // import TermsOfService from "./pages/TermsOfService"; // Not built yet
 // import PrivacyPolicy from "./pages/PrivacyPolicy"; // Not built yet
@@ -119,6 +119,12 @@ function AdminLayout() {
   );
 }
 
+/** Wraps children in ErrorBoundary keyed by pathname so navigation resets error state */
+function ErrorBoundaryWithReset({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>;
+}
+
 function App() {
   return (
     <PersistQueryClientProvider
@@ -135,6 +141,7 @@ function App() {
             <Toaster position="top-right" />
             <WizardController />
             <SetupProgressWizard />
+            <ErrorBoundaryWithReset>
             <Routes>
               {/* Public checkup flow — no auth required */}
               <Route path="/checkup" element={<CheckupLayout />}>
@@ -253,8 +260,8 @@ function App() {
                 <Route path="/dashboard/reviews" element={<ReviewRequests />} />
                 <Route path="/dashboard/settings" element={<DashboardSettings />} />
                 <Route path="/dashboard/website" element={<PatientPathWebsite />} />
+                <Route path="/dashboard/intelligence" element={<IntelligenceDashboard />} />
                 <Route path="/dashboard/locations" element={<Locations />} />
-                <Route path="/dashboard/intelligence" element={<Intelligence />} />
                 <Route path="/dashboard/refer/:orgSlug?" element={<GPDiscoveryPage />} />
                 <Route path="/patientJourneyInsights" element={<Dashboard />} />
                 <Route path="/pmsStatistics" element={<Dashboard />} />
@@ -291,6 +298,7 @@ function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
             <PilotBanner />
+            </ErrorBoundaryWithReset>
             </ConfirmProvider>
           </SetupProgressProvider>
         </OnboardingWizardProvider>
@@ -302,12 +310,4 @@ function App() {
   );
 }
 
-function AppWithErrorBoundary() {
-  return (
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  );
-}
-
-export default AppWithErrorBoundary;
+export default App;

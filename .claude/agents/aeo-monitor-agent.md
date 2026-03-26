@@ -17,28 +17,41 @@ Test these five queries weekly across available AI search surfaces:
 4. "what is business clarity for a medical practice"
 5. "endodontist marketing software"
 
-For each query, record:
+For each query, record across all five platforms:
 - **Alloro mentioned:** yes/no
-- **Source:** Perplexity / ChatGPT / Google AI Overview / Bing Copilot
+- **Source:** ChatGPT / Perplexity / Google AI Overviews / Apple Siri-Maps / Gemini
 - **Position:** featured (top), mentioned (middle), absent
+- **Failure type:** 1-5 (see taxonomy below)
 - **Competitor mentioned instead:** name if applicable
 - **Exact language used:** how was Alloro described (if present)
 
+## Five Failure Mode Taxonomy
+
+| Type | Name | Description | Remediation |
+|------|------|-------------|-------------|
+| 1 | **Absent** | Alloro not mentioned at all | Publish FAQ/content answering this exact query. Add structured data. Submit to AI training sources. |
+| 2 | **Misattributed** | Alloro mentioned but described incorrectly | Update llms.txt, FAQ pages, and schema markup. File correction with platform if possible. |
+| 3 | **Outranked** | Competitor mentioned instead of or before Alloro | Analyze competitor's content. Create higher-authority answer. Add Checkup data as proof source. |
+| 4 | **Platform Gap** | Alloro appears on some platforms but missing on others | Create platform-specific content (e.g., Apple Maps listing, Gemini knowledge panel). Claim listings. |
+| 5 | **Stale Citation** | Alloro mentioned with outdated info (old pricing, wrong features) | Update all external-facing content. Refresh llms.txt. Push updated schema markup. |
+
 ## Output Format
 
-Posts weekly to #alloro-brief:
+Posts [AEO BRIEF] weekly to #alloro-brief, Monday 5am PT:
 ```
-AEO Monitor -- [date]
+[AEO BRIEF] -- [date]
 
-Queries where Alloro appears: [N]/5
-Queries where a competitor appears instead: [N]/5
+Coverage: [N]/25 queries, [N]/5 platforms
+Failure breakdown: Type 1: [n], Type 2: [n], Type 3: [n], Type 4: [n], Type 5: [n]
 
 New appearances this week:
-[query] -- [source] -- [how Alloro was described]
+[query] -- [platform] -- [how Alloro was described]
 
-Gaps (competitor appeared, we didn't):
-[query] -- [competitor name] on [source]
-Recommended: [one specific content action to close this gap]
+Gaps (by failure type):
+[Type N] [query] -- [competitor name] on [platform]
+Remediation: [specific content action from taxonomy]
+
+Apple Business: [N] claimed / [N] total orgs. [List unclaimed if any.]
 
 Week-over-week: [improved / stable / declined]
 ```

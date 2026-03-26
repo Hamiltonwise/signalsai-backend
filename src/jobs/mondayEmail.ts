@@ -22,8 +22,8 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   const org = await db("organizations").where({ id: orgId }).first();
   if (!org) return false;
 
-  // Must have active subscription
-  if (org.subscription_status !== "active") return false;
+  // Must have active subscription OR be a Checkup-originated signup (billing after TTFV, not at Step 4)
+  if (org.subscription_status !== "active" && !org.checkup_score && !org.onboarding_completed) return false;
 
   // Get doctor info
   const orgUser = await db("organization_users")
@@ -142,8 +142,13 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
  * Send Monday emails for ALL active orgs.
  */
 export async function sendAllMondayEmails(): Promise<{ sent: number; total: number }> {
+  // Include subscribed orgs AND Checkup-originated signups (billing after TTFV, not at Step 4)
   const orgs = await db("organizations")
-    .where({ subscription_status: "active" })
+    .where(function () {
+      this.where({ subscription_status: "active" })
+        .orWhereNotNull("checkup_score")
+        .orWhere("onboarding_completed", true);
+    })
     .select("id", "name");
 
   let sent = 0;

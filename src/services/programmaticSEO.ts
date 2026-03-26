@@ -23,11 +23,20 @@ export async function gatherCompetitors(
 ): Promise<CompetitorSnapshot[]> {
   const query = `${specialty.name.toLowerCase()} in ${city.city}, ${city.stateAbbr}`;
 
-  const places = await textSearch(query, 10, {
-    lat: city.lat,
-    lng: city.lng,
-    radiusMeters: 40234, // 25 miles
-  });
+  let places: Awaited<ReturnType<typeof textSearch>>;
+  try {
+    places = await textSearch(query, 10, {
+      lat: city.lat,
+      lng: city.lng,
+      radiusMeters: 40234, // 25 miles
+    });
+  } catch (err) {
+    console.error(
+      `[ProgrammaticSEO] Places API failed for "${query}":`,
+      err instanceof Error ? err.message : String(err)
+    );
+    return [];
+  }
 
   return places.map((place) => ({
     placeId: place.id || "",

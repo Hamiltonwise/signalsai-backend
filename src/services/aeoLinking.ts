@@ -10,7 +10,7 @@
  * 3. The checkup CTA
  */
 
-import knex from "../database/connection";
+import { db } from "../database/connection";
 import { SPECIALTIES, CITIES, toSlug, buildPageSlug, type CityData } from "../data/cityData";
 
 interface LinkSet {
@@ -69,7 +69,7 @@ export function getSpokeLinks(
  * Update hub_spoke_links for all published programmatic pages.
  */
 export async function updateAllSpokeLinks(): Promise<number> {
-  const pages = await knex("programmatic_pages")
+  const pages = await db("programmatic_pages")
     .where({ status: "published" })
     .select("id", "specialty_slug", "city_slug", "state_abbr");
 
@@ -82,7 +82,7 @@ export async function updateAllSpokeLinks(): Promise<number> {
       page.state_abbr
     );
 
-    await knex("programmatic_pages")
+    await db("programmatic_pages")
       .where({ id: page.id })
       .update({
         hub_spoke_links: JSON.stringify(links),

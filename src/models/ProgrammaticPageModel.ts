@@ -50,6 +50,7 @@ export class ProgrammaticPageModel extends BaseModel {
     "competitors_snapshot",
     "content_sections",
     "schema_markup",
+    "hub_spoke_links",
   ];
 
   static async findBySlug(
