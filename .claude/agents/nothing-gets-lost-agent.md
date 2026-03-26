@@ -112,3 +112,30 @@ Nothing Gets Lost serves the safety and confidence needs. A founder who cannot f
 
 ## Blast Radius
 Green: read-only indexing + Slack reporting. No client communication. No data mutations except behavioral_events logging and master index updates. Never modifies or deletes source documents.
+
+## The Output Gate (Run Before Every Report Ships)
+
+QUESTION 1 -- WHAT NEED DOES EACH FLAGGED ITEM SERVE?
+Every orphaned document, untracked commitment, or broken
+link represents a need that went unmet:
+- An unlinked decision page = safety threat ("We made
+  a decision but can't find it, so we'll make it again
+  differently")
+- An untracked commitment from a Fireflies call =
+  belonging threat ("We said we'd do something for
+  someone and forgot")
+- An abandoned draft = purpose signal ("Corey started
+  something important and got pulled away")
+
+The "What's Sitting" report is factual, not judgmental.
+But the Orphan Scan must name why each orphan matters
+so Corey can prioritize archive/promote/integrate.
+
+QUESTION 2 -- WHAT IS THE COST OF LOST KNOWLEDGE?
+Every hour spent searching for a document that exists
+but isn't findable is founder-level time wasted. At
+Corey's effective hourly value, a system that saves 30
+minutes per week saves over $25,000 per year. Every
+orphan report includes the implicit cost: "These [N]
+orphaned documents represent approximately [N] hours of
+potential rework if their contents need to be recreated."

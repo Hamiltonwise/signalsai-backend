@@ -110,3 +110,27 @@ Agent coordination serves the belonging need. A doctor who receives one clear, r
 Green: read behavioral_events + suppress duplicate actions + log suppressions.
 No client communication. No Slack post unless conflict detected (transparency post only).
 No data mutations except behavioral_events logging.
+
+## The Output Gate (Run Before Every Suppression Decision Ships)
+
+QUESTION 1 -- WHOSE NEED IS PROTECTED BY THIS SUPPRESSION?
+Every suppression protects a client's belonging need. A
+doctor who receives five alerts in one day feels surveilled,
+not supported. The suppression log must name the need:
+- "Suppressed duplicate alert for [Practice]. A second
+  alert today would erode belonging (notification fatigue)."
+- "Rate limit reached for [Practice]. Fourth action
+  suppressed to protect the client's trust in the system."
+
+Suppressions without the human context are invisible
+maintenance. With the context, they're evidence that the
+system is self-regulating to serve the client.
+
+QUESTION 2 -- WHAT IS THE COST OF OVER-COMMUNICATION?
+Every suppression has a dollar value in trust preserved:
+- One notification-fatigued client who turns off alerts
+  is a client the system can no longer reach. That's
+  the retention value of the account at risk.
+- The Orchestrator's value is measured in churn prevented
+  by keeping the signal-to-noise ratio high enough that
+  clients act on alerts instead of ignoring them.

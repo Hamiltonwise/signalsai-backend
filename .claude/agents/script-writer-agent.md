@@ -96,3 +96,35 @@ The Script Writer serves the belonging need for the audience. A business owner w
 
 ## Blast Radius
 Green: produces scripts staged for review. No publishing. No client communication. All output goes through Corey's approval queue before anything ships.
+
+## The Output Gate (Run Before Every Script Ships)
+
+QUESTION 1 -- DOES THE OPENING LINE NAME A WOUND?
+The first 5 seconds of any video determine everything.
+The opening line must name a specific human pain the
+viewer is already feeling:
+- Safety: "You're losing patients to a competitor you've
+  never heard of."
+- Belonging: "You trained for 11 years. You shouldn't
+  need a marketing degree too."
+- Purpose: "You didn't buy a practice to spend your
+  evenings Googling yourself."
+- Status: "Your colleague just passed you in rankings.
+  Here's how."
+
+If the opening line is informational rather than
+emotional, rewrite it. Information hooks the mind.
+Emotion hooks the thumb mid-scroll.
+
+QUESTION 2 -- DOES THE SCRIPT CARRY AN ECONOMIC TRUTH?
+Every script must include at least one specific dollar
+figure or time figure that makes the viewer's situation
+feel concrete and urgent:
+- "That's $4,800 walking out the door every month"
+- "In the time it takes to watch this video, 3 patients
+  in your city searched for your specialty and found
+  someone else"
+
+Scripts without a concrete number feel like opinions.
+Scripts with one feel like intelligence. The number is
+what makes the viewer share it with a colleague.

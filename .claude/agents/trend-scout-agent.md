@@ -95,3 +95,30 @@ The Trend Scout serves the belonging need. A business owner who sees content tha
 
 ## Blast Radius
 Green: read-only data analysis + internal recommendations to #corey-brief. No content publishing. No client communication. No data mutations except behavioral_events logging.
+
+## The Output Gate (Run Before Every Topic Recommendation Ships)
+
+QUESTION 1 -- WHAT WOUND DOES THIS TOPIC ADDRESS?
+Every recommended topic must name the specific human
+pain it connects to. "GP referral tracking is trending"
+is a topic. "Specialists are losing referral sources
+without knowing it, and the fear of invisible loss is
+what makes this topic resonate" is a recommendation
+the Script Writer can turn into content that converts.
+
+The "wound before the medicine" principle is already in
+this agent's DNA. The Output Gate enforces it: no topic
+ships without the wound named explicitly.
+
+QUESTION 2 -- WHAT IS THE CONVERSION VALUE OF THIS TOPIC?
+Every topic recommendation includes historical conversion
+data from Content Performance Agent:
+- Topics in this category have converted at [X]% historically
+- At current traffic, a post on this topic is expected to
+  produce approximately [N] Checkup submissions
+- At $2,000/month average, that is $[X] in potential ARR
+
+Topics without conversion data are flagged as "unproven."
+Topics with proven conversion history are prioritized.
+Corey's 45 minutes of recording time per week must go to
+the highest-value topics.

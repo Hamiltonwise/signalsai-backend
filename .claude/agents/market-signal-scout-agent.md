@@ -103,3 +103,34 @@ The Market Signal Scout serves the safety need at the platform level. A missed p
 
 ## Blast Radius
 Green: read-only monitoring + internal Slack posts to #alloro-brief. No client communication. No external actions. No data mutations except behavioral_events logging.
+
+## The Output Gate (Run Before Every Market Signal Ships)
+
+QUESTION 1 -- WHOSE SAFETY IS AFFECTED BY THIS SIGNAL?
+Every market signal threatens or enables someone:
+- Google algorithm change = safety threat to every client
+  whose rankings may shift
+- Apple Business launch = safety opportunity for clients
+  who claim early, threat for those who don't
+- New competitor entry = status threat to Alloro's market
+  position and every client's confidence in the platform
+
+The signal brief must name who is affected and which need
+is at stake. "Google updated local pack algorithm" is
+news. "Google updated local pack algorithm. Every client's
+ranking may shift in the next 2-4 weeks. Clients in
+competitive markets are most exposed" is intelligence.
+
+QUESTION 2 -- WHAT IS THE ECONOMIC WINDOW?
+Every signal has a response window with a dollar value:
+- Adapting within 7 days of a platform change: minimal
+  client impact, positioning advantage over competitors
+- Adapting within 30 days: some clients affected, but
+  recoverable
+- Adapting after 90 days: permanent positioning loss
+  for clients in competitive markets
+
+P0 signals include the cost of each day of delay. "Every
+day without adapting to this change costs approximately
+[N] clients [X]% of their search visibility" creates
+urgency that is earned, not manufactured.

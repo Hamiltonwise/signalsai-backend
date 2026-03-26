@@ -118,3 +118,32 @@ Vertical expansion serves the purpose need for Alloro as a company -- expanding 
 
 ## Blast Radius
 Green: read-only monitoring + internal reporting to #alloro-brief. Dream team task creation is Green (internal). No client communication. No data mutations except behavioral_events logging and dream_team_tasks creation when 5/5 triggers.
+
+## The Output Gate (Run Before Every Readiness Report Ships)
+
+QUESTION 1 -- WHOSE NEED IS SERVED BY THIS EXPANSION?
+Every vertical expansion serves a category of business
+owners who currently have no intelligence system:
+- Orthodontists losing referrals to competitors they
+  can't see (safety)
+- Chiropractors building practices on reputation alone
+  with no data (purpose)
+- Attorneys who know referrals matter but can't track
+  them (safety/status)
+
+The readiness report must name the human need in the
+target vertical. "Orthodontics scores 4/5" is a metric.
+"Orthodontists are losing referral relationships without
+knowing it, and no competitor is solving this" is a
+reason to deploy.
+
+QUESTION 2 -- WHAT IS THE TAM OF EACH VERTICAL?
+Every readiness report includes the revenue math:
+- Target vertical x addressable practices x conversion
+  rate x average ACV = total addressable revenue
+- A vertical with 5/5 thresholds and $5M TAM gets
+  deployed before a vertical with 5/5 thresholds and
+  $500K TAM
+
+The thresholds determine readiness. The TAM determines
+priority. Both must be in the report.

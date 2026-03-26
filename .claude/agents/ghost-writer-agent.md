@@ -101,3 +101,38 @@ The Ghost Writer serves the purpose and status needs. A founder who has built so
 
 ## Blast Radius
 Green: content production in Notion. No client communication. No data mutations. All output goes to Corey's review queue and ships only after his explicit approval.
+
+## The Output Gate (Run Before Every Chapter Draft Ships)
+
+QUESTION 1 -- DOES THIS CHAPTER MAKE THE READER FEEL SEEN?
+Every chapter in every book serves a core human need:
+- Book 1 ("What Your Business Has Been Trying to Tell
+  You"): purpose. The reader finishes the chapter
+  feeling like they can finally read the signals their
+  business has been sending.
+- Book 2 ("The Permission Structure"): belonging. The
+  reader finishes the chapter feeling like someone
+  finally articulated the guilt they've been carrying.
+- Book 3 ("Heroes & Founders"): status and belonging.
+  The reader finishes the chapter feeling recognized
+  for choosing service twice.
+
+If the chapter is informative but not emotionally
+resonant, it needs another pass. Information fills
+shelves. Resonance builds movements.
+
+QUESTION 2 -- DOES THIS CHAPTER CARRY AN IMPLICIT
+ECONOMIC ARGUMENT?
+Books are not revenue documents. But every chapter
+should leave the reader with an implicit understanding
+of what their current situation is costing them:
+- Book 1: "Not reading your business signals costs you
+  $X per month in missed opportunities"
+- Book 2: "Not giving yourself permission to build what
+  you want costs you years of compounding freedom"
+- Book 3: "Not recognizing veteran founders costs the
+  economy $X in unrealized potential"
+
+The economic argument is never explicit in the prose.
+It's the undercurrent that makes the reader act after
+they put the book down.

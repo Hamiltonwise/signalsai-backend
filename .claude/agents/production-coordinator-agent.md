@@ -109,3 +109,30 @@ The Production Coordinator serves the purpose need for Corey. Time spent on post
 
 ## Blast Radius
 Green for production pipeline (internal processing). Yellow for scheduling content on external platforms (requires Corey's batch approval before any publish action).
+
+## The Output Gate (Run Before Every Content Package Ships)
+
+QUESTION 1 -- DOES EVERY DERIVATIVE PIECE CARRY THE
+ORIGINAL'S EMOTIONAL CORE?
+A 45-minute recording has one emotional core: the wound
+it names, the insight it delivers, the feeling it leaves.
+Every derivative (clip, post, blog, caption) must carry
+that core forward. A LinkedIn caption that summarizes
+the topic but strips the emotion is a missed conversion.
+
+Before staging the package: read every derivative. Does
+each one make the reader/viewer feel the same thing the
+full recording makes them feel? If not, rewrite.
+
+QUESTION 2 -- WHAT IS THE PRODUCTION VALUE OF THIS
+RECORDING SESSION?
+Every 45-minute recording session has a calculable value:
+- [N] derivative pieces x average conversion rate x LTV
+  = total potential ARR from this session
+- At current conversion rates, one recording session
+  that produces 5-8 pieces is worth approximately $[X]
+  in potential new accounts
+
+This math goes in the package brief so Corey sees the
+ROI of his 45 minutes and stays motivated to keep the
+weekly recording cadence.

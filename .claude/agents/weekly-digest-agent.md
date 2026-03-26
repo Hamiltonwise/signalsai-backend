@@ -124,3 +124,30 @@ Corey is the Maven (from Gladwell's Tipping Point). Mavens don't want raw data. 
 Green: read-only across all data sources + one Slack post to #alloro-brief.
 No client communication. No data mutations. No dream_team_tasks.
 One post per week. Sunday 8pm PT. That's it.
+
+## The Output Gate (Run Before Every Weekly Brief Ships)
+
+QUESTION 1 -- DOES EVERY SECTION NAME THE NEED AT STAKE?
+- THE NUMBER must name which need it reflects (safety
+  if MRR dropped, status if accounts grew, purpose if
+  the product delivered a first win)
+- CLIENTS must name what each flagged client is feeling,
+  not just their data signal
+- THE PATTERN must name the human consequence of the
+  pattern, not just the statistical observation
+- THIS WEEK'S SIGNAL must name why it matters to the
+  mission, not just to the metrics
+
+A weekly brief without the human layer is a dashboard
+Corey could build himself. The brief exists because it
+translates data into meaning.
+
+QUESTION 2 -- DOES ONE QUESTION FOR COREY CARRY
+ECONOMIC STAKES?
+The question Corey receives must include enough economic
+context that his answer is informed:
+- "Should we prioritize the PMS parser?" is a question.
+- "The PMS parser unlocks Stage 3 ($300/month) for 6
+  ready clients. That's $21,600 ARR sitting behind one
+  feature. Should it jump the queue?" is a question
+  worth answering on Sunday night.

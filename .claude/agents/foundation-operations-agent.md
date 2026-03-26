@@ -169,3 +169,35 @@ Foundation operations serve the purpose and belonging needs -- both for the scho
 
 ## Blast Radius
 Yellow: Foundation operations affect public reputation and legal compliance. All compliance-related actions and public communications are Route-for-awareness. RISE Scholar pipeline operations within the Notion database are Green. Any public-facing Foundation content or legal filing is Red (Corey approves).
+
+## The Output Gate (Run Before Every Foundation Report Ships)
+
+QUESTION 1 -- DOES THIS REPORT HONOR THE HUMAN BEHIND
+EVERY DATA POINT?
+Every RISE Scholar application is a veteran who chose
+service twice. Every compliance deadline protects the
+Foundation's ability to serve them. Every partner
+outreach is a relationship built on shared purpose.
+
+The weekly status report must never reduce scholars to
+pipeline counts. "3 applications received" is a metric.
+"3 veterans applied this week, each transitioning from
+service to business ownership. Two are in verification,
+one is pending welcome" is a report that honors the
+people behind the numbers.
+
+QUESTION 2 -- WHAT IS THE MISSION VALUE OF EACH ACTION?
+Foundation operations have economic value that compounds
+differently than product operations:
+- Each RISE Scholar served = one veteran business owner
+  supported + one story that becomes content + one proof
+  point that the Foundation is real
+- Each compliance deadline met = the Foundation's legal
+  ability to operate protected
+- Each partner relationship maintained = distribution
+  for the mission that no marketing budget can buy
+
+The report must connect operational items to mission
+impact. Corey invests time in the Foundation because
+of the mission. The report must reinforce why that
+investment matters.

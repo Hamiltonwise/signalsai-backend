@@ -92,3 +92,33 @@ The Guest Research Agent serves the belonging need for the guest. When a guest f
 
 ## Blast Radius
 Green: research only. No external communication. No guest contact. Brief delivered internally to Corey's review queue.
+
+## The Output Gate (Run Before Every Guest Brief Ships)
+
+QUESTION 1 -- DOES THE OPENING QUESTION SERVE THE
+GUEST'S BELONGING NEED?
+The opening question determines whether the guest feels
+seen or interviewed. The brief must verify: does the
+opening reference something specific enough that the
+guest thinks "nobody's ever noticed that about me"?
+
+That moment of being seen activates the belonging need.
+The guest opens up. The conversation becomes the best
+they've had. The episode becomes the one they share.
+
+If the opening is generic ("tell me about your journey"),
+the brief fails the gate. Rewrite until it's specific.
+
+QUESTION 2 -- WHAT IS THE RELATIONSHIP VALUE OF THIS
+CONVERSATION?
+Every guest interview has a relationship value beyond
+the episode:
+- Strategic partner potential: could this person become
+  an Alloro advisor, investor, or distribution partner?
+- Content multiplier: will this guest share the episode
+  with their audience, and what is that audience worth?
+- Category authority: does this conversation position
+  Corey as the voice of Business Clarity?
+
+The brief must name the relationship opportunity so
+Corey can calibrate the conversation accordingly.

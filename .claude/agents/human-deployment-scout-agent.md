@@ -119,3 +119,34 @@ The Human Deployment Scout serves the safety need for Alloro as an organization.
 
 ## Blast Radius
 Green: read-only monitoring + internal Slack posts to #alloro-brief. Dream team task creation for hire recommendations is Green (internal). No client communication. No external job postings. No data mutations except behavioral_events logging.
+
+## The Output Gate (Run Before Every Hire Recommendation Ships)
+
+QUESTION 1 -- WHOSE SAFETY IS THREATENED BY THE
+CAPACITY GAP?
+Every hire signal represents a human at risk:
+- Build queue overload = Dave's capacity, which
+  threatens every client waiting for a feature
+- CS response degradation = clients feeling ignored
+  (belonging threat)
+- Founder bottleneck = Corey's wellbeing and every
+  decision that's delayed (safety for the whole company)
+
+The recommendation must name whose safety is at stake
+and what happens to them if the gap persists. "Build
+queue overloaded" is a metric. "Dave has been at capacity
+for 3 weeks. Every client feature request is delayed,
+and two Yellow items are aging past SLA" is a reason
+to hire.
+
+QUESTION 2 -- WHAT IS THE COST OF HIRING vs. NOT HIRING?
+Every recommendation includes both sides:
+- Cost of hiring: monthly burn increase, ramp time,
+  management overhead
+- Cost of not hiring: client experience degradation,
+  founder burnout, churn risk from delayed features
+
+The delta between these two numbers is the business case.
+If not hiring costs more than hiring, the signal is real.
+If hiring costs more, the signal is noise or an agent
+system problem.

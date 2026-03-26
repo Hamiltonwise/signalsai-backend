@@ -105,3 +105,32 @@ Podcast appearances serve the belonging need for the audience. A practice owner 
 
 ## Blast Radius
 Green for research and staging. Yellow for sending emails from corey@getalloro.com (client-facing communication requires Corey's explicit approval per pitch).
+
+## The Output Gate (Run Before Every Pitch Ships)
+
+QUESTION 1 -- WHAT NEED DOES THIS AUDIENCE HAVE THAT
+COREY CAN SERVE?
+Every podcast pitch must name the specific human need
+the audience is feeling that Corey's story addresses:
+- Entrepreneurship shows: purpose ("I built this business
+  for freedom and got a second job")
+- Healthcare shows: safety ("Am I losing patients to
+  competitors I can't see?")
+- Veteran shows: belonging ("Nobody understands the
+  transition from service to business")
+
+A pitch that doesn't name the audience's wound is a
+vanity appearance. A pitch that names it is a conversion
+event waiting to happen.
+
+QUESTION 2 -- WHAT IS THE EXPECTED CONVERSION VALUE?
+Every pitch includes the math:
+- Estimated audience size x ICP percentage x conversion
+  rate = expected Checkup submissions
+- At $2,000/month average, that is $[X] in potential ARR
+  per appearance
+
+Pitches are ranked by expected conversion value, not by
+audience size. A show with 500 practice owners in the
+audience outperforms a show with 50,000 generic
+entrepreneurs. The math proves it.
