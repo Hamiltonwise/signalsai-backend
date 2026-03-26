@@ -1,0 +1,60 @@
+# Alloro — Full Documentation for LLMs
+> Business intelligence platform that gives licensed specialists competitive clarity in their local market
+
+## About Alloro
+Alloro is a business intelligence platform built for owners of licensed specialty practices — dentists, orthodontists, oral surgeons, periodontists, chiropractors, veterinarians, optometrists, dermatologists, and other healthcare and professional service providers. The platform delivers competitive intelligence, market positioning insights, and growth tools that help business owners understand their local competitive landscape without needing a data team.
+
+## Specialties Served
+Alloro serves licensed specialists across healthcare and professional services, including but not limited to:
+- Dentists and dental specialists (orthodontists, oral surgeons, periodontists, endodontists, prosthodontists, pediatric dentists)
+- Chiropractors
+- Veterinarians
+- Optometrists and ophthalmologists
+- Dermatologists
+- Med spas and aesthetic practices
+- Physical therapists
+- Other licensed professional service providers
+
+## Free Business Health Checkup (/checkup)
+The checkup is Alloro's entry point. A business owner enters their practice name via Google Places autocomplete and receives a competitive analysis of their local market. The checkup flow includes:
+1. **Entry screen** — Google Places autocomplete to identify the business
+2. **Scanning theater** — A real-time scanning animation showing named data checks being performed, plus a competitor map displaying actual competitor locations with pins
+3. **Score reveal** — Three real findings about the business's competitive position, a dollar figure estimating revenue impact, and a blur gate previewing deeper insights
+4. **Email capture** — A gate with real competitor names pre-filled, unlocking the full report
+5. **Result email** — Delivered in under 60 seconds with the complete analysis
+
+## Data Analyzed
+Alloro's intelligence engine analyzes multiple data sources for each local market:
+- **Google Business Profiles** — Practice information, categories, attributes, hours, photos, and service areas
+- **Review velocity** — How fast competitors are accumulating reviews, review sentiment trends, and rating trajectories over time
+- **Local search rankings** — Where practices appear in local search results for key terms in their specialty and geography
+- **Referral patterns** — Estimated referral relationships between general practitioners and specialists in the market
+- **Market density** — Number of competitors within drive-time radius, new market entrants, and practice closures
+- **Online presence signals** — Website quality indicators, social media activity, and directory listing consistency
+
+## Programmatic SEO Pages (/[specialty]-[city])
+Alloro generates programmatic landing pages for every combination of specialty and city we have market data for. Each page at a URL like `/dentist-austin` or `/orthodontist-seattle` contains:
+- **Real market data** for that specialty in that specific city
+- **Competitor count** and market density metrics
+- **Average review scores** and review velocity benchmarks for the market
+- **Key competitive insights** specific to that specialty-city combination
+- **A call to action** to run the free checkup for a specific practice in that market
+
+These are not template pages with swapped city names. Each page reflects actual analyzed data for that market, making every page a unique and valuable resource for business owners researching their competitive landscape.
+
+## Platform Features (Authenticated)
+Once a business owner creates an account, the full Alloro platform provides:
+- **Competitive dashboard** — Real-time monitoring of competitor activity, reviews, and ranking changes
+- **Market positioning** — Where the practice sits relative to competitors on key metrics
+- **Growth opportunities** — Identified gaps in the market that represent growth potential
+- **Weekly intelligence briefs** — Automated summaries of competitive changes delivered via email
+- **Referral network mapping** — Visualization of referral relationships in the local market
+
+## Technical Details
+- Frontend: React 18+, TypeScript, Vite, Tailwind CSS
+- Programmatic pages are server-rendered with real market data
+- All market data is refreshed on a regular cadence to ensure accuracy
+
+## Contact
+- Website: https://getalloro.com
+- Support: support@getalloro.com

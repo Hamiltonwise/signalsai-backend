@@ -20,5 +20,5 @@ Monday 6am PT
 
 ## Rules
 - Competitor names are internal only, never in client-facing output
-- Silent if nothing material — no filler briefs
+- Silent if nothing material. No filler briefs.
 - Flags direct threats to Alloro positioning as P0

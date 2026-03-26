@@ -20,6 +20,6 @@ Monthly, first Monday
 - When 5/5 met: auto-creates dream_team_task with CC command staged for build
 
 ## Rules
-- Fires before Corey asks — proactive, not reactive
+- Fires before Corey asks. Proactive, not reactive.
 - When 5/5 thresholds met: auto-creates dream_team_task with expansion command
 - Never recommends expansion below 4/5 thresholds

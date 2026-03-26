@@ -1,8 +1,15 @@
 User-agent: *
 Allow: /
-Disallow: /dashboard
-Disallow: /admin
+Disallow: /admin/*
+Disallow: /dashboard/*
+Disallow: /signin
+Disallow: /signup
 Disallow: /demo
 Disallow: /api
 
 Sitemap: https://getalloro.com/sitemap.xml
+
+# LLM context files
+# See https://llmstxt.org for specification
+Allow: /llms.txt
+Allow: /llms-full.txt

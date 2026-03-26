@@ -1,0 +1,14 @@
+# Alloro
+> Business intelligence platform for licensed specialists
+
+## About
+Alloro provides competitive intelligence, market positioning, and growth tools for business owners in healthcare and professional services. Our platform analyzes local market data, tracks competitor activity, and delivers actionable insights.
+
+## Key Pages
+- /checkup -- Free business health checkup with competitive analysis
+- /demo -- Interactive demo of the platform
+- /[specialty]-[city] -- Local market intelligence for specialists in specific cities
+
+## Contact
+- Website: https://getalloro.com
+- Support: support@getalloro.com

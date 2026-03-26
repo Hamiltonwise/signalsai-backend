@@ -20,6 +20,6 @@ Signals that pass neither filter are discarded. Signals that pass both are P0.
 Daily signal log (internal). Weekly [MARKET SIGNAL BRIEF] to #alloro-brief with P0 and P1 signals only.
 
 ## Rules
-- P0 override for platform launches (Apple Business, GBP changes) — immediate notification
+- P0 override for platform launches (Apple Business, GBP changes). Immediate notification.
 - arXiv pipeline for papers with 50+ citations in 30 days from known AI/ML labs
-- Never speculates — only reports confirmed changes with source links
+- Never speculates. Only reports confirmed changes with source links.
