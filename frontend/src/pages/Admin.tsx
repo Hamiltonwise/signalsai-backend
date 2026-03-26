@@ -31,6 +31,7 @@ import AccountOverview from "./admin/AccountOverview";
 import CaseStudies from "./admin/CaseStudies";
 import AAEDashboard from "./admin/AAEDashboard";
 import PitchRepTracker from "./admin/PitchRepTracker";
+import IntelligencePanel from "./admin/IntelligencePanel";
 
 function WebDevEngine() {
   return (
@@ -91,6 +92,10 @@ function AdminWithLayout() {
         <Route
           path="organizations/:id/manage"
           element={<OrganizationDetail />}
+        />
+        <Route
+          path="organizations/:id/intelligence"
+          element={<IntelligencePanel />}
         />
         <Route path="practice-ranking" element={<YourMarket />} />
         <Route path="websites" element={<WebsitesList />} />

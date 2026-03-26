@@ -70,6 +70,7 @@ import Locations from "./pages/dashboard/Locations";
 // import TermsOfService from "./pages/TermsOfService"; // Not built yet
 // import PrivacyPolicy from "./pages/PrivacyPolicy"; // Not built yet
 // import PhysicalTherapistMarketing from "./pages/content/PhysicalTherapistMarketing"; // Not built yet
+import ProgrammaticPage from "./pages/ProgrammaticPage";
 import CheckupLayout from "./pages/checkup/CheckupLayout";
 import EntryScreen from "./pages/checkup/EntryScreen";
 import ScanningTheater from "./pages/checkup/ScanningTheater";
@@ -269,6 +270,9 @@ function App() {
               <Route element={<AdminLayout />}>
                 <Route path="/admin/*" element={<Admin />} />
               </Route>
+
+              {/* Programmatic SEO pages: /[specialty]-[city]-[state] */}
+              <Route path="/:pageSlug" element={<ProgrammaticPage />} />
 
               {/* 404 catch-all */}
               <Route path="*" element={<NotFound />} />
