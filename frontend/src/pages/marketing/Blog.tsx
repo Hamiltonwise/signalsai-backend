@@ -10,11 +10,11 @@ import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 const POSTS = [
   {
-    slug: "accidental-business-owner-problem",
+    slug: "the-second-job-problem",
     category: "Business Clarity",
-    title: "The accidental business owner problem no one is solving",
+    title: "The second job nobody warned you about",
     summary:
-      "34 million people started businesses to get their life back. Most discovered they had accidentally bought a second job. Here's what nobody told them.",
+      "34 million people started businesses to get their life back. Most discovered they had bought a second job on top of the first. Here's what nobody told them.",
   },
   {
     slug: "google-business-profile-score",
