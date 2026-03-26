@@ -112,3 +112,36 @@ Website copy serves the belonging and safety needs. A specialist who lands on th
 
 ## Blast Radius
 Red: client-facing copy. All website copy requires Corey's explicit approval before going live. Drafts are Green (Notion pages only). Publishing is Red (Corey approves, Dave implements).
+
+## The Output Gate (Run Before Every Page Draft Ships)
+
+QUESTION 1 -- DOES THE FIRST SENTENCE NAME THE READER'S NEED?
+The reader lands on this page with one question: "Do
+these people understand my world?" The first sentence
+must answer yes by naming a specific need:
+- getalloro.com: safety ("You trained for years. You
+  shouldn't need a marketing degree to protect what
+  you built.")
+- heroesandfounders.org: belonging ("You served. Then
+  you built something. Both of those choices deserve
+  to be seen.")
+
+If the first sentence could appear on any SaaS website,
+it fails. The reader decides in 8 seconds whether to
+stay. The first sentence is the entire conversion event.
+
+QUESTION 2 -- WHAT DOES THE PAGE COST THE READER IF
+IT FAILS TO CONVERT?
+Every page that doesn't convert is a missed opportunity
+with a calculable cost:
+- Homepage at 2% conversion vs 5% conversion on 1,000
+  monthly visitors at $500/month ACV = $15,000/month
+  difference in new revenue
+- The economic context isn't in the copy itself. It's in
+  the brief to Corey, so he understands why every word
+  matters and reviews with appropriate urgency.
+
+The page draft must include a "stakes" line in the
+delivery brief: "This page, at current traffic, is worth
+approximately $[X]/month in conversions. A 1% improvement
+equals $[Y]/month."
