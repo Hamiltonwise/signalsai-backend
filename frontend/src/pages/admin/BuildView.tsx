@@ -165,7 +165,7 @@ export default function BuildView() {
             {runningAgents.map((s) => (
               <div key={s.id} className="flex items-center gap-3 rounded-xl bg-blue-50 border border-blue-100 px-4 py-3">
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                <p className="text-sm font-medium text-[#212D40]">{s.display_name} — running</p>
+                <p className="text-sm font-medium text-[#212D40]">{s.display_name}, running</p>
               </div>
             ))}
           </div>
