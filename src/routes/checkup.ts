@@ -721,6 +721,39 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       console.error(`[Checkup] Failed to enqueue PatientPath build:`, ppErr.message);
     }
 
+    // Seed initial weekly_ranking_snapshot so the first Monday email has data.
+    // Uses checkup analysis results (competitors, score) as the baseline.
+    try {
+      const parsed = typeof checkup_data === "string" ? JSON.parse(checkup_data) : checkup_data;
+      const topCompetitor = parsed?.competitors?.[0];
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of current week (Sunday)
+
+      await db("weekly_ranking_snapshots").insert({
+        org_id: org.id,
+        week_start: weekStart.toISOString().split("T")[0],
+        position: parsed?.marketRank ?? null,
+        keyword: `${parsed?.specialty || "specialist"} in ${parsed?.city || "your area"}`,
+        bullets: JSON.stringify([
+          `Your practice scored ${checkup_score || "N/A"} on the Business Health Checkup.`,
+          topCompetitor ? `${topCompetitor.name} leads your market with ${topCompetitor.reviewCount || "N/A"} reviews.` : "Competitor data is being gathered for your market.",
+          "Your full competitive analysis is building now. More insights next Monday.",
+        ]),
+        finding_headline: topCompetitor
+          ? `${topCompetitor.name} has ${(topCompetitor.reviewCount || 0) - (parsed?.clientReviewCount || 0)} more reviews than you`
+          : "Your competitive landscape is being analyzed",
+        competitor_name: topCompetitor?.name || null,
+        competitor_review_count: topCompetitor?.reviewCount || null,
+        client_review_count: parsed?.clientReviewCount || null,
+        dollar_figure: parsed?.dollarImpact || null,
+      }).catch(() => {
+        // Unique constraint may fire if snapshot already exists for this week
+      });
+      console.log(`[Checkup] Seeded initial ranking snapshot for org ${org.id}`);
+    } catch (snapErr: any) {
+      console.error(`[Checkup] Failed to seed snapshot:`, snapErr.message);
+    }
+
     return res.json({
       success: true,
       token,
