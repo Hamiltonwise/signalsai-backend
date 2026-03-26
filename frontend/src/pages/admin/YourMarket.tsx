@@ -128,9 +128,9 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
           <h3 className="text-base font-bold text-[#212D40] truncate">
             {entry.orgName}
           </h3>
-          {entry.locationName && (
-            <p className="text-xs text-gray-400 truncate">{entry.locationName}</p>
-          )}
+          <p className="text-xs text-gray-400 truncate">
+            {entry.locationName || entry.location || "Unknown location"}
+          </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <div className="text-right">
