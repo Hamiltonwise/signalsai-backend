@@ -42,6 +42,7 @@ interface PageData {
   stateAbbr: string;
   competitorCount: number;
   lastUpdated: string;
+  canonical: string;
 }
 
 export default function ProgrammaticPage() {
@@ -127,6 +128,20 @@ export default function ProgrammaticPage() {
     setMeta("og:url", page.openGraph.url);
     setMeta("og:type", page.openGraph.type);
     setMeta("og:site_name", page.openGraph.siteName);
+    if (page.openGraph.image) {
+      setMeta("og:image", page.openGraph.image);
+    }
+
+    // Canonical link
+    if (page.canonical) {
+      let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "canonical";
+        document.head.appendChild(link);
+      }
+      link.href = page.canonical;
+    }
 
     // JSON-LD schema
     if (page.schemaMarkup) {
@@ -143,6 +158,8 @@ export default function ProgrammaticPage() {
     return () => {
       const schema = document.querySelector("#programmatic-schema");
       if (schema) schema.remove();
+      const canonical = document.querySelector('link[rel="canonical"]');
+      if (canonical) canonical.remove();
     };
   }, [page]);
 
