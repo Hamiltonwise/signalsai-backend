@@ -59,7 +59,7 @@ export default function AAELanding() {
 
         {/* CTA */}
         <a
-          href="/checkup?source=aae2026"
+          href="/checkup?source=aae2026&mode=conference"
           className="mt-10 inline-flex items-center gap-2.5 rounded-xl bg-[#D56753] text-white text-base font-semibold px-8 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:shadow-[0_6px_28px_rgba(213,103,83,0.5)] hover:brightness-110 active:scale-[0.98] transition-all"
         >
           Start my Checkup
