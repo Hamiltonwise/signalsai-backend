@@ -10,6 +10,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 const SIGNALS = [
   {
@@ -61,28 +62,16 @@ export default function EndodontistMarketing() {
   const navigate = useNavigate();
 
   return (
-    <>
+    <MarketingLayout
+      title="Why Endodontists Lose Referring GPs"
+      description="GP referral behavior changes 60 to 90 days before a doctor notices. Learn the three signals that predict a GP going dark."
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_SCHEMA) }}
       />
 
-      <div className="min-h-dvh bg-[#FAFAF8]">
-        {/* Header */}
-        <header className="flex items-center justify-center pt-10 pb-6 px-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
-              </svg>
-            </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
-              alloro
-            </span>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-2xl px-5 pb-16">
+        <div className="mx-auto max-w-2xl px-5 pb-16">
           {/* H1 */}
           <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight text-center mt-8">
             Why Endodontists Lose Referring GPs (And How to Know Before It
@@ -164,14 +153,7 @@ export default function EndodontistMarketing() {
               Free referral checkup. No login required. 60 seconds.
             </p>
           </div>
-        </main>
-
-        <footer className="py-8 text-center border-t border-slate-100">
-          <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
-            Alloro &middot; Referral Intelligence for Specialists
-          </p>
-        </footer>
-      </div>
-    </>
+        </div>
+    </MarketingLayout>
   );
 }

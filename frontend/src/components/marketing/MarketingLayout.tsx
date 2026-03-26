@@ -3,10 +3,11 @@
  * shared header, footer, and canonical/OG meta.
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import MarketingHeader from "./MarketingHeader";
 import MarketingFooter from "./MarketingFooter";
+import { trackEvent } from "../../api/tracking";
 
 interface MarketingLayoutProps {
   children: React.ReactNode;
@@ -27,6 +28,19 @@ export default function MarketingLayout({
 }: MarketingLayoutProps) {
   const location = useLocation();
   const pageUrl = canonical || `${BASE_URL}${location.pathname}`;
+
+  // Track page views
+  const tracked = useRef<string | null>(null);
+  useEffect(() => {
+    if (tracked.current !== location.pathname) {
+      tracked.current = location.pathname;
+      trackEvent("marketing.page_view", {
+        page: location.pathname,
+        title,
+        referrer: document.referrer || null,
+      });
+    }
+  }, [location.pathname, title]);
 
   useEffect(() => {
     document.title = `${title} | Alloro`;

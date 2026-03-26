@@ -12,6 +12,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ArrowRight, Star, MessageSquare, MapPin, Trophy, Loader2 } from "lucide-react";
+import MarketingLayout from "../components/marketing/MarketingLayout";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -73,9 +74,11 @@ export default function Compare() {
 
   if (loading) {
     return (
-      <div className="min-h-dvh bg-[#FAFAF8] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 text-[#D56753] animate-spin" />
-      </div>
+      <MarketingLayout title="Comparing..." description="Loading competitor comparison.">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-6 h-6 text-[#D56753] animate-spin" />
+        </div>
+      </MarketingLayout>
     );
   }
 
@@ -83,8 +86,7 @@ export default function Compare() {
 
   if (error || !data) {
     return (
-      <div className="min-h-dvh bg-[#FAFAF8]">
-        <CompareHeader />
+      <MarketingLayout title="Comparison" description="Competitive comparison between two practices.">
         <div className="max-w-lg mx-auto px-5 py-16 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-100 mb-5">
             <MapPin className="w-7 h-7 text-slate-400" />
@@ -104,7 +106,7 @@ export default function Compare() {
             <ArrowRight className="w-4 h-4" />
           </a>
         </div>
-      </div>
+      </MarketingLayout>
     );
   }
 
@@ -113,8 +115,7 @@ export default function Compare() {
   const ratingDelta = +(p.rating - c.rating).toFixed(1);
 
   return (
-    <div className="min-h-dvh bg-[#FAFAF8]">
-      <CompareHeader />
+    <MarketingLayout title={`${p.name} vs ${c.name}`} description={`Competitive comparison in ${market}`}>
 
       <div className="max-w-2xl mx-auto px-5 py-10 space-y-8">
         {/* Title */}
@@ -241,16 +242,12 @@ export default function Compare() {
           </p>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-[11px] text-slate-300 pt-4">
-          &copy; 2026 Alloro, Inc.
-        </p>
       </div>
-    </div>
+    </MarketingLayout>
   );
 }
 
-// ─── Shared Header ──────────────────────────────────────────────────
+// ─── Shared Header (legacy, kept for reference) ─────────────────────
 
 function CompareHeader() {
   return (

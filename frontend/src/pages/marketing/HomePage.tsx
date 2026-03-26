@@ -9,6 +9,7 @@ import { useState, useCallback } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ArrowRight, Search, MapPin, Loader2 } from "lucide-react";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
+import { trackEvent } from "../../api/tracking";
 import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 export default function HomePage() {
@@ -293,6 +294,11 @@ function MarketTeaser() {
           competitors: analysis.market.totalCompetitors,
           rank: analysis.market.rank,
           avgRating: analysis.market.avgRating,
+        });
+        trackEvent("marketing.teaser_search", {
+          city: p.city,
+          competitors: analysis.market.totalCompetitors,
+          rank: analysis.market.rank,
         });
       } else {
         throw new Error("No market data");

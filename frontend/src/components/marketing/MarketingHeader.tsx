@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
+import { trackEvent } from "../../api/tracking";
 
 const NAV_LINKS = [
   { label: "How it works", to: "/how-it-works" },
@@ -57,6 +58,7 @@ export default function MarketingHeader() {
           {/* Desktop CTA */}
           <Link
             to="/checkup"
+            onClick={() => trackEvent("marketing.cta_click", { source: "header_desktop", page: location.pathname })}
             className="hidden md:inline-flex items-center justify-center rounded-lg bg-[#D56753] text-white text-sm font-semibold px-5 py-2.5 hover:brightness-110 active:scale-[0.98] transition-all"
           >
             Free Checkup
@@ -74,7 +76,7 @@ export default function MarketingHeader() {
 
         {/* Mobile menu */}
         {open && (
-          <div className="md:hidden border-t border-gray-100 bg-white px-5 pb-4">
+          <div className="md:hidden border-t border-gray-100 bg-white px-5 pb-4 max-h-[calc(100dvh-60px)] overflow-y-auto">
             <nav className="flex flex-col gap-1 pt-2">
               {NAV_LINKS.map((link) => (
                 <Link
@@ -99,6 +101,7 @@ export default function MarketingHeader() {
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 px-5 py-3">
         <Link
           to="/checkup"
+          onClick={() => trackEvent("marketing.cta_click", { source: "header_mobile", page: location.pathname })}
           className="flex items-center justify-center rounded-lg bg-[#D56753] text-white text-sm font-semibold px-5 py-3 w-full hover:brightness-110 active:scale-[0.98] transition-all"
         >
           Free Checkup

@@ -120,6 +120,21 @@ export default function TheSecondJobProblem() {
           </Link>
         </div>
 
+        {/* Related reading */}
+        <div className="mt-12">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Related reading</h3>
+          <div className="space-y-3">
+            <Link to="/blog/google-business-profile-score" className="block rounded-xl border border-gray-200 p-4 hover:border-[#D56753]/30 transition-colors">
+              <p className="text-sm font-bold text-[#212D40]">What your Google Business Profile score actually means</p>
+              <p className="text-xs text-[#212D40]/50 mt-1">The one metric that determines who finds you first.</p>
+            </Link>
+            <Link to="/blog/why-your-competitor-keeps-showing-up" className="block rounded-xl border border-gray-200 p-4 hover:border-[#D56753]/30 transition-colors">
+              <p className="text-sm font-bold text-[#212D40]">Why your top competitor keeps showing up where you don't</p>
+              <p className="text-xs text-[#212D40]/50 mt-1">It's not luck. It's a pattern. Here's what drives it.</p>
+            </Link>
+          </div>
+        </div>
+
         {/* Back to blog */}
         <div className="mt-8 text-center">
           <Link to="/blog" className="text-sm text-[#D56753] font-medium hover:underline">

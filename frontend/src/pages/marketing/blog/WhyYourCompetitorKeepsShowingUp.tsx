@@ -128,6 +128,21 @@ export default function WhyYourCompetitorKeepsShowingUp() {
           </Link>
         </div>
 
+        {/* Related reading */}
+        <div className="mt-12">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Related reading</h3>
+          <div className="space-y-3">
+            <Link to="/blog/the-second-job-problem" className="block rounded-xl border border-gray-200 p-4 hover:border-[#D56753]/30 transition-colors">
+              <p className="text-sm font-bold text-[#212D40]">The second job nobody warned you about</p>
+              <p className="text-xs text-[#212D40]/50 mt-1">Why 34 million business owners are still waiting for freedom.</p>
+            </Link>
+            <Link to="/blog/google-business-profile-score" className="block rounded-xl border border-gray-200 p-4 hover:border-[#D56753]/30 transition-colors">
+              <p className="text-sm font-bold text-[#212D40]">What your Google Business Profile score actually means</p>
+              <p className="text-xs text-[#212D40]/50 mt-1">The one metric that determines who finds you first.</p>
+            </Link>
+          </div>
+        </div>
+
         <div className="mt-8 text-center">
           <Link to="/blog" className="text-sm text-[#D56753] font-medium hover:underline">
             &larr; All posts

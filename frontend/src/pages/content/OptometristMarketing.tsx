@@ -10,6 +10,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 const CONSUMER_PRIMARY =
   "Optometry practices compete primarily on direct consumer visibility. Unlike endodontists or physical therapists who depend on physician referrals for most of their patients, optometrists win or lose based on whether a potential patient finds them when they search. \"Eye doctor near me.\" \"Optometrist [city].\" \"Best eye exam [neighborhood].\" The practice that appears first -- with the most reviews, the highest star rating, and the most credible online presence -- gets the call. Referrals exist (ophthalmologists, pediatricians, primary care), but the primary acquisition channel is search. And search is won on visibility, not clinical quality.";
@@ -87,27 +88,16 @@ export default function OptometristMarketing() {
   const navigate = useNavigate();
 
   return (
-    <>
+    <MarketingLayout
+      title="Why Optometry Practices Lose Patients to Competitors"
+      description="Optometry practices compete primarily on direct consumer visibility. Learn the signals that predict patient loss before it shows up in your schedule."
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_SCHEMA) }}
       />
 
-      <div className="min-h-dvh bg-[#FAFAF8]">
-        <header className="flex items-center justify-center pt-10 pb-6 px-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
-              </svg>
-            </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
-              alloro
-            </span>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-2xl px-5 pb-16">
+        <div className="mx-auto max-w-2xl px-5 pb-16">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight text-center mt-8">
             Why Optometry Practices Lose Patients to Competitors (Without Ever
             Knowing Why)
@@ -187,14 +177,7 @@ export default function OptometristMarketing() {
               Free checkup. No login required. 60 seconds.
             </p>
           </div>
-        </main>
-
-        <footer className="py-8 text-center border-t border-slate-100">
-          <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
-            Alloro &middot; Business Clarity for Optometry
-          </p>
-        </footer>
-      </div>
-    </>
+        </div>
+    </MarketingLayout>
   );
 }

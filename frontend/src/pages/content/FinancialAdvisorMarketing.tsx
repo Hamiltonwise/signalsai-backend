@@ -12,6 +12,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 const REFERRAL_DEPENDENCY =
   "Financial advisors depend on professional referrals more than almost any other service profession. CPAs, estate planning attorneys, HR departments, insurance agents, and other financial professionals control the flow of high-value clients into your practice. When one of those referral relationships changes -- fewer introductions, different client profiles, longer gaps between calls -- the revenue impact follows within 90 days. But most advisors track referrals informally. They know who sent them a client last month. They do not know who sent them fewer clients this quarter compared to last quarter. By the time the pattern is visible in revenue, the referring professional has already built a new habit with someone else.";
@@ -89,27 +90,16 @@ export default function FinancialAdvisorMarketing() {
   const navigate = useNavigate();
 
   return (
-    <>
+    <MarketingLayout
+      title="Why Financial Advisors Lose Referrals from CPAs and Attorneys"
+      description="Financial advisors depend on professional referrals more than almost any other service profession. Learn the signals that predict referral relationship decline."
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_SCHEMA) }}
       />
 
-      <div className="min-h-dvh bg-[#FAFAF8]">
-        <header className="flex items-center justify-center pt-10 pb-6 px-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
-              </svg>
-            </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
-              alloro
-            </span>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-2xl px-5 pb-16">
+        <div className="mx-auto max-w-2xl px-5 pb-16">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight text-center mt-8">
             Why Financial Advisors Lose Referrals from CPAs and Attorneys (And
             How to Know Before It Costs Them)
@@ -192,14 +182,7 @@ export default function FinancialAdvisorMarketing() {
               Free checkup. No login required. 60 seconds.
             </p>
           </div>
-        </main>
-
-        <footer className="py-8 text-center border-t border-slate-100">
-          <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
-            Alloro &middot; Business Clarity for Financial Advisors
-          </p>
-        </footer>
-      </div>
-    </>
+        </div>
+    </MarketingLayout>
   );
 }

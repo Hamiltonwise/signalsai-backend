@@ -11,6 +11,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 const TWO_CHANNEL =
   "Law firms compete on two channels simultaneously. Channel one is professional referrals -- other attorneys, financial advisors, CPAs, judges, and past clients who send business your way. Channel two is direct consumer visibility -- potential clients searching Google for \"family lawyer near me\" or \"estate planning attorney [city]\" and choosing based on reviews, reputation, and what they find online. Losing ground on either channel costs you clients. The problem is that most attorneys track neither. Referrals arrive informally and are never measured. Google visibility is assumed, not monitored. The competitive landscape changes in ways that are invisible until revenue shifts -- and by then, the damage is done.";
@@ -88,27 +89,16 @@ export default function LegalPracticeMarketing() {
   const navigate = useNavigate();
 
   return (
-    <>
+    <MarketingLayout
+      title="How Law Firms Lose Clients to Competitors"
+      description="Law firms compete on two channels: professional referrals and direct consumer visibility. Learn the signals that predict client loss before it shows up in revenue."
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_SCHEMA) }}
       />
 
-      <div className="min-h-dvh bg-[#FAFAF8]">
-        <header className="flex items-center justify-center pt-10 pb-6 px-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
-              </svg>
-            </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
-              alloro
-            </span>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-2xl px-5 pb-16">
+        <div className="mx-auto max-w-2xl px-5 pb-16">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight text-center mt-8">
             How Law Firms Lose Clients to Competitors (And How to See It Before
             It Happens)
@@ -190,14 +180,7 @@ export default function LegalPracticeMarketing() {
               Free checkup. No login required. 60 seconds.
             </p>
           </div>
-        </main>
-
-        <footer className="py-8 text-center border-t border-slate-100">
-          <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
-            Alloro &middot; Business Clarity for Law Firms
-          </p>
-        </footer>
-      </div>
-    </>
+        </div>
+    </MarketingLayout>
   );
 }

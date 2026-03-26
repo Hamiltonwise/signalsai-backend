@@ -300,17 +300,17 @@ function ReviewRaceCard({ gap }: { gap: CheckupGapItem }) {
 
       {/* Velocity stats */}
       {v && (
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <div className="bg-slate-50 rounded-lg p-2.5 text-center">
-            <p className="text-lg font-bold text-[#212D40] tabular-nums">{v.clientWeekly}</p>
-            <p className="text-[10px] text-slate-400 leading-tight">Your weekly pace</p>
+        <div className="mt-4 grid grid-cols-3 gap-1.5 sm:gap-2">
+          <div className="bg-slate-50 rounded-lg p-2 sm:p-2.5 text-center">
+            <p className="text-base sm:text-lg font-bold text-[#212D40] tabular-nums">{v.clientWeekly}</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Your pace</p>
           </div>
-          <div className="bg-slate-50 rounded-lg p-2.5 text-center">
-            <p className="text-lg font-bold text-slate-500 tabular-nums">{v.competitorWeekly}</p>
-            <p className="text-[10px] text-slate-400 leading-tight">Their weekly pace</p>
+          <div className="bg-slate-50 rounded-lg p-2 sm:p-2.5 text-center">
+            <p className="text-base sm:text-lg font-bold text-slate-500 tabular-nums">{v.competitorWeekly}</p>
+            <p className="text-[10px] text-slate-400 leading-tight">Their pace</p>
           </div>
-          <div className={`rounded-lg p-2.5 text-center ${v.weeksToPass ? "bg-[#D56753]/5" : "bg-emerald-50"}`}>
-            <p className={`text-lg font-bold tabular-nums ${v.weeksToPass ? "text-[#D56753]" : "text-emerald-600"}`}>
+          <div className={`rounded-lg p-2 sm:p-2.5 text-center ${v.weeksToPass ? "bg-[#D56753]/5" : "bg-emerald-50"}`}>
+            <p className={`text-base sm:text-lg font-bold tabular-nums ${v.weeksToPass ? "text-[#D56753]" : "text-emerald-600"}`}>
               {v.weeksToPass ? `${v.weeksToPass}w` : "---"}
             </p>
             <p className="text-[10px] text-slate-400 leading-tight">
@@ -831,7 +831,7 @@ export default function ResultsScreen() {
               )}
             </div>
             {/* Relationship — spec: owner/vendor/other */}
-            <fieldset className="space-y-1.5">
+            <fieldset className="space-y-1">
               <legend className="text-xs font-medium text-slate-600 mb-1.5">
                 Are you the owner or manager of this practice?
               </legend>
@@ -842,7 +842,7 @@ export default function ResultsScreen() {
               ].map((opt) => (
                 <label
                   key={opt.value}
-                  className="flex items-center gap-2.5 cursor-pointer"
+                  className="flex items-center gap-3 cursor-pointer py-1.5"
                 >
                   <input
                     type="radio"
