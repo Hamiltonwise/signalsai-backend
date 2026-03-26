@@ -4,6 +4,7 @@ import {
   IProgrammaticPage,
 } from "../models/ProgrammaticPageModel";
 import { getInternalLinks } from "../services/programmaticSEO";
+import { getSpokeLinks, renderSpokeLinksHtml } from "../services/aeoLinking";
 import { BehavioralEventModel } from "../models/BehavioralEventModel";
 
 const router = Router();
@@ -11,7 +12,7 @@ const router = Router();
 /**
  * GET /api/seo/pages/:slug
  * Serve a programmatic SEO page by slug.
- * Returns full page data with content, competitors, schema, and internal links.
+ * Returns frontend-ready camelCase shape with openGraph, spokeLinksHtml, etc.
  */
 router.get("/pages/:slug", async (req: Request, res: Response) => {
   try {
@@ -36,16 +37,39 @@ router.get("/pages/:slug", async (req: Request, res: Response) => {
       },
     }).catch(() => {});
 
-    // Get internal links for hub-and-spoke architecture
-    const internalLinks = getInternalLinks({
-      specialty_slug: page.specialty_slug,
-      city_slug: page.city_slug,
-      state_abbr: page.state_abbr,
-    });
+    // Build spoke links HTML
+    const spokeLinks = getSpokeLinks(
+      page.specialty_slug,
+      page.city_slug,
+      page.state_abbr
+    );
+    const spokeLinksHtml = renderSpokeLinksHtml(spokeLinks);
 
+    const pageUrl = `https://getalloro.com/${page.page_slug}`;
+
+    // Return frontend-ready camelCase shape
     return res.json({
-      page,
-      internalLinks,
+      title: page.title,
+      metaDescription: page.meta_description || "",
+      contentSections: page.content_sections || [],
+      spokeLinksHtml,
+      competitors: page.competitors_snapshot || [],
+      schemaMarkup: page.schema_markup || null,
+      openGraph: {
+        title: page.title,
+        description: page.meta_description || "",
+        url: pageUrl,
+        type: "website",
+        siteName: "Alloro",
+        image: "https://getalloro.com/og-market-intel.png",
+      },
+      specialtySlug: page.specialty_slug,
+      citySlug: page.city_slug,
+      cityName: page.city_name,
+      stateAbbr: page.state_abbr,
+      competitorCount: page.competitors_snapshot?.length || 0,
+      lastUpdated: page.competitors_refreshed_at,
+      canonical: pageUrl,
     });
   } catch (err) {
     console.error("SEO page error:", err);

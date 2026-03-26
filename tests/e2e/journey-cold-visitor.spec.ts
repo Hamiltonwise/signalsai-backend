@@ -38,11 +38,15 @@ test.describe("Cold Visitor: Checkup to Dashboard", () => {
     await page.locator("button:has-text('Unlock')").click();
     await page.screenshot({ path: "test-results/cold-06-submitted.png" });
 
-    // Step 7: Assert redirect to dashboard or building screen
-    await page.waitForURL("**/dashboard**", { timeout: 15_000 });
-    // Dashboard should have at least one visible data element
+    // Step 7: Building screen appears (brand moment)
+    await page.waitForURL("**/checkup/building", { timeout: 15_000 });
+    await expect(page.locator("text=/Building Your Site|being prepared/i")).toBeVisible({ timeout: 5_000 });
+    await page.screenshot({ path: "test-results/cold-07-building.png" });
+
+    // Step 8: Auto-redirects to dashboard after ~4 seconds
+    await page.waitForURL("**/dashboard**", { timeout: 10_000 });
     const dashboardContent = page.locator("h1, [class*='card'], [class*='score'], [class*='position']").first();
     await expect(dashboardContent).toBeVisible({ timeout: 10_000 });
-    await page.screenshot({ path: "test-results/cold-07-dashboard.png" });
+    await page.screenshot({ path: "test-results/cold-08-dashboard.png" });
   });
 });
