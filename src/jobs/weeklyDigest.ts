@@ -16,6 +16,7 @@ import axios from "axios";
 import { db } from "../database/connection";
 import { getMarketPatterns } from "../services/marketIntelligence";
 import { getLatestWeeklyMetrics } from "../services/analyticsAggregator";
+import { sendToAdmins } from "../emails/emailService";
 
 const SLACK_WEBHOOK = process.env.ALLORO_BRIEF_SLACK_WEBHOOK || "";
 
@@ -323,8 +324,14 @@ export async function sendWeeklyDigest(): Promise<boolean> {
       console.error("[WeeklyDigest] Slack post failed:", err.message);
     }
   } else {
-    console.log("[WeeklyDigest] ALLORO_BRIEF_SLACK_WEBHOOK not set -- brief logged only");
-    console.log(briefText);
+    // Fallback: send as email to admins when Slack webhook not configured
+    try {
+      await sendToAdmins(`Weekly Intelligence Brief -- ${weekLabel}`, briefText.replace(/\n/g, "<br>"));
+      console.log("[WeeklyDigest] Brief sent via email to admins (Slack webhook not set)");
+    } catch (err: any) {
+      console.log("[WeeklyDigest] Could not send brief:", err.message);
+      console.log(briefText);
+    }
   }
 
   // Log to behavioral_events

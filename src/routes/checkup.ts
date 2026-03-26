@@ -57,6 +57,27 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const marketLocation = state ? `${city}, ${state}` : city;
     const specialty = category || "dentist";
 
+    // Specialty-aware economics: use vertical avgCaseValue for dollar estimates
+    const specialtyEconomics: Record<string, { avgCaseValue: number; conversionRate: number }> = {
+      endodontist: { avgCaseValue: 1500, conversionRate: 0.03 },
+      orthodontist: { avgCaseValue: 800, conversionRate: 0.025 },
+      dentist: { avgCaseValue: 500, conversionRate: 0.02 },
+      chiropractor: { avgCaseValue: 400, conversionRate: 0.025 },
+      "physical therapist": { avgCaseValue: 350, conversionRate: 0.02 },
+      optometrist: { avgCaseValue: 300, conversionRate: 0.02 },
+      attorney: { avgCaseValue: 3000, conversionRate: 0.015 },
+      veterinarian: { avgCaseValue: 250, conversionRate: 0.03 },
+      "financial advisor": { avgCaseValue: 5000, conversionRate: 0.01 },
+    };
+    const specKey = specialty.toLowerCase();
+    const econ = specialtyEconomics[specKey] || { avgCaseValue: 500, conversionRate: 0.02 };
+    // Per-review dollar impact: each review gap costs a fraction of a case per month
+    const perReviewImpact = Math.round(econ.avgCaseValue * econ.conversionRate * 12);
+    // Per-star dollar impact: each 0.1 star gap reduces conversion
+    const perStarImpact = Math.round(econ.avgCaseValue * 4);
+    // Per-rank dollar impact: each position below #3 costs visibility
+    const perRankImpact = Math.round(econ.avgCaseValue * 1.5);
+
     // Build location bias from practice coordinates (25-mile radius)
     const locationBias = location?.latitude && location?.longitude
       ? { lat: location.latitude, lng: location.longitude, radiusMeters: 40234 }
@@ -173,7 +194,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         title: "Review Gap",
         detail: `${topCompetitor.name} has ${gap} more reviews than you`,
         value: gap,
-        impact: Math.round(gap * 45), // ~$45 per review in estimated value
+        impact: Math.round(gap * perReviewImpact / 12), // specialty-adjusted annual impact
       });
     } else {
       findings.push({
@@ -192,7 +213,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         title: "Rating Below Average",
         detail: `Your ${clientRating}★ rating is below the market average of ${avgRating.toFixed(1)}★`,
         value: avgRating - clientRating,
-        impact: Math.round((avgRating - clientRating) * 2400),
+        impact: Math.round((avgRating - clientRating) * perStarImpact),
       });
     } else {
       findings.push({
@@ -210,7 +231,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       title: "Market Position",
       detail: `You rank #${rank} of ${totalInMarket} ${specialty}s in ${city}`,
       value: rank,
-      impact: rank > 3 ? Math.round((rank - 3) * 1800) : 0,
+      impact: rank > 3 ? Math.round((rank - 3) * perRankImpact) : 0,
     });
 
     // Total estimated annual impact

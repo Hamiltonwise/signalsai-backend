@@ -88,16 +88,10 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     }
   }
 
-  // 7. Referral mechanic
-  if (org.ttfv_response === "yes" && org.first_win_attributed_at && org.referral_code) {
-    findingBody += `\n\nKnow another doctor flying blind? Share this. You both get one month free.\ngetalloro.com/checkup?ref=${org.referral_code}`;
-  }
-
-  // Action text + URL
+  // Action text
   const actionText = snapshot.dollar_figure > 0
     ? `Close the $${snapshot.dollar_figure.toLocaleString()} gap`
     : "View your dashboard";
-  const actionUrl = "https://app.getalloro.com/dashboard";
 
   // Ranking update line
   const rankingUpdate = snapshot.position

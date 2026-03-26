@@ -81,6 +81,7 @@ export default function EntryScreen() {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [intent, setIntent] = useState<string | null>(null);
+  const [noResults, setNoResults] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [referrerName, setReferrerName] = useState<string | null>(null);
 
@@ -106,17 +107,20 @@ export default function EntryScreen() {
 
     if (value.trim().length < 3) {
       setSuggestions([]);
+      setNoResults(false);
       return;
     }
 
     setIsSearching(true);
     setSearchError(false);
+    setNoResults(false);
 
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await searchPlaces(value, sessionTokenRef.current);
         if (res.success) {
           setSuggestions(res.suggestions);
+          setNoResults(res.suggestions.length === 0);
         }
       } catch {
         setSearchError(true);
@@ -202,6 +206,11 @@ export default function EntryScreen() {
         {/* Search error */}
         {searchError && !isSearching && (
           <p className="text-xs text-[#D56753] mt-2 ml-1">Search unavailable. Try again.</p>
+        )}
+
+        {/* No results found */}
+        {noResults && !isSearching && !searchError && query.trim().length >= 3 && (
+          <p className="text-xs text-slate-500 mt-2 ml-1">No businesses found. Try a different name or add your city.</p>
         )}
 
         {/* Autocomplete dropdown */}

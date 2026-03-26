@@ -120,7 +120,7 @@ export default function IntegratorView() {
               <div key={org.id} className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
                 <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                 <p className="text-sm text-[#212D40]">
-                  <span className="font-semibold">{org.name}</span> — GBP not connected
+                  <span className="font-semibold">{org.name}</span>, GBP not connected
                 </p>
               </div>
             ))}
@@ -128,7 +128,7 @@ export default function IntegratorView() {
               <div key={s.id} className="flex items-center gap-3 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
                 <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                 <p className="text-sm text-[#212D40]">
-                  <span className="font-semibold">{s.display_name}</span> — last run failed
+                  <span className="font-semibold">{s.display_name}</span>, last run failed
                 </p>
               </div>
             ))}

@@ -1,13 +1,14 @@
 /**
  * AAE Demo Account — /demo
  *
- * Pre-seeded Wasatch Endodontics. No auth. No API calls.
+ * Pre-seeded Valley Specialty Practice. No auth. No API calls.
  * Corey says "let me show you what it looks like fully running" and opens this.
  *
- * Practice: Valley Endodontics, Salt Lake City, Utah
- * Score: 61. Rank: #3 of 5 endodontists.
+ * Practice: Valley Specialty Practice, Salt Lake City, Utah
+ * Score: 61. Rank: #3 of 5 specialists.
  * All competitor names are FICTIONAL to avoid showing real practice data in a demo.
  * Identity matches conference fallback in conferenceFallback.ts.
+ * Uses universal specialist language, not dental-specific.
  */
 
 import {
@@ -26,16 +27,16 @@ import {
 // ─── Demo Data ──────────────────────────────────────────────────────
 
 const PRACTICE = {
-  name: "Valley Endodontics",
+  name: "Valley Specialty Practice",
   city: "Salt Lake City",
   state: "Utah",
   score: 61,
   rank: 3,
   totalCompetitors: 5,
-  specialty: "endodontist",
+  specialty: "specialist",
   reviews: 61,
   rating: 4.6,
-  competitorName: "Wasatch Endodontics",
+  competitorName: "Summit Specialists",
   competitorReviews: 284,
   competitorRating: 4.9,
   startRank: 6,
@@ -54,7 +55,7 @@ const REFERRING_GPS = [
   },
   {
     name: "Dr. Marcus Webb",
-    practice: "Webb Dental Group",
+    practice: "Webb Practice Group",
     referrals: 12,
     trend: "flat" as const,
     trendLabel: "Same as last quarter",
@@ -63,7 +64,7 @@ const REFERRING_GPS = [
   },
   {
     name: "Dr. Amanda Torres",
-    practice: "Torres & Associates DDS",
+    practice: "Torres & Associates",
     referrals: 8,
     trend: "down" as const,
     trendLabel: "Down 40%, was 13 last quarter",
@@ -72,7 +73,7 @@ const REFERRING_GPS = [
   },
   {
     name: "Dr. James Okafor",
-    practice: "Okafor Dental",
+    practice: "Okafor Practice Group",
     referrals: 4,
     trend: "up" as const,
     trendLabel: "New referring relationship",
@@ -81,7 +82,7 @@ const REFERRING_GPS = [
   },
   {
     name: "Dr. Lisa Park",
-    practice: "Park Dental Group",
+    practice: "Park Practice Group",
     referrals: 6,
     trend: "down" as const,
     trendLabel: "Silent for 74 days",
@@ -93,12 +94,12 @@ const REFERRING_GPS = [
 const TASKS = [
   {
     title: "Request 3 reviews this week",
-    why: "Wasatch Endodontics has 284 reviews to your 61. Closing that gap is the single biggest lever for moving from #3 to #1 in Salt Lake City.",
+    why: "Summit Specialists has 284 reviews to your 61. Closing that gap is the single biggest lever for moving from #3 to #1 in Salt Lake City.",
     status: "active",
   },
   {
     title: "Respond to your last 5 reviews",
-    why: "Practices that respond to reviews rank higher and convert more GP referrals who research you before sending a patient.",
+    why: "Practices that respond to reviews rank higher and convert more referrals from colleagues who research you before sending a client.",
     status: "active",
   },
   {
@@ -124,17 +125,17 @@ const TOP_MOVES = [
 const NEXT_90 = [
   {
     title: "Collect 3 Google reviews per week for 10 weeks",
-    why: "At 3/week you close the gap with Wasatch Endodontics by 30 reviews. Combined with your higher engagement rate, that moves you from #3 to #2.",
+    why: "At 3/week you close the gap with Summit Specialists by 30 reviews. Combined with your higher engagement rate, that moves you from #3 to #2.",
     impact: "Projected move to #2 position",
   },
   {
     title: "Re-engage Dr. Torres, she hasn't referred in 40 days",
-    why: "Torres sent 13 patients last quarter. At $1,750 per case, that's $22,750 at risk. A lunch meeting costs $50.",
+    why: "Torres sent 13 clients last quarter. At $1,750 per case, that's $22,750 at risk. A lunch meeting costs $50.",
     impact: "$22,750 estimated quarterly revenue at risk",
   },
   {
     title: "Add 10 new procedure photos to GBP",
-    why: "Wasatch has 45 photos. You have 8. Businesses with 20+ photos get 35% more website clicks from Google.",
+    why: "Summit has 45 photos. You have 8. Businesses with 20+ photos get 35% more website clicks from Google.",
     impact: "5-10 point score improvement",
   },
 ];
@@ -148,7 +149,7 @@ function SignalBanner() {
         Morning Brief
       </p>
       <p className="text-base font-medium text-[#212D40] leading-relaxed">
-        Dr. Torres referred 8 patients last quarter. She hasn't referred in 40 days. Estimated <strong>$14,000</strong> at risk.
+        Dr. Torres referred 8 clients last quarter. She hasn't referred in 40 days. Estimated <strong>$14,000</strong> at risk.
       </p>
     </div>
   );
@@ -222,7 +223,7 @@ function DemoCompetitorGap() {
   );
 }
 
-// ─── Referring GPs ──────────────────────────────────────────────────
+// ─── Referral Network ───────────────────────────────────────────────
 
 function ReferralNetwork() {
   return (
@@ -388,10 +389,10 @@ function DemoNext90() {
 function DemoCSAgent() {
   const actions = [
     { time: "2h ago", text: "Detected Dr. Torres referral drift. 40 days since last referral. Flagged for outreach.", type: "alert" },
-    { time: "Yesterday", text: "Sent review request to 3 post-appointment patients. 1 review received (5★).", type: "success" },
+    { time: "Yesterday", text: "Sent review request to 3 recent clients. 1 review received (5★).", type: "success" },
     { time: "2 days ago", text: "Dr. Lisa Park has been silent for 74 days. Added to re-engagement queue.", type: "alert" },
     { time: "3 days ago", text: "Weekly ranking scan complete. Position held at #3. Score improved +2 to 61.", type: "info" },
-    { time: "Last week", text: "New referring relationship detected: Dr. James Okafor sent 2 patients in 10 days.", type: "success" },
+    { time: "Last week", text: "New referring relationship detected: Dr. James Okafor sent 2 clients in 10 days.", type: "success" },
   ];
 
   return (
@@ -496,7 +497,7 @@ export default function Demo() {
 
         {/* Footer */}
         <p className="text-center text-[11px] text-gray-300 uppercase tracking-wide pt-4">
-          Demo account &middot; Valley Endodontics &middot; Salt Lake City, UT
+          Demo account &middot; Valley Specialty Practice &middot; Salt Lake City, UT
         </p>
       </div>
     </div>
