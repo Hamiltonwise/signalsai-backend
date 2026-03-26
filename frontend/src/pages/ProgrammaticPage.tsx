@@ -5,8 +5,10 @@
  */
 
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowRight, MapPin, Star, Users, TrendingUp } from "lucide-react";
+import MarketingHeader from "../components/marketing/MarketingHeader";
+import MarketingFooter from "../components/marketing/MarketingFooter";
 
 interface ContentSection {
   type: "hero" | "market_overview" | "competitors" | "faq" | "cta";
@@ -165,7 +167,8 @@ export default function ProgrammaticPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white flex flex-col">
+        <MarketingHeader />
         {/* Hero */}
         <section className="bg-[#212D40] text-white py-16 px-4">
           <div className="max-w-4xl mx-auto">
@@ -298,6 +301,19 @@ export default function ProgrammaticPage() {
             />
           </section>
         )}
+
+        {/* Cross-links to marketing site */}
+        <section className="py-8 px-4 border-t border-gray-100">
+          <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            <Link to="/how-it-works" className="text-xs text-gray-500 hover:text-[#D56753] transition-colors">How it works</Link>
+            <Link to="/who-its-for" className="text-xs text-gray-500 hover:text-[#D56753] transition-colors">Who it's for</Link>
+            <Link to="/pricing" className="text-xs text-gray-500 hover:text-[#D56753] transition-colors">Pricing</Link>
+            <Link to="/blog" className="text-xs text-gray-500 hover:text-[#D56753] transition-colors">Blog</Link>
+            <Link to="/story" className="text-xs text-gray-500 hover:text-[#D56753] transition-colors">Our story</Link>
+          </div>
+        </section>
+
+        <MarketingFooter />
       </div>
     </>
   );

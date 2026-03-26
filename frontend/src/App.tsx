@@ -61,6 +61,9 @@ const PricingPage = React.lazy(() => import("./pages/marketing/PricingPage"));
 const StoryPage = React.lazy(() => import("./pages/marketing/Story"));
 const BlogPage = React.lazy(() => import("./pages/marketing/Blog"));
 const BlogRedirect = React.lazy(() => import("./pages/marketing/BlogRedirect"));
+const BlogPost1 = React.lazy(() => import("./pages/marketing/blog/TheSecondJobProblem"));
+const BlogPost2 = React.lazy(() => import("./pages/marketing/blog/GoogleBusinessProfileScore"));
+const BlogPost3 = React.lazy(() => import("./pages/marketing/blog/WhyYourCompetitorKeepsShowingUp"));
 const SharedResults = React.lazy(() => import("./pages/checkup/SharedResults"));
 const Compare = React.lazy(() => import("./pages/Compare"));
 const LegalPracticeMarketing = React.lazy(() => import("./pages/content/LegalPracticeMarketing"));
@@ -238,6 +241,9 @@ function App() {
               <Route path="/who-its-for" element={<WhoItsFor />} />
               <Route path="/story" element={<StoryPage />} />
               <Route path="/blog" element={<BlogPage />} />
+              <Route path="/blog/the-second-job-problem" element={<BlogPost1 />} />
+              <Route path="/blog/google-business-profile-score" element={<BlogPost2 />} />
+              <Route path="/blog/why-your-competitor-keeps-showing-up" element={<BlogPost3 />} />
               <Route path="/blog/:slug" element={<BlogRedirect />} />
               <Route
                 path="/signin"
