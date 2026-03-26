@@ -167,11 +167,15 @@ router.get("/:slug", async (req: Request, res: Response) => {
       ? JSON.parse(page.schema_markup)
       : page.schema_markup;
 
+    // Parse content sections
+    const contentSections = typeof page.content_sections === "string"
+      ? JSON.parse(page.content_sections)
+      : page.content_sections;
+
     return res.json({
       title: page.title,
-      h1: page.h1,
       metaDescription: page.meta_description,
-      bodyHtml: page.body_html || "",
+      contentSections,
       competitors,
       schemaMarkup,
       openGraph: {
@@ -180,13 +184,14 @@ router.get("/:slug", async (req: Request, res: Response) => {
         url: `https://getalloro.com/${slug}`,
         type: "website",
         siteName: "Alloro",
+        image: "https://getalloro.com/logo.png",
       },
       specialtySlug: page.specialty_slug,
       citySlug: page.city_slug,
       cityName: page.city_name,
       stateAbbr: page.state_abbr,
       competitorCount: competitors ? competitors.length : 0,
-      lastUpdated: page.competitors_fetched_at,
+      lastUpdated: page.competitors_refreshed_at,
     });
   } catch (error) {
     console.error("Programmatic page error:", error);
