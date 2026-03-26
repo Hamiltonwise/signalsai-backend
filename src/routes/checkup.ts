@@ -783,6 +783,38 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       console.error(`[Checkup] Failed to seed snapshot:`, snapErr.message);
     }
 
+    // Enqueue Welcome Intelligence (fires 4 hours later with new insights)
+    try {
+      const parsed = typeof checkup_data === "string" ? JSON.parse(checkup_data) : checkup_data;
+      const wiQueue = getMindsQueue("welcome-intelligence");
+      await wiQueue.add(
+        `welcome:intel:${org.id}`,
+        {
+          orgId: org.id,
+          userId: user.id,
+          email: normalizedEmail,
+          practiceName: practice_name || "your practice",
+          placeId: place_id || null,
+          specialty: parsed?.market?.specialty || null,
+          city: parsed?.market?.city || null,
+          stateAbbr: parsed?.market?.stateAbbr || null,
+          checkupScore: checkup_score || null,
+          topCompetitorName: typeof parsed?.topCompetitor === "string"
+            ? parsed.topCompetitor
+            : parsed?.topCompetitor?.name || null,
+        },
+        {
+          jobId: `welcome-intel-${org.id}`,
+          delay: 4 * 60 * 60 * 1000, // 4 hours
+          attempts: 2,
+          backoff: { type: "exponential", delay: 60000 },
+        }
+      );
+      console.log(`[Checkup] Welcome Intelligence enqueued for org ${org.id} (fires in 4h)`);
+    } catch (wiErr: any) {
+      console.error(`[Checkup] Failed to enqueue Welcome Intelligence:`, wiErr.message);
+    }
+
     return res.json({
       success: true,
       token,

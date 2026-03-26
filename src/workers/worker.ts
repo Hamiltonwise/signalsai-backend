@@ -18,6 +18,7 @@ import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
 import { processGbpRefresh } from "./processors/gbpRefresh.processor";
 import { processPatientPathBuild } from "./processors/patientpathBuild.processor";
+import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -234,8 +235,21 @@ const patientpathBuildWorker = new Worker(
   }
 );
 
+// Welcome Intelligence worker (fires 4h after checkup account creation)
+const welcomeIntelligenceWorker = new Worker(
+  "minds-welcome-intelligence",
+  async (job) => {
+    await processWelcomeIntelligence(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -263,6 +277,7 @@ async function shutdown(): Promise<void> {
   await wbBackupWorker.close();
   await wbRestoreWorker.close();
   await patientpathBuildWorker.close();
+  await welcomeIntelligenceWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
