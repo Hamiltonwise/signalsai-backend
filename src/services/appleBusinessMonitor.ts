@@ -25,8 +25,9 @@ export async function checkAppleBusinessStatus(): Promise<void> {
 
   const orgs = await db("organizations")
     .select("id", "name", "apple_business_claimed", "apple_business_claimed_at")
-    .where("status", "active")
-    .orWhereNull("status");
+    .where(function () {
+      this.where("status", "active").orWhereNull("status");
+    });
 
   const unclaimed: AppleBusinessStatus[] = [];
 
@@ -103,8 +104,9 @@ export async function getClaimSummary(): Promise<{
 }> {
   const orgs = await db("organizations")
     .select("id", "name", "apple_business_claimed")
-    .where("status", "active")
-    .orWhereNull("status");
+    .where(function () {
+      this.where("status", "active").orWhereNull("status");
+    });
 
   const claimed = orgs.filter((o: any) => o.apple_business_claimed);
   const unclaimedOrgs = orgs.filter((o: any) => !o.apple_business_claimed);

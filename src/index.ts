@@ -96,6 +96,7 @@ import adminAuditLogRoutes from "./routes/admin/auditLog";
 import mailgunInboundRoutes from "./routes/webhooks/mailgunInbound";
 import adminKnowledgeLatticeRoutes from "./routes/admin/knowledgeLattice";
 import programmaticPagesRoutes from "./routes/programmaticPages";
+import intelligenceRoutes from "./routes/intelligence";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -267,6 +268,7 @@ app.use("/api/webhooks/mailgun", mailgunInboundRoutes); // T3: Mailgun inbound e
 app.use("/api/admin", adminKnowledgeLatticeRoutes); // T3: Knowledge + Sentiment Lattice CRUD
 app.use("/api/programmatic-pages", programmaticPagesRoutes); // WO-7: Programmatic SEO pages
 app.use("/api/admin/intelligence", intelligencePanelRoutes); // WO-8: PatientPath Intelligence Panel
+app.use("/api/intelligence", intelligenceRoutes); // WO-8: Practice owner intelligence dashboard
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);
