@@ -26,39 +26,57 @@ const SLC_PLACE_ID = "ChIJnwl8rqiHTYcRYv_X4YtFBJc"; // a dental practice in SLC
 async function http(
   method: string,
   path: string,
-  opts: { body?: unknown; token?: string } = {}
+  opts: { body?: unknown; token?: string; timeoutMs?: number } = {}
 ): Promise<{ status: number; data: any }> {
   const url = `${BASE_URL}${path}`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (opts.token) headers["Authorization"] = `Bearer ${opts.token}`;
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 10_000);
 
-  let data: any;
   try {
-    data = await res.json();
-  } catch {
-    data = null;
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      signal: controller.signal,
+    });
+
+    let data: any;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+    return { status: res.status, data };
+  } finally {
+    clearTimeout(timeout);
   }
-  return { status: res.status, data };
+}
+
+let checkStart = 0;
+
+function startTimer() {
+  checkStart = Date.now();
 }
 
 function record(name: string, passed: boolean, detail?: string) {
+  const elapsed = Date.now() - checkStart;
   results.push({ name, passed, detail });
   const tag = passed ? "[PASS]" : "[FAIL]";
-  const msg = detail ? `${tag} ${name} -- ${detail}` : `${tag} ${name}`;
+  const time = `(${elapsed}ms)`;
+  const msg = detail ? `${tag} ${name} ${time} -- ${detail}` : `${tag} ${name} ${time}`;
   console.log(msg);
 }
 
 // ── CHECK 1: Checkup analyze ──────────────────────────────────────────
 async function check1() {
   const name = "CHECK 1: Checkup analyze";
+  startTimer();
   try {
     const { status, data } = await http("POST", "/api/checkup/analyze", {
+      timeoutMs: 30_000,
       body: {
         placeId: SLC_PLACE_ID,
         name: "Smoke Test Dental",
@@ -89,6 +107,7 @@ async function check1() {
 // ── CHECK 2: Account creation ─────────────────────────────────────────
 async function check2() {
   const name = "CHECK 2: Account creation";
+  startTimer();
   const timestamp = Date.now();
   try {
     const { status, data } = await http("POST", "/api/checkup/create-account", {
@@ -125,6 +144,7 @@ async function check2() {
 // ── CHECK 3: Dashboard context loads ──────────────────────────────────
 async function check3() {
   const name = "CHECK 3: Dashboard context loads";
+  startTimer();
   if (!createdToken) {
     return record(name, false, "skipped -- no token from Check 2");
   }
@@ -147,6 +167,7 @@ async function check3() {
 // ── CHECK 4: Pilot feature present ───────────────────────────────────
 async function check4() {
   const name = "CHECK 4: Pilot feature (admin orgs)";
+  startTimer();
   if (!ADMIN_TOKEN) {
     return record(name, false, "skipped -- SMOKE_ADMIN_TOKEN not set");
   }
@@ -182,6 +203,7 @@ async function check4() {
 // ── CHECK 5: Demo account accessible ─────────────────────────────────
 async function check5() {
   const name = "CHECK 5: Demo account accessible";
+  startTimer();
   try {
     const { status, data } = await http("GET", "/api/demo/login");
     if (status !== 200) {
@@ -206,6 +228,7 @@ async function check5() {
 // ── CHECK 6: Health check ─────────────────────────────────────────────
 async function check6() {
   const name = "CHECK 6: Health check";
+  startTimer();
   try {
     const { status, data } = await http("GET", "/api/health");
     if (status !== 200) {
@@ -239,14 +262,16 @@ async function cleanup() {
 async function main() {
   console.log(`\nSmoke Test targeting: ${BASE_URL}\n`);
 
-  await check1();
-  await check2();
-  await check3();
-  await check4();
-  await check5();
-  await check6();
-
-  await cleanup();
+  try {
+    await check1();
+    await check2();
+    await check3();
+    await check4();
+    await check5();
+    await check6();
+  } finally {
+    await cleanup();
+  }
 
   const passed = results.filter((r) => r.passed).length;
   console.log(`\nSMOKE TEST: ${passed}/${results.length} passed`);
