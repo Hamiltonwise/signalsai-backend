@@ -222,7 +222,7 @@ export default function ReviewRequests() {
               {velocity.toFixed(1)} <span className="text-base font-medium text-gray-400">per week</span>
             </p>
             <p className="text-sm text-gray-500 mt-2">
-              At this pace, you'll reach {totalConverted + 5} reviews in {Math.ceil(5 / Math.max(velocity, 0.1))} weeks.
+              You've earned {totalConverted} review{totalConverted !== 1 ? "s" : ""} so far at ~{velocity.toFixed(1)}/week.
             </p>
           </>
         ) : (

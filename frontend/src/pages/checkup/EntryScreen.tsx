@@ -81,6 +81,7 @@ export default function EntryScreen() {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [intent, setIntent] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState(false);
   const [referrerName, setReferrerName] = useState<string | null>(null);
 
   // Validate referral code on mount
@@ -109,6 +110,7 @@ export default function EntryScreen() {
     }
 
     setIsSearching(true);
+    setSearchError(false);
 
     debounceRef.current = setTimeout(async () => {
       try {
@@ -117,7 +119,7 @@ export default function EntryScreen() {
           setSuggestions(res.suggestions);
         }
       } catch {
-        // Silently fail — user can keep typing
+        setSearchError(true);
       } finally {
         setIsSearching(false);
       }
@@ -196,6 +198,11 @@ export default function EntryScreen() {
             <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#D56753] animate-spin" />
           )}
         </div>
+
+        {/* Search error */}
+        {searchError && !isSearching && (
+          <p className="text-xs text-[#D56753] mt-2 ml-1">Search unavailable. Try again.</p>
+        )}
 
         {/* Autocomplete dropdown */}
         {suggestions.length > 0 && !selectedPlace && (

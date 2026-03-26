@@ -56,3 +56,5 @@ Do not hardcode model strings in individual agent files.
 @.claude/rules/agent-safety.md
 @.claude/rules/alloro-context.md
 @.claude/rules/build-protocol.md
+@.claude/rules/knowledge-graph.md
+@.claude/rules/agent-trust-protocol.md

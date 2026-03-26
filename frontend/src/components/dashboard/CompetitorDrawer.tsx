@@ -17,7 +17,7 @@ interface CompetitorData {
 interface CompetitorDrawerProps {
   competitor: CompetitorData | null;
   clientReviews: number;
-  clientVelocityPerWeek: number; // reviews per week
+  clientVelocityPerWeek: number | null; // reviews per week
   onClose: () => void;
 }
 
@@ -31,7 +31,7 @@ export default function CompetitorDrawer({
 
   const reviewGap = competitor.reviewCount - clientReviews;
   const weeksToClose =
-    clientVelocityPerWeek > 0 && reviewGap > 0
+    clientVelocityPerWeek != null && clientVelocityPerWeek > 0 && reviewGap > 0
       ? Math.ceil(reviewGap / clientVelocityPerWeek)
       : null;
 
@@ -138,7 +138,7 @@ export default function CompetitorDrawer({
                   )}
                 </p>
               </div>
-              {clientVelocityPerWeek > 0 && (
+              {clientVelocityPerWeek != null && clientVelocityPerWeek > 0 && (
                 <p className="text-[10px] text-gray-400 mt-2 ml-8">
                   Your pace: ~{clientVelocityPerWeek.toFixed(1)} reviews/week
                 </p>

@@ -68,9 +68,9 @@ export async function checkAppleBusinessStatus(): Promise<void> {
         priority: "high",
         status: "pending",
       })
-      .catch((err: any) => {
-        // Fallback if dream_team_tasks schema differs
-        console.warn(`[Apple Business Monitor] Could not create task for ${org.orgName}: ${err.message}`);
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(`[Apple Business Monitor] Could not create task for ${org.orgName}: ${message}`);
       });
 
     console.log(`[Apple Business Monitor] Task created: claim Apple Business for ${org.orgName}`);

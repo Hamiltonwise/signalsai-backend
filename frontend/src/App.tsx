@@ -1,33 +1,75 @@
+import React from "react";
 import type { ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { queryClient, persistOptions } from "./lib/queryClient";
+import { Loader2 } from "lucide-react";
+
+// --- Critical path imports (NOT lazy-loaded) ---
 import SignIn from "./pages/Signin";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
-import NewAccountOnboarding from "./pages/NewAccountOnboarding";
-import Dashboard from "./pages/Dashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
-import ProgressReport from "./pages/ProgressReport";
-import RankingsScreen from "./pages/RankingsScreen";
-import Demo from "./pages/Demo";
-import BusinessClarity from "./pages/BusinessClarity";
-import PartnerPortal from "./pages/partner/PartnerPortal";
-import ReferralIntelligence from "./pages/ReferralIntelligence";
-import Admin from "./pages/Admin";
-import { Settings } from "./pages/Settings";
-import { IntegrationsRoute } from "./pages/settings/IntegrationsRoute";
-import { UsersRoute } from "./pages/settings/UsersRoute";
-import { BillingRoute } from "./pages/settings/BillingRoute";
-import { AccountRoute } from "./pages/settings/AccountRoute";
-import { DFYWebsite } from "./pages/DFYWebsite";
-import { Notifications } from "./pages/Notifications";
-import Help from "./pages/Help";
-import OnboardingPaymentSuccess from "./pages/OnboardingPaymentSuccess";
-import OnboardingPaymentCancelled from "./pages/OnboardingPaymentCancelled";
+import NotFound from "./pages/NotFound";
+import CheckupLayout from "./pages/checkup/CheckupLayout";
+import EntryScreen from "./pages/checkup/EntryScreen";
+import ScanningTheater from "./pages/checkup/ScanningTheater";
+import ResultsScreen from "./pages/checkup/ResultsScreen";
+import BuildingScreen from "./pages/checkup/BuildingScreen";
+
+// --- Lazy-loaded page imports ---
+const NewAccountOnboarding = React.lazy(() => import("./pages/NewAccountOnboarding"));
+const Dashboard = React.lazy(() => import("./pages/Dashboard"));
+const ProgressReport = React.lazy(() => import("./pages/ProgressReport"));
+const RankingsScreen = React.lazy(() => import("./pages/RankingsScreen"));
+const Demo = React.lazy(() => import("./pages/Demo"));
+const BusinessClarity = React.lazy(() => import("./pages/BusinessClarity"));
+const PartnerPortal = React.lazy(() => import("./pages/partner/PartnerPortal"));
+const ReferralIntelligence = React.lazy(() => import("./pages/ReferralIntelligence"));
+const Admin = React.lazy(() => import("./pages/Admin"));
+const Settings = React.lazy(() => import("./pages/Settings").then(m => ({ default: m.Settings })));
+const IntegrationsRoute = React.lazy(() => import("./pages/settings/IntegrationsRoute").then(m => ({ default: m.IntegrationsRoute })));
+const UsersRoute = React.lazy(() => import("./pages/settings/UsersRoute").then(m => ({ default: m.UsersRoute })));
+const BillingRoute = React.lazy(() => import("./pages/settings/BillingRoute").then(m => ({ default: m.BillingRoute })));
+const AccountRoute = React.lazy(() => import("./pages/settings/AccountRoute").then(m => ({ default: m.AccountRoute })));
+const DFYWebsite = React.lazy(() => import("./pages/DFYWebsite").then(m => ({ default: m.DFYWebsite })));
+const Notifications = React.lazy(() => import("./pages/Notifications").then(m => ({ default: m.Notifications })));
+const Help = React.lazy(() => import("./pages/Help"));
+const OnboardingPaymentSuccess = React.lazy(() => import("./pages/OnboardingPaymentSuccess"));
+const OnboardingPaymentCancelled = React.lazy(() => import("./pages/OnboardingPaymentCancelled"));
+const AAELanding = React.lazy(() => import("./pages/AAELanding"));
+const ThankYou = React.lazy(() => import("./pages/ThankYou"));
+const WhatIsBusinessClarity = React.lazy(() => import("./pages/content/WhatIsBusinessClarity"));
+const EndodontistMarketing = React.lazy(() => import("./pages/content/EndodontistMarketing"));
+const GPReferralIntelligenceContent = React.lazy(() => import("./pages/content/GPReferralIntelligence"));
+const PatientPathWebsite = React.lazy(() => import("./pages/dashboard/PatientPathWebsite"));
+const ReviewRequests = React.lazy(() => import("./pages/dashboard/ReviewRequests"));
+const DashboardSettings = React.lazy(() => import("./pages/dashboard/DashboardSettings"));
+const IntelligenceDashboard = React.lazy(() => import("./pages/dashboard/IntelligenceDashboard"));
+const GPDiscoveryPage = React.lazy(() => import("./pages/partner/GPDiscoveryPage"));
+const Changelog = React.lazy(() => import("./pages/Changelog"));
+const Pricing = React.lazy(() => import("./pages/Pricing"));
+const ReferralProgram = React.lazy(() => import("./pages/ReferralProgram"));
+const Compare = React.lazy(() => import("./pages/Compare"));
+const LegalPracticeMarketing = React.lazy(() => import("./pages/content/LegalPracticeMarketing"));
+const FinancialAdvisorMarketing = React.lazy(() => import("./pages/content/FinancialAdvisorMarketing"));
+const OptometristMarketing = React.lazy(() => import("./pages/content/OptometristMarketing"));
+const Locations = React.lazy(() => import("./pages/dashboard/Locations"));
+// Intelligence replaced by IntelligenceDashboard (WO-8: uses /api/intelligence, not admin API)
+// import About from "./pages/About"; // Not built yet
+// import TermsOfService from "./pages/TermsOfService"; // Not built yet
+// import PrivacyPolicy from "./pages/PrivacyPolicy"; // Not built yet
+// import PhysicalTherapistMarketing from "./pages/content/PhysicalTherapistMarketing"; // Not built yet
+const ProgrammaticPage = React.lazy(() => import("./pages/ProgrammaticPage"));
+const FoundationHome = React.lazy(() => import("./pages/foundation/FoundationHome"));
+const HeroesPage = React.lazy(() => import("./pages/foundation/HeroesPage"));
+const FoundersPage = React.lazy(() => import("./pages/foundation/FoundersPage"));
+const FoundationApply = React.lazy(() => import("./pages/foundation/FoundationApply"));
+
+// --- Non-page imports (always loaded) ---
 import { PageWrapper } from "./components/PageWrapper";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
 import { GBPProvider } from "./contexts/GBPContext.tsx";
@@ -46,42 +88,20 @@ import { ConfirmProvider } from "./components/ui/ConfirmModal";
 import { DFYRoute } from "./components/DFYRoute";
 import { PilotHandler } from "./components/PilotHandler";
 import { PilotBanner } from "./components/Admin/PilotBanner";
-import AAELanding from "./pages/AAELanding";
-import ThankYou from "./pages/ThankYou";
-import WhatIsBusinessClarity from "./pages/content/WhatIsBusinessClarity";
-import EndodontistMarketing from "./pages/content/EndodontistMarketing";
-import GPReferralIntelligenceContent from "./pages/content/GPReferralIntelligence";
-import PatientPathWebsite from "./pages/dashboard/PatientPathWebsite";
-import ReviewRequests from "./pages/dashboard/ReviewRequests";
-import DashboardSettings from "./pages/dashboard/DashboardSettings";
-import IntelligenceDashboard from "./pages/dashboard/IntelligenceDashboard";
-import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./contexts/ToastContext";
-import GPDiscoveryPage from "./pages/partner/GPDiscoveryPage";
-import Changelog from "./pages/Changelog";
-import Pricing from "./pages/Pricing";
-import ReferralProgram from "./pages/ReferralProgram";
-import Compare from "./pages/Compare";
-import LegalPracticeMarketing from "./pages/content/LegalPracticeMarketing";
-import FinancialAdvisorMarketing from "./pages/content/FinancialAdvisorMarketing";
-import OptometristMarketing from "./pages/content/OptometristMarketing";
-import Locations from "./pages/dashboard/Locations";
-// Intelligence replaced by IntelligenceDashboard (WO-8: uses /api/intelligence, not admin API)
-// import About from "./pages/About"; // Not built yet
-// import TermsOfService from "./pages/TermsOfService"; // Not built yet
-// import PrivacyPolicy from "./pages/PrivacyPolicy"; // Not built yet
-// import PhysicalTherapistMarketing from "./pages/content/PhysicalTherapistMarketing"; // Not built yet
-import ProgrammaticPage from "./pages/ProgrammaticPage";
-import CheckupLayout from "./pages/checkup/CheckupLayout";
-import EntryScreen from "./pages/checkup/EntryScreen";
-import ScanningTheater from "./pages/checkup/ScanningTheater";
-import ResultsScreen from "./pages/checkup/ResultsScreen";
-import BuildingScreen from "./pages/checkup/BuildingScreen";
-import FoundationHome from "./pages/foundation/FoundationHome";
-import HeroesPage from "./pages/foundation/HeroesPage";
-import FoundersPage from "./pages/foundation/FoundersPage";
-import FoundationApply from "./pages/foundation/FoundationApply";
+
+/** Loading fallback for lazy-loaded routes */
+function LoadingFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <span className="text-sm font-medium text-gray-500">Loading...</span>
+      </div>
+    </div>
+  );
+}
 
 // AppProviders wrapper - now used as a layout route to avoid remounting on navigation
 function AppProviders({ children }: { children: ReactNode }) {
@@ -103,7 +123,9 @@ function ProtectedLayout() {
     <ProtectedRoute>
       <AppProviders>
         <PageWrapper>
-          <Outlet />
+          <React.Suspense fallback={<LoadingFallback />}>
+            <Outlet />
+          </React.Suspense>
         </PageWrapper>
       </AppProviders>
     </ProtectedRoute>
@@ -114,7 +136,9 @@ function ProtectedLayout() {
 function AdminLayout() {
   return (
     <AppProviders>
-      <Outlet />
+      <React.Suspense fallback={<LoadingFallback />}>
+        <Outlet />
+      </React.Suspense>
     </AppProviders>
   );
 }
@@ -142,6 +166,7 @@ function App() {
             <WizardController />
             <SetupProgressWizard />
             <ErrorBoundaryWithReset>
+            <React.Suspense fallback={<LoadingFallback />}>
             <Routes>
               {/* Public checkup flow — no auth required */}
               <Route path="/checkup" element={<CheckupLayout />}>
@@ -297,6 +322,7 @@ function App() {
               {/* 404 catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </React.Suspense>
             <PilotBanner />
             </ErrorBoundaryWithReset>
             </ConfirmProvider>
