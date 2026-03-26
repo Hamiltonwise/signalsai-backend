@@ -37,6 +37,13 @@ Agents: .claude/agents/
 - Every screen looks like it was built by a company with 10,000 clients
 - Every session ends with verification checks posted to Build State
 
+## Global Model Default
+
+model: claude-sonnet-4-6
+
+To update the entire agent team: change this one line.
+Do not hardcode model strings in individual agent files.
+
 ## Key Pages
 
 - Build Queue: https://www.notion.so/32dfdaf120c48141a798f219d02ac76d
