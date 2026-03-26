@@ -96,7 +96,7 @@ export default function Dashboard() {
 
   // Handler for when onboarding is completed
   const handleOnboardingComplete = async () => {
-    console.log("[Dashboard] Onboarding completed");
+    // Onboarding completed
 
     // Mark onboarding as complete immediately so the Dashboard renders
     // (not null — null would fall through to the onboarding fallback)
