@@ -168,6 +168,8 @@ export default function Story() {
                 "author": { "@id": "https://getalloro.com/#corey" },
                 "publisher": { "@id": "https://getalloro.com/#organization" },
                 "url": "https://getalloro.com/story",
+                "datePublished": "2026-03-26",
+                "dateModified": "2026-03-26",
               },
             ],
           }),

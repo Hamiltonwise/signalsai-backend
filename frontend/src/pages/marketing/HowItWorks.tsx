@@ -165,7 +165,7 @@ export default function HowItWorks() {
                 "step": [
                   { "@type": "HowToStep", "name": "The Checkup", "text": "Enter your practice name. Alloro scans your market and delivers your score in 60 seconds." },
                   { "@type": "HowToStep", "name": "The Monday Brief", "text": "Create an account. Every Monday at 7am, your Business Clarity Brief arrives." },
-                  { "@type": "HowToStep", "name": "The Clarity Layer", "text": "Connect your existing data. Alloro monitors your practice's intelligence 24/7." },
+                  { "@type": "HowToStep", "name": "The Clarity Layer", "text": "Connect your existing data. When your top referring source goes 30 days without sending a case, you get a note Monday morning. When a competitor opens a second location, you know before your staff hears about it." },
                 ],
               },
               {
@@ -174,7 +174,8 @@ export default function HowItWorks() {
                   { "@type": "Question", "name": "Do I need to install anything?", "acceptedAnswer": { "@type": "Answer", "text": "No. Alloro reads publicly available signals about your practice's market position." } },
                   { "@type": "Question", "name": "How long until I see my first Monday brief?", "acceptedAnswer": { "@type": "Answer", "text": "Your first brief arrives the Monday after you create your account." } },
                   { "@type": "Question", "name": "Is my practice data private?", "acceptedAnswer": { "@type": "Answer", "text": "Alloro reads market-level signals, not patient records. No patient data ever enters the system." } },
-                  { "@type": "Question", "name": "What specialties does Alloro serve?", "acceptedAnswer": { "@type": "Answer", "text": "Any local service professional who has a presence in local search and cares about who finds them there." } },
+                  { "@type": "Question", "name": "What if I don't want weekly emails?", "acceptedAnswer": { "@type": "Answer", "text": "You can pause, change the frequency, or turn them off anytime from your dashboard. The data keeps running whether the emails do or not." } },
+                  { "@type": "Question", "name": "What specialties does Alloro serve?", "acceptedAnswer": { "@type": "Answer", "text": "We built this for specialist medical practices like endodontists, oral surgeons, and orthodontists, and have since expanded to attorneys, veterinarians, physical therapists, financial advisors, and chiropractors." } },
                 ],
               },
             ],
