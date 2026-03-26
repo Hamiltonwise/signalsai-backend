@@ -181,13 +181,15 @@ async function main(): Promise<void> {
             "COUNT(*) FILTER (WHERE needs_refresh = true) as needs_refresh"
           )
         )
-        .first();
+        .first() as { total: string; published: string; draft: string; needs_refresh: string } | undefined;
 
-      console.log("\n=== Database Stats ===");
-      console.log(`  Total pages:    ${stats.total}`);
-      console.log(`  Published:      ${stats.published}`);
-      console.log(`  Draft:          ${stats.draft}`);
-      console.log(`  Needs refresh:  ${stats.needs_refresh}`);
+      if (stats) {
+        console.log("\n=== Database Stats ===");
+        console.log(`  Total pages:    ${stats.total}`);
+        console.log(`  Published:      ${stats.published}`);
+        console.log(`  Draft:          ${stats.draft}`);
+        console.log(`  Needs refresh:  ${stats.needs_refresh}`);
+      }
     } catch {
       // Stats query may fail if table doesn't exist yet
     }
