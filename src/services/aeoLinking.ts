@@ -46,7 +46,7 @@ export function getSpokeLinks(
   const sameState = CITIES.filter(
     (c: CityData) =>
       c.stateAbbr === stateAbbr &&
-      toSlug(c.city + " " + c.stateAbbr) !== citySlug
+      c.slug !== citySlug
   );
   const nearbyCity =
     sameState.length > 0
