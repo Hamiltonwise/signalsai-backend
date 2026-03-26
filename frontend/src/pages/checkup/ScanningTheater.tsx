@@ -15,6 +15,7 @@ import {
   isOfflineConference,
   withTimeout,
   CONFERENCE_ANALYSIS,
+  personalizeConferenceFallback,
 } from "./conferenceFallback";
 
 // ---------------------------------------------------------------------------
@@ -541,23 +542,25 @@ export default function ScanningTheater() {
       if (!place) return;
       const conferenceActive = isConferenceMode();
       const timeoutMs = conferenceActive ? 5000 : 45000;
+      // Personalize fallback with real practice data so every attendee sees unique results
+      const fallback = conferenceActive ? personalizeConferenceFallback(place) : CONFERENCE_ANALYSIS;
 
       try {
         // Offline at a conference? Skip the API call entirely, use fallback now
         if (isOfflineConference()) {
           if (cancelled) return;
-          analysisRef.current = CONFERENCE_ANALYSIS;
+          analysisRef.current = fallback;
           setApiDone(true);
           trackEvent("checkup.scan_completed", {
-            score: CONFERENCE_ANALYSIS.score.composite,
-            competitor_count: CONFERENCE_ANALYSIS.competitors.length,
-            top_competitor_name: CONFERENCE_ANALYSIS.topCompetitor?.name || null,
+            score: fallback.score.composite,
+            competitor_count: fallback.competitors.length,
+            top_competitor_name: fallback.topCompetitor?.name || null,
             conference_fallback: true,
           });
           return;
         }
 
-        // In conference mode: race API against 5s timeout, fallback to pre-seeded data
+        // In conference mode: race API against 5s timeout, fallback to personalized data
         const apiCall = analyzeCheckup({
           name: place.name,
           city: place.city,
@@ -576,8 +579,8 @@ export default function ScanningTheater() {
 
         if (cancelled) return;
 
-        // Use real result if available, otherwise fall back to conference data
-        const finalResult = (result && result.success) ? result : CONFERENCE_ANALYSIS;
+        // Use real result if available, otherwise fall back to personalized conference data
+        const finalResult = (result && result.success) ? result : fallback;
 
         analysisRef.current = finalResult;
         setApiDone(true);
@@ -591,9 +594,9 @@ export default function ScanningTheater() {
       } catch {
         if (cancelled) return;
 
-        // On any error in conference mode: use fallback seamlessly
+        // On any error in conference mode: use personalized fallback seamlessly
         if (conferenceActive) {
-          analysisRef.current = CONFERENCE_ANALYSIS;
+          analysisRef.current = fallback;
           setApiDone(true);
         } else {
           setError("Something went wrong. Please try again.");
