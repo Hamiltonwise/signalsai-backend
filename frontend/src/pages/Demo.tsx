@@ -134,7 +134,7 @@ const NEXT_90 = [
   },
   {
     title: "Add 10 new procedure photos to GBP",
-    why: "Valley Endo has 45 photos. You have 8. Businesses with 20+ photos get 35% more website clicks from Google.",
+    why: "Wasatch has 45 photos. You have 8. Businesses with 20+ photos get 35% more website clicks from Google.",
     impact: "5-10 point score improvement",
   },
 ];
