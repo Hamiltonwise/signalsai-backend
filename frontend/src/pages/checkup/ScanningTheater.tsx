@@ -493,6 +493,7 @@ export default function ScanningTheater() {
   const analysisRef = useRef<CheckupAnalysis | null>(null);
   const [apiDone, setApiDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Theater timing
   const theaterStartRef = useRef(Date.now());
@@ -604,7 +605,8 @@ export default function ScanningTheater() {
     return () => {
       cancelled = true;
     };
-  }, [place]);
+    // retryCount triggers re-analysis on "Try again"
+  }, [place, retryCount]);
 
   // --- Animate checklist items in sequence ---
   useEffect(() => {
@@ -669,6 +671,12 @@ export default function ScanningTheater() {
             onClick={() => {
               setError(null);
               setApiDone(false);
+              analysisRef.current = null;
+              theaterStartRef.current = Date.now();
+              hasNavigated.current = false;
+              setActiveIndex(-1);
+              setVisibleCompetitors([]);
+              setRetryCount((c) => c + 1);
             }}
             className="px-6 py-2.5 bg-[#D56753] text-white rounded-lg font-medium hover:bg-[#c45a48] transition-colors"
           >
