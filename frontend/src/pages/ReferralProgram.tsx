@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ArrowRight, Gift, Users } from "lucide-react";
 import { validateReferralCode } from "../api/checkup";
+import MarketingLayout from "../components/marketing/MarketingLayout";
 
 // ─── Fallback (SLC demo data) ───────────────────────────────────────
 
@@ -49,23 +50,7 @@ export default function ReferralProgram() {
   if (!loaded) return null;
 
   return (
-    <div className="min-h-dvh bg-[#FAFAF8]">
-      {/* Header */}
-      <header className="bg-[#212D40] py-4 px-5">
-        <div className="max-w-lg mx-auto flex items-center gap-2">
-          <a href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-[#D56753] flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
-              </svg>
-            </div>
-            <span className="text-lg font-bold tracking-tight text-white">
-              alloro
-            </span>
-          </a>
-        </div>
-      </header>
-
+    <MarketingLayout title="Referral Program" description="A colleague thought you'd want to see this. Run your free Checkup.">
       <div className="max-w-lg mx-auto px-5 py-12 sm:py-16 space-y-10">
         {/* Hero */}
         <div className="text-center">
@@ -133,12 +118,8 @@ export default function ReferralProgram() {
           </p>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-[11px] text-slate-300 pt-4">
-          &copy; 2026 Alloro, Inc. Bend, Oregon.
-        </p>
       </div>
-    </div>
+    </MarketingLayout>
   );
 }
 

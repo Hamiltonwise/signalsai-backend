@@ -7,6 +7,7 @@
  */
 
 import { ArrowRight } from "lucide-react";
+import MarketingLayout from "../components/marketing/MarketingLayout";
 
 // ─── Changelog Entries ──────────────────────────────────────────────
 
@@ -63,23 +64,7 @@ const ENTRIES: ChangelogEntry[] = [
 
 export default function Changelog() {
   return (
-    <div className="min-h-dvh bg-[#FAFAF8]">
-      {/* Header */}
-      <header className="bg-[#212D40] py-4 px-5">
-        <div className="max-w-lg mx-auto flex items-center gap-2">
-          <a href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-[#D56753] flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
-              </svg>
-            </div>
-            <span className="text-lg font-bold tracking-tight text-white">
-              alloro
-            </span>
-          </a>
-        </div>
-      </header>
-
+    <MarketingLayout title="Changelog" description="What's new in Alloro. Product updates written in plain English.">
       <div className="max-w-lg mx-auto px-5 py-12 sm:py-16 space-y-10">
         {/* Title */}
         <div>
@@ -135,12 +120,8 @@ export default function Changelog() {
           </a>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-[11px] text-slate-300">
-          &copy; 2026 Alloro, Inc. Bend, Oregon.
-        </p>
       </div>
-    </div>
+    </MarketingLayout>
   );
 }
 

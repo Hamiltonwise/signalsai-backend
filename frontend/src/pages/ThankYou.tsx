@@ -58,7 +58,7 @@ export default function ThankYou() {
         {/* Booth CTA */}
         <div className="rounded-2xl bg-[#212D40] p-6 text-center">
           <p className="text-base font-bold text-white">
-            Come find us at booth #TBD.
+            Come find us at booth #835.
           </p>
           <p className="text-sm text-white/60 mt-2 leading-relaxed">
             We'll show you what Monday looks like.
