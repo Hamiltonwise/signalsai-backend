@@ -14,6 +14,7 @@ import { generateToken } from "../controllers/auth-otp/feature-services/service.
 import { sendCheckupResultEmail } from "../emails/templates/CheckupResultEmail";
 import { BehavioralEventModel } from "../models/BehavioralEventModel";
 import { db } from "../database/connection";
+import { getMindsQueue } from "../workers/queues";
 
 const checkupRoutes = express.Router();
 
@@ -702,6 +703,19 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
     }).catch(() => {});
 
     console.log(`[Checkup] Account created: ${normalizedEmail} -> org ${org.id}`);
+
+    // Enqueue PatientPath build pipeline (Phase 1: research)
+    try {
+      const ppQueue = getMindsQueue("patientpath-build");
+      await ppQueue.add(
+        `patientpath:build:${org.id}`,
+        { orgId: org.id, placeId: place_id || undefined },
+        { jobId: `patientpath-build-${org.id}`, attempts: 3, backoff: { type: "exponential", delay: 30000 } }
+      );
+      console.log(`[Checkup] PatientPath build enqueued for org ${org.id}`);
+    } catch (ppErr: any) {
+      console.error(`[Checkup] Failed to enqueue PatientPath build:`, ppErr.message);
+    }
 
     return res.json({
       success: true,

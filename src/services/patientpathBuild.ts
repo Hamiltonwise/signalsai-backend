@@ -87,12 +87,28 @@ export async function buildPatientPathForOrg(orgId: number): Promise<boolean> {
     // Find the org's place_id from various sources
     let placeId: string | null = null;
 
+    // Check checkup_data first (most reliable for Checkup-originated accounts)
+    if (org.checkup_data) {
+      try {
+        const cd = typeof org.checkup_data === "string" ? JSON.parse(org.checkup_data) : org.checkup_data;
+        if (cd?.placeId) placeId = cd.placeId;
+      } catch {}
+    }
+    if (!placeId && org.business_data) {
+      try {
+        const bd = typeof org.business_data === "string" ? JSON.parse(org.business_data) : org.business_data;
+        if (bd?.checkup_place_id) placeId = bd.checkup_place_id;
+      } catch {}
+    }
+
     // Check review_requests for a stored place_id
-    const reviewReq = await db("review_requests")
-      .where({ organization_id: orgId })
-      .whereNotNull("place_id")
-      .first();
-    if (reviewReq?.place_id) placeId = reviewReq.place_id;
+    if (!placeId) {
+      const reviewReq = await db("review_requests")
+        .where({ organization_id: orgId })
+        .whereNotNull("place_id")
+        .first();
+      if (reviewReq?.place_id) placeId = reviewReq.place_id;
+    }
 
     // Check google_properties for external_id
     if (!placeId) {

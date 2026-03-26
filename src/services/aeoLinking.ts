@@ -70,7 +70,7 @@ export function getSpokeLinks(
  */
 export async function updateAllSpokeLinks(): Promise<number> {
   const pages = await knex("programmatic_pages")
-    .where({ published: true })
+    .where({ status: "published" })
     .select("id", "specialty_slug", "city_slug", "state_abbr");
 
   let updated = 0;

@@ -10,8 +10,6 @@ import knex from "../database/connection";
 import { SPECIALTIES } from "../data/cityData";
 import { getSpokeLinks, renderSpokeLinksHtml } from "../services/aeoLinking";
 
-type SpecialtyEntry = (typeof SPECIALTIES)[number];
-
 const programmaticPagesRoutes = express.Router();
 
 const VALID_SPECIALTY_SLUGS = new Set(SPECIALTIES.map((s) => s.slug));
@@ -44,7 +42,7 @@ programmaticPagesRoutes.get("/:pageSlug", async (req: Request, res: Response) =>
     }
 
     const page = await knex("programmatic_pages")
-      .where({ page_slug: pageSlug, published: true })
+      .where({ page_slug: pageSlug, status: "published" })
       .first();
 
     if (!page) {
@@ -91,7 +89,7 @@ programmaticPagesRoutes.get("/:pageSlug", async (req: Request, res: Response) =>
     // Increment view counter (fire-and-forget)
     knex("programmatic_pages")
       .where({ page_slug: pageSlug })
-      .increment("organic_visits_30d", 1)
+      .increment("page_views", 1)
       .catch(() => {});
 
     // Return full page data (frontend renders the template)

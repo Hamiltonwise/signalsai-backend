@@ -32,11 +32,10 @@ async function main() {
 
   // Find draft pages with real competitor data (non-empty competitors_snapshot)
   let query = db("programmatic_pages")
-    .where("status", "draft")
+    .where("published", false)
     .whereNotNull("competitors_snapshot")
     .whereRaw("competitors_snapshot::text != '[]'")
     .whereRaw("competitors_snapshot::text != 'null'")
-    .orderByRaw("COALESCE(lat, 0) DESC") // Prioritize pages with coordinates
     .limit(limit);
 
   if (specialty) {
@@ -67,7 +66,7 @@ async function main() {
   const published = await db("programmatic_pages")
     .whereIn("id", ids)
     .update({
-      status: "published",
+      published: true,
       published_at: new Date(),
       updated_at: new Date(),
     });
@@ -78,8 +77,8 @@ async function main() {
   const stats = await db("programmatic_pages")
     .select(
       db.raw("COUNT(*) as total"),
-      db.raw("COUNT(*) FILTER (WHERE status = 'published') as published"),
-      db.raw("COUNT(*) FILTER (WHERE status = 'draft') as draft")
+      db.raw("COUNT(*) FILTER (WHERE published = true) as published"),
+      db.raw("COUNT(*) FILTER (WHERE published = false) as draft")
     )
     .first();
 

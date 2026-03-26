@@ -297,3 +297,13 @@ export function getInternalLinks(
 
   return { sameSpecialty, sameCity, nearbyCity };
 }
+
+/** Fetch a single published page by slug */
+export async function getPageBySlug(slug: string) {
+  return ProgrammaticPageModel.findBySlug(slug);
+}
+
+/** Fetch all published pages (for sitemap, hub pages) */
+export async function getPublishedPages() {
+  return ProgrammaticPageModel.findPublished();
+}
