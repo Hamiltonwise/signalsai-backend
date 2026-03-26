@@ -17,7 +17,7 @@ import {
 import type { PlaceDetails } from "../../api/places";
 import { sendCheckupEmail, triggerBuild } from "../../api/checkup";
 import { trackEvent } from "../../api/tracking";
-import { withTimeout } from "./conferenceFallback";
+import { withTimeout, getSourceChannel } from "./conferenceFallback";
 
 // ---------------------------------------------------------------------------
 // Types — passed via React Router state from the scanning phase
@@ -513,7 +513,7 @@ export default function ResultsScreen() {
             place_id: place.placeId,
             relationship,
             checkup_score: score.composite,
-            source_channel: new URLSearchParams(window.location.search).get("source") || new URLSearchParams(window.location.search).get("ref") || undefined,
+            source_channel: getSourceChannel() || new URLSearchParams(window.location.search).get("ref") || undefined,
             checkup_data: {
               score,
               topCompetitor: topCompetitor || null,

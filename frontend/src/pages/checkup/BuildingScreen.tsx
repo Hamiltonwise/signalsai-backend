@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, Navigate, useNavigate } from "react-router-dom";
-import { isConferenceMode } from "./conferenceFallback";
+import { isConferenceMode, clearFlowParams } from "./conferenceFallback";
 
 /**
  * /checkup/building -- transition screen after account creation.
@@ -47,8 +47,8 @@ export default function BuildingScreen() {
     const conference = isConferenceMode();
     const destination = conference ? "/thank-you" : "/dashboard";
     const timer = setTimeout(() => {
-      // Clear conference mode flag so it doesn't persist beyond the flow
-      if (conference) localStorage.removeItem("alloro_conference_mode");
+      // Clear all flow params so they don't persist beyond the checkup
+      clearFlowParams();
       navigate(destination, { replace: true });
     }, 3500);
     return () => clearTimeout(timer);

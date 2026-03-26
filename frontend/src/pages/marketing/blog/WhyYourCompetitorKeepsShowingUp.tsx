@@ -6,6 +6,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import MarketingLayout from "../../../components/marketing/MarketingLayout";
+import BlogEmailCapture from "../../../components/marketing/BlogEmailCapture";
 
 export default function WhyYourCompetitorKeepsShowingUp() {
   return (
@@ -126,6 +127,11 @@ export default function WhyYourCompetitorKeepsShowingUp() {
             See my market
             <ArrowRight className="w-4 h-4" />
           </Link>
+        </div>
+
+        {/* Email capture */}
+        <div className="mt-12">
+          <BlogEmailCapture />
         </div>
 
         {/* Related reading */}
