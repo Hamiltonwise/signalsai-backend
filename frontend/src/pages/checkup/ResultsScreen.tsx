@@ -440,7 +440,7 @@ export default function ResultsScreen() {
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [emailSubmitted, _setEmailSubmitted] = useState(false);
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [relationship, setRelationship] = useState("owner");
   const [weeklyUpdates, setWeeklyUpdates] = useState(true);
@@ -540,6 +540,10 @@ export default function ResultsScreen() {
       return;
     }
 
+    // Mark gate as complete — unblurs findings, shows share UI
+    setEmailSubmitted(true);
+    setEmailSending(false);
+
     // Step 2: Fire email send in background
     sendCheckupEmail({
       email: email.trim(),
@@ -574,8 +578,8 @@ export default function ResultsScreen() {
       city: place.city || "",
     }).catch(() => {});
 
-    // Step 5: Navigate to dashboard (they now have an account)
-    navigate("/dashboard", { replace: true });
+    // Step 5: Navigate to dashboard (small delay lets auth context pick up the new token)
+    setTimeout(() => navigate("/dashboard", { replace: true }), 500);
   };
 
   // Blur gate CTA — WO4: use real competitor name

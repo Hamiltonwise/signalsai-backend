@@ -67,7 +67,7 @@ function competitorTerm(
   }
 
   // 4. Fallback
-  return "competitor";
+  return "provider in your area";
 }
 
 export default function EntryScreen() {
