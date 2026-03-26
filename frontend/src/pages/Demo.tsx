@@ -325,9 +325,9 @@ function DemoProgressReport() {
           <p className="text-[10px] text-gray-400">#6 → #3</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
-          <p className="text-xl font-black text-[#212D40]">+12</p>
+          <p className="text-xl font-black text-[#212D40]">+19</p>
           <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Reviews</p>
-          <p className="text-[10px] text-gray-400">22 → 34</p>
+          <p className="text-[10px] text-gray-400">42 → 61</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
           <p className="text-xl font-black text-[#D56753]">+19</p>
