@@ -17,6 +17,7 @@ import {
 import type { PlaceDetails } from "../../api/places";
 import { sendCheckupEmail, triggerBuild } from "../../api/checkup";
 import { trackEvent } from "../../api/tracking";
+import { withTimeout } from "./conferenceFallback";
 
 // ---------------------------------------------------------------------------
 // Types — passed via React Router state from the scanning phase
@@ -501,27 +502,37 @@ export default function ResultsScreen() {
 
     // Step 1: Create account via Checkup gate endpoint (no email verification)
     try {
-      const createRes = await fetch("/api/checkup/create-account", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-          practice_name: place.name,
-          place_id: place.placeId,
-          relationship,
-          checkup_score: score.composite,
-          source_channel: new URLSearchParams(window.location.search).get("source") || new URLSearchParams(window.location.search).get("ref") || undefined,
-          checkup_data: {
-            score,
-            topCompetitor: topCompetitor || null,
-            market: market || null,
-            findingSummary: findings[0]?.detail || null,
-            placeId: place.placeId || null,
-            reviewCount: place.reviewCount || 0,
-          },
+      const createRes = await withTimeout(
+        fetch("/api/checkup/create-account", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim(),
+            password,
+            practice_name: place.name,
+            place_id: place.placeId,
+            relationship,
+            checkup_score: score.composite,
+            source_channel: new URLSearchParams(window.location.search).get("source") || new URLSearchParams(window.location.search).get("ref") || undefined,
+            checkup_data: {
+              score,
+              topCompetitor: topCompetitor || null,
+              market: market || null,
+              findingSummary: findings[0]?.detail || null,
+              placeId: place.placeId || null,
+              reviewCount: place.reviewCount || 0,
+            },
+          }),
         }),
-      });
+        10000
+      );
+
+      if (!createRes) {
+        setEmailError("Connection timed out. Check your WiFi and try again.");
+        setEmailSending(false);
+        return;
+      }
+
       const createData = await createRes.json();
 
       if (!createRes.ok || !createData.success) {
@@ -550,19 +561,22 @@ export default function ResultsScreen() {
     setEmailSubmitted(true);
     setEmailSending(false);
 
-    // Step 2: Fire email send in background
-    sendCheckupEmail({
-      email: email.trim(),
-      practiceName: place.name,
-      city: place.city || "",
-      compositeScore: score.composite,
-      topCompetitorName: topCompetitor?.name || null,
-      topCompetitorReviews: topCompetitor?.reviewCount || null,
-      practiceReviews: place.reviewCount,
-      finding: findings[0]?.detail || "",
-      rank: market?.rank || 0,
-      totalCompetitors: market?.totalCompetitors || 0,
-    }).catch(() => {});
+    // Step 2: Fire email send in background (5s timeout, fire-and-forget)
+    withTimeout(
+      sendCheckupEmail({
+        email: email.trim(),
+        practiceName: place.name,
+        city: place.city || "",
+        compositeScore: score.composite,
+        topCompetitorName: topCompetitor?.name || null,
+        topCompetitorReviews: topCompetitor?.reviewCount || null,
+        practiceReviews: place.reviewCount,
+        finding: findings[0]?.detail || "",
+        rank: market?.rank || 0,
+        totalCompetitors: market?.totalCompetitors || 0,
+      }),
+      5000
+    ).catch(() => {});
 
     // Step 3: Track event
     trackEvent("checkup.email_captured", {
@@ -575,14 +589,17 @@ export default function ResultsScreen() {
       intent: state.intent || null,
     });
 
-    // Step 4: Trigger build
-    triggerBuild({
-      email: email.trim(),
-      placeId: place.placeId,
-      practiceName: place.name,
-      specialty: place.category || "",
-      city: place.city || "",
-    }).catch(() => {});
+    // Step 4: Trigger build (5s timeout, fire-and-forget)
+    withTimeout(
+      triggerBuild({
+        email: email.trim(),
+        placeId: place.placeId,
+        practiceName: place.name,
+        specialty: place.category || "",
+        city: place.city || "",
+      }),
+      5000
+    ).catch(() => {});
 
     // Step 5: Route through BuildingScreen (brand moment), then auto-nav to dashboard
     setTimeout(() => navigate("/checkup/building", {

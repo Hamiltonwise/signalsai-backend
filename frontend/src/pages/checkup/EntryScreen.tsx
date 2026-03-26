@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, MapPin, Loader2, ArrowRight, UserCheck } from "lucide-react";
 import { searchPlaces, getPlaceDetails } from "../../api/places";
 import { validateReferralCode } from "../../api/checkup";
+import { withTimeout } from "./conferenceFallback";
 import type { PlaceSuggestion, PlaceDetails } from "../../api/places";
 
 /**
@@ -88,8 +89,8 @@ export default function EntryScreen() {
   // Validate referral code on mount
   useEffect(() => {
     if (!refCode || refCode.length !== 8) return;
-    validateReferralCode(refCode).then((res) => {
-      if (res.valid && res.referrerName) {
+    withTimeout(validateReferralCode(refCode), 3000).then((res) => {
+      if (res && res.valid && res.referrerName) {
         setReferrerName(res.referrerName);
       }
     });
@@ -117,10 +118,15 @@ export default function EntryScreen() {
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await searchPlaces(value, sessionTokenRef.current);
-        if (res.success) {
+        const res = await withTimeout(
+          searchPlaces(value, sessionTokenRef.current),
+          5000
+        );
+        if (res && res.success) {
           setSuggestions(res.suggestions);
           setNoResults(res.suggestions.length === 0);
+        } else if (!res) {
+          setSearchError(true);
         }
       } catch {
         setSearchError(true);
@@ -137,14 +143,16 @@ export default function EntryScreen() {
       setQuery(suggestion.mainText);
 
       try {
-        const res = await getPlaceDetails(
-          suggestion.placeId,
-          sessionTokenRef.current
+        const res = await withTimeout(
+          getPlaceDetails(suggestion.placeId, sessionTokenRef.current),
+          5000
         );
-        if (res.success) {
+        if (res && res.success) {
           setSelectedPlace(res.place);
           // Reset session token after a complete session
           sessionTokenRef.current = crypto.randomUUID();
+        } else if (!res) {
+          setSearchError(true);
         }
       } catch {
         // Let user retry
