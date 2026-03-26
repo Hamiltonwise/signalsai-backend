@@ -294,6 +294,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/dashboard/progress",
       showDuringOnboarding: false,
     },
+    {
+      label: "Intelligence",
+      icon: <Shield size={18} />,
+      path: "/dashboard/intelligence",
+      showDuringOnboarding: false,
+    },
     // Locations: owner + manager only (multi-location management)
     ...(isManagerOrAbove
       ? [
