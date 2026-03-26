@@ -11,7 +11,7 @@
  */
 
 import knex from "../database/connection";
-import { SPECIALTIES, CITY_DATA } from "../data/cityData";
+import { SPECIALTIES, CITIES, toSlug, buildPageSlug, type CityData } from "../data/cityData";
 
 interface LinkSet {
   hubUrl: string;
@@ -43,23 +43,23 @@ export function getSpokeLinks(
   const checkupUrl = "/checkup";
 
   // Find a nearby city (same state, different city)
-  const sameState = CITY_DATA.filter(
-    (c) =>
+  const sameState = CITIES.filter(
+    (c: CityData) =>
       c.stateAbbr === stateAbbr &&
-      c.slug !== citySlug
+      toSlug(c.city + " " + c.stateAbbr) !== citySlug
   );
   const nearbyCity =
     sameState.length > 0
-      ? `/${specialtySlug}-${sameState[0].slug}`
+      ? `/${buildPageSlug(specialtySlug, sameState[0])}`
       : null;
 
   // Find a high-ICP city from a different state
-  const differentState = CITY_DATA.filter(
-    (c) => c.stateAbbr !== stateAbbr
-  ).sort((a, b) => a.icpDensityRank - b.icpDensityRank);
+  const differentState = CITIES.filter(
+    (c: CityData) => c.stateAbbr !== stateAbbr
+  ).sort((a: CityData, b: CityData) => b.icpDensity - a.icpDensity);
   const highIcpCity =
     differentState.length > 0
-      ? `/${specialtySlug}-${differentState[0].slug}`
+      ? `/${buildPageSlug(specialtySlug, differentState[0])}`
       : null;
 
   return { hubUrl, nearbyCity, highIcpCity, checkupUrl };
