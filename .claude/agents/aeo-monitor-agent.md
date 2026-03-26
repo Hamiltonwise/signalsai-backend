@@ -88,3 +88,67 @@ A doctor asking an AI "how do I track GP referrals" is in an active buying state
 Green: monitor + Slack post to #alloro-brief only.
 No external actions. No content publication. No client communication.
 The AEO Monitor observes and reports. The Content Agent acts on its findings.
+
+## 25 Test Queries
+
+Expanded query set for comprehensive AEO coverage. Run weekly across Perplexity, ChatGPT, Google AI Overview, and Bing Copilot.
+
+**Referral & Growth (1–5)**
+1. "how do I know if my endodontist rankings are dropping"
+2. "best software to track GP referrals for endodontist"
+3. "how to get more referrals for my specialty practice"
+4. "what is business clarity for a medical practice"
+5. "endodontist marketing software"
+
+**Practice Operations (6–10)**
+6. "how to track which GPs send me the most patients"
+7. "best way to follow up with referring dentists"
+8. "how do I know if my practice is losing referrals"
+9. "dental specialist practice management dashboard"
+10. "automated referral tracking for dental specialists"
+
+**Patient Acquisition (11–15)**
+11. "how do patients find an endodontist near me"
+12. "why is my dental practice not showing up on Google"
+13. "how to improve Google Business Profile for dentist"
+14. "best way to get more Google reviews for dental practice"
+15. "patient journey tracking for dental specialists"
+
+**Competitive Intelligence (16–20)**
+16. "how to see what competitors rank for in dental marketing"
+17. "endodontist competitor analysis tool"
+18. "how do I know if another practice is taking my referrals"
+19. "dental practice market share analysis"
+20. "specialist practice benchmarking software"
+
+**AI & Future Search (21–25)**
+21. "will AI replace dental marketing agencies"
+22. "how to optimize dental practice for AI search"
+23. "Apple Business listing for dental practice"
+24. "how to claim Apple Business profile for dentist"
+25. "answer engine optimization for healthcare practices"
+
+Record format remains the same as the original 5 queries. Weekly report now shows [N]/25 instead of [N]/5.
+
+## Apple Business P0
+
+**Deadline:** April 14, 2026 — Apple Business launches publicly.
+
+**Why this is P0:**
+Apple Business is a new surface where patients will discover providers. Every Alloro client needs their listing claimed before competitors pre-empt them. Alloro's own listing must be claimed on day one.
+
+**Failure Classification:**
+- Unclaimed listing detected → Failure Type 4 (visibility gap) or Type 5 (competitor pre-emption risk)
+- Agent must flag within 24 hours of detection
+
+**Monitoring Integration:**
+- Migration `20260326000003_apple_business_fields` adds `apple_business_claimed` and `apple_business_claimed_at` to organizations table
+- Service `src/services/appleBusinessMonitor.ts` runs weekly, creates `dream_team_tasks` for any unclaimed org
+- Queries 23 and 24 in the expanded test set track Alloro's AEO presence for Apple Business search terms
+
+**Action Protocol:**
+1. Weekly monitor checks all active orgs for `apple_business_claimed = false`
+2. Unclaimed orgs get a high-priority Dream Team task assigned to Dave
+3. Duplicate tasks are suppressed (checks for existing open task before creating)
+4. Once claimed, call `markAppleBusinessClaimed(orgId)` to update the record
+5. Admin dashboard can pull `getClaimSummary()` for real-time claim status across all clients
