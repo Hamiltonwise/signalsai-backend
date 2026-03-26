@@ -110,6 +110,28 @@ export const CONFERENCE_ANALYSIS = {
 };
 
 /**
+ * Get the source channel, checking URL params then localStorage.
+ * Persists on first detection so it survives React Router navigation.
+ */
+export function getSourceChannel(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const fromUrl = params.get("source");
+  if (fromUrl) {
+    localStorage.setItem("alloro_source_channel", fromUrl);
+    return fromUrl;
+  }
+  return localStorage.getItem("alloro_source_channel");
+}
+
+/**
+ * Clear all persisted flow params (call after flow completes).
+ */
+export function clearFlowParams(): void {
+  localStorage.removeItem("alloro_conference_mode");
+  localStorage.removeItem("alloro_source_channel");
+}
+
+/**
  * Build a personalized conference fallback using the real practice's data.
  * Randomizes the score in a realistic range and injects the actual
  * practice name, city, rating, and review count so every attendee
