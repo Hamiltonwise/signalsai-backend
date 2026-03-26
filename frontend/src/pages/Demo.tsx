@@ -123,9 +123,9 @@ const TOP_MOVES = [
 
 const NEXT_90 = [
   {
-    title: "Collect 28 new Google reviews (3/week for 10 weeks)",
-    why: "At current pace you'll pass Wasatch Endodontics by June. That makes you the #1 reviewed endodontist in Salt Lake City.",
-    impact: "Projected move to #1 position",
+    title: "Collect 3 Google reviews per week for 10 weeks",
+    why: "At 3/week you close the gap with Wasatch Endodontics by 30 reviews. Combined with your higher engagement rate, that moves you from #3 to #2.",
+    impact: "Projected move to #2 position",
   },
   {
     title: "Re-engage Dr. Torres — she hasn't referred in 40 days",
