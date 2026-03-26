@@ -12,6 +12,7 @@ import type { CheckupResults } from "./ResultsScreen";
 import { trackEvent } from "../../api/tracking";
 import {
   isConferenceMode,
+  isOfflineConference,
   withTimeout,
   CONFERENCE_ANALYSIS,
 } from "./conferenceFallback";

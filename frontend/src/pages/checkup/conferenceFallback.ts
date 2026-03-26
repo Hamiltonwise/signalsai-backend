@@ -110,6 +110,14 @@ export function isConferenceMode(): boolean {
 }
 
 /**
+ * True when conference mode is active AND the browser has no network.
+ * Skips the API call entirely instead of waiting 5s for an inevitable timeout.
+ */
+export function isOfflineConference(): boolean {
+  return isConferenceMode() && !navigator.onLine;
+}
+
+/**
  * Wrap an API call with a timeout. On timeout, returns null (caller uses fallback).
  */
 export function withTimeout<T>(
