@@ -34,45 +34,6 @@ async function fetchJSON(path: string) {
   return res.json();
 }
 
-// Score ring component
-function ScoreRing({ score, label }: { score: number | null; label: string }) {
-  const displayScore = score ?? 0;
-  const circumference = 2 * Math.PI * 40;
-  const progress = (displayScore / 100) * circumference;
-  const color =
-    displayScore >= 80
-      ? "#10b981"
-      : displayScore >= 50
-        ? "#f59e0b"
-        : "#ef4444";
-
-  return (
-    <div className="flex flex-col items-center">
-      <svg width="100" height="100" className="-rotate-90">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="#f3f4f6" strokeWidth="8" />
-        <circle
-          cx="50"
-          cy="50"
-          r="40"
-          fill="none"
-          stroke={score !== null ? color : "#e5e7eb"}
-          strokeWidth="8"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference - progress}
-          strokeLinecap="round"
-          className="transition-all duration-700"
-        />
-      </svg>
-      <div className="absolute mt-7">
-        <p className="text-2xl font-black text-[#212D40]">
-          {score !== null ? score : "--"}
-        </p>
-      </div>
-      <p className="text-xs font-medium text-gray-400 mt-2">{label}</p>
-    </div>
-  );
-}
-
 // SEO Tab
 function SEOTab() {
   const { data, isLoading } = useQuery({

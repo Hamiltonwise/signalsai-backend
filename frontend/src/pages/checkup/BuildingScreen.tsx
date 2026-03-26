@@ -1,4 +1,5 @@
-import { useLocation, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useLocation, Navigate, useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 
 /**
@@ -15,7 +16,16 @@ interface BuildingState {
 
 export default function BuildingScreen() {
   const location = useLocation();
+  const navigate = useNavigate();
   const state = location.state as BuildingState | undefined;
+
+  // Auto-navigate to dashboard after 4 seconds (brand moment, then value)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      navigate("/dashboard", { replace: true });
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [navigate]);
 
   if (!state?.practiceName) {
     return <Navigate to="/checkup" replace />;

@@ -80,7 +80,25 @@ export const CONFERENCE_ANALYSIS = {
     avgReviews: 151,
     rank: 3,
   },
-  gaps: [],
+  gaps: [
+    {
+      id: "review_race",
+      label: "223 reviews to pass Wasatch Endodontics",
+      current: 61,
+      target: 284,
+      unit: "reviews",
+      action: "Ask 3 patients for a Google review this week. At that pace, you close the gap in 18 weeks.",
+      timeEstimate: "~18 weeks at current pace",
+      competitorName: "Wasatch Endodontics",
+      velocity: {
+        clientWeekly: 0.6,
+        competitorWeekly: 2.7,
+        weeksToPass: 73,
+        thisWeekAsk: 3,
+        competitorName: "Wasatch Endodontics",
+      },
+    },
+  ],
 };
 
 /**

@@ -578,8 +578,15 @@ export default function ResultsScreen() {
       city: place.city || "",
     }).catch(() => {});
 
-    // Step 5: Navigate to dashboard (small delay lets auth context pick up the new token)
-    setTimeout(() => navigate("/dashboard", { replace: true }), 500);
+    // Step 5: Route through BuildingScreen (brand moment), then auto-nav to dashboard
+    setTimeout(() => navigate("/checkup/building", {
+      replace: true,
+      state: {
+        practiceName: place.name,
+        specialty: place.category || "",
+        email: email.trim(),
+      },
+    }), 500);
   };
 
   // Blur gate CTA — WO4: use real competitor name

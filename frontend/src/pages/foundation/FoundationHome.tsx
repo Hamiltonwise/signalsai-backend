@@ -1,5 +1,5 @@
 /**
- * Heroes & Founders Foundation — Homepage (WO-11)
+ * Heroes & Founders Foundation -- Homepage (WO-11)
  * Route: /foundation
  * "Built for people who chose service first."
  */
