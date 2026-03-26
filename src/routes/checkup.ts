@@ -982,4 +982,91 @@ checkupRoutes.post("/vendor", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/checkup/share
+ *
+ * Generate a shareable checkup result card.
+ * Input: score, market city, rank, totalCompetitors, topCompetitorName
+ * Returns: share_id that resolves to a public card at /checkup/shared/:id
+ *
+ * This is the viral loop. Every checkup becomes a distribution event.
+ */
+checkupRoutes.post("/share", async (req, res) => {
+  try {
+    const { score, city, rank, totalCompetitors, topCompetitorName, specialty } = req.body;
+
+    if (!score || !city) {
+      return res.status(400).json({ success: false, error: "Score and city required" });
+    }
+
+    // Generate a unique share ID (URL-safe, 10 chars)
+    const shareId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map((b) => b.toString(36).padStart(2, "0"))
+      .join("")
+      .slice(0, 10);
+
+    // Store the shareable card data (no PII, no practice name, just market data)
+    await db("checkup_shares").insert({
+      share_id: shareId,
+      score: Math.round(score),
+      city,
+      specialty: specialty || null,
+      rank: rank || null,
+      total_competitors: totalCompetitors || null,
+      top_competitor_name: topCompetitorName || null,
+      created_at: new Date(),
+    });
+
+    return res.json({
+      success: true,
+      shareId,
+      shareUrl: `${process.env.APP_URL || "https://app.getalloro.com"}/checkup/shared/${shareId}`,
+    });
+  } catch (error: any) {
+    console.error("[Checkup] Share error:", error.message);
+    return res.status(500).json({ success: false, error: "Failed to create share link" });
+  }
+});
+
+/**
+ * GET /api/checkup/shared/:shareId
+ *
+ * Public endpoint. Returns the shareable card data.
+ * No auth required. No PII exposed.
+ */
+checkupRoutes.get("/shared/:shareId", async (req, res) => {
+  try {
+    const { shareId } = req.params;
+
+    const share = await db("checkup_shares")
+      .where({ share_id: shareId })
+      .first();
+
+    if (!share) {
+      return res.status(404).json({ success: false, error: "Share not found" });
+    }
+
+    // Increment view count
+    db("checkup_shares")
+      .where({ share_id: shareId })
+      .increment("views", 1)
+      .catch(() => {}); // fire-and-forget
+
+    return res.json({
+      success: true,
+      card: {
+        score: share.score,
+        city: share.city,
+        specialty: share.specialty,
+        rank: share.rank,
+        totalCompetitors: share.total_competitors,
+        topCompetitorName: share.top_competitor_name,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Checkup] Shared get error:", error.message);
+    return res.status(500).json({ success: false, error: "Failed to load share" });
+  }
+});
+
 export default checkupRoutes;

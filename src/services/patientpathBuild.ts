@@ -199,6 +199,7 @@ export async function buildPatientPathForOrg(orgId: number): Promise<boolean> {
       console.log(`[PatientPath] No reviews found for ${org.name}, skipping research`);
       await db("organizations").where({ id: orgId }).update({
         patientpath_status: "preview_ready",
+        patientpath_preview_url: `https://preview.alloro.site/${orgId}`,
         research_brief: JSON.stringify({
           irreplaceable_thing: "This practice is building its reputation. Reviews will reveal their unique value.",
           fear_categories: [],
@@ -258,9 +259,11 @@ ${competitorText || "None found"}`,
 
     // ── Step 3: Set status ──
 
+    const previewUrl = `https://preview.alloro.site/${orgId}`;
     await db("organizations").where({ id: orgId }).update({
       research_brief: JSON.stringify(researchBrief),
       patientpath_status: "preview_ready",
+      patientpath_preview_url: previewUrl,
     });
 
     console.log(`[PatientPath] Complete for ${org.name}: "${researchBrief.irreplaceable_thing?.slice(0, 80)}..."`);

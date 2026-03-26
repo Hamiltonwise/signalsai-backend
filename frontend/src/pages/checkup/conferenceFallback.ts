@@ -72,6 +72,13 @@ export const CONFERENCE_ANALYSIS = {
       value: 3,
       impact: 0,
     },
+    {
+      type: "sentiment_insight",
+      title: "Your patients mention wait times",
+      detail: "4 of your last 10 reviews mention wait time or scheduling delays. Summit Specialists reviews never mention this. Patients notice.",
+      value: 0,
+      impact: 0,
+    },
   ],
   totalImpact: 10755,
   market: {

@@ -12,6 +12,7 @@ import {
   Target,
   Copy,
   Share2,
+  Zap,
 } from "lucide-react";
 import type { PlaceDetails } from "../../api/places";
 import { sendCheckupEmail, triggerBuild } from "../../api/checkup";
@@ -212,18 +213,20 @@ function FindingCard({
 }) {
   const isPositive =
     finding.type.includes("lead") || finding.type.includes("strong");
+  const isSentiment = finding.type === "sentiment_insight";
   const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     review_gap: MessageSquare,
     review_lead: MessageSquare,
     rating_gap: Star,
     rating_strong: Star,
     market_rank: MapPin,
+    sentiment_insight: Zap,
   };
   const Icon = iconMap[finding.type] || Target;
 
   return (
     <div
-      className={`relative bg-white border border-slate-200 rounded-xl p-4 ${blurred ? "select-none" : ""}`}
+      className={`relative ${isSentiment ? "bg-[#212D40] border-[#212D40]" : "bg-white border-slate-200"} border rounded-xl p-4 ${blurred ? "select-none" : ""}`}
     >
       {blurred && (
         <div className="absolute inset-0 backdrop-blur-[6px] bg-white/60 rounded-xl z-10" />
@@ -231,18 +234,18 @@ function FindingCard({
       <div className="flex items-start gap-3">
         <div
           className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-            isPositive ? "bg-emerald-50" : "bg-red-50"
+            isSentiment ? "bg-[#D56753]/20" : isPositive ? "bg-emerald-50" : "bg-red-50"
           }`}
         >
           <Icon
-            className={`w-4 h-4 ${isPositive ? "text-emerald-600" : "text-red-500"}`}
+            className={`w-4 h-4 ${isSentiment ? "text-[#D56753]" : isPositive ? "text-emerald-600" : "text-red-500"}`}
           />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-900">
+          <p className={`text-sm font-semibold ${isSentiment ? "text-white" : "text-slate-900"}`}>
             {finding.title}
           </p>
-          <p className="text-sm text-slate-500 mt-0.5">{finding.detail}</p>
+          <p className={`text-sm mt-0.5 ${isSentiment ? "text-white/70" : "text-slate-500"}`}>{finding.detail}</p>
           {finding.impact > 0 && (
             <p className="text-xs font-medium text-red-500 mt-1.5">
               Est. ${finding.impact.toLocaleString()}/yr at risk
@@ -910,30 +913,55 @@ export default function ResultsScreen() {
           </p>
         </div>
 
-        {/* Share prompt — quiet, not primary CTA */}
+        {/* Share prompt — viral loop for unicorn path */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-2">
             <Share2 className="w-4 h-4 text-slate-400" />
             <span className="text-sm font-medium text-slate-700">
-              Show a colleague what we found about their business.
+              Know a colleague who should see their score?
             </span>
           </div>
+          <p className="text-xs text-slate-500 mb-3">
+            Share a link that shows your market data (no practice name) with a prompt to take their own checkup.
+          </p>
           <button
             type="button"
-            onClick={() => {
-              const base = window.location.origin;
-              const shareUrl = state.refCode
-                ? `${base}/checkup?ref=${state.refCode}`
-                : `${base}/checkup`;
-              navigator.clipboard.writeText(shareUrl).then(() => {
-                setLinkCopied(true);
-                setTimeout(() => setLinkCopied(false), 2000);
-              });
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/checkup/share", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    score: state.score?.composite,
+                    city: state.place?.city,
+                    rank: state.market?.rank,
+                    totalCompetitors: state.market?.totalCompetitors,
+                    topCompetitorName: state.topCompetitor?.name,
+                    specialty: state.place?.category,
+                  }),
+                });
+                const data = await res.json();
+                if (data.success && data.shareUrl) {
+                  await navigator.clipboard.writeText(data.shareUrl);
+                  setLinkCopied(true);
+                  setTimeout(() => setLinkCopied(false), 2000);
+                }
+              } catch {
+                // Fallback to generic link
+                const base = window.location.origin;
+                const shareUrl = state.refCode
+                  ? `${base}/checkup?ref=${state.refCode}`
+                  : `${base}/checkup`;
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                  setLinkCopied(true);
+                  setTimeout(() => setLinkCopied(false), 2000);
+                });
+              }
             }}
             className="flex items-center gap-2 text-sm font-medium text-[#212D40] border border-[#212D40]/20 rounded-lg px-4 py-2.5 hover:border-[#212D40]/40 transition-colors"
           >
             <Copy className="w-3.5 h-3.5" />
-            {linkCopied ? "Copied!" : "Copy link"}
+            {linkCopied ? "Copied!" : "Share your market score"}
           </button>
         </div>
         </>
