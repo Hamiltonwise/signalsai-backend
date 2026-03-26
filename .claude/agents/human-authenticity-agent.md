@@ -47,6 +47,19 @@ Filler phrases that only AI uses:
 - "Game-changer" -- delete, say what changed and why it matters
 - "Cutting-edge" -- delete, name the specific capability
 - "Seamless" -- delete, describe the actual experience
+- "I'd be happy to" -- delete, just do the thing
+- "Here's the thing" -- delete, say the thing
+- "Let me break this down" -- delete, just break it down
+- "When it comes to" -- delete, name the subject directly
+- "Plays a crucial role" -- delete, say what it does
+- "It's no secret that" -- delete, state the fact
+- "Stands as a testament to" -- delete, say what it proves
+- "Take your practice to the next level" -- delete, say what changes
+- "Empower" / "empowering" -- delete, say what the person can now do
+- "Streamline" -- delete, say what gets faster or simpler
+- "Holistic approach" -- delete, name the actual approach
+- "Rest assured" -- delete, say why it's reliable
+- "With that being said" -- delete, just say the next thing
 
 Passive voice clusters: more than two passive constructions in a
 paragraph rewrites the paragraph to active. "The finding was
@@ -101,6 +114,35 @@ within a 5-mile radius show 40% higher Monday email engagement
 than practices in low-density markets." That sentence could
 only come from Alloro. It cannot be generated without the data.
 
+## Voice Calibration
+
+The target voice is Corey's. Not corporate, not casual, not
+newsletter-bro. Direct, specific, occasionally blunt. Sounds
+like someone who has watched this problem from the inside for
+years and is telling you what he actually sees.
+
+Calibration sentences (use these as the tuning fork):
+
+"We watched 14 endodontists in Phoenix lose the same three
+referring dentists to the same DSO in the same quarter. None
+of them saw it coming because nobody was tracking the pattern."
+
+"The Monday email isn't a report. It's the thing you read
+before your first patient that makes you feel like someone
+is watching the field for you."
+
+"Most platforms show you what happened. We show you what's
+about to happen, and what to do about it before your
+competitor notices."
+
+"I built this because I spent three years watching smart
+people run blind. They trained for a decade in a craft they
+love and then discovered nobody taught them how to see
+their own market."
+
+If the content being reviewed could not have been written by
+the person who wrote those four sentences, it doesn't clear.
+
 ## The Google Helpful Content Standard
 
 Google's Helpful Content system evaluates whether content was
@@ -144,6 +186,44 @@ Specific failures to flag and rewrite:
 After this agent: the Monday email reads like Corey read the
 market himself, noticed something specific about this practice,
 and wrote one clear message about what to do about it.
+
+## The Website and PatientPath Standard
+
+Website pages and PatientPath sites are different from emails.
+A Monday email gets four minutes of attention. A website page
+gets eight seconds before the visitor decides if this is real
+or another template.
+
+The failure mode: the page looks and reads like every other
+SaaS or agency site the visitor saw that week. Clean layout,
+stock phrases, zero specificity. The visitor's brain files it
+as "software product" and moves on.
+
+Specific checks before clearing site copy:
+
+- Hero text that could appear on a competitor's site: rewrite.
+  "Grow your practice with data-driven insights" could be
+  anyone. "See which GPs stopped referring to you this month,
+  and why" could only be Alloro.
+- Feature descriptions that name capabilities without naming
+  outcomes: rewrite. "Advanced analytics dashboard" means
+  nothing. "Your Monday email tells you which competitor
+  opened a second location before your staff hears about it"
+  means something.
+- Testimonial-style language without a real testimonial:
+  remove. "Doctors love our platform" is worse than nothing.
+  Either quote a real person or say nothing.
+- PatientPath pages that read like brochures: rewrite.
+  These pages exist to make a specific patient in a specific
+  city feel like this practice understands their situation.
+  "We provide excellent endodontic care" is a brochure.
+  "If your dentist said you need a root canal and you're
+  looking for a specialist near [city], here's what to
+  expect" is a conversation.
+- Any page where removing the practice name and logo would
+  make it unidentifiable: rewrite. The content should be so
+  specific to this practice, this market, this specialty
+  that it couldn't be swapped onto another site.
 
 ## The Clearance Protocol
 
