@@ -211,11 +211,67 @@ function CompetitorGap({ ranking, onCompetitorClick }: { ranking: RankingData | 
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PROOFLINE FINDINGS — One job: show what the agents discovered
+// CHECKUP INTELLIGENCE — Day 1: turn checkup data into intelligence
+// Biological-economic lens: need threatened + economic consequence
 // ═══════════════════════════════════════════════════════════════════
 
-function ProoflineFindings({ findings }: { findings: ProoflineFinding[] }) {
-  if (findings.length === 0) {
+// TODO: type this properly
+function buildCheckupIntelligence(ctx: any): string[] {
+  if (!ctx?.data) return [];
+  const insights: string[] = [];
+  const { market, topCompetitor, score } = ctx.data;
+
+  if (topCompetitor?.rating && market?.avgRating && market.avgRating > 4.5) {
+    insights.push(
+      `The average rating in your market is ${market.avgRating.toFixed(1)} stars. Practices below that lose visibility in Google's local pack.`
+    );
+  }
+
+  if (topCompetitor?.reviewCount && market?.avgReviews) {
+    const gap = topCompetitor.reviewCount - (market.avgReviews || 0);
+    if (gap > 20) {
+      insights.push(
+        `${topCompetitor.name} has ${topCompetitor.reviewCount} reviews, ${gap} more than the market average. Each review increases local search ranking and patient trust.`
+      );
+    }
+    if (topCompetitor.reviewCount > 50) {
+      const weeksToClose = Math.ceil(topCompetitor.reviewCount / 3);
+      insights.push(
+        `At 3 reviews per week, it would take ${weeksToClose} weeks to match ${topCompetitor.name}. Starting now changes your trajectory by Q3.`
+      );
+    }
+  }
+
+  if (market?.totalCompetitors && market.rank) {
+    if (market.rank > Math.ceil(market.totalCompetitors / 2)) {
+      insights.push(
+        `You rank #${market.rank} of ${market.totalCompetitors} in ${market.city || "your market"}. The top 3 capture over 70% of new patient searches.`
+      );
+    } else if (market.rank <= 3) {
+      insights.push(
+        `You're #${market.rank} of ${market.totalCompetitors} in ${market.city || "your market"}. Holding a top-3 position means you appear in Google's local pack for most searches.`
+      );
+    }
+  }
+
+  if (score?.visibility != null && score.visibility < 50) {
+    insights.push(
+      `Your online visibility score is ${score.visibility}/100. Potential patients searching for your specialty may find a competitor first.`
+    );
+  }
+
+  return insights.slice(0, 3);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PROOFLINE FINDINGS — One job: show what the agents discovered
+// Falls back to checkup intelligence on day 1
+// ═══════════════════════════════════════════════════════════════════
+
+function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFinding[]; checkupCtx?: any }) {
+  const checkupInsights = findings.length === 0 ? buildCheckupIntelligence(checkupCtx) : [];
+
+  if (findings.length === 0 && checkupInsights.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
         <div className="flex items-center gap-3 mb-3">
@@ -229,6 +285,29 @@ function ProoflineFindings({ findings }: { findings: ProoflineFinding[] }) {
         </div>
         <p className="text-sm text-gray-500">
           Alloro agents are analyzing your competitors. First findings appear after the next scheduled run.
+        </p>
+      </div>
+    );
+  }
+
+  if (findings.length === 0 && checkupInsights.length > 0) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white p-6">
+        <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-4">
+          What We Found
+        </p>
+        <div className="space-y-3">
+          {checkupInsights.map((insight, i) => (
+            <div key={i} className="flex gap-3">
+              <span className="shrink-0 w-6 h-6 rounded-lg bg-[#D56753]/10 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
+                {i + 1}
+              </span>
+              <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-gray-400 mt-4">
+          From your checkup scan. Live agent findings replace this after the first scheduled analysis.
         </p>
       </div>
     );
@@ -705,7 +784,7 @@ export default function DoctorDashboard() {
           {isOwnerOrManager && <WebsiteCard website={websiteData ?? null} />}
 
           {/* ══ BELOW THE FOLD ══ */}
-          {isOwnerOrManager && <ProoflineFindings findings={prooflineFindings} />}
+          {isOwnerOrManager && <ProoflineFindings findings={prooflineFindings} checkupCtx={checkupCtx} />}
           {canSendReviews && <ReviewRequestCard placeId={effectiveRanking?.placeId ?? null} practiceName={practiceName} />}
           {isProfileUnavailable && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
           {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}

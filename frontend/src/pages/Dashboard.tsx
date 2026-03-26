@@ -113,15 +113,11 @@ export default function Dashboard() {
     // Run both concurrently — wizard check doesn't depend on property refresh
     try {
       await Promise.all([
-        refreshUserProperties().then(() =>
-          console.log("[Dashboard] User properties refreshed from database")
-        ),
-        recheckWizardStatus().then(() =>
-          console.log("[Dashboard] Wizard status checked")
-        ),
+        refreshUserProperties(),
+        recheckWizardStatus(),
       ]);
     } catch (error) {
-      console.error("Failed post-onboarding setup:", error);
+      // Post-onboarding setup failed silently, wizard will retry
     } finally {
       setIsTransitioningToWizard(false);
     }
@@ -149,10 +145,6 @@ export default function Dashboard() {
     : onboardingCompleted === true
       ? (!hasProperties && !isWizardActive && !isTransitioningToWizard && !isWizardLoading ? "EMPTY_STATE" : "DASHBOARD")
     : "FALLBACK_ONBOARDING";
-  console.log("[Dashboard] render branch:", renderBranch, {
-    onboardingCompleted, hasProperties, isWizardActive, isWizardLoading, isTransitioningToWizard
-  });
-
   return (
     <div className="w-full max-w-[1600px] mx-auto min-h-screen flex flex-col bg-alloro-bg font-body text-alloro-navy">
       {/* Show loading state while checking onboarding */}
@@ -404,27 +396,21 @@ export default function Dashboard() {
               clientId={clientId}
               ready={ready}
               session={session}
-              onSuccess={() => {
-                console.log("GBP integration successful!");
-              }}
+              onSuccess={() => setHasProperties(true)}
             />
 
             <ClarityIntegrationModal
               isOpen={showClarityModal}
               onClose={() => setShowClarityModal(false)}
               clientId={clientId}
-              onSuccess={() => {
-                console.log("Clarity integration successful!");
-              }}
+              onSuccess={() => {}}
             />
 
             <PMSUploadModal
               isOpen={showPMSUpload}
               onClose={() => setShowPMSUpload(false)}
               clientId={clientId}
-              onSuccess={() => {
-                console.log("PMS upload successful!");
-              }}
+              onSuccess={() => {}}
             />
 
             {/* Connection Debug Panel */}
