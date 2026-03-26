@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -267,8 +268,8 @@ function ResumeDrawer({
                     {kpis.map((kpi, i) => (
                       <tr key={i}>
                         <td className="px-4 py-3 text-[#212D40] font-medium">{kpi.name}</td>
-                        <td className="px-4 py-3 text-gray-500">{kpi.target}</td>
-                        <td className="px-4 py-3 text-gray-500">{kpi.current}</td>
+                        <td className="px-4 py-3 text-gray-500">{kpi.target ?? "--"}</td>
+                        <td className="px-4 py-3 text-gray-500">{kpi.current ?? "--"}</td>
                         <td className="px-4 py-3">
                           <HealthDot status={kpi.status} size="h-2.5 w-2.5" />
                         </td>
@@ -435,6 +436,9 @@ function NodeTaskList({ nodeId, nodeName: _nodeName }: { nodeId: string; nodeNam
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ["dream-team-tasks"] });
     },
+    onError: () => {
+      toast.error("Couldn't save. Try again.");
+    },
   });
 
   const toggleMut = useMutation({
@@ -443,6 +447,9 @@ function NodeTaskList({ nodeId, nodeName: _nodeName }: { nodeId: string; nodeNam
       return updateDreamTeamTask(id, { status: next as any });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dream-team-tasks"] }),
+    onError: () => {
+      toast.error("Couldn't save. Try again.");
+    },
   });
 
   const tasks = data?.tasks || [];
@@ -582,6 +589,9 @@ function TaskHealthTab() {
       return updateDreamTeamTask(id, { status: next as any });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dream-team-tasks"] }),
+    onError: () => {
+      toast.error("Couldn't save. Try again.");
+    },
   });
 
   const tasks = data?.tasks || [];

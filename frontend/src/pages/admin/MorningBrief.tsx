@@ -20,7 +20,7 @@ import { apiGet } from "@/api/index";
 // ─── Zone 1: The Signal ─────────────────────────────────────────────
 
 function SignalZone() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["admin-signal"],
     queryFn: fetchSignal,
     refetchInterval: 60_000,
@@ -37,6 +37,10 @@ function SignalZone() {
     >
       {isLoading ? (
         <div className="mx-auto h-6 w-2/3 animate-pulse rounded bg-gray-200" />
+      ) : isError ? (
+        <p className="mx-auto max-w-3xl text-base text-gray-400">
+          Signal data unavailable — check back Monday
+        </p>
       ) : (
         <p className="mx-auto max-w-3xl text-2xl font-medium leading-relaxed text-[#212D40]">
           {signal}

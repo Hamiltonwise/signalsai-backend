@@ -244,9 +244,12 @@ function CompetitorGap({ rankings }: { rankings: RankingJob[] }) {
   )[0];
 
   const clientReviews =
-    fullResult?.ranking?.raw_data?.client_gbp?.totalReviewCount ?? 0;
-  const competitorReviews = topCompetitor?.totalReviews ?? 0;
-  const reviewDiff = competitorReviews - clientReviews;
+    fullResult?.ranking?.raw_data?.client_gbp?.totalReviewCount;
+  const competitorReviews = topCompetitor?.totalReviews;
+  const reviewDiff =
+    clientReviews != null && competitorReviews != null
+      ? competitorReviews - clientReviews
+      : null;
 
   return (
     <div
@@ -254,11 +257,13 @@ function CompetitorGap({ rankings }: { rankings: RankingJob[] }) {
       style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
     >
       <p className="text-base font-medium leading-relaxed text-[#212D40]">
-        <span className="font-bold">{topCompetitor.name}</span> holds position
+        <span className="font-bold">{topCompetitor.name || "Top competitor"}</span> holds position
         #1
-        {reviewDiff > 0
+        {reviewDiff != null && reviewDiff > 0
           ? ` with ${reviewDiff} more review${reviewDiff !== 1 ? "s" : ""}`
-          : ""}
+          : reviewDiff == null
+            ? ""
+            : ""}
         {topCompetitor.averageRating
           ? ` and a ${topCompetitor.averageRating.toFixed(1)}-star rating`
           : ""}

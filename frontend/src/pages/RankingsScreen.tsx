@@ -168,7 +168,7 @@ export default function RankingsScreen() {
   const queryClient = useQueryClient();
 
   // Fetch snapshots
-  const { data: snapshotData, isLoading: snapshotsLoading } = useQuery({
+  const { data: snapshotData, isLoading: snapshotsLoading, isError: isSnapshotsError } = useQuery({
     queryKey: ["rankings-snapshots"],
     queryFn: async () => {
       const res = await apiGet({ path: "/rankings-intelligence/snapshots" });
@@ -178,7 +178,7 @@ export default function RankingsScreen() {
   });
 
   // Fetch drift alerts
-  const { data: alertsData } = useQuery({
+  const { data: alertsData, isError: isAlertsError } = useQuery({
     queryKey: ["drift-alerts"],
     queryFn: async () => {
       const res = await apiGet({ path: "/rankings-intelligence/drift-alerts" });
@@ -248,10 +248,10 @@ export default function RankingsScreen() {
               )}
             </div>
             <div className="text-right">
-              {latest.competitor_name && (
+              {(latest.competitor_name || latest.competitor_review_count) && (
                 <div>
                   <p className="text-xs text-white/50 uppercase tracking-wider font-bold">#1 Position</p>
-                  <p className="text-sm font-semibold text-white mt-1">{latest.competitor_name}</p>
+                  <p className="text-sm font-semibold text-white mt-1">{latest.competitor_name || "Top competitor"}</p>
                   {latest.competitor_review_count && (
                     <p className="text-xs text-white/50">{latest.competitor_review_count} reviews</p>
                   )}
@@ -271,8 +271,13 @@ export default function RankingsScreen() {
         </div>
       )}
 
+      {/* Error state */}
+      {(isSnapshotsError || isAlertsError) && (
+        <p className="text-xs text-gray-400 italic">Rankings update every Sunday.</p>
+      )}
+
       {/* Empty state */}
-      {!snapshotsLoading && snapshots.length === 0 && (
+      {!snapshotsLoading && !isSnapshotsError && snapshots.length === 0 && (
         <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-400">
           <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-40" />
           <p className="text-base font-medium">Competitor data updates every Sunday.</p>

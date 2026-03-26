@@ -548,7 +548,7 @@ export default function ProgressReport() {
   const practiceName = userProfile?.practiceName || "Your Business";
   const firstName = userProfile?.firstName || "there";
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError: isProgressError } = useQuery({
     queryKey: ["progress-report"],
     queryFn: async () => {
       const res = await apiGet({ path: "/progress-report" });
@@ -557,7 +557,7 @@ export default function ProgressReport() {
     staleTime: 5 * 60_000,
   });
 
-  const { data: enhanced } = useQuery({
+  const { data: enhanced, isError: isEnhancedError } = useQuery({
     queryKey: ["user-progress-report"],
     queryFn: async () => {
       const res = await apiGet({ path: "/user/progress-report" });
@@ -623,8 +623,13 @@ export default function ProgressReport() {
         </>
       )}
 
+      {/* Error state */}
+      {(isProgressError || isEnhancedError) && (
+        <p className="text-sm text-gray-500">Progress data is being compiled. Check back Monday.</p>
+      )}
+
       {/* No data state */}
-      {!isLoading && !data && (
+      {!isLoading && !isProgressError && !data && (
         <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-400">
           <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-40" />
           <p className="text-base font-medium">Your first progress report is building.</p>

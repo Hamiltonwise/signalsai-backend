@@ -270,7 +270,7 @@ function ProgressTracker() {
 // ─── Screen 1: Portfolio View ───────────────────────────────────────
 
 function PortfolioView() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError: isPortfolioError } = useQuery({
     queryKey: ["partner-portfolio"],
     queryFn: async () => {
       const res = await apiGet({ path: "/partner/portfolio" });
@@ -304,7 +304,7 @@ function PortfolioView() {
       </div>
 
       {/* Practice cards */}
-      {isLoading && (
+      {isLoading && !isPortfolioError && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 animate-pulse rounded-xl border border-gray-200 bg-white" />
@@ -312,7 +312,11 @@ function PortfolioView() {
         </div>
       )}
 
-      {!isLoading && portfolio.length === 0 && (
+      {isPortfolioError && (
+        <p className="text-sm text-gray-400 italic text-center py-8">Temporarily unavailable.</p>
+      )}
+
+      {!isLoading && !isPortfolioError && portfolio.length === 0 && (
         <div className="rounded-2xl border border-dashed border-gray-300 p-10 text-center">
           <Search className="h-8 w-8 text-gray-300 mx-auto mb-3" />
           <p className="text-base font-semibold text-[#212D40]">Run your first Checkup to add a practice.</p>
@@ -446,7 +450,7 @@ function CheckupLauncher() {
 // ─── Screen 3: Performance Dashboard ────────────────────────────────
 
 function PerformanceDashboard() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError: isPerfError } = useQuery({
     queryKey: ["partner-performance"],
     queryFn: async () => {
       const res = await apiGet({ path: "/partner/performance" });
@@ -454,6 +458,10 @@ function PerformanceDashboard() {
     },
     staleTime: 5 * 60_000,
   });
+
+  if (isPerfError) {
+    return <p className="text-sm text-gray-400 italic text-center py-8">Temporarily unavailable.</p>;
+  }
 
   if (isLoading) {
     return (
@@ -706,7 +714,7 @@ interface CMORecommendation {
 }
 
 function CMOAgent() {
-  const { data: voiceData, isLoading: voiceLoading, refetch: refetchVoice } = useQuery({
+  const { data: voiceData, isLoading: voiceLoading, isError: isVoiceError, refetch: refetchVoice } = useQuery({
     queryKey: ["partner-voice-profile"],
     queryFn: async () => {
       const res = await apiGet({ path: "/partner/voice-profile" });
@@ -715,7 +723,7 @@ function CMOAgent() {
     staleTime: 10 * 60_000,
   });
 
-  const { data: recommendations, isLoading: recsLoading } = useQuery({
+  const { data: recommendations, isLoading: recsLoading, isError: isRecsError } = useQuery({
     queryKey: ["partner-recommendations"],
     queryFn: async () => {
       const res = await apiGet({ path: "/partner/recommendations" });
@@ -737,6 +745,10 @@ function CMOAgent() {
   const [showCustom, setShowCustom] = useState(false);
 
   // Show onboarding if no voice profile, or editing mode
+  if (isVoiceError || isRecsError) {
+    return <p className="text-sm text-gray-400 italic text-center py-8">Temporarily unavailable.</p>;
+  }
+
   if (voiceLoading) {
     return <div className="h-40 animate-pulse rounded-2xl border border-gray-200 bg-white" />;
   }

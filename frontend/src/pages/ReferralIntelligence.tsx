@@ -92,7 +92,7 @@ function TopReferrers({ referrers }: { referrers: Referrer[] }) {
                 <td className="px-4 py-3 font-semibold text-[#212D40]">{r.name}</td>
                 <td className="px-4 py-3 text-right text-[#212D40]">{r.referrals}</td>
                 <td className="px-4 py-3 text-right font-semibold text-[#212D40]">
-                  ${r.revenue.toLocaleString()}
+                  {r.revenue != null && !isNaN(r.revenue) ? `$${r.revenue.toLocaleString()}` : "$--"}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <TrendIcon trend={r.trend} />
@@ -142,7 +142,7 @@ function DriftAlerts({ alerts }: { alerts: DriftAlert[] }) {
                   Annual Revenue at Risk
                 </p>
                 <p className="text-xl font-bold text-[#D56753]">
-                  ${a.annualValueAtRisk.toLocaleString()}
+                  {a.annualValueAtRisk != null && !isNaN(a.annualValueAtRisk) ? `$${a.annualValueAtRisk.toLocaleString()}` : "$--"}
                 </p>
                 <p className="text-[10px] text-gray-400">estimated per year</p>
               </div>
@@ -251,7 +251,7 @@ export default function ReferralIntelligence() {
   const { selectedLocation } = useLocationContext();
   const locationId = selectedLocation?.id ?? null;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["referral-intelligence", locationId],
     queryFn: async (): Promise<IntelligenceData> => {
       const params = locationId ? `?location_id=${locationId}` : "";
@@ -283,8 +283,16 @@ export default function ReferralIntelligence() {
         </div>
       )}
 
+      {/* Error state */}
+      {!isLoading && isError && (
+        <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-400">
+          <p className="text-base font-medium">Referral data temporarily unavailable</p>
+          <p className="text-sm mt-1">Please try again in a few minutes.</p>
+        </div>
+      )}
+
       {/* No data */}
-      {!isLoading && !hasData && <EmptyState />}
+      {!isLoading && !isError && !hasData && <EmptyState />}
 
       {/* Data present */}
       {!isLoading && hasData && data && (

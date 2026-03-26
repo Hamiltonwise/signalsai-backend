@@ -68,7 +68,8 @@ export default function ReviewRequests() {
   const weeksSinceFirst = firstReq
     ? Math.max(1, Math.round((Date.now() - new Date(firstReq.sent_at).getTime()) / (7 * 86_400_000)))
     : 0;
-  const velocity = weeksSinceFirst > 0 ? (totalConverted / weeksSinceFirst) : 0;
+  const rawVelocity = weeksSinceFirst > 0 ? (totalConverted / weeksSinceFirst) : 0;
+  const velocity = Number.isFinite(rawVelocity) ? rawVelocity : 0;
 
   const handleSend = async () => {
     if (!contact.trim() || sending) return;

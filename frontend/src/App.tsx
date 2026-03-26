@@ -57,7 +57,7 @@ import DashboardSettings from "./pages/dashboard/DashboardSettings";
 import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./contexts/ToastContext";
-// import GPDiscoveryPage from "./pages/partner/GPDiscoveryPage"; // T5 building -- wire after syntax fix
+import GPDiscoveryPage from "./pages/partner/GPDiscoveryPage";
 import Changelog from "./pages/Changelog";
 import Pricing from "./pages/Pricing";
 import ReferralProgram from "./pages/ReferralProgram";
@@ -241,7 +241,7 @@ function App() {
                 <Route path="/dashboard/settings" element={<DashboardSettings />} />
                 <Route path="/dashboard/website" element={<PatientPathWebsite />} />
                 <Route path="/dashboard/locations" element={<Locations />} />
-                {/* <Route path="/dashboard/refer" element={<GPDiscoveryPage />} /> -- T5 file has syntax issue, will wire after fix */}
+                <Route path="/dashboard/refer/:orgSlug?" element={<GPDiscoveryPage />} />
                 <Route path="/patientJourneyInsights" element={<Dashboard />} />
                 <Route path="/pmsStatistics" element={<Dashboard />} />
                 <Route path="/tasks" element={<Dashboard />} />

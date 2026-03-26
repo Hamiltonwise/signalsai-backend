@@ -8,6 +8,7 @@
 
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
 import {
   Upload,
   Link as LinkIcon,
@@ -97,6 +98,9 @@ function UploadForm({ onSubmitted }: { onSubmitted: () => void }) {
       setAuthor("");
       setRawText("");
       onSubmitted();
+    },
+    onError: () => {
+      toast.error("Something went wrong. Try again.");
     },
   });
 

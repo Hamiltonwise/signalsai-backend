@@ -196,7 +196,7 @@ function CompetitorGap({ ranking, onCompetitorClick }: { ranking: RankingData | 
         Your Top Competitor
       </p>
       <p className="text-base font-semibold text-[#212D40] leading-relaxed">
-        <span className="font-bold">{comp.name}</span>{" "}
+        <span className="font-bold">{comp.name || "your top competitor"}</span>{" "}
         {ranking.rankPosition === 1 ? "is closest to your position" : "holds position #1"}
         {comp.rating ? ` with a ${comp.rating}-star rating` : ""}
         {reviewGap != null && reviewGap > 0 ? ` and ${reviewGap} more review${reviewGap !== 1 ? "s" : ""} than you` : ""}.
@@ -379,7 +379,7 @@ function GapToNext({ ranking }: { ranking: RankingData | null }) {
       </p>
       {comp && (
         <p className="text-base font-semibold text-[#212D40] mb-4">
-          {comp.name} is one spot ahead.
+          {comp.name || "Your top competitor"} is one spot ahead.
         </p>
       )}
       {reviewGap != null && reviewGap > 0 && (
@@ -414,7 +414,7 @@ function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
 
   const comp = ranking.topCompetitor;
   const activities: { text: string; dot: string }[] = [];
-  if (comp.reviewCount > 0) activities.push({ text: `${comp.name} has ${comp.reviewCount} reviews at ${comp.rating} stars`, dot: "bg-amber-400" });
+  if (comp.reviewCount > 0) activities.push({ text: `${comp.name || "Your top competitor"} has ${comp.reviewCount} reviews at ${comp.rating} stars`, dot: "bg-amber-400" });
   if (ranking.totalCompetitors && ranking.totalCompetitors > 5) activities.push({ text: `${ranking.totalCompetitors} practices compete in ${ranking.location || "your market"}`, dot: "bg-blue-400" });
   if (ranking.rankPosition && ranking.rankPosition > 3) activities.push({ text: "Top 3 positions get 70% of new patient search clicks", dot: "bg-gray-300" });
 
@@ -503,7 +503,17 @@ export default function DoctorDashboard() {
   const isOwnerOrManager = userRole === "admin" || userRole === "manager";
   const canSendReviews = userRole !== "viewer";
 
-  const { data: rankingData } = useQuery({
+  // Checkup context -- pre-populates dashboard on first login before ranking scan
+  const { data: checkupCtx } = useQuery({
+    queryKey: ["dashboard-context"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/dashboard-context" });
+      return res?.success ? res.checkup_context : null;
+    },
+    staleTime: 30 * 60_000,
+  });
+
+  const { data: rankingData, isError: isRankingError } = useQuery({
     queryKey: ["client-ranking", orgId, locationId],
     queryFn: async (): Promise<RankingData | null> => {
       if (!orgId) return null;
@@ -552,7 +562,7 @@ export default function DoctorDashboard() {
     return [];
   })();
 
-  const { data: websiteData } = useQuery({
+  const { data: websiteData, isError: isWebsiteError } = useQuery({
     queryKey: ["client-website", orgId],
     queryFn: async (): Promise<WebsiteInfo | null> => {
       const res = await apiGet({ path: "/user/website" });
@@ -563,23 +573,41 @@ export default function DoctorDashboard() {
     staleTime: 10 * 60_000,
   });
 
-  const { data: profileData } = useQuery({
+  const { data: profileData, isError: isProfileError } = useQuery({
     queryKey: ["client-profile"],
     queryFn: async () => apiGet({ path: "/profile/get" }),
     staleTime: 10 * 60_000,
   });
 
+  const isProfileUnavailable = isProfileError;
   const referralCode = profileData?.referral_code || profileData?.organization?.referral_code || null;
+
+  // Merge: use checkup context as fallback when live ranking hasn't run yet
+  const effectiveRanking: RankingData | null = rankingData ?? (checkupCtx?.data ? {
+    rankPosition: checkupCtx.data.market?.rank ?? null,
+    totalCompetitors: checkupCtx.data.market?.totalCompetitors ?? null,
+    rankScore: checkupCtx.score ?? null,
+    specialty: null,
+    location: checkupCtx.data.market?.city ?? null,
+    topCompetitor: checkupCtx.data.topCompetitor ? {
+      name: checkupCtx.data.topCompetitor.name || "",
+      reviewCount: checkupCtx.data.topCompetitor.reviewCount || 0,
+      rating: checkupCtx.data.topCompetitor.rating || 0,
+    } : null,
+    clientReviews: null,
+    previousPosition: null,
+  } : null);
+
   const [mode, setMode] = useState<"standard" | "growth">("standard");
   const [drawerCompetitor, setDrawerCompetitor] = useState<{ name: string; rating: number; reviewCount: number } | null>(null);
-  const isLoading = !rankingData && !agentData && !websiteData && !profileData;
+  const isLoading = !rankingData && !checkupCtx && !agentData && !websiteData && !profileData;
 
   return (
     <>
     {/* Billing prompt bar — top of dashboard, quiet, dismissable */}
     <BillingPromptBar
       orgId={orgId}
-      score={rankingData?.rankScore ?? null}
+      score={effectiveRanking?.rankScore ?? null}
       finding={prooflineFindings[0]?.detail || null}
     />
 
@@ -608,7 +636,7 @@ export default function DoctorDashboard() {
       {/* Onboarding Checklist — shows until first value delivered */}
       {!isLoading && (
         <OnboardingChecklist
-          checkupScore={rankingData?.rankScore ?? null}
+          checkupScore={effectiveRanking?.rankScore ?? null}
           gbpConnected={hasGoogleConnection}
           pmsUploaded={false}
           mondayEmailOpened={false}
@@ -633,65 +661,68 @@ export default function DoctorDashboard() {
           {/* ══ ABOVE THE FOLD — spec layer order ══ */}
 
           {/* 1. Practice Health Score ring */}
-          <PositionCard ranking={rankingData ?? null} />
+          {isRankingError && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
+          <PositionCard ranking={effectiveRanking} />
 
           {/* 2. One sentence finding */}
-          <CompetitorGap ranking={rankingData ?? null} onCompetitorClick={setDrawerCompetitor} />
+          <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
 
           {/* 3. One Action Card — deterministic rule engine */}
           <OneActionCard
             billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
             driftGP={null /* TODO: wire to referral drift data when available */}
             rankingDrop={
-              rankingData?.previousPosition && rankingData?.rankPosition &&
-              rankingData.rankPosition - rankingData.previousPosition >= 2
+              effectiveRanking?.previousPosition && effectiveRanking?.rankPosition &&
+              effectiveRanking.rankPosition - effectiveRanking.previousPosition >= 2
                 ? {
-                    previousPosition: rankingData.previousPosition,
-                    currentPosition: rankingData.rankPosition,
-                    keyword: rankingData.specialty || undefined,
+                    previousPosition: effectiveRanking.previousPosition,
+                    currentPosition: effectiveRanking.rankPosition,
+                    keyword: effectiveRanking.specialty || undefined,
                   }
                 : null
             }
             competitorVelocity={null /* TODO: wire when review velocity data is available */}
             gbpConnected={hasGoogleConnection}
-            topCompetitorName={rankingData?.topCompetitor?.name}
+            topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
           />
 
           {/* GBP Connect prompt — show when not connected */}
           {!hasGoogleConnection && <GBPConnectCard gbpConnected={hasGoogleConnection} orgId={orgId} />}
 
           {/* 4. PatientPath breadcrumb — quiet, lower */}
+          {isWebsiteError && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
           {isOwnerOrManager && <WebsiteCard website={websiteData ?? null} />}
 
           {/* ══ BELOW THE FOLD ══ */}
           {isOwnerOrManager && <ProoflineFindings findings={prooflineFindings} />}
-          {canSendReviews && <ReviewRequestCard placeId={rankingData?.placeId ?? null} practiceName={practiceName} />}
+          {canSendReviews && <ReviewRequestCard placeId={effectiveRanking?.placeId ?? null} practiceName={practiceName} />}
+          {isProfileUnavailable && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
           {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
         </>
       ) : (
         <>
-          <GrowthPositionTrack ranking={rankingData ?? null} />
-          <GapToNext ranking={rankingData ?? null} />
+          <GrowthPositionTrack ranking={effectiveRanking} />
+          <GapToNext ranking={effectiveRanking} />
           {/* One Action Card in growth mode too */}
           <OneActionCard
             billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
             driftGP={null}
             rankingDrop={
-              rankingData?.previousPosition && rankingData?.rankPosition &&
-              rankingData.rankPosition - rankingData.previousPosition >= 2
+              effectiveRanking?.previousPosition && effectiveRanking?.rankPosition &&
+              effectiveRanking.rankPosition - effectiveRanking.previousPosition >= 2
                 ? {
-                    previousPosition: rankingData.previousPosition,
-                    currentPosition: rankingData.rankPosition,
-                    keyword: rankingData.specialty || undefined,
+                    previousPosition: effectiveRanking.previousPosition,
+                    currentPosition: effectiveRanking.rankPosition,
+                    keyword: effectiveRanking.specialty || undefined,
                   }
                 : null
             }
             competitorVelocity={null}
             gbpConnected={hasGoogleConnection}
-            topCompetitorName={rankingData?.topCompetitor?.name}
+            topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
           />
-          <CompetitorActivityFeed ranking={rankingData ?? null} />
-          {canSendReviews && <ReviewRequestCard placeId={rankingData?.placeId ?? null} practiceName={practiceName} />}
+          <CompetitorActivityFeed ranking={effectiveRanking} />
+          {canSendReviews && <ReviewRequestCard placeId={effectiveRanking?.placeId ?? null} practiceName={practiceName} />}
           {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
         </>
       )}
@@ -699,7 +730,7 @@ export default function DoctorDashboard() {
       {/* CS Agent — floating chat */}
       <CSAgentChat
         practiceName={practiceName}
-        score={rankingData?.rankScore ?? null}
+        score={effectiveRanking?.rankScore ?? null}
         locationId={locationId}
       />
 
@@ -710,7 +741,7 @@ export default function DoctorDashboard() {
       {drawerCompetitor && (
         <CompetitorDrawer
           competitor={drawerCompetitor}
-          clientReviews={rankingData?.clientReviews || 0}
+          clientReviews={effectiveRanking?.clientReviews || 0}
           clientVelocityPerWeek={0}
           onClose={() => setDrawerCompetitor(null)}
         />

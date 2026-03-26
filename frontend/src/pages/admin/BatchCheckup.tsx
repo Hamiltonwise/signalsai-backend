@@ -63,7 +63,7 @@ function exportCSV(results: BatchResult[]): string {
     .filter((r) => r.status === "completed")
     .map(
       (r) =>
-        `"${esc(r.practiceName)}","${esc(r.city)}","${esc(r.state)}",${r.score ?? ""},"${esc(r.topCompetitorName)}",${r.topCompetitorReviews ?? ""},${r.practiceReviews ?? ""},"${esc(r.primaryGap)}","${esc(r.emailParagraph)}"`,
+        `"${esc(r.practiceName)}","${esc(r.city)}","${esc(r.state)}",${r.score ?? ""},"${esc(r.topCompetitorName || "Unknown")}",${r.topCompetitorReviews ?? ""},${r.practiceReviews ?? ""},"${esc(r.primaryGap)}","${esc(r.emailParagraph)}"`,
     );
   return [header, ...rows].join("\n");
 }
@@ -102,6 +102,8 @@ export default function BatchCheckup() {
   const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollCountRef = useRef(0);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
 
   // Parse CSV on text change
   useEffect(() => {
@@ -114,9 +116,16 @@ export default function BatchCheckup() {
 
   // Poll for results
   useEffect(() => {
-    if (!batchId || batchStatus?.status === "completed") return;
+    if (!batchId || batchStatus?.status === "completed" || pollTimedOut) return;
 
+    pollCountRef.current = 0;
     pollRef.current = setInterval(async () => {
+      pollCountRef.current += 1;
+      if (pollCountRef.current > 60) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        setPollTimedOut(true);
+        return;
+      }
       try {
         const status = await pollBatch(batchId);
         setBatchStatus(status);
@@ -131,7 +140,7 @@ export default function BatchCheckup() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [batchId, batchStatus?.status]);
+  }, [batchId, batchStatus?.status, pollTimedOut]);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -344,9 +353,14 @@ export default function BatchCheckup() {
                 }}
               />
             </div>
-            {!isComplete && (
+            {!isComplete && !pollTimedOut && (
               <p className="text-xs text-gray-400 mt-2">
                 ~{Math.max(0, (batchStatus.total - batchStatus.completed - batchStatus.failed) * 2)}s remaining
+              </p>
+            )}
+            {pollTimedOut && !isComplete && (
+              <p className="text-sm text-amber-600 mt-3">
+                Analysis is taking longer than expected. Check back in a few minutes.
               </p>
             )}
           </div>

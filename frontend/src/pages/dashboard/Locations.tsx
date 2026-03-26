@@ -156,7 +156,7 @@ function LocationCard({
           {location.ranking_position != null && (
             <div className="text-right">
               <p className="text-lg font-black text-[#212D40]">
-                #{location.ranking_position}
+                {location.ranking_position ? `#${location.ranking_position}` : "Unranked"}
               </p>
               <p className="text-[10px] text-gray-400 uppercase font-bold">
                 Position

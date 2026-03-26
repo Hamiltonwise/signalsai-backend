@@ -170,6 +170,7 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
 export default function YourMarket() {
   const [jobs, setJobs] = useState<RankingJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
@@ -178,7 +179,7 @@ export default function YourMarket() {
         const data = await apiGet({ path: "/admin/practice-ranking/list" });
         setJobs(data?.rankings || []);
       } catch {
-        // Silently fail — leaderboard shows empty state
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -275,8 +276,15 @@ export default function YourMarket() {
         </div>
       )}
 
+      {/* Error */}
+      {!loading && error && (
+        <p className="text-sm text-gray-400 italic text-center py-8">
+          Market data temporarily unavailable.
+        </p>
+      )}
+
       {/* Empty */}
-      {!loading && leaderboard.length === 0 && (
+      {!loading && !error && leaderboard.length === 0 && (
         <div className="rounded-xl border border-dashed border-gray-300 p-16 text-center text-gray-400">
           <TrendingUp className="h-10 w-10 mx-auto mb-3 opacity-40" />
           <p className="text-base font-medium">No rankings yet.</p>
