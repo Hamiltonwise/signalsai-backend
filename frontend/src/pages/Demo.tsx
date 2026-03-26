@@ -116,7 +116,7 @@ const RANKING_HISTORY = [
 ];
 
 const TOP_MOVES = [
-  { title: "Added 12 Google reviews", outcome: "Moved from #6 to #4 in local search", date: "Jan — Feb" },
+  { title: "Added 12 Google reviews", outcome: "Moved from #6 to #4 in local search", date: "Jan - Feb" },
   { title: "Completed GBP profile", outcome: "Score jumped from 42 to 54 (+12 points)", date: "February" },
   { title: "Responded to all negative reviews", outcome: "Rating held at 4.6★ instead of declining", date: "March" },
 ];
@@ -443,7 +443,7 @@ export default function Demo() {
         {/* Greeting */}
         <div>
           <h1 className="text-2xl font-extrabold text-[#212D40]">
-            Good morning, Dr. Mitchell.
+            Good morning, Dr. Hayward.
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Here's what Alloro found this week for {PRACTICE.name}.
@@ -483,7 +483,7 @@ export default function Demo() {
         <div className="rounded-2xl bg-[#212D40] p-6 text-center text-white">
           <p className="text-lg font-bold">This is Alloro running for 4 months.</p>
           <p className="text-sm text-white/70 mt-2">
-            From #6 to #3. From 22 reviews to 34. From blind to seeing every referral pattern in your market.
+            From #6 to #3. From 42 reviews to 61. From blind to seeing every referral pattern in your market.
           </p>
           <a
             href="/checkup"
@@ -496,7 +496,7 @@ export default function Demo() {
 
         {/* Footer */}
         <p className="text-center text-[11px] text-gray-300 uppercase tracking-wide pt-4">
-          Demo account &middot; Mountain View Endodontics &middot; Salt Lake City, UT
+          Demo account &middot; Valley Endodontics &middot; Salt Lake City, UT
         </p>
       </div>
     </div>

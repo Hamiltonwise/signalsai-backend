@@ -54,7 +54,7 @@ export default function ProgrammaticPage() {
   useEffect(() => {
     if (!pageSlug) return;
 
-    fetch(`/api/programmatic-pages/${pageSlug}`)
+    fetch(`/api/seo/pages/${pageSlug}`)
       .then((res) => {
         if (!res.ok) throw new Error("Not found");
         return res.json();
