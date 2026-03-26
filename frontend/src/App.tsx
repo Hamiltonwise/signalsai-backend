@@ -61,6 +61,7 @@ const PricingPage = React.lazy(() => import("./pages/marketing/PricingPage"));
 const StoryPage = React.lazy(() => import("./pages/marketing/Story"));
 const BlogPage = React.lazy(() => import("./pages/marketing/Blog"));
 const BlogRedirect = React.lazy(() => import("./pages/marketing/BlogRedirect"));
+const SharedResults = React.lazy(() => import("./pages/checkup/SharedResults"));
 const Compare = React.lazy(() => import("./pages/Compare"));
 const LegalPracticeMarketing = React.lazy(() => import("./pages/content/LegalPracticeMarketing"));
 const FinancialAdvisorMarketing = React.lazy(() => import("./pages/content/FinancialAdvisorMarketing"));
@@ -98,6 +99,7 @@ import { PilotHandler } from "./components/PilotHandler";
 import { PilotBanner } from "./components/Admin/PilotBanner";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./contexts/ToastContext";
+import ScrollToTop from "./components/ScrollToTop";
 
 /** Loading fallback for lazy-loaded routes */
 function LoadingFallback() {
@@ -165,6 +167,7 @@ function App() {
     >
     <ToastProvider>
     <BrowserRouter>
+      <ScrollToTop />
       <PilotHandler />
       <AuthProvider>
         <OnboardingWizardProvider>
@@ -183,6 +186,7 @@ function App() {
                 <Route path="results" element={<ResultsScreen />} />
                 <Route path="building" element={<BuildingScreen />} />
               </Route>
+              <Route path="/checkup/shared/:shareId" element={<SharedResults />} />
 
               {/* Public demo — no auth required */}
               <Route path="/demo" element={<Demo />} />

@@ -6,10 +6,14 @@
 
 import { Link } from "react-router-dom";
 import { Heart, Shield, Rocket } from "lucide-react";
+import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 export default function FoundationHome() {
   return (
-    <div className="min-h-screen bg-white">
+    <MarketingLayout
+      title="Heroes & Founders Foundation"
+      description="Built for people who chose service first. RISE Scholars program for veteran practice owners."
+    >
       {/* Hero */}
       <section className="px-6 py-20 text-center max-w-3xl mx-auto">
         <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-4">
@@ -92,17 +96,6 @@ export default function FoundationHome() {
         </Link>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 px-6 py-8 text-center text-xs text-gray-400">
-        Heroes & Founders Foundation is a program of Alloro, Inc.
-        <br />
-        <Link to="/foundation/heroes" className="hover:text-[#D56753]">Heroes</Link>
-        {" | "}
-        <Link to="/foundation/founders" className="hover:text-[#D56753]">Founders</Link>
-        {" | "}
-        <Link to="/foundation/apply" className="hover:text-[#D56753]">Apply</Link>
-      </footer>
-
       {/* JSON-LD Entity Graph */}
       <script
         type="application/ld+json"
@@ -132,6 +125,6 @@ export default function FoundationHome() {
           }),
         }}
       />
-    </div>
+    </MarketingLayout>
   );
 }

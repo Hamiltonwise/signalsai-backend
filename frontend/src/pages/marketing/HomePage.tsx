@@ -5,11 +5,19 @@
  * The first sentence either earns trust or the visitor is gone.
  */
 
-import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { ArrowRight, Search, MapPin, Loader2 } from "lucide-react";
+import { getPriorityItem } from "../../hooks/useLocalStorage";
 import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 export default function HomePage() {
+  // Authenticated users go straight to dashboard
+  const isAuthenticated = !!getPriorityItem("auth_token") || !!getPriorityItem("token");
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <MarketingLayout
       title="Alloro - Business Clarity Platform"
@@ -65,6 +73,9 @@ export default function HomePage() {
           Business intelligence that runs while you work.
         </p>
       </section>
+
+      {/* Market Teaser */}
+      <MarketTeaser />
 
       {/* Three Proof Points */}
       <section className="px-5 py-16 sm:py-20 bg-white">
@@ -192,5 +203,193 @@ function ProofCard({ number, text }: { number: string; text: string }) {
       <p className="text-2xl font-black text-[#212D40] mb-3">{number}</p>
       <p className="text-sm text-[#212D40]/70 leading-relaxed">{text}</p>
     </div>
+  );
+}
+
+interface PlaceSuggestion {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+}
+
+function MarketTeaser() {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ name: string; city: string; competitors: number; rank: number; avgRating: number } | null>(null);
+  const [error, setError] = useState(false);
+
+  const debounceRef = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchPlaces = useCallback((input: string) => {
+    if (debounceRef[0]) clearTimeout(debounceRef[0]);
+    if (input.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    debounceRef[0] = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/places/autocomplete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input }),
+        });
+        const data = await res.json();
+        if (data.success && data.suggestions) {
+          setSuggestions(data.suggestions.slice(0, 5));
+        }
+      } catch {
+        setSuggestions([]);
+      }
+    }, 300);
+  }, [debounceRef]);
+
+  const selectPlace = async (place: PlaceSuggestion) => {
+    setSuggestions([]);
+    setQuery(place.mainText);
+    setLoading(true);
+    setError(false);
+    try {
+      // Get place details
+      const detailRes = await fetch(`/api/places/${place.placeId}`);
+      const detail = await detailRes.json();
+      if (!detail.success) throw new Error("No details");
+
+      const p = detail.place;
+      // Run checkup analyze
+      const analyzeRes = await fetch("/api/checkup/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: p.name,
+          city: p.city,
+          state: p.state,
+          category: p.category || "",
+          types: p.types || [],
+          rating: p.rating || null,
+          reviewCount: p.reviewCount || 0,
+          placeId: place.placeId,
+          location: p.location,
+        }),
+      });
+      const analysis = await analyzeRes.json();
+      if (analysis.success && analysis.market) {
+        setResult({
+          name: p.name,
+          city: p.city,
+          competitors: analysis.market.totalCompetitors,
+          rank: analysis.market.rank,
+          avgRating: analysis.market.avgRating,
+        });
+      } else {
+        throw new Error("No market data");
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="px-5 py-16 sm:py-20 bg-white border-t border-gray-100">
+      <div className="max-w-md mx-auto">
+        <h2 className="text-xl sm:text-2xl font-bold text-[#212D40] text-center mb-2">
+          See where you stand
+        </h2>
+        <p className="text-sm text-[#212D40]/50 text-center mb-6">
+          Enter your business name. 10 seconds. No account.
+        </p>
+
+        {!result ? (
+          <div className="relative">
+            <div className="flex items-center gap-2 border-2 border-[#212D40]/15 rounded-xl bg-[#FAFAF8] px-4 py-3 focus-within:border-[#D56753] transition-colors">
+              {loading ? (
+                <Loader2 className="w-4 h-4 text-[#D56753] animate-spin shrink-0" />
+              ) : (
+                <Search className="w-4 h-4 text-[#212D40]/30 shrink-0" />
+              )}
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  searchPlaces(e.target.value);
+                  setError(false);
+                }}
+                placeholder="Search your practice or business..."
+                className="flex-1 bg-transparent text-sm text-[#212D40] placeholder:text-[#212D40]/30 outline-none"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Autocomplete dropdown */}
+            {suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-10">
+                {suggestions.map((s) => (
+                  <button
+                    key={s.placeId}
+                    type="button"
+                    onClick={() => selectPlace(s)}
+                    className="w-full text-left px-4 py-3 hover:bg-[#FAFAF8] transition-colors border-b border-gray-50 last:border-0"
+                  >
+                    <p className="text-sm font-medium text-[#212D40]">{s.mainText}</p>
+                    <p className="text-xs text-[#212D40]/50 flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-3 h-3" />
+                      {s.secondaryText}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {error && (
+              <p className="mt-3 text-xs text-center text-red-500">
+                Could not scan that market. Try another search.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-2xl border-2 border-[#D56753]/20 bg-[#D56753]/5 p-6 text-center">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-3">
+              Your market snapshot
+            </p>
+            <p className="text-sm font-medium text-[#212D40] mb-4">
+              {result.name} in {result.city}
+            </p>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div>
+                <p className="text-2xl font-black text-[#212D40]">{result.competitors}</p>
+                <p className="text-[10px] text-[#212D40]/50 uppercase tracking-wider">Competitors</p>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-[#212D40]">#{result.rank}</p>
+                <p className="text-[10px] text-[#212D40]/50 uppercase tracking-wider">Your Rank</p>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-[#212D40]">{result.avgRating.toFixed(1)}</p>
+                <p className="text-[10px] text-[#212D40]/50 uppercase tracking-wider">Avg Rating</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/checkup")}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-sm font-semibold px-6 py-3 hover:brightness-110 active:scale-[0.98] transition-all"
+            >
+              See the full report
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => { setResult(null); setQuery(""); }}
+              className="mt-2 text-xs text-[#212D40]/40 hover:text-[#212D40]/60 transition-colors"
+            >
+              Try another business
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
