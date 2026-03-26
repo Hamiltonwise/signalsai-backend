@@ -104,32 +104,34 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     ? `#${snapshot.position} in your market`
     : "Ranking data available in your dashboard";
 
-  // 3. Build n8n payload with EXACT field names
-  const payload = {
-    practice_name: org.name,
-    doctor_name: doctorName,
-    subject_line: subjectLine,
-    finding_headline: findingHeadline,
-    finding_body: findingBody,
-    dollar_figure: snapshot.dollar_figure || 0,
-    action_text: actionText,
-    action_url: actionUrl,
-    ranking_update: rankingUpdate,
-    competitor_note: snapshot.competitor_note || "",
-    week_number: weekNumber,
-    recipient_email: user.email,
-  };
+  // Referral line (gated: TTFV yes + first win + has code)
+  const referralLine = (org.ttfv_response === "yes" && org.first_win_attributed_at && org.referral_code)
+    ? `Know another doctor flying blind? Share this. You both get one month free. getalloro.com/checkup?ref=${org.referral_code}`
+    : null;
 
-  // POST to n8n
-  if (!N8N_WEBHOOK) {
-    console.log(`[MondayEmail] N8N_WEBHOOK not set — payload logged for ${org.name}:`, JSON.stringify(payload).slice(0, 200));
-    return false;
-  }
-
+  // Send via email service
   try {
-    await axios.post(N8N_WEBHOOK, payload, { timeout: 30000 });
-    console.log(`[MondayEmail] Sent to ${user.email} for ${org.name}`);
-    return true;
+    const success = await sendMondayBriefEmail({
+      recipientEmail: user.email,
+      practiceName: org.name,
+      doctorName,
+      doctorLastName,
+      subjectLine,
+      findingHeadline,
+      findingBody,
+      dollarFigure: snapshot.dollar_figure || 0,
+      actionText,
+      rankingUpdate,
+      competitorNote: snapshot.competitor_note || "",
+      referralLine,
+    });
+
+    if (success) {
+      console.log(`[MondayEmail] Sent to ${user.email} for ${org.name}`);
+    } else {
+      console.error(`[MondayEmail] Email service returned failure for ${org.name}`);
+    }
+    return success;
   } catch (err: any) {
     console.error(`[MondayEmail] Failed for ${org.name}:`, err.message);
     return false;
