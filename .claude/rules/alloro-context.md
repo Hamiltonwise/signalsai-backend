@@ -18,12 +18,10 @@ The product standard: "How did they know that?"
 - Navy: #212D40
 - Every screen looks like it was built by a company with 10,000 clients
 
-## Four North Stars (in order)
+## Two North Stars
 
-1. Clarity: the owner understands their position
-2. Confidence: they trust the system to act correctly
-3. Surprise/delight: "how did they know that?"
-4. Daily stickiness: they check Alloro before checking email
+1. Undeniable Value: the customer stops and says "how did they know that?" If not, it failed.
+2. Inevitable Unicorn: every build either closes a gap toward unicorn valuation or it waits.
 
 ## Prohibited
 
