@@ -88,10 +88,29 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     }
   }
 
+  // 5-Minute Fix: specific action based on the finding
+  const reviewGap = (snapshot.competitor_review_count || 0) - (snapshot.client_review_count || 0);
+  let fiveMinuteFix = "";
+
+  if (reviewGap > 0 && reviewGap <= 15) {
+    const needed = Math.min(reviewGap, 3);
+    fiveMinuteFix = `5-MINUTE FIX: Send a review request to ${needed} patient${needed !== 1 ? "s" : ""} who visited this week. You're ${reviewGap} review${reviewGap !== 1 ? "s" : ""} behind ${snapshot.competitor_name || "the #1 practice"}. Three reviews per week closes that gap in ${Math.ceil(reviewGap / 3)} weeks.`;
+  } else if (reviewGap > 15) {
+    fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. Consistent weekly reviews compound. At 3/week, you close a ${reviewGap}-review gap by ${new Date(Date.now() + Math.ceil(reviewGap / 3) * 7 * 86400000).toLocaleDateString("en-US", { month: "long", year: "numeric" })}.`;
+  } else if (steadyWeeks >= 3) {
+    fiveMinuteFix = `5-MINUTE FIX: Your position is steady. This is the week to gain ground. Send 3 review requests and add a new photo to your Google Business Profile.`;
+  } else {
+    fiveMinuteFix = `5-MINUTE FIX: Open your Google Business Profile and respond to any unanswered reviews. Each response signals activity to Google's ranking algorithm.`;
+  }
+
+  findingBody += `\n\n${fiveMinuteFix}`;
+
   // Action text
-  const actionText = snapshot.dollar_figure > 0
-    ? `Close the $${snapshot.dollar_figure.toLocaleString()} gap`
-    : "View your dashboard";
+  const actionText = reviewGap > 0
+    ? "Send review requests now"
+    : snapshot.dollar_figure > 0
+      ? `Close the $${snapshot.dollar_figure.toLocaleString()} gap`
+      : "Open your dashboard";
 
   // Ranking update line
   const rankingUpdate = snapshot.position
