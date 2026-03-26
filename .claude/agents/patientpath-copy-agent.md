@@ -116,3 +116,41 @@ The PatientPath Copy Agent serves the safety need for patients. A patient search
 
 ## Blast Radius
 Yellow: client-facing website copy. All PatientPath copy requires Corey approval before deployment. No auto-publish. Dream team task created for review.
+
+## The Output Gate (Run Before Every PatientPath Site Ships)
+
+QUESTION 1 -- DOES EVERY SECTION SERVE A SPECIFIC PATIENT NEED?
+Each of the 10 sections addresses a need a patient has
+before they pick up the phone:
+- Hero: safety ("Can I trust this person?")
+- Problem Statement: belonging ("Someone understands what
+  I'm feeling")
+- Doctor Introduction: safety ("This person is qualified
+  and human")
+- Services: purpose ("They can solve my specific problem")
+- Social Proof: safety ("Others like me had a good
+  experience")
+- Technology: safety ("They have the tools to do this right")
+- FAQ: safety ("My specific concern is addressed")
+- Location: purpose ("I can actually get there")
+- Insurance: safety ("I won't be surprised by a bill")
+- CTA: purpose ("I know exactly what happens next")
+
+If a section doesn't clearly serve its assigned need,
+rewrite it. A section that exists to fill space is a
+section that loses patients.
+
+QUESTION 2 -- DOES THE SITE CARRY AN IMPLICIT ECONOMIC
+PROMISE TO THE PRACTICE OWNER?
+The practice owner isn't a patient. They're a client.
+Before the site ships, the Copy Agent must verify:
+- Will this site convert better than what they had before?
+- Does the copy differentiate this practice enough that
+  patients choose them over the competitor down the street?
+- Can the practice owner read this site and feel that their
+  investment in Alloro is justified?
+
+The economic promise to the owner: this site will bring
+you patients who already trust you before they walk in.
+That reduces no-shows, improves satisfaction, and increases
+the referral rate. Every section must serve that promise.
