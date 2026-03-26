@@ -513,7 +513,7 @@ export default function DoctorDashboard() {
     staleTime: 30 * 60_000,
   });
 
-  const { data: rankingData, isError: isRankingError } = useQuery({
+  const { data: rankingData, isLoading: isRankingLoading, isError: isRankingError } = useQuery({
     queryKey: ["client-ranking", orgId, locationId],
     queryFn: async (): Promise<RankingData | null> => {
       if (!orgId) return null;
@@ -542,7 +542,7 @@ export default function DoctorDashboard() {
     staleTime: 10 * 60_000,
   });
 
-  const { data: agentData } = useQuery({
+  const { data: agentData, isLoading: isAgentLoading } = useQuery({
     queryKey: ["client-agent-data", orgId, locationId],
     queryFn: () => agents.getLatestAgentData(orgId!, locationId),
     enabled: !!orgId,
@@ -600,7 +600,7 @@ export default function DoctorDashboard() {
 
   const [mode, setMode] = useState<"standard" | "growth">("standard");
   const [drawerCompetitor, setDrawerCompetitor] = useState<{ name: string; rating: number; reviewCount: number } | null>(null);
-  const isLoading = !rankingData && !checkupCtx && !agentData && !websiteData && !profileData;
+  const isLoading = isRankingLoading || isAgentLoading;
 
   return (
     <>
@@ -742,7 +742,7 @@ export default function DoctorDashboard() {
         <CompetitorDrawer
           competitor={drawerCompetitor}
           clientReviews={effectiveRanking?.clientReviews || 0}
-          clientVelocityPerWeek={0}
+          clientVelocityPerWeek={null}
           onClose={() => setDrawerCompetitor(null)}
         />
       )}
