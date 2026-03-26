@@ -60,7 +60,7 @@ export const GBPProvider: React.FC<GBPProviderProps> = ({ children }) => {
 
       if (result.successful !== false) {
         setAiData(result as GBPAIReadyData);
-        console.log("GBP AI Ready Data:", result);
+        if (import.meta.env.DEV) console.log("GBP AI Ready Data:", result);
       } else {
         setAiError(result.errorMessage || "Failed to fetch GBP AI-ready data");
       }
