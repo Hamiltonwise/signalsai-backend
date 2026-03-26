@@ -60,7 +60,7 @@
       display: flex;
       align-items: center;
       gap: 32px;
-      margin-bottom: 28px;
+      margin-bottom: 20px;
     }
     .score-ring {
       position: relative;
@@ -129,10 +129,10 @@
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 24px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
       position: relative;
-      height: 160px;
+      height: 150px;
       overflow: hidden;
     }
     .map-label {
@@ -194,7 +194,7 @@
 
     /* Findings */
     .findings {
-      margin-bottom: 24px;
+      margin-bottom: 16px;
     }
     .findings-title {
       font-size: 10px;
@@ -207,7 +207,7 @@
     .finding {
       display: flex;
       gap: 12px;
-      padding: 12px 0;
+      padding: 8px 0;
       border-bottom: 1px solid #f1f5f9;
     }
     .finding:last-child { border-bottom: none; }
@@ -352,19 +352,19 @@
       <div class="score-meta">
         <div class="subtitle">Business Health Score</div>
         <h2>Valley Endodontics</h2>
-        <p>Salt Lake City, UT &middot; vs. 11 endodontists in your market</p>
+        <p>Salt Lake City, UT &middot; vs. 4 endodontists in your market</p>
         <div style="display: flex; gap: 20px; margin-top: 14px;">
           <div>
-            <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Local Visibility</div>
+            <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Market Rank</div>
             <div style="font-size: 18px; font-weight: 800;">22<span style="font-size: 12px; color: #94a3b8;">/40</span></div>
           </div>
           <div>
-            <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Online Presence</div>
-            <div style="font-size: 18px; font-weight: 800;">25<span style="font-size: 12px; color: #94a3b8;">/40</span></div>
+            <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Rating vs Market</div>
+            <div style="font-size: 18px; font-weight: 800;">24<span style="font-size: 12px; color: #94a3b8;">/40</span></div>
           </div>
           <div>
-            <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Review Health</div>
-            <div style="font-size: 18px; font-weight: 800;">14<span style="font-size: 12px; color: #94a3b8;">/20</span></div>
+            <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Review Volume</div>
+            <div style="font-size: 18px; font-weight: 800;">15<span style="font-size: 12px; color: #94a3b8;">/20</span></div>
           </div>
         </div>
       </div>
@@ -375,34 +375,34 @@
       <div class="map-label">Your Market — Salt Lake City Endodontists</div>
       <div class="map-grid">
         <div class="map-pin">
-          <div class="pin-bar"><div class="pin-bar-fill" style="height: 90%; background: #212D40;"></div></div>
+          <div class="pin-bar"><div class="pin-bar-fill" style="height: 95%; background: #212D40;"></div></div>
           <div class="pin-dot competitor"></div>
-          <div class="pin-name">Endodontic Associates</div>
-          <div class="pin-reviews">127 reviews</div>
+          <div class="pin-name">Wasatch Endodontics</div>
+          <div class="pin-reviews">284 reviews</div>
         </div>
         <div class="map-pin">
-          <div class="pin-bar"><div class="pin-bar-fill" style="height: 70%; background: #212D40;"></div></div>
+          <div class="pin-bar"><div class="pin-bar-fill" style="height: 55%; background: #212D40;"></div></div>
           <div class="pin-dot competitor"></div>
-          <div class="pin-name">Wasatch Endo</div>
-          <div class="pin-reviews">89 reviews</div>
+          <div class="pin-name">Pioneer Endodontics</div>
+          <div class="pin-reviews">156 reviews</div>
         </div>
         <div class="map-pin">
-          <div class="pin-bar"><div class="pin-bar-fill" style="height: 50%; background: #D56753;"></div></div>
+          <div class="pin-bar"><div class="pin-bar-fill" style="height: 35%; background: #212D40;"></div></div>
+          <div class="pin-dot competitor"></div>
+          <div class="pin-name">Summit Endodontics</div>
+          <div class="pin-reviews">98 reviews</div>
+        </div>
+        <div class="map-pin">
+          <div class="pin-bar"><div class="pin-bar-fill" style="height: 24%; background: #212D40;"></div></div>
+          <div class="pin-dot competitor"></div>
+          <div class="pin-name">Desert Endodontics</div>
+          <div class="pin-reviews">67 reviews</div>
+        </div>
+        <div class="map-pin">
+          <div class="pin-bar"><div class="pin-bar-fill" style="height: 22%; background: #D56753;"></div></div>
           <div class="pin-dot practice"></div>
           <div class="pin-name" style="color: #D56753; font-weight: 800;">Valley Endodontics</div>
-          <div class="pin-reviews" style="color: #D56753;">58 reviews</div>
-        </div>
-        <div class="map-pin">
-          <div class="pin-bar"><div class="pin-bar-fill" style="height: 40%; background: #212D40;"></div></div>
-          <div class="pin-dot competitor"></div>
-          <div class="pin-name">SLC Root Canal</div>
-          <div class="pin-reviews">41 reviews</div>
-        </div>
-        <div class="map-pin">
-          <div class="pin-bar"><div class="pin-bar-fill" style="height: 25%; background: #212D40;"></div></div>
-          <div class="pin-dot competitor"></div>
-          <div class="pin-name">Mountain West Endo</div>
-          <div class="pin-reviews">22 reviews</div>
+          <div class="pin-reviews" style="color: #D56753;">61 reviews</div>
         </div>
       </div>
     </div>
@@ -413,29 +413,29 @@
       <div class="finding">
         <div class="finding-num">1</div>
         <div>
-          <div class="finding-text">Endodontic Associates has <strong>69 more reviews</strong> than you. They're the #1 practice in Salt Lake City with 127 Google reviews to your 58.</div>
-          <div class="finding-impact">Est. $31,000/yr at risk from review gap</div>
+          <div class="finding-text">Wasatch Endodontics has <strong>223 more reviews</strong> than you. At your current pace, that gap grows by 8 reviews per month.</div>
+          <div class="finding-impact">Est. $10,035/yr at risk from review gap</div>
         </div>
       </div>
       <div class="finding">
         <div class="finding-num">2</div>
         <div>
-          <div class="finding-text">You rank <strong>#5 of 11</strong> endodontists in Salt Lake City. Top 3 positions capture 70% of new patient searches.</div>
-          <div class="finding-impact">2 positions from the top 3 threshold</div>
+          <div class="finding-text">Your 4.6-star rating is competitive but <strong>Wasatch leads with 4.9 stars</strong> across 284 reviews.</div>
+          <div class="finding-impact">Est. $720/yr at risk from rating difference</div>
         </div>
       </div>
       <div class="finding">
         <div class="finding-num">3</div>
         <div>
-          <div class="finding-text">Your Google Business Profile is <strong>missing 4 of 8 completeness signals</strong>: business description, service area, appointment link, and Q&A responses.</div>
-          <div class="finding-impact">GBP completeness directly affects local search ranking</div>
+          <div class="finding-text">You rank <strong>#3 of 5</strong> endodontists in Salt Lake City. Patients searching for an endodontist see Wasatch and Pioneer before you.</div>
+          <div class="finding-impact">Top 3 positions capture 70% of new patient searches</div>
         </div>
       </div>
     </div>
 
     <!-- Blur Gate -->
     <div class="blur-gate">
-      <h3>See why Endodontic Associates ranks above you in Salt Lake City.</h3>
+      <h3>See why Wasatch Endodontics ranks above you in Salt Lake City.</h3>
       <p>Your practice operates on a deterministic system. Every number in this report is a lever you can pull. Unlock the full breakdown with specific actions to close the gap.</p>
       <a href="https://getalloro.com/checkup" class="cta">Get Your Full Report Free &rarr;</a>
     </div>

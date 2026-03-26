@@ -8,11 +8,11 @@ Monthly, first Monday
 
 ## Five Thresholds Per Vertical
 
-1. **T1 Search Demand**: Minimum 500 monthly searches for "[specialty] near me" or equivalent in target markets
-2. **T2 Organic Inbound**: At least 3 inbound inquiries from the vertical in trailing 90 days
-3. **T3 Competitive Vacuum**: No dominant platform serving this vertical with business intelligence (not just scheduling or billing)
-4. **T4 Config Readiness**: Vocabulary config exists, ranking algorithm weights validated, at least 2 sample practices tested through Checkup
-5. **T5 Content Coverage**: Business Clarity content page exists for this vertical, programmatic SEO pages seeded for top 10 cities
+1. **T1 Search Demand**: Monthly search volume for "[vertical] + business intelligence" or equivalent exceeds 1,000
+2. **T2 Organic Inbound**: Alloro has received 3+ unprompted inquiries from this vertical in 90 days
+3. **T3 Competitive Vacuum**: No dominant player with >30% market share in this vertical's business intelligence space
+4. **T4 Config Readiness**: Alloro's vocabulary config and data models can support this vertical with <2 weeks of engineering
+5. **T5 Content Coverage**: At least 5 programmatic pages exist targeting this vertical's keywords
 
 ## Output Format
 [VERTICAL READINESS] table:
