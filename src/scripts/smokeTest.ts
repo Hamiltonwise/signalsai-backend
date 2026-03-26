@@ -61,6 +61,14 @@ function startTimer() {
   checkStart = Date.now();
 }
 
+function formatError(e: unknown): string {
+  if (e instanceof DOMException && e.name === "AbortError") return "request timed out";
+  const msg = e instanceof Error ? e.message : String(e);
+  if (msg.includes("ECONNREFUSED")) return `backend unreachable at ${BASE_URL}`;
+  if (msg.includes("fetch failed")) return `cannot connect to ${BASE_URL}`;
+  return msg;
+}
+
 function record(name: string, passed: boolean, detail?: string) {
   const elapsed = Date.now() - checkStart;
   results.push({ name, passed, detail });
@@ -99,8 +107,8 @@ async function check1() {
       return record(name, false, "competitors is not an array");
     }
     record(name, true, `score=${scoreNum}, ${data.competitors.length} competitors`);
-  } catch (e: any) {
-    record(name, false, e.message);
+  } catch (e) {
+    record(name, false, formatError(e));
   }
 }
 
@@ -136,8 +144,8 @@ async function check2() {
     createdToken = token;
     createdOrgId = orgId;
     record(name, true, `orgId=${orgId}`);
-  } catch (e: any) {
-    record(name, false, e.message);
+  } catch (e) {
+    record(name, false, formatError(e));
   }
 }
 
@@ -159,8 +167,8 @@ async function check3() {
       return record(name, false, `unexpected body: ${JSON.stringify(data)}`);
     }
     record(name, true);
-  } catch (e: any) {
-    record(name, false, e.message);
+  } catch (e) {
+    record(name, false, formatError(e));
   }
 }
 
@@ -195,8 +203,8 @@ async function check4() {
       return record(name, false, "detail missing id or name");
     }
     record(name, true, `verified org ${firstId}: ${org.name}`);
-  } catch (e: any) {
-    record(name, false, e.message);
+  } catch (e) {
+    record(name, false, formatError(e));
   }
 }
 
@@ -220,8 +228,8 @@ async function check5() {
       return record(name, false, `dashboard-context status ${dash.status}`);
     }
     record(name, true);
-  } catch (e: any) {
-    record(name, false, e.message);
+  } catch (e) {
+    record(name, false, formatError(e));
   }
 }
 
@@ -239,8 +247,8 @@ async function check6() {
       return record(name, false, `status="${s}" (expected ok or degraded)`);
     }
     record(name, true, `status=${s}`);
-  } catch (e: any) {
-    record(name, false, e.message);
+  } catch (e) {
+    record(name, false, formatError(e));
   }
 }
 
