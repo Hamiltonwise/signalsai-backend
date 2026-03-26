@@ -5,10 +5,14 @@
 
 import { Link } from "react-router-dom";
 import { Shield, Star, Award } from "lucide-react";
+import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 export default function HeroesPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <MarketingLayout
+      title="Heroes Initiative"
+      description="For veterans who transitioned from military service to practice ownership. Full access to Alloro's business intelligence platform."
+    >
       <section className="px-6 py-20 max-w-3xl mx-auto">
         <Link to="/foundation" className="text-xs text-gray-400 hover:text-[#D56753] mb-6 block">
           &larr; Back to Foundation
@@ -73,6 +77,6 @@ export default function HeroesPage() {
           </Link>
         </div>
       </section>
-    </div>
+    </MarketingLayout>
   );
 }

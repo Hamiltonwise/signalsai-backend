@@ -60,7 +60,7 @@ export default function MarketingFooter() {
             corey@getalloro.com
           </a>
           <p className="mt-3 text-[11px] text-gray-400 leading-relaxed">
-            HIPAA-ready. No patient records. No contracts.
+            Your data stays yours. No contracts. Cancel anytime.
           </p>
           <div className="mt-3 h-0.5 w-16 bg-[#D56753] rounded-full opacity-40" />
         </div>

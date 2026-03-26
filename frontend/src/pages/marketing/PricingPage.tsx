@@ -13,13 +13,13 @@ export default function PricingPage() {
   return (
     <MarketingLayout
       title="Pricing"
-      description="Simple pricing. Real value. One product. One price. No contracts."
+      description="$2,000/month per location. Your Monday Brief, PatientPath, referral intelligence, and competitive tracking. No contracts."
     >
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight">
-            Simple pricing. Real value.
+            Everything Alloro does. One price.
           </h1>
           <p className="mt-4 text-base sm:text-lg text-[#212D40]/60">
             One product. One price. No contracts.
@@ -64,7 +64,7 @@ export default function PricingPage() {
                 />
                 <IncludeItem
                   title="The Business Clarity Layer."
-                  desc="The more data Alloro has, the more specific the intelligence gets. Every stage of connection makes Monday morning more valuable."
+                  desc="Connect your scheduling software and Alloro tells you which procedure mix is underperforming relative to your market. Connect billing data and the Monday email puts a dollar figure on every finding."
                 />
               </div>
             </div>

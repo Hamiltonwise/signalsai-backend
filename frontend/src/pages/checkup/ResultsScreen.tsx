@@ -689,6 +689,56 @@ export default function ResultsScreen() {
         {" "}A full audit with connected accounts reveals more.
       </p>
 
+      {/* Share prompt — right after score, natural moment */}
+      <div className="bg-[#212D40] rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4">
+        <div className="flex-1 text-center sm:text-left">
+          <p className="text-sm font-semibold text-white">
+            Know a colleague who should see their score?
+          </p>
+          <p className="text-xs text-white/50 mt-1">
+            Share a link with your market data. No practice name included.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const res = await fetch("/api/checkup/share", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  score: score.composite,
+                  city: place?.city,
+                  rank: market?.rank,
+                  totalCompetitors: market?.totalCompetitors,
+                  topCompetitorName: topCompetitor?.name,
+                  specialty: place?.category,
+                }),
+              });
+              const data = await res.json();
+              if (data.success && data.shareUrl) {
+                await navigator.clipboard.writeText(data.shareUrl);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+              }
+            } catch {
+              const base = window.location.origin;
+              const shareUrl = state.refCode
+                ? `${base}/checkup?ref=${state.refCode}`
+                : `${base}/checkup`;
+              navigator.clipboard.writeText(shareUrl).then(() => {
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+              });
+            }
+          }}
+          className="shrink-0 flex items-center gap-2 text-sm font-semibold text-[#212D40] bg-white rounded-lg px-5 py-2.5 hover:bg-gray-50 active:scale-[0.98] transition-all"
+        >
+          <Share2 className="w-3.5 h-3.5" />
+          {linkCopied ? "Copied!" : "Share score"}
+        </button>
+      </div>
+
       {/* Gap Progress Bars — concrete closeable units */}
       {state.gaps && state.gaps.length > 0 && (
         <GapSection gaps={state.gaps} />

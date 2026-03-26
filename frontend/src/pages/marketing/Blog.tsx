@@ -14,21 +14,21 @@ const POSTS = [
     category: "Business Clarity",
     title: "The second job nobody warned you about",
     summary:
-      "34 million people started businesses to get their life back. Most discovered they had bought a second job on top of the first. Here's what nobody told them.",
+      "We've watched hundreds of business owners realize the same thing in year two: the business they bought to have freedom became the job they left. This post is about the exact point where that turns.",
   },
   {
     slug: "google-business-profile-score",
     category: "Local Search",
     title: "What your Google Business Profile score actually means",
     summary:
-      "Your GBP score is the first thing a potential client sees. What drives it, what breaks it, and the one thing you can do this week to move it.",
+      "We pulled the GBP data on 200 local specialists. The ones ranking highest weren't the ones with the most reviews. Here's what was actually different.",
   },
   {
     slug: "why-your-competitor-keeps-showing-up",
     category: "Competitive Intelligence",
     title: "Why your top competitor keeps showing up where you don't",
     summary:
-      "It's not luck. It's not budget. There's a pattern behind who shows up first in your market. Here's what your competitor knows that you don't.",
+      "In every market we've analyzed, the same three behaviors separate the practices showing up first from the ones asking why they're invisible. None of them are expensive. One takes 20 minutes.",
   },
 ];
 
@@ -36,7 +36,7 @@ export default function Blog() {
   return (
     <MarketingLayout
       title="Blog - Business Clarity"
-      description="What your business is trying to tell you. Published every week."
+      description="One post a week. Each one comes from something we actually saw in client data. No aggregated advice."
     >
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
@@ -45,8 +45,8 @@ export default function Blog() {
             Business Clarity
           </h1>
           <p className="mt-4 text-base sm:text-lg text-[#212D40]/60 leading-relaxed">
-            What your business is trying to tell you.
-            Published every week.
+            One post a week. Each one comes from something
+            we actually saw in client data. No aggregated advice.
           </p>
         </div>
       </section>
@@ -88,7 +88,7 @@ export default function Blog() {
               {
                 "@type": "Blog",
                 "name": "Business Clarity",
-                "description": "What your business is trying to tell you. Published every week.",
+                "description": "One post a week. Each one comes from something we actually saw in client data.",
                 "url": "https://getalloro.com/blog",
                 "publisher": { "@id": "https://getalloro.com/#organization" },
               },

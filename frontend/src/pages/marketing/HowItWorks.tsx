@@ -12,7 +12,7 @@ export default function HowItWorks() {
   return (
     <MarketingLayout
       title="How Alloro Works"
-      description="No setup. No learning curve. You give us your practice name. We do the rest."
+      description="Type your business name. Monday morning, we tell you which competitor gained ground and what to do about it."
     >
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
@@ -21,8 +21,8 @@ export default function HowItWorks() {
             How Alloro works
           </h1>
           <p className="mt-4 text-base sm:text-lg text-[#212D40]/60 leading-relaxed max-w-lg mx-auto">
-            No setup. No learning curve. No calls to schedule.
-            You give us your practice name. We do the rest.
+            You type your business name. Monday morning, we tell you
+            which competitor gained 11 reviews last week and what to do about it.
           </p>
         </div>
       </section>
@@ -43,7 +43,7 @@ export default function HowItWorks() {
           <Stage
             icon={<Zap className="w-6 h-6 text-[#D56753]" />}
             title="The Clarity Layer (ongoing, autonomous)"
-            body="Connect your existing data. Alloro monitors your practice's intelligence 24/7: GP referral patterns, local visibility, competitive position, patient trends. When something important changes, you know before it becomes a problem."
+            body="Connect your existing data. When your top referring source goes 30 days without sending a case, you get a note Monday morning, not a surprise three months later. When a competitor opens a second location, you know before your staff hears about it."
           />
         </div>
       </section>
@@ -122,7 +122,7 @@ export default function HowItWorks() {
             />
             <FAQ
               q="What specialties does Alloro serve?"
-              a="Any local service professional who has a presence in local search and cares about who finds them there. We started with specialist medical practices and have since expanded to attorneys, veterinarians, physical therapists, financial advisors, and more."
+              a="We built this for specialist medical practices, endodontists, oral surgeons, orthodontists, and have since expanded to attorneys, veterinarians, physical therapists, financial advisors, and chiropractors. If your livelihood depends on local clients finding you and trusting you, Alloro was built for you."
             />
           </div>
         </div>

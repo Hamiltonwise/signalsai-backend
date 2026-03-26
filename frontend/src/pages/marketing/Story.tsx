@@ -86,8 +86,9 @@ export default function Story() {
           <p className="text-base text-[#212D40]/80 leading-relaxed">
             That's what Business Clarity means. Not a dashboard.
             Not a report. The confidence that comes from knowing
-            exactly what your business is doing and exactly what
-            to do about it.
+            which referral source went quiet last month, which
+            competitor just opened near you, and what to do about
+            both before Monday morning.
           </p>
         </div>
       </section>

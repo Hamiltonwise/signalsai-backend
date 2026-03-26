@@ -5,10 +5,14 @@
 
 import { Link } from "react-router-dom";
 import { Rocket, Target, Users } from "lucide-react";
+import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 export default function FoundersPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <MarketingLayout
+      title="Founders Initiative"
+      description="Supporting first-generation practice owners building without a playbook. Market intelligence, founder network, and launch accelerator."
+    >
       <section className="px-6 py-20 max-w-3xl mx-auto">
         <Link to="/foundation" className="text-xs text-gray-400 hover:text-[#D56753] mb-6 block">
           &larr; Back to Foundation
@@ -73,6 +77,6 @@ export default function FoundersPage() {
           </Link>
         </div>
       </section>
-    </div>
+    </MarketingLayout>
   );
 }

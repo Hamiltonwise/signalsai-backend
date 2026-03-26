@@ -21,7 +21,7 @@ export default function HomePage() {
   return (
     <MarketingLayout
       title="Alloro - Business Clarity Platform"
-      description="Business intelligence that runs while you work. Every Monday morning, in plain English."
+      description="See which competitors gained ground, which referral relationships are drifting, and what to do about it. Every Monday morning."
     >
       {/* Hero */}
       <section className="px-5 py-20 sm:py-28" style={{ backgroundColor: "rgba(213, 103, 83, 0.04)" }}>
@@ -82,7 +82,7 @@ export default function HomePage() {
       {/* What Alloro Does */}
       <section className="px-5 py-16 sm:py-20">
         <p className="text-center text-[24px] sm:text-[32px] font-extrabold text-[#212D40] tracking-tight max-w-2xl mx-auto">
-          Business intelligence that runs while you work.
+          See which competitors gained ground on you this week, which referral relationships are drifting, and what to do about both.
         </p>
       </section>
 
@@ -94,11 +94,11 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-6">
           <ProofCard
             number="55 seconds"
-            text="The average person spends 55 seconds on a website deciding if you're worth calling. Alloro tells you exactly what they're seeing, and what your top competitor did last week."
+            text="A visitor decides in 55 seconds if you're worth calling. Alloro shows you exactly what they're seeing when they search your name, and what your top competitor did last week to show up above you."
           />
           <ProofCard
             number="$1,800"
-            text="The average annual value of a single referring relationship. Alloro monitors every one of yours and alerts you the moment one starts to drift."
+            text="That's what a single referring relationship is worth per year to a specialist. Alloro monitors every one of yours and alerts you the moment one goes quiet, with the dollar figure attached."
           />
           <ProofCard
             number="Monday 7am"

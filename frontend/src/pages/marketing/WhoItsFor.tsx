@@ -67,42 +67,42 @@ export default function WhoItsFor() {
             <VerticalCard
               icon={<Stethoscope className="w-5 h-5 text-[#D56753]" />}
               title="Endodontists"
-              desc="GP referral intelligence. Competitor ranking. Every Monday."
+              desc="Know which GPs stopped referring to you this quarter, and which competitor picked up those cases. Every Monday before your first patient."
             />
             <VerticalCard
               icon={<Heart className="w-5 h-5 text-[#D56753]" />}
               title="Orthodontists"
-              desc="New patient acquisition. Practice visibility. Market position."
+              desc="Track which zip codes your new patients are coming from, and where you're losing them to a closer office."
             />
             <VerticalCard
               icon={<Activity className="w-5 h-5 text-[#D56753]" />}
               title="Chiropractors"
-              desc="Local search dominance. Patient retention signals. Weekly clarity."
+              desc="See when a new practice opens in your radius before your front desk hears about it."
             />
             <VerticalCard
               icon={<Users className="w-5 h-5 text-[#D56753]" />}
               title="Physical Therapists"
-              desc="Referral source tracking. Online presence monitoring. Plain English."
+              desc="Your physician referral network is your pipeline. Alloro tells you which sources went quiet and what the gap is costing you."
             />
             <VerticalCard
               icon={<Eye className="w-5 h-5 text-[#D56753]" />}
               title="Optometrists"
-              desc="Competitive analysis. Review velocity. One action every week."
+              desc="In optical, reviews and proximity drive almost everything. Know your review gap and who's closing it."
             />
             <VerticalCard
               icon={<PawPrint className="w-5 h-5 text-[#D56753]" />}
               title="Veterinarians"
-              desc="Local visibility. Client acquisition signals. No jargon."
+              desc="Pet owners search differently than patients. Alloro tracks the signals that actually drive new client calls in your market."
             />
             <VerticalCard
               icon={<Scale className="w-5 h-5 text-[#D56753]" />}
               title="Attorneys"
-              desc="Market position. Referral patterns. Business intelligence weekly."
+              desc="Intake calls come from visibility. Alloro shows you where potential clients are finding your competitors instead of you, and what to do about it this week."
             />
             <VerticalCard
               icon={<Calculator className="w-5 h-5 text-[#D56753]" />}
               title="CPAs and Financial Advisors"
-              desc="Client retention signals. Local visibility. The clarity layer."
+              desc="Your clients don't leave loudly. Alloro spots the drift signals before the annual review where they tell you they've moved on."
             />
             <VerticalCard
               icon={<Briefcase className="w-5 h-5 text-[#D56753]" />}

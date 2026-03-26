@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
+import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 export default function FoundationApply() {
   const [submitted, setSubmitted] = useState(false);
@@ -53,27 +54,29 @@ export default function FoundationApply() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-6">
-        <div className="text-center max-w-md">
-          <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-[#212D40]">Application Received</h1>
-          <p className="mt-3 text-gray-500">
-            Thank you, {form.name}. We review every application personally.
-            You'll hear from us within 5 business days.
-          </p>
-          <Link
-            to="/foundation"
-            className="inline-block mt-8 text-sm text-[#D56753] font-semibold hover:underline"
-          >
-            Back to Foundation
-          </Link>
+      <MarketingLayout title="Application Received" description="Your Foundation application has been received.">
+        <div className="flex items-center justify-center px-6 py-20">
+          <div className="text-center max-w-md">
+            <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-[#212D40]">Application Received</h1>
+            <p className="mt-3 text-gray-500">
+              Thank you, {form.name}. We review every application personally.
+              You'll hear from us within 5 business days.
+            </p>
+            <Link
+              to="/foundation"
+              className="inline-block mt-8 text-sm text-[#D56753] font-semibold hover:underline"
+            >
+              Back to Foundation
+            </Link>
+          </div>
         </div>
-      </div>
+      </MarketingLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <MarketingLayout title="Apply to the Foundation" description="Apply to Heroes & Founders Foundation. Every application is reviewed personally.">
       <section className="px-6 py-16 max-w-xl mx-auto">
         <Link to="/foundation" className="text-xs text-gray-400 hover:text-[#D56753] mb-6 block">
           &larr; Back to Foundation
@@ -179,7 +182,7 @@ export default function FoundationApply() {
           </button>
         </form>
       </section>
-    </div>
+    </MarketingLayout>
   );
 }
 
