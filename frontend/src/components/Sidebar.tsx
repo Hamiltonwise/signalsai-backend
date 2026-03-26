@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   MapPin,
+  Shield,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSidebar } from "./Admin/SidebarContext";
