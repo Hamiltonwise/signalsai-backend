@@ -6,7 +6,8 @@
  * since no data exists yet) and sets the expectation for Monday's brief.
  */
 
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import OneActionCard from "../components/dashboard/OneActionCard";
 
 export default function ThankYou() {
@@ -62,6 +63,17 @@ export default function ThankYou() {
           <p className="text-sm text-white/60 mt-2 leading-relaxed">
             We'll show you what Monday looks like.
           </p>
+        </div>
+
+        {/* Dashboard CTA */}
+        <div className="text-center">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#D56753] text-white text-base font-semibold px-8 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
+          >
+            Go to your dashboard
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
 
         {/* Footer */}

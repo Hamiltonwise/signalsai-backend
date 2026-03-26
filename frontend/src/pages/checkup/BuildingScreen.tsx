@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, Navigate, useNavigate } from "react-router-dom";
+import { isConferenceMode } from "./conferenceFallback";
 
 /**
  * /checkup/building -- transition screen after account creation.
@@ -38,11 +39,14 @@ export default function BuildingScreen() {
     setReady(true);
   }, [navigate]);
 
-  // Once auth is confirmed, navigate to dashboard after brand moment
+  // Once auth is confirmed, navigate after brand moment
+  // Conference mode: route through /thank-you (booth info + one action card)
+  // Normal mode: go straight to dashboard
   useEffect(() => {
     if (!ready) return;
+    const destination = isConferenceMode() ? "/thank-you" : "/dashboard";
     const timer = setTimeout(() => {
-      navigate("/dashboard", { replace: true });
+      navigate(destination, { replace: true });
     }, 3500);
     return () => clearTimeout(timer);
   }, [ready, navigate]);
