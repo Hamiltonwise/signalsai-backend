@@ -10,6 +10,8 @@ import knex from "../database/connection";
 import { SPECIALTIES } from "../data/cityData";
 import { getSpokeLinks, renderSpokeLinksHtml } from "../services/aeoLinking";
 
+type SpecialtyEntry = (typeof SPECIALTIES)[number];
+
 const programmaticPagesRoutes = express.Router();
 
 const VALID_SPECIALTY_SLUGS = new Set(SPECIALTIES.map((s) => s.slug));
@@ -83,12 +85,22 @@ programmaticPagesRoutes.get("/:pageSlug", async (req: Request, res: Response) =>
       ? JSON.parse(page.schema_markup)
       : page.schema_markup;
 
+    // Parse content sections
+    const contentSections = typeof page.content_sections === "string"
+      ? JSON.parse(page.content_sections)
+      : page.content_sections;
+
+    // Increment view counter (fire-and-forget)
+    knex("programmatic_pages")
+      .where({ page_slug: pageSlug })
+      .increment("organic_visits_30d", 1)
+      .catch(() => {});
+
     // Return full page data (frontend renders the template)
     return res.json({
       title: page.title,
       metaDescription: page.meta_description,
-      h1: page.h1,
-      bodyHtml: page.body_html,
+      contentSections,
       spokeLinksHtml,
       competitors,
       schemaMarkup,
@@ -104,8 +116,8 @@ programmaticPagesRoutes.get("/:pageSlug", async (req: Request, res: Response) =>
       citySlug: page.city_slug,
       cityName: page.city_name,
       stateAbbr: page.state_abbr,
-      competitorCount: competitors.length,
-      lastUpdated: page.competitors_fetched_at,
+      competitorCount: competitors ? competitors.length : 0,
+      lastUpdated: page.competitors_refreshed_at,
     });
   } catch (error) {
     console.error("Programmatic page error:", error);
@@ -129,7 +141,7 @@ programmaticPagesRoutes.get(
 
       const specialty = SPECIALTIES.find((s) => s.slug === specialtySlug);
       const pages = await knex("programmatic_pages")
-        .where({ specialty_slug: specialtySlug, published: true })
+        .where({ specialty_slug: specialtySlug, status: "published" })
         .select(
           "page_slug",
           "city_name",

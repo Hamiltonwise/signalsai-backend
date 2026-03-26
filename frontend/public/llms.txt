@@ -1,14 +1,25 @@
 # Alloro
-> Business intelligence platform for licensed specialists
 
-## About
-Alloro provides competitive intelligence, market positioning, and growth tools for business owners in healthcare and professional services. Our platform analyzes local market data, tracks competitor activity, and delivers actionable insights.
+> Business clarity platform for licensed specialists. Every owner deserves the life they set out to build.
 
-## Key Pages
-- /checkup -- Free business health checkup with competitive analysis
-- /demo -- Interactive demo of the platform
-- /[specialty]-[city] -- Local market intelligence for specialists in specific cities
+## What is Alloro?
+
+Alloro is a business intelligence platform built for licensed specialists (endodontists, orthodontists, chiropractors, physical therapists, optometrists, veterinarians, attorneys, CPAs, financial advisors). It provides competitive market intelligence, referral network analysis, and practice performance tracking.
+
+## Core Product
+
+- Free Referral Base Checkup: 30-second competitive analysis showing where a practice ranks in its local market
+- Monday Intelligence Brief: weekly email with actionable findings about ranking changes, competitor moves, and referral network health
+- Practice Dashboard: real-time competitive positioning, review velocity, referral drift alerts
+- PatientPath/ClearPath: practice websites built from verified business data
+
+## Key Links
+
+- Homepage: https://getalloro.com
+- Free Checkup: https://getalloro.com/checkup
+- Pricing: https://getalloro.com/pricing
 
 ## Contact
+
 - Website: https://getalloro.com
-- Support: support@getalloro.com
+- Support: https://getalloro.com/help

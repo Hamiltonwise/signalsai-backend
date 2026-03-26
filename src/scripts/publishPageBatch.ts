@@ -1,184 +1,96 @@
 /**
- * WO-7 Component 8: Staged Publishing Protocol
- *
- * Publishing schedule:
- * - Batch 1: 50 pages (Tier 1 cities, top specialties)
- * - Batch 2: 200 pages (Tier 1-2 cities, all dental specialties)
- * - Batch 3+: 100 pages/week (remaining cities and specialties)
+ * Staged Publishing Protocol for Programmatic SEO Pages
  *
  * Usage:
- *   npx ts-node src/scripts/publishPageBatch.ts --batch 1
- *   npx ts-node src/scripts/publishPageBatch.ts --batch 2
- *   npx ts-node src/scripts/publishPageBatch.ts --generate --batch 1
+ *   npx ts-node src/scripts/publishPageBatch.ts [--limit N] [--specialty slug] [--dry-run]
+ *
+ * Stages:
+ *   1. First run: 50 pages (initial index test)
+ *   2. Second run: 200 pages
+ *   3. Subsequent runs: 100 pages per batch
  */
 
-import knex from "../database/connection";
-import { CITIES, SPECIALTIES, toSlug, buildPageSlug } from "../data/cityData";
-import {
-  generateAndStorePage,
-} from "../services/programmaticPageGenerator";
-import { updateAllSpokeLinks } from "../services/aeoLinking";
+import dotenv from "dotenv";
+dotenv.config();
 
-interface BatchConfig {
-  batchNumber: number;
-  maxPages: number;
-  minIcpDensity: number;
-  specialtySlugs: string[];
-}
+import { db } from "../database/connection";
 
-const BATCH_CONFIGS: Record<number, BatchConfig> = {
-  1: {
-    batchNumber: 1,
-    maxPages: 50,
-    minIcpDensity: 9,
-    specialtySlugs: ["endodontist", "orthodontist", "oral-surgeon", "chiropractor", "optometrist"],
-  },
-  2: {
-    batchNumber: 2,
-    maxPages: 200,
-    minIcpDensity: 8,
-    specialtySlugs: SPECIALTIES.map((s) => s.slug),
-  },
-  3: {
-    batchNumber: 3,
-    maxPages: 100,
-    minIcpDensity: 6,
-    specialtySlugs: SPECIALTIES.map((s) => s.slug),
-  },
-  4: {
-    batchNumber: 4,
-    maxPages: 100,
-    minIcpDensity: 1,
-    specialtySlugs: SPECIALTIES.map((s) => s.slug),
-  },
-};
+async function main() {
+  const args = process.argv.slice(2);
+  const dryRun = args.includes("--dry-run");
+  const limitIdx = args.indexOf("--limit");
+  const specialtyIdx = args.indexOf("--specialty");
 
-async function generateBatch(batchNumber: number): Promise<void> {
-  const config = BATCH_CONFIGS[batchNumber];
-  if (!config) {
-    console.error(`Unknown batch number: ${batchNumber}. Use 1-4.`);
-    process.exit(1);
+  const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : 50;
+  const specialty = specialtyIdx >= 0 ? args[specialtyIdx + 1] : undefined;
+
+  console.log(`Programmatic SEO Page Publisher`);
+  console.log(`  Limit: ${limit}`);
+  console.log(`  Specialty filter: ${specialty || "all"}`);
+  console.log(`  Dry run: ${dryRun}`);
+  console.log("");
+
+  // Find draft pages with real competitor data (non-empty competitors_snapshot)
+  let query = db("programmatic_pages")
+    .where("status", "draft")
+    .whereNotNull("competitors_snapshot")
+    .whereRaw("competitors_snapshot::text != '[]'")
+    .whereRaw("competitors_snapshot::text != 'null'")
+    .orderByRaw("COALESCE(lat, 0) DESC") // Prioritize pages with coordinates
+    .limit(limit);
+
+  if (specialty) {
+    query = query.where("specialty_slug", specialty);
   }
 
-  console.log(`\nGenerating batch ${batchNumber} (max ${config.maxPages} pages)...`);
+  const pages = await query.select("id", "page_slug", "specialty_name", "city_name", "state_abbr");
 
-  const cities = CITIES.filter((c) => c.icpDensity >= config.minIcpDensity);
-  const specialties = SPECIALTIES.filter((s) =>
-    config.specialtySlugs.includes(s.slug)
-  );
+  console.log(`Found ${pages.length} draft pages ready for publishing.`);
 
-  let generated = 0;
-  let skipped = 0;
-  let failed = 0;
-
-  for (const specialty of specialties) {
-    if (generated >= config.maxPages) break;
-
-    for (const city of cities) {
-      if (generated >= config.maxPages) break;
-
-      try {
-        const pageId = await generateAndStorePage(
-          specialty.name,
-          specialty.slug,
-          city.city,
-          city.stateAbbr,
-          city.slug,
-          batchNumber
-        );
-
-        if (pageId) {
-          generated++;
-          console.log(
-            `  [${generated}/${config.maxPages}] ${specialty.slug}-${city.slug}`
-          );
-        } else {
-          skipped++;
-        }
-      } catch (error) {
-        failed++;
-        console.error(
-          `  FAILED: ${specialty.slug}-${city.slug}:`,
-          error instanceof Error ? error.message : error
-        );
-      }
-    }
+  if (pages.length === 0) {
+    console.log("No pages to publish. Generate pages first using the programmatic SEO service.");
+    process.exit(0);
   }
 
-  console.log(
-    `\nBatch ${batchNumber} complete: ${generated} generated, ${skipped} skipped, ${failed} failed`
-  );
-}
+  console.log("\nPages to publish:");
+  for (const page of pages) {
+    console.log(`  ${page.page_slug} (${page.specialty_name} in ${page.city_name}, ${page.state_abbr})`);
+  }
 
-async function publishBatch(batchNumber: number): Promise<void> {
-  const result = await knex("programmatic_pages")
-    .where({ publish_batch: batchNumber, published: false })
+  if (dryRun) {
+    console.log("\nDry run complete. No pages published.");
+    process.exit(0);
+  }
+
+  // Publish the batch
+  const ids = pages.map((p: { id: number }) => p.id);
+  const published = await db("programmatic_pages")
+    .whereIn("id", ids)
     .update({
-      published: true,
-      published_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      status: "published",
+      published_at: new Date(),
+      updated_at: new Date(),
     });
 
-  console.log(`Published ${result} pages in batch ${batchNumber}`);
+  console.log(`\nPublished ${published} pages.`);
 
-  // Update spoke links for all published pages
-  const linkedCount = await updateAllSpokeLinks();
-  console.log(`Updated spoke links for ${linkedCount} pages`);
-}
-
-async function showStats(): Promise<void> {
-  const stats = await knex("programmatic_pages")
+  // Log stats
+  const stats = await db("programmatic_pages")
     .select(
-      knex.raw("publish_batch"),
-      knex.raw("COUNT(*) as total"),
-      knex.raw("COUNT(*) FILTER (WHERE published = true) as published"),
-      knex.raw("COUNT(*) FILTER (WHERE needs_refresh = true) as needs_refresh")
+      db.raw("COUNT(*) as total"),
+      db.raw("COUNT(*) FILTER (WHERE status = 'published') as published"),
+      db.raw("COUNT(*) FILTER (WHERE status = 'draft') as draft")
     )
-    .groupBy("publish_batch")
-    .orderBy("publish_batch");
+    .first();
 
-  console.log("\nProgrammatic Pages Stats:");
-  console.log("Batch | Total | Published | Needs Refresh");
-  console.log("------|-------|-----------|---------------");
-  for (const row of stats) {
-    console.log(
-      `  ${row.publish_batch || "N/A"}   |  ${row.total}   |    ${row.published}     |      ${row.needs_refresh}`
-    );
-  }
+  console.log(`\nTotal pages: ${stats.total}`);
+  console.log(`Published: ${stats.published}`);
+  console.log(`Draft: ${stats.draft}`);
+
+  process.exit(0);
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  const batchFlag = args.indexOf("--batch");
-  const batchNumber = batchFlag >= 0 ? parseInt(args[batchFlag + 1], 10) : 0;
-  const shouldGenerate = args.includes("--generate");
-  const shouldStats = args.includes("--stats");
-
-  try {
-    if (shouldStats) {
-      await showStats();
-    } else if (shouldGenerate && batchNumber > 0) {
-      await generateBatch(batchNumber);
-    } else if (batchNumber > 0) {
-      await publishBatch(batchNumber);
-    } else {
-      console.log("Usage:");
-      console.log(
-        "  npx ts-node src/scripts/publishPageBatch.ts --generate --batch 1  # Generate batch"
-      );
-      console.log(
-        "  npx ts-node src/scripts/publishPageBatch.ts --batch 1             # Publish batch"
-      );
-      console.log(
-        "  npx ts-node src/scripts/publishPageBatch.ts --stats               # Show stats"
-      );
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    process.exit(1);
-  } finally {
-    await knex.destroy();
-  }
-}
-
-main();
+main().catch((err) => {
+  console.error("Publishing failed:", err);
+  process.exit(1);
+});

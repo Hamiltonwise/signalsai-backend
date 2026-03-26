@@ -1,60 +1,86 @@
-# Alloro — Full Documentation for LLMs
-> Business intelligence platform that gives licensed specialists competitive clarity in their local market
+# Alloro - Full Context
 
-## About Alloro
-Alloro is a business intelligence platform built for owners of licensed specialty practices — dentists, orthodontists, oral surgeons, periodontists, chiropractors, veterinarians, optometrists, dermatologists, and other healthcare and professional service providers. The platform delivers competitive intelligence, market positioning insights, and growth tools that help business owners understand their local competitive landscape without needing a data team.
+> Business clarity platform for licensed specialists. Every owner deserves the life they set out to build.
 
-## Specialties Served
-Alloro serves licensed specialists across healthcare and professional services, including but not limited to:
-- Dentists and dental specialists (orthodontists, oral surgeons, periodontists, endodontists, prosthodontists, pediatric dentists)
-- Chiropractors
-- Veterinarians
-- Optometrists and ophthalmologists
-- Dermatologists
-- Med spas and aesthetic practices
-- Physical therapists
-- Other licensed professional service providers
+## Mission
 
-## Free Business Health Checkup (/checkup)
-The checkup is Alloro's entry point. A business owner enters their practice name via Google Places autocomplete and receives a competitive analysis of their local market. The checkup flow includes:
-1. **Entry screen** — Google Places autocomplete to identify the business
-2. **Scanning theater** — A real-time scanning animation showing named data checks being performed, plus a competitor map displaying actual competitor locations with pins
-3. **Score reveal** — Three real findings about the business's competitive position, a dollar figure estimating revenue impact, and a blur gate previewing deeper insights
-4. **Email capture** — A gate with real competitor names pre-filled, unlocking the full report
-5. **Result email** — Delivered in under 60 seconds with the complete analysis
+Give every business owner the life they set out to build. Alloro sells freedom, not software.
 
-## Data Analyzed
-Alloro's intelligence engine analyzes multiple data sources for each local market:
-- **Google Business Profiles** — Practice information, categories, attributes, hours, photos, and service areas
-- **Review velocity** — How fast competitors are accumulating reviews, review sentiment trends, and rating trajectories over time
-- **Local search rankings** — Where practices appear in local search results for key terms in their specialty and geography
-- **Referral patterns** — Estimated referral relationships between general practitioners and specialists in the market
-- **Market density** — Number of competitors within drive-time radius, new market entrants, and practice closures
-- **Online presence signals** — Website quality indicators, social media activity, and directory listing consistency
+## What Alloro Does
 
-## Programmatic SEO Pages (/[specialty]-[city])
-Alloro generates programmatic landing pages for every combination of specialty and city we have market data for. Each page at a URL like `/dentist-austin` or `/orthodontist-seattle` contains:
-- **Real market data** for that specialty in that specific city
-- **Competitor count** and market density metrics
-- **Average review scores** and review velocity benchmarks for the market
-- **Key competitive insights** specific to that specialty-city combination
-- **A call to action** to run the free checkup for a specific practice in that market
+Alloro transforms public business data into actionable intelligence for practice owners. The platform monitors competitive positioning, referral network health, review velocity, and market dynamics across local service markets.
 
-These are not template pages with swapped city names. Each page reflects actual analyzed data for that market, making every page a unique and valuable resource for business owners researching their competitive landscape.
+## Product Suite
 
-## Platform Features (Authenticated)
-Once a business owner creates an account, the full Alloro platform provides:
-- **Competitive dashboard** — Real-time monitoring of competitor activity, reviews, and ranking changes
-- **Market positioning** — Where the practice sits relative to competitors on key metrics
-- **Growth opportunities** — Identified gaps in the market that represent growth potential
-- **Weekly intelligence briefs** — Automated summaries of competitive changes delivered via email
-- **Referral network mapping** — Visualization of referral relationships in the local market
+### Free Referral Base Checkup
+A 30-second competitive analysis that shows where a practice ranks in its local market. Inputs: business name and location. Outputs: Business Health Score (composite of three sub-scores), competitor map with real Google Business Profile data, review comparison, and specific findings with dollar-figure impact estimates.
 
-## Technical Details
-- Frontend: React 18+, TypeScript, Vite, Tailwind CSS
-- Programmatic pages are server-rendered with real market data
-- All market data is refreshed on a regular cadence to ensure accuracy
+### Intelligence Dashboard
+Real-time practice intelligence including:
+- Competitive rankings tracked weekly with position change alerts
+- Referral network mapping with drift detection (when a referral source stops sending)
+- Review velocity monitoring with AI-suggested responses
+- One Action Card: the single most impactful action for the practice this week
+
+### Monday Intelligence Brief
+Weekly email with findings filtered through a biological-economic lens: every finding identifies the core human need at risk and the dollar consequence at 30, 90, and 365 days.
+
+### PatientPath / ClearPath
+Practice websites generated from verified Google Business Profile data. SEO-optimized, AEO-ready (Answer Engine Optimization), with structured data markup.
+
+### GP Referral Intelligence
+For specialists who depend on referrals: maps the referral network, detects when referring providers go dark, and estimates revenue at risk from each change.
+
+## Supported Verticals
+
+Alloro uses universal language in its core platform with vertical-specific vocabulary configs:
+- Endodontics
+- Orthodontics
+- General Dentistry
+- Chiropractic
+- Physical Therapy
+- Optometry
+- Veterinary
+- Legal (Law Firms)
+- Financial Advisory (CPAs, Financial Advisors)
+
+## Competitive Intelligence
+
+Alloro tracks competitors using live Google Business Profile data, including:
+- Star ratings and review counts
+- Review velocity (rate of new reviews)
+- Ranking positions for specialty + city combinations
+- Website presence and SEO signals
+
+## Data Sources
+
+All intelligence is derived from publicly available data:
+- Google Business Profile (ratings, reviews, business info)
+- Google Places API (competitor discovery, market density)
+- Public website analysis (SEO signals, content patterns)
+
+No patient data is collected or processed. No PII is stored in analytics. Behavioral events track product usage patterns only.
+
+## Technology
+
+- Frontend: React, TypeScript, Tailwind CSS
+- Backend: Node.js, Express, PostgreSQL
+- AI: Claude API for conversational support (CS Agent), content generation, and intelligence analysis
+- Infrastructure: AWS EC2, managed PostgreSQL
+
+## Key Links
+
+- Homepage: https://getalloro.com
+- Free Checkup: https://getalloro.com/checkup
+- Pricing: https://getalloro.com/pricing
+- Help: https://getalloro.com/help
+- About: https://getalloro.com/about
+
+## Company
+
+Founded by Corey Wise. Based in the United States. Built for licensed specialists who trained for years in a craft they love, bought a business to have freedom, and discovered they had bought a second job.
 
 ## Contact
+
 - Website: https://getalloro.com
-- Support: support@getalloro.com
+- Support: https://getalloro.com/help

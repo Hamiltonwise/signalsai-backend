@@ -49,10 +49,10 @@ export async function fetchCompetitors(
   cityName: string,
   stateAbbr: string
 ): Promise<Competitor[]> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  const apiKey = process.env.GOOGLE_PLACES_API;
   if (!apiKey) {
     throw new Error(
-      "GOOGLE_PLACES_API_KEY required for programmatic page generation"
+      "GOOGLE_PLACES_API required for programmatic page generation"
     );
   }
 
