@@ -77,4 +77,73 @@ intelligencePanelRoutes.get(
   }
 );
 
+// Combined Intelligence Score (used by dashboard and practice cards)
+intelligencePanelRoutes.get(
+  "/score/:orgId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const orgId = Number(req.params.orgId);
+
+      // SEO score (latest audit)
+      const seoAudit = await db("patientpath_seo_audits")
+        .where({ organization_id: orgId })
+        .orderBy("audited_at", "desc")
+        .first();
+      const seoScore = seoAudit?.seo_score ?? 0;
+
+      // AEO score (published FAQ count, max 5 = 100)
+      const faqResult = await db("patientpath_faq_content")
+        .where({ organization_id: orgId, status: "published" })
+        .count("id as count")
+        .first();
+      const aeoScore = Math.min((Number(faqResult?.count) || 0) * 20, 100);
+
+      // CRO score (concluded experiments with improvement)
+      const croResult = await db("cro_experiments")
+        .where({ organization_id: orgId, concluded: true })
+        .count("id as count")
+        .first();
+      const croScore = Math.min((Number(croResult?.count) || 0) * 33, 100);
+
+      // Weighted average: SEO 40%, AEO 30%, CRO 30%
+      const combinedScore = Math.round(seoScore * 0.4 + aeoScore * 0.3 + croScore * 0.3);
+
+      return res.json({ combinedScore, seoScore, aeoScore, croScore });
+    } catch (error: any) {
+      console.error("[IntelPanel] Score error:", error.message);
+      return res.status(500).json({ error: "Failed to calculate score" });
+    }
+  }
+);
+
+// Keywords data for Intelligence Panel
+intelligencePanelRoutes.get(
+  "/keywords/:orgId",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const orgId = Number(req.params.orgId);
+
+      const keywords = await db("patientpath_keywords")
+        .where({ organization_id: orgId })
+        .orderBy("checked_at", "desc");
+
+      // Deduplicate to latest check per keyword
+      const seen = new Set<string>();
+      const latest = keywords.filter((k: any) => {
+        if (seen.has(k.keyword)) return false;
+        seen.add(k.keyword);
+        return true;
+      });
+
+      return res.json({ success: true, keywords: latest });
+    } catch (error: any) {
+      console.error("[IntelPanel] Keywords error:", error.message);
+      return res.status(500).json({ success: false, error: "Failed to fetch keyword data" });
+    }
+  }
+);
+
 export default intelligencePanelRoutes;

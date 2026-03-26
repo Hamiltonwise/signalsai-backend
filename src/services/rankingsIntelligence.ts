@@ -198,8 +198,13 @@ Market: ${address || specialty}`,
  * Generate snapshots for ALL active orgs.
  */
 export async function generateAllSnapshots(): Promise<{ generated: number; total: number }> {
+  // Include subscribed orgs AND Checkup-originated signups (have checkup_score but no subscription yet)
   const orgs = await db("organizations")
-    .whereNotNull("subscription_status")
+    .where(function () {
+      this.whereNotNull("subscription_status")
+        .orWhereNotNull("checkup_score")
+        .orWhere("onboarding_completed", true);
+    })
     .select("id", "name");
 
   let generated = 0;

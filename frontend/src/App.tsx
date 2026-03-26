@@ -66,6 +66,7 @@ import LegalPracticeMarketing from "./pages/content/LegalPracticeMarketing";
 import FinancialAdvisorMarketing from "./pages/content/FinancialAdvisorMarketing";
 import OptometristMarketing from "./pages/content/OptometristMarketing";
 import Locations from "./pages/dashboard/Locations";
+import Intelligence from "./pages/dashboard/Intelligence";
 // import About from "./pages/About"; // Not built yet
 // import TermsOfService from "./pages/TermsOfService"; // Not built yet
 // import PrivacyPolicy from "./pages/PrivacyPolicy"; // Not built yet
@@ -76,6 +77,10 @@ import EntryScreen from "./pages/checkup/EntryScreen";
 import ScanningTheater from "./pages/checkup/ScanningTheater";
 import ResultsScreen from "./pages/checkup/ResultsScreen";
 import BuildingScreen from "./pages/checkup/BuildingScreen";
+import FoundationHome from "./pages/foundation/FoundationHome";
+import HeroesPage from "./pages/foundation/HeroesPage";
+import FoundersPage from "./pages/foundation/FoundersPage";
+import FoundationApply from "./pages/foundation/FoundationApply";
 
 // AppProviders wrapper - now used as a layout route to avoid remounting on navigation
 function AppProviders({ children }: { children: ReactNode }) {
@@ -162,6 +167,12 @@ function App() {
               {/* <Route path="/terms" element={<TermsOfService />} /> -- not built yet */}
               {/* <Route path="/privacy" element={<PrivacyPolicy />} /> -- not built yet */}
 
+              {/* Heroes & Founders Foundation — no auth (WO-11) */}
+              <Route path="/foundation" element={<FoundationHome />} />
+              <Route path="/foundation/heroes" element={<HeroesPage />} />
+              <Route path="/foundation/founders" element={<FoundersPage />} />
+              <Route path="/foundation/apply" element={<FoundationApply />} />
+
               {/* AAE conference pages — no auth */}
               <Route path="/aae" element={<AAELanding />} />
               <Route path="/thank-you" element={<ThankYou />} />
@@ -242,6 +253,7 @@ function App() {
                 <Route path="/dashboard/settings" element={<DashboardSettings />} />
                 <Route path="/dashboard/website" element={<PatientPathWebsite />} />
                 <Route path="/dashboard/locations" element={<Locations />} />
+                <Route path="/dashboard/intelligence" element={<Intelligence />} />
                 <Route path="/dashboard/refer/:orgSlug?" element={<GPDiscoveryPage />} />
                 <Route path="/patientJourneyInsights" element={<Dashboard />} />
                 <Route path="/pmsStatistics" element={<Dashboard />} />

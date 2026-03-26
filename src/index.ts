@@ -50,6 +50,7 @@ import adminReviewRoutes from "./routes/admin/reviews";
 import milestoneRoutes from "./routes/admin/milestones";
 import referralIntelligenceRoutes from "./routes/referralIntelligence";
 import intelligenceIntakeRoutes from "./routes/admin/intelligenceIntake";
+import intelligencePanelRoutes from "./routes/admin/intelligencePanel";
 import rankingsSnapshotRoutes from "./routes/admin/rankingsSnapshot";
 import patientpathBuildRoutes from "./routes/admin/patientpathBuild";
 import demoLoginRoutes from "./routes/demoLogin";
@@ -95,7 +96,6 @@ import adminAuditLogRoutes from "./routes/admin/auditLog";
 import mailgunInboundRoutes from "./routes/webhooks/mailgunInbound";
 import adminKnowledgeLatticeRoutes from "./routes/admin/knowledgeLattice";
 import programmaticPagesRoutes from "./routes/programmaticPages";
-import intelligencePanelRoutes from "./routes/admin/intelligencePanel";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -218,6 +218,7 @@ app.use("/api/admin/reviews", adminReviewRoutes); // Review notifications + AI r
 app.use("/api", milestoneRoutes); // Milestone notifications (admin + client routes)
 app.use("/api/referral-intelligence", referralIntelligenceRoutes); // GP referral intelligence
 app.use("/api/admin/intelligence", intelligenceIntakeRoutes); // Founder Mode intelligence intake
+app.use("/api/admin/intelligence", intelligencePanelRoutes); // WO-8: SEO/AEO/CRO panel endpoints
 app.use("/api/admin", rankingsSnapshotRoutes); // WO31/33: rankings snapshot + Monday email manual triggers
 app.use("/api/admin/patientpath", patientpathBuildRoutes); // WO19: PatientPath build pipeline
 app.use("/api/demo", demoLoginRoutes); // WO-DEMO: auto-login for AAE demo
