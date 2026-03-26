@@ -591,10 +591,12 @@ export default function ResultsScreen() {
     }), 500);
   };
 
-  // Blur gate CTA — WO4: use real competitor name
-  const blurGateCta = topCompetitor
-    ? `See why ${topCompetitor.name} ranks above you in ${place.city || "your market"}.`
-    : "See what's holding your score back.";
+  // Blur gate CTA -- adaptive by score and competitor data
+  const blurGateCta = score.composite >= 80
+    ? `You're performing well. See what will keep you ahead in ${place.city || "your market"}.`
+    : topCompetitor
+      ? `See why ${topCompetitor.name} ranks above you in ${place.city || "your market"}.`
+      : "Unlock your detailed market findings.";
 
   return (
     <div className="w-full max-w-md mt-2 sm:mt-6 space-y-7 pb-6">

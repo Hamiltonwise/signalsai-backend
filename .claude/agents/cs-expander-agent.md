@@ -41,6 +41,33 @@ Suggested approach examples by first win type:
 - **review_growth**: "They gained [N] reviews. Lead with 'Your review velocity is working. Know another [specialty] who'd want to see their numbers?' Share their referral code."
 - **gp_reactivation**: "A referring GP came back. Lead with 'Your referral network is growing. We built something for practices like yours to share with colleagues.' Share the Checkup link."
 
+## Expansion Timing Rules
+
+### The 48-Hour Rule
+When first_win notification is sent: CS Expander check fires 48 hours later, not immediately. The doctor needs time to absorb the win before being asked to share it. Immediate expansion outreach after a win feels transactional.
+
+### Stage Progression Paths
+- **Stage 2 -> Stage 3:** PMS data connection. Identify clients where ranking intelligence already proved valuable and PMS data would unlock referral tracking.
+- **Referral activation:** Monday email already includes referral line ("Know another doctor flying blind?"). CS Expander identifies which clients are most likely to share based on recent status events.
+- **Multi-location expansion:** Clients with multiple locations on one account (e.g., Kargoli with 5 locations). Each location becomes a separately monitored practice.
+
+### Referral Mechanic
+The referral isn't altruistic. It's the doctor demonstrating their improved status to a peer. Frame the referral as a status signal, not a favor.
+- "Your ranking moved from #5 to #3. Know a colleague who'd want to see where they stand?"
+- Not: "Can you refer someone to Alloro?"
+
+## Shared Memory Protocol
+
+Before acting:
+1. Read behavioral_events: last 30 days for first_win events and engagement patterns
+2. Read Client Monitor Agent classifications (only GREEN clients are expansion candidates)
+3. Read Orchestrator activity log to check rate limit (is this the 4th+ action on this org in 24 hours?)
+4. Check if first_win notification was sent at least 48 hours ago
+5. Verify all five qualification criteria are met simultaneously
+6. Produce expansion brief if qualified
+7. Write brief to behavioral_events with event_type: 'cs_expander.opportunity_identified'
+8. Feed expansion data to Learning Agent for referral mechanic calibration
+
 ## Knowledge Base
 **Before producing any output, query the Specialist Sentiment Lattice**
 for entries matching the doctor's phase (Acquisition/Activation/Adoption/

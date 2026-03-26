@@ -135,16 +135,6 @@ export default function Dashboard() {
     return null;
   }
 
-  // Debug: trace which branch renders
-  const renderBranch =
-    !ready || checkingOnboarding ? "LOADING"
-    : clientLoading ? "CLIENT_LOADING"
-    : clientError ? "CLIENT_ERROR"
-    : !clientId ? "NO_CLIENT"
-    : onboardingCompleted === false ? "ONBOARDING"
-    : onboardingCompleted === true
-      ? (!hasProperties && !isWizardActive && !isTransitioningToWizard && !isWizardLoading ? "EMPTY_STATE" : "DASHBOARD")
-    : "FALLBACK_ONBOARDING";
   return (
     <div className="w-full max-w-[1600px] mx-auto min-h-screen flex flex-col bg-alloro-bg font-body text-alloro-navy">
       {/* Show loading state while checking onboarding */}
