@@ -24,6 +24,13 @@ export default function HowItWorks() {
             You type your business name. Monday morning, we tell you
             which competitor gained 11 reviews last week and what to do about it.
           </p>
+          <Link
+            to="/checkup"
+            className="mt-6 inline-flex items-center justify-center rounded-xl bg-[#D56753] text-white text-sm font-semibold px-6 py-3 hover:brightness-110 active:scale-[0.98] transition-all"
+          >
+            Try it free
+          </Link>
+          <p className="mt-2 text-xs text-gray-400">60 seconds. No account required.</p>
         </div>
       </section>
 

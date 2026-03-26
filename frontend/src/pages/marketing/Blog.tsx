@@ -42,12 +42,18 @@ export default function Blog() {
       <section className="px-5 py-16 sm:py-24">
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight">
-            Business Clarity
+            Alloro Blog
           </h1>
           <p className="mt-4 text-base sm:text-lg text-[#212D40]/60 leading-relaxed">
             One post a week. Each one comes from something
             we actually saw in client data. No aggregated advice.
           </p>
+          <Link
+            to="/checkup"
+            className="mt-6 inline-flex items-center justify-center rounded-xl bg-[#D56753] text-white text-sm font-semibold px-6 py-3 hover:brightness-110 active:scale-[0.98] transition-all"
+          >
+            Run your free Checkup
+          </Link>
         </div>
       </section>
 
