@@ -210,7 +210,7 @@ export default function BatchCheckup() {
           Market Checkup
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          See how any practice stacks up against its competition — in seconds.
+          See how any practice stacks up against its competition. In seconds.
           Enter up to 50 practices.
         </p>
       </div>
