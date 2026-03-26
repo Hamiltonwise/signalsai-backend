@@ -13,6 +13,7 @@ import { generateReferralCode } from "../utils/referralCode";
 import { generateToken } from "../controllers/auth-otp/feature-services/service.jwt-management";
 import { sendCheckupResultEmail } from "../emails/templates/CheckupResultEmail";
 import { BehavioralEventModel } from "../models/BehavioralEventModel";
+import { analyzeReviewSentiment } from "../services/reviewSentiment";
 import { db } from "../database/connection";
 import { getMindsQueue } from "../workers/queues";
 
@@ -361,8 +362,34 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       });
     }
 
+    // Review sentiment analysis: the "how did they know that" finding
+    // Runs in parallel with gap calculations. Non-blocking: if it fails, checkup still works.
+    let sentimentInsight = null;
+    if (placeId) {
+      try {
+        sentimentInsight = await analyzeReviewSentiment(
+          placeId,
+          name,
+          topCompetitor?.placeId || null,
+          topCompetitor?.name || null,
+          specialty,
+        );
+        if (sentimentInsight) {
+          findings.push({
+            type: "sentiment_insight",
+            title: sentimentInsight.title,
+            detail: sentimentInsight.detail,
+            value: 0,
+            impact: 0,
+          });
+        }
+      } catch (err: any) {
+        console.error("[Checkup] Sentiment analysis failed (non-blocking):", err.message);
+      }
+    }
+
     console.log(
-      `[Checkup] Score: ${compositeScore} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}`
+      `[Checkup] Score: ${compositeScore} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: ✓" : ""}`
     );
 
     return res.json({
@@ -391,6 +418,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         driveTimeMinutes: (c as any).driveTimeMinutes ?? null,
       })),
       findings,
+      sentimentInsight: sentimentInsight || null,
       totalImpact,
       market: {
         city,
