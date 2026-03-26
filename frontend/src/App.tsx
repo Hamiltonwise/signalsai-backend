@@ -54,6 +54,7 @@ import GPReferralIntelligenceContent from "./pages/content/GPReferralIntelligenc
 import PatientPathWebsite from "./pages/dashboard/PatientPathWebsite";
 import ReviewRequests from "./pages/dashboard/ReviewRequests";
 import DashboardSettings from "./pages/dashboard/DashboardSettings";
+import IntelligenceDashboard from "./pages/dashboard/IntelligenceDashboard";
 import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./contexts/ToastContext";
