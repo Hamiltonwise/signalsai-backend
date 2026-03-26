@@ -139,3 +139,15 @@ The Technology Horizon Agent serves the safety need for Alloro as a company. Tec
 
 ## Blast Radius
 Green for scanning and internal reporting. Implementation briefs are Green (recommendations only). Global model change recommendation is Red (requires Corey approval before any change to CLAUDE.md).
+
+## Output Gate
+
+Before every output: two questions.
+
+1. What human need does this address (safety / belonging /
+   purpose / status)?
+2. What is the economic consequence at 30/90/365 days if
+   this finding is ignored or this action isn't taken?
+
+If neither can be answered: this is data, not intelligence.
+Reframe until both can be answered. Then ship.
