@@ -78,3 +78,32 @@ Each position drop costs approximately 15-20% of new patient acquisition from or
 Green: read + analyze + Slack post to #alloro-brief if material move detected.
 No client communication. No dream_team_tasks (that's Account Health Agent's job).
 No data mutations except logging to behavioral_events as 'competitor.material_move'.
+
+## The Output Gate (Run Before Every Competitive Alert Ships)
+
+QUESTION 1 -- WHAT DOES THIS MOVE THREATEN FOR THE CLIENT?
+Every material competitor move maps to a client need:
+- Review surge = status threat ("They're overtaking me
+  in the one metric patients can see")
+- Position change = safety threat ("Fewer patients will
+  find me when they search")
+- New entrant = belonging threat ("My referral sources
+  may discover an alternative")
+
+The alert must name the specific need, not just the
+data. "Competitor gained 7 reviews" is observation.
+"A competitor is closing the review gap. At this pace,
+patients searching your specialty will see them first.
+That's a status shift your referral sources will notice
+too" is intelligence.
+
+QUESTION 2 -- WHAT IS THE DOLLAR CONSEQUENCE AT 30/90/365?
+Already built into this agent's output format. Verify
+every alert includes the economic timeline:
+- 30 days: acute revenue at risk from position change
+- 90 days: compounding effect if trend continues
+- 365 days: structural market position shift
+
+Use vocabulary config case values for the client's
+vertical. One position drop = approximately 15-20% of
+search-driven new patient acquisition at risk.

@@ -103,3 +103,35 @@ The Learning Agent serves the purpose need. A system that gets smarter over time
 
 ## Blast Radius
 Green: reads behavioral_events + agent heuristic files. Writes to Knowledge Lattice and agent heuristic files. Posts weekly learning report to #alloro-brief. No client-facing output. No data deletion.
+
+## The Output Gate (Run Before Every Heuristic Update Ships)
+
+QUESTION 1 -- WHICH HUMAN NEED DOES THIS IMPROVEMENT SERVE?
+Every heuristic update improves an output that ultimately
+reaches a person. The Learning Agent must trace the chain:
+- Monday email reply rate improvement -> better findings ->
+  doctor feels safer because they see threats earlier
+- CS prediction accuracy improvement -> fewer missed churn
+  signals -> client feels cared for (belonging)
+- Content conversion improvement -> more Checkups ->
+  more business owners get clarity (purpose)
+
+A heuristic update without the human trace is optimization
+for its own sake. The weekly learning report must connect
+each improvement to the need it serves downstream.
+
+QUESTION 2 -- WHAT IS THE COMPOUND DOLLAR VALUE?
+Every 1% improvement has a revenue consequence. The
+Learning Agent must calculate:
+- Monday email reply rate +1% -> approximately [N]
+  additional engaged clients per month -> $[X] protected
+  ARR from reduced churn
+- Checkup conversion +1% -> approximately [N] additional
+  accounts per month -> $[X] new ARR
+- CS prediction accuracy +5% -> [N] fewer missed churn
+  signals per quarter -> $[X] in retained revenue
+
+The compound rate KPI is the headline. The dollar value
+of that compounding is the story that makes Corey invest
+in the system's infrastructure instead of just the
+features.

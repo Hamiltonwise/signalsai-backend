@@ -51,8 +51,16 @@ const DashboardSettings = React.lazy(() => import("./pages/dashboard/DashboardSe
 const IntelligenceDashboard = React.lazy(() => import("./pages/dashboard/IntelligenceDashboard"));
 const GPDiscoveryPage = React.lazy(() => import("./pages/partner/GPDiscoveryPage"));
 const Changelog = React.lazy(() => import("./pages/Changelog"));
-const Pricing = React.lazy(() => import("./pages/Pricing"));
 const ReferralProgram = React.lazy(() => import("./pages/ReferralProgram"));
+
+// --- Marketing site rebuild (WO-13) ---
+const MarketingHome = React.lazy(() => import("./pages/marketing/HomePage"));
+const HowItWorks = React.lazy(() => import("./pages/marketing/HowItWorks"));
+const WhoItsFor = React.lazy(() => import("./pages/marketing/WhoItsFor"));
+const PricingPage = React.lazy(() => import("./pages/marketing/PricingPage"));
+const StoryPage = React.lazy(() => import("./pages/marketing/Story"));
+const BlogPage = React.lazy(() => import("./pages/marketing/Blog"));
+const BlogRedirect = React.lazy(() => import("./pages/marketing/BlogRedirect"));
 const Compare = React.lazy(() => import("./pages/Compare"));
 const LegalPracticeMarketing = React.lazy(() => import("./pages/content/LegalPracticeMarketing"));
 const FinancialAdvisorMarketing = React.lazy(() => import("./pages/content/FinancialAdvisorMarketing"));
@@ -192,7 +200,7 @@ function App() {
               {/* <Route path="/physical-therapist-marketing" element={<PhysicalTherapistMarketing />} /> -- not built yet */}
 
               {/* Public pages — no auth */}
-              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/pricing" element={<PricingPage />} />
               <Route path="/changelog" element={<Changelog />} />
               <Route path="/referral-program" element={<ReferralProgram />} />
               <Route path="/compare" element={<Compare />} />
@@ -220,7 +228,13 @@ function App() {
                 }
               />
 
-              <Route path="/" element={<Navigate to="/signin" replace />} />
+              {/* Marketing site (WO-13) */}
+              <Route path="/" element={<MarketingHome />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
+              <Route path="/who-its-for" element={<WhoItsFor />} />
+              <Route path="/story" element={<StoryPage />} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/blog/:slug" element={<BlogRedirect />} />
               <Route
                 path="/signin"
                 element={

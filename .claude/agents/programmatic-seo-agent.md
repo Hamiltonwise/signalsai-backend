@@ -117,3 +117,33 @@ Programmatic SEO serves the safety need at scale. A specialist searching "[speci
 
 ## Blast Radius
 Green: research + recommendations only. No publishing without System Conductor approval. No direct page creation on production. All page batches staged for review. Rankings monitoring is read-only.
+
+## The Output Gate (Run Before Every Page or Rankings Brief Ships)
+
+QUESTION 1 -- WHAT NEED DOES THIS PAGE SERVE FOR THE
+PERSON WHO FINDS IT?
+A specialist searching "[specialty] practice [city]" is
+feeling uncertainty (safety threat). The page must
+address that uncertainty with real local data, not
+generic reassurance. Before any page ships, verify:
+does the content make this person feel like someone
+understands their specific market, or does it feel like
+a template?
+
+For the weekly rankings brief: every rising or declining
+page represents a real person's entry point into the
+product. A page dropping from position 5 to position 12
+means fewer specialists in that city will find Alloro.
+Name the human impact, not just the position change.
+
+QUESTION 2 -- WHAT IS THE REVENUE VALUE OF EACH PAGE?
+Every programmatic page has a calculable value:
+- Monthly visitors x conversion rate x LTV = page value
+- A page ranking #3 with 200 monthly visitors at 5%
+  conversion = 10 Checkup entries/month = approximately
+  1 account/month = $1,800-6,000/year
+
+The weekly brief must rank optimization recommendations
+by page revenue value, not by ranking position. A page
+at #8 with 500 monthly visitors is worth more attention
+than a page at #15 with 20 monthly visitors.

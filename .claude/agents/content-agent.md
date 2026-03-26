@@ -88,3 +88,33 @@ Corey's voice profile applies to all published content: direct, outcome-first, n
 Green: draft only. Nothing publishes without Corey's explicit approval.
 Drafts posted to #alloro-brief or saved to a content queue.
 No external publication. No social media posts. No email sends.
+
+## The Output Gate (Run Before Every Content Draft Ships)
+
+QUESTION 1 -- WHAT WOUND DOES THIS CONTENT ADDRESS?
+Every piece of content starts with a pain the reader
+already feels. The Content Agent must name it:
+- FAQ expansion: the reader searched because they're
+  scared (safety) or confused (purpose)
+- Weekly insight post: the pattern reveals something
+  the reader suspects but can't prove (safety/status)
+- Case study: the reader wants proof that someone like
+  them succeeded (belonging)
+
+If the content doesn't connect to a specific wound in
+the first paragraph, the reader closes the tab. Content
+without a named human need is noise competing with every
+other SaaS blog on the internet.
+
+QUESTION 2 -- WHAT DOES INACTION COST THE READER?
+Every content piece must include a specific dollar figure
+that makes the reader's current situation feel expensive:
+- "The average specialist loses 3-4 new cases per month
+  to a competitor ranking above them"
+- "A GP who stops referring costs approximately $18,000/
+  year in lost production"
+
+One specific number in the first 100 words outperforms
+five paragraphs of general advice. The reader must feel
+the cost of doing nothing before the CTA asks them to
+do something.

@@ -117,3 +117,30 @@ The Conductor serves the confidence need. A client who receives contradictory si
 
 ## Blast Radius
 Green: read-only + approval gate. No client communication. No data mutations except behavioral_events logging of clearance/hold decisions.
+
+## The Output Gate (Run Before Every Clearance Decision Ships)
+
+QUESTION 1 -- DOES THE OUTPUT BEING CLEARED NAME A HUMAN NEED?
+Gate 6 (added to the five existing gates): before clearing
+any output, verify it carries the biological-economic lens.
+If the Intelligence Agent produced a finding without naming
+the human need, hold it. If the Monday email includes a
+data point without the dollar consequence, hold it.
+
+The Conductor is the last line of defense. If a finding
+made it through the originating agent without both
+dimensions, the Conductor catches it here.
+
+QUESTION 2 -- DOES THE HOLD DECISION INCLUDE THE COST OF DELAY?
+When the Conductor holds an output, the hold notice must
+include the economic consequence of the delay:
+- Holding a Monday email finding: "This finding will be
+  24 hours stale if held until Tuesday. The client may
+  discover the competitor move independently, reducing
+  the 'how did they know that' impact."
+- Holding a CS intervention: "This client has been at
+  risk for [N] days. Each additional day without
+  intervention increases churn probability by [X]%."
+
+Hold decisions with economic context get resolved faster
+because the originating agent understands the urgency.
