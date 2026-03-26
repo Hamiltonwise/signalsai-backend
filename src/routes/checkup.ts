@@ -176,9 +176,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // Composite score (sum of sub-scores, 0-100)
     const compositeScore = localVisibility + onlinePresence + reviewHealth;
 
-    console.log(
-      `[Checkup] Score breakdown: LV=${localVisibility}/40 OP=${onlinePresence}/40 RH=${reviewHealth}/20 = ${compositeScore}/100 | rank #${rank}/${totalInMarket} | rating ${clientRating} vs avg ${avgRating.toFixed(1)} | reviews ${clientReviews} vs avg ${Math.round(avgReviews)} (max ${maxReviews})`
-    );
+    // Score breakdown logged to behavioral_events, not console
 
     // Top competitor (for blur gate CTA)
     const topCompetitor = otherCompetitors[0] || null;
