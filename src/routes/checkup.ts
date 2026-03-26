@@ -652,9 +652,10 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       referral_code: generateReferralCode(),
     });
 
-    // Set source_channel from referral query param
-    if (req.query.ref) {
-      await db("organizations").where({ id: org.id }).update({ source_channel: req.query.ref });
+    // Set source_channel from referral or source query param
+    const sourceChannel = req.body.source_channel || req.query.ref || req.query.source || null;
+    if (sourceChannel) {
+      await db("organizations").where({ id: org.id }).update({ source_channel: sourceChannel });
     }
 
     // Store checkup data on org for dashboard pre-population
@@ -722,34 +723,39 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
     }
 
     // Seed initial weekly_ranking_snapshot so the first Monday email has data.
-    // Uses checkup analysis results (competitors, score) as the baseline.
+    // Frontend sends checkup_data as: { score, topCompetitor (name string), market, findingSummary, placeId, reviewCount }
     try {
       const parsed = typeof checkup_data === "string" ? JSON.parse(checkup_data) : checkup_data;
-      const topCompetitor = parsed?.competitors?.[0];
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of current week (Sunday)
+      if (parsed) {
+        const competitorName = typeof parsed.topCompetitor === "string"
+          ? parsed.topCompetitor
+          : parsed.topCompetitor?.name || null;
+        const clientReviewCount = parsed.reviewCount || 0;
+        const marketRank = parsed.market?.rank ?? null;
+        const marketCity = parsed.market?.city || "your area";
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
-      await db("weekly_ranking_snapshots").insert({
-        org_id: org.id,
-        week_start: weekStart.toISOString().split("T")[0],
-        position: parsed?.marketRank ?? null,
-        keyword: `${parsed?.specialty || "specialist"} in ${parsed?.city || "your area"}`,
-        bullets: JSON.stringify([
-          `Your practice scored ${checkup_score || "N/A"} on the Business Health Checkup.`,
-          topCompetitor ? `${topCompetitor.name} leads your market with ${topCompetitor.reviewCount || "N/A"} reviews.` : "Competitor data is being gathered for your market.",
-          "Your full competitive analysis is building now. More insights next Monday.",
-        ]),
-        finding_headline: topCompetitor
-          ? `${topCompetitor.name} has ${(topCompetitor.reviewCount || 0) - (parsed?.clientReviewCount || 0)} more reviews than you`
-          : "Your competitive landscape is being analyzed",
-        competitor_name: topCompetitor?.name || null,
-        competitor_review_count: topCompetitor?.reviewCount || null,
-        client_review_count: parsed?.clientReviewCount || null,
-        dollar_figure: parsed?.dollarImpact || null,
-      }).catch(() => {
-        // Unique constraint may fire if snapshot already exists for this week
-      });
-      console.log(`[Checkup] Seeded initial ranking snapshot for org ${org.id}`);
+        await db("weekly_ranking_snapshots").insert({
+          org_id: org.id,
+          week_start: weekStart.toISOString().split("T")[0],
+          position: marketRank,
+          keyword: `${practice_name || "specialist"} in ${marketCity}`,
+          bullets: JSON.stringify([
+            `Your practice scored ${checkup_score || "N/A"} on the Business Health Checkup.`,
+            competitorName ? `${competitorName} leads your market.` : "Competitor data is being gathered for your market.",
+            "Your full competitive analysis is building now. More insights next Monday.",
+          ]),
+          finding_headline: parsed.findingSummary || "Your competitive landscape is being analyzed",
+          competitor_name: competitorName,
+          competitor_review_count: null,
+          client_review_count: clientReviewCount,
+          dollar_figure: null,
+        }).catch(() => {
+          // Unique constraint may fire if snapshot already exists for this week
+        });
+        console.log(`[Checkup] Seeded initial ranking snapshot for org ${org.id}`);
+      }
     } catch (snapErr: any) {
       console.error(`[Checkup] Failed to seed snapshot:`, snapErr.message);
     }
