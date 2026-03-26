@@ -181,7 +181,7 @@ async function main(): Promise<void> {
             "COUNT(*) FILTER (WHERE needs_refresh = true) as needs_refresh"
           )
         )
-        .first() as { total: string; published: string; draft: string; needs_refresh: string } | undefined;
+        .first() as unknown as { total: string; published: string; draft: string; needs_refresh: string } | undefined;
 
       if (stats) {
         console.log("\n=== Database Stats ===");
