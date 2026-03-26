@@ -129,6 +129,14 @@ export class ProgrammaticPageModel extends BaseModel {
       .increment("checkup_starts", 1);
   }
 
+  static async update(
+    id: number,
+    data: Record<string, unknown>,
+    trx?: QueryContext
+  ): Promise<void> {
+    await this.updateById(id, data, trx);
+  }
+
   static async getStats(trx?: QueryContext): Promise<{
     total: number;
     published: number;
@@ -137,14 +145,15 @@ export class ProgrammaticPageModel extends BaseModel {
     totalViews: number;
     totalCheckupStarts: number;
   }> {
+    const knex = trx || db;
     const result = await this.table(trx)
       .select(
-        this.table(trx).client.raw("COUNT(*) as total"),
-        this.table(trx).client.raw("COUNT(*) FILTER (WHERE status = 'published') as published"),
-        this.table(trx).client.raw("COUNT(*) FILTER (WHERE status = 'draft') as draft"),
-        this.table(trx).client.raw("COUNT(*) FILTER (WHERE needs_refresh = true) as needs_refresh"),
-        this.table(trx).client.raw("COALESCE(SUM(page_views), 0) as total_views"),
-        this.table(trx).client.raw("COALESCE(SUM(checkup_starts), 0) as total_checkup_starts")
+        knex.raw("COUNT(*) as total"),
+        knex.raw("COUNT(*) FILTER (WHERE status = 'published') as published"),
+        knex.raw("COUNT(*) FILTER (WHERE status = 'draft') as draft"),
+        knex.raw("COUNT(*) FILTER (WHERE needs_refresh = true) as needs_refresh"),
+        knex.raw("COALESCE(SUM(page_views), 0) as total_views"),
+        knex.raw("COALESCE(SUM(checkup_starts), 0) as total_checkup_starts")
       )
       .first();
 

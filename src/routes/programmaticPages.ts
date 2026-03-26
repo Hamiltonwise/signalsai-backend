@@ -85,10 +85,8 @@ programmaticPagesRoutes.get("/:pageSlug", async (req: Request, res: Response) =>
       ? JSON.parse(page.schema_markup)
       : page.schema_markup;
 
-    // Parse content sections
-    const contentSections = typeof page.content_sections === "string"
-      ? JSON.parse(page.content_sections)
-      : page.content_sections;
+    // Body HTML content
+    const bodyHtml = page.body_html || "";
 
     // Increment view counter (fire-and-forget)
     knex("programmatic_pages")
@@ -99,8 +97,9 @@ programmaticPagesRoutes.get("/:pageSlug", async (req: Request, res: Response) =>
     // Return full page data (frontend renders the template)
     return res.json({
       title: page.title,
+      h1: page.h1,
       metaDescription: page.meta_description,
-      contentSections,
+      bodyHtml,
       spokeLinksHtml,
       competitors,
       schemaMarkup,
@@ -117,7 +116,7 @@ programmaticPagesRoutes.get("/:pageSlug", async (req: Request, res: Response) =>
       cityName: page.city_name,
       stateAbbr: page.state_abbr,
       competitorCount: competitors ? competitors.length : 0,
-      lastUpdated: page.competitors_refreshed_at,
+      lastUpdated: page.competitors_fetched_at,
     });
   } catch (error) {
     console.error("Programmatic page error:", error);
@@ -141,7 +140,7 @@ programmaticPagesRoutes.get(
 
       const specialty = SPECIALTIES.find((s) => s.slug === specialtySlug);
       const pages = await knex("programmatic_pages")
-        .where({ specialty_slug: specialtySlug, status: "published" })
+        .where({ specialty_slug: specialtySlug, published: true })
         .select(
           "page_slug",
           "city_name",

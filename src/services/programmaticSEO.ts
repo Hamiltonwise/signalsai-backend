@@ -209,15 +209,15 @@ export async function generatePage(
     lng: city.lng,
     title,
     meta_description: metaDescription,
-    competitors_snapshot: JSON.stringify(competitors),
-    content_sections: JSON.stringify(contentSections),
-    schema_markup: JSON.stringify(schemaMarkup),
+    competitors_snapshot: competitors,
+    content_sections: contentSections,
+    schema_markup: schemaMarkup,
     competitors_refreshed_at: new Date(),
     needs_refresh: false,
   };
 
   if (existing) {
-    await ProgrammaticPageModel.update(existing.id, pageData);
+    await ProgrammaticPageModel.updateById(existing.id, pageData);
   } else {
     await ProgrammaticPageModel.create(pageData);
   }
