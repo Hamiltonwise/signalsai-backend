@@ -120,7 +120,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     id: "pms-velocity",
     page: "pmsStatistics",
     targetSelector: "[data-wizard-target='pms-velocity']",
-    title: "Referral Velocity",
+    title: "Referral Activity",
     description:
       "Monthly breakdown of your referral sources. Orange bars show marketing/self-referrals, navy bars show doctor referrals.",
     scrollToElement: true,

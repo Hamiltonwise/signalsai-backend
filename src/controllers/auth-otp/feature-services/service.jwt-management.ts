@@ -20,13 +20,14 @@ export interface JwtPayload {
 }
 
 /**
- * Generates a JWT token with a 7-day expiry.
+ * Generates a JWT token.
+ * Default: 7-day expiry. With rememberMe: 30-day expiry.
  */
-export function generateToken(userId: number, email: string): string {
+export function generateToken(userId: number, email: string, rememberMe?: boolean): string {
   return jwt.sign(
     { userId, email },
     getJwtSecret(),
-    { expiresIn: "7d" }
+    { expiresIn: rememberMe ? "30d" : "7d" }
   );
 }
 

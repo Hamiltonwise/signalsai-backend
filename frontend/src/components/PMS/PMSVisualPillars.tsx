@@ -780,7 +780,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     isWizardActive,
   ]);
 
-  // Demo data for wizard mode - Referral Velocity
+  // Demo data for wizard mode - Referral Activity
   const wizardMonthlyData = useMemo(() => {
     const demoData = wizardDemoData?.referralData?.monthlyData;
     if (!demoData) {
@@ -1416,7 +1416,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 <div className="flex items-center gap-3">
                   <Calendar size={20} className="text-alloro-orange" />
                   <h2 className="text-xl font-bold font-heading text-alloro-navy tracking-tight">
-                    Referral Velocity
+                    Referral Activity
                   </h2>
                 </div>
                 <div className="flex items-center gap-6">

@@ -1032,3 +1032,15 @@ body.minds-page-active .glass-header {
   }
 }
 
+/* The Team — Heartbeat pulse (WO12) */
+@keyframes heartbeat {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+}
+

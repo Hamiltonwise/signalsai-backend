@@ -1,0 +1,222 @@
+/**
+ * One Action Card — Deterministic Rule Engine
+ *
+ * The most important daily intelligence output in the product.
+ * Each doctor sees exactly ONE recommended action. Selected deterministically.
+ *
+ * Priority waterfall (first condition met wins):
+ * 1. GP drift alert (silent 60+ days, 3+ prior referrals)
+ * 2. Review gap closeable in under 2 weeks at current velocity
+ * 3. Ranking dropped 1+ position since last week
+ * 4. PatientPath preview ready
+ * 5. Steady state (no alerts, no drops, no drift)
+ */
+
+import { db } from "../database/connection";
+
+export interface OneActionCard {
+  headline: string;
+  body: string;
+  action_text: string | null;
+  action_url: string | null;
+  priority_level: 1 | 2 | 3 | 4 | 5;
+}
+
+export async function getOneActionCard(orgId: number): Promise<OneActionCard> {
+  // ─── Rule 1: GP Drift Alert ─────────────────────────────────────
+
+  const driftAlert = await checkGPDrift(orgId);
+  if (driftAlert) return driftAlert;
+
+  // ─── Rule 2: Review gap closeable in under 2 weeks ──────────────
+
+  const reviewRace = await checkReviewGap(orgId);
+  if (reviewRace) return reviewRace;
+
+  // ─── Rule 3: Ranking dropped 1+ position ────────────────────────
+
+  const rankingDrop = await checkRankingDrop(orgId);
+  if (rankingDrop) return rankingDrop;
+
+  // ─── Rule 4: PatientPath preview ready ──────────────────────────
+
+  const patientpath = await checkPatientPath(orgId);
+  if (patientpath) return patientpath;
+
+  // ─── Rule 5: Steady state ───────────────────────────────────────
+
+  return getSteadyState(orgId);
+}
+
+// ─── Rule 1: GP Drift ──────────────────────────────────────────────
+
+async function checkGPDrift(orgId: number): Promise<OneActionCard | null> {
+  const hasTable = await db.schema.hasTable("referral_sources");
+  if (!hasTable) return null;
+
+  const driftingSources = await db("referral_sources")
+    .where({ organization_id: orgId })
+    .whereNull("surprise_catch_dismissed_at")
+    .select("*");
+
+  for (const source of driftingSources) {
+    const priorMonthly = source.prior_3_month_avg ?? source.monthly_average ?? 0;
+    const recentReferrals = source.recent_referral_count ?? source.referral_count_last_30d ?? 0;
+
+    if (priorMonthly >= 3 && recentReferrals === 0) {
+      const lastDate = source.last_referral_date || source.updated_at;
+      const daysSilent = lastDate
+        ? Math.floor((Date.now() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24))
+        : 60;
+
+      if (daysSilent >= 60) {
+        // Get avg case value from vocabulary config
+        const avgCaseValue = await getAvgCaseValue(orgId);
+        const annualAtRisk = Math.round(priorMonthly * 12 * avgCaseValue);
+        const gpName = source.gp_name || source.name || "A referring provider";
+        const totalReferrals = source.total_referrals || Math.round(priorMonthly * 3);
+
+        return {
+          headline: `${gpName} sent you ${totalReferrals} referrals. They've been quiet for ${daysSilent} days.`,
+          body: `A call this week could recover an estimated $${annualAtRisk.toLocaleString()}/year. This is your highest-value relationship at risk right now.`,
+          action_text: "See referral details",
+          action_url: "/dashboard/referrals",
+          priority_level: 1,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+// ─── Rule 2: Review Gap Closeable in 2 Weeks ───────────────────────
+
+async function checkReviewGap(orgId: number): Promise<OneActionCard | null> {
+  const latest = await db("weekly_ranking_snapshots")
+    .where({ org_id: orgId })
+    .orderBy("week_start", "desc")
+    .first();
+
+  if (!latest) return null;
+
+  const clientReviews = latest.client_review_count || 0;
+  const compReviews = latest.competitor_review_count || 0;
+  const compName = latest.competitor_name;
+
+  if (!compName || compReviews <= clientReviews) return null;
+
+  const gap = compReviews - clientReviews;
+
+  // Estimate weekly velocity from review count (~2 year accumulation)
+  const clientWeekly = Math.max(0.2, clientReviews / 104);
+
+  // Days to close at current pace
+  const daysToClose = clientWeekly > 0 ? Math.ceil((gap + 1) / clientWeekly * 7) : Infinity;
+
+  if (daysToClose <= 14) {
+    return {
+      headline: `You're ${gap} review${gap !== 1 ? "s" : ""} from passing ${compName}.`,
+      body: `At your current pace, you get there in ${daysToClose} days. Keep asking. Every review counts double when you're this close.`,
+      action_text: "Request reviews",
+      action_url: "/dashboard/reviews",
+      priority_level: 2,
+    };
+  }
+
+  return null;
+}
+
+// ─── Rule 3: Ranking Dropped ────────────────────────────────────────
+
+async function checkRankingDrop(orgId: number): Promise<OneActionCard | null> {
+  const snapshots = await db("weekly_ranking_snapshots")
+    .where({ org_id: orgId })
+    .orderBy("week_start", "desc")
+    .limit(2);
+
+  if (snapshots.length < 2) return null;
+
+  const current = snapshots[0];
+  const previous = snapshots[1];
+
+  if (!current.position || !previous.position) return null;
+  if (current.position <= previous.position) return null; // position went up or held
+
+  const drop = current.position - previous.position;
+  const compName = current.competitor_name || "A competitor";
+  const compReviews = current.competitor_review_count || 0;
+  const clientReviews = current.client_review_count || 0;
+  const reviewDiff = compReviews - clientReviews;
+
+  return {
+    headline: `Your ranking dropped from #${previous.position} to #${current.position} this week.`,
+    body: `${compName} has ${reviewDiff > 0 ? `${reviewDiff} more reviews than you` : "been more active this week"}. The fastest recovery is reviews. Ask 3 customers this week.`,
+    action_text: "See what changed",
+    action_url: "/dashboard/rankings",
+    priority_level: 3,
+  };
+}
+
+// ─── Rule 4: PatientPath Preview Ready ──────────────────────────────
+
+async function checkPatientPath(orgId: number): Promise<OneActionCard | null> {
+  const org = await db("organizations").where({ id: orgId }).first();
+  if (!org) return null;
+
+  if (org.patientpath_status === "preview_ready") {
+    return {
+      headline: "Your PatientPath website is ready to review.",
+      body: "We built it from your Google reviews, your market data, and what makes your practice irreplaceable. Take a look.",
+      action_text: "Preview your site",
+      action_url: "/dashboard/website",
+      priority_level: 4,
+    };
+  }
+
+  return null;
+}
+
+// ─── Rule 5: Steady State ───────────────────────────────────────────
+
+async function getSteadyState(orgId: number): Promise<OneActionCard> {
+  const latest = await db("weekly_ranking_snapshots")
+    .where({ org_id: orgId })
+    .orderBy("week_start", "desc")
+    .first();
+
+  if (latest?.position && latest.competitor_name) {
+    const gap = (latest.competitor_review_count || 0) - (latest.client_review_count || 0);
+    const city = latest.keyword || "your market";
+
+    return {
+      headline: `You held #${latest.position} in ${city} this week.`,
+      body: `${latest.competitor_name} is ${gap > 0 ? `${gap} reviews ahead` : "close behind"}. Consistent week.`,
+      action_text: null,
+      action_url: null,
+      priority_level: 5,
+    };
+  }
+
+  return {
+    headline: "Alloro is watching your market.",
+    body: "Your first ranking intelligence report arrives after the next Sunday scan. Check back Monday.",
+    action_text: null,
+    action_url: null,
+    priority_level: 5,
+  };
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+async function getAvgCaseValue(orgId: number): Promise<number> {
+  const config = await db("vocabulary_configs").where({ org_id: orgId }).first();
+  if (config?.vertical) {
+    const defaults = await db("vocabulary_defaults").where({ vertical: config.vertical }).first();
+    if (defaults?.config) {
+      const parsed = typeof defaults.config === "string" ? JSON.parse(defaults.config) : defaults.config;
+      if (parsed.avgCaseValue) return parsed.avgCaseValue;
+    }
+  }
+  return 1500; // default
+}

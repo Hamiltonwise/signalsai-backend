@@ -1,0 +1,35 @@
+# Alloro
+
+> Business clarity platform for licensed specialists. Every owner deserves the life they set out to build.
+
+## What is Alloro?
+
+Alloro is a business intelligence platform built for licensed specialists (endodontists, orthodontists, chiropractors, physical therapists, optometrists, veterinarians, attorneys, CPAs, financial advisors). It provides competitive market intelligence, referral network analysis, and practice performance tracking.
+
+## Core Product
+
+- Free Referral Base Checkup: 30-second competitive analysis showing where a practice ranks in its local market
+- Monday Intelligence Brief: weekly email with actionable findings about ranking changes, competitor moves, and referral network health
+- Practice Dashboard: real-time competitive positioning, review velocity, referral drift alerts
+- PatientPath/ClearPath: practice websites built from verified business data
+
+## Heroes & Founders Foundation
+
+Alloro's nonprofit arm. Two programs: Heroes Initiative (veterans who built businesses after service) and Founders Initiative (first-generation business owners). RISE Scholars receive free access to the Alloro platform.
+
+- Foundation: https://getalloro.com/foundation
+- Heroes Initiative: https://getalloro.com/foundation/heroes
+- Founders Initiative: https://getalloro.com/foundation/founders
+- Apply: https://getalloro.com/foundation/apply
+
+## Key Links
+
+- Homepage: https://getalloro.com
+- Free Checkup: https://getalloro.com/checkup
+- Pricing: https://getalloro.com/pricing
+- Foundation: https://getalloro.com/foundation
+
+## Contact
+
+- Website: https://getalloro.com
+- Support: https://getalloro.com/help

@@ -350,8 +350,8 @@ export default function AIDataInsightsList() {
 
         <EmptyState
           icon={<Bot className="w-12 h-12" />}
-          title="No agent data available"
-          description="Guardian and Governance agents haven't run yet for this month. Click 'Run Guardian & Governance' above to start."
+          title="Intelligence is loading"
+          description="Guardian and Governance will analyze your accounts on their next scheduled run. When they do, this screen shows what the agents found that you would have missed. Click 'Run Guardian & Governance' above to start now."
         />
       </div>
     );

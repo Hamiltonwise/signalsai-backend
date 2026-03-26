@@ -17,6 +17,7 @@ export interface ParsedRow {
   referrals: number;
   production: number;
   month: string; // YYYY-MM
+  patient_id?: string; // optional patient identifier for dedup
 }
 
 export interface PasteParseResult {
@@ -202,19 +203,26 @@ export function parsePastedData(
       continue;
     }
 
-    const [dateStr, source, typeStr, productionStr] = cols;
+    const [dateStr, source, typeStr, productionStr, ...extraCols] = cols;
 
     const month = parseDateToMonth(dateStr, currentMonth);
     const type = parseType(typeStr);
     const production = parseProduction(productionStr);
 
+    // Extra columns may contain patient name/ID — use first non-empty extra
+    // column as a dedup key. Common PMS exports include patient name in col 5+.
+    const patientId = extraCols
+      .map((c) => c.trim())
+      .find((c) => c.length > 0 && !/^\$?[\d,.]+$/.test(c)) || undefined;
+
     monthsSet.add(month);
     rows.push({
       source: cleanSourceName(source) || "Unknown",
       type,
-      referrals: 1, // each row = 1 referral
+      referrals: 1, // each row = 1 treatment (deduped to patients in sanitization)
       production,
       month,
+      patient_id: patientId,
     });
   }
 

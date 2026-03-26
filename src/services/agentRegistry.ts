@@ -8,6 +8,8 @@
 
 import { executeProoflineAgent } from "../controllers/agents/feature-services/service.proofline-executor";
 import { executeRankingAgent } from "../controllers/agents/feature-services/service.ranking-executor";
+import { generateAllSnapshots } from "./rankingsIntelligence";
+import { sendAllMondayEmails } from "../jobs/mondayEmail";
 
 export interface AgentHandler {
   displayName: string;
@@ -30,6 +32,22 @@ const registry: Record<string, AgentHandler> = {
     handler: async () => {
       const result = await executeRankingAgent();
       return { summary: result.summary as unknown as Record<string, unknown> };
+    },
+  },
+  rankings_intelligence: {
+    displayName: "Rankings Intelligence",
+    description: "Weekly snapshot — queries current ranking for each org, generates 3 plain-English bullets, stores to weekly_ranking_snapshots. Runs Sunday 11PM UTC.",
+    handler: async () => {
+      const result = await generateAllSnapshots();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  monday_email: {
+    displayName: "Monday Email",
+    description: "Weekly intelligence brief to each practice owner. Reads from weekly_ranking_snapshots, sends via n8n webhook. Monday 2PM UTC (7AM PT).",
+    handler: async () => {
+      const result = await sendAllMondayEmails();
+      return { summary: result as unknown as Record<string, unknown> };
     },
   },
 };

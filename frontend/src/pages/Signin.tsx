@@ -13,6 +13,7 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
 
   const handleLogin = async () => {
     if (isLoading) return;
@@ -22,7 +23,7 @@ export default function SignIn() {
     setMessage("");
 
     try {
-      const response = await authPassword.login(email, password);
+      const response = await authPassword.login(email, password, rememberMe);
 
       if (response.success) {
         // Clear stale onboarding state from any previous session
@@ -168,6 +169,19 @@ export default function SignIn() {
                 </button>
               </div>
             </div>
+
+            {/* Remember Me */}
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-alloro-orange focus:ring-alloro-orange/20"
+              />
+              <span className="text-sm text-slate-600">
+                Keep me signed in for 30 days
+              </span>
+            </label>
 
             {/* Sign In Button */}
             <button

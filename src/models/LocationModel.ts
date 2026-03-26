@@ -6,6 +6,21 @@ export interface ILocation {
   name: string;
   domain: string | null;
   is_primary: boolean;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  phone: string | null;
+  place_id: string | null;
+  lat: number | null;
+  lng: number | null;
+  specialty: string | null;
+  gbp_connected: boolean;
+  is_coming_soon: boolean;
+  gbp_access_token: string | null;
+  gbp_account_id: string | null;
+  ranking_position: number | null;
+  review_count: number | null;
   business_data: Record<string, unknown> | null;
   created_at: Date;
   updated_at: Date;
@@ -49,7 +64,7 @@ export class LocationModel extends BaseModel {
   }
 
   static async create(
-    data: Omit<ILocation, "id" | "created_at" | "updated_at" | "business_data"> & { business_data?: Record<string, unknown> | null },
+    data: Pick<ILocation, "organization_id" | "name"> & Partial<Omit<ILocation, "id" | "created_at" | "updated_at">>,
     trx?: QueryContext
   ): Promise<ILocation> {
     return super.create(data as Record<string, unknown>, trx);

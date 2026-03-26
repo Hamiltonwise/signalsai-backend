@@ -103,7 +103,16 @@ export function NotificationPopover({
       case "agent":
         return "/dashboard";
       case "ranking":
+      case "ranking_change":
         return "/rankings";
+      case "patientpath_ready":
+        return "/dfy/website";
+      case "gp_dark":
+        return "/dashboard/referrals";
+      case "billing_issue":
+        return "/settings/billing";
+      case "ttfv_followup":
+        return "/dashboard";
       default:
         return "/dashboard";
     }

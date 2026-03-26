@@ -16,6 +16,9 @@ import { processReviewSync } from "./processors/reviewSync.processor";
 import { processSchedulerTick } from "./processors/scheduler.processor";
 import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
+import { processGbpRefresh } from "./processors/gbpRefresh.processor";
+import { processPatientPathBuild } from "./processors/patientpathBuild.processor";
+import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -219,8 +222,34 @@ const wbRestoreWorker = new Worker(
   }
 );
 
+// PatientPath Build worker
+const patientpathBuildWorker = new Worker(
+  "minds-patientpath-build",
+  async (job) => {
+    await processPatientPathBuild(job);
+  },
+  {
+    connection,
+    concurrency: 2,
+    prefix: '{minds}',
+  }
+);
+
+// Welcome Intelligence worker (fires 4h after checkup account creation)
+const welcomeIntelligenceWorker = new Worker(
+  "minds-welcome-intelligence",
+  async (job) => {
+    await processWelcomeIntelligence(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -247,6 +276,8 @@ async function shutdown(): Promise<void> {
   await schedulerWorker.close();
   await wbBackupWorker.close();
   await wbRestoreWorker.close();
+  await patientpathBuildWorker.close();
+  await welcomeIntelligenceWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -319,10 +350,45 @@ async function setupSchedulerTick(): Promise<void> {
   }
 }
 
+// GBP Token Refresh worker
+const gbpRefreshWorker = new Worker(
+  "minds-gbp-refresh",
+  async (job) => {
+    await processGbpRefresh(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Set up GBP token refresh schedule (daily 3 AM PT = 10 AM UTC)
+async function setupGbpRefreshSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("gbp-refresh");
+    await queue.add(
+      "daily-gbp-refresh",
+      {},
+      {
+        repeat: {
+          pattern: "0 10 * * *", // 10 AM UTC = 3 AM PT
+          tz: "UTC",
+        },
+        jobId: "daily-gbp-refresh",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily GBP token refresh scheduled (3 AM PT / 10 AM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up GBP refresh schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
 setupReviewSyncSchedule();
 setupSchedulerTick();
+setupGbpRefreshSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");

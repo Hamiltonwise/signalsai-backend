@@ -5,6 +5,7 @@ import {
   Activity,
   CheckSquare,
   Trophy,
+  BarChart3,
   Bell,
   LogOut,
   ChevronRight,
@@ -15,6 +16,8 @@ import {
   Globe,
   PanelLeftClose,
   PanelLeftOpen,
+  MapPin,
+  Shield,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSidebar } from "./Admin/SidebarContext";
@@ -258,8 +261,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const canSeeNotifications = userRole !== "viewer";
+  const isManagerOrAbove = userRole === "admin" || userRole === "manager";
 
-  // Main navigation items
+  // Main navigation items — role-gated
   const mainNavItems = [
     {
       label: "Practice Hub",
@@ -267,18 +271,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/dashboard",
       showDuringOnboarding: true,
     },
-    {
-      label: "Referrals Hub",
-      icon: <Activity size={18} />,
-      path: "/pmsStatistics",
-      showDuringOnboarding: false,
-    },
+    // Referrals Hub: owner + manager only (contains referral intelligence)
+    ...(isManagerOrAbove
+      ? [
+          {
+            label: "Referrals Hub",
+            icon: <Activity size={18} />,
+            path: "/pmsStatistics",
+            showDuringOnboarding: false,
+          },
+        ]
+      : []),
     {
       label: "Local Rankings",
       icon: <Trophy size={18} />,
       path: "/rankings",
       showDuringOnboarding: false,
     },
+    {
+      label: "Progress Report",
+      icon: <BarChart3 size={18} />,
+      path: "/dashboard/progress",
+      showDuringOnboarding: false,
+    },
+    {
+      label: "Intelligence",
+      icon: <Shield size={18} />,
+      path: "/dashboard/intelligence",
+      showDuringOnboarding: false,
+    },
+    // Locations: owner + manager only (multi-location management)
+    ...(isManagerOrAbove
+      ? [
+          {
+            label: "Locations",
+            icon: <MapPin size={18} />,
+            path: "/dashboard/locations",
+            showDuringOnboarding: false,
+          },
+        ]
+      : []),
   ];
 
   // Execution & Alerts items - dynamic badges and notifications
@@ -499,8 +531,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
 
-          {/* Websites */}
-          {!isLockedOut && onboardingCompleted && hasWebsite && (
+          {/* Websites — owner + manager only */}
+          {!isLockedOut && onboardingCompleted && hasWebsite && isManagerOrAbove && (
             <div className="space-y-1.5">
               <NavItem
                 icon={<Globe size={18} />}

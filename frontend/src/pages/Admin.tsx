@@ -4,15 +4,15 @@ import {
   PMSAutomationCards,
   AgentInsights,
 } from "../components/Admin";
-import { ActionItemsHub } from "@/components/Admin/ActionItemsHub";
+import HQRouter from "./admin/HQRouter";
 import { AdminGuard } from "@/components/Admin/AdminGuard";
 import AIDataInsightsList from "./admin/AIDataInsightsList";
 import AIDataInsightsDetail from "./admin/AIDataInsightsDetail";
 import AppLogs from "./admin/AppLogs";
 import { OrganizationManagement } from "./admin/OrganizationManagement";
 import AgentOutputsList from "./admin/AgentOutputsList";
-import { PracticeRanking } from "./admin/PracticeRanking";
 import OrganizationDetail from "./admin/OrganizationDetail";
+import PracticeStory from "./admin/PracticeStory";
 import WebsitesList from "./admin/WebsitesList";
 import WebsiteDetail from "./admin/WebsiteDetail";
 import TemplatesList from "./admin/TemplatesList";
@@ -22,9 +22,16 @@ import PageEditor from "./admin/PageEditor";
 import LayoutEditor from "./admin/LayoutEditor";
 import AdminSettings from "./admin/AdminSettings";
 import Schedules from "./admin/Schedules";
-import MindsList from "./admin/MindsList";
+import DreamTeam from "./admin/DreamTeam";
+import YourMarket from "./admin/YourMarket";
 import MindDetail from "./admin/MindDetail";
 import AlloroPostsDocs from "./admin/AlloroPostsDocs";
+import BatchCheckup from "./admin/BatchCheckup";
+import AccountOverview from "./admin/AccountOverview";
+import CaseStudies from "./admin/CaseStudies";
+import AAEDashboard from "./admin/AAEDashboard";
+import PitchRepTracker from "./admin/PitchRepTracker";
+import IntelligencePanel from "./admin/IntelligencePanel";
 
 function WebDevEngine() {
   return (
@@ -63,7 +70,7 @@ function AdminWithLayout() {
       <Routes>
         <Route path="/" element={<Navigate to="action-items" replace />} />
         <Route path="ai-pms-automation" element={<PMSAutomationCards />} />
-        <Route path="action-items" element={<ActionItemsHub />} />
+        <Route path="action-items" element={<HQRouter />} />
         <Route path="agent-outputs" element={<AgentOutputsList />} />
         <Route path="ai-data-insight" element={<AgentInsights />} />
         <Route path="ai-data-insights" element={<AIDataInsightsList />} />
@@ -77,20 +84,33 @@ function AdminWithLayout() {
           path="organization-management"
           element={<OrganizationManagement />}
         />
+        <Route path="accounts" element={<AccountOverview />} />
         <Route
           path="organizations/:id"
+          element={<PracticeStory />}
+        />
+        <Route
+          path="organizations/:id/manage"
           element={<OrganizationDetail />}
         />
-        <Route path="practice-ranking" element={<PracticeRanking />} />
+        <Route
+          path="organizations/:id/intelligence"
+          element={<IntelligencePanel />}
+        />
+        <Route path="practice-ranking" element={<YourMarket />} />
         <Route path="websites" element={<WebsitesList />} />
         <Route path="websites/:id" element={<WebsiteDetail />} />
         <Route path="templates" element={<TemplatesList />} />
         <Route path="templates/imports/:id" element={<ImportDetail />} />
         <Route path="templates/:id" element={<TemplateDetail />} />
-        <Route path="minds" element={<MindsList />} />
+        <Route path="minds" element={<DreamTeam />} />
         <Route path="minds/:mindId" element={<MindDetail />} />
         <Route path="documentation/alloro-posts" element={<AlloroPostsDocs />} />
         <Route path="schedules" element={<Schedules />} />
+        <Route path="batch-checkup" element={<BatchCheckup />} />
+        <Route path="case-studies" element={<CaseStudies />} />
+        <Route path="aae" element={<AAEDashboard />} />
+        <Route path="pitch-reps" element={<PitchRepTracker />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="sentry-test" element={<SentryTest />} />
       </Routes>

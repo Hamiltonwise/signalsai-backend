@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Loader2,
@@ -8,16 +8,9 @@ import {
   ChevronUp,
   Search,
   MapPin,
-  FilePlus2,
-  Upload,
-  Archive,
 } from "lucide-react";
 import { fetchTemplatePages } from "../../api/templates";
-import {
-  startPipeline,
-  createBlankPage,
-  uploadArtifactPage,
-} from "../../api/websites";
+import { startPipeline } from "../../api/websites";
 import type { TemplatePage } from "../../api/templates";
 import { searchPlaces, getPlaceDetails } from "../../api/places";
 import type { PlaceSuggestion } from "../../api/places";
@@ -25,18 +18,15 @@ import ColorPicker from "./ColorPicker";
 
 export interface CreatePageModalProps {
   projectId: string;
-  templateId?: string;
+  templateId: string;
   gbpData: Record<string, string | number | null> | null;
   defaultPlaceId: string;
   defaultWebsiteUrl: string;
   defaultPrimaryColor?: string;
   defaultAccentColor?: string;
   onSuccess: () => void;
-  onBlankPageCreated?: (pageId: string) => void;
   onClose: () => void;
 }
-
-type CreateMode = "template" | "blank" | "artifact";
 
 export default function CreatePageModal({
   projectId,
@@ -47,19 +37,14 @@ export default function CreatePageModal({
   defaultPrimaryColor = "#1E40AF",
   defaultAccentColor = "#F59E0B",
   onSuccess,
-  onBlankPageCreated,
   onClose,
 }: CreatePageModalProps) {
-  const [mode, setMode] = useState<CreateMode>(
-    templateId ? "template" : "blank"
-  );
   const [templatePages, setTemplatePages] = useState<TemplatePage[]>([]);
   const [loadingPages, setLoadingPages] = useState(true);
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
   const [slug, setSlug] = useState("/");
   const [slugError, setSlugError] = useState<string | null>(null);
   const [pageContext, setPageContext] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,16 +71,7 @@ export default function CreatePageModal({
     string | number | null
   > | null>(null);
 
-  // Artifact upload state
-  const [artifactFile, setArtifactFile] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
-    if (!templateId) {
-      setLoadingPages(false);
-      return;
-    }
     const load = async () => {
       try {
         setLoadingPages(true);
@@ -183,8 +159,8 @@ export default function CreatePageModal({
     }
   };
 
-  const handleSubmitTemplate = async () => {
-    if (!selectedPageId || !templateId || submitting) return;
+  const handleSubmit = async () => {
+    if (!selectedPageId || submitting) return;
     if (!validateSlug(slug)) return;
 
     const effectiveGbpData = overrideGbpData || gbpData;
@@ -198,8 +174,7 @@ export default function CreatePageModal({
         templatePageId: selectedPageId,
         path: slug,
         placeId: overridePlaceId,
-        websiteUrl:
-          dataSource === "website" ? overrideWebsiteUrl || null : null,
+        websiteUrl: dataSource === "website" ? (overrideWebsiteUrl || null) : null,
         pageContext: pageContext.trim() || undefined,
         businessName: effectiveGbpData?.name
           ? String(effectiveGbpData.name)
@@ -227,8 +202,7 @@ export default function CreatePageModal({
           : undefined,
         primaryColor: pagePrimaryColor,
         accentColor: pageAccentColor,
-        scrapedData:
-          dataSource === "pasted" ? scrapedData.trim() || null : null,
+        scrapedData: dataSource === "pasted" ? (scrapedData.trim() || null) : null,
       });
       onSuccess();
     } catch (err) {
@@ -236,102 +210,6 @@ export default function CreatePageModal({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleSubmitBlank = async () => {
-    if (submitting) return;
-    if (!validateSlug(slug)) return;
-
-    try {
-      setSubmitting(true);
-      setError(null);
-      const result = await createBlankPage(projectId, {
-        path: slug,
-        display_name: displayName.trim() || undefined,
-      });
-      onBlankPageCreated?.(result.data.id);
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create page");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSubmitArtifact = async () => {
-    if (submitting || !artifactFile) return;
-    if (!validateSlug(slug)) return;
-    if (slug === "/") {
-      setSlugError("Artifact pages cannot use the homepage path");
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      setError(null);
-      const result = await uploadArtifactPage(projectId, {
-        file: artifactFile,
-        path: slug,
-        display_name: displayName.trim() || undefined,
-      });
-      onBlankPageCreated?.(result.data.id);
-      onClose();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to upload artifact page"
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSubmit =
-    mode === "template"
-      ? handleSubmitTemplate
-      : mode === "blank"
-        ? handleSubmitBlank
-        : handleSubmitArtifact;
-
-  const isTemplateDisabled =
-    submitting || !selectedPageId || !slug || !!slugError;
-  const isBlankDisabled = submitting || !slug || !!slugError;
-  const isArtifactDisabled =
-    submitting || !artifactFile || !slug || slug === "/" || !!slugError;
-
-  // Drag-and-drop handlers
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file && (file.name.endsWith(".zip") || file.type === "application/zip")) {
-      setArtifactFile(file);
-    } else {
-      setError("Please upload a .zip file");
-    }
-  }, []);
-
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) setArtifactFile(file);
-    },
-    []
-  );
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -346,9 +224,7 @@ export default function CreatePageModal({
         <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h2 className="text-lg font-bold text-gray-900">
-              Create New Page
-            </h2>
+            <h2 className="text-lg font-bold text-gray-900">Create New Page</h2>
             <button
               onClick={onClose}
               disabled={submitting}
@@ -360,453 +236,231 @@ export default function CreatePageModal({
 
           {/* Body */}
           <div className="px-6 py-5 space-y-5">
-            {/* Mode toggle */}
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setMode("template")}
-                disabled={!templateId}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-sm font-medium transition ${
-                  mode === "template"
-                    ? "bg-alloro-orange text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-50 disabled:text-gray-300 disabled:cursor-not-allowed"
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                Template
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("blank")}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-sm font-medium transition ${
-                  mode === "blank"
-                    ? "bg-alloro-orange text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                <FilePlus2 className="w-4 h-4" />
-                Blank
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("artifact")}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-sm font-medium transition ${
-                  mode === "artifact"
-                    ? "bg-alloro-orange text-white"
-                    : "bg-white text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                <Upload className="w-4 h-4" />
-                Upload App
-              </button>
+            {/* Template page selector */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-gray-700">
+                Template Page
+              </label>
+              {loadingPages ? (
+                <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading pages...
+                </div>
+              ) : templatePages.length === 0 ? (
+                <p className="text-sm text-red-500">No template pages found.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {templatePages.map((page) => (
+                    <button
+                      key={page.id}
+                      onClick={() => setSelectedPageId(page.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg border transition flex items-center gap-2.5 ${
+                        selectedPageId === page.id
+                          ? "border-alloro-orange bg-orange-50 text-gray-900"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                      }`}
+                    >
+                      <FileText
+                        className={`w-4 h-4 flex-shrink-0 ${selectedPageId === page.id ? "text-alloro-orange" : "text-gray-400"}`}
+                      />
+                      <span className="text-sm font-medium truncate">
+                        {page.name}
+                      </span>
+                      {page.sections && page.sections.length > 0 && (
+                        <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
+                          {page.sections.length} section
+                          {page.sections.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {mode === "template" ? (
-              <>
-                {/* Template page selector */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Template Page
-                  </label>
-                  {loadingPages ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Loading pages...
-                    </div>
-                  ) : templatePages.length === 0 ? (
-                    <p className="text-sm text-red-500">
-                      No template pages found.
-                    </p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {templatePages.map((page) => (
-                        <button
-                          key={page.id}
-                          onClick={() => setSelectedPageId(page.id)}
-                          className={`w-full text-left px-3 py-2.5 rounded-lg border transition flex items-center gap-2.5 ${
-                            selectedPageId === page.id
-                              ? "border-alloro-orange bg-orange-50 text-gray-900"
-                              : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                          }`}
-                        >
-                          <FileText
-                            className={`w-4 h-4 flex-shrink-0 ${selectedPageId === page.id ? "text-alloro-orange" : "text-gray-400"}`}
-                          />
-                          <span className="text-sm font-medium truncate">
-                            {page.name}
-                          </span>
-                          {page.sections && page.sections.length > 0 && (
-                            <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
-                              {page.sections.length} section
-                              {page.sections.length !== 1 ? "s" : ""}
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            {/* Slug input */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-gray-700">
+                Page Slug
+              </label>
+              <input
+                type="text"
+                value={slug}
+                onChange={(e) => handleSlugChange(e.target.value)}
+                placeholder="/services"
+                className={`w-full text-sm px-3 py-2 rounded-lg border focus:ring-2 outline-none transition ${
+                  slugError
+                    ? "border-red-300 focus:border-red-400 focus:ring-red-200"
+                    : "border-gray-200 focus:border-alloro-orange focus:ring-alloro-orange/20"
+                }`}
+              />
+              {slugError && <p className="text-xs text-red-500">{slugError}</p>}
+              <p className="text-xs text-gray-400">
+                The URL path for this page (e.g., / for homepage, /services, /about-us)
+              </p>
+            </div>
 
-                {/* Slug input */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Page Slug
-                  </label>
-                  <input
-                    type="text"
-                    value={slug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="/services"
-                    className={`w-full text-sm px-3 py-2 rounded-lg border focus:ring-2 outline-none transition ${
-                      slugError
-                        ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-                        : "border-gray-200 focus:border-alloro-orange focus:ring-alloro-orange/20"
-                    }`}
-                  />
-                  {slugError && (
-                    <p className="text-xs text-red-500">{slugError}</p>
-                  )}
-                  <p className="text-xs text-gray-400">
-                    The URL path for this page (e.g., / for homepage, /services,
-                    /about-us)
-                  </p>
-                </div>
+            {/* Page context */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-gray-700">
+                Page Context
+              </label>
+              <textarea
+                value={pageContext}
+                onChange={(e) => setPageContext(e.target.value)}
+                placeholder="Describe what this page should be about, e.g. 'Orthodontic services including braces, Invisalign, and retainers for children and adults'"
+                rows={3}
+                className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none resize-none transition"
+              />
+              <p className="text-xs text-gray-400">
+                Add details about this page so the AI generates relevant,
+                specific content instead of generic filler.
+              </p>
+            </div>
 
-                {/* Page context */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Page Context
-                  </label>
-                  <textarea
-                    value={pageContext}
-                    onChange={(e) => setPageContext(e.target.value)}
-                    placeholder="Describe what this page should be about, e.g. 'Orthodontic services including braces, Invisalign, and retainers for children and adults'"
-                    rows={3}
-                    className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none resize-none transition"
-                  />
-                  <p className="text-xs text-gray-400">
-                    Add details about this page so the AI generates relevant,
-                    specific content instead of generic filler.
-                  </p>
-                </div>
+            {/* Brand colors (per-page override) */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-semibold text-gray-700">
+                Brand Colors
+              </label>
+              <div className="flex items-start gap-4">
+                <ColorPicker
+                  label="Primary"
+                  value={pagePrimaryColor}
+                  onChange={setPagePrimaryColor}
+                />
+                <ColorPicker
+                  label="Accent"
+                  value={pageAccentColor}
+                  onChange={setPageAccentColor}
+                />
+              </div>
+              <p className="text-xs text-gray-400">
+                Pre-loaded from the project. Adjust per-page if needed.
+              </p>
+            </div>
 
-                {/* Brand colors (per-page override) */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Brand Colors
-                  </label>
-                  <div className="flex items-start gap-4">
-                    <ColorPicker
-                      label="Primary"
-                      value={pagePrimaryColor}
-                      onChange={setPagePrimaryColor}
-                    />
-                    <ColorPicker
-                      label="Accent"
-                      value={pageAccentColor}
-                      onChange={setPageAccentColor}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    Pre-loaded from the project. Adjust per-page if needed.
-                  </p>
-                </div>
-
-                {/* Overrides section */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setShowOverrides(!showOverrides)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
-                  >
-                    <span>Advanced: Override Business Data</span>
-                    {showOverrides ? (
-                      <ChevronUp className="w-4 h-4 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
-                    )}
-                  </button>
-                  {showOverrides && (
-                    <div className="border-t border-gray-200 px-3 py-3 space-y-3 bg-gray-50/50">
-                      <p className="text-xs text-gray-500">
-                        Override the business profile and website URL for this
-                        page only. These changes are not saved to the project.
-                      </p>
-
-                      {/* GBP search */}
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-medium text-gray-500">
-                          Business Profile (PlaceId:{" "}
-                          {overridePlaceId
-                            ? overridePlaceId.slice(0, 12) + "..."
-                            : "none"}
-                          )
-                        </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                            {searchingGbp ? (
-                              <Loader2 className="h-3.5 w-3.5 text-gray-400 animate-spin" />
-                            ) : (
-                              <Search className="h-3.5 w-3.5 text-gray-400" />
-                            )}
-                          </div>
-                          <input
-                            type="text"
-                            value={gbpSearchQuery}
-                            onChange={(e) => handleGbpSearch(e.target.value)}
-                            placeholder="Search for a different business..."
-                            className="w-full text-sm pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none"
-                          />
-                        </div>
-                        {gbpSuggestions.length > 0 && (
-                          <div className="bg-white border border-gray-200 rounded-lg shadow-sm max-h-40 overflow-y-auto">
-                            {gbpSuggestions.map((s) => (
-                              <button
-                                key={s.placeId}
-                                onClick={() => handleSelectGbpOverride(s)}
-                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 border-b border-gray-100 last:border-0"
-                              >
-                                <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <p className="font-medium text-gray-800 truncate">
-                                    {s.mainText}
-                                  </p>
-                                  <p className="text-xs text-gray-500 truncate">
-                                    {s.secondaryText}
-                                  </p>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content source toggle */}
-                      <div className="space-y-2">
-                        <label className="block text-xs font-medium text-gray-500">
-                          Content Source
-                        </label>
-                        <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => setDataSource("website")}
-                            className={`flex-1 px-3 py-2 text-xs font-medium transition ${
-                              dataSource === "website"
-                                ? "bg-alloro-orange text-white"
-                                : "bg-white text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            Scrape Website
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDataSource("pasted")}
-                            className={`flex-1 px-3 py-2 text-xs font-medium transition ${
-                              dataSource === "pasted"
-                                ? "bg-alloro-orange text-white"
-                                : "bg-white text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            Paste Data
-                          </button>
-                        </div>
-                        {dataSource === "website" ? (
-                          <div className="flex items-center gap-2">
-                            <Globe className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                            <input
-                              type="url"
-                              value={overrideWebsiteUrl}
-                              onChange={(e) =>
-                                setOverrideWebsiteUrl(e.target.value)
-                              }
-                              placeholder="https://example.com"
-                              className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none"
-                            />
-                          </div>
-                        ) : (
-                          <textarea
-                            value={scrapedData}
-                            onChange={(e) => setScrapedData(e.target.value)}
-                            placeholder="Paste scraped content, service lists, bios, or any extra info you want the AI to use..."
-                            rows={4}
-                            className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none resize-none"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : mode === "blank" ? (
-              <>
-                {/* Blank page: slug + display name only */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Page Slug
-                  </label>
-                  <input
-                    type="text"
-                    value={slug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="/services"
-                    className={`w-full text-sm px-3 py-2 rounded-lg border focus:ring-2 outline-none transition ${
-                      slugError
-                        ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-                        : "border-gray-200 focus:border-alloro-orange focus:ring-alloro-orange/20"
-                    }`}
-                  />
-                  {slugError && (
-                    <p className="text-xs text-red-500">{slugError}</p>
-                  )}
-                  <p className="text-xs text-gray-400">
-                    The URL path for this page (e.g., / for homepage, /services,
-                    /about-us)
-                  </p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Display Name
-                    <span className="text-gray-400 font-normal ml-1">
-                      optional
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="e.g., Services, About Us, Contact"
-                    className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none transition"
-                  />
-                  <p className="text-xs text-gray-400">
-                    A friendly name shown in the admin. Defaults to the slug if
-                    left empty.
-                  </p>
-                </div>
-
-                <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
+            {/* Overrides section */}
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setShowOverrides(!showOverrides)}
+                className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+              >
+                <span>Advanced: Override Business Data</span>
+                {showOverrides ? (
+                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                )}
+              </button>
+              {showOverrides && (
+                <div className="border-t border-gray-200 px-3 py-3 space-y-3 bg-gray-50/50">
                   <p className="text-xs text-gray-500">
-                    Creates an empty page with no sections. You can add content
-                    manually using the page editor after creation.
+                    Override the business profile and website URL for this page
+                    only. These changes are not saved to the project.
                   </p>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Artifact upload mode */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Page Slug
-                  </label>
-                  <input
-                    type="text"
-                    value={slug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="/calculator"
-                    className={`w-full text-sm px-3 py-2 rounded-lg border focus:ring-2 outline-none transition ${
-                      slugError
-                        ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-                        : "border-gray-200 focus:border-alloro-orange focus:ring-alloro-orange/20"
-                    }`}
-                  />
-                  {slugError && (
-                    <p className="text-xs text-red-500">{slugError}</p>
-                  )}
-                  <p className="text-xs text-gray-400">
-                    The endpoint where the app will load (e.g., /calculator,
-                    /onboarding)
-                  </p>
-                </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Display Name
-                    <span className="text-gray-400 font-normal ml-1">
-                      optional
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="e.g., Savings Calculator, Onboarding Form"
-                    className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none transition"
-                  />
-                </div>
+                  {/* GBP search */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-gray-500">
+                      Business Profile (PlaceId:{" "}
+                      {overridePlaceId
+                        ? overridePlaceId.slice(0, 12) + "..."
+                        : "none"}
+                      )
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                        {searchingGbp ? (
+                          <Loader2 className="h-3.5 w-3.5 text-gray-400 animate-spin" />
+                        ) : (
+                          <Search className="h-3.5 w-3.5 text-gray-400" />
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={gbpSearchQuery}
+                        onChange={(e) => handleGbpSearch(e.target.value)}
+                        placeholder="Search for a different business..."
+                        className="w-full text-sm pl-9 pr-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none"
+                      />
+                    </div>
+                    {gbpSuggestions.length > 0 && (
+                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm max-h-40 overflow-y-auto">
+                        {gbpSuggestions.map((s) => (
+                          <button
+                            key={s.placeId}
+                            onClick={() => handleSelectGbpOverride(s)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 border-b border-gray-100 last:border-0"
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-800 truncate">
+                                {s.mainText}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {s.secondaryText}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-                {/* Drag and drop zone */}
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    App Build (zip)
-                  </label>
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 cursor-pointer transition ${
-                      isDragging
-                        ? "border-alloro-orange bg-orange-50"
-                        : artifactFile
-                          ? "border-green-300 bg-green-50"
-                          : "border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-gray-100"
-                    }`}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".zip"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    {artifactFile ? (
-                      <>
-                        <Archive className="w-8 h-8 text-green-500 mb-2" />
-                        <p className="text-sm font-medium text-gray-800">
-                          {artifactFile.name}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {formatFileSize(artifactFile.size)}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setArtifactFile(null);
-                          }}
-                          className="mt-2 text-xs text-red-500 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      </>
+                  {/* Content source toggle */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-gray-500">
+                      Content Source
+                    </label>
+                    <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setDataSource("website")}
+                        className={`flex-1 px-3 py-2 text-xs font-medium transition ${
+                          dataSource === "website"
+                            ? "bg-alloro-orange text-white"
+                            : "bg-white text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        Scrape Website
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDataSource("pasted")}
+                        className={`flex-1 px-3 py-2 text-xs font-medium transition ${
+                          dataSource === "pasted"
+                            ? "bg-alloro-orange text-white"
+                            : "bg-white text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        Paste Data
+                      </button>
+                    </div>
+                    {dataSource === "website" ? (
+                      <div className="flex items-center gap-2">
+                        <Globe className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        <input
+                          type="url"
+                          value={overrideWebsiteUrl}
+                          onChange={(e) => setOverrideWebsiteUrl(e.target.value)}
+                          placeholder="https://example.com"
+                          className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none"
+                        />
+                      </div>
                     ) : (
-                      <>
-                        <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                        <p className="text-sm font-medium text-gray-600">
-                          Drop your zip here or click to browse
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          .zip files only, up to 200 MB
-                        </p>
-                      </>
+                      <textarea
+                        value={scrapedData}
+                        onChange={(e) => setScrapedData(e.target.value)}
+                        placeholder="Paste scraped content, service lists, bios, or any extra info you want the AI to use..."
+                        rows={4}
+                        className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none resize-none"
+                      />
                     )}
                   </div>
                 </div>
-
-                <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
-                  <p className="text-xs text-amber-800">
-                    <strong>Important:</strong> The app must be built with a base
-                    path matching the slug above. For Vite:{" "}
-                    <code className="bg-amber-100 px-1 py-0.5 rounded text-[11px]">
-                      vite build --base={slug === "/" ? "/your-slug" : slug}/
-                    </code>
-                  </p>
-                  <p className="text-xs text-amber-700 mt-1.5">
-                    The site header and footer will be injected around your app.
-                    Account for the header height with padding if needed.
-                  </p>
-                </div>
-              </>
-            )}
+              )}
+            </div>
 
             {/* Error */}
             {error && (
@@ -828,29 +482,17 @@ export default function CreatePageModal({
             <button
               onClick={handleSubmit}
               disabled={
-                mode === "template"
-                  ? isTemplateDisabled
-                  : mode === "blank"
-                    ? isBlankDisabled
-                    : isArtifactDisabled
+                submitting || !selectedPageId || !slug || !!slugError
               }
               className="inline-flex items-center gap-2 bg-alloro-orange hover:bg-alloro-orange/90 disabled:bg-alloro-orange/50 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  {mode === "template"
-                    ? "Generating..."
-                    : mode === "blank"
-                      ? "Creating..."
-                      : "Uploading..."}
+                  Generating...
                 </>
-              ) : mode === "template" ? (
-                "Generate Page"
-              ) : mode === "blank" ? (
-                "Create Blank Page"
               ) : (
-                "Upload App"
+                "Generate Page"
               )}
             </button>
           </div>

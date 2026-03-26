@@ -18,7 +18,7 @@ import {
 } from "../../../utils/dataAggregation/dataAggregator";
 import { aggregatePmsData } from "../../../utils/pms/pmsAggregator";
 import { log, logError, delay, isValidAgentOutput, logAgentOutput } from "../feature-utils/agentLogger";
-import { getDailyDates, getPreviousMonthRange, shouldRunMonthlyAgents } from "../feature-utils/dateHelpers";
+import { getDailyDates, getPreviousMonthRange, getCurrentMonthRange, shouldRunMonthlyAgents } from "../feature-utils/dateHelpers";
 import {
   callAgentWebhook,
   COPY_COMPANION_WEBHOOK,
@@ -772,7 +772,7 @@ export async function processClient(
 
       // Get date ranges
       const dailyDates = getDailyDates(referenceDate);
-      const monthRange = getPreviousMonthRange(referenceDate);
+      const monthRange = getCurrentMonthRange();
 
       // Resolve location_id for this organization
       const locationId = await resolveLocationId(account.organization_id);

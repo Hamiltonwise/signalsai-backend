@@ -4,6 +4,7 @@ import { UserModel, IUser } from "../../../models/UserModel";
 import { GoogleConnectionModel, IGoogleConnection } from "../../../models/GoogleConnectionModel";
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
 import { OrganizationModel } from "../../../models/OrganizationModel";
+import { generateReferralCode } from "../../../utils/referralCode";
 import { QueryContext } from "../../../models/BaseModel";
 import type { AuthenticatedContext } from "../feature-utils/security-utils";
 
@@ -257,7 +258,7 @@ export async function completeOAuthFlow(
           organizationId = orgUser.organization_id;
         } else {
           const newOrg = await OrganizationModel.create(
-            { name: `${googleProfile.name}'s Organization` },
+            { name: `${googleProfile.name}'s Organization`, referral_code: generateReferralCode() },
             trx,
           );
           organizationId = newOrg.id;

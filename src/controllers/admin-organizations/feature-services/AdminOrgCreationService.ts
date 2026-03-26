@@ -14,6 +14,7 @@ import { OrganizationModel } from "../../../models/OrganizationModel";
 import { UserModel } from "../../../models/UserModel";
 import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
 import { LocationModel } from "../../../models/LocationModel";
+import { generateReferralCode } from "../../../utils/referralCode";
 
 const BCRYPT_SALT_ROUNDS = 12;
 
@@ -118,6 +119,7 @@ export async function createOrganizationWithUser(
       {
         name: organization.name.trim(),
         domain: organization.domain?.trim() || undefined,
+        referral_code: generateReferralCode(),
       },
       trx
     );

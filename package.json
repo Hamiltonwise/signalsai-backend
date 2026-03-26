@@ -11,7 +11,13 @@
     "db:rollback": "knex migrate:rollback",
     "db:seed": "knex seed:run",
     "db:make-migration": "knex migrate:make",
-    "db:make-seed": "knex seed:make"
+    "db:make-seed": "knex seed:make",
+    "seed:demo": "ts-node src/scripts/seedDemoAccount.ts",
+    "sync:agents": "ts-node src/scripts/syncAgentRegistry.ts",
+    "benchmark:baseline": "ts-node src/scripts/captureBaseline.ts",
+    "smoke": "npx ts-node src/scripts/smokeTest.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
   },
   "keywords": [],
   "author": "",
@@ -50,6 +56,7 @@
     "jsonwebtoken": "^9.0.2",
     "knex": "^3.1.0",
     "multer": "^2.0.2",
+    "nanoid": "^5.1.7",
     "pg": "^8.11.3",
     "playwright": "^1.58.2",
     "puppeteer": "^24.34.0",
@@ -58,6 +65,7 @@
     "stripe": "^20.4.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "twilio": "^5.13.0",
     "typescript": "^5.9.2",
     "unzipper": "^0.12.3",
     "uuid": "^9.0.1",
@@ -65,11 +73,14 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/archiver": "^7.0.0",
     "@types/bcrypt": "^6.0.0",
+    "@types/qrcode": "^1.5.6",
     "@types/unzipper": "^0.10.11",
     "@types/uuid": "^9.0.8",
     "@types/xlsx": "^0.0.36",
+    "qrcode": "^1.5.4",
     "tsx": "^4.20.6"
   }
 }

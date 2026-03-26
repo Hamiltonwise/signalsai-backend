@@ -5,6 +5,7 @@ import { OrganizationUserModel } from "../../../models/OrganizationUserModel";
 import { UserModel } from "../../../models/UserModel";
 import { ProfileData } from "../feature-utils/onboardingValidation";
 import { bootstrapOrganization } from "./OrganizationBootstrapService";
+import { generateReferralCode } from "../../../utils/referralCode";
 
 export interface ProfileCompletionResult {
   profile: ProfileData;
@@ -28,7 +29,8 @@ export interface SaveProfileResult {
  */
 export async function completeOnboardingWithProfile(
   googleAccountId: number,
-  profileData: ProfileData
+  profileData: ProfileData,
+  referralCode?: string
 ): Promise<ProfileCompletionResult> {
   await db.transaction(async (trx) => {
     const googleAccount = await GoogleConnectionModel.findById(
@@ -44,12 +46,24 @@ export async function completeOnboardingWithProfile(
 
     // If no organization exists (e.g. new user), create one
     if (!orgId) {
+      // Look up referring org if a referral code was provided
+      let referredByOrgId: number | undefined;
+      if (referralCode) {
+        const referrer = await OrganizationModel.findByReferralCode(referralCode, trx);
+        if (referrer) {
+          referredByOrgId = referrer.id;
+          console.log(`[Onboarding] Referral attribution: code ${referralCode} → org ${referrer.id} (${referrer.name})`);
+        }
+      }
+
       const newOrg = await OrganizationModel.create(
         {
           name:
             profileData.practiceName ||
             `${profileData.firstName}'s Organization`,
           domain: profileData.domainName,
+          referral_code: generateReferralCode(),
+          referred_by_org_id: referredByOrgId,
         },
         trx
       );
@@ -144,7 +158,8 @@ export async function completeOnboardingWithProfile(
  */
 export async function completeOnboardingForPasswordUser(
   userId: number,
-  profileData: ProfileData
+  profileData: ProfileData,
+  referralCode?: string
 ): Promise<ProfileCompletionResult & { organizationId: number }> {
   let orgId: number;
 
@@ -153,7 +168,8 @@ export async function completeOnboardingForPasswordUser(
       userId,
       profileData.practiceName,
       profileData.domainName,
-      trx
+      trx,
+      referralCode
     );
     orgId = result.organizationId;
 
@@ -212,7 +228,8 @@ export async function completeOnboardingForPasswordUser(
 export async function saveProfileAndBootstrapOrg(
   userId: number,
   organizationId: number | undefined,
-  profileData: ProfileData
+  profileData: ProfileData,
+  referralCode?: string
 ): Promise<SaveProfileResult> {
   let orgId: number;
 
@@ -235,7 +252,8 @@ export async function saveProfileAndBootstrapOrg(
         userId,
         profileData.practiceName,
         profileData.domainName,
-        trx
+        trx,
+        referralCode
       );
       orgId = result.organizationId;
 

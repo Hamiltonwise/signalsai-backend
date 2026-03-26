@@ -41,7 +41,7 @@ export const ClarityProvider: React.FC<ClarityProviderProps> = ({
 
       if (result.successful !== false) {
         setAiData(result as ClarityAIReadyData);
-        console.log("Clarity AI Ready Data:", result);
+        if (import.meta.env.DEV) console.log("Clarity AI Ready Data:", result);
       } else {
         setAiError(
           result.errorMessage || "Failed to fetch Clarity AI-ready data"

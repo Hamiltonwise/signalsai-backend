@@ -188,7 +188,7 @@ export async function completeOnboarding(
   res: Response
 ): Promise<void> {
   try {
-    const { profile } = req.body;
+    const { profile, referralCode } = req.body;
     const profileData = validateProfileData(profile);
 
     const organizationId = req.organizationId;
@@ -197,7 +197,8 @@ export async function completeOnboarding(
       // OAuth user path — org already exists
       const result = await completeOnboardingWithProfile(
         organizationId,
-        profileData
+        profileData,
+        referralCode
       );
 
       res.json({
@@ -219,7 +220,8 @@ export async function completeOnboarding(
 
       const result = await completeOnboardingForPasswordUser(
         userId,
-        profileData
+        profileData,
+        referralCode
       );
 
       res.json({
@@ -245,7 +247,7 @@ export async function saveProfile(
   res: Response
 ): Promise<void> {
   try {
-    const { profile } = req.body;
+    const { profile, referralCode } = req.body;
     const profileData = validateProfileData(profile);
 
     const userId = req.userId;
@@ -261,7 +263,8 @@ export async function saveProfile(
     const result = await saveProfileAndBootstrapOrg(
       userId,
       req.organizationId,
-      profileData
+      profileData,
+      referralCode
     );
 
     res.json({

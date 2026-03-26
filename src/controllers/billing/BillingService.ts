@@ -9,6 +9,7 @@
  */
 
 import Stripe from "stripe";
+import axios from "axios";
 import { db } from "../../database/connection";
 import { getStripe, getDefaultPriceId, getWebhookSecret } from "../../config/stripe";
 import {
@@ -19,6 +20,9 @@ import { updateTier } from "../admin-organizations/feature-services/TierManageme
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { sendEmail } from "../../emails/emailService";
 import { isStripeConfigured } from "../../config/stripe";
+import { BehavioralEventModel } from "../../models/BehavioralEventModel";
+
+const ALLORO_BRIEF_WEBHOOK = process.env.ALLORO_BRIEF_SLACK_WEBHOOK || "";
 
 // ─── Types ───
 
@@ -388,6 +392,12 @@ export async function handleWebhookEvent(
       );
       break;
 
+    case "customer.subscription.created":
+      await handleSubscriptionCreated(
+        event.data.object as Stripe.Subscription
+      );
+      break;
+
     case "invoice.payment_succeeded":
       await handlePaymentSucceeded(event.data.object as Stripe.Invoice);
       break;
@@ -487,8 +497,64 @@ async function handleCheckoutCompleted(
 }
 
 /**
+ * Handle customer.subscription.created — new subscription activated.
+ * Sets billing_status active, halts trial email chain, logs event, posts to Slack.
+ */
+async function handleSubscriptionCreated(
+  subscription: Stripe.Subscription
+): Promise<void> {
+  const customerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer?.id;
+
+  if (!customerId) return;
+
+  const org = await db("organizations")
+    .where({ stripe_customer_id: customerId })
+    .first();
+
+  if (!org) {
+    console.warn(`[Stripe Webhook] subscription.created: no org for customer ${customerId}`);
+    return;
+  }
+
+  await db("organizations")
+    .where({ id: org.id })
+    .update({
+      subscription_status: "active",
+      subscription_started_at: new Date(),
+      subscription_updated_at: new Date(),
+      trial_email_sequence_position: 99, // halt trial email chain
+    });
+
+  // Log behavioral event
+  BehavioralEventModel.create({
+    event_type: "billing.subscription_created",
+    org_id: org.id,
+    properties: {
+      practice_name: org.name,
+      stripe_customer_id: customerId,
+    },
+  }).catch(() => {});
+
+  // Post to #alloro-brief
+  if (ALLORO_BRIEF_WEBHOOK) {
+    axios
+      .post(ALLORO_BRIEF_WEBHOOK, {
+        text: `New subscriber: ${org.name} $2,000/mo`,
+      })
+      .catch(() => {});
+  }
+
+  console.log(
+    `[Stripe Webhook] Subscription created for ${org.name} (org ${org.id})`
+  );
+}
+
+/**
  * Handle invoice.payment_succeeded — recurring payment confirmation.
- * Ensures subscription_status stays active.
+ * Sets last_payment_at, ensures subscription_status stays active.
  */
 async function handlePaymentSucceeded(
   invoice: Stripe.Invoice
@@ -500,12 +566,29 @@ async function handlePaymentSucceeded(
 
   if (!customerId) return;
 
+  const org = await db("organizations")
+    .where({ stripe_customer_id: customerId })
+    .first();
+
   await db("organizations")
     .where({ stripe_customer_id: customerId })
     .update({
       subscription_status: "active",
       subscription_updated_at: new Date(),
+      last_payment_at: new Date(),
     });
+
+  // Log behavioral event
+  if (org) {
+    BehavioralEventModel.create({
+      event_type: "billing.payment_succeeded",
+      org_id: org.id,
+      properties: {
+        practice_name: org.name,
+        amount: (invoice as any).amount_paid,
+      },
+    }).catch(() => {});
+  }
 
   console.log(
     `[Stripe Webhook] Payment succeeded for customer ${customerId}`
@@ -513,7 +596,9 @@ async function handlePaymentSucceeded(
 }
 
 /**
- * Handle invoice.payment_failed — mark subscription as potentially inactive.
+ * Handle invoice.payment_failed — log event + create dream_team_task for Jo.
+ * Don't lock out -- Stripe will retry. If subscription is eventually cancelled,
+ * handleSubscriptionDeleted will fire.
  */
 async function handlePaymentFailed(
   invoice: Stripe.Invoice
@@ -525,15 +610,51 @@ async function handlePaymentFailed(
 
   if (!customerId) return;
 
-  // Don't immediately lock out — Stripe will retry. Just log it.
-  // If subscription is eventually cancelled, handleSubscriptionDeleted will fire.
+  const org = await db("organizations")
+    .where({ stripe_customer_id: customerId })
+    .first();
+
+  // Log behavioral event
+  if (org) {
+    BehavioralEventModel.create({
+      event_type: "billing.payment_failed",
+      org_id: org.id,
+      properties: {
+        practice_name: org.name,
+        stripe_customer_id: customerId,
+      },
+    }).catch(() => {});
+
+    // Create urgent dream_team_task for Jo (deduped)
+    const existing = await db("dream_team_tasks")
+      .where({ owner_name: "Jo", status: "open", source_type: "billing" })
+      .whereRaw("title LIKE ?", [`%${org.name}%`])
+      .first();
+
+    if (!existing) {
+      await db("dream_team_tasks")
+        .insert({
+          owner_name: "Jo",
+          title: `Payment failed -- ${org.name}`,
+          description: `Stripe payment failed for ${org.name} (org ${org.id}). Customer ID: ${customerId}. Stripe will retry automatically but Jo should reach out proactively.`,
+          status: "open",
+          priority: "urgent",
+          source_type: "billing",
+        })
+        .catch((err: any) => {
+          console.error("[Stripe Webhook] Failed to create dream_team_task:", err.message);
+        });
+    }
+  }
+
   console.warn(
-    `[Stripe Webhook] Payment failed for customer ${customerId}`
+    `[Stripe Webhook] Payment failed for customer ${customerId}${org ? ` (${org.name})` : ""}`
   );
 }
 
 /**
  * Handle customer.subscription.deleted — subscription cancelled.
+ * Sets status cancelled, logs event, posts to Slack.
  */
 async function handleSubscriptionDeleted(
   subscription: Stripe.Subscription
@@ -545,15 +666,41 @@ async function handleSubscriptionDeleted(
 
   if (!customerId) return;
 
+  const org = await db("organizations")
+    .where({ stripe_customer_id: customerId })
+    .first();
+
   await db("organizations")
     .where({ stripe_customer_id: customerId })
     .update({
       subscription_status: "cancelled",
+      subscription_cancelled_at: new Date(),
       subscription_updated_at: new Date(),
     });
 
+  // Log behavioral event
+  if (org) {
+    BehavioralEventModel.create({
+      event_type: "billing.subscription_cancelled",
+      org_id: org.id,
+      properties: {
+        practice_name: org.name,
+        stripe_customer_id: customerId,
+      },
+    }).catch(() => {});
+
+    // Post to #alloro-brief
+    if (ALLORO_BRIEF_WEBHOOK) {
+      axios
+        .post(ALLORO_BRIEF_WEBHOOK, {
+          text: `Cancellation: ${org.name}`,
+        })
+        .catch(() => {});
+    }
+  }
+
   console.log(
-    `[Stripe Webhook] Subscription deleted for customer ${customerId}`
+    `[Stripe Webhook] Subscription deleted for customer ${customerId}${org ? ` (${org.name})` : ""}`
   );
 }
 
