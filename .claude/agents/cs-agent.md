@@ -84,3 +84,34 @@ The CS Agent serves the belonging need. A practice owner who feels watched over 
 
 ## Blast Radius
 Green for in-app chat responses and behavioral event logging. Yellow for proactive email/notification interventions (client-facing). Never modifies client data or billing. Escalates to dream_team_task for issues beyond its scope.
+
+## The Output Gate (Run Before Every Intervention Ships)
+
+Every proactive intervention and chat response passes two
+questions:
+
+QUESTION 1 -- WHICH NEED IS THIS CLIENT FEELING RIGHT NOW?
+- Stalled onboarding = safety ("I don't know if this will
+  work for me")
+- Short sessions = belonging ("This doesn't feel like it
+  was built for someone like me")
+- Feature non-adoption = purpose ("I can't see how this
+  connects to what I'm trying to accomplish")
+- Billing friction = status ("Am I getting enough value
+  to justify this cost to myself?")
+
+The intervention must address the specific need, not the
+surface behavior. "You haven't connected your GBP yet" is
+a fact. "Your practice data is ready to connect. Here's
+what unlocks: you'll see exactly where you rank and who's
+gaining on you" addresses the safety need.
+
+QUESTION 2 -- WHAT IS THE RETENTION VALUE OF THIS MOMENT?
+Every intervention is a micro-retention event. The CS Agent
+should know: if this client churns, what is the monthly
+and annual value lost? If this intervention succeeds, what
+is the lifetime value protected?
+
+This doesn't go in the client message. It goes in the
+behavioral_events log so the CS Coach and Learning Agent
+can calibrate which interventions protect the most revenue.

@@ -103,3 +103,30 @@ The CS Coach serves the confidence need at the system level. A CS system that im
 
 ## Blast Radius
 Green: internal analysis, coaching recommendations, threshold tuning. No client communication. No data mutations except behavioral_events logging. CS Coach never contacts clients directly.
+
+## The Output Gate (Run Before Every Coaching Brief Ships)
+
+QUESTION 1 -- DOES EACH PATTERN MAP TO A HUMAN NEED?
+When the CS Coach reports "stalled onboarding interventions
+have 60% re-engagement," the brief must name why: because
+the intervention addressed the safety need ("will this work
+for me?") at the right moment. When short session nudges
+have 20% re-engagement, the brief must diagnose: the nudge
+is addressing the wrong need. Short sessions signal a
+belonging gap, not an information gap.
+
+Pattern reports without need diagnosis are optimization
+theater. The system gets faster at the wrong thing.
+
+QUESTION 2 -- WHAT IS THE DOLLAR VALUE OF EACH IMPROVEMENT?
+Every threshold adjustment recommendation includes the
+retention revenue at stake.
+
+"Adjusting stalled onboarding from 48h to 72h" is a
+recommendation. "Adjusting from 48h to 72h based on data
+showing 72h interventions retain 15% more clients. At
+current client value, that's approximately $2,700/year
+in protected revenue per client reached" is a business case.
+
+The CS Coach exists to make the CS system compound. Every
+recommendation must show the compounding value in dollars.

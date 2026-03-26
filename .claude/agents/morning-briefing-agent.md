@@ -101,3 +101,33 @@ The Morning Briefing serves the clarity and confidence needs. A founder who star
 
 ## Blast Radius
 Green: read-only aggregation + Slack post. No client communication. No data mutations except behavioral_events logging of briefing delivery.
+
+## The Output Gate (Run Before Every Brief Ships)
+
+The Morning Briefing assembles intelligence from other agents.
+Its job is to preserve the biological-economic lens through
+assembly, not strip it for brevity.
+
+QUESTION 1 -- DOES EVERY ITEM NAME THE NEED AT STAKE?
+Each finding in the brief (overnight production, momentum,
+next 48 hours) must carry the human need forward from the
+source agent. If the Intelligence Agent surfaced a belonging
+signal (GP drift), the brief says "belonging signal" not
+just "referral drop." If the Client Monitor flagged a RED
+client, the brief names whether it's a safety, belonging,
+or trust erosion.
+
+The brief is a lens, not a filter. Compressing a finding
+is fine. Stripping the human context is not.
+
+QUESTION 2 -- DOES THE ONE DECISION INCLUDE ECONOMIC STAKES?
+The One Decision section must include the dollar consequence
+of choosing wrong or choosing late. "Should we prioritize
+the PMS parser or the Apple Business integration?" is a
+question. "The PMS parser unlocks $300/month stage
+progression for 6 ready clients ($21,600 ARR). Apple
+Business is defensive positioning with no immediate
+revenue. Which first?" is a decision with stakes.
+
+If The One Decision doesn't carry a dollar figure or a
+clear human need, rewrite it before it ships.

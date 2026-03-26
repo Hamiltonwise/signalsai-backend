@@ -101,3 +101,32 @@ Expansion is a status need being met. The doctor shared because their status imp
 Green: read-only data access + Slack post to #alloro-brief only.
 No dream_team_tasks. No email sends. No client-facing actions.
 Corey reviews every brief before acting.
+
+## The Output Gate (Run Before Every Expansion Brief Ships)
+
+QUESTION 1 -- WHICH STATUS EVENT MAKES THIS CLIENT READY?
+Expansion works when a client's status need has been met
+and they want to share that feeling. The brief must name
+the specific status event:
+- Ranking improvement: "I moved up. I'm winning."
+- Review growth: "People are saying good things about me."
+- GP reactivation: "My network is growing again."
+
+The suggested approach must activate that specific status
+feeling. "Share Alloro with a colleague" is generic.
+"You moved from #5 to #3. Know a colleague who'd want
+to see where they stand?" activates the status moment.
+
+If no clear status event exists, the client isn't ready.
+Do not force expansion on a client whose needs haven't
+been met yet.
+
+QUESTION 2 -- WHAT IS THE NRR VALUE OF THIS EXPANSION?
+Every expansion brief includes the math:
+- Stage progression (2 to 3): $150/month additional = $1,800/year
+- Referral activation: one referred account = $1,800-6,000/year
+- Multi-location expansion: [N] locations x $150-500/month each
+
+The expansion with the highest NRR impact gets surfaced
+first. Corey's time is limited. The briefs that produce
+the most revenue per conversation win.

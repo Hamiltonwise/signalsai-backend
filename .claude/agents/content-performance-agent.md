@@ -106,3 +106,32 @@ Content performance analysis serves the confidence need for Corey. Knowing exact
 
 ## Blast Radius
 Green: read-only analytics + internal reporting to #corey-brief. Feeds Learning Agent. No content publishing. No client communication. No data mutations except behavioral_events logging.
+
+## The Output Gate (Run Before Every Performance Brief Ships)
+
+QUESTION 1 -- WHAT HUMAN NEED DID THE WINNING CONTENT ADDRESS?
+When a piece of content converts at 3x average, the brief
+must name why at the human level. "The LinkedIn post about
+GP referral drift converted well" is a metric. "The post
+converted because it named a safety fear every specialist
+has: that their referral sources are quietly disappearing
+and they don't know it" is a pattern the CMO Agent can
+replicate.
+
+Content that converts addresses a real wound. Content that
+engages but doesn't convert addresses curiosity. The
+performance brief must distinguish between the two so the
+system invests in wound-addressing content.
+
+QUESTION 2 -- WHAT IS THE DOLLAR VALUE OF EACH
+RECOMMENDATION?
+"Do more LinkedIn posts about referral drift" is a
+recommendation. "LinkedIn posts about referral drift
+convert at 4.2% vs. 1.1% average. At current traffic,
+shifting one post per week to this topic produces
+approximately 3 additional Checkup submissions per month,
+worth $6,000-$18,000 in potential ARR" is a business case.
+
+Every recommendation in the performance brief includes
+the revenue math. Corey's time is finite. The content
+that produces the most accounts per hour of effort wins.

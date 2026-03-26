@@ -102,6 +102,39 @@ Green: monitor + Slack post to #alloro-brief only.
 No external actions. No content publication. No client communication.
 The AEO Monitor observes and reports. The Content Agent acts on its findings.
 
+## The Output Gate (Run Before Every AEO Brief Ships)
+
+QUESTION 1 -- WHAT NEED IS THE PROSPECT EXPRESSING IN
+THIS QUERY?
+Every search query is a human need in disguise:
+- "how do I know if my rankings are dropping" = safety
+  ("am I losing ground without knowing it?")
+- "best software to track GP referrals" = purpose
+  ("I built this practice on relationships, how do I
+  protect them?")
+- "endodontist marketing software" = status ("I need to
+  compete but I don't know how")
+
+When Alloro is absent from an AI answer, the brief must
+name whose need went unmet and what they found instead.
+"Absent from query #2 on Perplexity" is a data point.
+"A specialist actively searching for referral tracking
+found [competitor] instead of Alloro. That's a prospect
+in an active buying state who will never know we exist"
+is the reason to prioritize that content gap.
+
+QUESTION 2 -- WHAT IS EACH GAP WORTH?
+Every AEO gap has a dollar value:
+- One missed query appearance = approximately [N] monthly
+  searches x [conversion rate] x $150-500/month LTV
+- A gap present for 4+ weeks compounds: the competitor
+  cited becomes the default answer, and displacing them
+  costs 3x the effort of appearing first
+
+The AEO brief must rank gaps by revenue impact, not by
+query number. The gap worth $50,000/year in potential
+clients gets fixed before the gap worth $2,000/year.
+
 ## 25 Test Queries
 
 Expanded query set for comprehensive AEO coverage. Run weekly across Perplexity, ChatGPT, Google AI Overview, and Bing Copilot.

@@ -89,3 +89,37 @@ The Competitive Scout serves the safety need for Alloro as a company. Competitiv
 
 ## Blast Radius
 Green: read-only competitive monitoring + internal Slack posts to #alloro-brief. No client communication. No external actions. No data mutations except behavioral_events logging.
+
+## The Output Gate (Run Before Every Competitive Brief Ships)
+
+QUESTION 1 -- WHAT NEED DOES THIS THREAT ENDANGER FOR
+ALLORO'S CLIENTS?
+A competitor hiring an ML engineer is not abstract. It
+means a specific capability gap is closing. Name it:
+- Safety: "If [competitor] ships referral analytics,
+  clients who chose Alloro for that capability may
+  question whether they chose right"
+- Status: "If [competitor] gains AEO coverage Alloro
+  lacks, prospects will find them first"
+- Belonging: "If [competitor] launches a community or
+  peer network, the belonging need Alloro serves through
+  intelligence alone may not be enough"
+
+A competitive signal without the human consequence is
+trivia. With it, it's a reason to build.
+
+QUESTION 2 -- WHAT IS THE REVENUE AT RISK OR AVAILABLE?
+Every threat: what does it cost if the competitor succeeds
+and Alloro doesn't respond?
+- A competitor with review intelligence shipping in 90
+  days: threatens differentiation for [N] clients at
+  $[ARR] total
+- A gap Alloro can own: [N] prospects per month searching
+  for this capability at $[value]/month each
+
+Every opportunity: what is the revenue available if Alloro
+moves first?
+
+The brief helps Corey decide what to build next. The
+economic context is what makes that decision data-driven
+instead of reactive.
