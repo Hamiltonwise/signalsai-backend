@@ -21,7 +21,7 @@ export async function gatherCompetitors(
   specialty: typeof SPECIALTIES[number],
   city: CityData
 ): Promise<CompetitorSnapshot[]> {
-  const query = `${specialty.searchTerm} in ${city.city}, ${city.stateAbbr}`;
+  const query = `${specialty.name.toLowerCase()} in ${city.city}, ${city.stateAbbr}`;
 
   const places = await textSearch(query, 10, {
     lat: city.lat,
@@ -60,12 +60,12 @@ export function generateContent(
     {
       type: "hero",
       heading: `${specialty.name} Market in ${city.city}, ${city.stateAbbr}`,
-      body: `There are ${competitors.length} ${specialty.searchTerm} practices competing in ${city.city}, ${city.stateAbbr}. The average rating is ${avgRating} stars with ${avgReviews} reviews per practice. ${topCompetitor ? `The most reviewed practice is ${topCompetitor.name} with ${topCompetitor.reviewCount} reviews.` : ""} Understanding where you stand in this market is the first step to growing your practice.`,
+      body: `There are ${competitors.length} ${specialty.name.toLowerCase()} practices competing in ${city.city}, ${city.stateAbbr}. The average rating is ${avgRating} stars with ${avgReviews} reviews per practice. ${topCompetitor ? `The most reviewed practice is ${topCompetitor.name} with ${topCompetitor.reviewCount} reviews.` : ""} Understanding where you stand in this market is the first step to growing your practice.`,
     },
     {
       type: "market_overview",
       heading: `${city.city} ${specialty.name} Competition at a Glance`,
-      body: `${city.city} has a ${competitors.length >= 8 ? "highly competitive" : competitors.length >= 4 ? "moderately competitive" : "emerging"} ${specialty.searchTerm} market. ${competitors.length >= 8 ? "With " + competitors.length + " practices competing for the same patients, visibility and reputation are critical differentiators." : competitors.length >= 4 ? "There is room to stand out, but you need to actively manage your online presence." : "Early movers who build reviews and referral networks now will dominate this market within 12 months."}`,
+      body: `${city.city} has a ${competitors.length >= 8 ? "highly competitive" : competitors.length >= 4 ? "moderately competitive" : "emerging"} ${specialty.name.toLowerCase()} market. ${competitors.length >= 8 ? "With " + competitors.length + " practices competing for the same patients, visibility and reputation are critical differentiators." : competitors.length >= 4 ? "There is room to stand out, but you need to actively manage your online presence." : "Early movers who build reviews and referral networks now will dominate this market within 12 months."}`,
     },
     {
       type: "competitors",
@@ -83,23 +83,23 @@ export function generateContent(
       heading: `Frequently Asked Questions About ${specialty.name} Practices in ${city.city}`,
       body: JSON.stringify([
         {
-          question: `How many ${specialty.searchTerm} practices are in ${city.city}, ${city.stateAbbr}?`,
-          answer: `There are currently ${competitors.length} ${specialty.searchTerm} practices in the ${city.city} area, with an average rating of ${avgRating} stars.`,
+          question: `How many ${specialty.name.toLowerCase()} practices are in ${city.city}, ${city.stateAbbr}?`,
+          answer: `There are currently ${competitors.length} ${specialty.name.toLowerCase()} practices in the ${city.city} area, with an average rating of ${avgRating} stars.`,
         },
         {
-          question: `What is the average review count for ${specialty.searchTerm} practices in ${city.city}?`,
+          question: `What is the average review count for ${specialty.name.toLowerCase()} practices in ${city.city}?`,
           answer: `${specialty.name} practices in ${city.city} have an average of ${avgReviews} Google reviews. ${topCompetitor ? `The most reviewed practice, ${topCompetitor.name}, has ${topCompetitor.reviewCount} reviews.` : ""}`,
         },
         {
-          question: `How competitive is the ${specialty.searchTerm} market in ${city.city}?`,
-          answer: `${city.city} is a ${competitors.length >= 8 ? "highly competitive" : competitors.length >= 4 ? "moderately competitive" : "growing"} market for ${specialty.searchTerm} practices. Running a free Checkup shows exactly where your practice ranks against these competitors.`,
+          question: `How competitive is the ${specialty.name.toLowerCase()} market in ${city.city}?`,
+          answer: `${city.city} is a ${competitors.length >= 8 ? "highly competitive" : competitors.length >= 4 ? "moderately competitive" : "growing"} market for ${specialty.name.toLowerCase()} practices. Running a free Checkup shows exactly where your practice ranks against these competitors.`,
         },
       ]),
     },
     {
       type: "cta",
       heading: `See Where You Stand in ${city.city}`,
-      body: `Run your free Referral Base Checkup to see how your ${specialty.searchTerm} practice compares to the ${competitors.length} competitors in ${city.city}, ${city.stateAbbr}. It takes 30 seconds and shows you exactly where you rank.`,
+      body: `Run your free Referral Base Checkup to see how your ${specialty.name.toLowerCase()} practice compares to the ${competitors.length} competitors in ${city.city}, ${city.stateAbbr}. It takes 30 seconds and shows you exactly where you rank.`,
     },
   ];
 
@@ -117,15 +117,15 @@ export function buildSchemaMarkup(
   const faqs = competitors.length > 0 ? [
     {
       "@type": "Question",
-      name: `How many ${specialty.searchTerm} practices are in ${city.city}, ${city.stateAbbr}?`,
+      name: `How many ${specialty.name.toLowerCase()} practices are in ${city.city}, ${city.stateAbbr}?`,
       acceptedAnswer: {
         "@type": "Answer",
-        text: `There are ${competitors.length} ${specialty.searchTerm} practices in ${city.city}, ${city.stateAbbr}.`,
+        text: `There are ${competitors.length} ${specialty.name.toLowerCase()} practices in ${city.city}, ${city.stateAbbr}.`,
       },
     },
     {
       "@type": "Question",
-      name: `What is the average rating for ${specialty.searchTerm} practices in ${city.city}?`,
+      name: `What is the average rating for ${specialty.name.toLowerCase()} practices in ${city.city}?`,
       acceptedAnswer: {
         "@type": "Answer",
         text: `The average rating is ${(competitors.reduce((s, c) => s + c.rating, 0) / competitors.length).toFixed(1)} stars across ${competitors.length} practices.`,
@@ -149,7 +149,7 @@ export function buildSchemaMarkup(
         "@id": pageUrl,
         url: pageUrl,
         name: `${specialty.name} in ${city.city}, ${city.stateAbbr} - Market Intelligence`,
-        description: `Live competitive intelligence for ${specialty.searchTerm} practices in ${city.city}, ${city.stateAbbr}. ${competitors.length} practices tracked.`,
+        description: `Live competitive intelligence for ${specialty.name.toLowerCase()} practices in ${city.city}, ${city.stateAbbr}. ${competitors.length} practices tracked.`,
         isPartOf: { "@id": "https://getalloro.com/#website" },
         about: {
           "@type": "Service",
@@ -195,7 +195,7 @@ export async function generatePage(
   const schemaMarkup = buildSchemaMarkup(specialty, city, competitors, pageSlug);
 
   const title = `${specialty.name} in ${city.city}, ${city.stateAbbr} - Competitive Market Intelligence | Alloro`;
-  const metaDescription = `${competitors.length} ${specialty.searchTerm} practices competing in ${city.city}, ${city.stateAbbr}. See ratings, reviews, and where your practice ranks. Free Checkup available.`;
+  const metaDescription = `${competitors.length} ${specialty.name.toLowerCase()} practices competing in ${city.city}, ${city.stateAbbr}. See ratings, reviews, and where your practice ranks. Free Checkup available.`;
 
   const pageData = {
     specialty_slug: specialty.slug,
