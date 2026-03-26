@@ -1,14 +1,56 @@
 /**
  * AAE Thank You Page -- /thank-you
  *
- * Shown after account creation at AAE.
- * Renders the One Action Card for the new account (healthy-state fallback
- * since no data exists yet) and sets the expectation for Monday's brief.
+ * Post-signup confirmation shown at AAE conference.
+ * Designed for 10-second read on a phone in a noisy convention hall.
+ * Every element serves one job: make the doctor feel smart for signing
+ * up and certain about what happens Monday morning.
  */
 
-import { CheckCircle2, ArrowRight } from "lucide-react";
+import { CheckCircle2, ArrowRight, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
-import OneActionCard from "../components/dashboard/OneActionCard";
+
+/**
+ * Generate an .ics calendar event for Monday 7:15 AM local time.
+ * One-tap add from the thank you page drives 2-3x activation lift.
+ */
+function getNextMondayIcs(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const daysUntilMonday = day === 0 ? 1 : day === 1 ? 7 : 8 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + daysUntilMonday);
+  monday.setHours(7, 15, 0, 0);
+
+  const end = new Date(monday);
+  end.setMinutes(end.getMinutes() + 15);
+
+  const fmt = (d: Date) =>
+    d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "BEGIN:VEVENT",
+    `DTSTART:${fmt(monday)}`,
+    `DTEND:${fmt(end)}`,
+    "SUMMARY:Your Alloro Briefing Arrives",
+    "DESCRIPTION:Check your inbox for your first Business Clarity briefing from Alloro.",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+function handleAddToCalendar() {
+  const ics = getNextMondayIcs();
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "alloro-monday-briefing.ics";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function ThankYou() {
   return (
@@ -25,42 +67,70 @@ export default function ThankYou() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-lg px-5 py-12 space-y-8">
-        {/* Confirmation */}
+      <div className="mx-auto max-w-lg px-5 py-10 space-y-7">
+        {/* P0: Confirmation + cognitive closure */}
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-50 mb-5">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-50 mb-4">
             <CheckCircle2 className="w-7 h-7 text-emerald-600" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight">
-            Your Alloro account is ready.
+            You're set.
           </h1>
-          <p className="mt-3 text-base text-slate-500 leading-relaxed">
-            We'll send you your full Business Clarity report Monday morning.
+        </div>
+
+        {/* P0: Monday time anchor, the most important line on the page */}
+        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 text-center">
+          <p className="text-lg font-bold text-[#212D40] leading-snug">
+            Monday at 7:15 AM, your first intelligence
+            briefing lands in your inbox.
+          </p>
+          <p className="mt-3 text-sm text-slate-500 leading-relaxed">
+            Three findings about your market that most practice
+            owners never see. Before you see your first patient.
           </p>
         </div>
 
-        {/* One Action intro */}
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-3">
-            In the meantime
+        {/* P0: Zero action required, breaks the "go set up your account" pattern */}
+        <div className="flex items-start gap-3 px-1">
+          <div className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-[#D56753]/10 flex items-center justify-center">
+            <div className="w-2 h-2 rounded-full bg-[#D56753]" />
+          </div>
+          <p className="text-sm text-slate-600 leading-relaxed">
+            <span className="font-semibold text-[#212D40]">Nothing to set up.</span>{" "}
+            No app to download. No password to create.
+            We do the work. You see the results Monday.
           </p>
-          <p className="text-sm text-slate-600 leading-relaxed mb-4">
-            Here's the one thing you can do today:
-          </p>
-
-          {/* One Action Card -- healthy state fallback for new accounts */}
-          <OneActionCard
-            billingActive={true}
-            gbpConnected={false}
-          />
         </div>
 
-        {/* Booth CTA */}
-        <div className="rounded-2xl bg-[#212D40] p-6 text-center">
+        {/* P1: Single proof point, specific, dollar-figured */}
+        <div
+          className="rounded-2xl px-5 py-4"
+          style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
+        >
+          <p className="text-sm text-[#212D40]/70 leading-relaxed">
+            Last month, a specialist discovered their top referring
+            doctor had gone quiet for 6 weeks. That single relationship
+            was worth $27,000 a year. It was in their Monday briefing.
+          </p>
+        </div>
+
+        {/* P1: Calendar add, optional micro-action */}
+        <div className="text-center">
+          <button
+            onClick={handleAddToCalendar}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-medium text-[#212D40] px-5 py-3 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all"
+          >
+            <Calendar className="w-4 h-4 text-[#D56753]" />
+            Add Monday 7:15 AM to your calendar
+          </button>
+        </div>
+
+        {/* Booth card */}
+        <div className="rounded-2xl bg-[#212D40] p-5 text-center">
           <p className="text-base font-bold text-white">
             Come find us at booth #835.
           </p>
-          <p className="text-sm text-white/60 mt-2 leading-relaxed">
+          <p className="text-sm text-white/60 mt-1.5 leading-relaxed">
             We'll show you what Monday looks like.
           </p>
         </div>
@@ -71,18 +141,17 @@ export default function ThankYou() {
             to="/dashboard"
             className="inline-flex items-center gap-2 rounded-xl bg-[#D56753] text-white text-base font-semibold px-8 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
           >
-            Go to your dashboard
+            See your dashboard now
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-[11px] text-gray-300 uppercase tracking-wide pt-4">
-          Business Clarity. Finally.
+        {/* P2: Founder touch */}
+        <p className="text-center text-xs text-slate-400 leading-relaxed pt-2">
+          Built by Corey, after 5 years watching practice owners
+          work harder than they should have to.
         </p>
       </div>
     </div>
   );
 }
-
-// T1 adds /thank-you route to App.tsx
