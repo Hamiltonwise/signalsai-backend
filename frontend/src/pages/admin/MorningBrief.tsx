@@ -39,7 +39,7 @@ function SignalZone() {
         <div className="mx-auto h-6 w-2/3 animate-pulse rounded bg-gray-200" />
       ) : isError ? (
         <p className="mx-auto max-w-3xl text-base text-gray-400">
-          Signal data unavailable — check back Monday
+          Signal data unavailable. Check back Monday.
         </p>
       ) : (
         <p className="mx-auto max-w-3xl text-2xl font-medium leading-relaxed text-[#212D40]">

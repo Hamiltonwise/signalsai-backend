@@ -11,6 +11,15 @@
 | CFO Agent | Financial modeling | Revenue projections, cost analysis |
 | CLO Agent | Legal/IP monitoring | Trademark alerts, compliance flags |
 | System Conductor | Output quality | Gate decisions (PASS/HOLD/ESCALATE) |
+| Conversion Optimizer | PLG funnel, follow-up sequences | Funnel analysis, conversion briefs |
+| Client Monitor | Client health, churn signals | GREEN/AMBER classification, RED task creation |
+| Technology Horizon | Tech landscape, model evaluation | Capability scanning, implementation briefs |
+| Learning Agent | Heuristic calibration, loop closure | Weekly compound rate, pattern updates |
+| AEO Monitor | AI search presence | Query monitoring, gap reporting |
+| Content Performance | Content ROI, platform metrics | Performance briefs, attribution data |
+| Competitive Scout | Competitor activity | Competitive briefs (internal only) |
+| Morning Briefing | Daily synthesis | Briefing assembly (read-only aggregation) |
+| Nothing Gets Lost | Document integrity, orphan detection | Index scans, "What's Sitting" reports |
 
 ## Seven Rules
 
