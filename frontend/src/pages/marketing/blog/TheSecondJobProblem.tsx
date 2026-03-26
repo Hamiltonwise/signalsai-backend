@@ -121,6 +121,11 @@ export default function TheSecondJobProblem() {
           </Link>
         </div>
 
+        {/* Email capture */}
+        <div className="mt-12">
+          <BlogEmailCapture />
+        </div>
+
         {/* Related reading */}
         <div className="mt-12">
           <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Related reading</h3>
