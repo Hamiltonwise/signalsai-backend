@@ -263,7 +263,7 @@ app.use("/api/admin/webhooks", adminWebhookHealthRoutes); // T6: Webhook health 
 app.use("/api/admin/audit-log", adminAuditLogRoutes); // T6: Audit log viewer
 app.use("/api/webhooks/mailgun", mailgunInboundRoutes); // T3: Mailgun inbound email processing
 app.use("/api/admin", adminKnowledgeLatticeRoutes); // T3: Knowledge + Sentiment Lattice CRUD
-app.use("/api/seo", programmaticPagesRoutes); // WO-7: Programmatic SEO pages
+app.use("/api/programmatic-pages", programmaticPagesRoutes); // WO-7: Programmatic SEO pages
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);

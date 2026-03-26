@@ -1,95 +1,204 @@
 /**
- * Staged Publishing Protocol for Programmatic SEO Pages
+ * Staged Publishing Script for Programmatic SEO Pages
+ *
+ * Generates and publishes programmatic pages in batches using real Places API data.
  *
  * Usage:
- *   npx ts-node src/scripts/publishPageBatch.ts [--limit N] [--specialty slug] [--dry-run]
- *
- * Stages:
- *   1. First run: 50 pages (initial index test)
- *   2. Second run: 200 pages
- *   3. Subsequent runs: 100 pages per batch
+ *   npx tsx src/scripts/publishPageBatch.ts --batch-size 50 --specialty endodontist
+ *   npx tsx src/scripts/publishPageBatch.ts --batch-size 200
+ *   npx tsx src/scripts/publishPageBatch.ts --batch-size 10 --dry-run
  */
 
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 dotenv.config();
 
-import { db } from "../database/connection";
+import { db, closeConnection } from "../database/connection";
+import { CITY_DATA, SPECIALTIES, buildPageSlug } from "../data/cityData";
+import { generatePage } from "../services/programmaticSEO";
 
-async function main() {
+// ---------------------------------------------------------------------------
+// CLI argument parsing
+// ---------------------------------------------------------------------------
+
+function parseArgs(): {
+  batchSize: number;
+  specialty: string | undefined;
+  dryRun: boolean;
+} {
   const args = process.argv.slice(2);
-  const dryRun = args.includes("--dry-run");
-  const limitIdx = args.indexOf("--limit");
+
+  const batchSizeIdx = args.indexOf("--batch-size");
   const specialtyIdx = args.indexOf("--specialty");
+  const dryRun = args.includes("--dry-run");
 
-  const limit = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : 50;
-  const specialty = specialtyIdx >= 0 ? args[specialtyIdx + 1] : undefined;
+  const batchSize =
+    batchSizeIdx >= 0 ? parseInt(args[batchSizeIdx + 1], 10) : 50;
+  const specialty =
+    specialtyIdx >= 0 ? args[specialtyIdx + 1] : undefined;
 
-  console.log(`Programmatic SEO Page Publisher`);
-  console.log(`  Limit: ${limit}`);
-  console.log(`  Specialty filter: ${specialty || "all"}`);
-  console.log(`  Dry run: ${dryRun}`);
-  console.log("");
-
-  // Find draft pages with real competitor data (non-empty competitors_snapshot)
-  let query = db("programmatic_pages")
-    .where("published", false)
-    .whereNotNull("competitors_snapshot")
-    .whereRaw("competitors_snapshot::text != '[]'")
-    .whereRaw("competitors_snapshot::text != 'null'")
-    .limit(limit);
-
-  if (specialty) {
-    query = query.where("specialty_slug", specialty);
+  if (isNaN(batchSize) || batchSize < 1) {
+    console.error("Invalid --batch-size. Must be a positive integer.");
+    process.exit(1);
   }
 
-  const pages = await query.select("id", "page_slug", "specialty_name", "city_name", "state_abbr");
-
-  console.log(`Found ${pages.length} draft pages ready for publishing.`);
-
-  if (pages.length === 0) {
-    console.log("No pages to publish. Generate pages first using the programmatic SEO service.");
-    process.exit(0);
-  }
-
-  console.log("\nPages to publish:");
-  for (const page of pages) {
-    console.log(`  ${page.page_slug} (${page.specialty_name} in ${page.city_name}, ${page.state_abbr})`);
-  }
-
-  if (dryRun) {
-    console.log("\nDry run complete. No pages published.");
-    process.exit(0);
-  }
-
-  // Publish the batch
-  const ids = pages.map((p: { id: number }) => p.id);
-  const published = await db("programmatic_pages")
-    .whereIn("id", ids)
-    .update({
-      published: true,
-      published_at: new Date(),
-      updated_at: new Date(),
-    });
-
-  console.log(`\nPublished ${published} pages.`);
-
-  // Log stats
-  const stats = await db("programmatic_pages")
-    .select(
-      db.raw("COUNT(*) as total"),
-      db.raw("COUNT(*) FILTER (WHERE published = true) as published"),
-      db.raw("COUNT(*) FILTER (WHERE published = false) as draft")
-    )
-    .first();
-
-  console.log(`\nTotal pages: ${stats.total}`);
-  console.log(`Published: ${stats.published}`);
-  console.log(`Draft: ${stats.draft}`);
-
-  process.exit(0);
+  return { batchSize, specialty, dryRun };
 }
 
-main().catch((err) => {
-  console.error("Publishing failed:", err);
-  process.exit(1);
-});
+// ---------------------------------------------------------------------------
+// Check if a page already exists in the database
+// ---------------------------------------------------------------------------
+
+async function pageExists(pageSlug: string): Promise<boolean> {
+  const row = await db("programmatic_pages")
+    .where({ page_slug: pageSlug })
+    .select("id")
+    .first();
+  return !!row;
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+async function main(): Promise<void> {
+  const { batchSize, specialty, dryRun } = parseArgs();
+
+  console.log("=== Alloro Programmatic Page Publisher ===");
+  console.log(`  Batch size: ${batchSize}`);
+  console.log(`  Specialty:  ${specialty || "all"}`);
+  console.log(`  Dry run:    ${dryRun}`);
+  console.log("");
+
+  // Filter specialties if --specialty flag provided
+  const specs = specialty
+    ? SPECIALTIES.filter((s) => s.slug === specialty)
+    : SPECIALTIES;
+
+  if (specs.length === 0) {
+    console.error(
+      `Unknown specialty "${specialty}". Available: ${SPECIALTIES.map((s) => s.slug).join(", ")}`
+    );
+    process.exit(1);
+  }
+
+  // Build the full list of specialty+city combinations
+  const combinations: { specialty: (typeof SPECIALTIES)[number]; city: (typeof CITY_DATA)[number] }[] = [];
+  for (const spec of specs) {
+    for (const city of CITY_DATA) {
+      combinations.push({ specialty: spec, city });
+    }
+  }
+
+  let generated = 0;
+  let skipped = 0;
+  let failed = 0;
+  let processed = 0;
+
+  console.log(
+    `Total combinations: ${combinations.length}. Processing up to ${batchSize}.\n`
+  );
+
+  for (const combo of combinations) {
+    if (generated + skipped >= batchSize) break;
+
+    const pageSlug = buildPageSlug(combo.specialty.slug, combo.city);
+
+    // Check if page already exists
+    const exists = await pageExists(pageSlug);
+    if (exists) {
+      skipped++;
+      processed++;
+      continue;
+    }
+
+    if (dryRun) {
+      console.log(
+        `[DRY RUN] Would generate: ${pageSlug} (${processed + 1}/${batchSize})`
+      );
+      generated++;
+      processed++;
+      continue;
+    }
+
+    try {
+      await generatePage(combo.specialty, combo.city);
+
+      // Mark as published
+      await db("programmatic_pages")
+        .where({ page_slug: pageSlug })
+        .update({
+          status: "published",
+          published_at: new Date(),
+          updated_at: new Date(),
+        });
+
+      generated++;
+      processed++;
+      console.log(
+        `Published ${pageSlug} (${generated}/${batchSize - skipped})`
+      );
+
+      // 1-second delay between API calls to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    } catch (err) {
+      failed++;
+      processed++;
+      const msg =
+        err instanceof Error ? err.message : String(err);
+      console.error(`FAILED ${pageSlug}: ${msg}`);
+
+      // Mark failed pages as needs_refresh if they were partially created
+      try {
+        await db("programmatic_pages")
+          .where({ page_slug: pageSlug })
+          .update({ needs_refresh: true, updated_at: new Date() });
+      } catch {
+        // Page may not exist yet if generation failed early — that's fine
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Summary
+  // ---------------------------------------------------------------------------
+  console.log("\n=== Publishing Summary ===");
+  console.log(`  Generated: ${generated}`);
+  console.log(`  Skipped (already exist): ${skipped}`);
+  console.log(`  Failed: ${failed}`);
+  console.log(`  Total processed: ${processed}`);
+
+  if (!dryRun) {
+    // Print overall database stats
+    try {
+      const stats = await db("programmatic_pages")
+        .select(
+          db.raw("COUNT(*) as total"),
+          db.raw(
+            "COUNT(*) FILTER (WHERE status = 'published') as published"
+          ),
+          db.raw("COUNT(*) FILTER (WHERE status = 'draft') as draft"),
+          db.raw(
+            "COUNT(*) FILTER (WHERE needs_refresh = true) as needs_refresh"
+          )
+        )
+        .first();
+
+      console.log("\n=== Database Stats ===");
+      console.log(`  Total pages:    ${stats.total}`);
+      console.log(`  Published:      ${stats.published}`);
+      console.log(`  Draft:          ${stats.draft}`);
+      console.log(`  Needs refresh:  ${stats.needs_refresh}`);
+    } catch {
+      // Stats query may fail if table doesn't exist yet
+    }
+  }
+}
+
+main()
+  .catch((err) => {
+    console.error("Publishing script failed:", err);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await closeConnection();
+  });
