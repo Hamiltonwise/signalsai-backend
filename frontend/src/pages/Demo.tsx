@@ -66,7 +66,7 @@ const REFERRING_GPS = [
     practice: "Torres & Associates DDS",
     referrals: 8,
     trend: "down" as const,
-    trendLabel: "Down 40% — was 13 last quarter",
+    trendLabel: "Down 40%, was 13 last quarter",
     lastReferral: "40 days ago",
     status: "drift" as const,
   },
@@ -128,7 +128,7 @@ const NEXT_90 = [
     impact: "Projected move to #2 position",
   },
   {
-    title: "Re-engage Dr. Torres — she hasn't referred in 40 days",
+    title: "Re-engage Dr. Torres, she hasn't referred in 40 days",
     why: "Torres sent 13 patients last quarter. At $1,750 per case, that's $22,750 at risk. A lunch meeting costs $50.",
     impact: "$22,750 estimated quarterly revenue at risk",
   },
@@ -387,7 +387,7 @@ function DemoNext90() {
 
 function DemoCSAgent() {
   const actions = [
-    { time: "2h ago", text: "Detected Dr. Torres referral drift — 40 days since last referral. Flagged for outreach.", type: "alert" },
+    { time: "2h ago", text: "Detected Dr. Torres referral drift. 40 days since last referral. Flagged for outreach.", type: "alert" },
     { time: "Yesterday", text: "Sent review request to 3 post-appointment patients. 1 review received (5★).", type: "success" },
     { time: "2 days ago", text: "Dr. Lisa Park has been silent for 74 days. Added to re-engagement queue.", type: "alert" },
     { time: "3 days ago", text: "Weekly ranking scan complete. Position held at #3. Score improved +2 to 61.", type: "info" },
