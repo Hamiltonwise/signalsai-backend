@@ -145,7 +145,7 @@ Record format remains the same as the original 5 queries. Weekly report now show
 
 ## Apple Business P0
 
-**Deadline:** April 14, 2026 — Apple Business launches publicly.
+**Deadline:** April 14, 2026 -- Apple Business launches publicly.
 
 **Why this is P0:**
 Apple Business is a new surface where patients will discover providers. Every Alloro client needs their listing claimed before competitors pre-empt them. Alloro's own listing must be claimed on day one.

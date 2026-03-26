@@ -573,6 +573,17 @@ export default function DoctorDashboard() {
     staleTime: 10 * 60_000,
   });
 
+  // PatientPath build status for breadcrumb
+  const { data: patientpathData } = useQuery({
+    queryKey: ["patientpath-status", orgId],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/patientpath" });
+      return res?.success ? res : null;
+    },
+    enabled: !!orgId,
+    staleTime: 60_000,
+  });
+
   const { data: profileData, isError: isProfileError } = useQuery({
     queryKey: ["client-profile"],
     queryFn: async () => apiGet({ path: "/profile/get" }),
