@@ -453,7 +453,7 @@ function GrowthPositionTrack({ ranking }: { ranking: RankingData | null }) {
         ))}
       </div>
       <div className="flex items-center justify-between mt-3 text-xs text-gray-400">
-        <span>#1 — Top of market</span>
+        <span>#1, Top of market</span>
         <span>#{maxPos}</span>
       </div>
     </div>
@@ -760,7 +760,13 @@ export default function DoctorDashboard() {
 
       {/* PatientPath Breadcrumb — quiet lower-right card */}
       <PatientPathBreadcrumb
-        status={websiteData ? "live" : null}
+        status={
+          websiteData ? "live"
+          : (patientpathData?.status === "preview_ready" || patientpathData?.status === "building" || patientpathData?.status === "researching")
+            ? (patientpathData.status === "researching" ? "building" : patientpathData.status)
+            : null
+        }
+        previewUrl={patientpathData?.previewUrl || null}
         liveUrl={websiteData ? `https://${websiteData.generated_hostname}.sites.getalloro.com` : null}
         hostname={websiteData?.generated_hostname || null}
       />

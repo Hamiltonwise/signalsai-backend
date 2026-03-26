@@ -22,12 +22,33 @@ export default function FoundationApply() {
     story: "",
   });
 
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // POST to backend when endpoint is ready
-    // For now, log and show confirmation
-    console.log("[Foundation] Application submitted:", form);
-    setSubmitted(true);
+    setSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const res = await fetch("/api/foundation/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setSubmitError(data.error || "Something went wrong. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      setSubmitted(true);
+    } catch {
+      setSubmitError("Could not reach the server. Please try again.");
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -145,11 +166,16 @@ export default function FoundationApply() {
             />
           </div>
 
+          {submitError && (
+            <p className="text-sm text-[#D56753] text-center">{submitError}</p>
+          )}
+
           <button
             type="submit"
-            className="w-full rounded-xl bg-[#D56753] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+            disabled={submitting}
+            className="w-full rounded-xl bg-[#D56753] px-8 py-3.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Submit Application
+            {submitting ? "Submitting..." : "Submit Application"}
           </button>
         </form>
       </section>

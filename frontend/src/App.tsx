@@ -18,7 +18,7 @@ import CheckupLayout from "./pages/checkup/CheckupLayout";
 import EntryScreen from "./pages/checkup/EntryScreen";
 import ScanningTheater from "./pages/checkup/ScanningTheater";
 import ResultsScreen from "./pages/checkup/ResultsScreen";
-// BuildingScreen import removed — route disabled (P3 #27), file kept
+import BuildingScreen from "./pages/checkup/BuildingScreen";
 
 // --- Lazy-loaded page imports ---
 const NewAccountOnboarding = React.lazy(() => import("./pages/NewAccountOnboarding"));
@@ -173,7 +173,7 @@ function App() {
                 <Route index element={<EntryScreen />} />
                 <Route path="scanning" element={<ScanningTheater />} />
                 <Route path="results" element={<ResultsScreen />} />
-                {/* Route removed: BuildingScreen has no navigation target (P3 #27). File kept. */}
+                <Route path="building" element={<BuildingScreen />} />
               </Route>
 
               {/* Public demo — no auth required */}

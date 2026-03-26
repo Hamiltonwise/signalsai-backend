@@ -732,7 +732,7 @@ export default function ResultsScreen() {
               />
               {emailError && (
                 <p className="text-xs text-red-500 mt-1">
-                  {emailError.includes("already have an account") ? (
+                  {emailError.includes("already") ? (
                     <>You already have an account. <a href="/signin" className="font-semibold text-[#D56753] underline">Sign in here &rarr;</a></>
                   ) : emailError}
                 </p>

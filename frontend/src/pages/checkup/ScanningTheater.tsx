@@ -654,17 +654,33 @@ export default function ScanningTheater() {
     return <Navigate to="/checkup" replace />;
   }
 
-  // --- Error state ---
+  // --- Error state with retry ---
   if (error) {
     return (
-      <div className="w-full max-w-md mt-4 sm:mt-12 text-center">
-        <p className="text-base font-medium text-red-600">{error}</p>
-        <button
-          onClick={() => navigate("/checkup")}
-          className="mt-4 text-sm text-[#D56753] underline"
-        >
-          Start over
-        </button>
+      <div className="w-full max-w-md mt-4 sm:mt-12 text-center px-4">
+        <p className="text-base font-medium text-[#212D40]">
+          We hit a snag analyzing your market.
+        </p>
+        <p className="text-sm text-gray-500 mt-2">
+          This usually resolves in a few seconds.
+        </p>
+        <div className="flex flex-col gap-3 mt-6">
+          <button
+            onClick={() => {
+              setError(null);
+              setApiDone(false);
+            }}
+            className="px-6 py-2.5 bg-[#D56753] text-white rounded-lg font-medium hover:bg-[#c45a48] transition-colors"
+          >
+            Try again
+          </button>
+          <button
+            onClick={() => navigate("/checkup")}
+            className="text-sm text-gray-400 underline"
+          >
+            Start over with a different practice
+          </button>
+        </div>
       </div>
     );
   }

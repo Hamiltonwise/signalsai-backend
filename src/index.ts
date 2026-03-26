@@ -97,6 +97,7 @@ import adminAuditLogRoutes from "./routes/admin/auditLog";
 import mailgunInboundRoutes from "./routes/webhooks/mailgunInbound";
 import adminKnowledgeLatticeRoutes from "./routes/admin/knowledgeLattice";
 import seoRoutes from "./routes/seo";
+import foundationRoutes from "./routes/foundation";
 import intelligenceRoutes from "./routes/intelligence";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
@@ -269,6 +270,7 @@ app.use("/api/admin/audit-log", adminAuditLogRoutes); // T6: Audit log viewer
 app.use("/api/webhooks/mailgun", mailgunInboundRoutes); // T3: Mailgun inbound email processing
 app.use("/api/admin", adminKnowledgeLatticeRoutes); // T3: Knowledge + Sentiment Lattice CRUD
 app.use("/api/seo", seoRoutes); // WO-7: Programmatic SEO pages + hub/spoke + stats
+app.use("/api/foundation", foundationRoutes); // WO-11: Foundation application submissions
 app.use("/api/intelligence", intelligenceRoutes); // WO-8: Practice owner intelligence dashboard
 
 // Sentry error handler — must be after all routes and before other error handlers
