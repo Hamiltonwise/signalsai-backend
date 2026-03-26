@@ -44,8 +44,11 @@ export default function BuildingScreen() {
   // Normal mode: go straight to dashboard
   useEffect(() => {
     if (!ready) return;
-    const destination = isConferenceMode() ? "/thank-you" : "/dashboard";
+    const conference = isConferenceMode();
+    const destination = conference ? "/thank-you" : "/dashboard";
     const timer = setTimeout(() => {
+      // Clear conference mode flag so it doesn't persist beyond the flow
+      if (conference) localStorage.removeItem("alloro_conference_mode");
       navigate(destination, { replace: true });
     }, 3500);
     return () => clearTimeout(timer);
