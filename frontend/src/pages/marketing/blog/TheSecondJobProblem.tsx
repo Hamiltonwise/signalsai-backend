@@ -6,6 +6,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import MarketingLayout from "../../../components/marketing/MarketingLayout";
+import BlogEmailCapture from "../../../components/marketing/BlogEmailCapture";
 
 export default function TheSecondJobProblem() {
   return (
