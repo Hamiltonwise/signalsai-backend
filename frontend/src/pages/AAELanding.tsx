@@ -11,19 +11,10 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const SOCIAL_PROOF = [
-  {
-    quote: "I had no idea Centerville was that far ahead of me.",
-    attribution: "Endodontist, Utah",
-  },
-  {
-    quote: "Showed this to my front desk and they immediately understood the goal.",
-    attribution: "Orthodontist, Colorado",
-  },
-  {
-    quote: "The competitor map alone was worth 10 minutes of my time.",
-    attribution: "Endodontist, Arizona",
-  },
+const VALUE_PROPS = [
+  "See every competitor in your market by name, on a map, in 60 seconds.",
+  "Find out which referring relationships are growing and which went quiet.",
+  "Get one clear action each Monday morning, before your first patient.",
 ];
 
 export default function AAELanding() {
@@ -43,7 +34,7 @@ export default function AAELanding() {
 
         {/* Badge */}
         <span className="inline-block text-[11px] font-bold uppercase tracking-[0.2em] text-[#D56753] bg-[#D56753]/10 rounded-full px-4 py-1.5 mb-8">
-          AAE 2026
+          AAE 2026 -- Booth #835
         </span>
 
         {/* Headline */}
@@ -59,13 +50,13 @@ export default function AAELanding() {
         </p>
 
         {/* CTA */}
-        <a
-          href="/checkup?source=aae2026&mode=conference"
+        <Link
+          to="/checkup?source=aae2026&mode=conference"
           className="mt-10 inline-flex items-center gap-2.5 rounded-xl bg-[#D56753] text-white text-base font-semibold px-8 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:shadow-[0_6px_28px_rgba(213,103,83,0.5)] hover:brightness-110 active:scale-[0.98] transition-all"
         >
           Start my Checkup
           <ArrowRight className="w-4.5 h-4.5" />
-        </a>
+        </Link>
 
         {/* Reassurance */}
         <p className="mt-5 text-sm text-white/30">
@@ -73,18 +64,18 @@ export default function AAELanding() {
         </p>
       </main>
 
-      {/* Social proof strip */}
+      {/* Value props -- real capabilities, not fabricated quotes */}
       <section className="border-t border-white/10 px-5 py-10">
-        <div className="max-w-lg mx-auto space-y-6">
-          {SOCIAL_PROOF.map((item) => (
-            <blockquote key={item.attribution} className="text-center">
-              <p className="text-sm text-white/50 leading-relaxed italic">
-                "{item.quote}"
+        <div className="max-w-lg mx-auto space-y-5">
+          {VALUE_PROPS.map((prop, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div className="shrink-0 mt-1 w-5 h-5 rounded-full bg-[#D56753]/15 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#D56753]" />
+              </div>
+              <p className="text-sm text-white/50 leading-relaxed">
+                {prop}
               </p>
-              <cite className="block mt-1.5 text-xs text-white/25 not-italic font-medium">
-                -- {item.attribution}
-              </cite>
-            </blockquote>
+            </div>
           ))}
         </div>
       </section>
@@ -98,5 +89,3 @@ export default function AAELanding() {
     </div>
   );
 }
-
-// T1 adds /aae route to App.tsx

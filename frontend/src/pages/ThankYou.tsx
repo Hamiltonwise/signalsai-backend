@@ -58,12 +58,14 @@ export default function ThankYou() {
       {/* Header */}
       <header className="bg-[#212D40] text-white py-4 px-5">
         <div className="mx-auto max-w-lg flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-[#D56753] flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
-            </svg>
-          </div>
-          <span className="text-lg font-bold tracking-tight">alloro</span>
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-md bg-[#D56753] flex items-center justify-center">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
+              </svg>
+            </div>
+            <span className="text-lg font-bold tracking-tight">alloro</span>
+          </Link>
         </div>
       </header>
 

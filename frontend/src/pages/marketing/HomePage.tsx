@@ -230,7 +230,7 @@ function MarketTeaser() {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ name: string; city: string; competitors: number; rank: number; avgRating: number } | null>(null);
+  const [result, setResult] = useState<{ name: string; city: string; competitors: number; rank: number; avgRating: number; reviewCount: number; topCompetitorName: string | null; topCompetitorReviews: number | null } | null>(null);
   const [error, setError] = useState(false);
 
   const debounceRef = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -294,6 +294,9 @@ function MarketTeaser() {
           competitors: analysis.market.totalCompetitors,
           rank: analysis.market.rank,
           avgRating: analysis.market.avgRating,
+          reviewCount: p.reviewCount || 0,
+          topCompetitorName: analysis.topCompetitor?.name || null,
+          topCompetitorReviews: analysis.topCompetitor?.reviewCount || null,
         });
         trackEvent("marketing.teaser_search", {
           city: p.city,
@@ -376,7 +379,7 @@ function MarketTeaser() {
             <p className="text-sm font-medium text-[#212D40] mb-4">
               {result.name} in {result.city}
             </p>
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
                 <p className="text-2xl font-black text-[#212D40]">{result.competitors}</p>
                 <p className="text-[10px] text-[#212D40]/50 uppercase tracking-wider">Competitors</p>
@@ -390,6 +393,16 @@ function MarketTeaser() {
                 <p className="text-[10px] text-[#212D40]/50 uppercase tracking-wider">Avg Rating</p>
               </div>
             </div>
+            {result.topCompetitorName && result.topCompetitorReviews !== null && (
+              <p className="text-sm text-[#212D40]/70 leading-relaxed mb-6 px-2">
+                <span className="font-semibold text-[#212D40]">{result.topCompetitorName}</span>
+                {" "}has{" "}
+                <span className="font-semibold text-[#D56753]">
+                  {result.topCompetitorReviews} review{result.topCompetitorReviews !== 1 ? "s" : ""}
+                </span>.
+                {" "}You have {result.reviewCount}.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => navigate("/checkup")}
