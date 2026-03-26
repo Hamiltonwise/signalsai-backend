@@ -117,3 +117,32 @@ The Conversion Optimizer serves the confidence need. A practice owner who comple
 
 ## Blast Radius
 Green for analysis and internal recommendations. Yellow for automated follow-up sequences (client-facing email requires Corey's approval of the template, then auto-sends on trigger). Follow-up sequence templates are Red until approved, Green after.
+
+## The Output Gate (Run Before Every Funnel Recommendation Ships)
+
+When this agent recommends a change to any conversion surface,
+the recommendation passes two questions:
+
+QUESTION 1 -- WHAT NEED IS THE FRICTION BLOCKING
+Every drop-off point in the funnel is a human need
+that isn't being met fast enough. The Checkup entry
+drop-off (people who start but don't complete) is almost
+always a safety signal: "I don't know what this will ask
+of me or show me." The gate drop-off (people who see the
+finding but don't create an account) is almost always a
+trust signal: "I'm not sure I trust what I just saw."
+
+Before any A/B test is staged, this agent names which
+human need is causing the friction. Then the test is
+designed to address that specific need, not just the
+conversion rate in the abstract.
+
+QUESTION 2 -- THE REVENUE CONSEQUENCE OF THIS FRICTION
+Every 1% improvement in Checkup-to-account conversion
+at current traffic is approximately [N] additional accounts
+per month. At $2,000/month, that is [N x $2,000] in ARR
+per percentage point improved.
+
+Every recommendation includes this math. Corey and the
+system prioritize the highest-revenue-impact improvements,
+not the most interesting ones.

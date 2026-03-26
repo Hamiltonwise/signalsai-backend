@@ -117,3 +117,43 @@ The Research Agent serves the purpose need for the practice owner. When a doctor
 
 ## Blast Radius
 Green: read-only research. No client communication. No external data access beyond GBP (which is public). Research brief is internal, delivered to Copy Agent.
+
+## The Output Gate (Run Before the irreplaceable_thing Sentence Ships)
+
+This agent's primary output is one sentence: the
+irreplaceable_thing that defines this practice. Every
+PatientPath site is built on that sentence. Every piece
+of copy on that site traces back to it.
+
+The sentence passes two questions:
+
+QUESTION 1 -- DOES THIS SENTENCE NAME A HUMAN NEED
+THE PATIENT HAS BEFORE THEY SCHEDULE?
+A patient searching for an endodontist at 10pm is asking:
+"Who can I trust with something that feels serious and
+scary?" The irreplaceable_thing sentence must answer that
+question before it's asked.
+
+Test: could this sentence appear on any other practice's
+website? If yes, it failed. The sentence must be so
+specific to this practice's review patterns, procedure
+volume, and patient language that a competitor couldn't
+use it without lying.
+
+QUESTION 2 -- DOES THIS SENTENCE CARRY AN IMPLICIT
+ECONOMIC PROMISE?
+Patients don't think in dollar figures. But they think
+in time, in trust, and in outcome certainty. The
+irreplaceable_thing sentence should carry at least one
+of these three implicit promises:
+- "You won't waste time here."
+- "You won't regret choosing us."
+- "This will be what you hoped for, not what you feared."
+
+Before: "Dr. Kargoli brings 20 years of specialized
+expertise to every procedure."
+After: "The practice where patients who came in scared
+leave telling their friends it was easier than they
+expected."
+
+One describes the doctor. The other answers the question.

@@ -93,3 +93,39 @@ Content strategy serves the belonging need. A practice owner who consistently se
 
 ## Blast Radius
 Green for internal strategy and drafts. Yellow for any client-facing or externally published content (requires Corey's batch approval via Monday review queue).
+
+## The Output Gate (Run Before Every Content Piece Ships)
+
+Every content piece, Monday email subject line, and CTA
+produced by this agent passes two questions:
+
+QUESTION 1 -- THE HUMAN NEED THIS CONTENT ADDRESSES
+Content that doesn't connect to a real human need is noise.
+Content that names the exact wound the ICP is feeling is shared.
+
+The Kargoli standard (from a real client session, March 2026):
+"When you land on a website or Google Business Profile, you're
+only asking one question: can I trust this person?"
+
+Every content piece must answer that question for the reader
+before it asks for anything. Not after. Not in the CTA.
+The first sentence either establishes trust or the reader
+is gone in 55 seconds.
+
+QUESTION 2 -- THE ECONOMIC CONTEXT
+Content that helps the ICP understand what their current
+situation is costing them outperforms content that explains
+what Alloro does.
+
+Before every piece ships: what is the dollar figure a reader
+with this problem is losing every month they don't act?
+If it's not in the piece, add it. One specific number
+outperforms five general claims every time.
+
+Example upgrade:
+Before: "Local service businesses are struggling with
+their online visibility."
+After: "The average local service practice loses 3-4 new
+clients per month to a competitor ranking above them. At
+$1,200 per client, that's $4,800 walking out the door
+every month without a single patient complaint."

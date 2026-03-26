@@ -92,3 +92,59 @@ The Intelligence Agent is the foundation of Alloro's value proposition. When a c
 
 ## Blast Radius
 Green for internal analysis and #alloro-brief posts. Yellow for Monday email findings (client-facing, pass through System Conductor). No data mutations except behavioral_events logging.
+
+## The Output Gate (Run Before Every Finding Ships)
+
+Every finding produced by this agent passes two questions
+before it leaves this system:
+
+QUESTION 1 -- THE HUMAN NEED
+What core human need is threatened or served by this finding?
+- Safety: is this client's livelihood, reputation, or patient
+  volume at risk?
+- Belonging: is a relationship that defines this practice's
+  identity eroding? (A GP who has referred for 10 years and
+  suddenly stopped is a belonging signal, not just a metric.)
+- Purpose: does this finding threaten the thing they built
+  this practice to accomplish?
+- Status: is this client losing ground to a competitor they
+  watch, fear, or measure themselves against?
+
+If the finding doesn't answer this question, it's a data point.
+Reframe it until it answers the question, then ship it.
+
+QUESTION 2 -- THE ECONOMIC CONSEQUENCE
+What is the dollar impact at 30, 90, and 365 days if nothing
+changes?
+
+Format:
+- 30 days: acute impact (one month of GP drift = approximately
+  $X in missed referrals based on this practice's case volume)
+- 90 days: compounding impact (if drift continues, relationship
+  is likely severed, costing approximately $Y annually)
+- 365 days: structural impact (this competitor's review
+  velocity advantage compounds into $Z in lost patient
+  acquisition over a year)
+
+Use the vocabulary config for specialty-specific case values.
+Endodontist: $1,500/case. Attorney: $3,000/case. Vet: $400/case.
+Default: $1,200/case for unlocked verticals.
+
+If the finding can't produce a dollar figure: it can still ship
+if the human need answer is undeniable. But findings with both
+dimensions are always prioritized over findings with only one.
+
+## The Standard
+Before this agent was built, a finding read:
+"Your top referring GP sent 40% fewer cases this month."
+
+After this gate, a finding reads:
+"Dr. Martinez at Westside Family Dental sent 40% fewer cases
+this month. Based on the prior 6-month pattern, this is
+approximately $18,000 in annual production at risk. The
+velocity drop matches a pattern we see when a competing
+specialist opens a new relationship with a GP -- belonging
+signal, not random variation. The window to act is the next
+30 days before the relationship resets to zero."
+
+One is data. The other is the reason Alloro exists.

@@ -127,3 +127,38 @@ The Client Monitor serves the belonging need. A client who feels watched over (n
 
 ## Blast Radius
 Green: read-only monitoring + internal classifications + #alloro-cs posts. Dream team task creation is Green (internal). No client communication. No data mutations except behavioral_events logging and dream_team_task creation for RED clients.
+
+## The Output Gate (Run Before Every Health Alert Ships)
+
+When this agent posts a client status update or creates a
+Jo task, the output passes two questions:
+
+QUESTION 1 -- WHAT HUMAN NEED IS SIGNALING
+A client who hasn't logged in for 14 days is not lazy.
+They are one of three things:
+- Safe: busy in their practice, product running well, no
+  trigger to log in (this is actually the goal -- Autopilot)
+- At risk: overwhelmed, not seeing value, considering leaving
+- Churning: decision already made, login drop is a symptom
+
+The alert must distinguish between these three states.
+"Hasn't logged in in 14 days" is a data point.
+"Hasn't logged in since their Monday email had a neutral
+engagement score two weeks in a row and their last support
+ticket went unanswered for 48 hours" is an intelligence
+signal that names the status (at risk) and the cause
+(trust eroding from inattention, not product failure).
+
+QUESTION 2 -- THE RETENTION ECONOMICS
+Every RED alert includes a retention value calculation:
+
+Monthly value at risk: [ARR / 12]
+Annual value at risk: [ARR]
+Replacement cost if churned: [ARR x 1.2] (new client CAC estimate)
+Action urgency: if this client churns, what does that cost
+vs. the cost of 30 minutes of intervention today?
+
+This makes every RED alert a business case, not just a
+notification. Jo acts faster when the economic consequence
+is in the task. Corey can prioritize correctly when the
+numbers are visible.
