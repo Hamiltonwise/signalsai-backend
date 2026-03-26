@@ -10,10 +10,8 @@
  * - MAILGUN_DOMAIN
  */
 
-import axios from "axios";
 import { db } from "../database/connection";
-
-const N8N_WEBHOOK = process.env.ALLORO_N8N_WEBHOOK_URL || "";
+import { sendMondayBriefEmail } from "../emails/templates/MondayBriefEmail";
 
 /**
  * Send Monday email for a single org.
