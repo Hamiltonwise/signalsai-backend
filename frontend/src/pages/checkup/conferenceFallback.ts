@@ -194,11 +194,17 @@ function hashCode(str: string): number {
 }
 
 /**
- * Check if conference/demo mode is active from URL params.
+ * Check if conference/demo mode is active.
+ * Checks URL params first, then localStorage (persists across route changes).
+ * Call activateConferenceMode() at flow entry to persist through React Router navigation.
  */
 export function isConferenceMode(): boolean {
   const params = new URLSearchParams(window.location.search);
-  return params.get("mode") === "conference" || params.get("demo") === "true";
+  if (params.get("mode") === "conference" || params.get("demo") === "true") {
+    localStorage.setItem("alloro_conference_mode", "true");
+    return true;
+  }
+  return localStorage.getItem("alloro_conference_mode") === "true";
 }
 
 /**
