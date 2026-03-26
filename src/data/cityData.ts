@@ -281,3 +281,17 @@ export const CITY_DATA: CityData[] = [
 export const CITY_BY_SLUG: Map<string, CityData> = new Map(
   CITY_DATA.map((city) => [city.slug, city])
 );
+
+// Aliases for compatibility with aeoLinking and programmaticSEO services
+export const CITIES = CITY_DATA;
+
+export function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function buildPageSlug(specialtySlug: string, city: CityData): string {
+  return `${specialtySlug}-${city.slug}`;
+}
