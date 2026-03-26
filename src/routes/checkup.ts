@@ -727,13 +727,13 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
     }
 
     // Seed initial weekly_ranking_snapshot so the first Monday email has data.
-    // Frontend sends checkup_data as: { score, topCompetitor (name string), market, findingSummary, placeId, reviewCount }
+    // Frontend sends checkup_data as: { score, topCompetitor (object or string), market, findingSummary, placeId, reviewCount }
     try {
       const parsed = typeof checkup_data === "string" ? JSON.parse(checkup_data) : checkup_data;
       if (parsed) {
-        const competitorName = typeof parsed.topCompetitor === "string"
-          ? parsed.topCompetitor
-          : parsed.topCompetitor?.name || null;
+        const tc = parsed.topCompetitor;
+        const competitorName = typeof tc === "string" ? tc : tc?.name || null;
+        const competitorReviewCount = typeof tc === "object" && tc?.reviewCount ? tc.reviewCount : null;
         const clientReviewCount = parsed.reviewCount || 0;
         const marketRank = parsed.market?.rank ?? null;
         const marketCity = parsed.market?.city || "your area";
@@ -747,14 +747,14 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
           keyword: `${practice_name || "specialist"} in ${marketCity}`,
           bullets: JSON.stringify([
             `Your practice scored ${checkup_score || "N/A"} on the Business Health Checkup.`,
-            competitorName ? `${competitorName} leads your market.` : "Competitor data is being gathered for your market.",
+            competitorName ? `${competitorName} leads your market with ${competitorReviewCount || "many"} reviews.` : "Competitor data is being gathered for your market.",
             "Your full competitive analysis is building now. More insights next Monday.",
           ]),
           finding_headline: parsed.findingSummary || "Your competitive landscape is being analyzed",
           competitor_name: competitorName,
-          competitor_review_count: null,
+          competitor_review_count: competitorReviewCount,
           client_review_count: clientReviewCount,
-          dollar_figure: null,
+          dollar_figure: parsed.totalImpact || null,
         }).catch(() => {
           // Unique constraint may fire if snapshot already exists for this week
         });

@@ -511,7 +511,7 @@ export default function ResultsScreen() {
           source_channel: new URLSearchParams(window.location.search).get("source") || new URLSearchParams(window.location.search).get("ref") || undefined,
           checkup_data: {
             score,
-            topCompetitor: topCompetitor?.name || null,
+            topCompetitor: topCompetitor || null,
             market: market || null,
             findingSummary: findings[0]?.detail || null,
             placeId: place.placeId || null,
