@@ -9,6 +9,7 @@
  */
 
 import { ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const SOCIAL_PROOF = [
   {
@@ -31,14 +32,14 @@ export default function AAELanding() {
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-5 py-16 text-center">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-12">
+        <Link to="/" className="flex items-center gap-2.5 mb-12">
           <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
             </svg>
           </div>
           <span className="text-xl font-bold tracking-tight text-white">alloro</span>
-        </div>
+        </Link>
 
         {/* Badge */}
         <span className="inline-block text-[11px] font-bold uppercase tracking-[0.2em] text-[#D56753] bg-[#D56753]/10 rounded-full px-4 py-1.5 mb-8">
