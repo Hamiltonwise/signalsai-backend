@@ -56,7 +56,7 @@ export function getSpokeLinks(
   // Find a high-ICP city from a different state
   const differentState = CITIES.filter(
     (c: CityData) => c.stateAbbr !== stateAbbr
-  ).sort((a: CityData, b: CityData) => b.icpDensity - a.icpDensity);
+  ).sort((a: CityData, b: CityData) => a.icpDensityRank - b.icpDensityRank);
   const highIcpCity =
     differentState.length > 0
       ? `/${buildPageSlug(specialtySlug, differentState[0])}`
