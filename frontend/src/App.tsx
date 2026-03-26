@@ -3,7 +3,9 @@ import type { ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+const ReactQueryDevtools = import.meta.env.DEV
+  ? React.lazy(() => import("@tanstack/react-query-devtools").then(m => ({ default: m.ReactQueryDevtools })))
+  : null;
 import { queryClient, persistOptions } from "./lib/queryClient";
 import { Loader2 } from "lucide-react";
 
@@ -89,11 +91,9 @@ import { ClarityProvider } from "./contexts/ClarityContext.tsx";
 import { SessionProvider } from "./contexts/SessionProvider.tsx";
 import { LocationProvider } from "./contexts/LocationProvider.tsx";
 import { OnboardingWizardProvider } from "./contexts/OnboardingWizardContext.tsx";
-import { WizardController } from "./components/onboarding-wizard";
-import {
-  SetupProgressProvider,
-  SetupProgressWizard,
-} from "./components/SetupProgressWizard";
+const WizardController = React.lazy(() => import("./components/onboarding-wizard").then(m => ({ default: m.WizardController })));
+const SetupProgressWizard = React.lazy(() => import("./components/SetupProgressWizard").then(m => ({ default: m.SetupProgressWizard })));
+import { SetupProgressProvider } from "./components/SetupProgressWizard";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PublicRoute } from "./components/PublicRoute";
 import { ConfirmProvider } from "./components/ui/ConfirmModal";
@@ -177,8 +177,8 @@ function App() {
           <SetupProgressProvider>
             <ConfirmProvider>
             <Toaster position="top-right" />
-            <WizardController />
-            <SetupProgressWizard />
+            <React.Suspense fallback={null}><WizardController /></React.Suspense>
+            <React.Suspense fallback={null}><SetupProgressWizard /></React.Suspense>
             <ErrorBoundaryWithReset>
             <React.Suspense fallback={<LoadingFallback />}>
             <Routes>
@@ -355,7 +355,7 @@ function App() {
       </AuthProvider>
     </BrowserRouter>
     </ToastProvider>
-    <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+    {ReactQueryDevtools && <React.Suspense fallback={null}><ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" /></React.Suspense>}
     </PersistQueryClientProvider>
   );
 }
