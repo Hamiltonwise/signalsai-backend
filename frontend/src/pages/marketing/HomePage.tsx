@@ -67,6 +67,18 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Social Proof */}
+      <section className="px-5 py-12 sm:py-16" style={{ backgroundColor: "rgba(213, 103, 83, 0.04)" }}>
+        <div className="max-w-xl mx-auto text-center">
+          <blockquote className="text-lg sm:text-xl font-medium text-[#212D40] leading-relaxed italic">
+            "Can I trust this person? That's the only question on the site in 55 seconds."
+          </blockquote>
+          <p className="mt-4 text-sm text-[#212D40]/50">
+            Dr. Kargoli, 1 Endodontics
+          </p>
+        </div>
+      </section>
+
       {/* What Alloro Does */}
       <section className="px-5 py-16 sm:py-20">
         <p className="text-center text-[24px] sm:text-[32px] font-extrabold text-[#212D40] tracking-tight max-w-2xl mx-auto">
