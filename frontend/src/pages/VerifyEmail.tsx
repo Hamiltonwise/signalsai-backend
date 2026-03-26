@@ -57,7 +57,7 @@ export default function VerifyEmail() {
 
         setMessage("Success! Redirecting...");
         setTimeout(() => {
-          window.location.href = "/dashboard";
+          window.location.href = "/new-account-onboarding";
         }, 800);
       } else {
         setError(response.error || "Invalid verification code");
