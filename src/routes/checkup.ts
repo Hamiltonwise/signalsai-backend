@@ -636,60 +636,64 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       return res.json({ success: true, token, userId: existing.id, existingAccount: true });
     }
 
-    // Create new user
+    // Create user + org + link in a transaction (prevents orphan records)
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await UserModel.create({
-      email: normalizedEmail,
-      password_hash: passwordHash,
-    });
+    const { user, org } = await db.transaction(async (trx) => {
+      const newUser = await UserModel.create({
+        email: normalizedEmail,
+        password_hash: passwordHash,
+      }, trx);
 
-    // Mark email as verified (skip verification for Checkup gate)
-    await db("users").where({ id: user.id }).update({ email_verified: true });
+      // Mark email as verified (skip verification for Checkup gate)
+      await trx("users").where({ id: newUser.id }).update({ email_verified: true });
 
-    // Create organization
-    const org = await OrganizationModel.create({
-      name: practice_name || `${normalizedEmail.split("@")[0]}'s Practice`,
-      referral_code: generateReferralCode(),
-    });
+      // Create organization
+      const newOrg = await OrganizationModel.create({
+        name: practice_name || `${normalizedEmail.split("@")[0]}'s Practice`,
+        referral_code: generateReferralCode(),
+      }, trx);
 
-    // Set source_channel from referral or source query param
-    const sourceChannel = req.body.source_channel || req.query.ref || req.query.source || null;
-    if (sourceChannel) {
-      await db("organizations").where({ id: org.id }).update({ source_channel: sourceChannel });
-    }
-
-    // Store checkup data on org for dashboard pre-population
-    if (checkup_score || checkup_data || place_id) {
-      const checkupUpdates: Record<string, any> = {};
-      if (checkup_score) checkupUpdates.checkup_score = checkup_score;
-      if (checkup_data) checkupUpdates.checkup_data = JSON.stringify(checkup_data);
-      if (checkup_data?.topCompetitor?.name) {
-        checkupUpdates.top_competitor_name = checkup_data.topCompetitor.name;
+      // Set source_channel from referral or source query param
+      const sourceChannel = req.body.source_channel || req.query.ref || req.query.source || null;
+      if (sourceChannel) {
+        await trx("organizations").where({ id: newOrg.id }).update({ source_channel: sourceChannel });
       }
-      // Baseline review count for First Win Attribution (WO-22)
-      if (checkup_data?.reviewCount != null) {
-        checkupUpdates.checkup_review_count_at_creation = checkup_data.reviewCount;
-      }
-      // Session key links this org back to the checkup session
-      if (req.body.session_id) {
-        checkupUpdates.session_checkup_key = req.body.session_id;
-      }
-      // Also keep business_data for backward compat
-      checkupUpdates.business_data = JSON.stringify({
-        checkup_score,
-        checkup_place_id: place_id,
-        checkup_relationship: relationship,
-        checkup_data: checkup_data || null,
-      });
 
-      await db("organizations").where({ id: org.id }).update(checkupUpdates);
-    }
+      // Store checkup data on org for dashboard pre-population
+      if (checkup_score || checkup_data || place_id) {
+        const checkupUpdates: Record<string, any> = {};
+        if (checkup_score) checkupUpdates.checkup_score = checkup_score;
+        if (checkup_data) checkupUpdates.checkup_data = JSON.stringify(checkup_data);
+        if (checkup_data?.topCompetitor?.name) {
+          checkupUpdates.top_competitor_name = checkup_data.topCompetitor.name;
+        }
+        // Baseline review count for First Win Attribution (WO-22)
+        if (checkup_data?.reviewCount != null) {
+          checkupUpdates.checkup_review_count_at_creation = checkup_data.reviewCount;
+        }
+        // Session key links this org back to the checkup session
+        if (req.body.session_id) {
+          checkupUpdates.session_checkup_key = req.body.session_id;
+        }
+        // Also keep business_data for backward compat
+        checkupUpdates.business_data = JSON.stringify({
+          checkup_score,
+          checkup_place_id: place_id,
+          checkup_relationship: relationship,
+          checkup_data: checkup_data || null,
+        });
 
-    // Link user to org
-    await OrganizationUserModel.create({
-      organization_id: org.id,
-      user_id: user.id,
-      role: "admin",
+        await trx("organizations").where({ id: newOrg.id }).update(checkupUpdates);
+      }
+
+      // Link user to org
+      await OrganizationUserModel.create({
+        organization_id: newOrg.id,
+        user_id: newUser.id,
+        role: "admin",
+      }, trx);
+
+      return { user: newUser, org: newOrg };
     });
 
     // Generate JWT

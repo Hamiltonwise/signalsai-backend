@@ -68,11 +68,27 @@ No patient data is collected or processed. No PII is stored in analytics. Behavi
 - AI: Claude API for conversational support (CS Agent), content generation, and intelligence analysis
 - Infrastructure: AWS EC2, managed PostgreSQL
 
+## Heroes & Founders Foundation
+
+Alloro's nonprofit arm, launching January 2027. Two programs:
+
+**Heroes Initiative:** For veterans who transitioned from military service to business ownership. These are people who chose service first, then built something of their own. The initiative provides free access to Alloro's intelligence platform, helping veteran-owned practices compete on equal footing.
+
+**Founders Initiative:** For first-generation business owners who had no family playbook, no inherited network, no safety net. They built from scratch. The initiative provides mentorship connections and platform access.
+
+**RISE Scholars:** Selected applicants receive free Alloro accounts, onboarding support, and recognition in the Heroes & Founders community. Application includes practice details, veteran status (for Heroes), and a brief story of their journey.
+
+- Foundation homepage: https://getalloro.com/foundation
+- Heroes Initiative: https://getalloro.com/foundation/heroes
+- Founders Initiative: https://getalloro.com/foundation/founders
+- Apply: https://getalloro.com/foundation/apply
+
 ## Key Links
 
 - Homepage: https://getalloro.com
 - Free Checkup: https://getalloro.com/checkup
 - Pricing: https://getalloro.com/pricing
+- Foundation: https://getalloro.com/foundation
 - Help: https://getalloro.com/help
 - About: https://getalloro.com/about
 

@@ -198,10 +198,10 @@ export function OnboardingWizardProvider({ children }: { children: ReactNode }) 
   // Re-check wizard status from API and auto-start if not completed.
   // Guarded: only runs when main onboarding is confirmed complete.
   const recheckWizardStatus = useCallback(async () => {
-    console.log("[WizardContext] recheckWizardStatus called, onboardingCompleted:", onboardingCompleted);
+    if (import.meta.env.DEV) console.log("[WizardContext] recheckWizardStatus called, onboardingCompleted:", onboardingCompleted);
 
     if (onboardingCompleted !== true) {
-      console.log("[WizardContext] Main onboarding not complete, skipping wizard check");
+      if (import.meta.env.DEV) console.log("[WizardContext] Main onboarding not complete, skipping wizard check");
       setIsLoadingWizardStatus(false);
       return;
     }
@@ -209,7 +209,7 @@ export function OnboardingWizardProvider({ children }: { children: ReactNode }) 
     // Verify auth token exists before making API call
     const authToken = getPriorityItem("auth_token") || getPriorityItem("token");
     if (!authToken) {
-      console.log("[WizardContext] No auth token found, skipping wizard check");
+      if (import.meta.env.DEV) console.log("[WizardContext] No auth token found, skipping wizard check");
       setIsLoadingWizardStatus(false);
       return;
     }
@@ -217,7 +217,7 @@ export function OnboardingWizardProvider({ children }: { children: ReactNode }) 
     setIsLoadingWizardStatus(true);
     try {
       const response = await onboarding.getWizardStatus();
-      console.log("[WizardContext] API response:", response);
+      if (import.meta.env.DEV) console.log("[WizardContext] API response:", response);
 
       // Check for API errors
       if (!response || response.error) {
@@ -229,7 +229,7 @@ export function OnboardingWizardProvider({ children }: { children: ReactNode }) 
         setWizardCompleted(response.onboarding_wizard_completed);
         // Auto-start wizard if not completed
         if (!response.onboarding_wizard_completed) {
-          console.log("[WizardContext] Starting wizard - completed flag was:", response.onboarding_wizard_completed);
+          if (import.meta.env.DEV) console.log("[WizardContext] Starting wizard - completed flag was:", response.onboarding_wizard_completed);
           setCurrentStepIndex(0);
           setShowWelcomeModal(true);
           setIsWizardActive(true);
@@ -239,10 +239,10 @@ export function OnboardingWizardProvider({ children }: { children: ReactNode }) 
             navigate(getPageRoute(firstStep.page));
           }
         } else {
-          console.log("[WizardContext] Wizard already completed, not starting");
+          if (import.meta.env.DEV) console.log("[WizardContext] Wizard already completed, not starting");
         }
       } else {
-        console.log("[WizardContext] Unexpected response format - onboarding_wizard_completed not a boolean");
+        if (import.meta.env.DEV) console.log("[WizardContext] Unexpected response format - onboarding_wizard_completed not a boolean");
       }
     } catch (error) {
       console.error("Failed to recheck wizard status:", error);
