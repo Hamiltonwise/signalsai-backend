@@ -9,12 +9,15 @@ Read the Build Queue. If there's an active WO, execute it. If not, ask Corey wha
 - Code change (frontend/backend) -> CC builds it
 - Infrastructure (AWS, DNS, env vars, n8n) -> Dave's task page
 - GTM (copy, positioning, outreach) -> Corey decides
-- Legal/compliance -> Escalate to Corey
+- Legal/compliance -> CLO Agent hold, then escalate to Corey
+- Financial outputs (dollar figures, projections, costs) -> CFO Agent review before delivery
+- Cross-domain conflict (two agents disagree) -> System Conductor resolves
 
 **Step 2: What's the blast radius?**
 - Green (Auto-execute): test files, new components, agent .md files, non-auth routes
 - Yellow (Route-for-awareness): DB migrations, nav changes, new API endpoints -> notify #alloro-dev
 - Red (Escalate): billing, pricing, auth, client copy, data deletion -> Corey approves
+- Agent Trust gates also apply: see agent-trust-protocol.md for CFO/CLO/Conductor clearance rules
 
 **Step 3: Does it serve a North Star?**
 - Undeniable Value: makes a client say "how did they know that?"

@@ -542,6 +542,20 @@ export default function ScanningTheater() {
       const timeoutMs = conferenceActive ? 5000 : 45000;
 
       try {
+        // Offline at a conference? Skip the API call entirely, use fallback now
+        if (isOfflineConference()) {
+          if (cancelled) return;
+          analysisRef.current = CONFERENCE_ANALYSIS;
+          setApiDone(true);
+          trackEvent("checkup.scan_completed", {
+            score: CONFERENCE_ANALYSIS.score.composite,
+            competitor_count: CONFERENCE_ANALYSIS.competitors.length,
+            top_competitor_name: CONFERENCE_ANALYSIS.topCompetitor?.name || null,
+            conference_fallback: true,
+          });
+          return;
+        }
+
         // In conference mode: race API against 5s timeout, fallback to pre-seeded data
         const apiCall = analyzeCheckup({
           name: place.name,

@@ -665,6 +665,10 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       if (checkup_data?.topCompetitor?.name) {
         checkupUpdates.top_competitor_name = checkup_data.topCompetitor.name;
       }
+      // Baseline review count for First Win Attribution (WO-22)
+      if (checkup_data?.reviewCount != null) {
+        checkupUpdates.checkup_review_count_at_creation = checkup_data.reviewCount;
+      }
       // Session key links this org back to the checkup session
       if (req.body.session_id) {
         checkupUpdates.session_checkup_key = req.body.session_id;

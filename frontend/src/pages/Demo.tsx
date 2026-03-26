@@ -1,12 +1,13 @@
 /**
  * AAE Demo Account — /demo
  *
- * Pre-seeded Mountain View Endodontics. No auth. No API calls.
+ * Pre-seeded Wasatch Endodontics. No auth. No API calls.
  * Corey says "let me show you what it looks like fully running" and opens this.
  *
- * Practice: Mountain View Endodontics, Salt Lake City, Utah
- * Score: 61. Rank: #3 of 9 endodontists.
+ * Practice: Valley Endodontics, Salt Lake City, Utah
+ * Score: 61. Rank: #3 of 5 endodontists.
  * All competitor names are FICTIONAL to avoid showing real practice data in a demo.
+ * Identity matches conference fallback in conferenceFallback.ts.
  */
 
 import {
@@ -25,18 +26,18 @@ import {
 // ─── Demo Data ──────────────────────────────────────────────────────
 
 const PRACTICE = {
-  name: "Mountain View Endodontics",
+  name: "Valley Endodontics",
   city: "Salt Lake City",
   state: "Utah",
   score: 61,
   rank: 3,
-  totalCompetitors: 9,
+  totalCompetitors: 5,
   specialty: "endodontist",
-  reviews: 34,
+  reviews: 61,
   rating: 4.6,
-  competitorName: "Valley Endodontics SLC",
-  competitorReviews: 61,
-  competitorRating: 4.8,
+  competitorName: "Wasatch Endodontics",
+  competitorReviews: 284,
+  competitorRating: 4.9,
   startRank: 6,
   startScore: 42,
 };
@@ -92,7 +93,7 @@ const REFERRING_GPS = [
 const TASKS = [
   {
     title: "Request 3 reviews this week",
-    why: "Getting from 34 to 62 reviews passes Valley Endodontics SLC on Google. That closes one of the three reasons GPs choose them over you when they hand out referral cards.",
+    why: "Wasatch Endodontics has 284 reviews to your 61. Closing that gap is the single biggest lever for moving from #3 to #1 in Salt Lake City.",
     status: "active",
   },
   {
@@ -123,7 +124,7 @@ const TOP_MOVES = [
 const NEXT_90 = [
   {
     title: "Collect 28 new Google reviews (3/week for 10 weeks)",
-    why: "At current pace you'll pass Valley Endodontics SLC by June. That makes you the #1 reviewed endodontist in Salt Lake City.",
+    why: "At current pace you'll pass Wasatch Endodontics by June. That makes you the #1 reviewed endodontist in Salt Lake City.",
     impact: "Projected move to #1 position",
   },
   {

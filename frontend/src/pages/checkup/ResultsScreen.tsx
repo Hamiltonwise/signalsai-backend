@@ -513,6 +513,8 @@ export default function ResultsScreen() {
             topCompetitor: topCompetitor?.name || null,
             market: market || null,
             findingSummary: findings[0]?.detail || null,
+            placeId: place.placeId || null,
+            reviewCount: place.reviewCount || 0,
           },
         }),
       });
