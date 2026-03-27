@@ -25,6 +25,7 @@ export interface CreatePageModalProps {
   defaultPrimaryColor?: string;
   defaultAccentColor?: string;
   onSuccess: () => void;
+  onBlankPageCreated?: (pageId: string) => void;
   onClose: () => void;
 }
 

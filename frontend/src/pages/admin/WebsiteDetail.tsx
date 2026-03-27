@@ -2439,7 +2439,7 @@ export default function WebsiteDetail() {
       {showCreatePageModal && (
         <CreatePageModal
           projectId={website.id}
-          templateId={website.template_id || undefined}
+          templateId={website.template_id || ""}
           gbpData={gbpData}
           defaultPlaceId={website.selected_place_id || ""}
           defaultWebsiteUrl={website.selected_website_url || ""}
