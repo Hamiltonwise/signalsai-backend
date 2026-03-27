@@ -31,9 +31,10 @@ export async function processImage(
   originalBuffer: Buffer,
   originalMimeType: string
 ): Promise<ProcessedMedia> {
-  let sharp: typeof import("sharp")["default"];
+  let sharp: typeof import("sharp");
   try {
-    sharp = (await import("sharp")).default;
+    const sharpModule = await import("sharp");
+    sharp = sharpModule.default ?? sharpModule;
   } catch {
     throw new Error(
       "Image processing unavailable: sharp module failed to load. " +
