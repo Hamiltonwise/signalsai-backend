@@ -319,6 +319,18 @@ const startServer = async () => {
   }
 };
 
+// Prevent crash from non-critical module load failures (e.g. sharp native binaries)
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+  if (error.message?.includes("sharp")) {
+    console.error(
+      "Sharp module error. Image processing will be unavailable. Server continues running."
+    );
+    return;
+  }
+  process.exit(1);
+});
+
 // Graceful shutdown
 process.on("SIGINT", async () => {
   console.log("\n🛑 Shutting down server...");
