@@ -34,9 +34,11 @@ import * as menuManager from "./feature-services/service.menu-manager";
 import * as reviewBlockManager from "./feature-services/service.review-block-manager";
 import * as aiCommand from "./feature-services/service.ai-command";
 import * as redirectsService from "./feature-services/service.redirects";
+import * as artifactUpload from "./feature-services/service.artifact-upload";
 import { db } from "../../database/connection";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
+import { generatePresignedUrl } from "../../utils/core/s3";
 
 // =====================================================================
 // PROJECTS
@@ -1048,6 +1050,106 @@ export async function createPage(
   }
 }
 
+/** POST /:id/pages/artifact — Upload artifact page (React app build) */
+export async function uploadArtifactPage(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+    const { path: pagePath, display_name } = req.body;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        error: "NO_FILE",
+        message: "No zip file provided",
+      });
+    }
+
+    if (!pagePath) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_PATH",
+        message: "Page path is required",
+      });
+    }
+
+    const { page, error } = await artifactUpload.uploadArtifactPage(
+      id,
+      file.buffer,
+      pagePath,
+      display_name
+    );
+
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        error: error.code,
+        message: error.message,
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: page,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error uploading artifact page:", error);
+    return res.status(500).json({
+      success: false,
+      error: "ARTIFACT_UPLOAD_ERROR",
+      message: error?.message || "Failed to upload artifact page",
+    });
+  }
+}
+
+/** PUT /:id/pages/:pageId/artifact — Replace artifact page build */
+export async function replaceArtifactBuild(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { id, pageId } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        error: "NO_FILE",
+        message: "No zip file provided",
+      });
+    }
+
+    const { page, error } = await artifactUpload.replaceArtifactBuild(
+      id,
+      pageId,
+      file.buffer
+    );
+
+    if (error) {
+      return res.status(error.status).json({
+        success: false,
+        error: error.code,
+        message: error.message,
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: page,
+    });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error replacing artifact build:", error);
+    return res.status(500).json({
+      success: false,
+      error: "ARTIFACT_REPLACE_ERROR",
+      message: error?.message || "Failed to replace artifact build",
+    });
+  }
+}
+
 /** POST /:id/pages/:pageId/publish — Publish a page */
 export async function publishPage(
   req: Request,
@@ -1847,6 +1949,37 @@ export async function getFormSubmission(
 
     if (!submission) {
       return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Submission not found" });
+    }
+
+    // Resolve pre-signed URLs for any file values in contents
+    if (submission.contents) {
+      if (Array.isArray(submission.contents)) {
+        // Sections format
+        for (const section of submission.contents) {
+          if (section && typeof section === "object" && Array.isArray((section as any).fields)) {
+            for (const field of (section as any).fields) {
+              if (Array.isArray(field) && field[1] && typeof field[1] === "object" && "s3Key" in field[1]) {
+                try {
+                  field[1].url = await generatePresignedUrl(field[1].s3Key, 3600);
+                } catch (err) {
+                  console.error(`[Form Submission] Failed to generate pre-signed URL for ${field[1].s3Key}:`, err);
+                }
+              }
+            }
+          }
+        }
+      } else if (typeof submission.contents === "object") {
+        // Legacy flat format
+        for (const [, value] of Object.entries(submission.contents)) {
+          if (value && typeof value === "object" && "s3Key" in value) {
+            try {
+              (value as any).url = await generatePresignedUrl((value as any).s3Key, 3600);
+            } catch (err) {
+              console.error(`[Form Submission] Failed to generate pre-signed URL for ${(value as any).s3Key}:`, err);
+            }
+          }
+        }
+      }
     }
 
     return res.json({ success: true, data: submission });
@@ -2925,15 +3058,18 @@ export async function aiGeneratePost(req: Request, res: Response): Promise<Respo
     const postType = await db("website_builder.post_types").where("id", post_type_id).first();
     const typeName = postType?.name || "post";
 
-    // Generate content via LLM
-    const { editHtmlContent } = await import("../../utils/website-utils/aiCommandService");
-    const result = await editHtmlContent({
-      instruction: `Create professional HTML content for a ${typeName} titled "${title}". ${refContent ? `Use this reference content:\n\n${refContent}` : ""}. Write informative, well-structured HTML with headings, paragraphs, and lists. Use Tailwind CSS for styling. Use font-serif for headings, font-sans for body. Use bg-primary/bg-accent classes for brand colors. Use rounded-full on buttons. Never use inline font references or position absolute.`,
-      currentHtml: "<div></div>",
-      targetLabel: `Post: ${title}`,
+    // Generate content via dedicated post content prompt
+    const { generatePostContent } = await import("../../utils/website-utils/aiCommandService");
+    const result = await generatePostContent({
+      title,
+      postTypeName: typeName,
+      purpose: "",
+      referenceContent: refContent,
+      styleContext: "",
+      customFieldsHint: "",
     });
 
-    return res.json({ success: true, data: { content: result.editedHtml } });
+    return res.json({ success: true, data: { content: result.html } });
   } catch (error: any) {
     console.error("[Admin Websites] Error generating post content:", error);
     return res.status(500).json({ success: false, error: "GENERATE_ERROR", message: error?.message });

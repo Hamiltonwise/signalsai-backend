@@ -107,12 +107,17 @@ export async function createCheckoutSession(
   // Use org-specific price override, or fall back to default ($2,000/location)
   const priceId = org.stripe_price_id || getDefaultPriceId();
 
-  // Quantity = number of locations for this org (minimum 1)
-  const locationCountResult = await db("locations")
-    .where({ organization_id: orgId })
-    .count("id as count")
-    .first();
-  const locationCount = Math.max(Number(locationCountResult?.count) || 0, 1);
+  // Quantity = override if set (flat-rate clients), otherwise location count
+  let locationCount: number;
+  if (org.billing_quantity_override != null) {
+    locationCount = org.billing_quantity_override;
+  } else {
+    const locationCountResult = await db("locations")
+      .where({ organization_id: orgId })
+      .count("id as count")
+      .first();
+    locationCount = Math.max(Number(locationCountResult?.count) || 0, 1);
+  }
 
   // If org already has a Stripe customer, reuse it
   const customerOptions: Stripe.Checkout.SessionCreateParams["customer"] =
@@ -714,12 +719,17 @@ export async function syncSubscriptionQuantity(
     const org = await OrganizationModel.findById(organizationId);
     if (!org?.stripe_subscription_id) return;
 
-    // Count current locations
-    const result = await db("locations")
-      .where({ organization_id: organizationId })
-      .count("id as count")
-      .first();
-    const newQuantity = Math.max(Number(result?.count) || 0, 1);
+    // Use override if set (flat-rate clients), otherwise count locations
+    let newQuantity: number;
+    if (org.billing_quantity_override != null) {
+      newQuantity = org.billing_quantity_override;
+    } else {
+      const result = await db("locations")
+        .where({ organization_id: organizationId })
+        .count("id as count")
+        .first();
+      newQuantity = Math.max(Number(result?.count) || 0, 1);
+    }
 
     // Get subscription from Stripe
     const stripe = getStripe();

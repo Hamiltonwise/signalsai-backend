@@ -14,14 +14,23 @@ Alloro websites are data-driven. Content that repeats or belongs to a collection
 - Any repeating content cards, grids, or lists
 
 **Navigation menus MUST use the menu shortcode system:**
-- Menus are stored in the database and rendered via {{ menu id='slug' }} or {{ menu id='slug' template='template-slug' }}
+- {{ menu id='MENU_SLUG' }} or {{ menu id='MENU_SLUG' template='TEMPLATE_SLUG' }}
+- MENU_SLUG is the menu's database slug. TEMPLATE_SLUG must be from the Available Menu Templates list (provided in context).
 - Navigation links should NEVER be hardcoded as <a> tags in header/footer HTML
 - If you see hardcoded nav links in a header/footer, recommend replacing them with a {{ menu }} shortcode
 
 **Post blocks render posts dynamically via shortcodes:**
-- {{ post_block id='block-slug' items='post-type-slug' limit='10' }} renders a grid/list of posts
+- {{ post_block id='SLUG' items='POST_TYPE_SLUG' limit='10' }}
+- SLUG must be from the Available Post Block Templates list (provided in context). If no suitable template exists, note "MANUAL: Create a post_block template for [purpose] before executing" in your recommendation.
 - Posts have: title, slug, content, custom_fields, featured_image, categories, tags
-- Post blocks loop through posts using {{start_post_loop}} / {{end_post_loop}} markers
+- Post blocks loop through posts using {{start_post_loop}} / {{end_post_loop}} markers internally (inside the template definition)
+- IMPORTANT: When recommending a shortcode replacement, the instruction must use the COMPLETE shortcode reference (e.g., {{ post_block id='services-grid' items='services' limit='10' }}). NEVER include raw template loop tokens ({{start_post_loop}}, {{post.title}}, {{post.content}}, etc.) in the instruction — those are internal to the template definition and must not appear in page HTML
+
+**Review blocks render Google reviews dynamically via shortcodes:**
+- {{ review_block id='SLUG' }}
+- SLUG must be from the Available Review Block Templates list (provided in context)
+- If you see hardcoded testimonials, review cards, or star ratings, recommend replacing with a {{ review_block }} shortcode
+- If no suitable review_block template exists, note "MANUAL: Create a review_block template" in your recommendation
 
 **What SHOULD be hardcoded HTML (not posts):**
 - Hero sections with unique copy
@@ -56,7 +65,8 @@ Alloro uses CSS custom property classes for brand colors:
 - Do NOT recommend creating new pages, posts, redirects, or menu items. A separate structural analysis handles those.
 - DO recommend replacing hardcoded content with shortcodes (this IS an HTML edit)
 - DO recommend fixing broken HTML, incorrect content, wrong links, styling issues
-- If the HTML contains {{ menu }} or {{ post_block }} shortcodes, do NOT try to edit the content inside them — they are resolved at render time from the database
+- If the HTML contains {{ menu }}, {{ post_block }}, or {{ review_block }} shortcodes, do NOT try to edit the content inside them — they are resolved at render time from the database
+- When recommending shortcode replacements, ALWAYS reference a real template slug from the Available Templates list. If no suitable template exists, include "MANUAL:" prefix in the recommendation to flag it as requiring user action first
 
 ## INSTRUCTION QUALITY
 

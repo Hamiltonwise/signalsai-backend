@@ -15,8 +15,9 @@
  * 8. Content pattern scoring — reject high-score submissions
  * 9. Flood detection — IP-based + duplicate content hash
  * 10. AI content analysis — classify and flag spam/sales/malicious
- * 11. Persist submission
- * 12. Email (only if not flagged)
+ * 11. File uploads (if multipart) — upload to S3, add metadata to contents
+ * 12. Persist submission
+ * 13. Email (only if not flagged)
  */
 
 import { Request, Response } from "express";
@@ -28,14 +29,15 @@ import { analyzeContent } from "./websiteContact-services/aiContentAnalysisServi
 import { getSiteUrl, sendConfirmationEmail } from "./websiteContact-services/newsletterConfirmationService";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
-import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
+import { FormSubmissionModel, type FileValue, type FormSection, type FormContents } from "../../models/website-builder/FormSubmissionModel";
 import { NewsletterSignupModel } from "../../models/website-builder/NewsletterSignupModel";
+import { uploadToS3 } from "../../utils/core/s3";
 
 const FALLBACK_RECIPIENT = "laggy80@gmail.com";
 
-const MAX_FIELDS = 20;
+const MAX_FIELDS = 100; // Raised from 20 to support onboarding forms with many repeater fields
 const MAX_KEY_LENGTH = 100;
-const MAX_VALUE_LENGTH = 500;
+const MAX_VALUE_LENGTH = 2000; // Raised from 500 to support longer field values
 const MAX_FORM_NAME_LENGTH = 200;
 const MIN_SUBMIT_TIME_MS = 2000;
 const MAX_SUBMIT_TIME_MS = 3_600_000; // 1 hour
@@ -64,7 +66,6 @@ function computeJsChallenge(ts: number): number {
 }
 
 const NEWSLETTER_DEBOUNCE_MS = 5 * 60 * 1000; // 5 minutes
-const NEWSLETTER_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Extract the first email-like value from form contents.
@@ -72,7 +73,7 @@ const NEWSLETTER_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 function extractEmail(contents: Record<string, string>): string | null {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   for (const value of Object.values(contents)) {
-    if (emailRegex.test(value.trim())) return value.trim().toLowerCase();
+    if (typeof value === "string" && emailRegex.test(value.trim())) return value.trim().toLowerCase();
   }
   return null;
 }
@@ -139,51 +140,107 @@ async function handleNewsletterSignup(
   return res.json({ success: true });
 }
 
+/**
+ * Upload files from multipart request to S3 and return file metadata entries
+ * to merge into the contents object.
+ */
+async function uploadFormFiles(
+  files: Express.Multer.File[],
+  organizationId: number | null,
+): Promise<Record<string, { url: string; name: string; type: string; s3Key: string }>> {
+  const fileEntries: Record<string, { url: string; name: string; type: string; s3Key: string }> = {};
+
+  for (const file of files) {
+    const timestamp = Date.now();
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const orgFolder = organizationId ? String(organizationId) : "unknown";
+    const s3Key = `form-uploads/${orgFolder}/${timestamp}-${safeName}`;
+
+    await uploadToS3(s3Key, file.buffer, file.mimetype);
+
+    // Use the original filename as the content key (e.g., "practice_logo.png")
+    const label = `File: ${file.originalname}`;
+    fileEntries[label] = {
+      url: "", // Will be resolved via pre-signed URL at read time
+      name: file.originalname,
+      type: file.mimetype,
+      s3Key,
+    };
+  }
+
+  return fileEntries;
+}
+
 export async function handleFormSubmission(req: Request, res: Response): Promise<Response> {
   try {
-    const { projectId, formName, formType, contents, _hp, _ts, _jsc } = req.body;
+    const { hostname, formName, formType, _hp, _ts, _jsc } = req.body;
+    let { projectId, contents } = req.body;
+
+    // ── Multipart support: contents may be a JSON string ──
+    if (typeof contents === "string") {
+      try {
+        contents = JSON.parse(contents);
+      } catch {
+        return res.status(400).json({ error: "contents must be valid JSON" });
+      }
+    }
 
     // ── 1. Honeypot ──
     if (_hp) {
       return silentOk(res);
     }
 
-    // ── 2. Timestamp / timing check ──
-    const ts = Number(_ts);
-    if (!_ts || isNaN(ts)) {
-      return res.status(400).json({ error: "Invalid request" });
-    }
-    const elapsed = Date.now() - ts;
-    if (elapsed < MIN_SUBMIT_TIME_MS || elapsed > MAX_SUBMIT_TIME_MS) {
-      return silentOk(res);
+    // ── 2. Timestamp / timing check (skip if not provided — multipart onboarding forms) ──
+    if (_ts) {
+      const ts = Number(_ts);
+      if (isNaN(ts)) {
+        return res.status(400).json({ error: "Invalid request" });
+      }
+      const elapsed = Date.now() - ts;
+      if (elapsed < MIN_SUBMIT_TIME_MS || elapsed > MAX_SUBMIT_TIME_MS) {
+        return silentOk(res);
+      }
+
+      // ── 3. JS challenge verification ──
+      const jsc = Number(_jsc);
+      if (!_jsc || isNaN(jsc) || jsc !== computeJsChallenge(ts)) {
+        return silentOk(res);
+      }
     }
 
-    // ── 3. JS challenge verification ──
-    const jsc = Number(_jsc);
-    if (!_jsc || isNaN(jsc) || jsc !== computeJsChallenge(ts)) {
-      return silentOk(res);
-    }
-
-    // ── 4. Basic field validation ──
+    // ── 4. Resolve project: by projectId or hostname ──
     const senderIp = extractClientIp(req);
+
+    let project;
+    if (projectId) {
+      project = await ProjectModel.findById(String(projectId));
+    } else if (hostname) {
+      project = await ProjectModel.findByHostnameOrDomain(String(hostname));
+      if (project) {
+        projectId = project.id;
+      }
+    }
+
     if (!projectId || !formName || !contents) {
       return res
         .status(400)
-        .json({ error: "projectId, formName, and contents are required" });
+        .json({ error: "projectId (or hostname), formName, and contents are required" });
     }
 
-    if (typeof contents !== "object" || Array.isArray(contents)) {
-      return res
-        .status(400)
-        .json({ error: "contents must be a JSON object of field label/value pairs" });
-    }
-
-    // ── 5. Origin validation ──
-    const project = await ProjectModel.findById(String(projectId));
     if (!project) {
       return silentOk(res);
     }
 
+    // Contents can be a flat object (legacy contact forms) or sections array (onboarding)
+    const isSectionsFormat = Array.isArray(contents);
+
+    if (typeof contents !== "object") {
+      return res
+        .status(400)
+        .json({ error: "contents must be a JSON object or sections array" });
+    }
+
+    // ── 5. Origin validation ──
     const origin = req.headers.origin || req.headers.referer;
     if (origin) {
       const allowedOrigins: string[] = [];
@@ -210,45 +267,81 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
     }
     // If no origin/referer header, skip check (privacy tools strip them)
 
-    // ── 6. Payload caps ──
-    const fieldKeys = Object.keys(contents);
-    if (fieldKeys.length > MAX_FIELDS) {
-      return res.status(400).json({ error: `Too many fields (max ${MAX_FIELDS})` });
-    }
-
-    if (String(formName).length > MAX_FORM_NAME_LENGTH) {
+    // ── 6. Sanitize form name ──
+    const sanitizedFormName = sanitize(String(formName));
+    if (sanitizedFormName.length > MAX_FORM_NAME_LENGTH) {
       return res.status(400).json({ error: `Form name too long (max ${MAX_FORM_NAME_LENGTH} chars)` });
     }
 
-    for (const [key, value] of Object.entries(contents)) {
-      if (String(key).length > MAX_KEY_LENGTH) {
-        return res.status(400).json({ error: `Field name too long (max ${MAX_KEY_LENGTH} chars)` });
-      }
-      if (String(value).length > MAX_VALUE_LENGTH) {
-        return res.status(400).json({ error: `Field value too long (max ${MAX_VALUE_LENGTH} chars)` });
-      }
-    }
+    // Trusted form types skip spam scoring and AI analysis
+    const isTrustedFormType = formType === "onboarding";
 
-    // ── 7. Sanitize all values ──
-    const sanitizedFormName = sanitize(String(formName));
-    const sanitizedContents: Record<string, string> = {};
-    for (const [key, value] of Object.entries(contents)) {
-      sanitizedContents[sanitize(String(key))] = sanitize(String(value));
+    // ── 7. Process contents based on format ──
+    let finalContents: FormContents;
+    let textContents: Record<string, string> = {}; // Flat text for spam scoring / email (legacy only)
+
+    if (isSectionsFormat) {
+      // Sections array format — sanitize all text values within sections
+      const sanitizedSections: FormSection[] = (contents as FormSection[]).map((section: FormSection) => ({
+        title: sanitize(section.title || ""),
+        fields: section.fields.map(([key, value]) => [
+          sanitize(String(key)),
+          typeof value === "string" ? sanitize(value) : value,
+        ] as [string, string | FileValue]),
+      }));
+      finalContents = sanitizedSections;
+
+      // Extract flat text for duplicate detection hash
+      for (const section of sanitizedSections) {
+        for (const [key, value] of section.fields) {
+          if (typeof value === "string") {
+            textContents[`${section.title} - ${key}`] = value;
+          }
+        }
+      }
+    } else {
+      // Legacy flat object format — payload caps + sanitize
+      const fieldKeys = Object.keys(contents);
+      if (fieldKeys.length > MAX_FIELDS) {
+        return res.status(400).json({ error: `Too many fields (max ${MAX_FIELDS})` });
+      }
+
+      for (const [key, value] of Object.entries(contents)) {
+        if (String(key).length > MAX_KEY_LENGTH) {
+          return res.status(400).json({ error: `Field name too long (max ${MAX_KEY_LENGTH} chars)` });
+        }
+        if (typeof value === "string" && value.length > MAX_VALUE_LENGTH) {
+          return res.status(400).json({ error: `Field value too long (max ${MAX_VALUE_LENGTH} chars)` });
+        }
+      }
+
+      const sanitizedFlat: Record<string, string | FileValue> = {};
+      for (const [key, value] of Object.entries(contents)) {
+        if (typeof value === "string") {
+          const sKey = sanitize(String(key));
+          const sVal = sanitize(value);
+          sanitizedFlat[sKey] = sVal;
+          textContents[sKey] = sVal;
+        }
+      }
+      finalContents = sanitizedFlat;
     }
 
     // ── BRANCH: Newsletter double opt-in ──
     if (formType === "newsletter") {
-      return handleNewsletterSignup(res, project, sanitizedContents);
+      return handleNewsletterSignup(res, project, textContents);
     }
 
-    // ── 8. Content pattern scoring ──
-    const patternResult = analyzePatterns(sanitizedContents);
+    // ── 8. Content pattern scoring (skip for trusted form types) ──
     let flagged = false;
     let flagReason = "";
 
-    if (patternResult.score >= SPAM_THRESHOLD) {
-      flagged = true;
-      flagReason = `[content_pattern] Score ${patternResult.score}: ${patternResult.reasons.join("; ")}`;
+    if (!isTrustedFormType) {
+      const patternResult = analyzePatterns(textContents);
+      if (patternResult.score >= SPAM_THRESHOLD) {
+        flagged = true;
+        flagReason = `[content_pattern] Score ${patternResult.score}: ${patternResult.reasons.join("; ")}`;
+      }
     }
 
     // ── 9. Flood detection ──
@@ -259,22 +352,41 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       }
     }
 
-    const contentHash = hashContents(sanitizedContents);
+    const contentHash = hashContents(textContents);
     const duplicate = await isDuplicateContent(String(projectId), contentHash);
     if (duplicate) {
       return silentOk(res);
     }
 
-    // ── 10. AI content analysis (skip if already flagged by patterns) ──
-    if (!flagged) {
-      const aiResult = await analyzeContent(sanitizedFormName, sanitizedContents);
+    // ── 10. AI content analysis (skip for trusted form types) ──
+    if (!flagged && !isTrustedFormType) {
+      const aiResult = await analyzeContent(sanitizedFormName, textContents);
       if (aiResult.flagged) {
         flagged = true;
         flagReason = `[${aiResult.category}] ${aiResult.reason}`;
       }
     }
 
-    // ── 11. Resolve recipients: project.recipients → org admins → fallback ──
+    // ── 11. File uploads — upload to S3 ──
+    const uploadedFiles = req.files as Express.Multer.File[] | undefined;
+    if (uploadedFiles && uploadedFiles.length > 0) {
+      const fileEntries = await uploadFormFiles(uploadedFiles, project.organization_id);
+
+      if (isSectionsFormat) {
+        // Append files as their own section
+        const fileFields: [string, FileValue][] = Object.entries(fileEntries).map(
+          ([, fv]) => [fv.name, fv] as [string, FileValue],
+        );
+        (finalContents as FormSection[]).push({
+          title: "Uploaded Files",
+          fields: fileFields,
+        });
+      } else {
+        Object.assign(finalContents, fileEntries);
+      }
+    }
+
+    // ── 12. Resolve recipients: project.recipients → org admins → fallback ──
     let recipients: string[] = [];
     try {
       const projectRecipients = (project as any)?.recipients;
@@ -300,12 +412,12 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       recipients = [FALLBACK_RECIPIENT];
     }
 
-    // ── 12. Persist submission ──
+    // ── 13. Persist submission ──
     try {
       await FormSubmissionModel.create({
         project_id: String(projectId),
         form_name: sanitizedFormName,
-        contents: sanitizedContents,
+        contents: finalContents,
         recipients_sent_to: recipients,
         sender_ip: senderIp,
         content_hash: contentHash,
@@ -316,17 +428,65 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       console.error("[Form Submission] Failed to save submission:", saveErr);
     }
 
-    // ── 13. Email (only if not flagged) ──
+    // ── 14. Email (only if not flagged) ──
     if (!flagged) {
-      const rows = Object.entries(sanitizedContents)
-        .map(
-          ([label, value]) =>
-            `<tr>
-              <td style="padding:8px 12px 8px 0;color:#6b7280;vertical-align:top;white-space:nowrap;">${label}</td>
-              <td style="padding:8px 0;color:#111827;font-weight:600;">${value}</td>
-            </tr>`,
-        )
-        .join("");
+      let emailTableHtml: string;
+
+      if (isSectionsFormat) {
+        // Sections-aware email: grouped with headers
+        emailTableHtml = (finalContents as FormSection[])
+          .map((section) => {
+            const sectionHeader = `<tr><td colspan="2" style="padding:16px 0 8px 0;font-size:16px;font-weight:700;color:#007693;border-bottom:1px solid #e5e7eb;">${section.title}</td></tr>`;
+            const fieldRows = section.fields
+              .filter(([, value]) => typeof value === "string") // skip file values in email
+              .map(
+                ([label, value]) =>
+                  `<tr>
+                    <td style="padding:6px 12px 6px 0;color:#6b7280;vertical-align:top;white-space:nowrap;width:40%;">${label}</td>
+                    <td style="padding:6px 0;color:#111827;font-weight:600;">${value}</td>
+                  </tr>`,
+              )
+              .join("");
+            // File names listed separately
+            const fileFieldRows = section.fields
+              .filter(([, value]) => typeof value === "object" && value !== null)
+              .map(
+                ([, value]) => {
+                  const fv = value as FileValue;
+                  return `<tr>
+                    <td style="padding:6px 12px 6px 0;color:#6b7280;vertical-align:top;white-space:nowrap;">Attached File</td>
+                    <td style="padding:6px 0;color:#111827;font-weight:600;">${fv.name}</td>
+                  </tr>`;
+                },
+              )
+              .join("");
+            return sectionHeader + fieldRows + fileFieldRows;
+          })
+          .join("");
+      } else {
+        // Legacy flat format email
+        const rows = Object.entries(textContents)
+          .map(
+            ([label, value]) =>
+              `<tr>
+                <td style="padding:8px 12px 8px 0;color:#6b7280;vertical-align:top;white-space:nowrap;">${label}</td>
+                <td style="padding:8px 0;color:#111827;font-weight:600;">${value}</td>
+              </tr>`,
+          )
+          .join("");
+
+        const fileRows = uploadedFiles && uploadedFiles.length > 0
+          ? uploadedFiles.map(
+              (f) =>
+                `<tr>
+                  <td style="padding:8px 12px 8px 0;color:#6b7280;vertical-align:top;white-space:nowrap;">Attached File</td>
+                  <td style="padding:8px 0;color:#111827;font-weight:600;">${f.originalname} (${(f.size / 1024).toFixed(0)} KB)</td>
+                </tr>`,
+            ).join("")
+          : "";
+
+        emailTableHtml = rows + fileRows;
+      }
 
       const emailBody = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
       <div style="background:#0e8988;color:#fff;padding:24px 32px;border-radius:16px 16px 0 0;">
@@ -334,7 +494,7 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       </div>
       <div style="background:#f9fafb;padding:24px 32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;">
         <table style="width:100%;border-collapse:collapse;font-size:15px;">
-          ${rows}
+          ${emailTableHtml}
         </table>
       </div>
       <p style="margin-top:16px;font-size:12px;color:#9ca3af;text-align:center;">Sent via ${sanitizedFormName} form</p>

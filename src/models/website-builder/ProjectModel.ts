@@ -75,6 +75,32 @@ export class ProjectModel extends BaseModel {
       .whereNotNull("custom_domain");
   }
 
+  /**
+   * Find a project by hostname, generated_hostname, custom_domain, or custom_domain_alt.
+   * Used by form submissions that identify the project by the page's hostname.
+   */
+  static async findByHostnameOrDomain(
+    host: string,
+    trx?: QueryContext,
+  ): Promise<IProject | undefined> {
+    // Strip port if present (e.g. localhost:5173)
+    const cleanHost = host.split(":")[0];
+
+    // Check for *.sites.getalloro.com pattern
+    const subdomainMatch = cleanHost.match(/^(.+)\.sites\.getalloro\.com$/);
+    const hostname = subdomainMatch ? subdomainMatch[1] : null;
+
+    return this.table(trx)
+      .where(function () {
+        if (hostname) {
+          this.where("hostname", hostname);
+        }
+        this.orWhere("custom_domain", cleanHost)
+          .orWhere("custom_domain_alt", cleanHost);
+      })
+      .first();
+  }
+
   static async listAdmin(
     filters: ProjectFilters,
     pagination: PaginationParams,

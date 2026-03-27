@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import Editor from "@monaco-editor/react";
+import SectionsEditor from "./SectionsEditor";
 import {
   Plus,
   Trash2,
@@ -24,11 +24,7 @@ import type { ReviewBlock } from "../../api/reviewBlocks";
 import type { Section } from "../../api/templates";
 import { ActionButton } from "../ui/DesignSystem";
 import { useConfirm } from "../ui/ConfirmModal";
-import {
-  renderPage,
-  parseSectionsJs,
-  serializeSectionsJs,
-} from "../../utils/templateRenderer";
+import { renderPage } from "../../utils/templateRenderer";
 import { prepareHtmlForPreview } from "../../hooks/useIframeSelector";
 
 const DEFAULT_REVIEW_BLOCK_HTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
@@ -190,7 +186,7 @@ export default function ReviewBlocksTab({
   const [editingBlock, setEditingBlock] = useState<ReviewBlock | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [blockName, setBlockName] = useState("");
-  const [editorContent, setEditorContent] = useState("");
+  const [editorSections, setEditorSections] = useState<Section[]>([]);
   const [saving, setSaving] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -211,41 +207,37 @@ export default function ReviewBlocksTab({
     loadData();
   }, [loadData]);
 
-  // Update preview whenever editor content changes
+  // Update preview whenever editor sections change
   useEffect(() => {
     if (!iframeRef.current) return;
     if (!editingBlock && !isCreating) return;
+    if (editorSections.length === 0) return;
 
-    try {
-      const sections = parseSectionsJs(editorContent);
-      const sectionContent = sections.map((s: Section) => s.content).join("\n");
-      const withReviewData = replaceReviewPlaceholders(sectionContent);
-      const fullHtml = renderPage(
-        wrapper || "{{slot}}",
-        header || "",
-        footer || "",
-        [{ name: "review-preview", content: withReviewData }]
-      );
-      const safeHtml = prepareHtmlForPreview(fullHtml);
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(safeHtml);
-        doc.close();
-      }
-    } catch {
-      // Silent parse error during typing
+    const sectionContent = editorSections.map((s: Section) => s.content).join("\n");
+    const withReviewData = replaceReviewPlaceholders(sectionContent);
+    const fullHtml = renderPage(
+      wrapper || "{{slot}}",
+      header || "",
+      footer || "",
+      [{ name: "review-preview", content: withReviewData }]
+    );
+    const safeHtml = prepareHtmlForPreview(fullHtml);
+    const doc = iframeRef.current.contentDocument;
+    if (doc) {
+      doc.open();
+      doc.write(safeHtml);
+      doc.close();
     }
-  }, [editorContent, wrapper, header, footer, editingBlock, isCreating, device]);
+  }, [editorSections, wrapper, header, footer, editingBlock, isCreating, device]);
 
   function openEditor(rb: ReviewBlock) {
     setEditingBlock(rb);
     setIsCreating(false);
     setBlockName(rb.name);
-    setEditorContent(
+    setEditorSections(
       rb.sections.length > 0
-        ? serializeSectionsJs(rb.sections)
-        : serializeSectionsJs([{ name: "reviews", content: DEFAULT_REVIEW_BLOCK_HTML }])
+        ? rb.sections
+        : [{ name: "reviews", content: DEFAULT_REVIEW_BLOCK_HTML }]
     );
   }
 
@@ -253,23 +245,21 @@ export default function ReviewBlocksTab({
     setEditingBlock(null);
     setIsCreating(true);
     setBlockName("");
-    setEditorContent(
-      serializeSectionsJs([{ name: "reviews", content: DEFAULT_REVIEW_BLOCK_HTML }])
-    );
+    setEditorSections([{ name: "reviews", content: DEFAULT_REVIEW_BLOCK_HTML }]);
   }
 
   function closeEditor() {
     setEditingBlock(null);
     setIsCreating(false);
     setBlockName("");
-    setEditorContent("");
+    setEditorSections([]);
   }
 
   async function handleSave() {
     if (!blockName.trim()) return;
     setSaving(true);
     try {
-      const sections = parseSectionsJs(editorContent);
+      const sections = editorSections;
       if (isCreating) {
         await createReviewBlock(templateId, { name: blockName, sections });
       } else if (editingBlock) {
@@ -361,23 +351,12 @@ export default function ReviewBlocksTab({
 
         {/* Editor + Preview */}
         <div className="grid grid-cols-2 gap-4" style={{ height: "calc(100vh - 320px)" }}>
-          {/* Monaco Editor */}
+          {/* Sections Editor */}
           <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <Editor
-              height="100%"
-              language="javascript"
-              theme="vs-dark"
-              value={editorContent}
-              onChange={(v) => setEditorContent(v || "")}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 13,
-                wordWrap: "on",
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                lineNumbers: "on",
-                tabSize: 2,
-              }}
+            <SectionsEditor
+              sections={editorSections}
+              onChange={setEditorSections}
+              onSave={handleSave}
             />
           </div>
 

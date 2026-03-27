@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import Editor from "@monaco-editor/react";
+import SectionsEditor from "./SectionsEditor";
 import {
   Plus,
   Trash2,
@@ -21,11 +21,7 @@ import type { MenuTemplate } from "../../api/menuTemplates";
 import type { Section } from "../../api/templates";
 import { ActionButton } from "../ui/DesignSystem";
 import { useConfirm } from "../ui/ConfirmModal";
-import {
-  renderPage,
-  parseSectionsJs,
-  serializeSectionsJs,
-} from "../../utils/templateRenderer";
+import { renderPage } from "../../utils/templateRenderer";
 import { prepareHtmlForPreview } from "../../hooks/useIframeSelector";
 
 const DEFAULT_MENU_TEMPLATE_HTML = `<style>
@@ -228,7 +224,7 @@ export default function MenuTemplatesTab({
   const [editingTemplate, setEditingTemplate] = useState<MenuTemplate | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [templateName, setTemplateName] = useState("");
-  const [editorContent, setEditorContent] = useState("");
+  const [editorSections, setEditorSections] = useState<Section[]>([]);
   const [saving, setSaving] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -249,42 +245,38 @@ export default function MenuTemplatesTab({
     loadData();
   }, [loadData]);
 
-  // Update preview whenever editor content changes
+  // Update preview whenever editor sections change
   useEffect(() => {
     if (!iframeRef.current) return;
     if (!editingTemplate && !isCreating) return;
+    if (editorSections.length === 0) return;
 
-    try {
-      const sections = parseSectionsJs(editorContent);
-      const sectionContent = sections.map((s: Section) => s.content).join("\n");
-      const withMenuData = replaceMenuPlaceholders(sectionContent);
-      const fullHtml = renderPage(
-        wrapper || "{{slot}}",
-        header || "",
-        footer || "",
-        [{ name: "menu-preview", content: withMenuData }]
-      );
-      const safeHtml = prepareHtmlForPreview(fullHtml);
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(safeHtml);
-        doc.close();
-      }
-    } catch {
-      // Silent parse error during typing
+    const sectionContent = editorSections.map((s: Section) => s.content).join("\n");
+    const withMenuData = replaceMenuPlaceholders(sectionContent);
+    const fullHtml = renderPage(
+      wrapper || "{{slot}}",
+      header || "",
+      footer || "",
+      [{ name: "menu-preview", content: withMenuData }]
+    );
+    const safeHtml = prepareHtmlForPreview(fullHtml);
+    const doc = iframeRef.current.contentDocument;
+    if (doc) {
+      doc.open();
+      doc.write(safeHtml);
+      doc.close();
     }
-  }, [editorContent, wrapper, header, footer, editingTemplate, isCreating, device]);
+  }, [editorSections, wrapper, header, footer, editingTemplate, isCreating, device]);
 
   // Open editor for existing template
   function openEditor(mt: MenuTemplate) {
     setEditingTemplate(mt);
     setIsCreating(false);
     setTemplateName(mt.name);
-    setEditorContent(
+    setEditorSections(
       mt.sections.length > 0
-        ? serializeSectionsJs(mt.sections)
-        : serializeSectionsJs([{ name: "menu", content: DEFAULT_MENU_TEMPLATE_HTML }])
+        ? mt.sections
+        : [{ name: "menu", content: DEFAULT_MENU_TEMPLATE_HTML }]
     );
   }
 
@@ -293,16 +285,14 @@ export default function MenuTemplatesTab({
     setEditingTemplate(null);
     setIsCreating(true);
     setTemplateName("");
-    setEditorContent(
-      serializeSectionsJs([{ name: "menu", content: DEFAULT_MENU_TEMPLATE_HTML }])
-    );
+    setEditorSections([{ name: "menu", content: DEFAULT_MENU_TEMPLATE_HTML }]);
   }
 
   function closeEditor() {
     setEditingTemplate(null);
     setIsCreating(false);
     setTemplateName("");
-    setEditorContent("");
+    setEditorSections([]);
   }
 
   // Save
@@ -310,7 +300,7 @@ export default function MenuTemplatesTab({
     if (!templateName.trim()) return;
     setSaving(true);
     try {
-      const sections = parseSectionsJs(editorContent);
+      const sections = editorSections;
       if (isCreating) {
         await createMenuTemplate(templateId, { name: templateName, sections });
       } else if (editingTemplate) {
@@ -404,23 +394,12 @@ export default function MenuTemplatesTab({
 
         {/* Editor + Preview */}
         <div className="grid grid-cols-2 gap-4" style={{ height: "calc(100vh - 320px)" }}>
-          {/* Monaco Editor */}
+          {/* Sections Editor */}
           <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <Editor
-              height="100%"
-              language="javascript"
-              theme="vs-dark"
-              value={editorContent}
-              onChange={(v) => setEditorContent(v || "")}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 13,
-                wordWrap: "on",
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                lineNumbers: "on",
-                tabSize: 2,
-              }}
+            <SectionsEditor
+              sections={editorSections}
+              onChange={setEditorSections}
+              onSave={handleSave}
             />
           </div>
 

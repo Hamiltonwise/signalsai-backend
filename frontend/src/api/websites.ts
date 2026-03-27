@@ -61,6 +61,8 @@ export interface WebsitePage {
   version: number;
   status: string;
   generation_status?: PageGenerationStatus | null;
+  page_type?: "sections" | "artifact";
+  artifact_s3_prefix?: string | null;
   sections: Section[];
   seo_data: SeoData | null;
   edit_chat_history: EditChatHistory | null;
@@ -491,6 +493,85 @@ export const publishPage = async (
 };
 
 /**
+ * Create a blank page (no template, no pipeline)
+ */
+export const createBlankPage = async (
+  projectId: string,
+  data: { path: string; display_name?: string },
+): Promise<{ success: boolean; data: WebsitePage }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/pages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      path: data.path,
+      sections: [],
+      display_name: data.display_name,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to create page");
+  }
+
+  return response.json();
+};
+
+/**
+ * Upload an artifact page (React app zip build)
+ */
+export const uploadArtifactPage = async (
+  projectId: string,
+  data: { file: File; path: string; display_name?: string },
+): Promise<{ success: boolean; data: WebsitePage }> => {
+  const formData = new FormData();
+  formData.append("file", data.file);
+  formData.append("path", data.path);
+  if (data.display_name) {
+    formData.append("display_name", data.display_name);
+  }
+
+  const response = await fetch(`${API_BASE}/${projectId}/pages/artifact`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to upload artifact page");
+  }
+
+  return response.json();
+};
+
+/**
+ * Replace an artifact page's build with a new zip
+ */
+export const replaceArtifactBuild = async (
+  projectId: string,
+  pageId: string,
+  file: File,
+): Promise<{ success: boolean; data: WebsitePage }> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${API_BASE}/${projectId}/pages/${pageId}/artifact`,
+    {
+      method: "PUT",
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Failed to replace artifact build");
+  }
+
+  return response.json();
+};
+
+/**
  * Delete a page version
  */
 export const deletePageVersion = async (
@@ -760,11 +841,26 @@ export const updateRecipients = async (
 // FORM SUBMISSIONS
 // =====================================================================
 
+export interface FileValue {
+  url: string;
+  name: string;
+  type: string;
+  s3Key: string;
+}
+
+export interface FormSection {
+  title: string;
+  fields: [string, string | FileValue][];
+}
+
+/** Contents can be flat key-value (legacy) or ordered sections array (new) */
+export type FormContents = Record<string, string | FileValue> | FormSection[];
+
 export interface FormSubmission {
   id: string;
   project_id: string;
   form_name: string;
-  contents: Record<string, string>;
+  contents: FormContents;
   recipients_sent_to: string[];
   submitted_at: string;
   is_read: boolean;

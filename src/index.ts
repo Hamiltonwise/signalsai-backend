@@ -106,6 +106,7 @@ import {
 } from "./middleware/corsCustomDomains";
 
 const app = express();
+app.set("trust proxy", 1);
 const port = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === "production";
 const router = Router();

@@ -1,0 +1,30 @@
+flowchart TD
+    subgraph Frontend
+        A[User logs in] --> B[AuthContext loads userProfile]
+        B --> C[LocationProvider loads locations]
+        C --> D{Multiple locations?}
+        D -->|Yes| E[Show LocationSwitcher]
+        D -->|No| F[Auto-select primary]
+        E --> G[User selects location]
+        F --> G
+        G --> H[All API calls include\norganizationId + locationId]
+    end
+
+    subgraph Backend API
+        H --> I[RBAC Middleware]
+        I --> J{User role?}
+        J -->|Admin| K[Access ALL org locations]
+        J -->|Manager/Viewer| L[Check user_locations table]
+        L --> M{Has access?}
+        M -->|Yes| N[Query data\nWHERE org_id AND location_id]
+        M -->|No| O[403 Forbidden]
+        K --> N
+    end
+
+    subgraph Database
+        N --> P[(agent_results\norg_id + location_id)]
+        N --> Q[(tasks\norg_id + location_id)]
+        N --> R[(pms_jobs\norg_id + location_id)]
+        N --> S[(practice_rankings\norg_id + location_id)]
+        N --> T[(notifications\norg_id + location_id)]
+    end

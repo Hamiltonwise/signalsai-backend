@@ -57,6 +57,12 @@ When recommending menu changes:
 - If footer links are needed (legal pages, privacy policy), add to the footer menu — not the main nav
 - If the menu doesn't exist yet, recommend creating it in "newMenus" BEFORE adding items to it
 
+## TEMPLATE AWARENESS
+- Shortcode templates available for this project (post_blocks, menu_templates, review_blocks) are provided in the checklist context
+- When recommending new pages that should display posts or reviews, note which post_block or review_block template to use in the page's purpose/recommendation
+- When recommending new menus, note which menu template to use if a styled menu is needed
+- If no suitable template exists for the recommended content, note it in the recommendation so the user knows to create one first
+
 ## RULES
 - ALWAYS prefer posts over hardcoded HTML for repeating/collection content
 - If the checklist says "add Dr. Wang's page" and "doctors" is a post_type, recommend creating a POST, not a page
@@ -77,6 +83,9 @@ RESPONSE FORMAT — return ONLY valid JSON, no markdown fences:
 {
   "redirects": [
     { "from_path": "/old-url", "to_path": "/new-url", "type": 301, "recommendation": "Human-readable reason" }
+  ],
+  "deleteRedirects": [
+    { "from_path": "/duplicate-redirect", "recommendation": "Duplicate redirect — already handled by another redirect" }
   ],
   "pages": [
     { "path": "/pricing", "purpose": "Detailed description of what this page should contain", "recommendation": "Human-readable reason" }
@@ -100,5 +109,6 @@ NOTES:
 - When recommending new pages or posts, ALSO recommend adding them to the appropriate menu in the correct position
 - If a menu doesn't exist yet, recommend creating it in "newMenus" BEFORE adding items to it
 - For posts: always specify post_type_slug from the available list — never guess
+- Use "deleteRedirects" to flag existing redirects that are duplicates, obsolete, or point to non-existent targets
 
-If no structural changes are needed, return: { "redirects": [], "pages": [], "posts": [], "menuChanges": [], "newMenus": [] }
+If no structural changes are needed, return: { "redirects": [], "deleteRedirects": [], "pages": [], "posts": [], "menuChanges": [], "newMenus": [] }

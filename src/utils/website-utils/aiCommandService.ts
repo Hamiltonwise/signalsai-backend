@@ -16,6 +16,7 @@ const getExecutionPrompt = () => loadPrompt("websiteAgents/aiCommand/Execution")
 const getSectionPlannerPrompt = () => loadPrompt("websiteAgents/aiCommand/SectionPlanner");
 const getSectionGeneratorPrompt = () => loadPrompt("websiteAgents/aiCommand/SectionGenerator");
 const getVisualAnalysisPrompt = () => loadPrompt("websiteAgents/aiCommand/VisualAnalysis");
+const getPostContentPrompt = () => loadPrompt("websiteAgents/aiCommand/PostContent");
 
 let client: Anthropic | null = null;
 
@@ -175,6 +176,7 @@ export interface NewMenuRecommendation {
 
 export interface StructuralAnalysisResult {
   redirects: Array<{ from_path: string; to_path: string; type?: number; recommendation: string }>;
+  deleteRedirects: Array<{ from_path: string; recommendation: string }>;
   pages: Array<{ path: string; purpose: string; recommendation: string }>;
   posts: Array<{ post_type_slug: string; title: string; slug: string; purpose: string; recommendation: string }>;
   menuChanges: MenuChangeRecommendation[];
@@ -197,8 +199,8 @@ export async function analyzeForStructuralChanges(params: {
   const [redirectsResult, contentResult, menusResult] = await Promise.allSettled([
     analyzeStructuralFocused(prompt, "redirects", {
       context: `## Existing Pages\n${existingPaths.join("\n") || "(none)"}\n\n## Existing Redirects\n${existingRedirects.join("\n") || "(none)"}`,
-      responseFormat: `{ "redirects": [{ "from_path": "/old", "to_path": "/new", "type": 301, "recommendation": "reason" }] }`,
-      instruction: "Identify ONLY URL redirects needed. Check every old URL mentioned in the checklist. Do NOT include pages, posts, or menu changes.",
+      responseFormat: `{ "redirects": [{ "from_path": "/old", "to_path": "/new", "type": 301, "recommendation": "reason" }], "deleteRedirects": [{ "from_path": "/duplicate", "recommendation": "reason to delete" }] }`,
+      instruction: "Identify URL redirects needed AND existing redirects that should be deleted (duplicates, obsolete, pointing to non-existent targets). Check every old URL mentioned in the checklist. Do NOT include pages, posts, or menu changes.",
     }),
     analyzeStructuralFocused(prompt, "content", {
       context: `## Existing Pages\n${existingPaths.join("\n") || "(none)"}\n\n## Existing Posts\n${existingPostSlugs.join("\n") || "(none)"}\n\n## Available Post Types\n${postTypes.join("\n") || "(none)"}`,
@@ -214,6 +216,7 @@ export async function analyzeForStructuralChanges(params: {
 
   const result: StructuralAnalysisResult = {
     redirects: [],
+    deleteRedirects: [],
     pages: [],
     posts: [],
     menuChanges: [],
@@ -224,6 +227,7 @@ export async function analyzeForStructuralChanges(params: {
   if (redirectsResult.status === "fulfilled" && redirectsResult.value) {
     const r = redirectsResult.value;
     if (r.redirects) result.redirects = r.redirects.filter((x: any) => x?.from_path && x?.to_path);
+    if (r.deleteRedirects) result.deleteRedirects = r.deleteRedirects.filter((x: any) => x?.from_path);
   }
 
   // Merge content (pages + posts)
@@ -246,7 +250,7 @@ export async function analyzeForStructuralChanges(params: {
   if (menusResult.status === "rejected") console.error("[AiCommand] Menus analysis failed:", menusResult.reason?.message);
 
   console.log(
-    `[AiCommand] ✓ Structural: ${result.redirects.length} redirects, ${result.pages.length} pages, ${result.posts.length} posts, ${result.menuChanges.length} menu changes, ${result.newMenus.length} new menus`
+    `[AiCommand] ✓ Structural: ${result.redirects.length} redirects, ${result.deleteRedirects.length} delete-redirects, ${result.pages.length} pages, ${result.posts.length} posts, ${result.menuChanges.length} menu changes, ${result.newMenus.length} new menus`
   );
 
   return result;
@@ -398,6 +402,55 @@ ${currentHtml}`;
 
   return {
     editedHtml: html,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Post content generation — rich text only, no page layout
+// ---------------------------------------------------------------------------
+
+export async function generatePostContent(params: {
+  title: string;
+  postTypeName: string;
+  purpose: string;
+  referenceContent: string;
+  styleContext: string;
+  customFieldsHint: string;
+}): Promise<{ html: string; inputTokens: number; outputTokens: number }> {
+  const ai = getClient();
+  const userMessage = [
+    `## Post to Create`,
+    `Title: ${params.title}`,
+    `Type: ${params.postTypeName}`,
+    params.purpose ? `Purpose: ${params.purpose}` : "",
+    params.referenceContent ? `\n## Reference Content (primary data source)\n${params.referenceContent}` : "",
+    params.styleContext ? `\n## Existing Posts of Same Type (match this style)\n${params.styleContext}` : "",
+    params.customFieldsHint || "",
+  ].filter(Boolean).join("\n");
+
+  console.log(`[AiCommand] Generating post content: ${params.title} (${params.postTypeName})`);
+
+  const response = await ai.messages.create({
+    model: MODEL,
+    max_tokens: 4096,
+    system: getPostContentPrompt(),
+    messages: [{ role: "user", content: userMessage }],
+  });
+
+  let html = cleanHtmlOutput(extractText(response));
+
+  if (!html || html.startsWith("{")) {
+    throw new Error(`Failed to generate post content for ${params.title}`);
+  }
+
+  console.log(
+    `[AiCommand] ✓ Post content: ${params.title}. ${html.length} chars. Tokens: ${response.usage.input_tokens}/${response.usage.output_tokens}`
+  );
+
+  return {
+    html,
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
   };

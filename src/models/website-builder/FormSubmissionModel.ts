@@ -1,11 +1,26 @@
 import { BaseModel, PaginatedResult, PaginationParams, QueryContext } from "../BaseModel";
 import { Knex } from "knex";
 
+export interface FileValue {
+  url: string;
+  name: string;
+  type: string;
+  s3Key: string;
+}
+
+export interface FormSection {
+  title: string;
+  fields: [string, string | FileValue][];
+}
+
+/** Contents can be flat key-value (legacy) or ordered sections array (new) */
+export type FormContents = Record<string, string | FileValue> | FormSection[];
+
 export interface IFormSubmission {
   id: string;
   project_id: string;
   form_name: string;
-  contents: Record<string, string>;
+  contents: FormContents;
   recipients_sent_to: string[];
   submitted_at: Date;
   is_read: boolean;
@@ -22,8 +37,14 @@ export class FormSubmissionModel extends BaseModel {
     data: Omit<IFormSubmission, "id" | "submitted_at" | "is_read">,
     trx?: QueryContext,
   ): Promise<IFormSubmission> {
+    // Knex auto-serializes plain objects for JSONB columns but not arrays.
+    // Explicitly stringify contents when it's a sections array.
+    const insertData = { ...data } as Record<string, unknown>;
+    if (Array.isArray(data.contents)) {
+      insertData.contents = JSON.stringify(data.contents);
+    }
     const [result] = await this.table(trx)
-      .insert(data as Record<string, unknown>)
+      .insert(insertData)
       .returning("*");
     return result;
   }

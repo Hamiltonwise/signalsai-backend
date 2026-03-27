@@ -1,0 +1,144 @@
+erDiagram
+    users {
+        int id PK
+        string email
+        string password_hash
+        string first_name
+        string last_name
+        string phone
+    }
+
+    organizations {
+        int id PK
+        string name
+        string domain
+        string subscription_tier
+        boolean onboarding_completed
+        jsonb setup_progress
+    }
+
+    organization_users {
+        int user_id FK
+        int organization_id FK
+        string role
+    }
+
+    locations {
+        int id PK
+        int organization_id FK
+        string name
+        string domain "nullable"
+        boolean is_primary
+    }
+
+    user_locations {
+        int user_id FK
+        int location_id FK
+    }
+
+    google_connections {
+        int id PK
+        int organization_id FK
+        string google_user_id
+        string email
+        string refresh_token
+    }
+
+    google_properties {
+        int id PK
+        int location_id FK
+        int google_connection_id FK
+        string type
+        string external_id
+        string account_id
+        string display_name
+    }
+
+    agent_results {
+        int id PK
+        int organization_id FK
+        int location_id FK
+        string domain "kept for compat"
+        string agent_type
+        jsonb agent_output
+        string status
+    }
+
+    agent_recommendations {
+        int id PK
+        int agent_result_id FK
+        string verdict
+        string status
+    }
+
+    tasks {
+        int id PK
+        int organization_id FK
+        int location_id FK
+        string domain_name "kept for compat"
+        string title
+        string category
+        string status
+    }
+
+    pms_jobs {
+        int id PK
+        int organization_id FK "NEW"
+        int location_id FK "NEW"
+        string domain "kept for compat"
+        string status
+        jsonb response_log
+    }
+
+    practice_rankings {
+        int id PK
+        int organization_id FK
+        int location_id FK "NEW"
+        string domain
+        string gbp_location_id "GBP API string"
+        string status
+        jsonb llm_analysis
+    }
+
+    notifications {
+        int id PK
+        int organization_id FK
+        int location_id FK "NEW"
+        string domain_name "kept for compat"
+        string title
+        string type
+    }
+
+    website_builder_projects {
+        uuid id PK
+        int organization_id FK
+        string status
+        string generated_hostname
+    }
+
+    %% Core relationships
+    users ||--o{ organization_users : "belongs to"
+    organizations ||--o{ organization_users : "has members"
+    organizations ||--o{ locations : "has locations"
+    organizations ||--o{ google_connections : "has connections"
+
+    %% Location relationships
+    locations ||--o{ google_properties : "has GBP properties"
+    google_connections ||--o{ google_properties : "provides OAuth"
+    users ||--o{ user_locations : "has access to"
+    locations ||--o{ user_locations : "accessible by"
+
+    %% Data ownership — ALL through org_id + location_id
+    organizations ||--o{ agent_results : "owns"
+    locations ||--o{ agent_results : "scoped to"
+    organizations ||--o{ tasks : "owns"
+    locations ||--o{ tasks : "scoped to"
+    organizations ||--o{ pms_jobs : "owns"
+    locations ||--o{ pms_jobs : "scoped to"
+    organizations ||--o{ practice_rankings : "owns"
+    locations ||--o{ practice_rankings : "scoped to"
+    organizations ||--o{ notifications : "owns"
+    locations ||--o{ notifications : "scoped to"
+    organizations ||--o{ website_builder_projects : "has website"
+
+    agent_results ||--o{ agent_recommendations : "has recommendations"

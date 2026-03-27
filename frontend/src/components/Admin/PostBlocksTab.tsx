@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import Editor from "@monaco-editor/react";
+import SectionsEditor from "./SectionsEditor";
 import {
   Plus,
   Trash2,
@@ -28,11 +28,7 @@ import type { PostType, PostBlock } from "../../api/posts";
 import type { Section } from "../../api/templates";
 import { ActionButton } from "../ui/DesignSystem";
 import { useConfirm } from "../ui/ConfirmModal";
-import {
-  renderPage,
-  parseSectionsJs,
-  serializeSectionsJs,
-} from "../../utils/templateRenderer";
+import { renderPage } from "../../utils/templateRenderer";
 import { prepareHtmlForPreview } from "../../hooks/useIframeSelector";
 
 const FIELD_TYPES = [
@@ -169,7 +165,7 @@ export default function PostBlocksTab({
 
   // Single template editor
   const [editingSingleTemplateId, setEditingSingleTemplateId] = useState<string | null>(null);
-  const [singleTemplateContent, setSingleTemplateContent] = useState("");
+  const [singleTemplateSections, setSingleTemplateSections] = useState<Section[]>([]);
   const [savingSingleTemplate, setSavingSingleTemplate] = useState(false);
   const [singleDevice, setSingleDevice] = useState<DeviceMode>("desktop");
   const singlePreviewRef = useRef<HTMLIFrameElement>(null);
@@ -181,7 +177,7 @@ export default function PostBlocksTab({
   const [blockName, setBlockName] = useState("");
   const [blockDescription, setBlockDescription] = useState("");
   const [blockPostTypeId, setBlockPostTypeId] = useState("");
-  const [editorContent, setEditorContent] = useState("");
+  const [editorSections, setEditorSections] = useState<Section[]>([]);
   const [saving, setSaving] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -206,33 +202,29 @@ export default function PostBlocksTab({
     loadData();
   }, [loadData]);
 
-  // Update preview when editor content changes
+  // Update preview when editor sections change
   useEffect(() => {
     if (!iframeRef.current || (!editingBlock && !isCreatingBlock)) return;
+    if (editorSections.length === 0) return;
 
-    try {
-      const sections = parseSectionsJs(editorContent);
-      const blockHtml = sections.map((s: Section) => s.content).join("\n");
-      const withPlaceholders = replacePlaceholders(blockHtml);
+    const blockHtml = editorSections.map((s: Section) => s.content).join("\n");
+    const withPlaceholders = replacePlaceholders(blockHtml);
 
-      const fullHtml = renderPage(
-        wrapper || "{{slot}}",
-        header || "",
-        footer || "",
-        [{ name: "post-block-preview", content: withPlaceholders }]
-      );
-      const prepared = prepareHtmlForPreview(fullHtml);
+    const fullHtml = renderPage(
+      wrapper || "{{slot}}",
+      header || "",
+      footer || "",
+      [{ name: "post-block-preview", content: withPlaceholders }]
+    );
+    const prepared = prepareHtmlForPreview(fullHtml);
 
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(prepared);
-        doc.close();
-      }
-    } catch {
-      // Parse error — skip preview update
+    const doc = iframeRef.current.contentDocument;
+    if (doc) {
+      doc.open();
+      doc.write(prepared);
+      doc.close();
     }
-  }, [editorContent, wrapper, header, footer, editingBlock, isCreatingBlock]);
+  }, [editorSections, wrapper, header, footer, editingBlock, isCreatingBlock]);
 
   const handleCreateType = async () => {
     if (!newTypeName.trim()) return;
@@ -334,22 +326,18 @@ export default function PostBlocksTab({
     }
   };
 
-  const DEFAULT_SINGLE_TEMPLATE = `[{ name: "single-post", content: \`<article style="max-width: 800px; margin: 0 auto; padding: 40px 20px;">
+  const DEFAULT_SINGLE_TEMPLATE_SECTIONS: Section[] = [{ name: "single-post", content: `<article style="max-width: 800px; margin: 0 auto; padding: 40px 20px;">
   <h1 style="font-size: 2rem; margin-bottom: 16px;">{{post.title}}</h1>
   <p style="color: #6b7280; font-size: 14px; margin-bottom: 24px;">{{post.published_at}}</p>
   <img src="{{post.featured_image}}" alt="{{post.title}}" style="width: 100%; max-height: 400px; object-fit: cover; border-radius: 12px; margin-bottom: 24px;" />
   <div>{{post.content}}</div>
-</article>\` }]`;
+</article>` }];
 
   const openSingleTemplateEditor = (pt: PostType) => {
     const sections = Array.isArray(pt.single_template) && pt.single_template.length > 0
       ? pt.single_template
-      : [];
-    setSingleTemplateContent(
-      sections.length > 0
-        ? serializeSectionsJs(sections)
-        : DEFAULT_SINGLE_TEMPLATE
-    );
+      : DEFAULT_SINGLE_TEMPLATE_SECTIONS;
+    setSingleTemplateSections(sections);
     setEditingSingleTemplateId(pt.id);
   };
 
@@ -357,8 +345,7 @@ export default function PostBlocksTab({
     if (!editingSingleTemplateId) return;
     setSavingSingleTemplate(true);
     try {
-      const sections = parseSectionsJs(singleTemplateContent);
-      await updatePostType(templateId, editingSingleTemplateId, { single_template: sections });
+      await updatePostType(templateId, editingSingleTemplateId, { single_template: singleTemplateSections });
       setEditingSingleTemplateId(null);
       await loadData();
     } catch (err) {
@@ -371,29 +358,38 @@ export default function PostBlocksTab({
   // Update single template preview
   useEffect(() => {
     if (!singlePreviewRef.current || !editingSingleTemplateId) return;
-    try {
-      const sections = parseSectionsJs(singleTemplateContent);
-      const blockHtml = sections.map((s: Section) => s.content).join("\n");
-      const withPlaceholders = replacePlaceholders(blockHtml);
+    if (singleTemplateSections.length === 0) return;
 
-      const fullHtml = renderPage(
-        wrapper || "{{slot}}",
-        header || "",
-        footer || "",
-        [{ name: "single-post-preview", content: withPlaceholders }]
-      );
-      const prepared = prepareHtmlForPreview(fullHtml);
+    const blockHtml = singleTemplateSections.map((s: Section) => s.content).join("\n");
+    const withPlaceholders = replacePlaceholders(blockHtml);
 
-      const doc = singlePreviewRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(prepared);
-        doc.close();
-      }
-    } catch {
-      // Parse error
+    const fullHtml = renderPage(
+      wrapper || "{{slot}}",
+      header || "",
+      footer || "",
+      [{ name: "single-post-preview", content: withPlaceholders }]
+    );
+    const prepared = prepareHtmlForPreview(fullHtml);
+
+    const doc = singlePreviewRef.current.contentDocument;
+    if (doc) {
+      doc.open();
+      doc.write(prepared);
+      doc.close();
     }
-  }, [singleTemplateContent, wrapper, header, footer, editingSingleTemplateId]);
+  }, [singleTemplateSections, wrapper, header, footer, editingSingleTemplateId]);
+
+  const DEFAULT_BLOCK_SECTIONS: Section[] = [{ name: "block", content: `<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+  {{start_post_loop}}
+  <div style="border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+    <img src="{{post.featured_image}}" alt="{{post.title}}" style="width: 100%; height: 200px; object-fit: cover;" />
+    <div style="padding: 16px;">
+      <h3 style="margin: 0 0 8px; font-size: 18px;">{{post.title}}</h3>
+      <p style="margin: 0; font-size: 14px; color: #6b7280;">{{post.excerpt}}</p>
+    </div>
+  </div>
+  {{end_post_loop}}
+</div>` }];
 
   const openBlockEditor = (block?: PostBlock) => {
     if (block) {
@@ -401,14 +397,14 @@ export default function PostBlocksTab({
       setBlockName(block.name);
       setBlockDescription(block.description || "");
       setBlockPostTypeId(block.post_type_id);
-      setEditorContent(serializeSectionsJs(block.sections));
+      setEditorSections(block.sections);
       setIsCreatingBlock(false);
     } else {
       setEditingBlock(null);
       setBlockName("");
       setBlockDescription("");
       setBlockPostTypeId(postTypes[0]?.id || "");
-      setEditorContent(serializeSectionsJs([{ name: "block", content: "<div style=\"display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;\">\n  {{start_post_loop}}\n  <div style=\"border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;\">\n    <img src=\"{{post.featured_image}}\" alt=\"{{post.title}}\" style=\"width: 100%; height: 200px; object-fit: cover;\" />\n    <div style=\"padding: 16px;\">\n      <h3 style=\"margin: 0 0 8px; font-size: 18px;\">{{post.title}}</h3>\n      <p style=\"margin: 0; font-size: 14px; color: #6b7280;\">{{post.excerpt}}</p>\n    </div>\n  </div>\n  {{end_post_loop}}\n</div>" }]));
+      setEditorSections(DEFAULT_BLOCK_SECTIONS);
       setIsCreatingBlock(true);
     }
   };
@@ -422,7 +418,7 @@ export default function PostBlocksTab({
     if (!blockName.trim() || !blockPostTypeId) return;
     setSaving(true);
     try {
-      const sections = parseSectionsJs(editorContent);
+      const sections = editorSections;
       if (editingBlock) {
         await updatePostBlock(templateId, editingBlock.id, {
           name: blockName,
@@ -492,23 +488,11 @@ export default function PostBlocksTab({
         </div>
 
         <div className="grid grid-cols-2 gap-4" style={{ height: "500px" }}>
-          <div className="rounded-xl border border-gray-200 bg-gray-900 overflow-hidden">
-            <Editor
-              height="100%"
-              defaultLanguage="javascript"
-              value={singleTemplateContent}
-              onChange={(val) => setSingleTemplateContent(val || "")}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 13,
-                lineNumbers: "on",
-                wordWrap: "on",
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                tabSize: 2,
-                padding: { top: 12 },
-              }}
+          <div className="rounded-xl border border-gray-200 overflow-hidden">
+            <SectionsEditor
+              sections={singleTemplateSections}
+              onChange={setSingleTemplateSections}
+              onSave={handleSaveSingleTemplate}
             />
           </div>
           <div className="rounded-xl border border-gray-200 bg-white overflow-hidden flex flex-col">
@@ -608,23 +592,11 @@ export default function PostBlocksTab({
 
         {/* Editor + Preview */}
         <div className="grid grid-cols-2 gap-4" style={{ height: "500px" }}>
-          <div className="rounded-xl border border-gray-200 bg-gray-900 overflow-hidden">
-            <Editor
-              height="100%"
-              defaultLanguage="javascript"
-              value={editorContent}
-              onChange={(val) => setEditorContent(val || "")}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 13,
-                lineNumbers: "on",
-                wordWrap: "on",
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                tabSize: 2,
-                padding: { top: 12 },
-              }}
+          <div className="rounded-xl border border-gray-200 overflow-hidden">
+            <SectionsEditor
+              sections={editorSections}
+              onChange={setEditorSections}
+              onSave={handleSaveBlock}
             />
           </div>
           <div className="rounded-xl border border-gray-200 bg-white overflow-hidden flex flex-col">
