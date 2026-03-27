@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import {
-  LineChart, Line, XAxis, Tooltip, ResponsiveContainer, Area, ReferenceLine,
+  LineChart, Line, XAxis, Tooltip, ResponsiveContainer, Area,
 } from "recharts";
 import type { PmVelocityData } from "../../types/pm";
 import { fetchVelocity } from "../../api/pm";

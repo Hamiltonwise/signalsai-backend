@@ -34,7 +34,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
     if (task) {
       setTitle(task.title);
       setDescription(task.description || "");
-      setPriority(task.priority);
+      setPriority(task.priority ?? "P3");
       setDeadline(task.deadline ? task.deadline.slice(0, 10) : "");
       setShowDeleteConfirm(false);
     }

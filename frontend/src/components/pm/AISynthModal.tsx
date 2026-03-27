@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, Upload, FileText, ArrowLeft, Check, XIcon, Loader2, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { PmAiSynthBatch, PmAiSynthBatchTask, PmColumn } from "../../types/pm";
+import type { PmAiSynthBatch, PmAiSynthBatchTask } from "../../types/pm";
 import { extractBatch, fetchBatches, fetchBatch, approveBatchTask, rejectBatchTask, deleteBatch } from "../../api/pm";
 import { PriorityTriangle } from "./PriorityTriangle";
 import { RichTextPreview } from "./RichTextEditor";
@@ -21,10 +21,9 @@ interface AISynthModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
-  columns: PmColumn[];
 }
 
-export function AISynthModal({ isOpen, onClose, projectId, columns }: AISynthModalProps) {
+export function AISynthModal({ isOpen, onClose, projectId }: AISynthModalProps) {
   const [view, setView] = useState<View>("grid");
   const [batches, setBatches] = useState<PmAiSynthBatch[]>([]);
   const [activeBatch, setActiveBatch] = useState<PmAiSynthBatch | null>(null);
@@ -156,7 +155,7 @@ export function AISynthModal({ isOpen, onClose, projectId, columns }: AISynthMod
                           whileHover={{ y: -1 }}
                           className="group relative text-left rounded-xl p-4 transition-shadow duration-150 cursor-pointer"
                           style={{ backgroundColor: "var(--color-pm-bg-primary)", boxShadow: "var(--pm-shadow-card)", border: "1px solid var(--color-pm-border-subtle)" }}
-                          onClick={() => b.status !== "synthesizing" && b.status !== "failed" && openBatch(b.id)}
+                          onClick={() => b.status !== "synthesizing" && openBatch(b.id)}
                         >
                           {/* Delete button */}
                           <button
@@ -197,7 +196,7 @@ export function AISynthModal({ isOpen, onClose, projectId, columns }: AISynthMod
                                 {pending > 0 && <><span style={{ color: "var(--color-pm-text-muted)" }}>·</span><span>{pending} pending</span></>}
                               </>
                             )}
-                            {b.total_proposed === 0 && b.status === "failed" && <span className="text-[#C43333]">Extraction failed</span>}
+                            {b.total_proposed === 0 && b.status === "completed" && b.total_approved === 0 && b.total_rejected === 0 && <span className="text-[#C43333]">Extraction failed</span>}
                             {b.total_proposed === 0 && b.status === "completed" && <span>No tasks extracted</span>}
                           </div>
                           <p className="text-[10px] mt-1" style={{ color: "var(--color-pm-text-muted)" }}>{formatDistanceToNow(new Date(b.created_at), { addSuffix: true })}</p>
@@ -275,7 +274,7 @@ export function AISynthModal({ isOpen, onClose, projectId, columns }: AISynthMod
   );
 }
 
-function BatchTaskCard({ task, batchId, onApprove, onReject }: { task: PmAiSynthBatchTask; batchId: string; onApprove: (id: string) => void; onReject: (id: string) => void }) {
+function BatchTaskCard({ task, onApprove, onReject }: { task: PmAiSynthBatchTask; batchId: string; onApprove: (id: string) => void; onReject: (id: string) => void }) {
   const [loading, setLoading] = useState<"approve" | "reject" | null>(null);
 
   const handleApprove = async () => { setLoading("approve"); await onApprove(task.id); setLoading(null); };
