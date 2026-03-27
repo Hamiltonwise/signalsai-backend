@@ -109,7 +109,7 @@ export function AdminLogin() {
             whileHover={{ scale: 1.05 }}
           />
           <h1 className="text-2xl font-bold text-gray-900">
-            <span className="text-alloro-orange">Alloro</span> Admin
+            <span className="text-alloro-orange">Alloro</span> Admin Hub
           </h1>
           <p className="mt-1 text-sm text-gray-500">
             Sign in to access the control panel
