@@ -16,7 +16,8 @@ import { processReviewSync } from "./processors/reviewSync.processor";
 import { processSchedulerTick } from "./processors/scheduler.processor";
 import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
-import { getMindsQueue } from "./queues";
+import { processPmDailyBrief } from "./processors/pmDailyBrief.processor";
+import { getMindsQueue, getPmQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
 const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
@@ -219,8 +220,21 @@ const wbRestoreWorker = new Worker(
   }
 );
 
+// PM Daily Brief worker
+const pmDailyBriefWorker = new Worker(
+  "pm-daily-brief",
+  async (job) => {
+    await processPmDailyBrief(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{pm}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -247,6 +261,7 @@ async function shutdown(): Promise<void> {
   await schedulerWorker.close();
   await wbBackupWorker.close();
   await wbRestoreWorker.close();
+  await pmDailyBriefWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -319,10 +334,32 @@ async function setupSchedulerTick(): Promise<void> {
   }
 }
 
+// Set up PM daily brief schedule (22:00 UTC = 6:00 AM PHT)
+async function setupPmDailyBriefSchedule(): Promise<void> {
+  try {
+    const queue = getPmQueue("daily-brief");
+    await queue.add(
+      "pm-daily-brief",
+      {},
+      {
+        repeat: {
+          pattern: "0 22 * * *", // 22:00 UTC = 6 AM PHT
+          tz: "UTC",
+        },
+        jobId: "pm-daily-brief",
+      }
+    );
+    console.log("[MINDS-WORKER] PM daily brief job scheduled (22:00 UTC / 6 AM PHT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up PM daily brief schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
 setupReviewSyncSchedule();
 setupSchedulerTick();
+setupPmDailyBriefSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");

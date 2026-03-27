@@ -1,14 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { ChevronDown, LogOut, User, RefreshCw } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { ChevronDown, LogOut, User, RefreshCw, Layers, FolderKanban } from "lucide-react";
 import { queryClient } from "../../lib/queryClient";
 import { toast } from "react-hot-toast";
+
+export function useIsPmRoute() {
+  const location = useLocation();
+  return location.pathname.startsWith("/admin/pm");
+}
 
 export function AdminTopBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const isPm = useIsPmRoute();
 
   const toggleMenu = () => setIsMenuOpen((value) => !value);
 
@@ -142,6 +148,48 @@ export function AdminTopBar() {
           </div>
         </div>
       </nav>
+
+      {/* Tab Bar: Process / Projects */}
+      <div className="bg-[#1a2535] border-b border-gray-700/50 sticky top-16 z-40">
+        <div className="px-4 sm:px-6 lg:px-8 flex gap-0">
+          <Link
+            to="/admin/action-items"
+            className={`relative flex items-center gap-2 px-5 py-2.5 text-[13px] transition-colors duration-150 ${
+              !isPm ? "text-[#D66853]" : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            <Layers className="h-4 w-4" strokeWidth={1.5} />
+            <span className={!isPm ? "font-semibold" : "font-medium"}>
+              Process
+            </span>
+            {!isPm && (
+              <motion.div
+                layoutId="tab-underline"
+                className="absolute bottom-0 left-2 right-2 h-[2px] bg-[#D66853] rounded-full"
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              />
+            )}
+          </Link>
+          <Link
+            to="/admin/pm"
+            className={`relative flex items-center gap-2 px-5 py-2.5 text-[13px] transition-colors duration-150 ${
+              isPm ? "text-[#D66853]" : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            <FolderKanban className="h-4 w-4" strokeWidth={1.5} />
+            <span className={isPm ? "font-semibold" : "font-medium"}>
+              Projects
+            </span>
+            {isPm && (
+              <motion.div
+                layoutId="tab-underline"
+                className="absolute bottom-0 left-2 right-2 h-[2px] bg-[#D66853] rounded-full"
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              />
+            )}
+          </Link>
+        </div>
+      </div>
 
       {/* Logout Confirmation Modal */}
       <AnimatePresence>

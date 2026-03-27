@@ -39,6 +39,7 @@ const EXEMPT_PREFIXES = [
   "/api/places",
   "/api/audit",
   "/api/minds",
+  "/api/pm",
 ];
 
 export const billingGateMiddleware = async (
