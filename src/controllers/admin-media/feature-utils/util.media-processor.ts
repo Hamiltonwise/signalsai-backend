@@ -10,8 +10,6 @@
  * Videos are uploaded as-is and display with static icon in UI
  */
 
-import sharp from "sharp";
-
 export interface ProcessedMedia {
   buffer: Buffer;
   mimeType: string;
@@ -33,6 +31,16 @@ export async function processImage(
   originalBuffer: Buffer,
   originalMimeType: string
 ): Promise<ProcessedMedia> {
+  let sharp: typeof import("sharp")["default"];
+  try {
+    sharp = (await import("sharp")).default;
+  } catch {
+    throw new Error(
+      "Image processing unavailable: sharp module failed to load. " +
+      "Run: npm install --os=linux --cpu=x64 sharp"
+    );
+  }
+
   try {
     const image = sharp(originalBuffer);
     const metadata = await image.metadata();
