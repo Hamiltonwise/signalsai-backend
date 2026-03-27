@@ -228,6 +228,33 @@ h1, h2, h3, h4, h5, h6, .font-heading {
    --color-alloro-success: #22c55e;
    --color-alloro-danger: #ef4444;
    --color-alloro-textDark: #11151C;
+
+   /* PM Module — Dark Mode (primary, warm charcoal) */
+   --color-pm-bg-primary: #171615;
+   --color-pm-bg-secondary: #1E1D1B;
+   --color-pm-bg-tertiary: #252422;
+   --color-pm-bg-hover: #2A2826;
+   --color-pm-border: #2E2C29;
+   --color-pm-border-hover: #3A3835;
+   --color-pm-border-subtle: #252320;
+   --color-pm-text-primary: #F0ECE8;
+   --color-pm-text-secondary: #9A938A;
+   --color-pm-text-muted: #5E5850;
+   --color-pm-accent: #D66853;
+   --color-pm-accent-hover: #E07A66;
+   --color-pm-accent-subtle: rgba(214, 104, 83, 0.08);
+   --color-pm-accent-subtle2: rgba(214, 104, 83, 0.14);
+   --color-pm-priority-p1: #C43333;
+   --color-pm-priority-p2: #D4920A;
+   --color-pm-priority-p3: #3D8B40;
+   --color-pm-success: #3D8B40;
+   --color-pm-warning: #D4920A;
+   --color-pm-danger: #C43333;
+   /* PM shadows (dark) */
+   --pm-shadow-card: 0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.15);
+   --pm-shadow-card-hover: 0 2px 8px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.15);
+   --pm-shadow-elevated: 0 4px 16px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
+   --pm-shadow-fab: 0 4px 12px rgba(214,104,83,0.35), 0 2px 4px rgba(0,0,0,0.2);
    
    /* Font families */
    --font-sans: 'Plus Jakarta Sans', sans-serif;
@@ -335,6 +362,26 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+/* PM Module — Light Mode overrides (when .pm-light is on a parent) */
+.pm-light {
+  --color-pm-bg-primary: #F7F5F3;
+  --color-pm-bg-secondary: #FFFFFF;
+  --color-pm-bg-tertiary: #FBF9F7;
+  --color-pm-bg-hover: #F3F0ED;
+  --color-pm-border: #E8E4DF;
+  --color-pm-border-hover: #D8D3CC;
+  --color-pm-border-subtle: #F0ECE8;
+  --color-pm-text-primary: #1A1715;
+  --color-pm-text-secondary: #7A746D;
+  --color-pm-text-muted: #B0A99F;
+  --color-pm-accent-subtle: rgba(214, 104, 83, 0.06);
+  --color-pm-accent-subtle2: rgba(214, 104, 83, 0.10);
+  --pm-shadow-card: 0 1px 2px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.05);
+  --pm-shadow-card-hover: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --pm-shadow-elevated: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --pm-shadow-fab: 0 4px 12px rgba(214,104,83,0.3), 0 1px 3px rgba(0,0,0,0.1);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -342,6 +389,27 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* PM dark-themed native inputs */
+input[type="date"] {
+  color-scheme: dark;
+}
+select {
+  color-scheme: dark;
+}
+
+/* PM shimmer for loading skeletons */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* PM Focus Mode ambient gradient */
+@keyframes focusGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 /* Dark blue themed scrollbar for sidebar */

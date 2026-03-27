@@ -1,0 +1,2 @@
+-- N/A: Alloro uses PostgreSQL exclusively (RDS).
+-- This file exists per plan convention. No MSSQL migration needed.

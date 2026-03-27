@@ -56,6 +56,7 @@ import mindsPublicApiRoutes from "./routes/mindsPublicApi";
 import skillsPublicApiRoutes from "./routes/skillsPublicApi";
 import internalApiRoutes from "./routes/internalApi";
 import billingRoutes from "./routes/billing";
+import pmRoutes from "./routes/pm";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -184,6 +185,7 @@ app.use("/api/minds", mindsPublicApiRoutes); // Public skill/portal API
 app.use("/api/skills", skillsPublicApiRoutes); // Public skill portal API
 app.use("/api/internal", internalApiRoutes); // Internal API for n8n workers
 app.use("/api/billing", billingRoutes); // Stripe billing & subscription management
+app.use("/api/pm", pmRoutes); // Alloro Projects — internal project management module
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);

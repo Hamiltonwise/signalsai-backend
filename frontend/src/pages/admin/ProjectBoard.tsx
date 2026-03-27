@@ -1,0 +1,441 @@
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ArrowLeft,
+  EyeOff,
+  Eye,
+  MoreHorizontal,
+  Archive,
+  Trash2,
+  Sparkles,
+  Maximize,
+  Plus,
+  Clock,
+} from "lucide-react";
+import type { PmTask } from "../../types/pm";
+import { usePmStore } from "../../stores/pmStore";
+import { KanbanBoard } from "../../components/pm/KanbanBoard";
+import { TaskDetailPanel } from "../../components/pm/TaskDetailPanel";
+import { AISynthModal } from "../../components/pm/AISynthModal";
+import { CreateTaskModal } from "../../components/pm/CreateTaskModal";
+import { ActivityTimeline } from "../../components/pm/ActivityTimeline";
+import { FocusMode } from "../../components/pm/FocusMode";
+import { CommandPalette } from "../../components/pm/CommandPalette";
+import { formatDeadline } from "../../utils/pmDateFormat";
+
+export default function ProjectBoard() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+  const { activeProject, fetchProject, isLoading, deleteProject, archiveProject } =
+    usePmStore();
+  const [selectedTask, setSelectedTask] = useState<PmTask | null>(null);
+  const [showBacklog, setShowBacklog] = useState(true);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showAiSynth, setShowAiSynth] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
+
+  useEffect(() => {
+    if (projectId) fetchProject(projectId);
+  }, [projectId, fetchProject]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowCommandPalette((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleDelete = useCallback(async () => {
+    if (activeProject) {
+      await deleteProject(activeProject.id);
+      navigate("/admin/pm");
+    }
+  }, [activeProject, deleteProject, navigate]);
+
+  const handleArchive = useCallback(async () => {
+    if (activeProject) {
+      await archiveProject(activeProject.id);
+      navigate("/admin/pm");
+    }
+  }, [activeProject, archiveProject, navigate]);
+
+  const handleDeleteTask = useCallback(async (taskId: string) => {
+    try {
+      await usePmStore.getState().deleteTask(taskId);
+    } catch {
+      console.error("[PM] Failed to delete task");
+    }
+  }, []);
+
+  if (isLoading && !activeProject) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ backgroundColor: "var(--color-pm-bg-primary)" }}
+      >
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#D66853] border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!activeProject) {
+    return (
+      <div
+        className="flex min-h-screen flex-col items-center justify-center text-center"
+        style={{ backgroundColor: "var(--color-pm-bg-primary)" }}
+      >
+        <p style={{ color: "var(--color-pm-text-muted)" }}>Project not found</p>
+      </div>
+    );
+  }
+
+  const deadline = formatDeadline(activeProject.deadline);
+  const totalTasks = activeProject.columns.reduce((acc, c) => acc + c.tasks.length, 0);
+  const doneTasks = activeProject.columns
+    .filter((c) => c.name === "Done")
+    .reduce((acc, c) => acc + c.tasks.length, 0);
+
+  return (
+    <div
+      className="flex flex-col min-h-screen"
+      style={{ backgroundColor: "var(--color-pm-bg-primary)" }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid var(--color-pm-border-subtle)" }}
+      >
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/admin/pm")}
+            className="rounded-lg p-2 transition-colors duration-150"
+            style={{ color: "var(--color-pm-text-muted)" }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-pm-bg-hover)";
+              (e.currentTarget as HTMLElement).style.color = "var(--color-pm-text-primary)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+              (e.currentTarget as HTMLElement).style.color = "var(--color-pm-text-muted)";
+            }}
+          >
+            <ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
+          </button>
+
+          <div>
+            <h1
+              className="text-[18px] font-semibold"
+              style={{ color: "var(--color-pm-text-primary)", letterSpacing: "-0.01em" }}
+            >
+              {activeProject.name}
+            </h1>
+            <div className="flex items-center gap-3 mt-0.5">
+              {deadline && (
+                <span className={`text-[12px] font-medium ${deadline.colorClass}`}>
+                  Due {deadline.text}
+                </span>
+              )}
+              {totalTasks > 0 && (
+                <span
+                  className="text-[12px]"
+                  style={{ color: "var(--color-pm-text-muted)" }}
+                >
+                  {doneTasks}/{totalTasks} tasks done
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {/* AI Synth */}
+          <button
+            onClick={() => setShowAiSynth(true)}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-150"
+            style={{
+              backgroundColor: "var(--color-pm-accent-subtle2)",
+              color: "#D66853",
+            }}
+          >
+            <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+            AI Synth
+          </button>
+
+          {/* Focus Mode */}
+          <button
+            onClick={() => setFocusMode(true)}
+            className="hidden md:flex rounded-lg p-2 transition-colors duration-150"
+            style={{ color: "var(--color-pm-text-muted)" }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-pm-bg-hover)";
+              (e.currentTarget as HTMLElement).style.color = "var(--color-pm-text-primary)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+              (e.currentTarget as HTMLElement).style.color = "var(--color-pm-text-muted)";
+            }}
+            title="Focus Mode"
+          >
+            <Maximize className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+
+          {/* Activity popover */}
+          <div className="relative">
+            <button
+              onClick={() => setShowActivity(!showActivity)}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] transition-colors duration-150"
+              style={{ color: showActivity ? "#D66853" : "var(--color-pm-text-muted)" }}
+            >
+              <Clock className="h-4 w-4" strokeWidth={1.5} />
+              Activity
+            </button>
+            <AnimatePresence>
+              {showActivity && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-30"
+                    onClick={() => setShowActivity(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 z-40 w-[380px] max-h-[480px] overflow-y-auto rounded-xl"
+                    style={{
+                      backgroundColor: "var(--color-pm-bg-secondary)",
+                      border: "1px solid var(--color-pm-border)",
+                      boxShadow: "var(--pm-shadow-elevated)",
+                    }}
+                  >
+                    <ActivityTimeline projectId={activeProject.id} />
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Backlog toggle */}
+          <button
+            onClick={() => setShowBacklog(!showBacklog)}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] transition-colors duration-150"
+            style={{ color: "var(--color-pm-text-muted)" }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-pm-bg-hover)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+            }}
+          >
+            {showBacklog ? (
+              <EyeOff className="h-4 w-4" strokeWidth={1.5} />
+            ) : (
+              <Eye className="h-4 w-4" strokeWidth={1.5} />
+            )}
+            Backlog
+          </button>
+
+          {/* More menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="rounded-lg p-2 transition-colors duration-150"
+              style={{ color: "var(--color-pm-text-muted)" }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-pm-bg-hover)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+              }}
+            >
+              <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+            <AnimatePresence>
+              {showMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.96 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute right-0 top-full mt-1 z-30 w-44 rounded-xl overflow-hidden"
+                  style={{
+                    backgroundColor: "var(--color-pm-bg-tertiary)",
+                    border: "1px solid var(--color-pm-border)",
+                    boxShadow: "var(--pm-shadow-elevated)",
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      handleArchive();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] transition-colors duration-150"
+                    style={{ color: "var(--color-pm-text-secondary)" }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-pm-bg-hover)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+                    }}
+                  >
+                    <Archive className="h-4 w-4" strokeWidth={1.5} />
+                    Archive
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowDeleteConfirm(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] text-[#C43333] transition-colors duration-150"
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(196,51,51,0.08)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                    Delete
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+
+      {/* Kanban Board */}
+      <div className="flex-1 overflow-hidden px-5 pt-5">
+        <KanbanBoard
+          project={activeProject}
+          onTaskClick={setSelectedTask}
+          onDeleteTask={handleDeleteTask}
+          showBacklog={showBacklog}
+        />
+      </div>
+
+      {/* Task Detail Panel */}
+      <TaskDetailPanel
+        task={selectedTask}
+        onClose={() => setSelectedTask(null)}
+      />
+
+      {/* AI Synth Modal */}
+      <AISynthModal
+        isOpen={showAiSynth}
+        onClose={() => setShowAiSynth(false)}
+        projectId={activeProject.id}
+        columns={activeProject.columns}
+      />
+
+      {/* Focus Mode */}
+      <FocusMode
+        isActive={focusMode}
+        onExit={() => setFocusMode(false)}
+        project={activeProject}
+        onTaskClick={setSelectedTask}
+      />
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        onToggleFocusMode={() => setFocusMode((v) => !v)}
+      />
+
+      {/* FAB — New Task */}
+      <div className="fixed bottom-6 right-6 z-30">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowCreateTask(true)}
+          className="flex h-14 w-14 items-center justify-center rounded-full text-white"
+          style={{ backgroundColor: "#D66853", boxShadow: "var(--pm-shadow-fab)" }}
+        >
+          <Plus className="h-6 w-6" strokeWidth={2} />
+        </motion.button>
+      </div>
+
+      <CreateTaskModal isOpen={showCreateTask} onClose={() => setShowCreateTask(false)} preselectedProjectId={activeProject.id} />
+
+      {/* Delete Confirmation */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDeleteConfirm(false)}
+              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl p-6"
+              style={{
+                backgroundColor: "var(--color-pm-bg-secondary)",
+                boxShadow: "0 16px 48px rgba(0,0,0,0.3)",
+                border: "1px solid var(--color-pm-border)",
+              }}
+            >
+              <div
+                className="flex h-12 w-12 items-center justify-center rounded-xl mb-4 mx-auto"
+                style={{ backgroundColor: "rgba(196,51,51,0.1)" }}
+              >
+                <Trash2 className="h-6 w-6 text-[#C43333]" strokeWidth={1.5} />
+              </div>
+              <h3
+                className="text-[16px] font-semibold text-center mb-1"
+                style={{ color: "var(--color-pm-text-primary)" }}
+              >
+                Delete {activeProject.name}?
+              </h3>
+              <p
+                className="text-[13px] text-center mb-5"
+                style={{ color: "var(--color-pm-text-secondary)" }}
+              >
+                This will permanently delete all tasks and activity.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 rounded-lg py-2.5 text-[13px] font-semibold transition-colors duration-150"
+                  style={{
+                    border: "1px solid var(--color-pm-border)",
+                    color: "var(--color-pm-text-secondary)",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    handleDelete();
+                  }}
+                  className="flex-1 rounded-lg py-2.5 text-[13px] font-semibold text-white transition-colors duration-150"
+                  style={{ backgroundColor: "#C43333" }}
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
