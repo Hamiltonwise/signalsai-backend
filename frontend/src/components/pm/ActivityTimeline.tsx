@@ -32,7 +32,7 @@ const ACTION_DOT_COLORS: Record<string, string> = {
 };
 
 const containerVariants = { hidden: {}, show: { transition: { staggerChildren: 0.04 } } };
-const itemVariants = { hidden: { opacity: 0, x: -6 }, show: { opacity: 1, x: 0, transition: { duration: 0.25, ease: "easeOut" } } };
+const itemVariants = { hidden: { opacity: 0, x: -6 }, show: { opacity: 1, x: 0, transition: { duration: 0.25, ease: "easeOut" as const } } };
 
 interface ActivityTimelineProps {
   projectId?: string;

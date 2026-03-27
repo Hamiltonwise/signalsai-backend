@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 
-const MDEditor = lazy(() => import("@uiw/react-md-editor"));
+const MDEditor = lazy(() => import("@uiw/react-md-editor").then(mod => ({ default: mod.default.Markdown })));
 
 interface MarkdownPreviewProps {
   source: string | null;
@@ -13,7 +13,7 @@ export function MarkdownPreview({ source, className = "" }: MarkdownPreviewProps
   return (
     <Suspense fallback={<p className="text-[13px]" style={{ color: "var(--color-pm-text-secondary)" }}>{source}</p>}>
       <div data-color-mode="dark" className={`pm-md-preview ${className}`}>
-        <MDEditor.Markdown source={source} />
+        <MDEditor source={source} />
       </div>
       <style>{`
         .pm-md-preview .wmde-markdown {

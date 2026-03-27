@@ -337,7 +337,6 @@ export default function ProjectBoard() {
         isOpen={showAiSynth}
         onClose={() => setShowAiSynth(false)}
         projectId={activeProject.id}
-        columns={activeProject.columns}
       />
 
       {/* Focus Mode */}

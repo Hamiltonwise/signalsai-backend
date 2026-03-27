@@ -118,7 +118,7 @@ export function CommandPalette({
           id: `task-${task.id}`,
           type: "task",
           title: task.title,
-          subtitle: task.priority,
+          subtitle: task.priority ?? undefined,
           icon: ClipboardList,
           action: () => {
             onClose();
