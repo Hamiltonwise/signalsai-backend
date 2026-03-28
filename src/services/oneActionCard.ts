@@ -198,6 +198,26 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
     };
   }
 
+  // For new accounts from checkup: use checkup data for a personalized first impression
+  const org = await db("organizations").where({ id: orgId }).first();
+  const checkup = org?.checkup_data
+    ? (typeof org.checkup_data === "string" ? tryParseJSON(org.checkup_data) : org.checkup_data)
+    : null;
+
+  if (checkup?.market?.rank && checkup?.topCompetitor?.name) {
+    const gap = (checkup.topCompetitor.reviewCount || 0) - (checkup.reviewCount || 0);
+    const city = checkup.market.city || "your market";
+    return {
+      headline: `You're #${checkup.market.rank} in ${city}. ${checkup.topCompetitor.name} is #1.`,
+      body: gap > 0
+        ? `They have ${gap} more reviews. Every review you collect this week closes that gap. Ask 3 customers before Friday.`
+        : `Your review count is competitive. Hold your position by asking 2 customers this week.`,
+      action_text: "Request a review",
+      action_url: "/dashboard/reviews",
+      priority_level: 5,
+    };
+  }
+
   return {
     headline: "Alloro is watching your market.",
     body: "Your first ranking intelligence report arrives after the next Sunday scan. Check back Monday.",
@@ -205,6 +225,10 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
     action_url: null,
     priority_level: 5,
   };
+}
+
+function tryParseJSON(str: string): any {
+  try { return JSON.parse(str); } catch { return null; }
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
