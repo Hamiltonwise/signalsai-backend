@@ -98,6 +98,7 @@ export async function uploadPmsData(req: Request, res: Response) {
         recordsStored: result.recordsStored,
         entryType: result.entryType,
         jobId: result.jobId,
+        instantFinding: result.instantFinding,
       },
       message: `Successfully processed file ${result.originalName} with ${result.recordsProcessed} records`,
     });

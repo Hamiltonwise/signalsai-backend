@@ -148,6 +148,50 @@ export async function processManualEntry(
 }
 
 /**
+ * Extract an instant finding from raw PMS data for immediate display.
+ * Runs in-memory on already-parsed JSON, no I/O.
+ */
+function extractInstantFinding(jsonData: any[]): {
+  totalRecords: number;
+  topSource?: string;
+  topSourceCount?: number;
+} {
+  const totalRecords = jsonData.length;
+  if (totalRecords === 0) return { totalRecords };
+
+  const headers = Object.keys(jsonData[0] || {});
+  const sourceColumn = headers.find((h) => {
+    const lower = h.toLowerCase();
+    return (
+      lower.includes("refer") ||
+      lower.includes("source") ||
+      lower.includes("doctor") ||
+      lower.includes("provider")
+    );
+  });
+
+  if (!sourceColumn) return { totalRecords };
+
+  const counts: Record<string, number> = {};
+  for (const row of jsonData) {
+    const val = String(row[sourceColumn] || "").trim();
+    if (val && val.toLowerCase() !== "self" && val.toLowerCase() !== "self referral") {
+      counts[val] = (counts[val] || 0) + 1;
+    }
+  }
+
+  const entries = Object.entries(counts);
+  if (entries.length === 0) return { totalRecords };
+
+  entries.sort((a, b) => b[1] - a[1]);
+  return {
+    totalRecords,
+    topSource: entries[0][0],
+    topSourceCount: entries[0][1],
+  };
+}
+
+/**
  * Process a file upload (CSV, XLS, XLSX, TXT).
  * Converts to JSON, creates job, sends to n8n parser webhook.
  * @param authOrganizationId - Organization ID from JWT/RBAC (authoritative). Falls back to domain lookup if null.
@@ -236,11 +280,14 @@ export async function processFileUpload(
 
   console.log(response);
 
+  const instantFinding = extractInstantFinding(jsonData);
+
   return {
     recordsProcessed,
     recordsStored: recordsProcessed,
     entryType: "csv" as const,
     jobId,
     originalName: file.originalname,
+    instantFinding,
   };
 }

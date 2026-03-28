@@ -49,6 +49,11 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
   const [message, setMessage] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [instantFinding, setInstantFinding] = useState<{
+    totalRecords: number;
+    topSource?: string;
+    topSourceCount?: number;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processingStorageKey = useMemo(
@@ -116,6 +121,9 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
 
       if (result.success) {
         setUploadStatus("success");
+        if (result.data?.instantFinding) {
+          setInstantFinding(result.data.instantFinding);
+        }
         setMessage(
           "We're processing your PMS data now. We'll notify you once it's ready."
         );
@@ -165,6 +173,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
     setMessage("");
     setIsDragOver(false);
     setShowManualEntry(false);
+    setInstantFinding(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -305,7 +314,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", damping: 15, stiffness: 300 }}
-          className="text-center py-10"
+          className="text-center py-8"
         >
           <motion.div
             initial={{ scale: 0 }}
@@ -315,10 +324,47 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
           >
             <CheckCircle className="w-10 h-10 text-emerald-600" />
           </motion.div>
-          <h4 className="text-xl font-bold text-slate-900 mb-2">
-            Upload Successful!
-          </h4>
-          <p className="text-slate-600">{message}</p>
+          {instantFinding ? (
+            <>
+              <motion.h4
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-xl font-bold text-slate-900 mb-2"
+              >
+                We found {instantFinding.totalRecords.toLocaleString()} referral records.
+              </motion.h4>
+              {instantFinding.topSource && (
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="text-base text-slate-700 mb-3"
+                >
+                  Your top source: <span className="font-bold text-[#D56753]">{instantFinding.topSource}</span>
+                  {instantFinding.topSourceCount && (
+                    <>, {instantFinding.topSourceCount} case{instantFinding.topSourceCount !== 1 ? "s" : ""}</>
+                  )}
+                  .
+                </motion.p>
+              )}
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="text-sm text-slate-500"
+              >
+                Full analysis is running now. We'll notify you when it's ready.
+              </motion.p>
+            </>
+          ) : (
+            <>
+              <h4 className="text-xl font-bold text-slate-900 mb-2">
+                Upload Successful!
+              </h4>
+              <p className="text-slate-600">{message}</p>
+            </>
+          )}
         </motion.div>
       )}
 
