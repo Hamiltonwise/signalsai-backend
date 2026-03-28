@@ -10,6 +10,7 @@
 import express from "express";
 import { authenticateToken } from "../middleware/auth";
 import { aggregatePmsData } from "../utils/pms/pmsAggregator";
+import { db } from "../database/connection";
 
 const referralIntelligenceRoutes = express.Router();
 

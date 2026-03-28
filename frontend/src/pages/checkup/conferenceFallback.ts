@@ -13,13 +13,13 @@ import type { PlaceDetails } from "../../api/places";
 
 export const CONFERENCE_PLACE: PlaceDetails = {
   placeId: "conference-demo-slc",
-  name: "Valley Specialty Practice",
+  name: "Valley Specialty Group",
   formattedAddress: "123 S State St, Salt Lake City, UT 84111",
   city: "Salt Lake City",
   state: "UT",
-  displayString: "Valley Specialty Practice, Salt Lake City, UT",
-  practiceSearchString: "Valley Specialty Practice, Salt Lake City, UT",
-  domain: "valleyspecialtypractice.com",
+  displayString: "Valley Specialty Group, Salt Lake City, UT",
+  practiceSearchString: "Valley Specialty Group, Salt Lake City, UT",
+  domain: "valleyspecialtygroup.com",
   websiteUri: null,
   phone: null,
   rating: 4.6,
@@ -46,9 +46,9 @@ export const CONFERENCE_ANALYSIS = {
   },
   competitors: [
     { name: "Summit Specialists", rating: 4.9, reviewCount: 284, placeId: "conf-summit", location: { lat: 40.758, lng: -111.876 }, driveTimeMinutes: 8 },
-    { name: "Pioneer Practice Group", rating: 4.8, reviewCount: 156, placeId: "conf-pioneer", location: { lat: 40.771, lng: -111.902 }, driveTimeMinutes: 12 },
+    { name: "Pioneer Specialists", rating: 4.8, reviewCount: 156, placeId: "conf-pioneer", location: { lat: 40.771, lng: -111.902 }, driveTimeMinutes: 12 },
     { name: "Wasatch Health Partners", rating: 4.7, reviewCount: 98, placeId: "conf-wasatch", location: { lat: 40.745, lng: -111.865 }, driveTimeMinutes: 15 },
-    { name: "Desert Valley Practice", rating: 4.6, reviewCount: 67, placeId: "conf-desert", location: { lat: 40.782, lng: -111.921 }, driveTimeMinutes: 18 },
+    { name: "Desert Valley Specialists", rating: 4.6, reviewCount: 67, placeId: "conf-desert", location: { lat: 40.782, lng: -111.921 }, driveTimeMinutes: 18 },
   ],
   findings: [
     {
@@ -181,7 +181,7 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
       {
         type: "market_rank",
         title: "Market Position",
-        detail: `You rank #${rank} of ${totalCompetitors} specialists in ${city}. Patients searching see ${rank - 1} practice${rank > 2 ? "s" : ""} before you.`,
+        detail: `You rank #${rank} of ${totalCompetitors} specialists in ${city}. People searching see ${rank - 1} business${rank > 2 ? "es" : ""} before you.`,
         value: rank,
         impact: 0,
       },

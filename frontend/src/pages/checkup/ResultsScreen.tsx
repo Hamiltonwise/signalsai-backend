@@ -735,7 +735,7 @@ export default function ResultsScreen() {
             Know a colleague who should see their score?
           </p>
           <p className="text-xs text-white/50 mt-1">
-            Share a link with your market data. No practice name included.
+            Share a link with your market data. No business name included.
           </p>
         </div>
         <button
@@ -876,7 +876,7 @@ export default function ResultsScreen() {
               </legend>
               {[
                 { value: "owner", label: "Yes, I'm the owner or manager" },
-                { value: "vendor", label: "I provide services to this practice" },
+                { value: "vendor", label: "I provide services to this business" },
                 { value: "other", label: "Other" },
               ].map((opt) => (
                 <label
@@ -901,7 +901,7 @@ export default function ResultsScreen() {
                 {!vendorSubmitted ? (
                   <>
                     <p className="text-xs text-slate-600">
-                      Your email, so we can notify you if this practice's results change.
+                      Your email, so we can notify you if this business's results change.
                     </p>
                     <input
                       type="email"
@@ -1034,7 +1034,7 @@ export default function ResultsScreen() {
             </span>
           </div>
           <p className="text-xs text-slate-500 mb-3">
-            Share a link that shows your market data (no practice name) with a prompt to take their own checkup.
+            Share a link that shows your market data (no business name) with a prompt to take their own checkup.
           </p>
           <button
             type="button"

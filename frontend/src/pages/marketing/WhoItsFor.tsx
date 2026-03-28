@@ -60,7 +60,7 @@ export default function WhoItsFor() {
           <h2 className="text-2xl font-bold text-[#212D40] mb-4">The Founders</h2>
           <p className="text-base text-[#212D40]/70 leading-relaxed">
             If you took the leap, left the security of a
-            salary, bet on yourself, opened a practice or a firm or
+            salary, bet on yourself, opened a business or a firm or
             a studio, you are a Founder. Most people won't do what
             you did. The business you built is proof of that.
           </p>
@@ -84,7 +84,7 @@ export default function WhoItsFor() {
             <VerticalCard
               icon={<Activity className="w-5 h-5 text-[#D56753]" />}
               title="Chiropractors"
-              desc="See when a new practice opens in your radius before your front desk hears about it."
+              desc="See when a new competitor opens in your radius before your front desk hears about it."
             />
             <VerticalCard
               icon={<Users className="w-5 h-5 text-[#D56753]" />}

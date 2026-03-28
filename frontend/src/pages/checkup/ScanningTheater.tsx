@@ -697,7 +697,7 @@ export default function ScanningTheater() {
             onClick={() => navigate("/checkup")}
             className="text-sm text-gray-400 underline"
           >
-            Start over with a different practice
+            Start over with a different business
           </button>
         </div>
       </div>

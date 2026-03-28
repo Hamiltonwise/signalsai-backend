@@ -56,7 +56,7 @@ export default function PricingPage() {
                 />
                 <IncludeItem
                   title="GP referral intelligence."
-                  desc="When you connect your practice data, Alloro monitors every referring relationship and alerts you when one starts to drift, with the dollar figure attached."
+                  desc="When you connect your business data, Alloro monitors every referring relationship and alerts you when one starts to drift, with the dollar figure attached."
                 />
                 <IncludeItem
                   title="Competitive intelligence."
