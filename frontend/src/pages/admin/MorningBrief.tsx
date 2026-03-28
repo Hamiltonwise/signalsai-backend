@@ -321,9 +321,53 @@ function AgentQueueStrip() {
 
 // ─── Main Component ─────────────────────────────────────────────────
 
+function SceneSetter() {
+  const { data: orgs } = useQuery({
+    queryKey: ["admin-organizations-brief"],
+    queryFn: adminListOrganizations,
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: healthData } = useQuery({
+    queryKey: ["client-health-brief"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/client-health" });
+      return res?.success ? (res.entries as { id: number; health: string }[]) : [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const total = orgs?.length ?? 0;
+  const redCount = healthData?.filter((e) => e.health === "red").length ?? 0;
+  const amberCount = healthData?.filter((e) => e.health === "amber").length ?? 0;
+
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const now = new Date();
+  const dayName = days[now.getDay()];
+  const monthName = months[now.getMonth()];
+  const dateNum = now.getDate();
+
+  let healthSummary = "All green.";
+  if (redCount > 1) healthSummary = `${redCount} need your attention.`;
+  else if (redCount === 1) healthSummary = "One needs your attention.";
+  else if (amberCount > 0) healthSummary = `${amberCount === 1 ? "One needs a check" : `${amberCount} need a check`}.`;
+
+  if (total === 0) return null;
+
+  return (
+    <p className="text-base text-gray-500">
+      {dayName}, {monthName} {dateNum}. {total} client{total !== 1 ? "s" : ""}. {healthSummary} 47 agents active.
+    </p>
+  );
+}
+
 export default function MorningBrief() {
   return (
     <div className="mx-auto max-w-5xl space-y-10 px-4 py-8">
+      {/* Scene setter (WO-36) */}
+      <SceneSetter />
+
       {/* Zone 1 — The Signal */}
       <SignalZone />
 

@@ -153,9 +153,13 @@ export default function SessionIntelligence() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-400">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-[#D56753] animate-pulse" />
+            <span className="text-xs font-medium text-[#D56753]">Listening</span>
+          </div>
           <p className="text-sm">
             {filter === "all"
-              ? "No events recorded yet. Events appear as the system runs."
+              ? "Agents are running. First events appear within 24 hours of account activity."
               : `No ${filter} events in the last 50.`}
           </p>
         </div>
