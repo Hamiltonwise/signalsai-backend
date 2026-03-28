@@ -549,7 +549,6 @@ export function DFYWebsite() {
         },
         (selector, _currentSrc) => {
           // Reuse same image handler — simplified for reload case
-          console.log("[InlineEdit] Image click after reload:", selector);
         },
       );
     }

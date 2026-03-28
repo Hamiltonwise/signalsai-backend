@@ -106,7 +106,7 @@ export default function ReviewRequests() {
         setError(result.error || "Failed to send");
       }
     } catch {
-      setError("Something went wrong");
+      setError("We couldn't send that request. Check your connection and try again.");
     } finally {
       setSending(false);
     }

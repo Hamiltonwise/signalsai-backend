@@ -309,7 +309,6 @@ export const PMSDataViewer: React.FC<PMSDataViewerProps> = ({
 
     try {
       const backendData = transformUIToBackend(months);
-      console.log(
         "[PMSDataViewer] Sending transformed data to backend:",
         backendData
       );

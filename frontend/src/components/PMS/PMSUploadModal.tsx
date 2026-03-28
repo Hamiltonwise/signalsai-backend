@@ -95,7 +95,6 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
     setUploadStatus("idle");
 
     try {
-      console.log("PMSUploadModal: Uploading file:", file.name);
 
       const result = await uploadPMSData({
         domain: clientId,
@@ -103,7 +102,6 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
         pmsType,
       });
 
-      console.log("PMSUploadModal: Upload response:", result);
 
       if (result.success) {
         setUploadStatus("success");

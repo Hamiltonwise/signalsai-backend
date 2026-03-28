@@ -156,11 +156,9 @@ export function usePasteHandler({
       setPhase("parsing");
       const chunks = chunkByRows(raw);
 
-      console.log(`[PMS-Paste] Parsing ${chunks.length} batch(es)...`);
 
       for (let i = 0; i < chunks.length; i++) {
         setBatchProgress({ current: i + 1, total: chunks.length });
-        console.log(`[PMS-Paste] Parsing batch ${i + 1}/${chunks.length}...`);
 
         const result = await parsePastedData(chunks[i], currentMonth);
 
@@ -179,14 +177,12 @@ export function usePasteHandler({
         throw new Error("No data could be parsed from the pasted content.");
       }
 
-      console.log(`[PMS-Paste] Parsed ${allRows.length} total rows`);
 
       // ===============================================
       // PHASE 2: SANITIZATION — smart dedup
       // ===============================================
       setPhase("sanitizing");
       setBatchProgress(null);
-      console.log("[PMS-Paste] Sanitizing/deduplicating...");
 
       const sanitizeResult = await sanitizePastedData(allRows);
 
@@ -194,10 +190,8 @@ export function usePasteHandler({
         const { allRows: sanitizedRows, stats, reasoning, warnings } =
           sanitizeResult.data;
 
-        console.log("[PMS-Paste] Sanitization stats:", JSON.stringify(stats));
 
         if (reasoning?.length) {
-          console.log("[PMS-Paste] Dedup reasoning:", reasoning);
         }
 
         if (warnings?.length) {

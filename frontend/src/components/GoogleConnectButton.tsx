@@ -116,9 +116,7 @@ export const GoogleConnectButton: React.FC<GoogleConnectButtonProps> = ({
       const handleMessage = (event: MessageEvent) => {
         const allowedOrigins = [
           window.location.origin,
-          "http://localhost:3000",
-          "http://localhost:5173",
-          "http://localhost:5174",
+          ...(import.meta.env.DEV ? ["http://localhost:3000", "http://localhost:5173", "http://localhost:5174"] : []),
         ];
 
         if (!allowedOrigins.includes(event.origin)) {
@@ -126,7 +124,6 @@ export const GoogleConnectButton: React.FC<GoogleConnectButtonProps> = ({
         }
 
         if (event.data.type === "GOOGLE_OAUTH_SUCCESS") {
-          console.log("[GoogleConnect] OAuth success");
           closePopup();
           setIsLoading(false);
           window.removeEventListener("message", handleMessage);

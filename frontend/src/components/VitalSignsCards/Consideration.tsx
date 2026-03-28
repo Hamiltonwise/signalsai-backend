@@ -44,7 +44,6 @@ export const Consideration: React.FC<ConsiderationProps> = ({
   const { gbpData, isLoading, error } = useGBP();
 
   // selectedDomain is passed as prop - GBP Context automatically handles data fetching when domain changes
-  console.log(
     "Consideration component received selectedDomain:",
     selectedDomain
   );

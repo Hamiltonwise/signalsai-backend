@@ -73,8 +73,8 @@ const OptometristMarketing = React.lazy(() => import("./pages/content/Optometris
 const Locations = React.lazy(() => import("./pages/dashboard/Locations"));
 // Intelligence replaced by IntelligenceDashboard (WO-8: uses /api/intelligence, not admin API)
 // import About from "./pages/About"; // Not built yet
-// import TermsOfService from "./pages/TermsOfService"; // Not built yet
-// import PrivacyPolicy from "./pages/PrivacyPolicy"; // Not built yet
+const TermsOfService = React.lazy(() => import("./pages/legal/TermsOfService"));
+const PrivacyPolicy = React.lazy(() => import("./pages/legal/PrivacyPolicy"));
 // import PhysicalTherapistMarketing from "./pages/content/PhysicalTherapistMarketing"; // Not built yet
 const ProgrammaticPage = React.lazy(() => import("./pages/ProgrammaticPage"));
 const FoundationHome = React.lazy(() => import("./pages/foundation/FoundationHome"));
@@ -217,8 +217,8 @@ function App() {
               <Route path="/referral-program" element={<ReferralProgram />} />
               <Route path="/compare" element={<Compare />} />
               {/* <Route path="/about" element={<About />} /> -- not built yet */}
-              {/* <Route path="/terms" element={<TermsOfService />} /> -- not built yet */}
-              {/* <Route path="/privacy" element={<PrivacyPolicy />} /> -- not built yet */}
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
 
               {/* Heroes & Founders Foundation — no auth (WO-11) */}
               <Route path="/foundation" element={<FoundationHome />} />

@@ -203,7 +203,6 @@ export default function AIDataInsightsList() {
             data.rejected.length > 0 ? data.rejected.join(", ") : "None"
           }\n\nTotal: ${totalCount} recommendations`;
           alert(message);
-          console.log("Governance IDs for", agentType, ":", data);
         }
       } else {
         alert(

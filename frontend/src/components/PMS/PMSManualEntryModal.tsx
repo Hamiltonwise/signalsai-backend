@@ -483,7 +483,6 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
 
     try {
       const backendData = transformUIToBackend(months);
-      console.log("[PMSManualEntryModal] Submitting manual data:", backendData);
 
       const result = await submitManualPMSData({
         domain: clientId,

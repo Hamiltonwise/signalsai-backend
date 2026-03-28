@@ -17,7 +17,6 @@ export const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
   const isAuthenticated = !!authToken || !!token;
 
   if (isAuthenticated) {
-    console.log("[PublicRoute] JWT token present; redirecting to dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 

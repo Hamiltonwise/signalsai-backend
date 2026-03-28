@@ -238,7 +238,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
         if (response?.success && response.data) {
           // Only log if not silent mode (to reduce console noise during polling)
           if (!silent) {
-            console.log("📊 loadKeyData response:", {
               organizationId,
               monthsCount: response.data.months?.length,
               sourcesCount: response.data.sources?.length,
@@ -279,7 +278,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
 
   useEffect(() => {
     isMountedRef.current = true;
-    console.log("🎯 Initial component mount - loading key data for first time");
     loadKeyData();
     return () => {
       isMountedRef.current = false;
@@ -477,14 +475,12 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     const checkForActiveAutomation = async () => {
       if (!organizationId) return;
 
-      console.log("🔍 Initial check for active automation on mount");
 
       try {
         const response = await fetchActiveAutomationJobs(organizationId, locationId);
 
         if (response.success && response.data?.jobs?.length) {
           const activeJob = response.data.jobs[0];
-          console.log("🔍 Found active job on mount:", {
             jobId: activeJob.jobId,
             status: activeJob.automationStatus?.status,
             currentStep: activeJob.automationStatus?.currentStep,
@@ -502,7 +498,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
               "awaiting_approval",
             ];
             if (activeStatuses.includes(activeJob.automationStatus.status)) {
-              console.log(
                 "🔍 Setting referralPending = true for active automation",
               );
               setReferralPending(true);
@@ -510,7 +505,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
             }
           }
         } else {
-          console.log("🔍 No active automation found on mount");
         }
       } catch (err) {
         console.error("❌ Error checking for active automation:", err);
@@ -528,17 +522,14 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     }
 
     if (!organizationId) {
-      console.log("🔍 loadAutomationStatus: no organizationId");
       setAutomationStatus(null);
       return;
     }
 
-    console.log("🔍 loadAutomationStatus: fetching for org", organizationId);
 
     try {
       const response = await fetchActiveAutomationJobs(organizationId, locationId);
 
-      console.log("🔍 fetchActiveAutomationJobs response:", {
         success: response.success,
         jobCount: response.data?.jobs?.length,
         jobs: response.data?.jobs,
@@ -547,7 +538,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
       if (response.success && response.data?.jobs?.length) {
         // Get the most recent active job for this domain
         const activeJob = response.data.jobs[0];
-        console.log("🔍 Active job found:", {
           jobId: activeJob.jobId,
           status: activeJob.automationStatus?.status,
           currentStep: activeJob.automationStatus?.currentStep,
@@ -558,7 +548,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
 
           // If automation is complete, refresh referral data
           if (activeJob.automationStatus.status === "completed") {
-            console.log("🔍 Automation completed, refreshing referral data");
             setReferralPending(false);
             loadReferralData();
           }
@@ -568,7 +557,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
             activeJob.automationStatus.status === "awaiting_approval" &&
             activeJob.automationStatus.currentStep === "client_approval"
           ) {
-            console.log(
               "🔍 Automation reached client_approval, refreshing key data for banner",
             );
             loadKeyData({ silent: true });
@@ -576,12 +564,10 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
         }
       } else {
         // No active jobs found - automation might have completed
-        console.log("🔍 No active jobs found, automation may have completed");
 
         // If we previously had an active automation, it means it completed
         // Clear the automation status and refresh the referral data
         if (automationStatus || referralPending) {
-          console.log(
             "🔍 Clearing automation state and refreshing data after completion",
           );
           setAutomationStatus(null);
@@ -628,9 +614,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     if (!shouldPoll) {
       if (isOnNonPollingStep) {
         if (automationStatus?.status === "completed") {
-          console.log(`⏸️ Polling DISABLED - automation completed`);
         } else {
-          console.log(
             `⏸️ Polling DISABLED - on ${automationStatus?.currentStep} (approval step)`,
           );
         }
@@ -638,7 +622,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
       return;
     }
 
-    console.log(
       `▶️ Polling ENABLED - referralPending: ${referralPending}, status: ${automationStatus?.status}, step: ${automationStatus?.currentStep}`,
     );
 
@@ -752,13 +735,11 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
         return;
       }
 
-      console.log("🔍 Fetching automation status for job", latestJobId);
 
       try {
         const response = await fetchAutomationStatus(latestJobId);
 
         if (response.success && response.data?.automationStatus) {
-          console.log("🔍 Got automation status for job:", {
             jobId: latestJobId,
             status: response.data.automationStatus.status,
             currentStep: response.data.automationStatus.currentStep,
@@ -932,7 +913,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
 
   // Debug: Log calculated data only on change (not on every render)
   useMemo(() => {
-    console.log("📈 Calculated data:", {
       monthlyData: monthlyData,
       topSources: topSources,
       totalProduction: totalProduction,
@@ -942,7 +922,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
       mktProduction: totalProduction,
       docProduction: (totalProduction * doctorPercentage) / 100,
     });
-    console.log("🔍 Data source breakdown:", {
       "referralVelocity.selfReferrals": monthlyData.map((m) => ({
         month: m.month,
         selfReferrals: m.selfReferrals,
@@ -998,11 +977,9 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
       return;
     }
 
-    console.log(
       "✅ handleConfirmApproval called with latestJobId:",
       latestJobId,
     );
-    console.log("📊 Current state BEFORE confirmation:", {
       keyData_months: keyData?.months,
       keyData_sources: keyData?.sources,
       monthlyData: monthlyData,
@@ -1031,7 +1008,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
         window.localStorage.removeItem(storageKey);
       }
 
-      console.log(
         "🔄 Calling loadKeyData AFTER confirmation (with silent: false to see fresh data)",
       );
       await loadKeyData({ silent: false });

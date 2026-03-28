@@ -292,7 +292,10 @@ export default function RankingsScreen() {
 
       {/* Error state */}
       {(isSnapshotsError || isAlertsError) && (
-        <p className="text-xs text-gray-400 italic">Rankings update every Sunday.</p>
+        <div className="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-gray-400">
+          <p className="text-sm font-medium">We couldn't load your rankings right now.</p>
+          <p className="text-xs mt-1">Try refreshing, or check back after the next Sunday scan.</p>
+        </div>
       )}
 
       {/* Empty state — use checkup data if available */}

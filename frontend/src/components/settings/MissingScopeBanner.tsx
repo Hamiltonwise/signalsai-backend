@@ -97,9 +97,7 @@ export const MissingScopeBanner: React.FC<MissingScopeBannerProps> = ({
         // Accept from common origins
         const allowedOrigins = [
           window.location.origin,
-          "http://localhost:3000",
-          "http://localhost:5173",
-          "http://localhost:5174",
+          ...(import.meta.env.DEV ? ["http://localhost:3000", "http://localhost:5173", "http://localhost:5174"] : []),
         ];
 
         if (!allowedOrigins.includes(event.origin)) {
@@ -107,7 +105,6 @@ export const MissingScopeBanner: React.FC<MissingScopeBannerProps> = ({
         }
 
         if (event.data.type === "GOOGLE_OAUTH_SUCCESS") {
-          console.log("[Reconnect] OAuth success - scopes granted");
           closePopup();
           setIsLoading(false);
           window.removeEventListener("message", handleMessage);

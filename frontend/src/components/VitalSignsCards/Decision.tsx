@@ -43,7 +43,6 @@ export const Decision: React.FC<DecisionProps> = ({
 }) => {
   const { clarityData, isLoading, error } = useClarity();
 
-  console.log("Decision component received selectedDomain:", selectedDomain);
 
   // Helper function to format numbers
   const formatNumber = (num: number): string => {

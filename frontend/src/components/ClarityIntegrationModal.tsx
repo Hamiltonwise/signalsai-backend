@@ -42,7 +42,6 @@ export const ClarityIntegrationModal: React.FC<BaseIntegrationModalProps> = ({
   }, [isOpen]);
 
   const handleConnect = async () => {
-    console.log(
       "Clarity Modal: Starting demo connection with clientId:",
       clientId
     );
@@ -59,7 +58,6 @@ export const ClarityIntegrationModal: React.FC<BaseIntegrationModalProps> = ({
 
       // Demo: randomly succeed or fail
       if (Math.random() > 0.2) {
-        console.log("🔍 Clarity Modal: Demo connection successful");
         setStep("success");
         setTimeout(() => {
           onSuccess?.();
