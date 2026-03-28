@@ -270,14 +270,14 @@ export default function Dashboard() {
                     {/* Content */}
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-black text-slate-400 tracking-tight">Upload Your PMS Data</h3>
+                        <h3 className="text-xl font-black text-slate-400 tracking-tight">See Your Market Intelligence</h3>
                         <span className="px-2 py-1 bg-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1">
                           <Lock className="w-3 h-3" />
                           Locked
                         </span>
                       </div>
                       <p className="text-slate-400 font-medium leading-relaxed">
-                        Once properties are connected, upload your business data to see referral analytics and revenue attribution.
+                        Once connected, Alloro starts tracking your rankings, competitors, and market position automatically.
                       </p>
                     </div>
                   </div>
