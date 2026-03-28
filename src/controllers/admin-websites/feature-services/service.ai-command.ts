@@ -503,6 +503,8 @@ interface ExecutionContext {
   createdPosts: Map<string, { id: string; slug: string; post_type_slug: string }>;  // slug → { id, slug, type }
   createdMenus: Map<string, string>;                          // slug → id
   createdRedirects: Map<string, string>;                      // from_path → to_path
+  /** Tracks draft page IDs created during batch execution (path → draft page ID) */
+  pageDrafts: Map<string, string>;
 }
 
 function createExecutionContext(): ExecutionContext {
@@ -511,6 +513,7 @@ function createExecutionContext(): ExecutionContext {
     createdPosts: new Map(),
     createdMenus: new Map(),
     createdRedirects: new Map(),
+    pageDrafts: new Map(),
   };
 }
 
@@ -780,6 +783,18 @@ export async function executeBatch(batchId: string): Promise<void> {
     await refreshStats(batchId);
   }
 
+  // Publish all page drafts that were created during this batch (one version per page)
+  for (const [path, draftId] of ctx.pageDrafts) {
+    const draftPage = await db(PAGES_TABLE).where("id", draftId).first();
+    if (!draftPage || draftPage.status !== "draft") continue;
+    const publishResult = await publishPage(draftPage.project_id, draftId);
+    if (publishResult.error) {
+      console.warn(`[AiCommand] Auto-publish failed for page ${path} (${draftId}): ${publishResult.error.message}`);
+    } else {
+      console.log(`[AiCommand] ✓ Auto-published page ${path} (${draftId})`);
+    }
+  }
+
   const executionSummary = await buildExecutionSummary(batchId);
 
   await db(BATCHES_TABLE)
@@ -863,7 +878,7 @@ async function executeRecommendation(rec: any, ctx: ExecutionContext): Promise<v
   );
 
   // Save the validated HTML
-  await saveEditedHtml(rec, pipelineResult.html);
+  await saveEditedHtml(rec, pipelineResult.html, ctx);
 
   // Mark as executed
   await db(RECS_TABLE)
@@ -932,7 +947,7 @@ async function getCurrentHtml(rec: any): Promise<string> {
   throw new Error(`Unknown target type: ${rec.target_type}`);
 }
 
-async function saveEditedHtml(rec: any, editedHtml: string): Promise<void> {
+async function saveEditedHtml(rec: any, editedHtml: string, ctx: ExecutionContext): Promise<void> {
   const meta =
     typeof rec.target_meta === "string"
       ? JSON.parse(rec.target_meta)
@@ -953,24 +968,36 @@ async function saveEditedHtml(rec: any, editedHtml: string): Promise<void> {
     const origPage = await db(PAGES_TABLE).where("id", rec.target_id).first();
     if (!origPage) throw new Error(`Page ${rec.target_id} not found`);
 
-    // Find the current active version at this path (draft preferred, then published)
-    let page = await db(PAGES_TABLE)
-      .where({ project_id: origPage.project_id, path: origPage.path, status: "draft" })
-      .first()
-      || await db(PAGES_TABLE)
-        .where({ project_id: origPage.project_id, path: origPage.path, status: "published" })
-        .first();
+    let draftId = ctx.pageDrafts.get(origPage.path);
+    let page: any;
 
-    if (!page) throw new Error(`No active page at path ${origPage.path}`);
+    if (draftId) {
+      // Reuse the draft already created for this page path during this batch
+      page = await db(PAGES_TABLE).where("id", draftId).first();
+      if (!page) throw new Error(`Draft ${draftId} disappeared for path ${origPage.path}`);
+    } else {
+      // Find the current active version at this path (draft preferred, then published)
+      page = await db(PAGES_TABLE)
+        .where({ project_id: origPage.project_id, path: origPage.path, status: "draft" })
+        .first()
+        || await db(PAGES_TABLE)
+          .where({ project_id: origPage.project_id, path: origPage.path, status: "published" })
+          .first();
 
-    // Auto-create draft from published page for version control
-    if (page.status === "published") {
-      console.log(`[AiCommand] Auto-creating draft from published page ${page.id} (${page.path})`);
-      const draftResult = await createDraft(page.project_id, page.id);
-      if (draftResult.error) {
-        throw new Error(`Failed to create draft: ${draftResult.error.message}`);
+      if (!page) throw new Error(`No active page at path ${origPage.path}`);
+
+      // Auto-create draft from published page for version control (once per page per batch)
+      if (page.status === "published") {
+        console.log(`[AiCommand] Auto-creating draft from published page ${page.id} (${page.path})`);
+        const draftResult = await createDraft(page.project_id, page.id);
+        if (draftResult.error) {
+          throw new Error(`Failed to create draft: ${draftResult.error.message}`);
+        }
+        page = draftResult.page;
       }
-      page = draftResult.page;
+
+      // Track this draft so subsequent recommendations for the same page reuse it
+      ctx.pageDrafts.set(origPage.path, page.id);
     }
 
     const rawSections = typeof page.sections === "string"
@@ -995,14 +1022,7 @@ async function saveEditedHtml(rec: any, editedHtml: string): Promise<void> {
         updated_at: db.fn.now(),
       });
 
-    // Auto-publish the draft so changes go live immediately
-    const publishResult = await publishPage(page.project_id, page.id);
-    if (publishResult.error) {
-      console.warn(`[AiCommand] Auto-publish failed for page ${page.id}: ${publishResult.error.message}`);
-    } else {
-      console.log(`[AiCommand] ✓ Auto-published page ${page.path} (${page.id})`);
-    }
-
+    // Don't publish here — batch will publish all drafts at the end
     return;
   }
 

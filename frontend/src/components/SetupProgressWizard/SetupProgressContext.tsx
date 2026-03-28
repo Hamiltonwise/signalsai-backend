@@ -65,7 +65,7 @@ function saveProgressToStorage(progress: SetupProgress): void {
 }
 
 export function SetupProgressProvider({ children }: { children: ReactNode }) {
-  const { hasGoogleConnection, hasProperties } = useAuth();
+  const { hasGoogleConnection, hasProperties, userProfile } = useAuth();
   const [progress, setProgress] = useState<SetupProgress>(getStoredProgress);
   const [isLoading, setIsLoading] = useState(true);
   const [justCompletedStep, setJustCompletedStep] = useState<number | null>(
@@ -100,6 +100,13 @@ export function SetupProgressProvider({ children }: { children: ReactNode }) {
   const refreshProgress = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Skip API call if user has no organization (e.g., admin users)
+      if (!userProfile?.organizationId) {
+        setProgress(getStoredProgress());
+        setIsLoading(false);
+        return;
+      }
+
       const apiProgress = await onboarding.getSetupProgress();
 
       if (
@@ -120,7 +127,7 @@ export function SetupProgressProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userProfile?.organizationId]);
 
   // Mark step 1 as complete (with confetti)
   const markStep1Complete = useCallback(() => {
