@@ -819,13 +819,25 @@ export default function DoctorDashboard() {
         <ModeToggle mode={mode} onChange={setMode} />
       </div>
 
-      {/* Win celebration card (WO-34) */}
+      {/* Win celebration card (WO-34) -- Fitbit vibration moment */}
       {!isLoading && winData && (
-        <div className="rounded-2xl bg-[#D56753] p-5 text-white animate-[pulse_2s_ease-in-out_1]">
-          <p className="text-sm font-bold">Alloro caught something. You acted. It worked.</p>
-          {winData.detail && (
-            <p className="text-sm text-white/80 mt-2 leading-relaxed">{winData.detail}</p>
-          )}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#D56753] to-[#c05544] p-6 text-white shadow-[0_8px_30px_rgba(213,103,83,0.3)]">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          <div className="relative">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-white/60 mb-2">
+              Win detected
+            </p>
+            <p className="text-base font-bold leading-snug">
+              {winData.headline || "Alloro caught something. You acted. It worked."}
+            </p>
+            {winData.detail && (
+              <p className="text-sm text-white/75 mt-2.5 leading-relaxed">{winData.detail}</p>
+            )}
+            {winData.daysAgo != null && winData.daysAgo <= 1 && (
+              <p className="text-[10px] text-white/50 mt-3 uppercase tracking-wide">Just happened</p>
+            )}
+          </div>
         </div>
       )}
 
