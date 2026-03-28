@@ -872,6 +872,33 @@ export default function DoctorDashboard() {
         </div>
       )}
 
+      {/* Milestone check-in card (WO-51/52) */}
+      {!isLoading && milestoneCard && (
+        <div className="rounded-2xl border border-[#212D40]/15 bg-white p-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-3">
+            Your first {milestoneCard.milestone} days.
+          </p>
+          {milestoneCard.sunday_fear && (
+            <p className="text-sm text-[#212D40]/70 mb-3 leading-relaxed">
+              When you started, you told us your biggest concern was:
+              <span className="italic text-[#212D40] font-medium">
+                {" "}&ldquo;{milestoneCard.sunday_fear.length > 50 ? milestoneCard.sunday_fear.slice(0, 50) + "..." : milestoneCard.sunday_fear}&rdquo;
+              </span>
+            </p>
+          )}
+          {milestoneCard.moved && (
+            <p className="text-sm text-[#212D40] font-medium">
+              The one thing that moved: {milestoneCard.moved}
+            </p>
+          )}
+          {milestoneCard.gap && (
+            <p className="text-sm text-[#212D40]/60 mt-1">
+              The one thing that hasn't yet: {milestoneCard.gap}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Win celebration card (WO-34) -- Fitbit vibration moment */}
       {!isLoading && winData && (
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#D56753] to-[#c05544] p-6 text-white shadow-[0_8px_30px_rgba(213,103,83,0.3)]">

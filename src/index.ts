@@ -82,6 +82,7 @@ import clientHealthRoutes from "./routes/admin/clientHealth";
 import dashboardContextRoutes from "./routes/user/dashboardContext";
 import gbpAuthRoutes from "./routes/auth/gbp";
 import oneActionCardRoutes from "./routes/user/oneActionCard";
+import reviewDraftRoutes from "./routes/user/reviewDrafts";
 import streakRoutes from "./routes/user/streaks";
 import ownerProfileRoutes from "./routes/user/ownerProfile";
 import milestoneCardRoutes from "./routes/user/milestoneCards";
@@ -260,6 +261,7 @@ app.use("/api/admin/client-health", clientHealthRoutes); // WO-T5: CS Pulse heal
 app.use("/api/user/dashboard-context", dashboardContextRoutes); // WO-CHECKUP-SESSION-KEY: pre-populate dashboard from checkup data
 app.use("/api/auth/google", gbpAuthRoutes); // T6: GBP OAuth connect + callback
 app.use("/api/user", oneActionCardRoutes); // T3: One Action Card deterministic engine
+app.use("/api/user/review-drafts", reviewDraftRoutes); // WO-49: Review auto-draft responses
 app.use("/api/user", streakRoutes); // WO-33: Growth/Action/Review streaks
 app.use("/api/user", ownerProfileRoutes); // WO-50: Owner Profile (Lemonis Protocol)
 app.use("/api/user", milestoneCardRoutes); // WO-51/52: Milestone check-in cards
