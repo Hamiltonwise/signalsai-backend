@@ -154,7 +154,7 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
       {/* Score + gap */}
       <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-100">
         <span className="text-gray-500">
-          Score: <span className="font-semibold text-[#212D40]">{entry.score}</span>/100
+          Score: <span className="font-semibold text-[#212D40]">{Math.round(entry.score)}</span>/100
           {entry.specialty && (
             <span className="text-gray-400"> &middot; {entry.specialty}</span>
           )}

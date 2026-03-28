@@ -33,7 +33,7 @@ function parseCSV(text: string): BatchPractice[] {
   return text
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line && !line.toLowerCase().startsWith("practice"))
+    .filter((line) => line && !line.toLowerCase().startsWith("business"))
     .map((line) => {
       // Support: "Name, City, State" or "Name, City State"
       const parts = line.split(",").map((s) => s.trim());
@@ -58,12 +58,12 @@ function parseCSV(text: string): BatchPractice[] {
 
 function exportCSV(results: BatchResult[]): string {
   const header =
-    "practice_name,city,state,score,top_competitor,competitor_reviews,practice_reviews,primary_gap,email_paragraph";
+    "business_name,city,state,score,top_competitor,competitor_reviews,business_reviews,primary_gap,email_paragraph";
   const rows = results
     .filter((r) => r.status === "completed")
     .map(
       (r) =>
-        `"${esc(r.practiceName)}","${esc(r.city)}","${esc(r.state)}",${r.score ?? ""},"${esc(r.topCompetitorName || "Unknown")}",${r.topCompetitorReviews ?? ""},${r.practiceReviews ?? ""},"${esc(r.primaryGap)}","${esc(r.emailParagraph)}"`,
+        `"${esc(r.businessName)}","${esc(r.city)}","${esc(r.state)}",${r.score ?? ""},"${esc(r.topCompetitorName || "Unknown")}",${r.topCompetitorReviews ?? ""},${r.businessReviews ?? ""},"${esc(r.primaryGap)}","${esc(r.emailParagraph)}"`,
     );
   return [header, ...rows].join("\n");
 }
@@ -94,7 +94,7 @@ function StatusDot({ status }: { status: string }) {
 
 export default function BatchCheckup() {
   const [csvText, setCsvText] = useState("");
-  const [practices, setPractices] = useState<BatchPractice[]>([]);
+  const [businesses, setBusinesses] = useState<BatchPractice[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [batchStatus, setBatchStatus] = useState<BatchStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -108,9 +108,9 @@ export default function BatchCheckup() {
   // Parse CSV on text change
   useEffect(() => {
     if (csvText.trim()) {
-      setPractices(parseCSV(csvText));
+      setBusinesses(parseCSV(csvText));
     } else {
-      setPractices([]);
+      setBusinesses([]);
     }
   }, [csvText]);
 
@@ -153,12 +153,12 @@ export default function BatchCheckup() {
   }, []);
 
   const handleSubmit = async () => {
-    if (practices.length === 0) return;
+    if (businesses.length === 0) return;
     setSubmitting(true);
     setError(null);
 
     try {
-      const res = await submitBatch(practices);
+      const res = await submitBatch(businesses);
       if (res.success && res.batchId) {
         setBatchId(res.batchId);
         setBatchStatus({
@@ -182,7 +182,7 @@ export default function BatchCheckup() {
 
   const handleReset = () => {
     setCsvText("");
-    setPractices([]);
+    setBusinesses([]);
     setBatchId(null);
     setBatchStatus(null);
     setError(null);
@@ -210,8 +210,8 @@ export default function BatchCheckup() {
           Market Checkup
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          See how any practice stacks up against its competition. In seconds.
-          Enter up to 50 practices.
+          See how any business stacks up against its competition. In seconds.
+          Enter up to 50 businesses.
         </p>
       </div>
 
@@ -220,7 +220,7 @@ export default function BatchCheckup() {
         <div className="space-y-4">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <label className="block text-sm font-semibold text-[#212D40] mb-2">
-              Practices to analyze
+              Businesses to analyze
             </label>
             <textarea
               value={csvText}
@@ -230,7 +230,7 @@ export default function BatchCheckup() {
               className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
             />
             <p className="text-xs text-gray-400 mt-1.5">
-              One per line: Practice Name, City, State
+              One per line: Business Name, City, State
             </p>
 
             <div className="flex items-center gap-3 mt-4">
@@ -248,9 +248,9 @@ export default function BatchCheckup() {
                 onChange={handleFileUpload}
                 className="hidden"
               />
-              {practices.length > 0 && (
+              {businesses.length > 0 && (
                 <span className="text-xs text-gray-400">
-                  {practices.length} practice{practices.length !== 1 ? "s" : ""}{" "}
+                  {businesses.length} business{businesses.length !== 1 ? "s" : ""}{" "}
                   detected
                 </span>
               )}
@@ -265,7 +265,7 @@ export default function BatchCheckup() {
 
           <button
             onClick={handleSubmit}
-            disabled={practices.length === 0 || submitting || practices.length > 50}
+            disabled={businesses.length === 0 || submitting || businesses.length > 50}
             className="flex items-center gap-2 rounded-xl bg-[#D56753] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? (
@@ -273,24 +273,24 @@ export default function BatchCheckup() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Starting...
               </>
-            ) : practices.length === 0 ? (
-              "Enter practices above to begin"
+            ) : businesses.length === 0 ? (
+              "Enter businesses above to begin"
             ) : (
               <>
                 <Play className="h-4 w-4" />
-                Analyze {practices.length} Practice{practices.length !== 1 ? "s" : ""} &rarr;
+                Analyze {businesses.length} Business{businesses.length !== 1 ? "es" : ""} &rarr;
               </>
             )}
           </button>
 
-          {practices.length > 50 && (
+          {businesses.length > 50 && (
             <p className="text-xs text-red-500">
-              Maximum 50 practices per batch. Please reduce your list.
+              Maximum 50 businesses per batch. Please reduce your list.
             </p>
           )}
 
           {/* Empty state — blurred sample result */}
-          {practices.length === 0 && !batchId && (
+          {businesses.length === 0 && !batchId && (
             <div className="relative mt-2 select-none" aria-hidden="true">
               <div className="absolute inset-0 backdrop-blur-[3px] bg-white/40 rounded-2xl z-10 flex items-center justify-center">
                 <span className="text-sm font-medium text-gray-400">
@@ -302,7 +302,7 @@ export default function BatchCheckup() {
                   <thead>
                     <tr className="bg-gray-50 text-left">
                       <th className="px-4 py-3 font-medium text-gray-400 w-8"></th>
-                      <th className="px-4 py-3 font-medium text-gray-400">Practice</th>
+                      <th className="px-4 py-3 font-medium text-gray-400">Business</th>
                       <th className="px-4 py-3 font-medium text-gray-400">City</th>
                       <th className="px-4 py-3 font-medium text-gray-400 text-right">Score</th>
                       <th className="px-4 py-3 font-medium text-gray-400">Top Competitor</th>
@@ -395,7 +395,7 @@ export default function BatchCheckup() {
                   <thead>
                     <tr className="bg-gray-50 text-left">
                       <th className="px-4 py-3 font-medium text-gray-500 w-8"></th>
-                      <th className="px-4 py-3 font-medium text-gray-500">Practice</th>
+                      <th className="px-4 py-3 font-medium text-gray-500">Business</th>
                       <th className="px-4 py-3 font-medium text-gray-500">City</th>
                       <th className="px-4 py-3 font-medium text-gray-500 text-right">Score</th>
                       <th className="px-4 py-3 font-medium text-gray-500">Top Competitor</th>
@@ -408,8 +408,8 @@ export default function BatchCheckup() {
                         <td className="px-4 py-3">
                           <StatusDot status={r.status} />
                         </td>
-                        <td className="px-4 py-3 font-medium text-[#212D40]" title={r.practiceName}>
-                          {r.practiceName}
+                        <td className="px-4 py-3 font-medium text-[#212D40]" title={r.businessName}>
+                          {r.businessName}
                         </td>
                         <td className="px-4 py-3 text-gray-500">
                           {r.city}{r.state ? `, ${r.state}` : ""}
@@ -463,7 +463,7 @@ export default function BatchCheckup() {
                   const text = completedResults
                     .map(
                       (r) =>
-                        `${r.practiceName}\t${r.city}\t${r.score}\t${r.topCompetitorName || ""}\t${r.primaryGap || ""}\t${r.emailParagraph || ""}`,
+                        `${r.businessName}\t${r.city}\t${r.score}\t${r.topCompetitorName || ""}\t${r.primaryGap || ""}\t${r.emailParagraph || ""}`,
                     )
                     .join("\n");
                   navigator.clipboard.writeText(text).then(() => {

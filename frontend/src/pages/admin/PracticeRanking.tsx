@@ -1721,7 +1721,7 @@ function JobRow({
                   Number(job.rank_score)
                 )}`}
               >
-                {Number(job.rank_score).toFixed(1)}
+                {Math.round(Number(job.rank_score))}
               </div>
               <div className="text-xs text-gray-500">
                 #{job.rank_position ?? "-"} of {job.total_competitors ?? "-"}

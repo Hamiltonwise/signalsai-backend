@@ -218,7 +218,7 @@ export default function Dashboard() {
                   Let's Set Up Your Dashboard
                 </h1>
                 <p className="text-lg text-slate-500 font-medium">
-                  Complete these two steps to unlock your practice insights
+                  Complete these two steps to unlock your business insights
                 </p>
               </div>
 
@@ -277,7 +277,7 @@ export default function Dashboard() {
                         </span>
                       </div>
                       <p className="text-slate-400 font-medium leading-relaxed">
-                        Once properties are connected, upload your practice management data to see referral analytics and revenue attribution.
+                        Once properties are connected, upload your business data to see referral analytics and revenue attribution.
                       </p>
                     </div>
                   </div>
