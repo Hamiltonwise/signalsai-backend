@@ -691,6 +691,17 @@ export default function DoctorDashboard() {
     queryClient.invalidateQueries({ queryKey: ["setup-progress"] });
   }, [queryClient]);
 
+  // One Action Card — backend intelligence engine
+  const { data: oneActionData } = useQuery({
+    queryKey: ["one-action-card", orgId],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/one-action-card" });
+      return res?.success ? res.card : null;
+    },
+    enabled: !!orgId,
+    staleTime: 5 * 60_000,
+  });
+
   // Merge: use checkup context as fallback when live ranking hasn't run yet
   const effectiveRanking: RankingData | null = rankingData ?? (checkupCtx?.data ? {
     rankPosition: checkupCtx.data.market?.rank ?? null,
@@ -779,8 +790,8 @@ export default function DoctorDashboard() {
 
           {/* 3. One Action Card — deterministic rule engine */}
           <OneActionCard
+            serverCard={oneActionData}
             billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
-            driftGP={null /* TODO: wire to referral drift data when available */}
             rankingDrop={
               effectiveRanking?.previousPosition && effectiveRanking?.rankPosition &&
               effectiveRanking.rankPosition - effectiveRanking.previousPosition >= 2
@@ -791,7 +802,6 @@ export default function DoctorDashboard() {
                   }
                 : null
             }
-            competitorVelocity={null /* TODO: wire when review velocity data is available */}
             gbpConnected={hasGoogleConnection}
             topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
           />
@@ -815,8 +825,8 @@ export default function DoctorDashboard() {
           <GapToNext ranking={effectiveRanking} />
           {/* One Action Card in growth mode too */}
           <OneActionCard
+            serverCard={oneActionData}
             billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
-            driftGP={null}
             rankingDrop={
               effectiveRanking?.previousPosition && effectiveRanking?.rankPosition &&
               effectiveRanking.rankPosition - effectiveRanking.previousPosition >= 2
@@ -827,7 +837,6 @@ export default function DoctorDashboard() {
                   }
                 : null
             }
-            competitorVelocity={null}
             gbpConnected={hasGoogleConnection}
             topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
           />

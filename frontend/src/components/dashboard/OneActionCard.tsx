@@ -38,7 +38,17 @@ interface OneAction {
   rule: string; // for debugging / analytics
 }
 
+interface ServerCard {
+  headline: string;
+  body: string;
+  action_text: string | null;
+  action_url: string | null;
+  priority_level: 1 | 2 | 3 | 4 | 5;
+}
+
 interface OneActionCardProps {
+  // Backend intelligence (overrides local rules when present)
+  serverCard?: ServerCard | null;
   // Rule 1: Billing
   billingActive: boolean;
   // Rule 2: GP Gone Dark
@@ -67,7 +77,37 @@ interface OneActionCardProps {
 
 // ─── Rule Engine ────────────────────────────────────────────────────
 
+const PRIORITY_SEVERITY: Record<number, ActionSeverity> = {
+  1: "red",
+  2: "amber",
+  3: "amber",
+  4: "default",
+  5: "default",
+};
+
+const PRIORITY_ICON: Record<number, React.ComponentType<{ className?: string }>> = {
+  1: AlertTriangle,
+  2: MessageSquare,
+  3: TrendingDown,
+  4: Star,
+  5: Star,
+};
+
 function resolveAction(props: OneActionCardProps): OneAction {
+  // Backend intelligence overrides local rules (except billing)
+  if (props.billingActive && props.serverCard) {
+    const sc = props.serverCard;
+    return {
+      severity: PRIORITY_SEVERITY[sc.priority_level] || "default",
+      title: sc.headline,
+      detail: sc.body,
+      cta: sc.action_text || "",
+      ctaLink: sc.action_url || undefined,
+      icon: PRIORITY_ICON[sc.priority_level] || Star,
+      rule: `server_p${sc.priority_level}`,
+    };
+  }
+
   // Rule 1: BILLING FAILURE
   if (!props.billingActive) {
     return {

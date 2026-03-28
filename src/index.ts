@@ -256,7 +256,7 @@ app.use("/api/founder/settings", founderSettingsRoutes); // Founder Mode persona
 app.use("/api/admin/client-health", clientHealthRoutes); // WO-T5: CS Pulse health grid for IntegratorView
 app.use("/api/user/dashboard-context", dashboardContextRoutes); // WO-CHECKUP-SESSION-KEY: pre-populate dashboard from checkup data
 app.use("/api/auth/google", gbpAuthRoutes); // T6: GBP OAuth connect + callback
-app.use("/api/user/one-action-card", oneActionCardRoutes); // T3: One Action Card deterministic engine
+app.use("/api/user", oneActionCardRoutes); // T3: One Action Card deterministic engine
 app.use("/api/user", userPreferencesRoutes); // WO-NOTIFICATION-PREFS + WO-STRIPE-PORTAL
 app.use("/api/admin/behavioral-events", adminBehavioralEventsRoutes); // WO-ADMIN-BEHAVIORAL-EVENTS: T4 SessionIntelligence + MorningBrief
 app.use("/api/admin/case-studies", adminCaseStudiesRoutes); // T6: Case study CRUD + publish
