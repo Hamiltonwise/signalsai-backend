@@ -466,8 +466,10 @@ export default function ResultsScreen() {
     trackEvent("checkup.gate_viewed", {
       score: state.score.composite,
       blur_gate_cta_text: state.topCompetitor
-        ? `See why ${state.topCompetitor.name} ranks above you in ${state.place.city || "your market"}.`
-        : "See what's holding your score back.",
+        ? state.score.composite >= 80
+          ? `You're ahead, but ${state.topCompetitor.name} is closing the gap.`
+          : `See why ${state.topCompetitor.name} ranks above you in ${state.place.city || "your market"}.`
+        : `Competitive breakdown for ${state.place.city || "your market"}.`,
     });
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -612,12 +614,15 @@ export default function ResultsScreen() {
     }), 500);
   };
 
-  // Blur gate CTA -- adaptive by score and competitor data
-  const blurGateCta = score.composite >= 80
-    ? `You're performing well. See what will keep you ahead in ${place.city || "your market"}.`
-    : topCompetitor
-      ? `See why ${topCompetitor.name} ranks above you in ${place.city || "your market"}.`
-      : "Unlock your detailed market findings.";
+  // Blur gate CTA -- named competitor, named city (40-60% higher conversion per Unbounce/Optimizely)
+  const cityLabel = place.city || "your market";
+  const blurGateCta = topCompetitor
+    ? score.composite >= 80
+      ? `You're ahead in ${cityLabel}, but ${topCompetitor.name} is closing the gap. See the full picture.`
+      : `See why ${topCompetitor.name} ranks above you in ${cityLabel}.`
+    : market && market.totalCompetitors > 0
+      ? `${market.totalCompetitors} competitors in ${market.city} are fighting for your referrals. See where you stand.`
+      : `Unlock your competitive breakdown for ${cityLabel}.`;
 
   return (
     <div className="w-full max-w-md mt-2 sm:mt-6 space-y-7 pb-6">
@@ -818,7 +823,7 @@ export default function ResultsScreen() {
               <Lock className="w-4 h-4 text-[#D56753]" />
             </div>
             <span className="text-base font-bold text-[#212D40]">
-              Unlock Full Report
+              {topCompetitor ? `Your ${topCompetitor.name} Comparison` : "Unlock Full Report"}
             </span>
           </div>
           <p className="text-sm text-slate-600 mb-5 leading-relaxed">{blurGateCta}</p>
@@ -867,7 +872,7 @@ export default function ResultsScreen() {
             {/* Relationship — spec: owner/vendor/other */}
             <fieldset className="space-y-1">
               <legend className="text-xs font-medium text-slate-600 mb-1.5">
-                Are you the owner or manager of this practice?
+                Are you the owner or manager of this business?
               </legend>
               {[
                 { value: "owner", label: "Yes, I'm the owner or manager" },
