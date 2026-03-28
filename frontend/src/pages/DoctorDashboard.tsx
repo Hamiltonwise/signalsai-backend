@@ -70,6 +70,7 @@ interface WebsiteInfo {
   generated_hostname: string;
   status: string;
   last_updated?: string;
+  liveUrl?: string;
 }
 
 // ─── Greeting ───────────────────────────────────────────────────────
@@ -895,6 +896,32 @@ export default function DoctorDashboard() {
 
           {/* GBP Connect card — single prompt, no duplicate banner (WO-29) */}
           {!hasGoogleConnection && <GBPConnectCard gbpConnected={hasGoogleConnection} orgId={orgId} />}
+
+          {/* PatientPath Research Brief reveal (WO-43) */}
+          {checkupCtx?.research_findings && checkupCtx.research_findings.length > 0 && (
+            <div className="rounded-2xl border border-gray-200 bg-white p-5">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-3">
+                Before we built your site, we studied your business.
+              </p>
+              <div className="space-y-2.5">
+                {checkupCtx.research_findings.map((finding: string, i: number) => (
+                  <p key={i} className="text-sm text-[#212D40]/80 leading-relaxed">
+                    {finding}
+                  </p>
+                ))}
+              </div>
+              {websiteData?.liveUrl && (
+                <a
+                  href={websiteData.liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#D56753] hover:underline"
+                >
+                  Preview my site
+                </a>
+              )}
+            </div>
+          )}
 
           {/* 4. PatientPath breadcrumb — quiet, lower */}
           {isWebsiteError && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}

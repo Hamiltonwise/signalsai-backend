@@ -37,6 +37,8 @@ dashboardContextRoutes.get(
           "session_checkup_key",
           "first_login_at",
           "name",
+          "research_brief",
+          "patientpath_status",
         )
         .first();
 
@@ -57,10 +59,24 @@ dashboardContextRoutes.get(
         };
       }
 
+      // Research brief for PatientPath reveal (WO-43)
+      let researchFindings: string[] | null = null;
+      if (org.research_brief && org.patientpath_status) {
+        try {
+          const brief = typeof org.research_brief === "string" ? JSON.parse(org.research_brief) : org.research_brief;
+          const findings = brief?.findings || brief?.key_findings || [];
+          if (Array.isArray(findings) && findings.length > 0) {
+            researchFindings = findings.slice(0, 3).map((f: any) => typeof f === "string" ? f : f.text || f.detail || f.finding || String(f));
+          }
+        } catch { /* ignore parse errors */ }
+      }
+
       return res.json({
         success: true,
         checkup_context: checkupContext,
-        has_ranking_snapshot: false, // T2 can enhance: check weekly_ranking_snapshots
+        research_findings: researchFindings,
+        patientpath_status: org.patientpath_status || null,
+        has_ranking_snapshot: false,
       });
     } catch (error: any) {
       console.error("[DashboardContext] Error:", error.message);

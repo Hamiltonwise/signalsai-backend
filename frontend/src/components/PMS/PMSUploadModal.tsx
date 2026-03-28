@@ -107,15 +107,26 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
 
       if (result.success) {
         setUploadStatus("success");
-        setMessage(
-          "We're processing your PMS data now. We'll notify you once it's ready."
-        );
 
-        // Show glassmorphism toast notification
-        showUploadToast(
-          "PMS export received!",
-          "We'll notify when ready for checking"
-        );
+        // WO-40: Show instant finding if available
+        const finding = result.data?.instantFinding;
+        if (finding?.topSource) {
+          setMessage(
+            `Your top referral source: ${finding.topSource} (${finding.topSourceCount} cases from ${finding.totalRecords} records). See your full referral picture below.`
+          );
+          showUploadToast(
+            `${finding.topSource}`,
+            `${finding.topSourceCount} cases found in ${finding.totalRecords} records`
+          );
+        } else {
+          setMessage(
+            `We found ${finding?.totalRecords || 0} records. Your referral picture is being built.`
+          );
+          showUploadToast(
+            "PMS data received!",
+            `${finding?.totalRecords || 0} records processing`
+          );
+        }
         if (typeof window !== "undefined") {
           try {
             window.localStorage.setItem(

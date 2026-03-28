@@ -71,6 +71,9 @@ interface Milestone {
 interface EnhancedYearSummary {
   start_date: string;
   days_active: number;
+  practice_name?: string;
+  first_win_date?: string | null;
+  competitor_moves_caught?: number;
   positions_gained: number | null;
   start_position: number | null;
   current_position: number | null;
@@ -608,6 +611,37 @@ export default function ProgressReport() {
           ))}
         </div>
       )}
+
+      {/* 90/180/365-Day Milestone Story (WO-44) */}
+      {enhanced?.year_summary && (() => {
+        const days = enhanced.year_summary.days_active;
+        const milestone = days >= 365 ? 365 : days >= 180 ? 180 : days >= 90 ? 90 : null;
+        if (!milestone) return null;
+        const s = enhanced.year_summary;
+        const weeksWatched = Math.floor(days / 7);
+        return (
+          <div className="bg-[#D56753] rounded-2xl p-6 text-white">
+            <p className="text-xs font-bold uppercase tracking-widest text-white/50 mb-3">
+              Your first {milestone} days with Alloro.
+            </p>
+            <div className="space-y-2 text-sm leading-relaxed">
+              {s.start_position && s.current_position && (
+                <p>Started: #{s.start_position}. Today: #{s.current_position}.</p>
+              )}
+              <p>{weeksWatched} Monday{weeksWatched !== 1 ? "s" : ""} watched your market while you were with clients.</p>
+              {(s.competitor_moves_caught ?? 0) > 0 && (
+                <p>{s.competitor_moves_caught} competitor move{s.competitor_moves_caught !== 1 ? "s" : ""} caught before you noticed them.</p>
+              )}
+              {s.first_win_date && (
+                <p>1 relationship you almost lost that came back.</p>
+              )}
+            </div>
+            <p className="text-white/60 text-xs mt-4">
+              You didn't do most of this. Alloro did.
+            </p>
+          </div>
+        );
+      })()}
 
       {/* Content */}
       {data && (

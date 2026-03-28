@@ -153,12 +153,26 @@ userProgressRoutes.get(
         );
       }
 
+      // Competitor moves caught (from behavioral events)
+      const competitorMoves = await db("behavioral_events")
+        .where({ organization_id: orgId })
+        .where("event_type", "like", "competitor.%")
+        .count("id as count")
+        .first();
+
+      // First win
+      const firstWinDate = org?.first_win_attributed_at || null;
+      const practiceName = org?.name || "Your business";
+
       return res.json({
         success: true,
         data: {
           year_summary: {
             start_date: startDate.toISOString(),
             days_active: daysActive,
+            practice_name: practiceName,
+            first_win_date: firstWinDate,
+            competitor_moves_caught: Number(competitorMoves?.count || 0),
             positions_gained: positionDelta,
             start_position: startPosition,
             current_position: currentPosition,
