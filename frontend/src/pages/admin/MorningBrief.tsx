@@ -337,7 +337,7 @@ function SceneSetter() {
     staleTime: 5 * 60_000,
   });
 
-  const total = orgs?.length ?? 0;
+  const total = orgs?.organizations?.length ?? 0;
   const redCount = healthData?.filter((e) => e.health === "red").length ?? 0;
   const amberCount = healthData?.filter((e) => e.health === "amber").length ?? 0;
 

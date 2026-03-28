@@ -18,7 +18,7 @@ import {
   Camera,
   FileText,
 } from "lucide-react";
-import { apiGet } from "@/api/index";
+import { apiGet, apiPost } from "@/api/index";
 import { useLocationContext } from "@/contexts/locationContext";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -303,10 +303,171 @@ export default function ReferralIntelligence() {
           {/* Drift Alerts */}
           <DriftAlerts alerts={data.driftAlerts} />
 
+          {/* Thank-You Drafts (WO-47) */}
+          <ThankYouDrafts referrers={data.topReferrers} />
+
           {/* Top Referrers */}
           <TopReferrers referrers={data.topReferrers} />
         </>
       )}
+    </div>
+  );
+}
+
+// ─── Thank-You Drafts (WO-47) ───────────────────────────────────────
+
+function ThankYouDrafts({ referrers }: { referrers: Referrer[] }) {
+  // Show drafts for top 3 referrers who recently sent cases
+  const eligible = referrers
+    .filter((r) => r.recentReferrals > 0)
+    .slice(0, 3);
+
+  if (eligible.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+        Thank Your Top Sources
+      </p>
+      {eligible.map((gp) => (
+        <ThankYouCard key={gp.name} gp={gp} />
+      ))}
+    </div>
+  );
+}
+
+function ThankYouCard({ gp }: { gp: Referrer }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedDraft, setEditedDraft] = useState("");
+  const [sent, setSent] = useState(false);
+  const [skipped, setSkipped] = useState(false);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [email, setEmail] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  if (skipped || sent) return null;
+
+  async function generateDraft() {
+    setIsGenerating(true);
+    try {
+      const res = await apiPost({
+        path: "/referral-intelligence/thank-you-draft",
+        passedData: { gpName: gp.name },
+      });
+      if (res.success && res.draft) {
+        setDraft(res.draft);
+        setEditedDraft(res.draft);
+      }
+    } catch {
+      // Fail silently
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(editedDraft || draft || "");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleSendEmail() {
+    if (!email) {
+      setShowEmailInput(true);
+      return;
+    }
+    // In production, this would call an email API
+    setSent(true);
+  }
+
+  if (!draft) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-[#212D40]">Dr. {gp.name}</p>
+          <p className="text-xs text-gray-500">
+            {gp.recentReferrals} recent referral{gp.recentReferrals !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <button
+          onClick={generateDraft}
+          disabled={isGenerating}
+          className="px-3 py-1.5 text-xs font-semibold text-[#D56753] border border-[#D56753]/30 rounded-lg hover:bg-[#D56753]/5 disabled:opacity-40 transition-colors"
+        >
+          {isGenerating ? "Drafting..." : "Draft thank-you"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-[#D56753]/20 bg-[#D56753]/[0.02] p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+          Draft: Thank-you to Dr. {gp.name}
+        </p>
+      </div>
+
+      {isEditing ? (
+        <textarea
+          value={editedDraft}
+          onChange={(e) => setEditedDraft(e.target.value)}
+          rows={4}
+          className="w-full text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-[#D56753]/30"
+        />
+      ) : (
+        <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+          {editedDraft || draft}
+        </p>
+      )}
+
+      {showEmailInput && (
+        <div className="flex items-center gap-2">
+          <input
+            type="email"
+            placeholder="Dr.'s email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#D56753]/30"
+          />
+          <button
+            onClick={handleSendEmail}
+            disabled={!email}
+            className="px-3 py-1.5 text-xs font-semibold text-white bg-[#D56753] rounded-lg disabled:opacity-40"
+          >
+            Send
+          </button>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={handleSendEmail}
+          className="px-3 py-1.5 text-xs font-semibold text-white bg-[#D56753] rounded-lg hover:bg-[#C25544] transition-colors"
+        >
+          Send via email
+        </button>
+        <button
+          onClick={handleCopy}
+          className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          {copied ? "Copied!" : "Copy text"}
+        </button>
+        <button
+          onClick={() => setIsEditing(!isEditing)}
+          className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          {isEditing ? "Done editing" : "Edit"}
+        </button>
+        <button
+          onClick={() => setSkipped(true)}
+          className="px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          Skip
+        </button>
+      </div>
     </div>
   );
 }

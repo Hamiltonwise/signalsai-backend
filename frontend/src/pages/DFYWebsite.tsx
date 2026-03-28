@@ -44,6 +44,7 @@ import {
   extractSectionsFromDom,
 } from "../utils/htmlReplacer";
 import EditorSidebar from "../components/PageEditor/EditorSidebar";
+import NaturalLanguageEditBar from "../components/PageEditor/NaturalLanguageEditBar";
 import { enableInlineEditing, type EditChange } from "../components/PageEditor/InlineEditOverlay";
 import type { ChatMessage } from "../components/PageEditor/ChatPanel";
 import type { PageVersion } from "../components/PageEditor/VersionHistoryTab";
@@ -1308,6 +1309,11 @@ export function DFYWebsite() {
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Preview */}
           <div className="flex-1 flex flex-col relative">
+            {/* Natural Language Edit Bar */}
+            <NaturalLanguageEditBar
+              pageId={selectedPage?.id || null}
+              onChangesApplied={fetchWebsite}
+            />
             <div className="flex-1 overflow-hidden bg-gray-100 relative">
               {/* Loading overlay for page switching / shortcode resolution */}
               {isResolving && (

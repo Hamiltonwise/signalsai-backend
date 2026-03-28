@@ -19,6 +19,7 @@ import { processWebsiteRestore } from "./processors/websiteRestore.processor";
 import { processGbpRefresh } from "./processors/gbpRefresh.processor";
 import { processPatientPathBuild } from "./processors/patientpathBuild.processor";
 import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
+import { processWeek1Win } from "./processors/week1Win.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -248,8 +249,20 @@ const welcomeIntelligenceWorker = new Worker(
   }
 );
 
+const week1WinWorker = new Worker(
+  "minds-week1-win",
+  async (job) => {
+    await processWeek1Win(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -278,6 +291,7 @@ async function shutdown(): Promise<void> {
   await wbRestoreWorker.close();
   await patientpathBuildWorker.close();
   await welcomeIntelligenceWorker.close();
+  await week1WinWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");

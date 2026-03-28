@@ -240,4 +240,69 @@ referralIntelligenceRoutes.get(
   },
 );
 
+// ─── POST /api/referral-intelligence/thank-you-draft — Generate a thank-you note ──
+
+referralIntelligenceRoutes.post(
+  "/thank-you-draft",
+  authenticateToken,
+  async (req: any, res) => {
+    try {
+      const orgId = req.organizationId;
+      if (!orgId) return res.status(400).json({ success: false, error: "No organization" });
+
+      const { gpName, specialty, doctorName } = req.body;
+      if (!gpName) return res.status(400).json({ success: false, error: "gpName is required" });
+
+      // Get org info for context
+      const org = await db("organizations").where({ id: orgId }).first();
+      const orgSpecialty = specialty || org?.specialty || "specialist";
+      const orgDoctor = doctorName || org?.doctor_name || org?.name || "Doctor";
+
+      const Anthropic = (await import("@anthropic-ai/sdk")).default;
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) return res.status(500).json({ success: false, error: "AI not configured" });
+
+      const ai = new Anthropic({ apiKey });
+
+      const response = await ai.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 300,
+        system: `Write a professional, warm thank-you note from a specialist to a referring GP.
+
+Rules:
+- Under 75 words
+- Warm but professional
+- Do NOT confirm patient identity (HIPAA)
+- Mention that a clinical report will follow
+- Sign with the specialist's first name only
+- No generic phrases like "thank you for your continued support"
+- Specific to this referral relationship
+- No em-dashes
+- Return ONLY the note text, no JSON`,
+        messages: [{
+          role: "user",
+          content: `Specialist: ${orgDoctor}, ${orgSpecialty}
+Referring GP: Dr. ${gpName}
+
+Write a brief thank-you note for a recent referral.`,
+        }],
+      });
+
+      const text = response.content[0];
+      if (!text || text.type !== "text") {
+        return res.status(500).json({ success: false, error: "Failed to generate draft" });
+      }
+
+      return res.json({
+        success: true,
+        draft: text.text.trim(),
+        gpName,
+      });
+    } catch (error: any) {
+      console.error("[ReferralIntelligence] Thank-you draft error:", error.message);
+      return res.status(500).json({ success: false, error: "Failed to generate draft" });
+    }
+  },
+);
+
 export default referralIntelligenceRoutes;

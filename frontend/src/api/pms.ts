@@ -183,6 +183,11 @@ export interface PMSUploadResponse {
     recordsStored: number;
     entryType?: "csv" | "manual";
     jobId?: number;
+    instantFinding?: {
+      totalRecords: number;
+      topSource?: string;
+      topSourceCount?: number;
+    } | null;
   };
   error?: string;
   message?: string;

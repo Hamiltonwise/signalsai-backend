@@ -8,6 +8,7 @@
  * Also shows GP drift alerts (T3-F Surprise Catch) as persistent amber banners.
  */
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   TrendingUp,
@@ -332,6 +333,9 @@ export default function RankingsScreen() {
         )
       )}
 
+      {/* What Alloro Did This Week — Live Progress Feed (WO-46) */}
+      <ActivityFeed />
+
       {/* Snapshot history */}
       {snapshots.length > 0 && (
         <div className="space-y-4">
@@ -339,6 +343,91 @@ export default function RankingsScreen() {
           {snapshots.map((snapshot, i) => (
             <SnapshotCard key={snapshot.id} snapshot={snapshot} isLatest={i === 0} />
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Activity Feed — What Alloro Did This Week (WO-46) ──────────────
+
+interface FeedEntry {
+  id: string;
+  type: string;
+  label: string;
+  relativeTime: string;
+  isNotable: boolean;
+}
+
+function ActivityFeed() {
+  const [expanded, setExpanded] = useState(false);
+  const { data, isLoading } = useQuery({
+    queryKey: ["activity-feed"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/rankings-intelligence/activity-feed" });
+      return res?.success ? res : { entries: [], nearMiss: null };
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const entries: FeedEntry[] = data?.entries || [];
+  const nearMiss: string | null = data?.nearMiss || null;
+  const visible = expanded ? entries : entries.slice(0, 5);
+
+  if (isLoading) return null;
+
+  // Empty state for new accounts
+  if (entries.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-5">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+          What Alloro Did This Week
+        </p>
+        <p className="text-sm text-gray-400">
+          Alloro started watching your market. Your first activity will appear here soon.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      <div className="px-5 pt-4 pb-2">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+          What Alloro Did This Week
+        </p>
+      </div>
+      <div className="divide-y divide-gray-100">
+        {visible.map((entry) => (
+          <div key={entry.id} className="px-5 py-3 flex items-start gap-3">
+            <span className={`shrink-0 w-1.5 h-1.5 rounded-full mt-1.5 ${
+              entry.isNotable ? "bg-[#D56753]" : "bg-gray-300"
+            }`} />
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm leading-snug ${
+                entry.isNotable ? "text-[#212D40] font-medium" : "text-gray-500"
+              }`}>
+                {entry.label}
+              </p>
+            </div>
+            <span className="shrink-0 text-[11px] text-gray-400">{entry.relativeTime}</span>
+          </div>
+        ))}
+      </div>
+      {entries.length > 5 && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="w-full px-5 py-2.5 text-xs font-semibold text-[#D56753] hover:bg-gray-50 transition-colors flex items-center justify-center gap-1"
+        >
+          {expanded ? "Show less" : `See all ${entries.length} this week`}
+          <ChevronRight className={`h-3 w-3 transition-transform ${expanded ? "rotate-90" : ""}`} />
+        </button>
+      )}
+      {nearMiss && (
+        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
+          <p className="text-xs text-gray-500">
+            <span className="font-semibold text-[#D56753]">{nearMiss}</span>
+          </p>
         </div>
       )}
     </div>

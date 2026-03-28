@@ -843,6 +843,24 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       console.error(`[Checkup] Failed to enqueue Welcome Intelligence:`, wiErr.message);
     }
 
+    // Queue Week 1 Win job (24 hours after signup)
+    try {
+      const w1Queue = getMindsQueue("week1-win");
+      await w1Queue.add(
+        `week1:win:${org.id}`,
+        { orgId: org.id },
+        {
+          jobId: `week1-win-${org.id}`,
+          delay: 24 * 60 * 60 * 1000, // 24 hours
+          attempts: 2,
+          backoff: { type: "exponential", delay: 60000 },
+        }
+      );
+      console.log(`[Checkup] Week 1 Win enqueued for org ${org.id} (fires in 24h)`);
+    } catch (w1Err: any) {
+      console.error(`[Checkup] Failed to enqueue Week 1 Win:`, w1Err.message);
+    }
+
     return res.json({
       success: true,
       token,

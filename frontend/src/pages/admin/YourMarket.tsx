@@ -233,7 +233,7 @@ export default function YourMarket() {
         orgId: latest.organization_id || latest.organizationId || 0,
         orgName:
           latest.organization_name ||
-          latest.gbp_location_name ||
+          latest.location_name ||
           latest.location ||
           `Org #${latest.organization_id || latest.organizationId}`,
         locationName: latest.location_name || null,

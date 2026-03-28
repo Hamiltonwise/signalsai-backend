@@ -63,7 +63,7 @@ function exportCSV(results: BatchResult[]): string {
     .filter((r) => r.status === "completed")
     .map(
       (r) =>
-        `"${esc(r.businessName)}","${esc(r.city)}","${esc(r.state)}",${r.score ?? ""},"${esc(r.topCompetitorName || "Unknown")}",${r.topCompetitorReviews ?? ""},${r.businessReviews ?? ""},"${esc(r.primaryGap)}","${esc(r.emailParagraph)}"`,
+        `"${esc(r.practiceName)}","${esc(r.city)}","${esc(r.state)}",${r.score ?? ""},"${esc(r.topCompetitorName || "Unknown")}",${r.topCompetitorReviews ?? ""},${r.practiceReviews ?? ""},"${esc(r.primaryGap)}","${esc(r.emailParagraph)}"`,
     );
   return [header, ...rows].join("\n");
 }
@@ -408,8 +408,8 @@ export default function BatchCheckup() {
                         <td className="px-4 py-3">
                           <StatusDot status={r.status} />
                         </td>
-                        <td className="px-4 py-3 font-medium text-[#212D40]" title={r.businessName}>
-                          {r.businessName}
+                        <td className="px-4 py-3 font-medium text-[#212D40]" title={r.practiceName}>
+                          {r.practiceName}
                         </td>
                         <td className="px-4 py-3 text-gray-500">
                           {r.city}{r.state ? `, ${r.state}` : ""}
@@ -463,7 +463,7 @@ export default function BatchCheckup() {
                   const text = completedResults
                     .map(
                       (r) =>
-                        `${r.businessName}\t${r.city}\t${r.score}\t${r.topCompetitorName || ""}\t${r.primaryGap || ""}\t${r.emailParagraph || ""}`,
+                        `${r.practiceName}\t${r.city}\t${r.score}\t${r.topCompetitorName || ""}\t${r.primaryGap || ""}\t${r.emailParagraph || ""}`,
                     )
                     .join("\n");
                   navigator.clipboard.writeText(text).then(() => {

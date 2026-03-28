@@ -345,4 +345,131 @@ async function checkFirstWinAttribution(orgId: number) {
   }
 }
 
+// ─── GET /activity-feed — What Alloro Did This Week ──────────────────
+
+const FEED_EVENT_TYPES = [
+  "ranking_improvement",
+  "review_growth",
+  "review_request.sent",
+  "first_win.achieved",
+  "clearpath.build_triggered",
+  "competitor.disruption_detected",
+  "one_action.completed",
+  "referral.submitted",
+  "weekly_digest.posted",
+  "gp.gone_dark",
+  "gp.drift_detected",
+  "result_email.sent",
+  "welcome_intelligence.sent",
+];
+
+const EVENT_LABELS: Record<string, (props: Record<string, any>) => string> = {
+  "ranking_improvement": (p) =>
+    `Your ranking for '${p.keyword || "your market"}' moved from #${p.from || "?"} to #${p.to || "?"}.`,
+  "review_growth": (p) =>
+    `You gained ${p.count || "new"} review${p.count !== 1 ? "s" : ""} this week.`,
+  "review_request.sent": () =>
+    "Review request sent to a recent patient.",
+  "first_win.achieved": (p) =>
+    p.description || "A milestone was reached. Your first win with Alloro.",
+  "clearpath.build_triggered": () =>
+    "Your PatientPath website build was started.",
+  "competitor.disruption_detected": (p) =>
+    `${p.competitor_name || "A competitor"} made a move. ${p.detail || "Review or ranking change detected."}`,
+  "one_action.completed": () =>
+    "You completed this week's recommended action.",
+  "referral.submitted": (p) =>
+    `New referral from ${p.referrer_name || "a colleague"}.`,
+  "weekly_digest.posted": () =>
+    "Weekly intelligence digest was delivered.",
+  "gp.gone_dark": (p) =>
+    `${p.gp_name || "A referring provider"} hasn't sent a referral in ${p.days_silent || "60+"} days.`,
+  "gp.drift_detected": (p) =>
+    `Referral volume from ${p.gp_name || "a provider"} is declining.`,
+  "result_email.sent": () =>
+    "Your checkup results were emailed.",
+  "welcome_intelligence.sent": () =>
+    "Welcome intelligence package was delivered.",
+};
+
+function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffHours < 1) return "just now";
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 7) {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return days[date.getDay()];
+  }
+  return "last week";
+}
+
+rankingsIntelligenceRoutes.get(
+  "/activity-feed",
+  authenticateToken,
+  rbacMiddleware,
+  async (req: RBACRequest, res) => {
+    try {
+      const orgId = req.organizationId;
+      if (!orgId) {
+        return res.json({ success: true, entries: [], nearMiss: null });
+      }
+
+      const events = await db("behavioral_events")
+        .where({ org_id: orgId })
+        .whereIn("event_type", FEED_EVENT_TYPES)
+        .where("created_at", ">=", db.raw("NOW() - INTERVAL '7 days'"))
+        .orderBy("created_at", "desc")
+        .limit(20);
+
+      const entries = events.map((e: any) => {
+        const props = typeof e.properties === "string"
+          ? JSON.parse(e.properties)
+          : e.properties || {};
+        const labelFn = EVENT_LABELS[e.event_type];
+        const label = labelFn ? labelFn(props) : e.event_type;
+        const isNotable = [
+          "ranking_improvement", "competitor.disruption_detected",
+          "first_win.achieved", "gp.gone_dark",
+        ].includes(e.event_type);
+
+        return {
+          id: e.id,
+          type: e.event_type,
+          label,
+          relativeTime: formatRelativeTime(new Date(e.created_at)),
+          isNotable,
+        };
+      });
+
+      // Near-miss line from latest snapshot
+      let nearMiss: string | null = null;
+      const latest = await db("weekly_ranking_snapshots")
+        .where({ org_id: orgId })
+        .orderBy("week_start", "desc")
+        .first();
+
+      if (latest?.position && latest.competitor_name) {
+        const gap = Math.abs(
+          (latest.competitor_review_count || 0) - (latest.client_review_count || 0)
+        );
+        if (latest.position === 1) {
+          nearMiss = `${gap} reviews ahead of ${latest.competitor_name} at position 2.`;
+        } else {
+          nearMiss = `${gap} reviews separate you from ${latest.competitor_name} at position ${(latest.position || 2) - 1}.`;
+        }
+      }
+
+      return res.json({ success: true, entries, nearMiss });
+    } catch (error: any) {
+      console.error("[RankingsIntel] Activity feed error:", error.message);
+      return res.json({ success: true, entries: [], nearMiss: null });
+    }
+  }
+);
+
 export default rankingsIntelligenceRoutes;

@@ -39,6 +39,11 @@ dashboardContextRoutes.get(
           "name",
           "research_brief",
           "patientpath_status",
+          "week1_win_headline",
+          "week1_win_detail",
+          "week1_win_type",
+          "week1_win_shown_at",
+          "created_at",
         )
         .first();
 
@@ -71,12 +76,27 @@ dashboardContextRoutes.get(
         } catch { /* ignore parse errors */ }
       }
 
+      // Week 1 Win card (WO-48): show for 7 days after generation
+      let week1Win = null;
+      if (org.week1_win_headline && org.week1_win_shown_at) {
+        const shownAt = new Date(org.week1_win_shown_at);
+        const daysSinceShown = (Date.now() - shownAt.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceShown <= 7) {
+          week1Win = {
+            headline: org.week1_win_headline,
+            detail: org.week1_win_detail,
+            type: org.week1_win_type,
+          };
+        }
+      }
+
       return res.json({
         success: true,
         checkup_context: checkupContext,
         research_findings: researchFindings,
         patientpath_status: org.patientpath_status || null,
         has_ranking_snapshot: false,
+        week1_win: week1Win,
       });
     } catch (error: any) {
       console.error("[DashboardContext] Error:", error.message);

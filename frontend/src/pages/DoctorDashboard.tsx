@@ -631,14 +631,16 @@ export default function DoctorDashboard() {
   const canSendReviews = userRole !== "viewer";
 
   // Checkup context -- pre-populates dashboard on first login before ranking scan
-  const { data: checkupCtx } = useQuery({
+  const { data: dashCtx } = useQuery({
     queryKey: ["dashboard-context"],
     queryFn: async () => {
       const res = await apiGet({ path: "/user/dashboard-context" });
-      return res?.success ? res.checkup_context : null;
+      return res?.success ? res : null;
     },
     staleTime: 30 * 60_000,
   });
+  const checkupCtx = dashCtx?.checkup_context ?? null;
+  const week1WinData = dashCtx?.week1_win ?? null;
 
   const { data: rankingData, isLoading: isRankingLoading, isError: isRankingError } = useQuery({
     queryKey: ["client-ranking", orgId, locationId],
@@ -879,6 +881,21 @@ export default function DoctorDashboard() {
             apiPatch({ path: "/onboarding/setup-progress", passedData: { checklist_dismissed: true } }).catch(() => {});
           }}
         />
+      )}
+
+      {/* Week 1 Win card (WO-48) */}
+      {!isLoading && week1WinData && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <Star className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-[#212D40]">{week1WinData.headline}</p>
+              <p className="text-sm text-gray-600 leading-relaxed mt-1">{week1WinData.detail}</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {isLoading && (
