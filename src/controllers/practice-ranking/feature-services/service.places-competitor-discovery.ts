@@ -187,17 +187,31 @@ export function filterBySpecialty(
 
   const beforeCount = competitors.length;
 
+  // For specialists, only accept same-specialty matches.
+  // For general dentists, accept all dental types.
+  const isGeneral = normalizedSpecialty === "general";
+  const specialtyTypes = SPECIALTY_PRIMARY_TYPES[normalizedSpecialty] || [];
+
   const filtered = competitors.filter((comp) => {
     const pt = comp.primaryType.toLowerCase();
     const displayCat = comp.category.toLowerCase();
 
-    // Accept any dental primaryType (Google uses "dentist" for most specialties)
-    if (ALL_DENTAL_TYPES.includes(pt)) return true;
+    // First gate: must be a dental business at all (reject non-dental junk)
+    const isDental =
+      ALL_DENTAL_TYPES.includes(pt) ||
+      comp.types?.some((t) => ALL_DENTAL_TYPES.includes(t.toLowerCase()));
+    if (!isDental) return false;
 
-    // Check types array for any dental type
-    if (comp.types?.some((t) => ALL_DENTAL_TYPES.includes(t.toLowerCase()))) return true;
+    // General dentists: accept any dental business
+    if (isGeneral) return true;
 
-    // Fallback: match on display name from SPECIALTY_CATEGORIES
+    // Specialists: accept if primaryType matches the target specialty
+    if (specialtyTypes.includes(pt)) return true;
+
+    // Also accept if any type in the types array matches
+    if (comp.types?.some((t) => specialtyTypes.includes(t.toLowerCase()))) return true;
+
+    // Fallback: match on display category name from SPECIALTY_CATEGORIES
     if (targetDisplayNames.some((name) => displayCat.includes(name))) return true;
 
     return false;
