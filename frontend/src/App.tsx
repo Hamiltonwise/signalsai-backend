@@ -84,6 +84,9 @@ const FoundersPage = React.lazy(() => import("./pages/foundation/FoundersPage"))
 const FoundationApply = React.lazy(() => import("./pages/foundation/FoundationApply"));
 
 const TasksPage = React.lazy(() => import("./pages/TasksPage"));
+const ProductPage = React.lazy(() => import("./pages/marketing/ProductPage"));
+const RisePage = React.lazy(() => import("./pages/marketing/RisePage"));
+const AboutPage = React.lazy(() => import("./pages/marketing/AboutPage"));
 
 // --- Non-page imports (always loaded) ---
 import { PageWrapper } from "./components/PageWrapper";
@@ -237,10 +240,13 @@ function App() {
                 }
               />
 
-              {/* Marketing site (WO-13) */}
+              {/* Marketing site (WO-13 + WO-27) */}
               <Route path="/" element={<MarketingHome />} />
+              <Route path="/product" element={<ProductPage />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/who-its-for" element={<WhoItsFor />} />
+              <Route path="/rise" element={<RisePage />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route path="/story" element={<StoryPage />} />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/the-second-job-problem" element={<BlogPost1 />} />
