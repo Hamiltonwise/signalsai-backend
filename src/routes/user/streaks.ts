@@ -93,9 +93,32 @@ streakRoutes.get(
       streaks.sort((a, b) => b.count - a.count);
       const best = streaks[0] || null;
 
+      // Win celebration data (WO-34)
+      let win = null;
+      const org = await db("organizations").where({ id: orgId }).first("first_win_attributed_at");
+      if (org?.first_win_attributed_at) {
+        const daysSince = Math.floor((Date.now() - new Date(org.first_win_attributed_at).getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSince <= 7) {
+          // Get the win event details
+          const winEvent = await db("behavioral_events")
+            .where({ organization_id: orgId, event_type: "first_win.achieved" })
+            .orderBy("created_at", "desc")
+            .first("metadata");
+          const meta = winEvent?.metadata
+            ? (typeof winEvent.metadata === "string" ? JSON.parse(winEvent.metadata) : winEvent.metadata)
+            : null;
+          win = {
+            headline: meta?.headline || "Alloro caught something. You acted. It worked.",
+            detail: meta?.detail || null,
+            daysAgo: daysSince,
+          };
+        }
+      }
+
       return res.json({
         success: true,
         streak: best ? { type: best.type, count: best.count, label: best.label } : null,
+        win,
       });
     } catch (error: any) {
       console.error("[Streaks] Error:", error.message);

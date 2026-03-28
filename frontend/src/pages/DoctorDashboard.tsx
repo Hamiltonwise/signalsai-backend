@@ -601,7 +601,6 @@ export default function DoctorDashboard() {
 
   const orgId = userProfile?.organizationId || null;
   const locationId = selectedLocation?.id ?? null;
-  const firstName = userProfile?.firstName || "Doctor";
   const practiceName = selectedLocation?.name || userProfile?.practiceName || "Your Practice";
   const locationName = selectedLocation?.name || null;
 
@@ -718,16 +717,18 @@ export default function DoctorDashboard() {
     queryClient.invalidateQueries({ queryKey: ["setup-progress"] });
   }, [queryClient]);
 
-  // Streaks (WO-33)
-  const { data: streakData } = useQuery({
+  // Streaks + Win (WO-33, WO-34)
+  const { data: streaksAndWin } = useQuery({
     queryKey: ["user-streaks", orgId],
     queryFn: async () => {
       const res = await apiGet({ path: "/user/streaks" });
-      return res?.success ? res.streak : null;
+      return res?.success ? { streak: res.streak, win: res.win } : { streak: null, win: null };
     },
     enabled: !!orgId,
     staleTime: 10 * 60_000,
   });
+  const streakData = streaksAndWin?.streak ?? null;
+  const winData = streaksAndWin?.win ?? null;
 
   // One Action Card — backend intelligence engine
   const { data: oneActionResponse } = useQuery({
@@ -793,6 +794,16 @@ export default function DoctorDashboard() {
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
       </div>
+
+      {/* Win celebration card (WO-34) */}
+      {!isLoading && winData && (
+        <div className="rounded-2xl bg-[#D56753] p-5 text-white animate-[pulse_2s_ease-in-out_1]">
+          <p className="text-sm font-bold">Alloro caught something. You acted. It worked.</p>
+          {winData.detail && (
+            <p className="text-sm text-white/80 mt-2 leading-relaxed">{winData.detail}</p>
+          )}
+        </div>
+      )}
 
       {/* One Action Card — first visible element below greeting (WO-29) */}
       {!isLoading && (
