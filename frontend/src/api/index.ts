@@ -61,7 +61,7 @@ export async function apiGet({
       return err.response.data;
     }
     return {
-      successful: false,
+      success: false,
       errorMessage: "An error occurred. Please try again.",
     };
   }
@@ -119,7 +119,7 @@ export async function apiPost({
       return err.response.data;
     }
     return {
-      successful: false,
+      success: false,
       errorMessage: "An error occurred. Please try again.",
     };
   }
@@ -162,7 +162,7 @@ export async function apiPatch({
       return err.response.data;
     }
     return {
-      successful: false,
+      success: false,
       errorMessage: "An error occurred. Please try again.",
     };
   }
@@ -205,7 +205,7 @@ export async function apiPut({
       return err.response.data;
     }
     return {
-      successful: false,
+      success: false,
       errorMessage: "An error occurred. Please try again.",
     };
   }
@@ -224,7 +224,7 @@ export async function apiDelete({ path }: { path: string }) {
       return err.response.data;
     }
     return {
-      successful: false,
+      success: false,
       errorMessage: "An error occurred. Please try again.",
     };
   }
