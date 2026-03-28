@@ -65,7 +65,7 @@ export default function OnboardingChecklist({
     {
       id: "checkup",
       title: "See your competitive position",
-      anxiety: "Do I know where I stand?",
+      anxiety: "See every competitor in your market",
       complete: checkupScore != null,
       cta: "View your market",
       action: () => { onStepComplete?.("checkup"); navigate("/dashboard/rankings"); },
@@ -74,7 +74,7 @@ export default function OnboardingChecklist({
     {
       id: "gbp",
       title: "Connect your Google Business Profile",
-      anxiety: "Is this data real?",
+      anxiety: "Unlock live ranking data",
       complete: gbpConnected,
       cta: "Connect Google",
       action: () => navigate("/settings/integrations"),
@@ -83,7 +83,7 @@ export default function OnboardingChecklist({
     {
       id: "pms",
       title: "Upload your scheduling data",
-      anxiety: "Will this tell me about my referrals?",
+      anxiety: "See which referral sources drive revenue",
       complete: pmsUploaded,
       cta: "Upload data",
       action: () => { onStepComplete?.("pms"); navigate("/dashboard/referrals"); },
@@ -92,7 +92,7 @@ export default function OnboardingChecklist({
     {
       id: "monday",
       title: "Review your Monday email",
-      anxiety: "What will Monday look like?",
+      anxiety: "Your first brief arrives Monday at 7am",
       complete: mondayEmailOpened,
       cta: "See what's coming",
       action: () => { onStepComplete?.("monday"); navigate("/dashboard/intelligence"); },
@@ -101,7 +101,7 @@ export default function OnboardingChecklist({
     {
       id: "share",
       title: "Share your Checkup with a colleague",
-      anxiety: "Is this worth sharing?",
+      anxiety: "Know someone who should see this?",
       complete: referralShared,
       cta: "Share",
       action: () => {

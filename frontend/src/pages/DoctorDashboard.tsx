@@ -763,7 +763,7 @@ export default function DoctorDashboard() {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-[#212D40] truncate">
-            {mode === "growth" ? `Close the gap, ${firstName}.` : `${getGreeting()}, ${firstName}.`}
+            {mode === "growth" ? "Close the gap." : `${getGreeting()}.`}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {mode === "growth"
@@ -780,7 +780,27 @@ export default function DoctorDashboard() {
         <ModeToggle mode={mode} onChange={setMode} />
       </div>
 
-      {/* Onboarding Checklist — shows until first value delivered */}
+      {/* One Action Card — first visible element below greeting (WO-29) */}
+      {!isLoading && (
+        <OneActionCard
+          serverCard={oneActionData}
+          billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
+          rankingDrop={
+            effectiveRanking?.previousPosition && effectiveRanking?.rankPosition &&
+            effectiveRanking.rankPosition - effectiveRanking.previousPosition >= 2
+              ? {
+                  previousPosition: effectiveRanking.previousPosition,
+                  currentPosition: effectiveRanking.rankPosition,
+                  keyword: effectiveRanking.specialty || undefined,
+                }
+              : null
+          }
+          gbpConnected={hasGoogleConnection}
+          topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
+        />
+      )}
+
+      {/* Onboarding Checklist — below One Action Card */}
       {!isLoading && (
         <OnboardingChecklist
           checkupScore={effectiveRanking?.rankScore ?? null}
@@ -815,25 +835,7 @@ export default function DoctorDashboard() {
           {/* 2. One sentence finding */}
           <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
 
-          {/* 3. One Action Card — deterministic rule engine */}
-          <OneActionCard
-            serverCard={oneActionData}
-            billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
-            rankingDrop={
-              effectiveRanking?.previousPosition && effectiveRanking?.rankPosition &&
-              effectiveRanking.rankPosition - effectiveRanking.previousPosition >= 2
-                ? {
-                    previousPosition: effectiveRanking.previousPosition,
-                    currentPosition: effectiveRanking.rankPosition,
-                    keyword: effectiveRanking.specialty || undefined,
-                  }
-                : null
-            }
-            gbpConnected={hasGoogleConnection}
-            topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
-          />
-
-          {/* GBP Connect prompt — show when not connected */}
+          {/* GBP Connect card — single prompt, no duplicate banner (WO-29) */}
           {!hasGoogleConnection && <GBPConnectCard gbpConnected={hasGoogleConnection} orgId={orgId} />}
 
           {/* 4. PatientPath breadcrumb — quiet, lower */}
@@ -850,23 +852,6 @@ export default function DoctorDashboard() {
         <>
           <GrowthPositionTrack ranking={effectiveRanking} />
           <GapToNext ranking={effectiveRanking} />
-          {/* One Action Card in growth mode too */}
-          <OneActionCard
-            serverCard={oneActionData}
-            billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
-            rankingDrop={
-              effectiveRanking?.previousPosition && effectiveRanking?.rankPosition &&
-              effectiveRanking.rankPosition - effectiveRanking.previousPosition >= 2
-                ? {
-                    previousPosition: effectiveRanking.previousPosition,
-                    currentPosition: effectiveRanking.rankPosition,
-                    keyword: effectiveRanking.specialty || undefined,
-                  }
-                : null
-            }
-            gbpConnected={hasGoogleConnection}
-            topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
-          />
           <CompetitorActivityFeed ranking={effectiveRanking} />
           {canSendReviews && <ReviewRequestCard placeId={effectiveRanking?.placeId ?? null} practiceName={practiceName} />}
           {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
