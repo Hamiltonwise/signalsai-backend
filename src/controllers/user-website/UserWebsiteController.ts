@@ -172,6 +172,60 @@ export async function editPageComponent(
 }
 
 // =====================================================================
+// Natural language batch edit (WO-45)
+// =====================================================================
+
+export async function naturalLanguageEdit(
+  req: RBACRequest, res: Response
+): Promise<Response> {
+  try {
+    const { pageId } = req.params;
+    const { instructions } = req.body;
+    const userId = req.userId || 0;
+    const orgId = req.organizationId;
+
+    if (!instructions || typeof instructions !== "string" || !instructions.trim()) {
+      return res.status(400).json({ error: "INVALID_INPUT", message: "Instructions are required." });
+    }
+    if (instructions.length > 5000) {
+      return res.status(400).json({ error: "INVALID_INPUT", message: "Instructions too long. Maximum 5,000 characters." });
+    }
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const result = await userWebsiteService.naturalLanguageEdit({
+      orgId, userId, pageId, instructions: instructions.trim(),
+    });
+    return res.json(result);
+  } catch (error: any) {
+    if (error.errorCode === "RATE_LIMIT_EXCEEDED") {
+      return res.status(429).json({ error: "RATE_LIMIT_EXCEEDED", message: error.message });
+    }
+    return handleError(res, error, "natural language edit");
+  }
+}
+
+export async function applyNaturalEdit(
+  req: RBACRequest, res: Response
+): Promise<Response> {
+  try {
+    const { pageId } = req.params;
+    const { changes } = req.body;
+    const orgId = req.organizationId;
+    const userId = req.userId || 0;
+
+    if (!changes || !Array.isArray(changes) || changes.length === 0) {
+      return res.status(400).json({ error: "INVALID_INPUT", message: "Changes array is required." });
+    }
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const result = await userWebsiteService.applyNaturalEdits({ orgId, userId, pageId, changes });
+    return res.json(result);
+  } catch (error: any) {
+    return handleError(res, error, "apply natural edit");
+  }
+}
+
+// =====================================================================
 // Custom Domain — helpers
 // =====================================================================
 

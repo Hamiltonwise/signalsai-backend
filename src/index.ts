@@ -86,6 +86,7 @@ import reviewDraftRoutes from "./routes/user/reviewDrafts";
 import streakRoutes from "./routes/user/streaks";
 import ownerProfileRoutes from "./routes/user/ownerProfile";
 import milestoneCardRoutes from "./routes/user/milestoneCards";
+import referralThankYouRoutes from "./routes/user/referralThankYou";
 import userPreferencesRoutes from "./routes/user/preferences";
 import adminBehavioralEventsRoutes from "./routes/admin/behavioralEvents";
 import adminCaseStudiesRoutes from "./routes/admin/caseStudies";
@@ -265,6 +266,7 @@ app.use("/api/user/review-drafts", reviewDraftRoutes); // WO-49: Review auto-dra
 app.use("/api/user", streakRoutes); // WO-33: Growth/Action/Review streaks
 app.use("/api/user", ownerProfileRoutes); // WO-50: Owner Profile (Lemonis Protocol)
 app.use("/api/user", milestoneCardRoutes); // WO-51/52: Milestone check-in cards
+app.use("/api/user", referralThankYouRoutes); // WO-47: Referral Thank-You auto-draft
 app.use("/api/user", userPreferencesRoutes); // WO-NOTIFICATION-PREFS + WO-STRIPE-PORTAL
 app.use("/api/admin/behavioral-events", adminBehavioralEventsRoutes); // WO-ADMIN-BEHAVIORAL-EVENTS: T4 SessionIntelligence + MorningBrief
 app.use("/api/admin/case-studies", adminCaseStudiesRoutes); // T6: Case study CRUD + publish

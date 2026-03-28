@@ -10,7 +10,7 @@
 import express from "express";
 import { authenticateToken } from "../../middleware/auth";
 import { rbacMiddleware, type RBACRequest } from "../../middleware/rbac";
-import { getOneActionCard } from "../../services/oneActionCard";
+import { getOneActionCardWithIntelligence } from "../../services/oneActionCard";
 
 const oneActionCardRoutes = express.Router();
 
@@ -34,8 +34,8 @@ oneActionCardRoutes.get(
         });
       }
 
-      const card = await getOneActionCard(orgId);
-      return res.json({ success: true, card });
+      const { card, driftGP, competitorVelocity } = await getOneActionCardWithIntelligence(orgId);
+      return res.json({ success: true, card, driftGP, competitorVelocity });
     } catch (error: any) {
       console.error("[OneActionCard] Error:", error.message);
       return res.json({

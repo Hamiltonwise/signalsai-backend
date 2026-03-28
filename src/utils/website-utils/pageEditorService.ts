@@ -167,3 +167,86 @@ Instruction: ${instruction}${mediaContext}`;
     debug: debugInfo,
   };
 }
+
+// =====================================================================
+// Natural Language Batch Edit (WO-45)
+// =====================================================================
+
+interface NaturalEditInput {
+  instructions: string;
+  sections: Array<{ name: string; content: string }>;
+}
+
+interface MappedChange {
+  section: string;
+  oldContent: string;
+  newContent: string;
+  changeType: "replace" | "add" | "remove";
+  confidence: "high" | "low";
+  description: string;
+}
+
+export async function mapInstructionsToChanges(
+  input: NaturalEditInput
+): Promise<MappedChange[]> {
+  const ai = getClient();
+
+  const sectionSummary = input.sections
+    .map((s) => `[Section: ${s.name}]\n${s.content}`)
+    .join("\n\n---\n\n");
+
+  const systemPrompt = `You are a website editor for a medical practice. Given plain-English edit instructions from the practice owner and the current site content, map each instruction to specific changes.
+
+Return a JSON array of changes. Each change must have:
+- "section": the section name where the change applies
+- "oldContent": the exact text/HTML being replaced (must match content verbatim)
+- "newContent": the replacement text/HTML
+- "changeType": "replace", "add", or "remove"
+- "confidence": "high" if the mapping is clear, "low" if ambiguous
+- "description": one sentence describing the change in plain English
+
+Rules:
+- Be specific. Quote exact text being changed.
+- For "everywhere" instructions, return one change per section where the text appears.
+- Never change anything not mentioned in the instructions.
+- For "add" changes, oldContent should be the element after which to insert (or empty string to append).
+- For "remove" changes, newContent should be an empty string.
+- Return ONLY the JSON array, no explanation.`;
+
+  const userMessage = `Current site sections:\n\n${sectionSummary}\n\nEdit instructions from the practice owner:\n${input.instructions}`;
+
+  console.log(`[NaturalEdit] Processing: "${input.instructions.substring(0, 100)}..."`);
+
+  const response = await ai.messages.create({
+    model: MODEL,
+    max_tokens: 4096,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userMessage }],
+  });
+
+  const textBlock = response.content[0];
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("No text response from Claude");
+  }
+
+  console.log(
+    `[NaturalEdit] Tokens: input=${response.usage.input_tokens}, output=${response.usage.output_tokens}`
+  );
+
+  let text = textBlock.text.trim();
+  const fenceMatch = text.match(/```\w*\n([\s\S]*?)```/);
+  if (fenceMatch) text = fenceMatch[1].trim();
+
+  let changes: MappedChange[];
+  try {
+    changes = JSON.parse(text);
+  } catch {
+    console.error("[NaturalEdit] Failed to parse response:", text.substring(0, 300));
+    return [];
+  }
+
+  if (!Array.isArray(changes)) return [];
+
+  const sectionNames = new Set(input.sections.map((s) => s.name));
+  return changes.filter((c) => sectionNames.has(c.section));
+}

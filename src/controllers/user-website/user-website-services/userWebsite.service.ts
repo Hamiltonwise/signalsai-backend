@@ -250,6 +250,120 @@ export async function editPageComponent(
 }
 
 // =====================================================================
+// POST /pages/:pageId/natural-edit — Natural language batch edit (WO-45)
+// =====================================================================
+
+export interface NaturalEditParams {
+  orgId: number;
+  userId: number;
+  pageId: string;
+  instructions: string;
+}
+
+export interface NaturalEditChange {
+  section: string;
+  oldContent: string;
+  newContent: string;
+  changeType: "replace" | "add" | "remove";
+  confidence: "high" | "low";
+  description: string;
+}
+
+export interface NaturalEditResult {
+  success: boolean;
+  changes: NaturalEditChange[];
+  message: string;
+  edits_remaining: number;
+}
+
+export async function naturalLanguageEdit(
+  params: NaturalEditParams
+): Promise<NaturalEditResult> {
+  const { orgId, userId, pageId, instructions } = params;
+
+  await getOrgAndValidateTier(orgId);
+  const project = await getProjectForOrg(orgId);
+  if (!project) { const err: any = new Error("Website not found"); err.statusCode = 404; throw err; }
+  if ((project as any).is_read_only) { const err: any = new Error("Read-only mode."); err.statusCode = 403; err.errorCode = "READ_ONLY"; throw err; }
+
+  const currentCount = await UserEditModel.countTodayByOrg(orgId);
+  if (currentCount >= DAILY_EDIT_LIMIT) {
+    const err: any = new Error(`Daily limit of ${DAILY_EDIT_LIMIT} edits reached.`);
+    err.statusCode = 429; err.errorCode = "RATE_LIMIT_EXCEEDED"; err.limit = DAILY_EDIT_LIMIT;
+    throw err;
+  }
+
+  const page = await PageModel.findByIdAndProject(pageId, project.id);
+  if (!page) { const err: any = new Error("Page not found"); err.statusCode = 404; throw err; }
+
+  const sections: Array<{ name: string; content: string }> =
+    typeof page.sections === "string" ? JSON.parse(page.sections) : page.sections || [];
+
+  const { mapInstructionsToChanges } = await import("../../../utils/website-utils/pageEditorService");
+  const changes = await mapInstructionsToChanges({ instructions, sections });
+
+  await db("website_builder.user_edits").insert({
+    id: uuid(), organization_id: orgId, user_id: userId, project_id: project.id,
+    page_id: pageId, component_class: "natural_language_batch", instruction: instructions,
+    tokens_used: 0, success: changes.length > 0,
+    error_message: changes.length === 0 ? "No changes identified" : null, created_at: new Date(),
+  });
+
+  return {
+    success: true, changes,
+    message: changes.length > 0
+      ? `Found ${changes.length} change${changes.length !== 1 ? "s" : ""} to apply.`
+      : "No matching content found for those instructions. Try being more specific.",
+    edits_remaining: DAILY_EDIT_LIMIT - currentCount - 1,
+  };
+}
+
+export interface ApplyNaturalEditParams {
+  orgId: number;
+  userId: number;
+  pageId: string;
+  changes: NaturalEditChange[];
+}
+
+export async function applyNaturalEdits(
+  params: ApplyNaturalEditParams
+): Promise<{ success: boolean; message: string }> {
+  const { orgId, pageId, changes } = params;
+
+  await getOrgAndValidateTier(orgId);
+  const project = await getProjectForOrg(orgId);
+  if (!project) { const err: any = new Error("Website not found"); err.statusCode = 404; throw err; }
+
+  const page = await PageModel.findByIdAndProject(pageId, project.id);
+  if (!page) { const err: any = new Error("Page not found"); err.statusCode = 404; throw err; }
+
+  const sections: Array<{ name: string; content: string }> =
+    typeof page.sections === "string" ? JSON.parse(page.sections) : page.sections || [];
+
+  for (const change of changes) {
+    const section = sections.find((s) => s.name === change.section);
+    if (!section) continue;
+    if (change.changeType === "replace" && change.oldContent && change.newContent) {
+      section.content = section.content.replace(change.oldContent, change.newContent);
+    } else if (change.changeType === "add" && change.newContent) {
+      section.content = section.content.trimEnd() + "\n" + change.newContent;
+    } else if (change.changeType === "remove" && change.oldContent) {
+      section.content = section.content.replace(change.oldContent, "");
+    }
+  }
+
+  const currentVersion = (page as any).version || 1;
+  await db(PAGES_TABLE).insert({
+    id: uuid(), project_id: project.id, path: page.path,
+    version: currentVersion + 1, status: "published",
+    sections: JSON.stringify(sections), created_at: new Date(), updated_at: new Date(),
+  });
+  await db(PAGES_TABLE).where({ id: page.id }).update({ status: "inactive", updated_at: new Date() });
+
+  return { success: true, message: `Applied ${changes.length} change${changes.length !== 1 ? "s" : ""}. New version saved.` };
+}
+
+// =====================================================================
 // Media context builder
 // =====================================================================
 

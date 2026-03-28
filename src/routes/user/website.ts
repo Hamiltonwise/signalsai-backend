@@ -29,6 +29,18 @@ userWebsiteRoutes.post(
   controller.editPageComponent
 );
 
+// Natural language batch editing (WO-45)
+userWebsiteRoutes.post(
+  "/pages/:pageId/natural-edit",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.naturalLanguageEdit
+);
+userWebsiteRoutes.post(
+  "/pages/:pageId/natural-edit/apply",
+  authenticateToken, rbacMiddleware, requireRole("admin", "manager"),
+  controller.applyNaturalEdit
+);
+
 userWebsiteRoutes.post(
   "/resolve-preview",
   authenticateToken,
