@@ -19,7 +19,7 @@ import {
   Camera,
   FileText,
 } from "lucide-react";
-import { apiGet, apiPost } from "@/api/index";
+import { apiGet } from "@/api/index";
 import { useLocationContext } from "@/contexts/locationContext";
 
 // ─── Types ──────────────────────────────────────────────────────────
