@@ -25,6 +25,17 @@ export function SetupProgressWizard() {
   }, [context?.justCompletedStep, context?.clearJustCompleted]);
 
   const handleIconClick = () => {
+    // Navigate directly to the first incomplete step
+    if (!progress.step1_api_connected) {
+      navigate("/settings/integrations");
+      return;
+    }
+    if (!progress.step2_pms_uploaded) {
+      sessionStorage.setItem("scrollToUpload", "true");
+      navigate("/pmsStatistics");
+      return;
+    }
+    // All steps done, just toggle panel
     setIsExpanded(!isExpanded);
   };
 

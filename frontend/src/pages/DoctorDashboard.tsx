@@ -11,8 +11,8 @@
  * A front desk employee should know what to do in under 10 seconds.
  */
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Copy,
   ExternalLink,
@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
-import { apiGet } from "@/api/index";
+import { apiGet, apiPatch } from "@/api/index";
 import agents from "@/api/agents";
 import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
 import OneActionCard from "@/components/dashboard/OneActionCard";
@@ -672,6 +672,25 @@ export default function DoctorDashboard() {
   const isProfileUnavailable = isProfileError;
   const referralCode = profileData?.referral_code || profileData?.organization?.referral_code || null;
 
+  // Setup progress — tracks checklist completion state
+  const queryClient = useQueryClient();
+  const { data: setupProgress } = useQuery({
+    queryKey: ["setup-progress"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/onboarding/setup-progress" });
+      return res?.success ? res.progress : null;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const markChecklistStep = useCallback(async (step: string) => {
+    await apiPatch({
+      path: "/onboarding/setup-progress",
+      passedData: { [`checklist_${step}`]: true },
+    }).catch(() => {});
+    queryClient.invalidateQueries({ queryKey: ["setup-progress"] });
+  }, [queryClient]);
+
   // Merge: use checkup context as fallback when live ranking hasn't run yet
   const effectiveRanking: RankingData | null = rankingData ?? (checkupCtx?.data ? {
     rankPosition: checkupCtx.data.market?.rank ?? null,
@@ -728,12 +747,13 @@ export default function DoctorDashboard() {
         <OnboardingChecklist
           checkupScore={effectiveRanking?.rankScore ?? null}
           gbpConnected={hasGoogleConnection}
-          pmsUploaded={false}
-          mondayEmailOpened={false}
-          referralShared={false}
+          pmsUploaded={!!setupProgress?.checklist_pms || !!setupProgress?.step2_pms_uploaded}
+          mondayEmailOpened={!!setupProgress?.checklist_monday}
+          referralShared={!!setupProgress?.checklist_share}
           referralCode={referralCode}
+          onStepComplete={markChecklistStep}
           onDismiss={() => {
-            // T2 registers PATCH /api/user/onboarding-step
+            apiPatch({ path: "/onboarding/setup-progress", passedData: { checklist_dismissed: true } }).catch(() => {});
           }}
         />
       )}

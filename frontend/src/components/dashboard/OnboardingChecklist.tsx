@@ -43,6 +43,7 @@ interface OnboardingChecklistProps {
   mondayEmailOpened: boolean;
   referralShared: boolean;
   referralCode: string | null;
+  onStepComplete?: (step: string) => void;
   onDismiss: () => void;
 }
 
@@ -53,6 +54,7 @@ export default function OnboardingChecklist({
   mondayEmailOpened,
   referralShared,
   referralCode,
+  onStepComplete,
   onDismiss,
 }: OnboardingChecklistProps) {
   const navigate = useNavigate();
@@ -66,7 +68,7 @@ export default function OnboardingChecklist({
       anxiety: "Do I know where I stand?",
       complete: checkupScore != null,
       cta: "View your market",
-      action: () => navigate("/dashboard/rankings"),
+      action: () => { onStepComplete?.("checkup"); navigate("/dashboard/rankings"); },
       icon: BarChart3,
     },
     {
@@ -84,7 +86,7 @@ export default function OnboardingChecklist({
       anxiety: "Will this tell me about my referrals?",
       complete: pmsUploaded,
       cta: "Upload data",
-      action: () => navigate("/dashboard/referrals"),
+      action: () => { onStepComplete?.("pms"); navigate("/dashboard/referrals"); },
       icon: Upload,
     },
     {
@@ -93,7 +95,7 @@ export default function OnboardingChecklist({
       anxiety: "What will Monday look like?",
       complete: mondayEmailOpened,
       cta: "See what's coming",
-      action: () => navigate("/dashboard/intelligence"),
+      action: () => { onStepComplete?.("monday"); navigate("/dashboard/intelligence"); },
       icon: Mail,
     },
     {
@@ -103,6 +105,7 @@ export default function OnboardingChecklist({
       complete: referralShared,
       cta: "Share",
       action: () => {
+        onStepComplete?.("share");
         if (referralCode) {
           const link = `${window.location.origin}/checkup?ref=${referralCode}`;
           navigator.clipboard.writeText(link).then(() => {
