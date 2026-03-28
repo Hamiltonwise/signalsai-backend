@@ -11,11 +11,9 @@ import { Menu, X } from "lucide-react";
 import { trackEvent } from "../../api/tracking";
 
 const NAV_LINKS = [
-  { label: "How it works", to: "/how-it-works" },
-  { label: "Who it's for", to: "/who-its-for" },
-  { label: "Pricing", to: "/pricing" },
-  { label: "Foundation", to: "/foundation" },
-  { label: "Our story", to: "/story" },
+  { label: "How It Works", to: "/how-it-works" },
+  { label: "Heroes & Founders", to: "/foundation" },
+  { label: "Our Story", to: "/story" },
 ];
 
 export default function MarketingHeader() {

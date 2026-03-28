@@ -1,182 +1,459 @@
 /**
- * HomePage -- /
+ * HomePage -- getalloro.com
  *
- * The front door. 55 seconds. One question: Can I trust this?
- * The first sentence either earns trust or the visitor is gone.
+ * 10 scroll sections. Full Funnel Design Spec governs.
+ * Option C headline. Checkup input embedded as the CTA.
+ * Every word is locked copy from the spec. Do not rewrite.
+ *
+ * Vocabulary rule: "business" not "practice" on all pre-login surfaces.
+ * Exception: inside quoted testimonial speech.
  */
 
-import { useState, useCallback } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { useState, useCallback, useRef } from "react";
+import { Navigate, useNavigate, Link } from "react-router-dom";
 import { ArrowRight, Search, MapPin, Loader2 } from "lucide-react";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
 import { trackEvent } from "../../api/tracking";
 import MarketingLayout from "../../components/marketing/MarketingLayout";
 
+// ── Checkup Input (reused in 3 CTA positions) ──────────────────────
+
+interface CheckupInputProps {
+  id: string;
+  dark?: boolean;
+}
+
+function CheckupInput({ id, dark = false }: CheckupInputProps) {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<{ placeId: string; mainText: string; secondaryText: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchPlaces = useCallback((input: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (input.length < 3) { setSuggestions([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/places/autocomplete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input }),
+        });
+        const data = await res.json();
+        if (data.success && data.suggestions) setSuggestions(data.suggestions.slice(0, 5));
+      } catch { setSuggestions([]); }
+    }, 300);
+  }, []);
+
+  const selectPlace = (place: { placeId: string; mainText: string }) => {
+    setSuggestions([]);
+    setQuery(place.mainText);
+    setLoading(true);
+    trackEvent("marketing.checkup_start", { source: id, place: place.mainText });
+    // Navigate to checkup with placeId pre-selected
+    navigate(`/checkup?placeId=${encodeURIComponent(place.placeId)}&name=${encodeURIComponent(place.mainText)}`);
+  };
+
+  const textColor = dark ? "text-white" : "text-[#212D40]";
+  const placeholderColor = dark ? "placeholder:text-white/30" : "placeholder:text-[#212D40]/30";
+  const borderColor = dark ? "border-white/20 focus-within:border-[#D56753]" : "border-[#212D40]/15 focus-within:border-[#D56753]";
+  const bgColor = dark ? "bg-white/10" : "bg-white";
+  const dropBg = dark ? "bg-[#2a3a4f]" : "bg-white";
+  const dropBorder = dark ? "border-white/10" : "border-gray-200";
+
+  return (
+    <div className="relative w-full max-w-md mx-auto">
+      <div className={`flex items-center gap-2 border-2 ${borderColor} rounded-xl ${bgColor} px-4 py-3.5 transition-colors`}>
+        {loading ? (
+          <Loader2 className="w-4 h-4 text-[#D56753] animate-spin shrink-0" />
+        ) : (
+          <Search className={`w-4 h-4 shrink-0 ${dark ? "text-white/30" : "text-[#212D40]/30"}`} />
+        )}
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); searchPlaces(e.target.value); }}
+          placeholder="Enter your business name"
+          className={`flex-1 bg-transparent text-sm ${textColor} ${placeholderColor} outline-none`}
+          disabled={loading}
+        />
+        <button
+          type="button"
+          onClick={() => { if (query.trim().length >= 3) navigate(`/checkup?q=${encodeURIComponent(query)}`); }}
+          className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[#D56753] text-white text-sm font-semibold px-4 py-2 hover:brightness-110 active:scale-[0.98] transition-all"
+        >
+          See What We Find <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {suggestions.length > 0 && (
+        <div className={`absolute top-full left-0 right-0 mt-1 ${dropBg} border ${dropBorder} rounded-xl shadow-lg overflow-hidden z-10`}>
+          {suggestions.map((s) => (
+            <button
+              key={s.placeId}
+              type="button"
+              onClick={() => selectPlace(s)}
+              className={`w-full text-left px-4 py-3 hover:bg-[#D56753]/5 transition-colors border-b last:border-0 ${dark ? "border-white/5" : "border-gray-50"}`}
+            >
+              <p className={`text-sm font-medium ${textColor}`}>{s.mainText}</p>
+              <p className={`text-xs flex items-center gap-1 mt-0.5 ${dark ? "text-white/40" : "text-[#212D40]/50"}`}>
+                <MapPin className="w-3 h-3" />{s.secondaryText}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ───────────────────────────────────────────────────────
+
 export default function HomePage() {
-  // Authenticated users go straight to dashboard
   const isAuthenticated = !!getPriorityItem("auth_token") || !!getPriorityItem("token");
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   return (
     <MarketingLayout
-      title="Alloro - Business Clarity Platform"
-      description="See which competitors gained ground, which referral relationships are drifting, and what to do about it. Every Monday morning."
+      title="Alloro - Business Clarity"
+      description="Enter your business name. 60 seconds later, Alloro tells you something specific and true about your business that you didn't know. Free."
     >
-      {/* Hero */}
-      <section className="px-5 py-20 sm:py-28" style={{ backgroundColor: "rgba(213, 103, 83, 0.04)" }}>
+      {/* ═══ ABOVE THE FOLD — Stage 1: Pattern Interrupt ═══ */}
+      <section className="bg-[#212D40] px-5 py-16 sm:py-24">
         <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-[32px] sm:text-[48px] font-extrabold text-[#212D40] leading-tight tracking-tight">
-            Your business has been trying to tell you something.
+          <h1 className="text-[26px] sm:text-[42px] font-extrabold text-white leading-tight tracking-tight">
+            Every agency you've hired said
+            {" "}<span className="text-[#D56753]">"give it more time."</span>
           </h1>
-          <p className="mt-6 text-lg sm:text-xl text-[#212D40]/60 leading-relaxed max-w-lg mx-auto">
-            Alloro translates it. Every Monday morning. In plain English.
+          <p className="mt-4 text-lg sm:text-xl text-white/50 leading-relaxed">
+            We don't say that.<br className="hidden sm:block" />
+            We show you what's happening right now.
           </p>
-          <Link
-            to="/checkup"
-            className="mt-8 w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-[#D56753] text-white text-base font-semibold px-8 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:shadow-[0_6px_28px_rgba(213,103,83,0.5)] hover:brightness-110 active:scale-[0.98] transition-all"
-          >
-            See what it's saying about yours
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </section>
+          <p className="mt-2 text-sm text-white/30">
+            Enter your business name. 60 seconds. No account needed.
+          </p>
 
-      {/* The Wound */}
-      <section className="px-5 py-16 sm:py-20 bg-white">
-        <div className="max-w-xl mx-auto space-y-8">
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
-            You trained for years to be excellent at what you do.
-            Dentistry. Law. Medicine. Physical therapy. You got good
-            at it. Then you opened a business, or inherited one,
-            and discovered there's an entire second job that nobody
-            trained you for.
-          </p>
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
-            The business speaks a language you were never taught.
-            Referral patterns. Ranking position. Review velocity.
-            Competitor moves you find out about after the fact.
-            Most owners pay people to figure it out. Most of those
-            people don't.
-          </p>
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
-            Alloro translates the language your business is already
-            speaking, and delivers the translation to your inbox
-            every Monday morning before you see your first client.
+          <div className="mt-8">
+            <CheckupInput id="hero" dark />
+          </div>
+
+          <p className="mt-4 text-xs text-white/25">
+            Free. No credit card. No sales call.
+            We find something specific or we tell you.
           </p>
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section className="px-5 py-12 sm:py-16" style={{ backgroundColor: "rgba(213, 103, 83, 0.04)" }}>
-        <div className="max-w-xl mx-auto text-center">
-          <blockquote className="text-lg sm:text-xl font-medium text-[#212D40] leading-relaxed italic">
-            "Can I trust this person? That's the only question on the site in 55 seconds."
-          </blockquote>
-          <p className="mt-4 text-sm text-[#212D40]/50">
-            Dr. Kargoli, 1 Endodontics
+      {/* ═══ SECTION 1 — Stage 2: The Mirror Block ═══ */}
+      <section className="bg-[#1a2533] px-5 py-16 sm:py-20">
+        <div className="max-w-xl mx-auto space-y-6 text-white/80 text-base leading-relaxed">
+          <p>You know your best referring source by name.</p>
+          <p>
+            You know when they stopped sending business, because
+            you went back and counted.
+          </p>
+          <p>
+            You know the competitor who added 400 reviews
+            last year while you added 30.
+          </p>
+          <p>
+            You know what Sunday night feels like
+            when Monday is coming and the numbers
+            are in your head and not on paper.
+          </p>
+          <p>You've known all of this.</p>
+          <p>
+            The problem was never that you didn't know.
+            The problem was that knowing it took your whole weekend.
+          </p>
+          <p className="text-white font-semibold text-lg">
+            Alloro reads your business so you don't have to.
           </p>
         </div>
       </section>
 
-      {/* What Alloro Does */}
-      <section className="px-5 py-16 sm:py-20">
-        <p className="text-center text-[24px] sm:text-[32px] font-extrabold text-[#212D40] tracking-tight max-w-2xl mx-auto">
-          See which competitors gained ground on you this week, which referral relationships are drifting, and what to do about both.
+      {/* ═══ SECTION 2 — The Diagnosis Cards ═══ */}
+      <section className="px-5 py-16 sm:py-20" style={{ backgroundColor: "rgba(213, 103, 83, 0.04)" }}>
+        <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-5">
+          <DiagnosisCard number={1}>
+            The referring source who used to send 6 clients a month.
+            Hasn't sent one in 8 weeks. You haven't noticed yet.
+            Alloro has.
+          </DiagnosisCard>
+          <DiagnosisCard number={2}>
+            The competitor two miles away added 22 reviews
+            last month. You added 4. At this rate, their advantage
+            grows by 18 reviews a quarter. Here's the one move
+            that changes that.
+          </DiagnosisCard>
+          <DiagnosisCard number={3}>
+            Your business ranks #4 for the exact search query
+            your next customer just typed into Google.
+            The business at #1 has one thing yours doesn't.
+            Alloro built it for you this morning.
+          </DiagnosisCard>
+        </div>
+        <p className="text-center text-sm text-[#212D40]/50 mt-8">
+          This is not a demo. This is what Monday looks like.
         </p>
       </section>
 
-      {/* Market Teaser */}
-      <MarketTeaser />
-
-      {/* Three Proof Points */}
+      {/* ═══ SECTION 3 — The Three Things ═══ */}
       <section className="px-5 py-16 sm:py-20 bg-white">
-        <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-6">
-          <ProofCard
-            number="55 seconds"
-            text="A visitor decides in 55 seconds if you're worth calling. Alloro shows you exactly what they're seeing when they search your name, and what your top competitor did last week to show up above you."
+        <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-8">
+          <ThreeThing
+            verb="BUILD"
+            lines={[
+              "PatientPath and ClearPath, built for your business by AI agents in under an hour.",
+              "Your site for customers. Your page for referring partners. Professional. Specific. Indexed. Ranking. You never touched them.",
+            ]}
           />
-          <ProofCard
-            number="$1,800"
-            text="That's what a single referring relationship is worth per year to a specialist. Alloro monitors every one of yours and alerts you the moment one goes quiet, with the dollar figure attached."
+          <ThreeThing
+            verb="GROW"
+            lines={[
+              "SEO, AEO, and CRO run automatically.",
+              "When a customer asks an AI assistant for a specialist, your business is the answer. When a referral source searches before they send, they find you first. You didn't write anything. The agents did.",
+            ]}
           />
-          <ProofCard
-            number="Monday 7am"
-            text="Your Business Clarity Brief arrives every Monday morning. One score. One finding. One action. Nothing more."
+          <ThreeThing
+            verb="WATCH"
+            lines={[
+              "47 agents monitor your business around the clock.",
+              "Every Monday, one email. One thing that's specific, true, and actionable. The catch before it costs you. The move before your competitor makes it. You don't check. It tells you.",
+            ]}
           />
+        </div>
+        <div className="max-w-lg mx-auto text-center mt-12 space-y-1">
+          <p className="text-base font-semibold text-[#212D40]">
+            This is not software you use.
+          </p>
+          <p className="text-base font-semibold text-[#212D40]">
+            This is infrastructure that runs.
+          </p>
+          <p className="text-sm text-[#212D40]/50 mt-3">
+            You run your business. Alloro does the rest.
+          </p>
         </div>
       </section>
 
-      {/* Monday Email Preview */}
-      <section className="px-5 py-16 sm:py-20">
-        <div className="max-w-xl mx-auto">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#212D40] text-center mb-8">
-            What it looks like
-          </h2>
-          <div className="rounded-2xl border border-[#212D40]/20 bg-white overflow-hidden shadow-sm">
-            <div className="h-1 bg-[#D56753]" />
-            <div className="p-6">
-              <p className="text-xs text-gray-400 mb-1">Subject:</p>
-              <p className="text-sm font-bold text-[#212D40] mb-4">
-                Dr. Kargoli, Centerville gained 12 reviews this month. You gained 3.
+      {/* ═══ SECTION 4 — Social Proof: Before / After ═══ */}
+      <section className="px-5 py-16 sm:py-20" style={{ backgroundColor: "rgba(213, 103, 83, 0.04)" }}>
+        <div className="max-w-3xl mx-auto">
+          <div className="grid sm:grid-cols-2 gap-0 rounded-2xl overflow-hidden shadow-lg">
+            {/* Before */}
+            <div className="bg-[#212D40] p-8 text-white/80 text-sm leading-relaxed">
+              <p className="text-xs font-bold uppercase tracking-widest text-white/40 mb-4">Before</p>
+              <p className="italic">
+                "I was spending three hours every Sunday
+                checking my rankings, counting my reviews,
+                cross-referencing my referral spreadsheet.
               </p>
-              <div className="space-y-3">
-                <p className="text-sm text-[#212D40]/80 leading-relaxed">
-                  Your closest competitor is now 89 reviews ahead of you.
-                  At your current review velocity, that gap closes in 14 months.
-                </p>
-                <p className="text-sm text-[#212D40]/40 leading-relaxed blur-[3px] select-none">
-                  One referring GP who sent you 8 cases last year has sent zero
-                  in the last 90 days. The dollar figure attached to that
-                  relationship is $14,400.
-                </p>
-                <p className="text-sm text-[#212D40]/40 leading-relaxed blur-[3px] select-none">
-                  Your ranking for "endodontist Sterling" dropped from position
-                  3 to position 5 this month. Here's what changed.
-                </p>
-              </div>
-              <div className="mt-6 text-center">
-                <Link
-                  to="/checkup"
-                  className="inline-flex items-center justify-center rounded-lg bg-[#D56753] text-white text-sm font-semibold px-6 py-3 hover:brightness-110 active:scale-[0.98] transition-all"
-                >
-                  See your real numbers
-                </Link>
-                <p className="mt-3 text-xs text-gray-400">
-                  Free. 60 seconds. No account required.
-                </p>
-              </div>
+              <p className="italic mt-4">
+                I knew something was off with one of my top GPs.
+                I just couldn't prove it.
+                So I kept watching."
+              </p>
+            </div>
+            {/* After */}
+            <div className="bg-white p-8 text-[#212D40] text-sm leading-relaxed">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-4">After</p>
+              <p className="italic">
+                "Monday morning. Six words in the subject line:
+                'Dr. Reyes sent 0 cases in March.'
+              </p>
+              <p className="italic mt-4">
+                I called her that afternoon.
+                She had a new endodontist in her building.
+                I knew before I lost the relationship.
+              </p>
+              <p className="italic mt-4">
+                Alloro found it. I didn't ask."
+              </p>
+              <p className="text-xs text-[#212D40]/40 mt-6">
+                Endodontist, Virginia (name withheld)
+              </p>
             </div>
           </div>
+          <p className="text-center text-sm font-semibold text-[#212D40] mt-6">
+            That's the product. Not a feature. The product.
+          </p>
         </div>
       </section>
 
-      {/* Foundation Strip */}
-      <section className="bg-[#212D40] px-5 py-6">
-        <p className="max-w-2xl mx-auto text-center text-sm text-white/80 leading-relaxed">
-          10% of every Alloro subscription funds Heroes &amp; Founders
-          Foundation, supporting veterans and public servants who built
-          something.{" "}
-          <Link to="/foundation" className="text-white underline hover:text-[#D56753] transition-colors">
-            Learn more &rarr;
-          </Link>
-        </p>
+      {/* ═══ SECTION 5 — Curiosity Gap Close (2nd CTA) ═══ */}
+      <section className="px-5 py-16 sm:py-20 bg-white">
+        <div className="max-w-xl mx-auto text-center space-y-6">
+          <div className="space-y-4 text-base text-[#212D40]/80 leading-relaxed">
+            <p>Your business has a number.</p>
+            <p>
+              A referral velocity score.
+              A competitive gap with a dollar figure attached.
+              A specific source whose behavior has changed
+              in the last 60 days.
+            </p>
+            <p className="font-semibold text-[#212D40]">
+              You don't know what any of those numbers are right now.
+            </p>
+            <p className="font-semibold text-[#212D40]">
+              You will in 60 seconds.
+            </p>
+          </div>
+          <div className="pt-4">
+            <CheckupInput id="mid-page" />
+          </div>
+          <p className="text-xs text-[#212D40]/30">
+            No account. No card. No call.
+            We find something specific or we tell you why we couldn't.
+          </p>
+        </div>
       </section>
 
-      {/* Final CTA */}
+      {/* ═══ SECTION 6 — The Process ═══ */}
+      <section className="px-5 py-16 sm:py-20" style={{ backgroundColor: "rgba(213, 103, 83, 0.04)" }}>
+        <div className="max-w-xl mx-auto">
+          <p className="text-sm font-bold text-[#212D40]/40 uppercase tracking-wider mb-6">
+            Here's what happens when you enter your business name:
+          </p>
+          <div className="space-y-5">
+            {[
+              "60 seconds: We analyze your competitive position, your visibility gaps, and your referral signals.",
+              "Simultaneously: PatientPath and ClearPath are built for your business by AI agents.",
+              "You receive your Checkup result and two live URLs. Your customer site and your referral page. Already indexed. Already ranking.",
+              "Monday morning: Your first intelligence brief. One thing. Specific. Actionable.",
+              "Every Monday after: The same. The catch before it costs you. The move before your competitor makes it.",
+            ].map((step, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <ArrowRight className="w-4 h-4 text-[#D56753] shrink-0 mt-1" />
+                <p className="text-sm text-[#212D40]/80 leading-relaxed">{step}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm font-semibold text-[#212D40] mt-8">
+            You did one thing: entered your business name. Alloro did the rest.
+          </p>
+        </div>
+      </section>
+
+      {/* ═══ SECTION 7 — What You're Replacing ═══ */}
+      <section className="px-5 py-16 sm:py-20 bg-white">
+        <div className="max-w-xl mx-auto space-y-6">
+          <p className="text-sm font-bold text-[#212D40]/40 uppercase tracking-wider">
+            Most of your peers are paying for one of these:
+          </p>
+          <div className="space-y-4">
+            <ComparisonRow label="$6,000/month agency" detail={'Quarterly PDF report. "Give it more time."'} />
+            <ComparisonRow label="$200/month website tool" detail={'Templates that look like everyone else\'s site.'} />
+            <ComparisonRow label="$500/month analytics software" detail="Dashboard nobody opens." />
+            <ComparisonRow label="Nothing" detail="Sunday spreadsheets and a lot of anxiety." />
+          </div>
+          <div className="border-t border-gray-200 pt-6 space-y-2">
+            <p className="text-base font-semibold text-[#212D40]">
+              Alloro is $2,000/month.
+            </p>
+            <p className="text-sm text-[#212D40]/70 leading-relaxed">
+              It runs while you sleep.
+              It catches what you'd miss.
+              It builds what no agency built.
+              It never asks for a check-in call.
+            </p>
+          </div>
+          <p className="text-sm font-semibold text-[#D56753]">
+            What's Monday morning worth to you when someone else is watching?
+          </p>
+        </div>
+      </section>
+
+      {/* ═══ SECTION 8 — Heroes & Founders ═══ */}
       <section className="bg-[#D56753] px-5 py-16 sm:py-20">
-        <div className="max-w-2xl mx-auto text-center">
-          <p className="text-xl sm:text-2xl font-bold text-white leading-relaxed">
-            34 million people started businesses to get their life back.
-            Most are still waiting.
+        <div className="max-w-xl mx-auto text-white space-y-6 leading-relaxed">
+          <p className="text-base">
+            Not everyone can afford $2,000/month right now.
+          </p>
+          <p className="text-base">
+            If you're a veteran, an active duty spouse,
+            a first responder, or a Gold Star family member
+            who owns a business, Alloro is free.
+            Not discounted. Free. Forever.
+          </p>
+          <p className="text-base">
+            If you're in your first year of business ownership,
+            Alloro is $400/month. Everything included.
+            No stripped version. No waitlist.
+          </p>
+          <p className="text-base font-semibold">
+            The people who served our communities are heroes. And founders.
+          </p>
+          <p className="text-base">
+            They deserve the intelligence everyone else pays for.
           </p>
           <Link
-            to="/checkup"
-            className="mt-8 inline-flex items-center justify-center rounded-xl bg-white text-[#212D40] text-base font-semibold px-8 py-4 hover:bg-gray-50 active:scale-[0.98] transition-all"
+            to="/foundation"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-white underline underline-offset-4 hover:text-white/80 transition-colors"
           >
-            Run your free Business Clarity Checkup
+            Learn about Heroes & Founders <ArrowRight className="w-3.5 h-3.5" />
           </Link>
+        </div>
+      </section>
+
+      {/* ═══ SECTION 9 — The Founder ═══ */}
+      <section className="px-5 py-16 sm:py-20 bg-white">
+        <div className="max-w-xl mx-auto space-y-5 text-[#212D40]/80 text-base leading-relaxed">
+          <p>
+            Alloro was built by Corey Wise.
+            USAF veteran. 100% service-connected disability.
+            A decade inside specialty service businesses.
+          </p>
+          <p>
+            For years before Alloro existed, he taught business
+            webinars for veteran entrepreneurs. For free.
+            Before there was anything to sell.
+          </p>
+          <p>
+            He watched brilliant people lose businesses they'd
+            spent their careers building. Not because they weren't
+            talented. Because they couldn't see what was happening
+            until it was too late.
+          </p>
+          <p className="font-semibold text-[#212D40]">
+            Alloro is the tool he wished existed.
+          </p>
+          <p className="text-sm text-[#212D40]/50">
+            Built on Claude, because Anthropic refused a
+            Department of Defense surveillance contract
+            to protect user data. You build with the companies
+            whose values match yours.
+          </p>
+          <p className="text-sm text-[#212D40]/40 italic">
+            Corey Wise, Bend, Oregon
+          </p>
+        </div>
+      </section>
+
+      {/* ═══ SECTION 10 — Final CTA ═══ */}
+      <section className="bg-[#212D40] px-5 py-16 sm:py-20">
+        <div className="max-w-xl mx-auto text-center space-y-6">
+          <p className="text-xl sm:text-2xl font-bold text-white leading-relaxed">
+            Your business has been speaking.
+          </p>
+          <p className="text-lg text-white/60">
+            Enter your name. We'll tell you what it said.
+          </p>
+          <div className="pt-2">
+            <CheckupInput id="final" dark />
+          </div>
+          <div className="space-y-1 pt-4">
+            <p className="text-sm text-white/40">
+              Free. Takes 60 seconds.
+              We build your sites and send your first Monday email
+              before you've decided if you want to pay for anything.
+            </p>
+            <p className="text-sm text-white/30 italic">
+              See you Monday.
+              <br />
+              Corey
+            </p>
+          </div>
         </div>
       </section>
 
@@ -190,17 +467,17 @@ export default function HomePage() {
               {
                 "@id": "https://getalloro.com/#organization",
                 "@type": "Organization",
-                "name": "Alloro",
-                "url": "https://getalloro.com",
-                "description": "Business Clarity platform for local service professionals",
-                "logo": "https://getalloro.com/logo.png",
+                name: "Alloro",
+                url: "https://getalloro.com",
+                description: "Business Clarity platform for local service professionals",
+                logo: "https://getalloro.com/logo.png",
               },
               {
                 "@type": "WebSite",
                 "@id": "https://getalloro.com/#website",
-                "url": "https://getalloro.com",
-                "name": "Alloro - Business Clarity Platform",
-                "publisher": { "@id": "https://getalloro.com/#organization" },
+                url: "https://getalloro.com",
+                name: "Alloro - Business Clarity",
+                publisher: { "@id": "https://getalloro.com/#organization" },
               },
             ],
           }),
@@ -210,217 +487,36 @@ export default function HomePage() {
   );
 }
 
-function ProofCard({ number, text }: { number: string; text: string }) {
+// ── Sub-components ──────────────────────────────────────────────────
+
+function DiagnosisCard({ number, children }: { number: number; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-[#212D40]/15 bg-white p-6">
-      <p className="text-2xl font-black text-[#212D40] mb-3">{number}</p>
-      <p className="text-sm text-[#212D40]/70 leading-relaxed">{text}</p>
+    <div className="bg-[#212D40] rounded-2xl p-6">
+      <span className="text-3xl font-black text-[#D56753]">{number}</span>
+      <p className="mt-3 text-sm text-white/70 leading-relaxed">{children}</p>
     </div>
   );
 }
 
-interface PlaceSuggestion {
-  placeId: string;
-  mainText: string;
-  secondaryText: string;
+function ThreeThing({ verb, lines }: { verb: string; lines: string[] }) {
+  return (
+    <div>
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-[#D56753] mb-3">{verb}</p>
+      {lines.map((line, i) => (
+        <p key={i} className="text-sm text-[#212D40]/70 leading-relaxed mt-2 first:mt-0">{line}</p>
+      ))}
+    </div>
+  );
 }
 
-function MarketTeaser() {
-  const navigate = useNavigate();
-  const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ name: string; city: string; competitors: number; rank: number; avgRating: number; reviewCount: number; topCompetitorName: string | null; topCompetitorReviews: number | null } | null>(null);
-  const [error, setError] = useState(false);
-
-  const debounceRef = useState<ReturnType<typeof setTimeout> | null>(null);
-
-  const searchPlaces = useCallback((input: string) => {
-    if (debounceRef[0]) clearTimeout(debounceRef[0]);
-    if (input.length < 3) {
-      setSuggestions([]);
-      return;
-    }
-    debounceRef[0] = setTimeout(async () => {
-      try {
-        const res = await fetch("/api/places/autocomplete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ input }),
-        });
-        const data = await res.json();
-        if (data.success && data.suggestions) {
-          setSuggestions(data.suggestions.slice(0, 5));
-        }
-      } catch {
-        setSuggestions([]);
-      }
-    }, 300);
-  }, [debounceRef]);
-
-  const selectPlace = async (place: PlaceSuggestion) => {
-    setSuggestions([]);
-    setQuery(place.mainText);
-    setLoading(true);
-    setError(false);
-    try {
-      // Get place details
-      const detailRes = await fetch(`/api/places/${place.placeId}`);
-      const detail = await detailRes.json();
-      if (!detail.success) throw new Error("No details");
-
-      const p = detail.place;
-      // Run checkup analyze
-      const analyzeRes = await fetch("/api/checkup/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: p.name,
-          city: p.city,
-          state: p.state,
-          category: p.category || "",
-          types: p.types || [],
-          rating: p.rating || null,
-          reviewCount: p.reviewCount || 0,
-          placeId: place.placeId,
-          location: p.location,
-        }),
-      });
-      const analysis = await analyzeRes.json();
-      if (analysis.success && analysis.market) {
-        setResult({
-          name: p.name,
-          city: p.city,
-          competitors: analysis.market.totalCompetitors,
-          rank: analysis.market.rank,
-          avgRating: analysis.market.avgRating,
-          reviewCount: p.reviewCount || 0,
-          topCompetitorName: analysis.topCompetitor?.name || null,
-          topCompetitorReviews: analysis.topCompetitor?.reviewCount || null,
-        });
-        trackEvent("marketing.teaser_search", {
-          city: p.city,
-          competitors: analysis.market.totalCompetitors,
-          rank: analysis.market.rank,
-        });
-      } else {
-        throw new Error("No market data");
-      }
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+function ComparisonRow({ label, detail }: { label: string; detail: string }) {
   return (
-    <section className="px-5 py-16 sm:py-20 bg-white border-t border-gray-100">
-      <div className="max-w-md mx-auto">
-        <h2 className="text-xl sm:text-2xl font-bold text-[#212D40] text-center mb-2">
-          See where you stand
-        </h2>
-        <p className="text-sm text-[#212D40]/50 text-center mb-6">
-          Enter your business name. 10 seconds. No account.
-        </p>
-
-        {!result ? (
-          <div className="relative">
-            <div className="flex items-center gap-2 border-2 border-[#212D40]/15 rounded-xl bg-[#FAFAF8] px-4 py-3 focus-within:border-[#D56753] transition-colors">
-              {loading ? (
-                <Loader2 className="w-4 h-4 text-[#D56753] animate-spin shrink-0" />
-              ) : (
-                <Search className="w-4 h-4 text-[#212D40]/30 shrink-0" />
-              )}
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  searchPlaces(e.target.value);
-                  setError(false);
-                }}
-                placeholder="Search your practice or business..."
-                className="flex-1 bg-transparent text-sm text-[#212D40] placeholder:text-[#212D40]/30 outline-none"
-                disabled={loading}
-              />
-            </div>
-
-            {/* Autocomplete dropdown */}
-            {suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-10">
-                {suggestions.map((s) => (
-                  <button
-                    key={s.placeId}
-                    type="button"
-                    onClick={() => selectPlace(s)}
-                    className="w-full text-left px-4 py-3 hover:bg-[#FAFAF8] transition-colors border-b border-gray-50 last:border-0"
-                  >
-                    <p className="text-sm font-medium text-[#212D40]">{s.mainText}</p>
-                    <p className="text-xs text-[#212D40]/50 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3" />
-                      {s.secondaryText}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {error && (
-              <p className="mt-3 text-xs text-center text-red-500">
-                Could not scan that market. Try another search.
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="rounded-2xl border-2 border-[#D56753]/20 bg-[#D56753]/5 p-6 text-center">
-            <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-3">
-              Your market snapshot
-            </p>
-            <p className="text-sm font-medium text-[#212D40] mb-4">
-              {result.name} in {result.city}
-            </p>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div>
-                <p className="text-2xl font-black text-[#212D40]">{result.competitors}</p>
-                <p className="text-[10px] text-[#212D40]/50 uppercase tracking-wider">Competitors</p>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-[#212D40]">#{result.rank}</p>
-                <p className="text-[10px] text-[#212D40]/50 uppercase tracking-wider">Your Rank</p>
-              </div>
-              <div>
-                <p className="text-2xl font-black text-[#212D40]">{result.avgRating.toFixed(1)}</p>
-                <p className="text-[10px] text-[#212D40]/50 uppercase tracking-wider">Avg Rating</p>
-              </div>
-            </div>
-            {result.topCompetitorName && result.topCompetitorReviews !== null && (
-              <p className="text-sm text-[#212D40]/70 leading-relaxed mb-6 px-2">
-                <span className="font-semibold text-[#212D40]">{result.topCompetitorName}</span>
-                {" "}has{" "}
-                <span className="font-semibold text-[#D56753]">
-                  {result.topCompetitorReviews} review{result.topCompetitorReviews !== 1 ? "s" : ""}
-                </span>.
-                {" "}You have {result.reviewCount}.
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={() => navigate("/checkup")}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-sm font-semibold px-6 py-3 hover:brightness-110 active:scale-[0.98] transition-all"
-            >
-              See the full report
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => { setResult(null); setQuery(""); }}
-              className="mt-2 text-xs text-[#212D40]/40 hover:text-[#212D40]/60 transition-colors"
-            >
-              Try another business
-            </button>
-          </div>
-        )}
+    <div className="flex items-start gap-3 py-2">
+      <div className="w-1.5 h-1.5 rounded-full bg-[#212D40]/20 shrink-0 mt-2" />
+      <div>
+        <p className="text-sm font-semibold text-[#212D40]">{label}</p>
+        <p className="text-sm text-[#212D40]/50">{detail}</p>
       </div>
-    </section>
+    </div>
   );
 }
