@@ -87,6 +87,8 @@ import streakRoutes from "./routes/user/streaks";
 import ownerProfileRoutes from "./routes/user/ownerProfile";
 import milestoneCardRoutes from "./routes/user/milestoneCards";
 import referralThankYouRoutes from "./routes/user/referralThankYou";
+import campaignRoutes from "./routes/partner/campaigns";
+import gpDiscoveryUserRoutes from "./routes/user/gpDiscovery";
 import userPreferencesRoutes from "./routes/user/preferences";
 import adminBehavioralEventsRoutes from "./routes/admin/behavioralEvents";
 import adminCaseStudiesRoutes from "./routes/admin/caseStudies";
@@ -267,6 +269,8 @@ app.use("/api/user", streakRoutes); // WO-33: Growth/Action/Review streaks
 app.use("/api/user", ownerProfileRoutes); // WO-50: Owner Profile (Lemonis Protocol)
 app.use("/api/user", milestoneCardRoutes); // WO-51/52: Milestone check-in cards
 app.use("/api/user", referralThankYouRoutes); // WO-47: Referral Thank-You auto-draft
+app.use("/api/user", gpDiscoveryUserRoutes); // WO-56: GP Discovery outreach
+app.use("/api/partner/campaigns", campaignRoutes); // WO-55: Partner Campaign Intelligence
 app.use("/api/user", userPreferencesRoutes); // WO-NOTIFICATION-PREFS + WO-STRIPE-PORTAL
 app.use("/api/admin/behavioral-events", adminBehavioralEventsRoutes); // WO-ADMIN-BEHAVIORAL-EVENTS: T4 SessionIntelligence + MorningBrief
 app.use("/api/admin/case-studies", adminCaseStudiesRoutes); // T6: Case study CRUD + publish
