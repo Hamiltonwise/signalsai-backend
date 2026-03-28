@@ -76,15 +76,36 @@ export default function EntryScreen() {
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get("ref") || undefined;
 
-  const [query, setQuery] = useState("");
+  const urlPlaceId = searchParams.get("placeId") || undefined;
+  const urlName = searchParams.get("name") || searchParams.get("q") || undefined;
+
+  const [query, setQuery] = useState(urlName || "");
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isSelecting, setIsSelecting] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(!!urlPlaceId);
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [intent, setIntent] = useState<string | null>(null);
   const [noResults, setNoResults] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [referrerName, setReferrerName] = useState<string | null>(null);
+
+  // Auto-select place from URL params (homepage CTA flow)
+  useEffect(() => {
+    if (!urlPlaceId) return;
+    let cancelled = false;
+    setIsSelecting(true);
+    withTimeout(getPlaceDetails(urlPlaceId), 8000)
+      .then((res) => {
+        if (cancelled) return;
+        if (res && res.success) {
+          setSelectedPlace(res.place);
+          setQuery(res.place.name);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setIsSelecting(false); });
+    return () => { cancelled = true; };
+  }, [urlPlaceId]);
 
   // Validate referral code on mount
   useEffect(() => {

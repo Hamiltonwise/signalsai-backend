@@ -34,9 +34,9 @@ export default function Story() {
       <section className="px-5 pb-12 sm:pb-16">
         <div className="max-w-xl mx-auto space-y-6">
           <p className="text-base text-[#212D40]/80 leading-relaxed">
-            I spent five years inside specialist medical practices
-            watching incredibly talented doctors struggle with a
-            problem that had nothing to do with their medicine.
+            I spent five years inside specialist service businesses
+            watching incredibly talented people struggle with a
+            problem that had nothing to do with their craft.
           </p>
           <p className="text-base text-[#212D40]/80 leading-relaxed">
             They were excellent clinicians. The businesses around
@@ -64,7 +64,7 @@ export default function Story() {
           <p className="text-base text-[#212D40]/80 leading-relaxed">
             What came next was ten years in the dental specialist
             space, first as an operator, then building the product
-            I wish had existed when I was trying to help practices
+            I wish had existed when I was trying to help businesses
             understand what their own data was saying.
           </p>
           <p className="text-base text-[#212D40]/80 leading-relaxed">

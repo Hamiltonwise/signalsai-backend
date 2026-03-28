@@ -40,12 +40,12 @@ export default function HowItWorks() {
           <Stage
             icon={<Search className="w-6 h-6 text-[#D56753]" />}
             title="The Checkup (60 seconds, free)"
-            body="Enter your practice name. Alloro scans your market: competitors, rankings, review velocity, online visibility. You see your score and the one thing most affecting your position. No account required."
+            body="Enter your business name. Alloro scans your market: competitors, rankings, review velocity, online visibility. You see your score and the one thing most affecting your position. No account required."
           />
           <Stage
             icon={<Mail className="w-6 h-6 text-[#212D40]" />}
             title="The Monday Brief (automated, every week)"
-            body="Create an account. Every Monday at 7am, your Business Clarity Brief arrives. One score. One finding specific to your practice. One action you can take this week. The brief takes 90 seconds to read. The action takes 10 minutes to do."
+            body="Create an account. Every Monday at 7am, your Business Clarity Brief arrives. One score. One finding specific to your business. One action you can take this week. The brief takes 90 seconds to read. The action takes 10 minutes to do."
           />
           <Stage
             icon={<Zap className="w-6 h-6 text-[#D56753]" />}
@@ -113,7 +113,7 @@ export default function HowItWorks() {
           <div className="space-y-8">
             <FAQ
               q="Do I need to install anything?"
-              a="No. Alloro reads publicly available signals about your practice's market position. Nothing is installed on your website or connected to your systems unless you choose to connect it."
+              a="No. Alloro reads publicly available signals about your business's market position. Nothing is installed on your website or connected to your systems unless you choose to connect it."
             />
             <FAQ
               q="How long until I see my first Monday brief?"
@@ -124,8 +124,8 @@ export default function HowItWorks() {
               a="You can pause them, change the frequency, or turn them off anytime from your dashboard. The data keeps running whether the emails do or not."
             />
             <FAQ
-              q="Is my practice data private?"
-              a="Alloro reads market-level signals, not patient records. No patient data ever enters the system. The intelligence is about your competitive position, not about anyone who's visited your practice."
+              q="Is my business data private?"
+              a="Alloro reads market-level signals, not patient records. No patient data ever enters the system. The intelligence is about your competitive position, not about anyone who's visited your business."
             />
             <FAQ
               q="What specialties does Alloro serve?"
@@ -161,9 +161,9 @@ export default function HowItWorks() {
               {
                 "@type": "HowTo",
                 "name": "How Alloro Works",
-                "description": "Three steps to Business Clarity for your practice.",
+                "description": "Three steps to Business Clarity for your business.",
                 "step": [
-                  { "@type": "HowToStep", "name": "The Checkup", "text": "Enter your practice name. Alloro scans your market and delivers your score in 60 seconds." },
+                  { "@type": "HowToStep", "name": "The Checkup", "text": "Enter your business name. Alloro scans your market and delivers your score in 60 seconds." },
                   { "@type": "HowToStep", "name": "The Monday Brief", "text": "Create an account. Every Monday at 7am, your Business Clarity Brief arrives." },
                   { "@type": "HowToStep", "name": "The Clarity Layer", "text": "Connect your existing data. When your top referring source goes 30 days without sending a case, you get a note Monday morning. When a competitor opens a second location, you know before your staff hears about it." },
                 ],
@@ -171,9 +171,9 @@ export default function HowItWorks() {
               {
                 "@type": "FAQPage",
                 "mainEntity": [
-                  { "@type": "Question", "name": "Do I need to install anything?", "acceptedAnswer": { "@type": "Answer", "text": "No. Alloro reads publicly available signals about your practice's market position." } },
+                  { "@type": "Question", "name": "Do I need to install anything?", "acceptedAnswer": { "@type": "Answer", "text": "No. Alloro reads publicly available signals about your business's market position." } },
                   { "@type": "Question", "name": "How long until I see my first Monday brief?", "acceptedAnswer": { "@type": "Answer", "text": "Your first brief arrives the Monday after you create your account." } },
-                  { "@type": "Question", "name": "Is my practice data private?", "acceptedAnswer": { "@type": "Answer", "text": "Alloro reads market-level signals, not patient records. No patient data ever enters the system." } },
+                  { "@type": "Question", "name": "Is my business data private?", "acceptedAnswer": { "@type": "Answer", "text": "Alloro reads market-level signals, not patient records. No patient data ever enters the system." } },
                   { "@type": "Question", "name": "What if I don't want weekly emails?", "acceptedAnswer": { "@type": "Answer", "text": "You can pause, change the frequency, or turn them off anytime from your dashboard. The data keeps running whether the emails do or not." } },
                   { "@type": "Question", "name": "What specialties does Alloro serve?", "acceptedAnswer": { "@type": "Answer", "text": "We built this for specialist medical practices like endodontists, oral surgeons, and orthodontists, and have since expanded to attorneys, veterinarians, physical therapists, financial advisors, and chiropractors." } },
                 ],

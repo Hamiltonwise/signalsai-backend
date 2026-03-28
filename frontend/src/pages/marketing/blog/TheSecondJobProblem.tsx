@@ -49,7 +49,7 @@ export default function TheSecondJobProblem() {
           <p>
             If you're a specialist, you trained for years. Residencies. Board
             exams. Clinical hours. You became excellent at something specific.
-            Then you opened a practice, or bought one, or inherited one, and
+            Then you opened a business, or bought one, or inherited one, and
             discovered there's an entire parallel job that nobody mentioned in
             school.
           </p>
@@ -57,7 +57,7 @@ export default function TheSecondJobProblem() {
             Marketing. Competitive positioning. Online reputation. Referral
             relationship management. Employee retention. Insurance negotiation.
             These aren't side tasks. Together, they form a full-time job, and
-            most practice owners are doing it on top of the clinical work that
+            most business owners are doing it on top of the core work that
             already fills their day.
           </p>
 

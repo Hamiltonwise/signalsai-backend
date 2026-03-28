@@ -27,9 +27,9 @@ export default function FoundersPage() {
           You built something from nothing. Now build it into something undeniable.
         </h1>
         <p className="mt-6 text-base text-gray-600 leading-relaxed">
-          The Founders Initiative supports first-generation practice owners who are
-          building without a playbook. No family in the profession. No inherited patient
-          base. Just skill, determination, and a vision for what their practice could become.
+          The Founders Initiative supports first-generation business owners who are
+          building without a playbook. No family in the profession. No inherited client
+          base. Just skill, determination, and a vision for what their business could become.
         </p>
 
         <div className="mt-12 space-y-8">

@@ -55,7 +55,7 @@ export default function GoogleBusinessProfileScore() {
             </li>
             <li>
               <span className="font-semibold text-[#212D40]">Distance.</span>{" "}
-              How close your practice is to the searcher. You can't change
+              How close your business is to the searcher. You can't change
               this, but you can influence how far Google is willing to stretch
               your visibility radius.
             </li>
@@ -86,7 +86,7 @@ export default function GoogleBusinessProfileScore() {
             trajectory. Velocity signals momentum, and Google rewards momentum.
           </p>
           <p>
-            Most practice owners don't know their velocity. They don't know
+            Most business owners don't know their velocity. They don't know
             their competitor's velocity. They don't know the gap, the timeline
             to close it, or what closing it would mean for their ranking
             position.

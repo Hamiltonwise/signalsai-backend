@@ -28,7 +28,7 @@ const POSTS = [
     category: "Competitive Intelligence",
     title: "Why your top competitor keeps showing up where you don't",
     summary:
-      "In every market we've analyzed, the same three behaviors separate the practices showing up first from the ones asking why they're invisible. None of them are expensive. One takes 20 minutes.",
+      "In every market we've analyzed, the same three behaviors separate the businesses showing up first from the ones asking why they're invisible. None of them are expensive. One takes 20 minutes.",
   },
 ];
 
