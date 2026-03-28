@@ -855,9 +855,11 @@ export default function DoctorDashboard() {
           checkupScore={effectiveRanking?.rankScore ?? null}
           gbpConnected={hasGoogleConnection}
           pmsUploaded={!!setupProgress?.checklist_pms || !!setupProgress?.step2_pms_uploaded}
-          mondayEmailOpened={!!setupProgress?.checklist_monday}
           referralShared={!!setupProgress?.checklist_share}
           referralCode={referralCode}
+          checkupRank={effectiveRanking?.rankPosition}
+          checkupTotal={effectiveRanking?.totalCompetitors}
+          checkupCity={effectiveRanking?.location}
           onStepComplete={markChecklistStep}
           onDismiss={() => {
             apiPatch({ path: "/onboarding/setup-progress", passedData: { checklist_dismissed: true } }).catch(() => {});

@@ -997,7 +997,13 @@ export default function ResultsScreen() {
                   disabled={emailSending}
                   className="w-full h-13 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-70"
                 >
-                  {emailSending ? "Creating your account..." : "Unlock my report"}
+                  {emailSending
+                    ? "Creating your account..."
+                    : topCompetitor
+                      ? `See why ${topCompetitor.name} ranks above you`
+                      : market?.city
+                        ? `See what's keeping you from #1 in ${market.city}`
+                        : "Unlock my full report"}
                   {!emailSending && <ArrowRight className="w-4 h-4" />}
                 </button>
               </>

@@ -1,14 +1,15 @@
 /**
- * Onboarding Checklist — persistent top-of-dashboard card.
+ * Onboarding Checklist -- persistent top-of-dashboard card.
  *
- * Five steps, each reducing a specific anxiety:
- * 1. "Do I know where I stand?" → competitive position
- * 2. "Is this data real?" → GBP connection
- * 3. "Will this tell me about my referrals?" → PMS upload
- * 4. "What will Monday look like?" → Monday email preview
- * 5. "Is this worth sharing?" → share referral link
+ * Five steps. Two pre-completed as Alloro gifts (endowment + Zeigarnik):
+ * 1. "Alloro analyzed your competitive position" -- auto-done if checkup ran
+ * 2. "Your competitors were identified" -- auto-done if checkup ran
+ * 3. "Connect your Google Business Profile" -- user action
+ * 4. "Upload your scheduling data" -- user action
+ * 5. "Share your Checkup with a colleague" -- user action
  *
- * Dismissable after step 3. Disappears after all 5 complete.
+ * User lands at "2 of 5 complete" before lifting a finger.
+ * Dismissable after 3 complete. Disappears after all 5 complete.
  */
 
 import { useState } from "react";
@@ -21,7 +22,7 @@ import {
   BarChart3,
   Link2,
   Upload,
-  Mail,
+  Target,
   Share2,
   Copy,
 } from "lucide-react";
@@ -31,6 +32,7 @@ interface OnboardingStep {
   title: string;
   anxiety: string;
   complete: boolean;
+  autoCompleted?: boolean;
   cta: string;
   action: () => void;
   icon: React.ComponentType<{ className?: string }>;
@@ -40,9 +42,11 @@ interface OnboardingChecklistProps {
   checkupScore: number | null;
   gbpConnected: boolean;
   pmsUploaded: boolean;
-  mondayEmailOpened: boolean;
   referralShared: boolean;
   referralCode: string | null;
+  checkupRank?: number | null;
+  checkupTotal?: number | null;
+  checkupCity?: string | null;
   onStepComplete?: (step: string) => void;
   onDismiss: () => void;
 }
@@ -51,9 +55,11 @@ export default function OnboardingChecklist({
   checkupScore,
   gbpConnected,
   pmsUploaded,
-  mondayEmailOpened,
   referralShared,
   referralCode,
+  checkupRank,
+  checkupTotal,
+  checkupCity,
   onStepComplete,
   onDismiss,
 }: OnboardingChecklistProps) {
@@ -61,15 +67,36 @@ export default function OnboardingChecklist({
   const [linkCopied, setLinkCopied] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
+  const hasCheckup = checkupScore != null;
+
   const steps: OnboardingStep[] = [
     {
-      id: "checkup",
-      title: "See your competitive position",
+      id: "analyzed",
+      title: hasCheckup && checkupRank
+        ? `You're #${checkupRank} of ${checkupTotal || "?"} in ${checkupCity || "your market"}`
+        : hasCheckup
+          ? "Alloro analyzed your competitive position"
+          : "See your competitive position",
       anxiety: "See every competitor in your market",
-      complete: checkupScore != null,
-      cta: "View your market",
-      action: () => { onStepComplete?.("checkup"); navigate("/dashboard/rankings"); },
+      complete: hasCheckup,
+      autoCompleted: hasCheckup,
+      cta: "Run checkup",
+      action: () => navigate("/checkup"),
       icon: BarChart3,
+    },
+    {
+      id: "competitors",
+      title: hasCheckup
+        ? checkupTotal
+          ? `${checkupTotal} competitors identified in ${checkupCity || "your market"}`
+          : "Your competitors were identified"
+        : "Map your competitors",
+      anxiety: "Know who you're up against",
+      complete: hasCheckup,
+      autoCompleted: hasCheckup,
+      cta: "View market",
+      action: () => navigate("/dashboard/rankings"),
+      icon: Target,
     },
     {
       id: "gbp",
@@ -88,15 +115,6 @@ export default function OnboardingChecklist({
       cta: "Upload data",
       action: () => { onStepComplete?.("pms"); navigate("/dashboard/referrals"); },
       icon: Upload,
-    },
-    {
-      id: "monday",
-      title: "Review your Monday email",
-      anxiety: "Your first brief arrives Monday at 7am",
-      complete: mondayEmailOpened,
-      cta: "See what's coming",
-      action: () => { onStepComplete?.("monday"); navigate("/dashboard/intelligence"); },
-      icon: Mail,
     },
     {
       id: "share",
@@ -144,10 +162,10 @@ export default function OnboardingChecklist({
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      {/* Header */}
+      {/* Header -- IKEA effect: "building", not "completing" */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-sm font-bold text-[#212D40]">Get started</p>
+          <p className="text-sm font-bold text-[#212D40]">Building your intelligence</p>
           <p className="text-xs text-gray-400 mt-0.5">
             {completed} of {steps.length} complete
           </p>
@@ -180,7 +198,9 @@ export default function OnboardingChecklist({
             disabled={step.complete}
             className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-all ${
               step.complete
-                ? "bg-gray-50 opacity-60"
+                ? step.autoCompleted
+                  ? "bg-emerald-50/50 border border-emerald-100"
+                  : "bg-gray-50 opacity-60"
                 : "bg-white hover:bg-[#D56753]/[0.02] hover:border-[#D56753]/20 border border-gray-100"
             }`}
           >
@@ -190,11 +210,20 @@ export default function OnboardingChecklist({
               <Circle className="h-5 w-5 text-gray-300 shrink-0" />
             )}
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-medium ${step.complete ? "text-gray-400 line-through" : "text-[#212D40]"}`}>
+              <p className={`text-sm font-medium ${
+                step.complete
+                  ? step.autoCompleted
+                    ? "text-emerald-700"
+                    : "text-gray-400 line-through"
+                  : "text-[#212D40]"
+              }`}>
                 {step.title}
               </p>
               {!step.complete && (
                 <p className="text-[10px] text-gray-400 mt-0.5 italic">{step.anxiety}</p>
+              )}
+              {step.complete && step.autoCompleted && (
+                <p className="text-[10px] text-emerald-500 mt-0.5">Done for you</p>
               )}
             </div>
             {!step.complete && (
