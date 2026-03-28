@@ -661,26 +661,60 @@ export default function ResultsScreen() {
         </p>
       )}
 
-      {/* Sub-scores — honest names for what we actually measure */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] space-y-5">
-        <SubScoreBar
-          label="Market Rank"
-          score={score.localVisibility}
-          maxScore={40}
-          icon={Eye}
-        />
-        <SubScoreBar
-          label="Rating vs Market"
-          score={score.onlinePresence}
-          maxScore={40}
-          icon={Globe}
-        />
-        <SubScoreBar
-          label="Review Volume"
-          score={score.reviewHealth}
-          maxScore={20}
-          icon={MessageSquare}
-        />
+      {/* Sub-scores — transparent breakdown with plain-English explanation */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] space-y-6">
+        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Behind the Score</p>
+
+        {/* Local Visibility */}
+        <div className="space-y-2">
+          <SubScoreBar label="Local Visibility" score={score.localVisibility} maxScore={40} icon={Eye} />
+          <p className="text-xs text-slate-500 leading-relaxed pl-11">
+            {market && market.rank > 0 ? (
+              <>
+                You rank <span className="font-semibold text-slate-700">#{market.rank} of {market.totalCompetitors}</span> {place.category ? `${place.category.toLowerCase()}s` : "competitors"} in {market.city}.
+                {topCompetitor && <> <span className="font-semibold text-slate-700">{topCompetitor.name}</span> holds #1 with {topCompetitor.reviewCount} reviews. You have {place.reviewCount}.</>}
+              </>
+            ) : (
+              <>Position data is being calculated. Check back after the next scan.</>
+            )}
+          </p>
+        </div>
+
+        {/* Online Presence */}
+        <div className="space-y-2">
+          <SubScoreBar label="Online Presence" score={score.onlinePresence} maxScore={40} icon={Globe} />
+          <p className="text-xs text-slate-500 leading-relaxed pl-11">
+            {place.rating ? (
+              <>
+                Your <span className="font-semibold text-slate-700">{place.rating}-star rating</span> {market && market.avgRating ? (
+                  place.rating >= market.avgRating
+                    ? <>is above the {market.city} market average of {market.avgRating.toFixed(1)}.</>
+                    : <>is below the {market.city} market average of {market.avgRating.toFixed(1)}. Every 0.1-star improvement moves your score.</>
+                ) : <>contributes to your online presence score.</>}
+                {!place.websiteUri && <> No website linked on your profile, which reduces visibility.</>}
+              </>
+            ) : (
+              <>Your Google Business Profile data is being analyzed.</>
+            )}
+          </p>
+        </div>
+
+        {/* Review Health */}
+        <div className="space-y-2">
+          <SubScoreBar label="Review Health" score={score.reviewHealth} maxScore={20} icon={MessageSquare} />
+          <p className="text-xs text-slate-500 leading-relaxed pl-11">
+            You have <span className="font-semibold text-slate-700">{place.reviewCount} review{place.reviewCount !== 1 ? "s" : ""}</span>
+            {place.rating ? <> averaging {place.rating} stars</> : null}.
+            {market && market.avgReviews > 0 && (
+              place.reviewCount >= market.avgReviews
+                ? <> That's above the local average of {Math.round(market.avgReviews)}.</>
+                : <> The local average is {Math.round(market.avgReviews)}. Each new review closes the gap.</>
+            )}
+            {topCompetitor && topCompetitor.reviewCount > place.reviewCount && (
+              <> <span className="font-semibold text-slate-700">{topCompetitor.name}</span> has {topCompetitor.reviewCount}.</>
+            )}
+          </p>
+        </div>
       </div>
 
       {/* Transparency — what this score is based on */}

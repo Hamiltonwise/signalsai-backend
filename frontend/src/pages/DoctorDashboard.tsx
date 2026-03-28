@@ -101,7 +101,7 @@ function scoreBg(score: number | null): string {
 // POSITION CARD — One job: show where you rank
 // ═══════════════════════════════════════════════════════════════════
 
-function PositionCard({ ranking }: { ranking: RankingData | null }) {
+function PositionCard({ ranking, subScores }: { ranking: RankingData | null; subScores?: { localVisibility: number; onlinePresence: number; reviewHealth: number } | null }) {
   if (!ranking || !ranking.rankPosition) {
     return (
       <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
@@ -166,6 +166,33 @@ function PositionCard({ ranking }: { ranking: RankingData | null }) {
           <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${scoreBg(ranking.rankScore)} ${scoreColor(ranking.rankScore)}`}>
             Score: {ranking.rankScore}/100
           </span>
+        </div>
+      )}
+
+      {/* Sub-score breakdown from checkup data */}
+      {subScores && (
+        <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
+          {[
+            { label: "Local Visibility", score: subScores.localVisibility, max: 40 },
+            { label: "Online Presence", score: subScores.onlinePresence, max: 40 },
+            { label: "Review Health", score: subScores.reviewHealth, max: 20 },
+          ].map((s) => {
+            const pct = Math.round((s.score / s.max) * 100);
+            return (
+              <div key={s.label}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[11px] font-medium text-gray-500">{s.label}</span>
+                  <span className="text-[11px] font-semibold text-gray-700">{s.score}/{s.max}</span>
+                </div>
+                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${pct >= 80 ? "bg-emerald-500" : pct >= 60 ? "bg-amber-500" : "bg-[#D56753]"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -783,7 +810,7 @@ export default function DoctorDashboard() {
 
           {/* 1. Practice Health Score ring */}
           {isRankingError && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
-          <PositionCard ranking={effectiveRanking} />
+          <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { localVisibility: checkupCtx.data.score.localVisibility, onlinePresence: checkupCtx.data.score.onlinePresence, reviewHealth: checkupCtx.data.score.reviewHealth } : null} />
 
           {/* 2. One sentence finding */}
           <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
