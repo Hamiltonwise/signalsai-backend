@@ -48,6 +48,7 @@ import { toast } from "react-hot-toast";
 interface AiCommandTabProps {
   projectId: string;
   pages?: WebsitePage[];
+  onExecutionComplete?: () => void;
 }
 
 interface PostItem {
@@ -66,7 +67,7 @@ function parseStats(raw: AiCommandBatchStats | string | null): AiCommandBatchSta
   return raw;
 }
 
-export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProps) {
+export default function AiCommandTab({ projectId, pages = [], onExecutionComplete }: AiCommandTabProps) {
   const [viewState, setViewState] = useState<ViewState>("history");
   const [prompt, setPrompt] = useState("");
 
@@ -179,7 +180,7 @@ export default function AiCommandTab({ projectId, pages = [] }: AiCommandTabProp
           if (active) setRecommendations(recsRes.data);
 
           if (res.data.status === "completed" || res.data.status === "failed") {
-            if (active) { setViewState("completed"); refreshBatchList(); }
+            if (active) { setViewState("completed"); refreshBatchList(); onExecutionComplete?.(); }
             return; // Stop polling
           }
         }
