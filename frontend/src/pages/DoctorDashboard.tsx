@@ -718,16 +718,30 @@ export default function DoctorDashboard() {
     queryClient.invalidateQueries({ queryKey: ["setup-progress"] });
   }, [queryClient]);
 
+  // Streaks (WO-33)
+  const { data: streakData } = useQuery({
+    queryKey: ["user-streaks", orgId],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/streaks" });
+      return res?.success ? res.streak : null;
+    },
+    enabled: !!orgId,
+    staleTime: 10 * 60_000,
+  });
+
   // One Action Card — backend intelligence engine
-  const { data: oneActionData } = useQuery({
+  const { data: oneActionResponse } = useQuery({
     queryKey: ["one-action-card", orgId],
     queryFn: async () => {
       const res = await apiGet({ path: "/user/one-action-card" });
-      return res?.success ? res.card : null;
+      return res?.success ? res : null;
     },
     enabled: !!orgId,
     staleTime: 5 * 60_000,
   });
+  const oneActionData = oneActionResponse?.card ?? null;
+  const driftGPData = oneActionResponse?.driftGP ?? null;
+  const competitorVelocityData = oneActionResponse?.competitorVelocity ?? null;
 
   // Merge: use checkup context as fallback when live ranking hasn't run yet
   const effectiveRanking: RankingData | null = rankingData ?? (checkupCtx?.data ? {
@@ -785,6 +799,7 @@ export default function DoctorDashboard() {
         <OneActionCard
           serverCard={oneActionData}
           billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
+          driftGP={driftGPData}
           rankingDrop={
             effectiveRanking?.previousPosition && effectiveRanking?.rankPosition &&
             effectiveRanking.rankPosition - effectiveRanking.previousPosition >= 2
@@ -795,6 +810,7 @@ export default function DoctorDashboard() {
                 }
               : null
           }
+          competitorVelocity={competitorVelocityData}
           gbpConnected={hasGoogleConnection}
           topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
         />
@@ -831,6 +847,13 @@ export default function DoctorDashboard() {
           {/* 1. Practice Health Score ring */}
           {isRankingError && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
           <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { localVisibility: checkupCtx.data.score.localVisibility, onlinePresence: checkupCtx.data.score.onlinePresence, reviewHealth: checkupCtx.data.score.reviewHealth } : null} />
+
+          {/* Streak badge (WO-33) */}
+          {streakData && streakData.count >= 2 && (
+            <p className="text-center text-[13px] text-[#D56753] -mt-3">
+              Week {streakData.count} of {streakData.label}
+            </p>
+          )}
 
           {/* 2. One sentence finding */}
           <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
