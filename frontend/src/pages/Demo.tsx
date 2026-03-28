@@ -11,6 +11,7 @@
  * Uses universal specialist language, not dental-specific.
  */
 
+import { useState, useEffect } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -22,8 +23,9 @@ import {
   Users,
   ArrowRight,
   Activity,
+  Loader2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 // ─── Demo Data ──────────────────────────────────────────────────────
 
@@ -422,6 +424,50 @@ function DemoCSAgent() {
 // ─── Main Demo Page ─────────────────────────────────────────────────
 
 export default function Demo() {
+  const navigate = useNavigate();
+  const [autoLoginFailed, setAutoLoginFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Attempt auto-login via seeded demo account.
+  // If the account exists, store token and redirect to the live dashboard.
+  // If not seeded (404), fall through to the hardcoded demo page.
+  useEffect(() => {
+    fetch("/api/demo/login")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.token) {
+          localStorage.setItem("auth_token", data.token);
+          if (data.user?.organizationId) {
+            localStorage.setItem("organizationId", String(data.user.organizationId));
+          }
+          if (data.user?.role) {
+            localStorage.setItem("user_role", data.user.role);
+          }
+          navigate("/dashboard", { replace: true });
+        } else {
+          setAutoLoginFailed(true);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        setAutoLoginFailed(true);
+        setLoading(false);
+      });
+  }, [navigate]);
+
+  // Show loading spinner while attempting auto-login
+  if (loading && !autoLoginFailed) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[#FAFAF8]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-[#D56753]" />
+          <span className="text-sm font-medium text-gray-500">Loading demo...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback: hardcoded demo page (no seeded account)
   return (
     <div className="min-h-dvh bg-[#FAFAF8]">
       {/* Header */}
