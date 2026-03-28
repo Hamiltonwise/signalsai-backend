@@ -22,7 +22,7 @@ const PHONE_REGEX = /^\+?[1-9]\d{6,14}$/; // E.164-ish: 7-15 digits
  * POST /api/review-requests/send
  *
  * Send a review request via email or SMS.
- * Body: { recipientEmail?, recipientPhone?, recipientName?, placeId, practiceName, locationId? }
+ * Body: { recipientEmail?, recipientPhone?, recipientName?, placeId, practiceName, doctorName?, locationId? }
  * At least one of recipientEmail or recipientPhone is required.
  */
 reviewRequestRoutes.post("/send", sendLimiter, async (req: any, res) => {
@@ -32,7 +32,7 @@ reviewRequestRoutes.post("/send", sendLimiter, async (req: any, res) => {
       return res.status(401).json({ success: false, error: "Authentication required" });
     }
 
-    const { recipientEmail, recipientPhone, recipientName, placeId, locationId, practiceName } = req.body;
+    const { recipientEmail, recipientPhone, recipientName, placeId, locationId, practiceName, doctorName } = req.body;
 
     if (!placeId) {
       return res.status(400).json({ success: false, error: "placeId is required to generate review link" });
@@ -90,10 +90,11 @@ reviewRequestRoutes.post("/send", sendLimiter, async (req: any, res) => {
 
     // Send via chosen method
     if (deliveryMethod === "sms") {
-      const pName = practiceName || "your practice";
+      const pName = practiceName || "your business";
+      const senderLabel = doctorName || pName;
       const smsBody = recipientName
-        ? `Hi ${recipientName.trim()}, thank you for visiting ${pName}! We'd love your feedback. Leave a quick Google review: ${trackingUrl}`
-        : `Thank you for visiting ${pName}! We'd love your feedback. Leave a quick Google review: ${trackingUrl}`;
+        ? `Hi ${recipientName.trim()}, this is ${senderLabel}. I appreciate you coming in. If you have a moment, a quick Google review would mean a lot: ${trackingUrl}`
+        : `Hi, this is ${senderLabel}. Thank you for your visit. If you have a moment, a quick Google review would mean a lot: ${trackingUrl}`;
 
       const smsResult = await sendSms(rawPhone!, smsBody);
       messageId = smsResult.messageId;
@@ -106,7 +107,8 @@ reviewRequestRoutes.post("/send", sendLimiter, async (req: any, res) => {
       const emailResult = await sendReviewRequestEmail({
         recipientEmail: recipientEmail.trim(),
         recipientName: recipientName?.trim() || null,
-        practiceName: practiceName || "your practice",
+        practiceName: practiceName || "your business",
+        doctorName: doctorName?.trim() || null,
         trackingUrl,
       });
       messageId = emailResult.messageId;

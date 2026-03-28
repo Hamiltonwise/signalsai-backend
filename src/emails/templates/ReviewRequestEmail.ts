@@ -17,6 +17,7 @@ export interface ReviewRequestEmailData {
   recipientEmail: string;
   recipientName: string | null;
   practiceName: string;
+  doctorName?: string | null;
   trackingUrl: string; // Our redirect URL that marks click, then forwards to Google
 }
 
@@ -25,33 +26,38 @@ export async function sendReviewRequestEmail(data: ReviewRequestEmailData) {
     ? `Hi ${data.recipientName},`
     : "Hi there,";
 
+  const senderName = data.doctorName || data.practiceName;
+
+  // Personal note format from the doctor (BrightLocal 2023: specific ask outperforms generic 4x)
   const content = `
     <div style="padding: 40px 0 20px;">
       <p style="font-size: 16px; color: ${BRAND_COLORS.navy}; line-height: 1.6; margin: 0 0 20px;">
         ${greeting}
       </p>
       <p style="font-size: 16px; color: ${BRAND_COLORS.navy}; line-height: 1.6; margin: 0 0 24px;">
-        Thank you for choosing <strong>${data.practiceName}</strong>. Your feedback helps other patients find quality care.
+        I appreciate you choosing <strong>${data.practiceName}</strong>. I wanted to reach out personally because your experience matters to me.
       </p>
       <p style="font-size: 16px; color: ${BRAND_COLORS.navy}; line-height: 1.6; margin: 0 0 32px;">
-        Would you take 30 seconds to share your experience?
+        If you have a moment, a quick note about your visit would mean a lot. It helps other people in the area find us.
       </p>
       <div style="text-align: center; margin: 0 0 32px;">
-        ${createButton("Leave a Review", data.trackingUrl)}
+        ${createButton("Share Your Experience", data.trackingUrl)}
       </div>
       <p style="font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5; margin: 0;">
-        One tap opens Google Reviews. It takes less than a minute and makes a real difference.
+        One tap opens Google Reviews. Takes less than a minute.
       </p>
     </div>
     <div style="padding: 24px 0; border-top: 1px solid ${BRAND_COLORS.border};">
       <p style="font-size: 13px; color: ${BRAND_COLORS.mediumGray}; margin: 0;">
-        — The team at ${data.practiceName}
+        ${data.doctorName ? `— ${data.doctorName}, ${data.practiceName}` : `— ${data.practiceName}`}
       </p>
     </div>
   `;
 
-  const subject = `How was your visit to ${data.practiceName}?`;
-  const preheader = `Your feedback helps others find quality care. One tap to leave a review.`;
+  const subject = `A quick question from ${senderName}`;
+  const preheader = data.recipientName
+    ? `${data.recipientName}, your feedback means a lot to us.`
+    : `Your feedback means a lot to us.`;
 
   return sendEmail({
     subject,
