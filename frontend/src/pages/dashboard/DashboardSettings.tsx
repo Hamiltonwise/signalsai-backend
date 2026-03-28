@@ -35,7 +35,7 @@ export default function DashboardSettings() {
 
   // Load existing prefs
   useEffect(() => {
-    apiGet({ path: "/api/user/notification-preferences" })
+    apiGet({ path: "/user/notification-preferences" })
       .then((res: any) => {
         if (res?.success) {
           setMondayEmail(res.monday_email ?? true);
@@ -54,7 +54,7 @@ export default function DashboardSettings() {
     setNpiError("");
     setNpiVerifying(true);
     try {
-      const res = await apiPost({ path: "/api/user/npi-verify", passedData: { npi } });
+      const res = await apiPost({ path: "/user/npi-verify", passedData: { npi } });
       if (res?.success && res?.verified) {
         setNpiVerified(true);
       } else {
@@ -71,7 +71,7 @@ export default function DashboardSettings() {
     setPrefsSaving(true);
     try {
       await apiPatch({
-        path: "/api/user/notification-preferences",
+        path: "/user/notification-preferences",
         passedData: { [key]: value },
       });
     } catch { /* silent */ }

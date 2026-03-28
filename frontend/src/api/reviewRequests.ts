@@ -42,7 +42,7 @@ export async function sendReviewRequest(params: {
   error?: string;
 }> {
   return apiPost({
-    path: "/api/review-requests/send",
+    path: "/review-requests/send",
     passedData: params,
   });
 }
@@ -61,5 +61,5 @@ export async function listReviewRequests(params?: {
   if (params?.limit) query.set("limit", String(params.limit));
   if (params?.offset) query.set("offset", String(params.offset));
   const qs = query.toString();
-  return apiGet({ path: `/api/review-requests${qs ? `?${qs}` : ""}` });
+  return apiGet({ path: `/review-requests${qs ? `?${qs}` : ""}` });
 }

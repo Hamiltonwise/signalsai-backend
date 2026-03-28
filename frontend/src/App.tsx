@@ -83,6 +83,8 @@ const HeroesPage = React.lazy(() => import("./pages/foundation/HeroesPage"));
 const FoundersPage = React.lazy(() => import("./pages/foundation/FoundersPage"));
 const FoundationApply = React.lazy(() => import("./pages/foundation/FoundationApply"));
 
+const TasksPage = React.lazy(() => import("./pages/TasksPage"));
+
 // --- Non-page imports (always loaded) ---
 import { PageWrapper } from "./components/PageWrapper";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
@@ -314,7 +316,7 @@ function App() {
                 <Route path="/dashboard/refer/:orgSlug?" element={<GPDiscoveryPage />} />
                 <Route path="/patientJourneyInsights" element={<Dashboard />} />
                 <Route path="/pmsStatistics" element={<Dashboard />} />
-                <Route path="/tasks" element={<Dashboard />} />
+                <Route path="/tasks" element={<TasksPage />} />
                 <Route path="/rankings" element={<Dashboard />} />
                 <Route
                   path="/dfy/website"

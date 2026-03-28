@@ -15,7 +15,7 @@ export async function sendChatMessage(params: {
   locationId?: number | null;
 }): Promise<{ success: boolean; response?: string; error?: string }> {
   return apiPost({
-    path: "/api/cs-agent/chat",
+    path: "/cs-agent/chat",
     passedData: params,
   });
 }

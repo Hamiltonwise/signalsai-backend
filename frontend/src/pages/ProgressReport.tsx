@@ -569,7 +569,7 @@ export default function ProgressReport() {
   const handleSetGoals = async (goals: Goals) => {
     // Save goals to org setup_progress
     await apiPatch({
-      path: "/settings/setup-progress",
+      path: "/onboarding/setup-progress",
       passedData: { goals },
     }).catch(() => {});
   };

@@ -16,6 +16,7 @@ onboardingRoutes.put("/wizard/complete", authenticateToken, rbacMiddleware, onbo
 onboardingRoutes.post("/wizard/restart", authenticateToken, rbacMiddleware, onboardingController.restartWizard);
 onboardingRoutes.get("/setup-progress", authenticateToken, rbacMiddleware, onboardingController.getSetupProgress);
 onboardingRoutes.put("/setup-progress", authenticateToken, rbacMiddleware, onboardingController.updateSetupProgress);
+onboardingRoutes.patch("/setup-progress", authenticateToken, rbacMiddleware, onboardingController.patchSetupProgress);
 
 // GBP onboarding endpoints — also require tokenRefreshMiddleware for OAuth2 client
 onboardingRoutes.get("/available-gbp", authenticateToken, rbacMiddleware, tokenRefreshMiddleware, onboardingController.getAvailableGBP);

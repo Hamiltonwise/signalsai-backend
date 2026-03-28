@@ -429,6 +429,27 @@ export async function updateSetupProgress(
 }
 
 /**
+ * PATCH /api/onboarding/setup-progress
+ *
+ * Partially update setup progress (merge into existing JSON).
+ * Used by ProgressReport to save goals without overwriting wizard state.
+ */
+export async function patchSetupProgress(
+  req: RBACRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const organizationId = extractOrganizationId(req);
+    const existing = await getSetupProgressService(organizationId);
+    const merged = { ...existing, ...req.body };
+    await updateSetupProgressService(organizationId, merged as any);
+    res.json({ success: true, progress: merged });
+  } catch (error) {
+    handleError(res, error, "Patch setup progress");
+  }
+}
+
+/**
  * GET /api/onboarding/available-gbp
  *
  * Fetch available GBP locations for the authenticated user.
