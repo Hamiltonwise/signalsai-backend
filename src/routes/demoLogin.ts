@@ -16,6 +16,11 @@ const DEMO_EMAIL = "demo@getalloro.com";
 demoLoginRoutes.get(
   "/login",
   async (_req, res) => {
+    // Block in production unless explicitly enabled
+    if (process.env.NODE_ENV === "production" && process.env.DEMO_MODE !== "true") {
+      return res.status(404).json({ success: false, error: "Not found" });
+    }
+
     try {
       const user = await db("users").where({ email: DEMO_EMAIL }).first();
 

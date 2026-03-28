@@ -41,13 +41,28 @@ export class TaskModel extends BaseModel {
     return super.findById(id, trx);
   }
 
+  private static readonly ALLOWED_METADATA_FIELDS = [
+    "source",
+    "agent_type",
+    "checkup_id",
+    "location_id",
+    "organization_id",
+    "referral_source",
+    "priority",
+    "category",
+    "type",
+  ];
+
   static async findByMetadataField(
     field: string,
     value: string,
     trx?: QueryContext
   ): Promise<ITask[]> {
+    if (!this.ALLOWED_METADATA_FIELDS.includes(field)) {
+      throw new Error(`Invalid metadata field: ${field}`);
+    }
     const rows = await this.table(trx)
-      .whereRaw(`metadata::jsonb->>'${field}' = ?`, [value]);
+      .whereRaw(`metadata::jsonb->>? = ?`, [field, value]);
     return rows.map((row: ITask) => this.deserializeJsonFields(row));
   }
 
