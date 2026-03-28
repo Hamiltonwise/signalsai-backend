@@ -116,7 +116,7 @@ export default function ReviewRequests() {
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 space-y-6">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-[#212D40]">Review Requests</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Send patients a direct link to leave a Google review.</p>
+        <p className="text-sm text-gray-500 mt-0.5">Send clients a direct link to leave a Google review.</p>
       </div>
 
       {/* Section 1: Send */}
@@ -153,7 +153,7 @@ export default function ReviewRequests() {
             type="text"
             value={patientName}
             onChange={(e) => setPatientName(e.target.value)}
-            placeholder="Patient name (optional)"
+            placeholder="Client name (optional)"
             className="w-full h-10 px-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
           />
           <div className="flex gap-2">
@@ -161,7 +161,7 @@ export default function ReviewRequests() {
               type={tab === "email" ? "email" : "tel"}
               value={contact}
               onChange={(e) => { setContact(e.target.value); setError(""); }}
-              placeholder={tab === "email" ? "patient@email.com" : "+1 (202) 555-1234"}
+              placeholder={tab === "email" ? "client@email.com" : "+1 (202) 555-1234"}
               className={`flex-1 h-10 px-3 rounded-lg bg-gray-50 border text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
                 error ? "border-red-400 focus:ring-red-400/10" : "border-gray-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
               }`}

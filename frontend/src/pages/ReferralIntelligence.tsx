@@ -6,7 +6,7 @@
  */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ThankYouDrafts from "../components/dashboard/ThankYouDrafts";
 import {
   TrendingUp,
@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useLocationContext } from "@/contexts/locationContext";
+import { useAuth } from "@/hooks/useAuth";
+import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -194,13 +196,13 @@ function ThisWeeksMove({ action }: { action: RecommendedAction | null }) {
 
 // ─── Empty State ────────────────────────────────────────────────────
 
-function EmptyState() {
+function EmptyState({ onUpload }: { onUpload: () => void }) {
   const isTouchDevice = typeof window !== "undefined" && "ontouchstart" in window;
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-8">
       <h3 className="text-lg font-bold text-[#212D40] text-center mb-2">
-        See which GPs are sending you patients
+        See which GPs are sending you clients
       </h3>
       <p className="text-sm text-gray-500 text-center mb-6">
         Upload your scheduling data. One file is all it takes.
@@ -209,38 +211,40 @@ function EmptyState() {
       {/* Three equal upload options */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Option 1: Drag and drop / file input */}
-        <label className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all">
+        <button
+          type="button"
+          onClick={onUpload}
+          className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all"
+        >
           <Upload className="h-6 w-6 text-[#D56753]" />
           <span className="text-sm font-semibold text-[#212D40]">Drag and drop any file</span>
-          <input type="file" accept=".csv,.xlsx,.xls,.txt,.pdf,.jpg,.jpeg,.png" className="hidden" />
-        </label>
+        </button>
 
         {/* Option 2: Take a photo (mobile) / Upload image (desktop) */}
-        <label className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all">
+        <button
+          type="button"
+          onClick={onUpload}
+          className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all"
+        >
           <Camera className="h-6 w-6 text-[#D56753]" />
           <span className="text-sm font-semibold text-[#212D40]">
             {isTouchDevice ? "Take a photo" : "Upload an image"}
           </span>
-          <input
-            type="file"
-            accept="image/*"
-            capture={isTouchDevice ? "environment" : undefined}
-            className="hidden"
-          />
-        </label>
+        </button>
 
         {/* Option 3: Paste text */}
-        <a
-          href="/pmsStatistics"
-          className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all"
+        <button
+          type="button"
+          onClick={onUpload}
+          className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all"
         >
           <FileText className="h-6 w-6 text-[#D56753]" />
           <span className="text-sm font-semibold text-[#212D40]">Paste text</span>
-        </a>
+        </button>
       </div>
 
       <p className="text-xs text-gray-400 text-center mt-4">
-        Works with Dentrix, Eaglesoft, OpenDental, and any spreadsheet format.
+        Works with most scheduling and management systems, and any spreadsheet format.
       </p>
     </div>
   );
@@ -250,7 +254,12 @@ function EmptyState() {
 
 export default function ReferralIntelligence() {
   const { selectedLocation } = useLocationContext();
+  const { selectedDomain, userProfile } = useAuth();
+  const queryClient = useQueryClient();
   const locationId = selectedLocation?.id ?? null;
+  const clientId = selectedDomain?.domain || userProfile?.domainName || "";
+
+  const [showUploadWizard, setShowUploadWizard] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["referral-intelligence", locationId],
@@ -271,7 +280,7 @@ export default function ReferralIntelligence() {
           Referral Intelligence
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Who sends you patients, who stopped, and what to do about it.
+          Who sends you clients, who stopped, and what to do about it.
         </p>
       </div>
 
@@ -293,7 +302,9 @@ export default function ReferralIntelligence() {
       )}
 
       {/* No data */}
-      {!isLoading && !isError && !hasData && <EmptyState />}
+      {!isLoading && !isError && !hasData && (
+        <EmptyState onUpload={() => setShowUploadWizard(true)} />
+      )}
 
       {/* Data present */}
       {!isLoading && hasData && data && (
@@ -311,6 +322,18 @@ export default function ReferralIntelligence() {
           <TopReferrers referrers={data.topReferrers} />
         </>
       )}
+
+      {/* PMS Upload Wizard Modal */}
+      <PMSUploadWizardModal
+        isOpen={showUploadWizard}
+        onClose={() => setShowUploadWizard(false)}
+        clientId={clientId}
+        locationId={locationId}
+        onSuccess={() => {
+          setShowUploadWizard(false);
+          queryClient.invalidateQueries({ queryKey: ["referral-intelligence"] });
+        }}
+      />
     </div>
   );
 }

@@ -190,7 +190,7 @@ export const Notifications: React.FC = () => {
                 Notifications
               </h1>
               <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
-                Real-time Practice Updates
+                Real-time Business Updates
               </span>
             </div>
           </div>
@@ -238,7 +238,7 @@ export const Notifications: React.FC = () => {
             )}
           </div>
           <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
-            Practice Updates.
+            Business Updates.
           </h1>
           <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
             A live feed of{" "}
@@ -413,7 +413,7 @@ export const Notifications: React.FC = () => {
               Notification Monitoring Active
             </h4>
             <p className="text-blue-100/40 font-bold text-lg max-w-lg leading-relaxed tracking-tight">
-              Alloro AI is continuously monitoring your practice and will notify
+              Alloro AI is continuously monitoring your business and will notify
               you of important events and updates.
             </p>
           </div>

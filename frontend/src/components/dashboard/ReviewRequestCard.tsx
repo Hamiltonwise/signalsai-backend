@@ -161,7 +161,7 @@ export default function ReviewRequestCard({
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Patient name (optional)"
+          placeholder="Client name (optional)"
           className="w-full h-10 px-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
         />
 
@@ -201,7 +201,7 @@ export default function ReviewRequestCard({
             type={mode === "email" ? "email" : "tel"}
             value={contact}
             onChange={(e) => { setContact(e.target.value); setError(""); }}
-            placeholder={mode === "email" ? "patient@email.com" : "+1 (202) 555-1234"}
+            placeholder={mode === "email" ? "client@email.com" : "+1 (202) 555-1234"}
             required
             className={`flex-1 h-10 px-3 rounded-lg bg-gray-50 border text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
               error
