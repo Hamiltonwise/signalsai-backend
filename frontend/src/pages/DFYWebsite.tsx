@@ -43,7 +43,8 @@ import {
   validateHtml,
   extractSectionsFromDom,
 } from "../utils/htmlReplacer";
-import EditorSidebar from "../components/PageEditor/EditorSidebar";
+import React from "react";
+const EditorSidebar = React.lazy(() => import("../components/PageEditor/EditorSidebar"));
 import NaturalLanguageEditBar from "../components/PageEditor/NaturalLanguageEditBar";
 import { enableInlineEditing, type EditChange } from "../components/PageEditor/InlineEditOverlay";
 import type { ChatMessage } from "../components/PageEditor/ChatPanel";
@@ -1401,6 +1402,7 @@ export function DFYWebsite() {
           </div>
 
           {/* Editor Sidebar (no debug tab, with history tab) */}
+          <React.Suspense fallback={<div className="w-80 shrink-0 border-l border-gray-200 bg-white" />}>
           <EditorSidebar
             selectedInfo={previewVersion ? null : selectedInfo}
             chatMessages={currentChatMessages}
@@ -1427,6 +1429,7 @@ export function DFYWebsite() {
             primaryColor={project?.primary_color}
             accentColor={project?.accent_color}
           />
+          </React.Suspense>
         </div>
       )}
 
