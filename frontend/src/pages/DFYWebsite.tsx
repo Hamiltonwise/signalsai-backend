@@ -138,6 +138,7 @@ export function DFYWebsite() {
   // Auto-collapse sidebar when entering website editor (like admin PageEditor)
   useEffect(() => {
     setCollapsed(true);
+    return () => setCollapsed(false);
   }, [setCollapsed]);
 
   // Warn before closing/reloading when there are unsaved changes

@@ -93,10 +93,7 @@ export default function OnboardingChecklist({
       anxiety: "What will Monday look like?",
       complete: mondayEmailOpened,
       cta: "See what's coming",
-      action: () => {
-        // T2 registers PATCH /api/user/onboarding-step
-        // For now: mark as previewed and show toast
-      },
+      action: () => navigate("/dashboard/intelligence"),
       icon: Mail,
     },
     {
@@ -112,6 +109,8 @@ export default function OnboardingChecklist({
             setLinkCopied(true);
             setTimeout(() => setLinkCopied(false), 2000);
           });
+        } else {
+          navigate("/checkup");
         }
       },
       icon: Share2,
