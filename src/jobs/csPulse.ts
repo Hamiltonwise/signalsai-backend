@@ -90,6 +90,43 @@ export async function classifyOrgHealth(orgId: number): Promise<OrgHealth | null
       : `${openTasks} open tasks`;
   }
 
+  // ─── Lemonis Churn Risk Signals (WO-54) ──────────────────────────
+
+  const accountAgeDays = org.created_at
+    ? Math.floor((Date.now() - new Date(org.created_at).getTime()) / 86_400_000)
+    : 0;
+
+  const signals: string[] = [];
+
+  // Signal 1: Data Avoidance (no GBP + no PMS after 14 days)
+  if (accountAgeDays >= 14 && !org.gbp_access_token) {
+    const hasPMS = await db("pms_jobs").where({ organization_id: orgId }).first();
+    if (!hasPMS) {
+      signals.push(`${org.name || "Account"}: avoiding data connection at ${accountAgeDays} days.`);
+      if (status === "green") { status = "amber"; reason = "Data avoidance at 14+ days"; }
+    }
+  }
+
+  // Signal 3: One Action Inaction (same card 3+ weeks)
+  const recentActions = await db("behavioral_events")
+    .where({ organization_id: orgId, event_type: "one_action.completed" })
+    .where("created_at", ">=", new Date(Date.now() - 21 * 86_400_000))
+    .count("id as count")
+    .first();
+  if (Number(recentActions?.count || 0) === 0 && accountAgeDays > 21) {
+    signals.push(`${org.name || "Account"}: One Action Card not acted on for 3+ weeks.`);
+    if (status === "green") { status = "amber"; reason = "One Action not acted on"; }
+  }
+
+  // Signal 5: Low Confidence Score
+  const ownerProfile = org.owner_profile
+    ? (typeof org.owner_profile === "string" ? JSON.parse(org.owner_profile) : org.owner_profile)
+    : null;
+  if (ownerProfile?.confidence_score != null && ownerProfile.confidence_score <= 4) {
+    signals.push(`${org.name || "Account"}: owner confidence score ${ownerProfile.confidence_score}/10 at signup.`);
+    if (status === "green") { status = "amber"; reason = `Low confidence: ${ownerProfile.confidence_score}/10`; }
+  }
+
   // Persist classification
   await db("organizations")
     .where({ id: orgId })

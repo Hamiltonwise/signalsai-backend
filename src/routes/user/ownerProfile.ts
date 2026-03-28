@@ -9,6 +9,7 @@ import express from "express";
 import { authenticateToken } from "../../middleware/auth";
 import { rbacMiddleware, type RBACRequest } from "../../middleware/rbac";
 import { db } from "../../database/connection";
+import { detectAndPersistArchetype } from "../../services/ownerArchetype";
 
 const ownerProfileRoutes = express.Router();
 
@@ -57,7 +58,10 @@ ownerProfileRoutes.post(
 
       await db("organizations").where({ id: orgId }).update({ owner_profile: JSON.stringify(profile) });
 
-      return res.json({ success: true, profile });
+      // Detect and persist owner archetype (WO-53)
+      const archetype = await detectAndPersistArchetype(orgId).catch(() => null);
+
+      return res.json({ success: true, profile, archetype: archetype?.archetype || null });
     } catch (error: any) {
       console.error("[OwnerProfile] POST error:", error.message);
       return res.status(500).json({ success: false, error: "Failed to save profile" });
