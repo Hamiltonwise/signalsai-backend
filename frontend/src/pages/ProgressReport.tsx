@@ -132,10 +132,21 @@ function YearInReviewSection({ data }: { data: YearInReview }) {
 
       {/* Hero stat */}
       <div className="bg-[#212D40] rounded-2xl p-6 text-center text-white">
-        <p className="text-5xl font-black tabular-nums">{data.tasksCompleted}</p>
-        <p className="text-sm font-medium text-white/70 mt-1">
-          Alloro tasks completed in the last 365 days
-        </p>
+        {data.tasksCompleted > 0 ? (
+          <>
+            <p className="text-5xl font-black tabular-nums">{data.tasksCompleted}</p>
+            <p className="text-sm font-medium text-white/70 mt-1">
+              Alloro tasks completed in the last 365 days
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-2xl font-black">Your year starts now.</p>
+            <p className="text-sm font-medium text-white/70 mt-1">
+              Every action Alloro completes for you will show up here.
+            </p>
+          </>
+        )}
         {data.agentOutputs > 0 && (
           <p className="text-xs text-white/50 mt-2">
             {data.agentOutputs} agent scans ran on your behalf

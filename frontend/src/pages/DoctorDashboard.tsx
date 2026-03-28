@@ -111,7 +111,7 @@ function PositionCard({ ranking }: { ranking: RankingData | null }) {
           </div>
           <div>
             <p className="text-sm font-bold text-[#212D40]">Market Position</p>
-            <p className="text-xs text-gray-400">Not available yet</p>
+            <p className="text-xs text-gray-400">Scan scheduled</p>
           </div>
         </div>
         <p className="text-sm text-gray-500">
@@ -280,11 +280,11 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
           </div>
           <div>
             <p className="text-sm font-bold text-[#212D40]">Agent Findings</p>
-            <p className="text-xs text-gray-400">Scanning your market</p>
+            <p className="text-xs text-gray-400">Scan scheduled</p>
           </div>
         </div>
         <p className="text-sm text-gray-500">
-          Alloro agents are analyzing your competitors. First findings appear after the next scheduled run.
+          Alloro agents are analyzing your competitors. First findings appear Monday morning after the Sunday scan.
         </p>
       </div>
     );

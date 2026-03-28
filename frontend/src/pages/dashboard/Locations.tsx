@@ -286,15 +286,7 @@ function AddLocationForm({ onAdd }: { onAdd: (data: Record<string, unknown>) => 
           placeholder="Phone number"
           className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20"
         />
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={comingSoon}
-            onChange={(e) => setComingSoon(e.target.checked)}
-            className="rounded border-gray-300"
-          />
-          <span className="text-sm text-gray-600">Coming Soon</span>
-        </label>
+        {/* "Coming Soon" toggle hidden from client-facing form (internal field) */}
         <button
           onClick={handleSubmit}
           disabled={!name.trim()}

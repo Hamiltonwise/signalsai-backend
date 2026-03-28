@@ -93,7 +93,7 @@ export function SetupProgressWizard() {
     <>
       {/* Floating Icon - entire container floats together */}
       {/* Mobile: bottom-right, Desktop: top-right */}
-      <div className="fixed right-4 bottom-4 md:right-6 md:bottom-auto md:top-6 z-[75] flex items-center gap-3 animate-[float_3s_ease-in-out_infinite]">
+      <div className="fixed right-4 bottom-4 md:right-6 md:bottom-auto md:top-20 z-[75] flex items-center gap-3 animate-[float_3s_ease-in-out_infinite]">
         {/* Tooltip - always visible unless dropdown is open */}
         <AnimatePresence>
           {!isExpanded && (
@@ -158,7 +158,7 @@ export function SetupProgressWizard() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed right-4 bottom-20 md:right-6 md:bottom-auto md:top-24 z-[76] w-[calc(100vw-2rem)] max-w-[320px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden font-jakarta"
+              className="fixed right-4 bottom-20 md:right-6 md:bottom-auto md:top-36 z-[76] w-[calc(100vw-2rem)] max-w-[320px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden font-jakarta"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
