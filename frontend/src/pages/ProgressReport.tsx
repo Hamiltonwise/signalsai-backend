@@ -134,10 +134,10 @@ function YearInReviewSection({ data }: { data: YearInReview }) {
       </div>
 
       {/* Hero stat */}
-      <div className="bg-[#212D40] rounded-2xl p-6 text-center text-white">
+      <div className="bg-[#212D40] rounded-2xl p-4 sm:p-6 text-center text-white">
         {data.tasksCompleted > 0 ? (
           <>
-            <p className="text-5xl font-black tabular-nums">{data.tasksCompleted}</p>
+            <p className="text-3xl sm:text-5xl font-black tabular-nums">{data.tasksCompleted}</p>
             <p className="text-sm font-medium text-white/70 mt-1">
               Alloro tasks completed in the last 365 days
             </p>
@@ -158,7 +158,7 @@ function YearInReviewSection({ data }: { data: YearInReview }) {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {data.currentPosition && (
           <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
             <div className="flex items-center justify-center gap-1.5">
@@ -267,7 +267,7 @@ function GoalProgressSection({
           <p className="text-sm font-bold text-[#212D40] mb-3">
             When would you like to be in a position to sell?
           </p>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 sm:flex gap-2">
             {["3 years", "5 years", "7 years", "10 years"].map((opt) => (
               <button
                 key={opt}
@@ -446,12 +446,12 @@ function YourYearSection({ data }: { data: EnhancedYearSummary }) {
         <h2 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">Your Year</h2>
       </div>
 
-      <div className="bg-[#212D40] rounded-2xl p-6 text-center text-white">
-        <p className="text-5xl font-black tabular-nums">{data.days_active}</p>
+      <div className="bg-[#212D40] rounded-2xl p-4 sm:p-6 text-center text-white">
+        <p className="text-3xl sm:text-5xl font-black tabular-nums">{data.days_active}</p>
         <p className="text-sm font-medium text-white/70 mt-1">days active since {startStr}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {data.current_position != null && (
           <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
             <div className="flex items-center justify-center gap-1.5">
@@ -620,7 +620,7 @@ export default function ProgressReport() {
         const s = enhanced.year_summary;
         const weeksWatched = Math.floor(days / 7);
         return (
-          <div className="bg-[#D56753] rounded-2xl p-6 text-white">
+          <div className="bg-[#D56753] rounded-2xl p-4 sm:p-6 text-white">
             <p className="text-xs font-bold uppercase tracking-widest text-white/50 mb-3">
               Your first {milestone} days with Alloro.
             </p>

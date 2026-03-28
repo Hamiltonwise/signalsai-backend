@@ -56,10 +56,10 @@ interface DriftAlert {
 
 function SurpriseCatchBanner({ alert, onDismiss }: { alert: DriftAlert; onDismiss: () => void }) {
   return (
-    <div className={`rounded-2xl p-5 flex items-start justify-between gap-3 ${
+    <div className={`rounded-2xl p-4 sm:p-5 flex items-start justify-between gap-3 ${
       alert.type === "gone_dark" ? "bg-red-50 border border-red-200" : "bg-amber-50 border border-amber-200"
     }`}>
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 min-w-0">
         <AlertTriangle className={`h-5 w-5 shrink-0 mt-0.5 ${
           alert.type === "gone_dark" ? "text-red-500" : "text-amber-500"
         }`} />
@@ -111,7 +111,7 @@ function SnapshotCard({ snapshot, isLatest }: { snapshot: RankingSnapshot; isLat
     : snapshot.bullets || [];
 
   return (
-    <div className={`rounded-2xl border bg-white p-6 ${isLatest ? "border-[#D56753]/20 shadow-[0_4px_20px_rgba(213,103,83,0.06)]" : "border-gray-200"}`}>
+    <div className={`rounded-2xl border bg-white p-4 sm:p-6 ${isLatest ? "border-[#D56753]/20 shadow-[0_4px_20px_rgba(213,103,83,0.06)]" : "border-gray-200"}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -237,12 +237,12 @@ export default function RankingsScreen() {
 
       {/* Current position hero */}
       {latest && (
-        <div className="bg-[#212D40] rounded-2xl p-6 text-white">
-          <div className="flex items-center justify-between">
+        <div className="bg-[#212D40] rounded-2xl p-4 sm:p-6 text-white">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
             <div>
               <p className="text-xs text-white/50 uppercase tracking-wider font-bold">Current Position</p>
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-5xl font-black">#{latest.position}</span>
+                <span className="text-3xl sm:text-5xl font-black">#{latest.position}</span>
                 {positionDelta !== null && positionDelta !== 0 && (
                   <span className={`flex items-center gap-1 text-sm font-bold ${
                     positionDelta > 0 ? "text-emerald-400" : "text-red-400"
@@ -303,12 +303,12 @@ export default function RankingsScreen() {
         checkupCtx?.data?.market ? (
           <div className="space-y-4">
             {/* Checkup preview card */}
-            <div className="bg-[#212D40] rounded-2xl p-6 text-white">
+            <div className="bg-[#212D40] rounded-2xl p-4 sm:p-6 text-white">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753] mb-3">
                 From your Checkup
               </p>
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-4xl font-black">#{checkupCtx.data.market.rank || "?"}</span>
+              <div className="flex flex-col sm:flex-row items-baseline gap-1 sm:gap-2 mb-1">
+                <span className="text-3xl sm:text-4xl font-black">#{checkupCtx.data.market.rank || "?"}</span>
                 <span className="text-white/50 text-sm">
                   of {checkupCtx.data.market.totalCompetitors || "?"} in {checkupCtx.data.market.city || "your market"}
                 </span>
@@ -402,7 +402,7 @@ function ActivityFeed() {
       </div>
       <div className="divide-y divide-gray-100">
         {visible.map((entry) => (
-          <div key={entry.id} className="px-5 py-3 flex items-start gap-3">
+          <div key={entry.id} className="px-4 sm:px-5 py-3 flex items-start gap-3">
             <span className={`shrink-0 w-1.5 h-1.5 rounded-full mt-1.5 ${
               entry.isNotable ? "bg-[#D56753]" : "bg-gray-300"
             }`} />
