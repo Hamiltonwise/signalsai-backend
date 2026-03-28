@@ -307,7 +307,7 @@ function AgentQueueStrip() {
             <p className="text-xs text-gray-500">
               {lastRan}
               {signalCount !== null &&
-                ` \u2014 ${signalCount} signal${signalCount !== 1 ? "s" : ""} found`}
+                `, ${signalCount} signal${signalCount !== 1 ? "s" : ""} found`}
             </p>
             <p className="text-xs text-gray-400">
               {nextRun}

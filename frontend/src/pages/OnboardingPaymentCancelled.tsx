@@ -39,7 +39,7 @@ export default function OnboardingPaymentCancelled() {
             Payment Cancelled
           </h1>
           <p className="text-slate-500">
-            No worries — you can try again whenever you're ready. A subscription
+            No worries, you can try again whenever you're ready. A subscription
             is required to access Alloro.
           </p>
           <button

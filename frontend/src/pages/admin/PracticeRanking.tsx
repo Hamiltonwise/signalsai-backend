@@ -1187,7 +1187,7 @@ export function PracticeRanking() {
           </div>
           <div>
             <p className="text-2xl font-bold text-purple-600">
-              {avgScore > 0 ? avgScore.toFixed(1) : "—"}
+              {avgScore > 0 ? avgScore.toFixed(1) : "-"}
             </p>
             <p className="text-xs text-gray-500">Avg Score</p>
           </div>
@@ -2318,7 +2318,7 @@ function RankingResultsView({
                         )}
                       </div>
                       <span className="text-[11px] text-gray-400">
-                        {comp.primaryCategory || "—"}
+                        {comp.primaryCategory || "-"}
                       </span>
                     </div>
 
@@ -2331,14 +2331,14 @@ function RankingResultsView({
                       <div className="text-right">
                         <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Rating</div>
                         <div className="text-sm font-bold text-gray-800 tabular-nums flex items-center justify-end gap-0.5">
-                          {comp.averageRating?.toFixed(1) || "—"}
+                          {comp.averageRating?.toFixed(1) || "-"}
                           <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
                         </div>
                       </div>
                       <div className="text-right w-14">
                         <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Score</div>
                         <div className={`text-sm font-bold tabular-nums ${scoreColor}`}>
-                          {comp.rankScore?.toFixed(1) || "—"}
+                          {comp.rankScore?.toFixed(1) || "-"}
                         </div>
                       </div>
                     </div>

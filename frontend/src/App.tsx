@@ -314,10 +314,10 @@ function App() {
                 <Route path="/dashboard/intelligence" element={<IntelligenceDashboard />} />
                 <Route path="/dashboard/locations" element={<Locations />} />
                 <Route path="/dashboard/refer/:orgSlug?" element={<GPDiscoveryPage />} />
-                <Route path="/patientJourneyInsights" element={<Dashboard />} />
-                <Route path="/pmsStatistics" element={<Dashboard />} />
+                <Route path="/patientJourneyInsights" element={<Navigate to="/dashboard/referrals" replace />} />
+                <Route path="/pmsStatistics" element={<Navigate to="/dashboard/referrals" replace />} />
                 <Route path="/tasks" element={<TasksPage />} />
-                <Route path="/rankings" element={<Dashboard />} />
+                <Route path="/rankings" element={<Navigate to="/dashboard/rankings" replace />} />
                 <Route
                   path="/dfy/website"
                   element={

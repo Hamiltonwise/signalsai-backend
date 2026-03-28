@@ -1390,7 +1390,7 @@ export function DFYWebsite() {
 
             {viewportMode === "desktop" && !previewVersion && (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 text-white text-[10px] px-3 py-1 rounded-full backdrop-blur-sm">
-                Preview scaled to fit — use View Live for full size
+                Preview scaled to fit. Use View Live for full size.
               </div>
             )}
           </div>
