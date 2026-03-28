@@ -45,7 +45,7 @@ export default function BuildingScreen() {
   useEffect(() => {
     if (!ready) return;
     const conference = isConferenceMode();
-    const destination = conference ? "/thank-you" : "/dashboard";
+    const destination = conference ? "/thank-you" : "/owner-profile";
     const timer = setTimeout(() => {
       // Clear all flow params so they don't persist beyond the checkup
       clearFlowParams();

@@ -24,7 +24,6 @@ import BuildingScreen from "./pages/checkup/BuildingScreen";
 
 // --- Lazy-loaded page imports ---
 const NewAccountOnboarding = React.lazy(() => import("./pages/NewAccountOnboarding"));
-const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const ProgressReport = React.lazy(() => import("./pages/ProgressReport"));
 const RankingsScreen = React.lazy(() => import("./pages/RankingsScreen"));
 const Demo = React.lazy(() => import("./pages/Demo"));
@@ -87,6 +86,7 @@ const TasksPage = React.lazy(() => import("./pages/TasksPage"));
 const ProductPage = React.lazy(() => import("./pages/marketing/ProductPage"));
 const RisePage = React.lazy(() => import("./pages/marketing/RisePage"));
 const AboutPage = React.lazy(() => import("./pages/marketing/AboutPage"));
+const OwnerProfile = React.lazy(() => import("./pages/OwnerProfile"));
 
 // --- Non-page imports (always loaded) ---
 import { PageWrapper } from "./components/PageWrapper";
@@ -287,6 +287,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <NewAccountOnboarding />
+                  </ProtectedRoute>
+                }
+              />
+              {/* Owner Profile -- Lemonis Protocol onboarding questions (WO-50) */}
+              <Route
+                path="/owner-profile"
+                element={
+                  <ProtectedRoute>
+                    <OwnerProfile />
                   </ProtectedRoute>
                 }
               />
