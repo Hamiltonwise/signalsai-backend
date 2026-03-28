@@ -22,6 +22,25 @@ export interface OneActionCard {
   priority_level: 1 | 2 | 3 | 4 | 5;
 }
 
+export interface OneActionIntelligence {
+  card: OneActionCard;
+  driftGP: { name: string; practice: string; monthsConsistent: number } | null;
+  competitorVelocity: {
+    competitorName: string;
+    competitorReviewsThisMonth: number;
+    clientReviewsThisMonth: number;
+  } | null;
+}
+
+export async function getOneActionCardWithIntelligence(orgId: number): Promise<OneActionIntelligence> {
+  const [card, driftGP, competitorVelocity] = await Promise.all([
+    getOneActionCard(orgId),
+    getGPDriftData(orgId),
+    getCompetitorVelocityData(orgId),
+  ]);
+  return { card, driftGP, competitorVelocity };
+}
+
 export async function getOneActionCard(orgId: number): Promise<OneActionCard> {
   // ─── Rule 1: GP Drift Alert ─────────────────────────────────────
 
@@ -191,7 +210,9 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
 
     return {
       headline: `You held #${latest.position} in ${city} this week.`,
-      body: `${latest.competitor_name} is ${gap > 0 ? `${gap} reviews ahead` : "close behind"}. Consistent week.`,
+      body: gap > 0 && gap <= 50
+        ? `${latest.competitor_name} is ${gap} reviews ahead. ${gap} reviews between you and the next position.`
+        : `${latest.competitor_name} is ${gap > 0 ? `${gap} reviews ahead` : "close behind"}. Consistent week.`,
       action_text: null,
       action_url: null,
       priority_level: 5,
@@ -229,6 +250,72 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
 
 function tryParseJSON(str: string): any {
   try { return JSON.parse(str); } catch { return null; }
+}
+
+// ─── Intelligence Data for Frontend Rules ───────────────────────
+
+async function getGPDriftData(orgId: number): Promise<OneActionIntelligence["driftGP"]> {
+  const hasTable = await db.schema.hasTable("referral_sources");
+  if (!hasTable) return null;
+
+  const source = await db("referral_sources")
+    .where({ organization_id: orgId })
+    .whereNull("surprise_catch_dismissed_at")
+    .orderByRaw("COALESCE(prior_3_month_avg, monthly_average, 0) DESC")
+    .first();
+
+  if (!source) return null;
+
+  const priorMonthly = source.prior_3_month_avg ?? source.monthly_average ?? 0;
+  const recentReferrals = source.recent_referral_count ?? source.referral_count_last_30d ?? 0;
+
+  if (priorMonthly >= 3 && recentReferrals === 0) {
+    const lastDate = source.last_referral_date || source.updated_at;
+    const daysSilent = lastDate
+      ? Math.floor((Date.now() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24))
+      : 60;
+
+    if (daysSilent >= 60) {
+      return {
+        name: source.gp_name || source.name || "A referring provider",
+        practice: source.gp_practice || "",
+        monthsConsistent: Math.round(priorMonthly),
+      };
+    }
+  }
+
+  return null;
+}
+
+async function getCompetitorVelocityData(orgId: number): Promise<OneActionIntelligence["competitorVelocity"]> {
+  const snapshots = await db("weekly_ranking_snapshots")
+    .where({ org_id: orgId })
+    .orderBy("week_start", "desc")
+    .limit(2);
+
+  if (snapshots.length < 2) return null;
+
+  const current = snapshots[0];
+  const previous = snapshots[1];
+
+  const compName = current.competitor_name;
+  if (!compName) return null;
+
+  const compReviewsCurrent = current.competitor_review_count || 0;
+  const compReviewsPrev = previous.competitor_review_count || 0;
+  const clientReviewsCurrent = current.client_review_count || 0;
+  const clientReviewsPrev = previous.client_review_count || 0;
+
+  const compDelta = compReviewsCurrent - compReviewsPrev;
+  const clientDelta = clientReviewsCurrent - clientReviewsPrev;
+
+  if (compDelta <= 0) return null;
+
+  return {
+    competitorName: compName,
+    competitorReviewsThisMonth: compDelta,
+    clientReviewsThisMonth: Math.max(0, clientDelta),
+  };
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────

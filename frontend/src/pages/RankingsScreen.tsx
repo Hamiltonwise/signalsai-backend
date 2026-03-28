@@ -268,6 +268,14 @@ export default function RankingsScreen() {
                 </div>
               )}
             </div>
+          {/* Near-miss line (WO-37) */}
+          {latest.client_review_count != null && latest.competitor_review_count != null && latest.competitor_name && (
+            <p className="text-sm text-white/60 mt-4">
+              {latest.position === 1
+                ? `${(latest.client_review_count - latest.competitor_review_count)} reviews ahead of ${latest.competitor_name}.`
+                : `${Math.abs(latest.competitor_review_count - latest.client_review_count)} reviews separate you from ${latest.competitor_name}.`}
+            </p>
+          )}
           </div>
         </div>
       )}
