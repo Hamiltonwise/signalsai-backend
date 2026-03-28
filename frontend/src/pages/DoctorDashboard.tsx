@@ -39,6 +39,7 @@ import PatientPathBreadcrumb from "@/components/dashboard/PatientPathBreadcrumb"
 import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
 import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
+import StreakBadge from "@/components/dashboard/StreakBadge";
 import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
@@ -886,9 +887,7 @@ export default function DoctorDashboard() {
 
           {/* Streak badge (WO-33) */}
           {streakData && streakData.count >= 2 && (
-            <p className="text-center text-[13px] text-[#D56753] -mt-3">
-              Week {streakData.count} of {streakData.label}
-            </p>
+            <StreakBadge type={streakData.type} count={streakData.count} label={streakData.label} />
           )}
 
           {/* 2. One sentence finding */}
