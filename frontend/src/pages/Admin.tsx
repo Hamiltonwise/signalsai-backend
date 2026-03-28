@@ -32,6 +32,8 @@ import CaseStudies from "./admin/CaseStudies";
 import AAEDashboard from "./admin/AAEDashboard";
 import PitchRepTracker from "./admin/PitchRepTracker";
 import IntelligencePanel from "./admin/IntelligencePanel";
+import RevenueDashboard from "../components/Admin/RevenueDashboard";
+import SessionIntelligence from "../components/Admin/SessionIntelligence";
 
 function WebDevEngine() {
   return (
@@ -111,6 +113,8 @@ function AdminWithLayout() {
         <Route path="case-studies" element={<CaseStudies />} />
         <Route path="aae" element={<AAEDashboard />} />
         <Route path="pitch-reps" element={<PitchRepTracker />} />
+        <Route path="revenue" element={<RevenueDashboard />} />
+        <Route path="live-feed" element={<SessionIntelligence />} />
         <Route path="settings" element={<AdminSettings />} />
         <Route path="sentry-test" element={<SentryTest />} />
       </Routes>
