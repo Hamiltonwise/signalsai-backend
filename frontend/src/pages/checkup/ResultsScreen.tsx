@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate, Navigate } from "react-router-dom";
+import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
 import {
   Eye,
   Globe,
@@ -806,7 +806,7 @@ export default function ResultsScreen() {
               {emailError && (
                 <p className="text-xs text-red-500 mt-1">
                   {emailError.includes("already") ? (
-                    <>You already have an account. <a href="/signin" className="font-semibold text-[#D56753] underline">Sign in here &rarr;</a></>
+                    <>You already have an account. <Link to="/signin" className="font-semibold text-[#D56753] underline">Sign in here &rarr;</Link></>
                   ) : emailError}
                 </p>
               )}

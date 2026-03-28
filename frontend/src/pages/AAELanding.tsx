@@ -12,8 +12,8 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const VALUE_PROPS = [
-  "See every competitor in your market by name, on a map, in 60 seconds.",
-  "Find out which referring relationships are growing and which went quiet.",
+  "See every endodontist in your market by name, on a map, in 60 seconds.",
+  "Find out which GPs are referring to you, which ones stopped, and why it matters.",
   "Get one clear action each Monday morning, before your first patient.",
 ];
 

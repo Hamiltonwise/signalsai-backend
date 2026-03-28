@@ -25,6 +25,7 @@ import {
 const TERRACOTTA = "#D56753";
 const NAVY = "#212D40";
 const MIN_THEATER_MS = 15000; // minimum 15s theater
+const SKIP_VISIBLE_MS = 5000; // show skip button after 5s
 const ITEM_INTERVAL_MS = 2200; // ~2.2s per checklist item
 
 const CHECKLIST_ITEMS = [
@@ -495,6 +496,7 @@ export default function ScanningTheater() {
   const [apiDone, setApiDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [skipVisible, setSkipVisible] = useState(false);
 
   // Theater timing
   const theaterStartRef = useRef(Date.now());
@@ -643,6 +645,12 @@ export default function ScanningTheater() {
     }
   }, []);
 
+  // --- Show skip button after 5 seconds (for conference booth speed) ---
+  useEffect(() => {
+    const timer = setTimeout(() => setSkipVisible(true), SKIP_VISIBLE_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
   // --- Transition when both checklist done AND API done AND min time elapsed ---
   useEffect(() => {
     if (!apiDone || activeIndex < CHECKLIST_ITEMS.length) return;
@@ -774,6 +782,14 @@ export default function ScanningTheater() {
                 ? `Step ${Math.max(1, activeIndex + 1)} of ${CHECKLIST_ITEMS.length}`
                 : "Analysis complete"}
             </p>
+            {skipVisible && apiDone && (
+              <button
+                onClick={goToResults}
+                className="w-full mt-3 text-xs font-semibold text-[#D56753] hover:text-[#c45a48] transition-colors"
+              >
+                Show my results
+              </button>
+            )}
           </div>
         </div>
 
