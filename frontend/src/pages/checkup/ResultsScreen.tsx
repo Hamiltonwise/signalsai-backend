@@ -111,7 +111,7 @@ function getScoreRingColor(score: number): string {
 
 function ScoreRing({
   score,
-  size = 160,
+  size = 140,
   strokeWidth = 10,
 }: {
   score: number;
@@ -300,7 +300,7 @@ function ReviewRaceCard({ gap }: { gap: CheckupGapItem }) {
 
       {/* Velocity stats */}
       {v && (
-        <div className="mt-4 grid grid-cols-3 gap-1.5 sm:gap-2">
+        <div className="mt-4 grid grid-cols-3 gap-1 sm:gap-2">
           <div className="bg-slate-50 rounded-lg p-2 sm:p-2.5 text-center">
             <p className="text-base sm:text-lg font-bold text-[#212D40] tabular-nums">{v.clientWeekly}</p>
             <p className="text-[10px] text-slate-400 leading-tight">Your pace</p>
@@ -732,10 +732,10 @@ export default function ResultsScreen() {
       <div className="bg-[#212D40] rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4">
         <div className="flex-1 text-center sm:text-left">
           <p className="text-sm font-semibold text-white">
-            Know a colleague who should see their score?
+            Know a colleague who should see their market?
           </p>
           <p className="text-xs text-white/50 mt-1">
-            Share a link with your market data. No business name included.
+            Send them a link to run their own checkup. No names shared.
           </p>
         </div>
         <button
@@ -774,7 +774,7 @@ export default function ResultsScreen() {
           className="shrink-0 flex items-center gap-2 text-sm font-semibold text-[#212D40] bg-white rounded-lg px-5 py-2.5 hover:bg-gray-50 active:scale-[0.98] transition-all"
         >
           <Share2 className="w-3.5 h-3.5" />
-          {linkCopied ? "Copied!" : "Share score"}
+          {linkCopied ? "Copied!" : "Invite a colleague"}
         </button>
       </div>
 
@@ -836,7 +836,7 @@ export default function ResultsScreen() {
                 onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
                 placeholder="Your email"
                 required
-                className={`w-full h-12 px-4 rounded-xl bg-slate-50 border text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
+                className={`w-full h-10 sm:h-12 px-3 sm:px-4 rounded-xl bg-slate-50 border text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
                   emailError
                     ? "border-red-400 focus:border-red-400 focus:ring-red-400/10"
                     : "border-slate-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
@@ -859,7 +859,7 @@ export default function ResultsScreen() {
                 placeholder="Create a password"
                 required
                 minLength={8}
-                className={`w-full h-12 px-4 rounded-xl bg-slate-50 border text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
+                className={`w-full h-10 sm:h-12 px-3 sm:px-4 rounded-xl bg-slate-50 border text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
                   passwordError
                     ? "border-red-400 focus:border-red-400 focus:ring-red-400/10"
                     : "border-slate-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
@@ -908,7 +908,7 @@ export default function ResultsScreen() {
                       value={vendorEmail}
                       onChange={(e) => { setVendorEmail(e.target.value); setVendorEmailError(""); }}
                       placeholder="Your email"
-                      className={`w-full h-12 px-4 rounded-xl bg-slate-50 border text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
+                      className={`w-full h-10 sm:h-12 px-3 sm:px-4 rounded-xl bg-slate-50 border text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
                         vendorEmailError ? "border-red-400 focus:ring-red-400/10" : "border-slate-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
                       }`}
                     />
@@ -1030,11 +1030,11 @@ export default function ResultsScreen() {
           <div className="flex items-center gap-2 mb-2">
             <Share2 className="w-4 h-4 text-slate-400" />
             <span className="text-sm font-medium text-slate-700">
-              Know a colleague who should see their score?
+              Know a colleague who should see their market?
             </span>
           </div>
           <p className="text-xs text-slate-500 mb-3">
-            Share a link that shows your market data (no business name) with a prompt to take their own checkup.
+            Send them a link to run their own checkup. No names shared.
           </p>
           <button
             type="button"
@@ -1073,7 +1073,7 @@ export default function ResultsScreen() {
             className="flex items-center gap-2 text-sm font-medium text-[#212D40] border border-[#212D40]/20 rounded-lg px-4 py-2.5 hover:border-[#212D40]/40 transition-colors"
           >
             <Copy className="w-3.5 h-3.5" />
-            {linkCopied ? "Copied!" : "Share your market score"}
+            {linkCopied ? "Copied!" : "Invite a colleague"}
           </button>
         </div>
         </>
