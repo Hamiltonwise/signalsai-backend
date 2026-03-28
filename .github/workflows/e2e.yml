@@ -1,0 +1,88 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [sandbox]
+  pull_request:
+    branches: [main, sandbox]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: alloro
+          POSTGRES_PASSWORD: alloro_test
+          POSTGRES_DB: alloro_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://alloro:alloro_test@localhost:5432/alloro_test
+      JWT_SECRET: e2e-test-secret
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Run migrations
+        run: npx knex migrate:latest
+
+      - name: Seed demo account
+        run: npx ts-node src/scripts/seedDemoAccount.ts
+        continue-on-error: true
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start server
+        run: npm run start &
+        env:
+          PORT: 3000
+
+      - name: Wait for server
+        run: npx wait-on http://localhost:3000/api/health --timeout 30000
+
+      - name: Run E2E tests
+        run: npx playwright test --reporter=list,html
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+      - name: Post failure to Slack
+        if: failure()
+        run: |
+          # Extract failed test names from Playwright output
+          FAILED=$(npx playwright test --reporter=json 2>/dev/null | jq -r '.suites[].specs[] | select(.ok == false) | .title' 2>/dev/null || echo "See artifacts for details")
+          echo "Failed tests: $FAILED"
+        continue-on-error: true
