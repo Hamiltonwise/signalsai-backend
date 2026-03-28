@@ -167,6 +167,16 @@ function SnapshotCard({ snapshot, isLatest }: { snapshot: RankingSnapshot; isLat
 export default function RankingsScreen() {
   const queryClient = useQueryClient();
 
+  // Fetch checkup context for new accounts without snapshots yet
+  const { data: checkupCtx } = useQuery({
+    queryKey: ["dashboard-context"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/dashboard-context" });
+      return res?.success ? res.checkup_context : null;
+    },
+    staleTime: 30 * 60_000,
+  });
+
   // Fetch snapshots
   const { data: snapshotData, isLoading: snapshotsLoading, isError: isSnapshotsError } = useQuery({
     queryKey: ["rankings-snapshots"],
@@ -276,13 +286,42 @@ export default function RankingsScreen() {
         <p className="text-xs text-gray-400 italic">Rankings update every Sunday.</p>
       )}
 
-      {/* Empty state */}
+      {/* Empty state — use checkup data if available */}
       {!snapshotsLoading && !isSnapshotsError && snapshots.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-400">
-          <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-40" />
-          <p className="text-base font-medium">Competitor data updates every Sunday.</p>
-          <p className="text-sm mt-1">Check back Monday morning for your first ranking intelligence report.</p>
-        </div>
+        checkupCtx?.data?.market ? (
+          <div className="space-y-4">
+            {/* Checkup preview card */}
+            <div className="bg-[#212D40] rounded-2xl p-6 text-white">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753] mb-3">
+                From your Checkup
+              </p>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-4xl font-black">#{checkupCtx.data.market.rank || "?"}</span>
+                <span className="text-white/50 text-sm">
+                  of {checkupCtx.data.market.totalCompetitors || "?"} in {checkupCtx.data.market.city || "your market"}
+                </span>
+              </div>
+              {checkupCtx.data.topCompetitor && (
+                <p className="text-sm text-white/60 mt-2">
+                  {checkupCtx.data.topCompetitor.name} holds #1 with {checkupCtx.data.topCompetitor.reviewCount} reviews
+                  {checkupCtx.data.topCompetitor.rating ? ` and a ${checkupCtx.data.topCompetitor.rating}-star rating` : ""}.
+                </p>
+              )}
+            </div>
+            {/* Next update notice */}
+            <div className="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-gray-400">
+              <Calendar className="h-6 w-6 mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-medium">Your first full ranking report arrives Monday morning.</p>
+              <p className="text-xs mt-1">We'll track position changes, competitor moves, and review velocity every week.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-400">
+            <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-40" />
+            <p className="text-base font-medium">Competitor data updates every Sunday.</p>
+            <p className="text-sm mt-1">Check back Monday morning for your first ranking intelligence report.</p>
+          </div>
+        )
       )}
 
       {/* Snapshot history */}
