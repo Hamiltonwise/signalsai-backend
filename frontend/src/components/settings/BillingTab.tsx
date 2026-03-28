@@ -5,10 +5,10 @@
  * Shows current plan, payment details, invoice history, and billing management.
  *
  * Handles four states:
- * 1. Paid subscription (Stripe active) — show plan + details + manage button
- * 2. Cancelling (cancel_at_period_end) — show plan + cancellation warning
- * 3. Admin-granted (no Stripe) — show subscribe CTA
- * 4. Locked out — show urgent payment CTA
+ * 1. Paid subscription (Stripe active), show plan + details + manage button
+ * 2. Cancelling (cancel_at_period_end), show plan + cancellation warning
+ * 3. Admin-granted (no Stripe), show subscribe CTA
+ * 4. Locked out, show urgent payment CTA
  */
 
 import React, { useState, useEffect } from "react";
@@ -210,7 +210,7 @@ export const BillingTab: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Cancelled — pending period end */}
+      {/* Cancelled, pending period end */}
       {isCancellingAtPeriodEnd && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -247,7 +247,7 @@ export const BillingTab: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Plan Card — subscribed vs cancelled vs unsubscribed */}
+      {/* Plan Card, subscribed vs cancelled vs unsubscribed */}
       {hasStripe ? (
         /* ── Active Subscription Card ── */
         <motion.div
@@ -546,7 +546,7 @@ export const BillingTab: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3 pr-4 text-sm text-slate-500">
-                      {invoice.coupon || "—"}
+                      {invoice.coupon || "-"}
                     </td>
                     <td className="py-3">
                       {invoice.hostedInvoiceUrl ? (
@@ -560,7 +560,7 @@ export const BillingTab: React.FC = () => {
                           <span className="text-xs font-bold">View</span>
                         </a>
                       ) : (
-                        <span className="text-slate-300 text-xs">—</span>
+                        <span className="text-slate-300 text-xs">-</span>
                       )}
                     </td>
                   </tr>

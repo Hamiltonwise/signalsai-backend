@@ -333,7 +333,7 @@ export function MindSettingsTab({ mind, onMindUpdated, onMindDeleted }: MindSett
     const key = await generateMindPortalKey(mind.id);
     if (key) {
       setPortalKey(key);
-      toast.success("Portal key generated — copy it now, it won't be shown again");
+      toast.success("Portal key generated, copy it now, it won't be shown again");
     } else {
       toast.error("Failed to generate portal key");
     }
@@ -721,7 +721,7 @@ export function MindSettingsTab({ mind, onMindUpdated, onMindDeleted }: MindSett
         </div>
         <p className="text-xs text-gray-400 mb-4 leading-relaxed">
           Generate an API key for external agents (n8n) to query this mind's
-          brain via the Portal endpoint. The key is shown once — copy it
+          brain via the Portal endpoint. The key is shown once, copy it
           immediately.
         </p>
 

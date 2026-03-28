@@ -299,7 +299,7 @@ export function SkillDetailPanel({
     setGenerating(true);
     setSkillStatus("generating");
 
-    // Fire and forget — we poll for completion
+    // Fire and forget, we poll for completion
     generateSkillNeuron(mindId, skill.id).then((n) => {
       if (n) {
         // If response came back directly (fast enough), handle it
@@ -327,7 +327,7 @@ export function SkillDetailPanel({
     if (result) {
       setDefinition(result.definition);
       setHint("");
-      toast.success("Definition generated — review and save");
+      toast.success("Definition generated, review and save");
     } else {
       toast.error("Failed to generate suggestion");
     }
@@ -566,7 +566,7 @@ export function SkillDetailPanel({
               <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 p-3 flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
                 <p className="text-xs text-amber-800">
-                  Neuron is out of date — brain was updated since generation.
+                  Neuron is out of date, brain was updated since generation.
                 </p>
               </div>
             )}
@@ -606,7 +606,7 @@ export function SkillDetailPanel({
               </div>
             </div>
 
-            {/* Generating state — realtime monitor */}
+            {/* Generating state, realtime monitor */}
             {generating ? (
               <div className="text-center py-12">
                 <div className="relative inline-flex items-center justify-center mb-4">

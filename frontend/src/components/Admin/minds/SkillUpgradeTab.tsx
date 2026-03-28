@@ -349,7 +349,7 @@ export function SkillUpgradeTab({ mindId, mindName: _mindName, skillId, skillNam
             sessionId={activeSession.id}
             onComplete={async (proposalCount) => {
               if (proposalCount === 0) {
-                toast.success("No new knowledge found — session complete!");
+                toast.success("No new knowledge found, session complete!");
               }
               const details = await getSkillUpgradeSession(mindId, skillId, activeSession.id);
               if (details) {
@@ -439,7 +439,7 @@ export function SkillUpgradeTab({ mindId, mindName: _mindName, skillId, skillNam
             No upgrade sessions yet
           </h3>
           <p className="text-xs text-[#6a6a75] mb-6 max-w-sm mx-auto">
-            Start an upgrade session to teach {skillName} something new — changes go directly to its neuron.
+            Start an upgrade session to teach {skillName} something new, changes go directly to its neuron.
           </p>
           <ActionButton
             label="Start First Session"
@@ -471,7 +471,7 @@ export function SkillUpgradeTab({ mindId, mindName: _mindName, skillId, skillNam
                   </span>
                 </div>
 
-                {/* Title — editable inline */}
+                {/* Title, editable inline */}
                 <div className="mb-2 min-h-[1.5rem]">
                   {editingTitleId === session.id ? (
                     <input

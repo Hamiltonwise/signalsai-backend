@@ -124,7 +124,7 @@ function computeSeoScore(
 
   let score = 0;
 
-  // Critical (30) — exact match with SeoPanel
+  // Critical (30), exact match with SeoPanel
   if (canonical.length > 0) score += 8;
   if (title.length >= 20) score += 7;
   if (titleIsUnique) score += 6;
@@ -147,9 +147,9 @@ function computeSeoScore(
 
   // Moderate (13)
   if (ogImage.length > 0) score += 4;
-  if (ogImage.length > 0) score += 4; // "Real photo, not logo" — same check as SeoPanel
+  if (ogImage.length > 0) score += 4; // "Real photo, not logo", same check as SeoPanel
   if (ogTitle.length > 0) score += 3;
-  score += 2; // "OG URL matches canonical" — always true in SeoPanel
+  score += 2; // "OG URL matches canonical", always true in SeoPanel
 
   // Page Speed Tags (7)
   if (hasViewport) score += 3;
@@ -200,7 +200,7 @@ export default function WebsiteDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const confirm = useConfirm();
-  // TanStack Query — cached initial load
+  // TanStack Query, cached initial load
   const {
     data: website,
     isLoading: loading,
@@ -547,7 +547,7 @@ export default function WebsiteDetail() {
     };
   }, [website?.status, id]);
 
-  // Per-page generation status polling — active while any page is queued or generating
+  // Per-page generation status polling, active while any page is queued or generating
   useEffect(() => {
     if (!website || !id) return;
     if (website.status !== "IN_PROGRESS") return;
@@ -700,7 +700,7 @@ export default function WebsiteDetail() {
       setIsCreatingAll(true);
       setSearchError(null);
 
-      // Save project metadata (place, template, colors) — server sets status to IN_PROGRESS
+      // Save project metadata (place, template, colors), server sets status to IN_PROGRESS
       await updateWebsite(id, {
         selected_place_id: selectedPlace.placeId,
         selected_website_url: dataSource === "website" ? (websiteUrl || null) : null,
@@ -1076,7 +1076,7 @@ export default function WebsiteDetail() {
   const pageGroups = groupPagesByPath(website.pages);
 
   // Pre-compute all SEO titles/descriptions for uniqueness checks in the page list
-  // Use displayPage (published or latest) per group — matches list score display
+  // Use displayPage (published or latest) per group, matches list score display
   const allPageSeoMeta = (() => {
     const titles: string[] = [];
     const descriptions: string[] = [];
@@ -1289,7 +1289,7 @@ export default function WebsiteDetail() {
         }
       />
 
-      {/* Status Card — hidden when LIVE */}
+      {/* Status Card, hidden when LIVE */}
       {!isLive && (
         <motion.div
           className="rounded-xl border border-gray-200 bg-white shadow-sm"
@@ -1691,7 +1691,7 @@ export default function WebsiteDetail() {
                 </AnimatePresence>
               </div>
             ) : (
-              // IN_PROGRESS — per-page generation status list
+              // IN_PROGRESS, per-page generation status list
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1793,7 +1793,7 @@ export default function WebsiteDetail() {
         })}
       </div>
 
-      {/* Pages Section — grouped by path, expandable versions */}
+      {/* Pages Section, grouped by path, expandable versions */}
       {detailTab === "pages" && (
         <motion.div
           className="rounded-xl border border-gray-200 bg-white shadow-sm"
@@ -1900,7 +1900,7 @@ export default function WebsiteDetail() {
                                   e.preventDefault();
                                   const newName = nameInput.trim() || null;
                                   setSavingName(group.path);
-                                  // Optimistic update — set name in cache immediately
+                                  // Optimistic update, set name in cache immediately
                                   setWebsiteCache(id!, {
                                     ...website,
                                     pages: website.pages.map((p) =>
@@ -1966,7 +1966,7 @@ export default function WebsiteDetail() {
                         </button>
                       </div>
                       <div className="flex items-center gap-3">
-                        {/* SEO Score — use displayPage (published or latest) */}
+                        {/* SEO Score, use displayPage (published or latest) */}
                         {(() => {
                           const seoPage = displayPage;
                           const sibTitles = allPageSeoMeta.titles.filter((t) => t !== (seoPage.seo_data?.meta_title || ""));
@@ -1981,7 +1981,7 @@ export default function WebsiteDetail() {
                                 />
                               </div>
                               <span className={`text-[10px] font-bold tabular-nums ${seoScore.colorClass}`}>
-                                {seoScore.pct > 0 ? seoScore.pct : "—"}
+                                {seoScore.pct > 0 ? seoScore.pct : "-"}
                               </span>
                             </div>
                           );
@@ -2198,7 +2198,7 @@ export default function WebsiteDetail() {
             )}
           </div>
 
-          {/* Bulk action bar — uses shared BulkActionBar component */}
+          {/* Bulk action bar, uses shared BulkActionBar component */}
           <BulkActionBar
             selectedCount={selectedPaths.size}
             totalCount={pageGroups.length}

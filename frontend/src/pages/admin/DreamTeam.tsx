@@ -1,5 +1,5 @@
 /**
- * Dream Team — Org Chart + Resume Drawer (WO16)
+ * Dream Team, Org Chart + Resume Drawer (WO16)
  *
  * Visual tree of every role in Alloro (human + AI).
  * Each node has a health dot. Click opens a resume drawer.
@@ -150,7 +150,7 @@ function DepartmentBranch({
         </div>
       )}
 
-      {/* Reports — collapsible */}
+      {/* Reports, collapsible */}
       {!collapsed && reports.length > 0 && (
         <div className="ml-8 border-l-2 border-gray-100 pl-3 space-y-1">
           {reports.map((node) => (
@@ -299,7 +299,7 @@ function ResumeDrawer({
                     <span className="text-gray-600">{entry.summary}</span>
                     {entry.created_by && (
                       <span className="text-xs text-gray-300 shrink-0">
-                        — {entry.created_by}
+                       , {entry.created_by}
                       </span>
                     )}
                   </div>
@@ -710,7 +710,7 @@ function TaskHealthTab() {
                           {task.due_date}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-300">—</span>
+                        <span className="text-xs text-gray-300">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3">

@@ -58,7 +58,7 @@ function ProposalDiff({ proposal }: { proposal: SyncProposal }) {
     );
   }
 
-  // UPDATE or CONFLICT — show diff table
+  // UPDATE or CONFLICT, show diff table
   return (
     <div className="mt-3">
       <button
@@ -330,7 +330,7 @@ export function SlideProposalsReview({
         <h3 className="text-base font-bold text-gray-900">Intake</h3>
         <p className="text-sm text-gray-500 mt-1 leading-relaxed max-w-2xl">
           Class is over. {mindName} stands at the gate. Time in slow motion. New
-          knowledge on queue. You decide what {mindName} gets to forget — and
+          knowledge on queue. You decide what {mindName} gets to forget, and
           what stays forever.
         </p>
       </div>

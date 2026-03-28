@@ -1,5 +1,5 @@
 /**
- * Practice Story — The Story Screen (WO11)
+ * Practice Story, The Story Screen (WO11)
  *
  * Replaces the table-driven org detail view with a coach's pre-game report.
  * Data sources: existing org detail + practice rankings + agent outputs.
@@ -64,7 +64,7 @@ function healthIndicator(rankings: RankingJob[]): {
     return { color: "bg-emerald-500", label: "Strong" };
   if (latest.rank_score >= 50)
     return { color: "bg-amber-400", label: "Getting there" };
-  // Low score is not "money at risk today" — use amber, not red
+  // Low score is not "money at risk today", use amber, not red
   return { color: "bg-amber-400", label: "Needs attention" };
 }
 
@@ -208,7 +208,7 @@ function CompetitorGap({ rankings }: { rankings: RankingJob[] }) {
   const latest = rankings.find((r) => r.status === "completed");
   if (!latest || latest.rank_position === 1) return null;
 
-  // We need the raw data to get competitor details — fetch the full result
+  // We need the raw data to get competitor details, fetch the full result
   const { data: fullResult } = useQuery({
     queryKey: ["admin", "ranking-result", latest.id],
     queryFn: async () => {
@@ -327,7 +327,7 @@ function ProoflineAction({ orgId }: { orgId: number }) {
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
-          Proofline Agent — Last Action
+          Proofline Agent, Last Action
         </p>
         <span className="text-xs text-gray-400">
           {formatTimeAgo(data.created_at)}
@@ -359,7 +359,7 @@ function OneAction({ rankings, orgId: _orgId, onNavigateManage }: { rankings: Ra
         </p>
         <p className="mt-3 text-sm leading-relaxed text-[#212D40]">
           This practice scores {latest.rank_score}/100. The fastest path to
-          improvement is review velocity — ask happy patients to leave a Google
+          improvement is review velocity, ask happy patients to leave a Google
           review this week.
         </p>
         <button

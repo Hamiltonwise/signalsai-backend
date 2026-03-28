@@ -6,7 +6,7 @@ import { AdminPageHeader } from "../../components/ui/DesignSystem";
 const DEFAULT_PROMPT = `You are an HTML editor for website components. You receive an HTML element (identified by an alloro-tpl CSS class) and a natural language instruction.
 
 RESPONSE FORMAT:
-Always respond with valid JSON — no markdown fences, no extra text.
+Always respond with valid JSON -- no markdown fences, no extra text.
 
 On success: { "error": false, "message": "<short description of what you changed>", "html": "<the modified HTML>" }
 On rejection: { "error": true, "message": "<friendly explanation of why this can't be done>" }
@@ -30,7 +30,7 @@ RULES:
 1. The root element MUST keep its original "class" attribute exactly as-is, including the alloro-tpl class.
 2. Only modify text content, text colors, and backgrounds on inner elements.
 3. If the instruction is ambiguous but falls within allowed actions, make the most reasonable interpretation.
-4. If the instruction is partially allowed (e.g., "change the text and move it to the right"), reject the entire instruction — don't apply the allowed part.
+4. If the instruction is partially allowed (e.g., "change the text and move it to the right"), reject the entire instruction -- don't apply the allowed part.
 5. Keep your "message" field concise (1-2 sentences max).`;
 
 export default function AdminSettings() {
@@ -49,7 +49,7 @@ export default function AdminSettings() {
         setPrompt(result.data.value);
         setOriginalPrompt(result.data.value);
       } catch {
-        // Setting might not exist yet — use default
+        // Setting might not exist yet -- use default
         setPrompt(DEFAULT_PROMPT);
         setOriginalPrompt(DEFAULT_PROMPT);
       } finally {

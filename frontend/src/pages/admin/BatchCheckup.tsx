@@ -1,5 +1,5 @@
 /**
- * Batch Checkup Runner — WO18
+ * Batch Checkup Runner, WO18
  *
  * Three-state admin screen:
  * 1. Upload: paste CSV or upload file
@@ -289,7 +289,7 @@ export default function BatchCheckup() {
             </p>
           )}
 
-          {/* Empty state — blurred sample result */}
+          {/* Empty state, blurred sample result */}
           {businesses.length === 0 && !batchId && (
             <div className="relative mt-2 select-none" aria-hidden="true">
               <div className="absolute inset-0 backdrop-blur-[3px] bg-white/40 rounded-2xl z-10 flex items-center justify-center">
@@ -428,14 +428,14 @@ export default function BatchCheckup() {
                               {r.score}
                             </span>
                           ) : (
-                            <span className="text-gray-300">—</span>
+                            <span className="text-gray-300">-</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-gray-600 truncate max-w-[200px]" title={r.topCompetitorName || ""}>
-                          {r.topCompetitorName || "—"}
+                          {r.topCompetitorName || "-"}
                         </td>
                         <td className="px-4 py-3 text-gray-500 truncate max-w-[200px]" title={r.primaryGap || ""}>
-                          {r.primaryGap || "—"}
+                          {r.primaryGap || "-"}
                         </td>
                       </tr>
                     ))}

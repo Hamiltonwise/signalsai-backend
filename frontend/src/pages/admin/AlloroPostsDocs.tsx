@@ -54,7 +54,7 @@ export default function AlloroPostsDocs() {
       <section className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Custom Fields</h2>
         <p className="text-sm text-gray-700 leading-relaxed">
-          Each post type can define a <strong>custom fields schema</strong> — a set of
+          Each post type can define a <strong>custom fields schema</strong>, a set of
           typed fields that appear in the post editor. This lets you add structured data
           beyond title, content, and excerpt.
         </p>
@@ -123,7 +123,7 @@ export default function AlloroPostsDocs() {
       <section className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Single Post Pages</h2>
         <p className="text-sm text-gray-700 leading-relaxed">
-          Each post type can have a <strong>single post template</strong> — a page layout
+          Each post type can have a <strong>single post template</strong>, a page layout
           for viewing an individual post. When a visitor navigates to a post URL, the
           renderer uses this template to build the page.
         </p>
@@ -157,7 +157,7 @@ export default function AlloroPostsDocs() {
         <h3 className="text-sm font-semibold text-gray-800 mt-2">Creating a Single Template</h3>
         <p className="text-sm text-gray-700 leading-relaxed">
           Click the <strong>template icon</strong> (purple) on a post type in the Post Blocks tab.
-          The editor works like a page section editor — use the same{" "}
+          The editor works like a page section editor, use the same{" "}
           <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">{"{{post.*}}"}</code>{" "}
           tokens. The template is rendered inside the site's wrapper, header, and footer.
         </p>
@@ -499,7 +499,7 @@ export default function AlloroPostsDocs() {
             tab (e.g., "Reviews").
           </li>
           <li>
-            <strong>Define Custom Fields</strong> (optional) — click the gear icon
+            <strong>Define Custom Fields</strong> (optional), click the gear icon
             on a post type to add fields like price, duration, rating, etc.
           </li>
           <li>

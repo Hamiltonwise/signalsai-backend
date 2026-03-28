@@ -259,7 +259,7 @@ const ApprovalSwitch: React.FC<ApprovalSwitchProps> = ({
 
 const formatTimeElapsed = (value: number | null): string => {
   if (!value && value !== 0) {
-    return "—";
+    return "-";
   }
 
   if (value < 60) {
@@ -273,7 +273,7 @@ const formatTimeElapsed = (value: number | null): string => {
 
 const formatTimestamp = (value: string): string => {
   if (!value) {
-    return "—";
+    return "-";
   }
 
   const date = new Date(value);

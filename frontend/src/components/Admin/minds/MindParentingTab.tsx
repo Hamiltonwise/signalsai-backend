@@ -294,7 +294,7 @@ export function MindParentingTab({ mindId, mindName }: MindParentingTabProps) {
             sessionId={activeSession.id}
             onComplete={async (proposalCount) => {
               if (proposalCount === 0) {
-                toast.success("No new knowledge found — session complete!");
+                toast.success("No new knowledge found, session complete!");
               }
               const details = await getParentingSession(mindId, activeSession.id);
               if (details) {
@@ -411,7 +411,7 @@ export function MindParentingTab({ mindId, mindName }: MindParentingTabProps) {
                   </span>
                 </div>
 
-                {/* Title — editable inline */}
+                {/* Title, editable inline */}
                 <div className="mb-2 min-h-[1.5rem]">
                   {editingTitleId === session.id ? (
                     <input
@@ -517,7 +517,7 @@ function ParentingCompileView({
           Rewiring neurons...
         </h3>
         <p className="text-sm text-[#6a6a75] mt-1">
-          {mindName} is locking in new synapses. Don't unplug — this brain is mid-upgrade.
+          {mindName} is locking in new synapses. Don't unplug, this brain is mid-upgrade.
         </p>
       </div>
       <CompileAnimation />

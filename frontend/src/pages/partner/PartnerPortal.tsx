@@ -1,5 +1,5 @@
 /**
- * Partner Portal — /partner
+ * Partner Portal, /partner
  *
  * Three screens for referral partners and agencies:
  * 1. Portfolio: practices referred, with health status
@@ -74,7 +74,7 @@ function getDefaultTab(role: PartnerRole): PartnerTab {
   return "portfolio"; // cmo, owner, or unset
 }
 
-/** Reorder sidebar items based on role — default tools surface first */
+/** Reorder sidebar items based on role, default tools surface first */
 function getSidebarItems(role: PartnerRole) {
   const all: { key: PartnerTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { key: "portfolio", label: "Portfolio", icon: Briefcase },
@@ -284,7 +284,7 @@ function PortfolioView() {
 
   return (
     <div className="space-y-6">
-      {/* Progress tracker — above everything */}
+      {/* Progress tracker, above everything */}
       <ProgressTracker />
 
       {/* Stats header */}
@@ -298,7 +298,7 @@ function PortfolioView() {
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">MRR Attributed</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-2xl font-black text-[#212D40]">{stats.avgScore ?? "—"}</p>
+          <p className="text-2xl font-black text-[#212D40]">{stats.avgScore ?? "-"}</p>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Avg Score</p>
         </div>
       </div>
@@ -355,7 +355,7 @@ function PortfolioView() {
               <p className={`text-2xl font-black ${
                 p.score && p.score >= 70 ? "text-emerald-600" : p.score && p.score >= 50 ? "text-amber-600" : "text-[#D56753]"
               }`}>
-                {p.score ?? "—"}
+                {p.score ?? "-"}
               </p>
               <div className="flex items-center justify-end gap-1 mt-0.5">
                 {trend === "up" && <TrendingUp className="h-3 w-3 text-emerald-500" />}
@@ -615,7 +615,7 @@ function VoiceProfileSetup({
             : "Paste your Voice Profile below. If you don't have one, copy this prompt into ChatGPT or Claude and paste the result back."}
         </p>
 
-        {/* Extraction prompt — collapsible, shows full text */}
+        {/* Extraction prompt, collapsible, shows full text */}
         <div className="bg-[#212D40]/[0.03] rounded-xl p-4 mb-5">
           <div className="flex items-center justify-between mb-2">
             <button
@@ -668,7 +668,7 @@ function VoiceProfileSetup({
         {profileText.trim().length > 30 && (
           <div className={`mt-3 rounded-lg p-3 ${isValidProfile ? "bg-[#D56753]/[0.04]" : "bg-amber-50"}`}>
             <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isValidProfile ? "text-[#D56753]" : "text-amber-600"}`}>
-              {isValidProfile ? `Profile detected — ${sectionCount} sections found` : "Looks incomplete"}
+              {isValidProfile ? `Profile detected, ${sectionCount} sections found` : "Looks incomplete"}
             </p>
             <p className="text-xs text-gray-600">
               {isValidProfile

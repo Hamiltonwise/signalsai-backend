@@ -670,7 +670,7 @@ export default function TemplateDetail() {
             >
               <div className="px-4 py-2 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  {activeLayoutField} — HTML Editor
+                  {activeLayoutField}, HTML Editor
                 </span>
                 <span className="text-xs text-gray-400">
                   {activeLayoutField === "wrapper" && "Use {{slot}} as the placeholder for page content"}
@@ -1016,16 +1016,16 @@ export default function TemplateDetail() {
                                 pageTitle.length > 60 ? "text-amber-500" : "text-green-500"
                               }`}>
                                 Title: {pageTitle.length}/60 chars
-                                {pageTitle.length === 0 && " — Missing!"}
-                                {pageTitle.length > 60 && " — May be truncated"}
+                                {pageTitle.length === 0 && ", Missing!"}
+                                {pageTitle.length > 60 && ", May be truncated"}
                               </span>
                               <span className={`text-[10px] font-medium ${
                                 pageDescription.length === 0 ? "text-red-400" :
                                 pageDescription.length > 160 ? "text-amber-500" : "text-green-500"
                               }`}>
                                 Description: {pageDescription.length}/160 chars
-                                {pageDescription.length === 0 && " — Missing!"}
-                                {pageDescription.length > 160 && " — May be truncated"}
+                                {pageDescription.length === 0 && ", Missing!"}
+                                {pageDescription.length > 160 && ", May be truncated"}
                               </span>
                             </div>
                           </div>
@@ -1078,27 +1078,27 @@ export default function TemplateDetail() {
                                   warn: pageTitle.length > 60,
                                   label: "Page title",
                                   detail: pageTitle.length === 0
-                                    ? "Missing — add a <title> tag"
+                                    ? "Missing, add a <title> tag"
                                     : pageTitle.length > 60
-                                    ? `${pageTitle.length} chars — recommended max is 60`
-                                    : `${pageTitle.length} chars — good length`,
+                                    ? `${pageTitle.length} chars, recommended max is 60`
+                                    : `${pageTitle.length} chars, good length`,
                                 },
                                 {
                                   ok: pageDescription.length > 0 && pageDescription.length <= 160,
                                   warn: pageDescription.length > 160,
                                   label: "Meta description",
                                   detail: pageDescription.length === 0
-                                    ? 'Missing — add <meta name="description" content="...">'
+                                    ? 'Missing, add <meta name="description" content="...">'
                                     : pageDescription.length > 160
-                                    ? `${pageDescription.length} chars — recommended max is 160`
-                                    : `${pageDescription.length} chars — good length`,
+                                    ? `${pageDescription.length} chars, recommended max is 160`
+                                    : `${pageDescription.length} chars, good length`,
                                 },
                                 {
                                   ok: pageUrl !== "https://example.com",
                                   warn: false,
                                   label: "Canonical URL",
                                   detail: pageUrl === "https://example.com"
-                                    ? 'Not set — add <link rel="canonical" href="...">'
+                                    ? 'Not set, add <link rel="canonical" href="...">'
                                     : pageUrl,
                                 },
                                 {
@@ -1106,7 +1106,7 @@ export default function TemplateDetail() {
                                   warn: false,
                                   label: "Favicon",
                                   detail: pageFavicon.length === 0
-                                    ? 'Missing — add <link rel="icon" href="...">'
+                                    ? 'Missing, add <link rel="icon" href="...">'
                                     : "Found",
                                 },
                               ].map((item) => (

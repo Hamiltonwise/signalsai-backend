@@ -374,7 +374,7 @@ export function OrgSubscriptionSection({
                 ) : billingDetails?.cancelAtPeriodEnd ? (
                   <span className="text-xs font-medium text-amber-600">Ending at period close</span>
                 ) : (
-                  <span className="text-xs text-gray-400">—</span>
+                  <span className="text-xs text-gray-400">-</span>
                 )}
               </div>
             </div>
@@ -425,7 +425,7 @@ export function OrgSubscriptionSection({
                                 {inv.status}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-gray-500">{inv.coupon || "—"}</td>
+                            <td className="px-3 py-2 text-gray-500">{inv.coupon || "-"}</td>
                             <td className="px-3 py-2">
                               {inv.hostedInvoiceUrl ? (
                                 <a
@@ -437,7 +437,7 @@ export function OrgSubscriptionSection({
                                   <ExternalLink className="h-3 w-3" /> View
                                 </a>
                               ) : (
-                                <span className="text-gray-300">—</span>
+                                <span className="text-gray-300">-</span>
                               )}
                             </td>
                           </tr>

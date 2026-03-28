@@ -116,7 +116,7 @@ export const AccountSelectionHelperModal: React.FC<
                           <span className="text-alloro-orange font-medium">
                             business/work email
                           </span>{" "}
-                          — the one receiving Google property notifications.
+                         , the one receiving Google property notifications.
                         </p>
                       </div>
                     </div>

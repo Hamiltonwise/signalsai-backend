@@ -166,7 +166,7 @@ export function ParentingProposals({
         return;
       }
       if (result.autoCompleted) {
-        toast.success("All proposals were rejected — session complete.");
+        toast.success("All proposals were rejected, session complete.");
         onComplete();
         return;
       }

@@ -146,7 +146,7 @@ export function AdminTopBar() {
                         queryClient.invalidateQueries();
                         queryClient.clear();
                         setIsMenuOpen(false);
-                        toast.success("Cache purged — all data will refetch");
+                        toast.success("Cache purged, all data will refetch");
                       }}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-300 transition hover:bg-gray-700/50 hover:text-white"
                     >

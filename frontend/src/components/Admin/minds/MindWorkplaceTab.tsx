@@ -111,7 +111,7 @@ function SkillCard({
           {skill.is_neuron_stale && (
             <span
               className="h-2.5 w-2.5 rounded-full bg-amber-400 shrink-0"
-              title="Neuron is stale — brain was updated"
+              title="Neuron is stale, brain was updated"
             />
           )}
           <button
@@ -366,7 +366,7 @@ export function MindWorkplaceTab({
       {staleCount > 0 && (
         <div className="mb-6 rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-center justify-between">
           <p className="text-sm text-amber-800">
-            <strong>{staleCount} skill{staleCount === 1 ? "" : "s"}</strong> {staleCount === 1 ? "has a" : "have"} stale neuron{staleCount === 1 ? "" : "s"} — brain has been updated since last generation.
+            <strong>{staleCount} skill{staleCount === 1 ? "" : "s"}</strong> {staleCount === 1 ? "has a" : "have"} stale neuron{staleCount === 1 ? "" : "s"}, brain has been updated since last generation.
           </p>
           <ActionButton
             label="Refresh All"
