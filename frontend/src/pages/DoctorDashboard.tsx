@@ -11,8 +11,9 @@
  * A front desk employee should know what to do in under 10 seconds.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import {
   Copy,
   ExternalLink,
@@ -630,6 +631,18 @@ export default function DoctorDashboard() {
   const isOwnerOrManager = userRole === "admin" || userRole === "manager";
   const canSendReviews = userRole !== "viewer";
 
+  // GBP instant value reveal (WO-42)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showGbpReveal, setShowGbpReveal] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("gbp") === "connected") {
+      setShowGbpReveal(true);
+      searchParams.delete("gbp");
+      setSearchParams(searchParams, { replace: true });
+      setTimeout(() => setShowGbpReveal(false), 12000);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Checkup context -- pre-populates dashboard on first login before ranking scan
   const { data: dashCtx } = useQuery({
     queryKey: ["dashboard-context"],
@@ -741,6 +754,17 @@ export default function DoctorDashboard() {
     queryClient.invalidateQueries({ queryKey: ["setup-progress"] });
   }, [queryClient]);
 
+  // Milestone card (WO-51/52: Day 30, 60, 180 check-in)
+  const { data: milestoneCard } = useQuery({
+    queryKey: ["milestone-card", orgId],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/milestone-card" });
+      return res?.success ? res.card : null;
+    },
+    enabled: !!orgId,
+    staleTime: 10 * 60_000,
+  });
+
   // Streaks + Win (WO-33, WO-34)
   const { data: streaksAndWin } = useQuery({
     queryKey: ["user-streaks", orgId],
@@ -820,6 +844,33 @@ export default function DoctorDashboard() {
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
       </div>
+
+      {/* GBP instant value reveal (WO-42) */}
+      {showGbpReveal && (
+        <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 mb-2">
+            Connected
+          </p>
+          <p className="text-sm font-bold text-[#212D40]">
+            {effectiveRanking?.clientReviews != null && effectiveRanking.clientReviews > 0
+              ? `${effectiveRanking.clientReviews} reviews`
+              : null}
+            {effectiveRanking?.clientReviews != null && effectiveRanking.clientReviews > 0 &&
+              effectiveRanking?.topCompetitor?.rating
+              ? ", "
+              : null}
+            {checkupCtx?.data?.place?.rating
+              ? `${checkupCtx.data.place.rating} average`
+              : null}
+            {effectiveRanking?.rankPosition
+              ? `. Ranked #${effectiveRanking.rankPosition} of ${effectiveRanking.totalCompetitors || "?"} in ${effectiveRanking.location || "your market"}.`
+              : ". Live monitoring is on."}
+          </p>
+          <p className="text-xs text-emerald-600 mt-2">
+            Rankings, reviews, and competitor activity are now tracked automatically.
+          </p>
+        </div>
+      )}
 
       {/* Win celebration card (WO-34) -- Fitbit vibration moment */}
       {!isLoading && winData && (
