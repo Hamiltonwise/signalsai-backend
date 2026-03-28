@@ -281,7 +281,7 @@ function buildCheckupIntelligence(ctx: any): string[] {
     const gap = topCompetitor.reviewCount - (market.avgReviews || 0);
     if (gap > 20) {
       insights.push(
-        `${topCompetitor.name} has ${topCompetitor.reviewCount} reviews, ${gap} more than the market average. Each review increases local search ranking and patient trust.`
+        `${topCompetitor.name} has ${topCompetitor.reviewCount} reviews, ${gap} more than the market average. Each review increases local search ranking and client trust.`
       );
     }
     if (topCompetitor.reviewCount > 50) {
@@ -295,7 +295,7 @@ function buildCheckupIntelligence(ctx: any): string[] {
   if (market?.totalCompetitors && market.rank) {
     if (market.rank > Math.ceil(market.totalCompetitors / 2)) {
       insights.push(
-        `You rank #${market.rank} of ${market.totalCompetitors} in ${market.city || "your market"}. The top 3 capture over 70% of new patient searches.`
+        `You rank #${market.rank} of ${market.totalCompetitors} in ${market.city || "your market"}. The top 3 capture over 70% of new client searches.`
       );
     } else if (market.rank <= 3) {
       insights.push(
@@ -306,7 +306,7 @@ function buildCheckupIntelligence(ctx: any): string[] {
 
   if (score?.visibility != null && score.visibility < 50) {
     insights.push(
-      `Your online visibility score is ${score.visibility}/100. Potential patients searching for your specialty may find a competitor first.`
+      `Your online visibility score is ${score.visibility}/100. Potential clients searching for your specialty may find a competitor first.`
     );
   }
 
@@ -545,7 +545,7 @@ function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
   const activities: { text: string; dot: string }[] = [];
   if (comp.reviewCount > 0) activities.push({ text: `${comp.name || "Your top competitor"} has ${comp.reviewCount} reviews at ${comp.rating} stars`, dot: "bg-amber-400" });
   if (ranking.totalCompetitors && ranking.totalCompetitors > 5) activities.push({ text: `${ranking.totalCompetitors} practices compete in ${ranking.location || "your market"}`, dot: "bg-blue-400" });
-  if (ranking.rankPosition && ranking.rankPosition > 3) activities.push({ text: "Top 3 positions get 70% of new patient search clicks", dot: "bg-gray-300" });
+  if (ranking.rankPosition && ranking.rankPosition > 3) activities.push({ text: "Top 3 positions get 70% of new client search clicks", dot: "bg-gray-300" });
 
   if (activities.length === 0) return null;
 
@@ -668,16 +668,26 @@ export default function DoctorDashboard() {
       const json = await res.json();
       if (!json.success || !json.rankings?.length) return null;
       const latest = json.rankings[0];
+      const raw = latest.rawData ?? latest.raw_data ?? null;
+      const competitors = raw?.competitors ?? [];
+      const topComp = competitors.length > 0 ? competitors[0] : null;
+      const prev = latest.previousAnalysis ?? latest.previous_analysis ?? null;
       return {
         rankPosition: latest.rank_position ?? latest.rankPosition ?? null,
         totalCompetitors: latest.total_competitors ?? latest.totalCompetitors ?? null,
         rankScore: latest.rank_score ?? latest.rankScore ?? null,
         specialty: latest.specialty || null,
         location: latest.location || null,
-        placeId: latest.raw_data?.client_gbp?.placeId ?? latest.gbp_location_id ?? null,
-        topCompetitor: null,
-        clientReviews: null,
-        previousPosition: null,
+        placeId: raw?.client_gbp?.placeId ?? latest.raw_data?.client_gbp?.placeId ?? latest.gbp_location_id ?? null,
+        topCompetitor: topComp
+          ? {
+              name: topComp.name,
+              reviewCount: topComp.totalReviews ?? topComp.reviewCount ?? 0,
+              rating: topComp.averageRating ?? topComp.rating ?? 0,
+            }
+          : null,
+        clientReviews: raw?.client_gbp?.totalReviewCount ?? null,
+        previousPosition: prev?.rankPosition ?? prev?.rank_position ?? null,
       };
     },
     enabled: !!orgId,
