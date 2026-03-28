@@ -167,10 +167,10 @@ export default function VisionaryView() {
         {exceptions.length > 0 ? (
           <>
             <p className="text-sm font-bold text-[#212D40]">
-              {exceptions.length} account{exceptions.length !== 1 ? "s" : ""} missing GBP connection
+              {exceptions.map((o) => o.name || `Org #${o.id}`).join(" and ")} {exceptions.length === 1 ? "hasn't" : "haven't"} connected Google yet.
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              These accounts can't get ranked until GBP is connected. Decide: push onboarding or defer.
+              Push onboarding or defer?
             </p>
           </>
         ) : (

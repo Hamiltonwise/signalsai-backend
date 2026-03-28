@@ -233,7 +233,9 @@ export default function YourMarket() {
         orgId: latest.organization_id || latest.organizationId || 0,
         orgName:
           latest.organization_name ||
-          `Organization #${latest.organization_id || latest.organizationId}`,
+          latest.gbp_location_name ||
+          latest.location ||
+          `Org #${latest.organization_id || latest.organizationId}`,
         locationName: latest.location_name || null,
         specialty: latest.specialty,
         position,
@@ -248,7 +250,8 @@ export default function YourMarket() {
 
     // Sort by position ascending (best first)
     entries.sort((a, b) => a.position - b.position);
-    return entries;
+    // Filter ghost/test accounts from admin view
+    return entries.filter((e) => !e.orgName.toLowerCase().includes("hamilton wise"));
   }, [jobs]);
 
   return (
