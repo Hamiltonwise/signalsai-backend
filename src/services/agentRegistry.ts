@@ -10,6 +10,7 @@ import { executeProoflineAgent } from "../controllers/agents/feature-services/se
 import { executeRankingAgent } from "../controllers/agents/feature-services/service.ranking-executor";
 import { generateAllSnapshots } from "./rankingsIntelligence";
 import { sendAllMondayEmails } from "../jobs/mondayEmail";
+import { runDreamweaver } from "./agents/dreamweaver";
 
 export interface AgentHandler {
   displayName: string;
@@ -47,6 +48,14 @@ const registry: Record<string, AgentHandler> = {
     description: "Weekly intelligence brief to each practice owner. Reads from weekly_ranking_snapshots, sends via n8n webhook. Monday 2PM UTC (7AM PT).",
     handler: async () => {
       const result = await sendAllMondayEmails();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  dreamweaver: {
+    displayName: "Dreamweaver",
+    description: "Hospitality moments agent. Scans behavioral_events for personalized gestures (milestones, 5-star reviews, competitor wins, welcome back, 90-day mark, referral conversions). Daily 2:15PM UTC (7:15AM PT), after Client Monitor.",
+    handler: async () => {
+      const result = await runDreamweaver();
       return { summary: result as unknown as Record<string, unknown> };
     },
   },

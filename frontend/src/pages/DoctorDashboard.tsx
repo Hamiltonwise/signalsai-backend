@@ -11,7 +11,7 @@
  * A front desk employee should know what to do in under 10 seconds.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -84,6 +84,29 @@ interface WebsiteInfo {
   liveUrl?: string;
 }
 
+// ─── Tone Evolution (Guidara "Earning Informality") ────────────────
+
+type ToneProfile = {
+  formality: "formal" | "warm" | "familiar";
+  useFirstName: boolean;
+  canUseHumor: boolean;
+  greetingStyle: "professional" | "personal" | "casual";
+};
+
+function getToneProfile(orgCreatedAt: string | Date | null | undefined): ToneProfile {
+  if (!orgCreatedAt) {
+    return { formality: "formal", useFirstName: false, canUseHumor: false, greetingStyle: "professional" };
+  }
+  const d = typeof orgCreatedAt === "string" ? new Date(orgCreatedAt) : orgCreatedAt;
+  if (isNaN(d.getTime())) {
+    return { formality: "formal", useFirstName: false, canUseHumor: false, greetingStyle: "professional" };
+  }
+  const days = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
+  if (days >= 90) return { formality: "familiar", useFirstName: true, canUseHumor: true, greetingStyle: "casual" };
+  if (days >= 30) return { formality: "warm", useFirstName: true, canUseHumor: false, greetingStyle: "personal" };
+  return { formality: "formal", useFirstName: false, canUseHumor: false, greetingStyle: "professional" };
+}
+
 // ─── Greeting ───────────────────────────────────────────────────────
 
 function getGreeting(): string {
@@ -93,7 +116,7 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-// ─── Narrative Greeting (WO-35) ─────────────────────────────────────
+// ─── Narrative Greeting (WO-35, updated with tone evolution) ────────
 
 type StreakInfo = { type: string; count: number; label: string } | null;
 type WinInfo = { headline: string; detail: string | null; daysAgo: number } | null;
@@ -105,14 +128,100 @@ function narrativeGreeting(
   checkupRank?: number | null,
   checkupCity?: string | null,
   firstName?: string | null,
+  tone?: ToneProfile | null,
 ): string {
-  const name = firstName ? `, ${firstName}` : "";
+  // Use tone to decide whether to include first name
+  const useName = tone ? tone.useFirstName : true;
+  const name = useName && firstName ? `, ${firstName}` : "";
+
   if (win && win.daysAgo <= 3) return `It worked${name}.`;
   if (streak && streak.count >= 12) return `Week ${streak.count}${name}.`;
   if (streak && streak.count >= 4) return `Week ${streak.count} of watching your market${name}.`;
+
+  // Familiar tone gets a warmer greeting
+  if (tone?.formality === "familiar" && firstName) {
+    if (checkupRank && checkupCity) return `${firstName}, you're #${checkupRank} in ${checkupCity}.`;
+    return `${getGreeting()}, ${firstName}.`;
+  }
+
   if (checkupRank && checkupCity) return `You're #${checkupRank} in ${checkupCity}${name}.`;
   if (!hasRanking) return `We already found something${name}.`;
   return `${getGreeting()}${name}.`;
+}
+
+// ─── Welcome Back Card ─────────────────────────────────────────────
+
+const LAST_VISIT_KEY = "last_dashboard_visit";
+const WELCOME_BACK_THRESHOLD_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
+
+function useWelcomeBack(orgId: number | null) {
+  const [showWelcomeBack, setShowWelcomeBack] = useState(false);
+  const [welcomeMessage, setWelcomeMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!orgId) return;
+
+    const lastVisit = localStorage.getItem(LAST_VISIT_KEY);
+    const now = Date.now();
+
+    if (lastVisit) {
+      const elapsed = now - Number(lastVisit);
+      if (elapsed >= WELCOME_BACK_THRESHOLD_MS) {
+        // User has been away 5+ days. Fetch the most recent event.
+        const token = localStorage.getItem("auth_token");
+        fetch(`/api/agents/data/latest?orgId=${orgId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            // Try to pull a meaningful summary from agent data
+            const summary = extractWelcomeBackSummary(data);
+            if (summary) {
+              setWelcomeMessage(summary);
+              setShowWelcomeBack(true);
+            }
+          })
+          .catch(() => {
+            // Fallback: generic welcome back
+            setWelcomeMessage("We kept watching your market while you were away.");
+            setShowWelcomeBack(true);
+          });
+      }
+    }
+
+    // Always update the timestamp on this visit
+    localStorage.setItem(LAST_VISIT_KEY, String(now));
+  }, [orgId]);
+
+  const dismiss = useCallback(() => {
+    setShowWelcomeBack(false);
+  }, []);
+
+  return { showWelcomeBack, welcomeMessage, dismissWelcomeBack: dismiss };
+}
+
+function extractWelcomeBackSummary(data: any): string | null {
+  if (!data?.success) return "Your market didn't stop moving. Here's what changed.";
+
+  // Check proofline findings -- deliver the reveal, not a report
+  const proofline = data.agents?.proofline;
+  if (proofline?.results) {
+    const parsed =
+      typeof proofline.results === "string"
+        ? (() => { try { return JSON.parse(proofline.results); } catch { return null; } })()
+        : proofline.results;
+    const findings = parsed?.findings || parsed?.items;
+    if (Array.isArray(findings) && findings.length > 0) {
+      const top = findings[0];
+      if (top.detail) {
+        // The Oz moment: name the thing they were thinking about but didn't check
+        return `Something moved while you were away. ${top.detail}`;
+      }
+      if (top.title) return top.title;
+    }
+  }
+
+  return "Your market didn't stop moving. Here's what changed.";
 }
 
 function narrativeSubhead(
@@ -690,7 +799,12 @@ export default function DoctorDashboard() {
   const week1WinData = dashCtx?.week1_win ?? null;
   const orgCreatedAt = dashCtx?.org_created_at ?? null;
   const hasReferralData = dashCtx?.has_referral_data ?? false;
-  void orgCreatedAt; // used by milestone cards
+
+  // Tone Evolution: earn informality over time
+  const toneProfile = useMemo(() => getToneProfile(orgCreatedAt), [orgCreatedAt]);
+
+  // Welcome Back: show card if user returns after 5+ days away
+  const { showWelcomeBack, welcomeMessage, dismissWelcomeBack } = useWelcomeBack(orgId);
 
   const { data: rankingData, isLoading: isRankingLoading, isError: isRankingError } = useQuery({
     queryKey: ["client-ranking", orgId, locationId],
@@ -916,7 +1030,7 @@ export default function DoctorDashboard() {
           <h1 className="font-heading text-xl sm:text-2xl font-bold text-[#212D40] truncate">
             {mode === "growth"
               ? "Close the gap."
-              : narrativeGreeting(streakData, winData, !!effectiveRanking, effectiveRanking?.rankPosition, effectiveRanking?.location, userProfile?.firstName)}
+              : narrativeGreeting(streakData, winData, !!effectiveRanking, effectiveRanking?.rankPosition, effectiveRanking?.location, userProfile?.firstName, toneProfile)}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {mode === "growth"
@@ -932,6 +1046,26 @@ export default function DoctorDashboard() {
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
       </motion.div>
+
+      {/* Dreamweaver Card -- the Oz Pearlman reveal for returning users.
+           Names the thing they were wondering about but hadn't checked. */}
+      {showWelcomeBack && welcomeMessage && (
+        <motion.div
+          variants={fadeInUp}
+          className="rounded-2xl border border-[#D56753]/15 bg-[#D56753]/[0.03] p-5 cursor-pointer hover:bg-[#D56753]/[0.05] transition-colors"
+          onClick={dismissWelcomeBack}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-[#D56753] animate-pulse" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-[#D56753]/70">
+              We kept watching
+            </p>
+          </div>
+          <p className="text-sm font-medium text-[#212D40] leading-relaxed">
+            {welcomeMessage}
+          </p>
+        </motion.div>
+      )}
 
       {/* GBP instant value reveal (WO-42) */}
       {showGbpReveal && (
@@ -1001,7 +1135,7 @@ export default function DoctorDashboard() {
           <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
           <div className="relative">
             <p className="text-[11px] font-bold uppercase tracking-widest text-white/60 mb-2">
-              Win detected
+              This is a story worth telling
             </p>
             <p className="text-base font-bold leading-snug">
               {winData.headline || "Something changed. You acted. It worked."}
