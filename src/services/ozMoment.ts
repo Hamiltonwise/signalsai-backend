@@ -218,17 +218,23 @@ Generate exactly 2 insights. Each must:
 5. Never use em-dashes
 6. If no reviews are available, focus on structural gaps: photos, website, hours, review count trajectory, market position
 
-Look for these patterns (Oz Pearlman homework, deepest specificity wins):
-- Review text that reveals an operational blind spot the owner can't see from inside
-- A gap between what THEIR customers praise and what the competitor's customers praise
-- A specific competitive advantage the owner has but isn't leveraging
-- A vulnerability that will cost them position in the next 6 months if unchanged
-- Photo count, website, or hours gaps that signal professionalism differences
-- Review count velocity gaps (e.g. "[competitor] has 89 reviews. You have 11. At current pace, the gap grows by ~6 reviews every month.")
-- Missing website when competitor has one (invisible to Google searchers)
-- Market rank trajectory based on current data
+CRITICAL RULE: Never lead with "you have fewer reviews." That's the most obvious finding and the least surprising. Dig deeper. The Oz effect comes from saying something the owner CANNOT discover by looking at their own Google profile. Cross-reference two data points to create one private-feeling insight.
+
+Look for these patterns, in ORDER OF SURPRISE VALUE (most surprising first):
+- What competitor CUSTOMERS praise that YOUR customers never mention (the invisible gap)
+- An operational blind spot visible only in review language (e.g. "3 of your reviews mention 'wait time' -- your competitor's mention 'same day'")
+- A competitive advantage the owner HAS but isn't leveraging (e.g. "You're open Saturdays. They're not. But it's not on your Google profile.")
 - Google's editorial summary vs what the owner probably thinks their business is known for
 - Review recency patterns (e.g. "Your last review was 3 months ago. [Competitor] got 4 this week.")
+- Photo count or hours gaps that signal professionalism differences
+- A vulnerability that will cost them position in the next 6 months if unchanged
+- Review velocity gaps (ONLY if the other patterns above yield nothing more surprising)
+- Missing website when competitor has one
+
+AVOID these commodity findings (everyone already knows them):
+- "You have fewer reviews than [competitor]" (obvious, not surprising)
+- "Your rating is lower than average" (they can see this themselves)
+- "You should get more reviews" (generic, not actionable enough)
 
 Respond in exactly this JSON format, nothing else:
 [

@@ -74,8 +74,8 @@ export const CONFERENCE_ANALYSIS = {
     },
     {
       type: "sentiment_insight",
-      title: "Your reviews mention wait times",
-      detail: "4 of your last 10 reviews mention wait time or scheduling delays. Summit Specialists reviews never mention this. Clients notice.",
+      title: "Your reviews mention response time",
+      detail: "4 of your last 10 reviews mention response time or scheduling delays. Summit Specialists reviews never mention this. Clients notice.",
       value: 0,
       impact: 0,
     },
@@ -243,6 +243,41 @@ export function clearFlowParams(): void {
   localStorage.removeItem("alloro_conference_vertical");
 }
 
+/** Healthcare-adjacent types from Google Places */
+const HEALTHCARE_TYPES = new Set([
+  "health", "doctor", "dentist", "hospital", "physiotherapist",
+  "pharmacy", "medical_lab", "veterinary_care",
+]);
+
+/**
+ * Build a vertical-aware sentiment finding for conference fallback.
+ * Healthcare verticals get "response time"; others get "review response" framing.
+ */
+function buildSentimentFinding(place: PlaceDetails): typeof CONFERENCE_ANALYSIS.findings[0] {
+  const types = place.types || [];
+  const category = (place.category || "").toLowerCase();
+  const isHealthcare = types.some((t) => HEALTHCARE_TYPES.has(t))
+    || ["dentist", "doctor", "health", "medical", "veterinary", "chiropractic", "orthodont", "endodont", "periodont"].some((kw) => category.includes(kw));
+
+  if (isHealthcare) {
+    return {
+      type: "sentiment_insight",
+      title: "Your reviews mention response time",
+      detail: "4 of your last 10 reviews mention response time or scheduling delays. Summit Specialists reviews never mention this. Clients notice.",
+      value: 0,
+      impact: 0,
+    };
+  }
+
+  return {
+    type: "sentiment_insight",
+    title: "Your reviews mention unanswered reviews",
+    detail: "3 of your last 10 reviews went without a response. Top-ranked businesses in your market respond to every review. Google rewards the engagement.",
+    value: 0,
+    impact: 0,
+  };
+}
+
 /**
  * Build a personalized conference fallback using the real practice's data.
  * Randomizes the score in a realistic range and injects the actual
@@ -297,7 +332,7 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
         value: rank,
         impact: 0,
       },
-      CONFERENCE_ANALYSIS.findings[3], // sentiment insight stays generic
+      buildSentimentFinding(place),
     ],
     totalImpact: reviewGap * 45 + 720,
     market: {

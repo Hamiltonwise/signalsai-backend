@@ -820,9 +820,14 @@ export default function ResultsScreen() {
           How You Stack Up
         </p>
         <h2 className="text-2xl font-extrabold text-[#212D40]">{place.name}</h2>
-        {market && (
+        {market && market.totalCompetitors > 0 && (
           <p className="text-sm text-slate-400 mt-1.5">
             vs. {market.totalCompetitors} competitors in {market.city}
+          </p>
+        )}
+        {market && market.totalCompetitors === 0 && (
+          <p className="text-sm text-slate-400 mt-1.5">
+            Your market data is limited. Connect Google for complete competitive intelligence.
           </p>
         )}
       </div>

@@ -270,6 +270,17 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       impact: rank > 3 ? Math.round((rank - 3) * perRankImpact) : 0,
     });
 
+    // Finding 4: Zero competitors guidance
+    if (otherCompetitors.length === 0) {
+      findings.push({
+        type: "no_competitors",
+        title: "Limited Market Data",
+        detail: "We could not find competitors in your immediate area. Your score reflects your profile strength. Connect Google Business Profile for deeper market intelligence.",
+        value: 0,
+        impact: 0,
+      });
+    }
+
     // Total estimated annual impact
     const totalImpact = findings.reduce((s, f) => s + f.impact, 0);
 

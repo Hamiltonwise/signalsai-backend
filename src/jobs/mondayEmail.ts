@@ -55,8 +55,82 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     .first();
 
   if (!snapshot) {
-    console.log(`[MondayEmail] No snapshot for ${org.name}, skipping`);
-    return false;
+    // First-week email: if org was created within the last 7 days and has checkup data,
+    // send a "first Business Clarity report" using the checkup findings
+    const orgAgeMs = Date.now() - new Date(org.created_at).getTime();
+    const isFirstWeek = orgAgeMs < 7 * 24 * 60 * 60 * 1000;
+
+    if (!isFirstWeek) {
+      console.log(`[MondayEmail] No snapshot for ${org.name} and past first week, skipping`);
+      return false;
+    }
+
+    // Look for checkup data from the organization record
+    const orgData = await db("organizations").where({ id: orgId }).select("checkup_data", "checkup_score").first();
+    const checkupScore = orgData?.checkup_score;
+    const checkupData = orgData?.checkup_data
+      ? (typeof orgData.checkup_data === "string" ? JSON.parse(orgData.checkup_data) : orgData.checkup_data)
+      : null;
+
+    if (!checkupData || !checkupScore) {
+      console.log(`[MondayEmail] No snapshot or checkup data for ${org.name}, skipping`);
+      return false;
+    }
+
+    // Build first-week email from checkup findings
+    const findings = checkupData.findings || [];
+    const market = checkupData.market || {};
+    const topComp = checkupData.topCompetitor || null;
+
+    const firstWeekHeadline = "your first Business Clarity report";
+    const firstWeekSubject = `${ownerLastName}, your first Business Clarity report`;
+
+    let firstWeekBody = "Here's what we found when we first analyzed your market:\n\n";
+    firstWeekBody += `Your Business Clarity Score: ${checkupScore}/100\n\n`;
+
+    if (findings.length > 0) {
+      for (const f of findings) {
+        firstWeekBody += `${f.title}: ${f.detail}\n\n`;
+      }
+    }
+
+    if (topComp) {
+      firstWeekBody += `Your top competitor: ${topComp.name} (${topComp.rating} stars, ${topComp.reviewCount} reviews)\n\n`;
+    }
+
+    firstWeekBody += "Alloro is now monitoring your market. Next Monday, you'll see what changed.";
+
+    // 5-minute fix for first week
+    const firstWeekFix = "5-MINUTE FIX: Open your Google Business Profile and make sure your hours, photos, and services are complete. This is the fastest way to improve your score.";
+    firstWeekBody += `\n\n${firstWeekFix}`;
+
+    const founderLine = "Built by Corey, after watching business owners work harder than they should have to. If any of this is off, reply. I read every one.";
+
+    try {
+      const success = await sendMondayBriefEmail({
+        recipientEmail: user.email,
+        practiceName: org.name,
+        doctorName: ownerName,
+        doctorLastName: ownerLastName,
+        subjectLine: firstWeekSubject,
+        findingHeadline: firstWeekHeadline,
+        findingBody: firstWeekBody,
+        dollarFigure: checkupData.totalImpact || 0,
+        actionText: "Open your dashboard",
+        rankingUpdate: market.rank ? `#${market.rank} in ${market.city || "your market"}` : "Ranking data available in your dashboard",
+        competitorNote: topComp ? `${topComp.name} is the #1 competitor in your area` : "",
+        referralLine: null,
+        founderLine,
+      });
+
+      if (success) {
+        console.log(`[MondayEmail] Sent first-week email to ${user.email} for ${org.name}`);
+      }
+      return success;
+    } catch (err: any) {
+      console.error(`[MondayEmail] First-week email failed for ${org.name}:`, err.message);
+      return false;
+    }
   }
 
   // Parse bullets

@@ -189,7 +189,7 @@ export const Step1PracticeInfo: React.FC<Step1PracticeInfoProps> = ({
               onPracticeNameChange(e.target.value);
               if (errors.practiceName) setErrors({ ...errors, practiceName: undefined });
             }}
-            placeholder="e.g., Best Dental Practice"
+            placeholder="e.g., Smith & Associates"
             className={`w-full px-4 py-3 rounded-xl bg-white border ${
               errors.practiceName ? "border-red-400" : "border-slate-300"
             } text-alloro-navy placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange transition-all`}
@@ -210,7 +210,7 @@ export const Step1PracticeInfo: React.FC<Step1PracticeInfoProps> = ({
             type="text"
             value={domainName}
             onChange={(e) => handleDomainChange(e.target.value)}
-            placeholder="bestdentalpractice.com"
+            placeholder="smithassociates.com"
             className={`w-full px-4 py-3 rounded-xl bg-white border ${
               errors.domain ? "border-red-400" : "border-slate-300"
             } text-alloro-navy placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange transition-all`}
