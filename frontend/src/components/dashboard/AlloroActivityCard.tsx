@@ -81,21 +81,24 @@ export default function AlloroActivityCard() {
   if (described.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2.5">
-        What happened this week
-      </p>
-      <div className="space-y-1.5">
+    <div className="rounded-2xl border border-gray-200 bg-white p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          What your agents did this week
+        </p>
+      </div>
+      <div className="space-y-2">
         {described.map((item, i) => (
-          <div key={i} className="flex items-start gap-2">
-            <span className="shrink-0 w-1 h-1 rounded-full bg-[#D56753] mt-1.5" />
-            <p className="text-[11px] text-gray-500 leading-snug">{item.text}</p>
+          <div key={i} className="flex items-start gap-2.5">
+            <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-[#D56753]/40 mt-1.5" />
+            <p className="text-xs text-[#212D40]/70 leading-snug">{item.text}</p>
           </div>
         ))}
       </div>
       {events.length > 5 && (
-        <p className="text-[10px] text-gray-400 mt-2">
-          +{events.length - 5} more actions this week
+        <p className="text-[10px] text-gray-400 mt-3">
+          +{events.length - 5} more this week. You didn't do any of this. They did.
         </p>
       )}
     </div>
