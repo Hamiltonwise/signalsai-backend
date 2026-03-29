@@ -20,12 +20,10 @@ import {
   AlertTriangle,
   Activity,
   Shield,
-  Zap,
   Sun,
-  ChevronRight,
 } from "lucide-react";
 import FounderMode from "./FounderMode";
-import { useNavigate } from "react-router-dom";
+import {} from "react-router-dom";
 import {
   adminListOrganizations,
   type AdminOrganization,
@@ -572,7 +570,6 @@ function PortfolioScorePanel({
 // ---- Main Component --------------------------------------------------------
 
 export default function VisionaryView() {
-  const navigate = useNavigate();
   const [founderOpen, setFounderOpen] = useState(false);
 
   // Fetch organizations

@@ -176,4 +176,121 @@ exportRoutes.get(
   },
 );
 
+// ─── GET /export/all — Full data export (GDPR Article 20 compliant) ──
+
+exportRoutes.get(
+  "/all",
+  authenticateToken,
+  rbacMiddleware,
+  async (req: RBACRequest, res) => {
+    try {
+      const orgId = req.organizationId;
+      const userId = (req as any).userId;
+      if (!orgId) return res.status(400).json({ success: false, error: "No organization" });
+
+      // Gather everything the user provided or we generated for them
+      const org = await db("organizations").where({ id: orgId }).first();
+      const user = userId ? await db("users").where({ id: userId }).first("email", "first_name", "last_name", "created_at") : null;
+
+      // Rankings history
+      const rankings = await db("weekly_ranking_snapshots")
+        .where({ org_id: orgId })
+        .orderBy("week_start", "desc")
+        .limit(52)
+        .then((rows: any[]) => rows.map((r: any) => ({
+          week: r.week_start,
+          position: r.position,
+          keyword: r.keyword,
+          bullets: typeof r.bullets === "string" ? JSON.parse(r.bullets) : r.bullets,
+          dollar_figure: r.dollar_figure,
+        })));
+
+      // Referral data
+      const hasReferrals = await db.schema.hasTable("referral_sources");
+      const referrals = hasReferrals
+        ? await db("referral_sources").where({ organization_id: orgId }).select("gp_name", "referral_count", "last_referral_date")
+        : [];
+
+      // Review requests
+      const hasReviewRequests = await db.schema.hasTable("review_requests");
+      const reviewRequests = hasReviewRequests
+        ? await db("review_requests").where({ organization_id: orgId }).select("customer_name", "status", "created_at", "sent_at")
+        : [];
+
+      // Behavioral events (user activity)
+      const hasBehavioral = await db.schema.hasTable("behavioral_events");
+      const events = hasBehavioral
+        ? await db("behavioral_events")
+            .where({ organization_id: orgId })
+            .orderBy("created_at", "desc")
+            .limit(500)
+            .select("event_type", "created_at", "metadata")
+        : [];
+
+      // Checkup data
+      let checkupData = null;
+      if (org?.checkup_data) {
+        try {
+          checkupData = typeof org.checkup_data === "string" ? JSON.parse(org.checkup_data) : org.checkup_data;
+        } catch {}
+      }
+
+      // Research brief
+      let researchBrief = null;
+      if (org?.research_brief) {
+        try {
+          researchBrief = typeof org.research_brief === "string" ? JSON.parse(org.research_brief) : org.research_brief;
+        } catch {}
+      }
+
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        format_version: "1.0",
+        account: {
+          email: user?.email,
+          name: user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : null,
+          created_at: user?.created_at,
+        },
+        organization: {
+          name: org?.name,
+          jurisdiction: org?.operational_jurisdiction,
+          subscription_status: org?.subscription_status,
+          created_at: org?.created_at,
+        },
+        checkup: checkupData,
+        research_brief: researchBrief,
+        rankings,
+        referral_sources: referrals,
+        review_requests: reviewRequests.map((r: any) => ({
+          customer_name: r.customer_name,
+          status: r.status,
+          created_at: r.created_at,
+          sent_at: r.sent_at,
+        })),
+        activity_log: events.map((e: any) => ({
+          type: e.event_type,
+          date: e.created_at,
+          details: typeof e.metadata === "string" ? JSON.parse(e.metadata) : e.metadata,
+        })),
+      };
+
+      // Log the export (audit trail)
+      if (hasBehavioral) {
+        await db("behavioral_events").insert({
+          organization_id: orgId,
+          event_type: "data.export_all",
+          metadata: JSON.stringify({ format: "json", timestamp: new Date().toISOString() }),
+        }).catch(() => {});
+      }
+
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="alloro-data-export-${today()}.json"`);
+      return res.json(exportData);
+    } catch (error: any) {
+      console.error("[Export] Full export error:", error.message);
+      return res.status(500).json({ success: false, error: "Export failed" });
+    }
+  },
+);
+
 export default exportRoutes;

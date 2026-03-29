@@ -118,10 +118,10 @@ export default function OnboardingChecklist({
     },
     {
       id: "share",
-      title: "Share your Checkup with a colleague",
-      anxiety: "Know someone who should see this?",
+      title: "Share and split the check",
+      anxiety: "Know someone who should see this? You both save a month.",
       complete: referralShared,
-      cta: "Share",
+      cta: "Share and save",
       action: () => {
         onStepComplete?.("share");
         if (referralCode) {

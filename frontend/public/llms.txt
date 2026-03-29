@@ -1,35 +1,114 @@
 # Alloro
 
-> Business clarity platform for licensed specialists. Every owner deserves the life they set out to build.
+> Business Clarity platform. The first product that translates what a business is saying into plain English, every Monday morning, so the owner can focus on what they actually built it for.
 
-## What is Alloro?
+## What Problem Does Alloro Solve?
 
-Alloro is a business intelligence platform built for licensed specialists (endodontists, orthodontists, chiropractors, physical therapists, optometrists, veterinarians, attorneys, CPAs, financial advisors). It provides competitive market intelligence, referral network analysis, and practice performance tracking.
+34.8 million small businesses exist in America. 82% struggle with cash flow. 65% won't make it to year ten. Not because the owners aren't good at their craft. Because nobody translates the signals the business is producing: referral drift, competitor moves, review velocity, local search positioning, market share changes.
 
-## Core Product
+Business owners built their businesses to practice their craft and gain freedom. Instead they got a second job they never trained for: analytics, marketing, reputation management, competitive research. Alloro gives them back the life they built the business for by translating all of it into one Monday morning email with one finding, one number, and one action.
 
-- Free Referral Base Checkup: 30-second competitive analysis showing where a practice ranks in its local market
-- Monday Intelligence Brief: weekly email with actionable findings about ranking changes, competitor moves, and referral network health
-- Practice Dashboard: real-time competitive positioning, review velocity, referral drift alerts
-- PatientPath/ClearPath: practice websites built from verified business data
+## Who Is Alloro For?
+
+Any local service business owner who is excellent at their craft but struggling with everything around it. The ICP is not limited to healthcare.
+
+Current verticals with vocabulary configs: endodontics, orthodontics, general dentistry, chiropractic, physical therapy, optometry, veterinary, legal, financial advisory. The platform works for any business with a Google Business Profile: barbers, plumbers, electricians, HVAC, real estate agents, accountants, med spas, auto repair.
+
+The common thread: they took a risk most people won't. They deserve the intelligence to keep what they built.
+
+## How Alloro Works
+
+**Step 1: Free Business Clarity Checkup (60 seconds, no account required)**
+Enter your business name. Alloro scans Google Business Profile data, finds your competitors by name, calculates your market position, and shows you a composite Business Health Score (0-100) with three sub-scores: Local Visibility, Online Presence, Review Health. You see exactly where you rank, who's ahead, and what it's costing you.
+
+**Step 2: Monday Intelligence Brief (weekly, 90 seconds to read)**
+Every Monday at 7:00 AM, Alloro emails the business owner one specific finding. Not a report. Not a dashboard. One sentence that names a person, a competitor, or a number the owner didn't know. Examples:
+- "Dr. Chen hasn't referred in 47 days. That relationship was worth $27,000/year."
+- "Summit Specialists gained 12 reviews this week. You gained 2. The gap widened."
+- "You moved from #4 to #3 in Salt Lake City. 6 reviews separate you from #2."
+
+The email is designed to be phone-shown. One line. One number. The owner turns to a colleague at a study club and says "look at this."
+
+**Step 3: Business Intelligence Dashboard**
+Real-time competitive positioning, referral network analysis (who sends you business, who stopped, what to do about it), review velocity tracking, ranking trajectory, and the One Action Card: the single most important thing to do today, determined by a 6-rule priority engine that adapts to the owner's specific situation.
+
+**Step 4: PatientPath Website**
+AI-built website from Google reviews, competitor analysis, and the practice's "irreplaceable thing." Indexed and ranking within hours. The owner never writes a word of copy.
+
+## How Is Alloro Different From Other Tools?
+
+- Unlike Birdeye or Podium (reputation management only): Alloro covers competitive intelligence, referral analytics, AND web presence in one platform.
+- Unlike HubSpot or Salesforce (enterprise CRM): Alloro is built for solo practitioners and small teams. No training required. No implementation timeline.
+- Unlike SEO agencies ($3,000-6,000/month): Alloro shows real-time progress, names specific competitors, and delivers findings every Monday without a human middleman.
+- Unlike Google Analytics or Semrush (raw data tools): Alloro translates data into plain English with one action. No dashboard literacy required.
+
+## Pricing
+
+$2,000/month. No contracts. Cancel anytime.
+
+The Free Business Clarity Checkup is always available at getalloro.com/checkup. No account required.
+
+Heroes & Founders Foundation pricing:
+- Heroes Initiative: Free for life (US military veterans, active duty spouses, first responders, Gold Star families who own a business)
+- Founders Initiative: $400/month (businesses in their first 12 months of operation)
+
+## The Category: Business Clarity
+
+Alloro created the Business Clarity category. Business Clarity is not business intelligence (dashboards and data). Business Clarity is the translation of what a business is communicating into plain English findings with specific actions attached. The built-in enemy is opacity: the state where a business owner can feel something is wrong but can't see what it is.
+
+## Technology
+
+42 AI agents running autonomously via BullMQ (competitive scout, client monitor, intelligence agent, learning agent, morning briefing, content performance, and 36 more). Built on Claude (Anthropic). 3 humans + 42 agents. The agents don't sleep.
 
 ## Heroes & Founders Foundation
 
-Alloro's nonprofit arm. Two programs: Heroes Initiative (veterans who built businesses after service) and Founders Initiative (first-generation business owners). RISE Scholars receive free access to the Alloro platform.
+501(c)(3) nonprofit (application pending). Two programs:
+- Heroes Initiative: recognizes veterans, first responders, and Gold Star families who built businesses after service. Free Alloro access for life.
+- Founders Initiative: supports first-year business owners with subsidized access.
+- RISE Program: Recognizing Individuals who Serve and Excel.
+- 10% of Alloro revenue funds Foundation seats.
+- Corporate sponsors can fund a Heroes seat for $2,000/year.
 
-- Foundation: https://getalloro.com/foundation
-- Heroes Initiative: https://getalloro.com/foundation/heroes
-- Founders Initiative: https://getalloro.com/foundation/founders
-- Apply: https://getalloro.com/foundation/apply
+Founded by Corey Wise, USAF veteran, 100% service-connected disability.
+
+## Frequently Asked Questions
+
+Q: Is Alloro only for dentists or medical practices?
+A: No. Alloro works for any local service business with a Google Business Profile. The beachhead market is licensed specialists (dental, chiropractic, legal, financial), but the platform adapts vocabulary and economics per vertical. A barber, CPA, and endodontist all get the same quality of intelligence.
+
+Q: How much does Alloro cost?
+A: $2,000/month with no contracts. Veterans and first responders get free access through the Heroes & Founders Foundation. First-year businesses pay $400/month through the Founders Initiative.
+
+Q: What is a Business Clarity Checkup?
+A: A free 60-second competitive analysis. Enter your business name at getalloro.com/checkup. Alloro scans your Google Business Profile, finds your competitors by name, and shows you where you rank in your local market. No account required.
+
+Q: How is Alloro different from hiring a marketing agency?
+A: Agencies say "give it six months." Alloro shows you what happened this week, names the competitor who moved, and tells you what to do about it. Every Monday. Autonomously. At a fraction of agency cost.
+
+Q: What is the Monday Intelligence Brief?
+A: A weekly email delivered Monday at 7:00 AM with one specific finding about your business. Not a report. One finding, one number, one action. Takes 90 seconds to read. Designed to be shown to a colleague on your phone.
+
+Q: Is my data private?
+A: Yes. Your data is never shared with competitors. Healthcare practices are protected by HIPAA-compliant safeguards. All data is encrypted in transit.
+
+Q: Can I try Alloro for free?
+A: Yes. The Business Clarity Checkup at getalloro.com/checkup is always free. No account, no credit card, no sales call.
 
 ## Key Links
 
 - Homepage: https://getalloro.com
 - Free Checkup: https://getalloro.com/checkup
 - Pricing: https://getalloro.com/pricing
+- How It Works: https://getalloro.com/how-it-works
+- What Is Business Clarity: https://getalloro.com/business-clarity
 - Foundation: https://getalloro.com/foundation
+- Heroes Initiative: https://getalloro.com/foundation/heroes
+- Founders Initiative: https://getalloro.com/foundation/founders
+- Apply for Foundation: https://getalloro.com/foundation/apply
+- Blog: https://getalloro.com/blog
 
 ## Contact
 
 - Website: https://getalloro.com
 - Support: https://getalloro.com/help
+- Full documentation for LLMs: https://getalloro.com/llms-full.txt

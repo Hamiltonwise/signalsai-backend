@@ -1,11 +1,13 @@
 /**
- * StreakBadge -- Duolingo-style streak counter for the dashboard.
+ * StreakBadge -- Duolingo-style streak counter with milestone celebrations.
  *
  * Three streak types: growth (score held/improved), reviews (added weekly),
  * actions (acted on One Action Card). Shows the highest active streak.
  *
- * Psychology: Variable ratio reinforcement (Skinner), progress visibility
- * (Habit Architecture doc). Streak >= 2 weeks to display.
+ * Delight moments:
+ * - Milestone thresholds (2, 4, 8, 12, 26, 52 weeks) trigger glow animation
+ * - Badge pulses when streak increases
+ * - Copy changes at milestones to recognize the achievement
  */
 
 import { Flame, TrendingUp, MessageSquare } from "lucide-react";
@@ -40,16 +42,32 @@ const STREAK_CONFIG = {
   },
 };
 
+const MILESTONES = [2, 4, 8, 12, 26, 52];
+
+function getMilestoneMessage(count: number): string | null {
+  if (count === 2) return "Two weeks in. Momentum is building.";
+  if (count === 4) return "A month of consistency. That's rare.";
+  if (count === 8) return "Two months. You're watching your market like a pro.";
+  if (count === 12) return "Three months of consecutive growth. Exceptional.";
+  if (count === 26) return "Half a year. Most people quit by now. You didn't.";
+  if (count === 52) return "One year. This is who you are now.";
+  return null;
+}
+
 export default function StreakBadge({ type, count, label }: StreakBadgeProps) {
   const config = STREAK_CONFIG[type] || STREAK_CONFIG.actions;
   const Icon = config.icon;
+  const isMilestone = MILESTONES.includes(count);
+  const milestoneMessage = getMilestoneMessage(count);
 
   return (
     <div
-      className={`flex items-center gap-3 rounded-xl ${config.bg} ${config.border} border px-4 py-3 ring-2 ${config.ring}`}
+      className={`flex items-center gap-3 rounded-xl ${config.bg} ${config.border} border px-4 py-3 ring-2 ${config.ring} transition-all duration-500 ${
+        isMilestone ? "animate-milestone-glow" : ""
+      }`}
     >
       <div className="flex items-center gap-1.5">
-        <Icon className={`w-5 h-5 ${config.color}`} />
+        <Icon className={`w-5 h-5 ${config.color} ${isMilestone ? "animate-score-celebrate" : ""}`} />
         <span className={`text-2xl font-extrabold ${config.color} tabular-nums`}>
           {count}
         </span>
@@ -59,7 +77,7 @@ export default function StreakBadge({ type, count, label }: StreakBadgeProps) {
           Week streak
         </p>
         <p className="text-[11px] text-gray-500 truncate">
-          {label}
+          {milestoneMessage || label}
         </p>
       </div>
     </div>
