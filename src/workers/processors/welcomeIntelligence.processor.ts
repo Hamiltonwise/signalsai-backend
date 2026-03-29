@@ -110,10 +110,17 @@ export async function processWelcomeIntelligence(
     homeworkFindings,
   });
 
+  // Subject line adapts: referral businesses get source count, others get homework findings
+  const subject = nearbyGPs.length > 0
+    ? `${nearbyGPs.length} potential sources near ${data.practiceName}`
+    : homeworkFindings.length > 0
+      ? `We kept digging after your Checkup, ${data.practiceName.split(/\s/)[0]}`
+      : `Your market didn't stop moving, ${data.practiceName.split(/\s/)[0]}`;
+
   await sendEmail({
-    subject: `${nearbyGPs.length} potential referral sources near ${data.practiceName}`,
+    subject,
     body: wrapInBaseTemplate(emailContent, {
-      preheader: `We found referral opportunities you haven't tapped yet.`,
+      preheader: `Something new about your market that wasn't in the Checkup.`,
       showFooterLinks: false,
     }),
     recipients: [data.email],
@@ -149,10 +156,31 @@ async function fetchNearbyReferralSources(
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey || !city) return [];
 
-  // Search for general dentists/GPs near the specialist's city
-  const searchTerm = specialty?.includes("dent") || specialty?.includes("endo") || specialty?.includes("ortho")
-    ? "general dentist"
-    : "general practitioner";
+  // Vertical-aware referral source search (mirrors gpDiscovery.ts logic)
+  const spec = (specialty || "").toLowerCase();
+  const REFERRAL_QUERIES: Record<string, string> = {
+    dent: "general dentist",
+    endo: "general dentist",
+    ortho: "general dentist",
+    chiro: "family medicine physician",
+    "physical_ther": "orthopedic surgeon",
+    optom: "ophthalmologist",
+    attorney: "insurance broker",
+    lawyer: "insurance broker",
+    account: "financial advisor",
+    cpa: "financial advisor",
+    veterinar: "pet store",
+    "real estate": "mortgage broker",
+  };
+  let searchTerm = "general practitioner";
+  for (const [key, query] of Object.entries(REFERRAL_QUERIES)) {
+    if (spec.includes(key)) { searchTerm = query; break; }
+  }
+  // For direct-acquisition verticals (barber, gym, restaurant), skip GP search entirely
+  const directAcquisitionVerticals = ["barber", "salon", "beauty", "gym", "fitness", "restaurant", "cafe", "plumb", "electric", "hvac", "mechanic", "auto"];
+  if (directAcquisitionVerticals.some((v) => spec.includes(v))) {
+    return []; // No referral sources for walk-in businesses
+  }
 
   const query = `${searchTerm} in ${city}${stateAbbr ? `, ${stateAbbr}` : ""}`;
   const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}`;
@@ -249,10 +277,10 @@ function buildWelcomeIntelligenceEmail(params: {
       ${nearbyGPs.length > 0 ? `
       <div style="background: rgba(213, 103, 83, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
         <h2 style="color: #D56753; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 4px 0;">
-          Referral Opportunity
+          Revenue Opportunity
         </h2>
         <p style="color: #212D40; font-size: 16px; font-weight: 600; margin: 0;">
-          ${nearbyGPs.length} general practitioners near ${city} who could be sending you patients.
+          ${nearbyGPs.length} businesses near ${city} that could be sending you clients.
         </p>
       </div>
 
