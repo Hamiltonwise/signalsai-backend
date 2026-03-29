@@ -117,6 +117,29 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     ? `#${snapshot.position} in your market`
     : "Ranking data available in your dashboard";
 
+  // Enrich competitor note with recent Competitive Scout movements (last 7 days)
+  let competitorNote = snapshot.competitor_note || "";
+  try {
+    const recentMovements = await db("behavioral_events")
+      .where({ org_id: orgId, event_type: "competitor.movement" })
+      .where("created_at", ">=", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+      .orderBy("created_at", "desc")
+      .limit(3);
+
+    if (recentMovements.length > 0) {
+      const movementLines = recentMovements.map((e: any) => {
+        const props = typeof e.properties === "string" ? JSON.parse(e.properties) : e.properties || {};
+        return props.headline || props.details || "";
+      }).filter(Boolean);
+
+      if (movementLines.length > 0) {
+        competitorNote = movementLines.join(" ") + (competitorNote ? ` ${competitorNote}` : "");
+      }
+    }
+  } catch {
+    // behavioral_events table may not exist yet, continue with snapshot competitor_note
+  }
+
   // Referral line (gated: TTFV yes + first win + has code)
   const referralLine = (org.ttfv_response === "yes" && org.first_win_attributed_at && org.referral_code)
     ? `Know another doctor flying blind? Share this. You both get one month free. getalloro.com/checkup?ref=${org.referral_code}`
@@ -135,7 +158,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       dollarFigure: snapshot.dollar_figure || 0,
       actionText,
       rankingUpdate,
-      competitorNote: snapshot.competitor_note || "",
+      competitorNote,
       referralLine,
     });
 

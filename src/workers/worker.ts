@@ -21,6 +21,9 @@ import { processPatientPathBuild } from "./processors/patientpathBuild.processor
 import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
 import { processWeek1Win } from "./processors/week1Win.processor";
 import { processMondayEmail } from "./processors/mondayEmail.processor";
+import { processCompetitiveScout } from "./processors/competitiveScout.processor";
+import { processClientMonitor } from "./processors/clientMonitor.processor";
+import { processMorningBriefing } from "./processors/morningBriefing.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -275,8 +278,47 @@ const mondayEmailWorker = new Worker(
   }
 );
 
+// Competitive Scout worker (weekly Wednesday 8 AM ET)
+const competitiveScoutWorker = new Worker(
+  "minds-competitive-scout",
+  async (job) => {
+    await processCompetitiveScout(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Client Monitor worker (daily 6 AM ET)
+const clientMonitorWorker = new Worker(
+  "minds-client-monitor",
+  async (job) => {
+    await processClientMonitor(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Morning Briefing worker (daily 6:30 AM ET)
+const morningBriefingWorker = new Worker(
+  "minds-morning-briefing",
+  async (job) => {
+    await processMorningBriefing(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, mondayEmailWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -307,6 +349,9 @@ async function shutdown(): Promise<void> {
   await welcomeIntelligenceWorker.close();
   await week1WinWorker.close();
   await mondayEmailWorker.close();
+  await competitiveScoutWorker.close();
+  await clientMonitorWorker.close();
+  await morningBriefingWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -434,6 +479,69 @@ async function setupMondayEmailSchedule(): Promise<void> {
   }
 }
 
+// Set up Competitive Scout schedule (Wednesday 8 AM ET, after Sunday snapshots)
+async function setupCompetitiveScoutSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("competitive-scout");
+    await queue.add(
+      "weekly-competitive-scout",
+      {},
+      {
+        repeat: {
+          pattern: "0 8 * * 3", // 8 AM America/New_York every Wednesday
+          tz: "America/New_York",
+        },
+        jobId: "weekly-competitive-scout",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly Competitive Scout scheduled (Wednesday 8 AM ET)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Competitive Scout schedule:", err);
+  }
+}
+
+// Set up Client Monitor schedule (daily 6 AM ET)
+async function setupClientMonitorSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("client-monitor");
+    await queue.add(
+      "daily-client-monitor",
+      {},
+      {
+        repeat: {
+          pattern: "0 6 * * *", // 6 AM America/New_York every day
+          tz: "America/New_York",
+        },
+        jobId: "daily-client-monitor",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily Client Monitor scheduled (6 AM ET)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Client Monitor schedule:", err);
+  }
+}
+
+// Set up Morning Briefing schedule (daily 6:30 AM ET, after Client Monitor)
+async function setupMorningBriefingSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("morning-briefing");
+    await queue.add(
+      "daily-morning-briefing",
+      {},
+      {
+        repeat: {
+          pattern: "30 6 * * *", // 6:30 AM America/New_York every day
+          tz: "America/New_York",
+        },
+        jobId: "daily-morning-briefing",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily Morning Briefing scheduled (6:30 AM ET)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Morning Briefing schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
@@ -441,5 +549,8 @@ setupReviewSyncSchedule();
 setupSchedulerTick();
 setupGbpRefreshSchedule();
 setupMondayEmailSchedule();
+setupCompetitiveScoutSchedule();
+setupClientMonitorSchedule();
+setupMorningBriefingSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
