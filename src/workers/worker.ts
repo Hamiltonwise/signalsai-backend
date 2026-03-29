@@ -20,6 +20,7 @@ import { processGbpRefresh } from "./processors/gbpRefresh.processor";
 import { processPatientPathBuild } from "./processors/patientpathBuild.processor";
 import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
 import { processWeek1Win } from "./processors/week1Win.processor";
+import { processMondayEmail } from "./processors/mondayEmail.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -261,8 +262,21 @@ const week1WinWorker = new Worker(
   }
 );
 
+// Monday Email worker (weekly Monday 7 AM ET)
+const mondayEmailWorker = new Worker(
+  "minds-monday-email",
+  async (job) => {
+    await processMondayEmail(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, mondayEmailWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -292,6 +306,7 @@ async function shutdown(): Promise<void> {
   await patientpathBuildWorker.close();
   await welcomeIntelligenceWorker.close();
   await week1WinWorker.close();
+  await mondayEmailWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -398,11 +413,33 @@ async function setupGbpRefreshSchedule(): Promise<void> {
   }
 }
 
+// Set up Monday email schedule (Monday 7 AM ET = 12 PM UTC / 11 AM UTC during DST)
+async function setupMondayEmailSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("monday-email");
+    await queue.add(
+      "weekly-monday-email",
+      {},
+      {
+        repeat: {
+          pattern: "0 7 * * 1", // 7 AM America/New_York every Monday
+          tz: "America/New_York",
+        },
+        jobId: "weekly-monday-email",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly Monday email scheduled (Monday 7 AM ET)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Monday email schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
 setupReviewSyncSchedule();
 setupSchedulerTick();
 setupGbpRefreshSchedule();
+setupMondayEmailSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
