@@ -83,6 +83,7 @@ import dashboardContextRoutes from "./routes/user/dashboardContext";
 import gbpAuthRoutes from "./routes/auth/gbp";
 import oneActionCardRoutes from "./routes/user/oneActionCard";
 import reviewDraftRoutes from "./routes/user/reviewDrafts";
+import championRoutes from "./routes/user/champion";
 import streakRoutes from "./routes/user/streaks";
 import ownerProfileRoutes from "./routes/user/ownerProfile";
 import milestoneCardRoutes from "./routes/user/milestoneCards";
@@ -91,6 +92,7 @@ import referralThankYouRoutes from "./routes/user/referralThankYou";
 import campaignRoutes from "./routes/partner/campaigns";
 import gpDiscoveryUserRoutes from "./routes/user/gpDiscovery";
 import userPreferencesRoutes from "./routes/user/preferences";
+import anniversaryReportRoutes from "./routes/user/anniversaryReport";
 import adminBehavioralEventsRoutes from "./routes/admin/behavioralEvents";
 import adminCaseStudiesRoutes from "./routes/admin/caseStudies";
 import gpDiscoveryRoutes from "./routes/partner/gpDiscovery";
@@ -286,6 +288,8 @@ app.use("/api/user", referralThankYouRoutes); // WO-47: Referral Thank-You auto-
 app.use("/api/user", gpDiscoveryUserRoutes); // WO-56: GP Discovery outreach
 app.use("/api/partner/campaigns", campaignRoutes); // WO-55: Partner Campaign Intelligence
 app.use("/api/user", userPreferencesRoutes); // WO-NOTIFICATION-PREFS + WO-STRIPE-PORTAL
+app.use("/api/user", anniversaryReportRoutes); // U-NEW-5: Anniversary Report (shareable journey page)
+app.use("/api/user", championRoutes); // Heroes & Founders Foundation: Champion Client opt-in
 app.use("/api/admin/behavioral-events", adminBehavioralEventsRoutes); // WO-ADMIN-BEHAVIORAL-EVENTS: T4 SessionIntelligence + MorningBrief
 app.use("/api/admin/case-studies", adminCaseStudiesRoutes); // T6: Case study CRUD + publish
 app.use("/api/partner", gpDiscoveryRoutes); // T5: GP Discovery + referral form

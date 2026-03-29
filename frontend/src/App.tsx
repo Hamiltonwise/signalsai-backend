@@ -50,6 +50,7 @@ const PatientPathWebsite = React.lazy(() => import("./pages/dashboard/PatientPat
 const ReviewRequests = React.lazy(() => import("./pages/dashboard/ReviewRequests"));
 const DashboardSettings = React.lazy(() => import("./pages/dashboard/DashboardSettings"));
 const IntelligenceDashboard = React.lazy(() => import("./pages/dashboard/IntelligenceDashboard"));
+const AnniversaryReport = React.lazy(() => import("./pages/dashboard/AnniversaryReport"));
 const GPDiscoveryPage = React.lazy(() => import("./pages/partner/GPDiscoveryPage"));
 const CampaignIntelligence = React.lazy(() => import("./pages/partner/CampaignIntelligence"));
 const Changelog = React.lazy(() => import("./pages/Changelog"));
@@ -336,6 +337,7 @@ function App() {
                 <Route path="/dashboard/settings" element={<DashboardSettings />} />
                 <Route path="/dashboard/website" element={<PatientPathWebsite />} />
                 <Route path="/dashboard/intelligence" element={<IntelligenceDashboard />} />
+                <Route path="/dashboard/anniversary" element={<AnniversaryReport />} />
                 <Route path="/dashboard/locations" element={<Locations />} />
                 <Route path="/dashboard/refer/:orgSlug?" element={<GPDiscoveryPage />} />
                 <Route path="/patientJourneyInsights" element={<Navigate to="/dashboard/referrals" replace />} />
