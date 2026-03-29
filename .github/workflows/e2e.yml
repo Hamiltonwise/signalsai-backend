@@ -52,8 +52,17 @@ jobs:
         run: npx ts-node src/scripts/seedDemoAccount.ts
         continue-on-error: true
 
+      - name: Build backend
+        run: npm run build
+
       - name: Build frontend
         run: cd frontend && npm run build
+
+      - name: Move frontend build into public
+        run: |
+          rm -rf public || true
+          mkdir -p public
+          cp -r frontend/dist/* public/
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
