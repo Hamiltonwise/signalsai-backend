@@ -123,8 +123,9 @@ export async function generateOzMoments(data: OzMomentData): Promise<OzMoment[]>
     data.competitorReviews = await fetchReviewsForOz(data.competitorPlaceId);
   }
 
-  // Need at least 1 review and a competitor to generate meaningful Oz moments
-  if (data.clientReviews.length === 0 || !data.competitorName) return [];
+  // Need a competitor to generate meaningful Oz moments.
+  // Reviews make it stronger, but photos/hours/position alone can still surprise.
+  if (!data.competitorName) return [];
 
   // Build the intelligence brief for Claude
   const clientReviewBlock = data.clientReviews.length > 0
