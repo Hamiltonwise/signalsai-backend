@@ -102,6 +102,21 @@ export async function checkFirstWinAttribution(orgId: number): Promise<boolean> 
     // behavioral_events table may not exist
   }
 
+  // Write to notifications table (feeds the bell popover)
+  await db("notifications").insert({
+    organization_id: orgId,
+    title: "Your first win is here",
+    message: description,
+    type: "agent",
+    read: false,
+    metadata: JSON.stringify({
+      source: "first_win_attribution",
+      event_type: eventType,
+    }),
+    created_at: new Date(),
+    updated_at: new Date(),
+  }).catch(() => {});
+
   // Slack notification
   if (SLACK_WEBHOOK) {
     try {

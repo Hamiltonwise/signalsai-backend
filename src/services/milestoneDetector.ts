@@ -175,7 +175,25 @@ export async function processMilestones(
       email_sent: false,
     });
 
-    // 2. Log to behavioral_events
+    // 2. Write to notifications table (feeds the bell popover)
+    await db("notifications").insert({
+      organization_id: input.organizationId,
+      location_id: input.locationId,
+      title: m.headline,
+      message: m.detail,
+      type: m.type === "rank_up" ? "ranking" : "agent",
+      read: false,
+      metadata: JSON.stringify({
+        milestone_type: m.type,
+        old_value: m.oldValue,
+        new_value: m.newValue,
+        competitor_name: m.competitorName,
+      }),
+      created_at: new Date(),
+      updated_at: new Date(),
+    }).catch(() => {});
+
+    // 3. Log to behavioral_events
     await db("behavioral_events").insert({
       event_type: "milestone.achieved",
       org_id: input.organizationId,
@@ -190,7 +208,7 @@ export async function processMilestones(
       }),
     });
 
-    // 3. Send email
+    // 4. Send email
     await sendMilestoneEmail(input, m).catch((err) =>
       console.error("[Milestone] Email failed:", err.message),
     );

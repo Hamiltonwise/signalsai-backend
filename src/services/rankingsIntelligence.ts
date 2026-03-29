@@ -185,6 +185,30 @@ Market: ${address || specialty}`,
 
   console.log(`[RankingsIntel] Snapshot: ${org.name} → #${currentPosition}, $${dollarFigure}`);
 
+  // Write ranking change notification if position moved (feeds the bell popover)
+  if (prevSnapshot?.position && currentPosition !== prevSnapshot.position) {
+    const improved = currentPosition < prevSnapshot.position;
+    await db("notifications").insert({
+      organization_id: orgId,
+      title: improved
+        ? `Ranking improved to #${currentPosition}`
+        : `Ranking shifted to #${currentPosition}`,
+      message: improved
+        ? `You moved up from #${prevSnapshot.position} to #${currentPosition}. ${competitorNote || ""}`
+        : `You were #${prevSnapshot.position} last week, now #${currentPosition}. ${competitorNote || ""}`,
+      type: "ranking",
+      read: false,
+      metadata: JSON.stringify({
+        source: "ranking_snapshot",
+        old_position: prevSnapshot.position,
+        new_position: currentPosition,
+        competitor_name: topCompetitorName,
+      }),
+      created_at: new Date(),
+      updated_at: new Date(),
+    }).catch(() => {});
+  }
+
   // Run first win check
   await checkFirstWinAttribution(orgId).catch(() => {});
 

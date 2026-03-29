@@ -209,6 +209,22 @@ export async function buildPatientPathForOrg(orgId: number): Promise<boolean> {
           review_themes: [],
         }),
       });
+
+      // Write to notifications table (feeds the bell popover)
+      await db("notifications").insert({
+        organization_id: orgId,
+        title: "Your website preview is ready",
+        message: `We built a custom preview for ${org.name}. Take a look and let us know what you think.`,
+        type: "system",
+        read: false,
+        metadata: JSON.stringify({
+          source: "patientpath_build",
+          preview_url: `https://preview.alloro.site/${orgId}`,
+        }),
+        created_at: new Date(),
+        updated_at: new Date(),
+      }).catch(() => {});
+
       return true;
     }
 
@@ -265,6 +281,21 @@ ${competitorText || "None found"}`,
       patientpath_status: "preview_ready",
       patientpath_preview_url: previewUrl,
     });
+
+    // Write to notifications table (feeds the bell popover)
+    await db("notifications").insert({
+      organization_id: orgId,
+      title: "Your website preview is ready",
+      message: `We built a custom preview for ${org.name}. Take a look and let us know what you think.`,
+      type: "system",
+      read: false,
+      metadata: JSON.stringify({
+        source: "patientpath_build",
+        preview_url: previewUrl,
+      }),
+      created_at: new Date(),
+      updated_at: new Date(),
+    }).catch(() => {});
 
     console.log(`[PatientPath] Complete for ${org.name}: "${researchBrief.irreplaceable_thing?.slice(0, 80)}..."`);
     return true;

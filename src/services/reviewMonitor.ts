@@ -227,6 +227,27 @@ export async function pollPracticeReviews(
       slack_notified: false,
     });
 
+    // Write to notifications table (feeds the bell popover)
+    const stars = "\u2605".repeat(starRating) + "\u2606".repeat(5 - starRating);
+    await db("notifications").insert({
+      organization_id: orgId,
+      location_id: locationId,
+      title: `New ${starRating}-star review from ${reviewerName}`,
+      message: reviewText
+        ? `${stars}  ${reviewText.slice(0, 200)}${reviewText.length > 200 ? "..." : ""}`
+        : `${stars}  ${reviewerName} left a ${starRating}-star review.`,
+      type: "pms",
+      read: false,
+      metadata: JSON.stringify({
+        source: "review_monitor",
+        reviewer_name: reviewerName,
+        star_rating: starRating,
+        review_google_id: googleId,
+      }),
+      created_at: new Date(),
+      updated_at: new Date(),
+    }).catch(() => {});
+
     // Send Slack notification
     await sendSlackNotification(practiceName, reviewerName, starRating, reviewText, aiResponse);
 
