@@ -128,7 +128,7 @@ function resolveAction(props: OneActionCardProps): OneAction {
     return {
       severity: "red",
       title: `${gp.name} at ${gp.practice} referred 0 cases this month after ${gp.monthsConsistent} months of consistent referrals.`,
-      detail: "A top referral source going dark costs you patients every week it continues. This needs attention today.",
+      detail: "A top referral source going dark costs you revenue every week it continues. This needs attention today.",
       cta: "See what changed",
       ctaLink: "/dashboard/referrals",
       icon: AlertTriangle,

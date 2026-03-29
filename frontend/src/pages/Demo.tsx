@@ -58,7 +58,7 @@ const REFERRING_GPS = [
   },
   {
     name: "Dr. Marcus Webb",
-    practice: "Webb Practice Group",
+    practice: "Webb Group",
     referrals: 12,
     trend: "flat" as const,
     trendLabel: "Same as last quarter",
@@ -76,7 +76,7 @@ const REFERRING_GPS = [
   },
   {
     name: "Dr. James Okafor",
-    practice: "Okafor Practice Group",
+    practice: "Okafor Group",
     referrals: 4,
     trend: "up" as const,
     trendLabel: "New referring relationship",
@@ -85,7 +85,7 @@ const REFERRING_GPS = [
   },
   {
     name: "Dr. Lisa Park",
-    practice: "Park Practice Group",
+    practice: "Park Group",
     referrals: 6,
     trend: "down" as const,
     trendLabel: "Silent for 74 days",
@@ -102,7 +102,7 @@ const TASKS = [
   },
   {
     title: "Respond to your last 5 reviews",
-    why: "Practices that respond to reviews rank higher and convert more referrals from colleagues who research you before sending a client.",
+    why: "Businesses that respond to reviews rank higher and convert more referrals from colleagues who research you before sending a client.",
     status: "active",
   },
   {

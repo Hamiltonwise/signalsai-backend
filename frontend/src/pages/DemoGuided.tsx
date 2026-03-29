@@ -23,7 +23,7 @@ interface CoachStep {
 const STEPS: CoachStep[] = [
   {
     title: "Your competitive position",
-    body: "Mountain View Endodontics ranks #3 in Salt Lake City. There are 2 practices ahead of them. This score updates weekly -- no work required.",
+    body: "Mountain View Endodontics ranks #3 in Salt Lake City. There are 2 competitors ahead of them. This score updates weekly -- no work required.",
     position: "top",
   },
   {

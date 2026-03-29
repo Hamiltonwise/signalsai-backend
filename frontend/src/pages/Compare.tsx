@@ -86,7 +86,7 @@ export default function Compare() {
 
   if (error || !data) {
     return (
-      <MarketingLayout title="Comparison" description="Competitive comparison between two practices.">
+      <MarketingLayout title="Comparison" description="Competitive comparison between two businesses.">
         <div className="max-w-lg mx-auto px-5 py-16 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-100 mb-5">
             <MapPin className="w-7 h-7 text-slate-400" />
@@ -95,8 +95,8 @@ export default function Compare() {
             Comparison not available
           </h2>
           <p className="mt-3 text-sm text-slate-500 leading-relaxed">
-            We need two valid practice IDs to build this comparison.
-            Run a Checkup first to find practices in your market.
+            We need two valid business IDs to build this comparison.
+            Run a Checkup first to find competitors in your market.
           </p>
           <a
             href="/checkup"
@@ -133,7 +133,7 @@ export default function Compare() {
           {/* Headers */}
           <div className="rounded-xl bg-[#212D40] p-4 text-center">
             <p className="text-xs font-bold uppercase tracking-wider text-white/50 mb-1">
-              Your practice
+              Your business
             </p>
             <p className="text-sm font-bold text-white truncate">{p.name}</p>
           </div>

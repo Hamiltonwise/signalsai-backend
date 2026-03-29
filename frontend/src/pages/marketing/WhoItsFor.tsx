@@ -74,12 +74,12 @@ export default function WhoItsFor() {
             <VerticalCard
               icon={<Stethoscope className="w-5 h-5 text-[#D56753]" />}
               title="Endodontists"
-              desc="Know which GPs stopped referring to you this quarter, and which competitor picked up those cases. Every Monday before your first patient."
+              desc="Know which GPs stopped referring to you this quarter, and which competitor picked up those cases. Every Monday before your day starts."
             />
             <VerticalCard
               icon={<Heart className="w-5 h-5 text-[#D56753]" />}
               title="Orthodontists"
-              desc="Track which zip codes your new patients are coming from, and where you're losing them to a closer office."
+              desc="Track which zip codes your new clients are coming from, and where you're losing them to a closer office."
             />
             <VerticalCard
               icon={<Activity className="w-5 h-5 text-[#D56753]" />}
@@ -99,7 +99,7 @@ export default function WhoItsFor() {
             <VerticalCard
               icon={<PawPrint className="w-5 h-5 text-[#D56753]" />}
               title="Veterinarians"
-              desc="Pet owners search differently than patients. Alloro tracks the signals that actually drive new client calls in your market."
+              desc="Pet owners search differently. Alloro tracks the signals that actually drive new client calls in your market."
             />
             <VerticalCard
               icon={<Scale className="w-5 h-5 text-[#D56753]" />}

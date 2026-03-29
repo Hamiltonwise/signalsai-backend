@@ -77,7 +77,7 @@ export default function NewAccountOnboarding() {
                     </div>
                     <p className="text-slate-500 font-medium leading-relaxed mb-4">
                       Review how Alloro uses Google APIs to provide you with
-                      analytics and insights for your practice.
+                      analytics and insights for your business.
                     </p>
                     <div className="flex items-center gap-2 text-alloro-orange font-bold text-sm group-hover:gap-3 transition-all">
                       <FileText className="w-4 h-4" />
@@ -155,7 +155,7 @@ export default function NewAccountOnboarding() {
                     </div>
                     <p className="text-slate-500 font-medium leading-relaxed mb-4">
                       Connect your Google Business Profile to enable reviews,
-                      rankings, and insights for your practice.
+                      rankings, and insights for your business.
                     </p>
 
                     {/* Google Connect Button */}

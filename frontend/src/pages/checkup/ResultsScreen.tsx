@@ -943,7 +943,7 @@ export default function ResultsScreen() {
                         onChange={(e) => setVendorWantsMore(e.target.checked)}
                         className="w-4 h-4 rounded text-[#D56753] border-slate-300 focus:ring-[#D56753]/20"
                       />
-                      <span className="text-xs text-slate-600">I'd like to run a Checkup for my other practices</span>
+                      <span className="text-xs text-slate-600">I'd like to run a Checkup for my other locations</span>
                     </label>
                     <button
                       type="button"

@@ -29,7 +29,7 @@ const VERTICALS = [
   {
     title: "Chiropractors",
     description:
-      "Competitive market clarity, review intelligence, and patient acquisition insights for chiropractic practices.",
+      "Competitive market clarity, review intelligence, and client acquisition insights for chiropractic businesses.",
     href: "/chiropractor-marketing",
     ready: false,
   },

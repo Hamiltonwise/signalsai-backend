@@ -87,8 +87,8 @@ export default function ThankYou() {
             briefing lands in your inbox.
           </p>
           <p className="mt-3 text-sm text-slate-500 leading-relaxed">
-            Three findings about your market that most practice
-            owners never see. Before you see your first patient.
+            Three findings about your market that most business
+            owners never see. Before your day starts.
           </p>
         </div>
 

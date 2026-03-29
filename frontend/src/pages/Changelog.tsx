@@ -33,7 +33,7 @@ const ENTRIES: ChangelogEntry[] = [
     date: "March 17, 2026",
     headline: "Competitor intelligence gets sharper",
     items: [
-      "Competitors now appear on a live map with real pins for every practice in your market.",
+      "Competitors now appear on a live map with real pins for every business in your market.",
       "Review velocity tracking shows who's gaining on you and how fast.",
       "The scanning theater now streams live reviews from your competitors during your Checkup.",
     ],

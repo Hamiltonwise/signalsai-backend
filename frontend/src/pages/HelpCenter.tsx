@@ -22,7 +22,7 @@ const FAQ: { question: string; answer: string }[] = [
   {
     question: "How does Alloro calculate my ranking?",
     answer:
-      "We query Google's local search results for your specialty and city, the same way your patients search.",
+      "We query Google's local search results for your specialty and city, the same way your clients search.",
   },
   {
     question: "How often does my data update?",
@@ -42,7 +42,7 @@ const FAQ: { question: string; answer: string }[] = [
   {
     question: "How do I upload my referral data?",
     answer:
-      "Go to Referral Intelligence and drag any export from your practice management software. Dentrix, Eaglesoft, and OpenDental exports all work.",
+      "Go to Referral Intelligence and drag any export from your management software. We support most common formats.",
   },
 ];
 
