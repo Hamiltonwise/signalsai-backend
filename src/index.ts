@@ -45,6 +45,7 @@ import adminSettingsRoutes from "./routes/admin/settings";
 import adminSchedulesRoutes from "./routes/admin/schedules";
 import adminSignalRoutes from "./routes/admin/signal";
 import checkupFunnelRoutes from "./routes/admin/checkupFunnel";
+import agentRunnerRoutes from "./routes/admin/agentRunner";
 import adminDreamTeamRoutes from "./routes/admin/dreamTeam";
 import adminBatchCheckupRoutes from "./routes/admin/batchCheckup";
 import adminFirefliesRoutes from "./routes/admin/firefliesWebhook";
@@ -247,6 +248,7 @@ app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin/schedules", adminSchedulesRoutes);
 app.use("/api/admin/signal", adminSignalRoutes);
 app.use("/api/admin/checkup-funnel", checkupFunnelRoutes);
+app.use("/api/admin/agent", agentRunnerRoutes); // Dream Team agent runner (invoke any agent from HQ)
 app.use("/api/admin/dream-team", adminDreamTeamRoutes);
 app.use("/api/admin/batch-checkup", adminBatchCheckupRoutes);
 app.use("/api/admin", adminFirefliesRoutes); // Fireflies webhook + dream team tasks

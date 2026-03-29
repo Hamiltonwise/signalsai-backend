@@ -56,6 +56,8 @@ import { processCSAgent } from "./processors/csAgent.processor";
 import { processTrialEmail } from "./processors/trialEmail.processor";
 import { processTrialAutoConvert } from "./processors/trialAutoConvert.processor";
 import { processVideoStatus } from "./processors/videoStatus.processor";
+import { processStateOfClarity } from "./processors/stateOfClarity.processor";
+import { runProductEvolution } from "../jobs/productEvolution";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -765,8 +767,36 @@ const videoStatusWorker = new Worker(
   }
 );
 
+// State of Clarity worker (quarterly: 1st of Jan, Apr, Jul, Oct at 6 AM PT)
+const stateOfClarityWorker = new Worker(
+  "minds-state-of-clarity",
+  async (job) => {
+    await processStateOfClarity(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Product Evolution Engine (weekly Sunday 11 PM PT)
+// The self-improving product. Reads its own usage data, identifies friction,
+// reads source code, and drafts improvement proposals for Dave.
+const productEvolutionWorker = new Worker(
+  "minds-product-evolution",
+  async () => {
+    await runProductEvolution();
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, dreamweaverWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker, bugTriageWorker, strategicIntelligenceWorker, partnershipsWorker, csAgentWorker, trialEmailWorker, trialAutoConvertWorker, videoStatusWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, dreamweaverWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker, bugTriageWorker, strategicIntelligenceWorker, partnershipsWorker, csAgentWorker, trialEmailWorker, trialAutoConvertWorker, videoStatusWorker, stateOfClarityWorker, productEvolutionWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -832,6 +862,8 @@ async function shutdown(): Promise<void> {
   await trialEmailWorker.close();
   await trialAutoConvertWorker.close();
   await videoStatusWorker.close();
+  await stateOfClarityWorker.close();
+  await productEvolutionWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -1685,6 +1717,27 @@ async function setupVideoStatusSchedule(): Promise<void> {
   }
 }
 
+// Set up State of Clarity schedule (quarterly: 1st of Jan, Apr, Jul, Oct at 6 AM PT)
+async function setupStateOfClaritySchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("state-of-clarity");
+    await queue.add(
+      "quarterly-state-of-clarity",
+      {},
+      {
+        repeat: {
+          pattern: "0 6 1 1,4,7,10 *", // 6 AM America/Los_Angeles on 1st of Jan, Apr, Jul, Oct
+          tz: "America/Los_Angeles",
+        },
+        jobId: "quarterly-state-of-clarity",
+      }
+    );
+    console.log("[MINDS-WORKER] Quarterly State of Clarity report scheduled (1st of Jan/Apr/Jul/Oct, 6 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up State of Clarity schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
@@ -1725,5 +1778,6 @@ setupPartnershipsSchedule();
 setupCSAgentSchedule();
 setupTrialAutoConvertSchedule();
 setupVideoStatusSchedule();
+setupStateOfClaritySchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
