@@ -6,13 +6,14 @@
  * The Conductor does not originate content. It harmonizes,
  * adjusts, and clears.
  *
- * Six gates run in order:
+ * Seven gates run in order:
  * 1. Accuracy: every claim backed by a dataPoint
  * 2. Timing: rate limit (max 3 agent actions per org per 24h)
  * 3. Consistency: no contradictions in last 7 days
  * 4. Voice: no em-dashes, no "practice", no jargon
  * 5. North Star: must have humanNeed OR economicConsequence
  * 6. Biological-Economic Lens: email/notification require both
+ * 7. Empathy: "Understood Before Informed" -- human first, data second
  *
  * All gate decisions log to behavioral_events.
  * No client communication. No data mutations except logging.
@@ -265,10 +266,49 @@ function checkBioEconLens(input: ConductorInput): ConductorResult | null {
   return null;
 }
 
+// ── Gate 7: Empathy ("Understood Before Informed") ─────────────────
+
+/**
+ * Checks if the output leads with the human, not with data.
+ * For notifications and emails: the headline should acknowledge
+ * the person's situation before delivering a metric.
+ *
+ * Heuristic: if the headline starts with a digit or "$", flag it.
+ * If it starts with a person-oriented word ("You", a name, etc.), pass.
+ */
+function checkEmpathy(input: ConductorInput): ConductorResult | null {
+  // Only enforce on outward-facing output types
+  if (
+    input.outputType !== "notification" &&
+    input.outputType !== "email"
+  ) {
+    return null;
+  }
+
+  const headline = input.headline.trim();
+  if (!headline) return null;
+
+  // Bad: headline starts with a digit or dollar sign (data before empathy)
+  if (/^[\d$]/.test(headline)) {
+    return hold(
+      "empathy",
+      `Headline leads with data ("${headline.slice(0, 40)}..."). ` +
+        "Notifications should address the human first, not start with a metric. " +
+        'Rewrite to lead with "You" or the person\'s name.',
+    );
+  }
+
+  // Good patterns: starts with "You", a name-like capitalized word,
+  // "Your", "Hey", "Great", "Congratulations", etc.
+  // No flag needed if it passes the digit/dollar check above.
+
+  return null;
+}
+
 // ── Main export ─────────────────────────────────────────────────────
 
 /**
- * Run all six conductor gates in order.
+ * Run all seven conductor gates in order.
  * Returns { cleared: true } if all pass.
  * Returns { cleared: false, gate, reason } on first failure.
  */
@@ -288,6 +328,7 @@ export async function conductorGate(
     { name: "voice", check: () => checkVoice(input) },
     { name: "north_star", check: () => checkNorthStar(input) },
     { name: "bio_econ_lens", check: () => checkBioEconLens(input) },
+    { name: "empathy", check: () => checkEmpathy(input) },
   ];
 
   for (const gate of gates) {
@@ -321,7 +362,7 @@ export async function conductorGate(
   }
 
   console.log(
-    `[SystemConductor] CLEARED: ${input.agentName} output for org ${input.orgId}. 6/6 gates passed.`,
+    `[SystemConductor] CLEARED: ${input.agentName} output for org ${input.orgId}. 7/7 gates passed.`,
   );
 
   return { cleared: true };

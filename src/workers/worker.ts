@@ -899,7 +899,7 @@ async function setupMondayEmailSchedule(): Promise<void> {
   }
 }
 
-// Set up Competitive Scout schedule (Wednesday 8 AM ET, after Sunday snapshots)
+// Set up Competitive Scout schedule (Tuesday 6 AM ET, after Sunday snapshots)
 async function setupCompetitiveScoutSchedule(): Promise<void> {
   try {
     const queue = getMindsQueue("competitive-scout");
@@ -908,13 +908,13 @@ async function setupCompetitiveScoutSchedule(): Promise<void> {
       {},
       {
         repeat: {
-          pattern: "0 8 * * 3", // 8 AM America/New_York every Wednesday
+          pattern: "0 6 * * 2", // 6 AM America/New_York every Tuesday
           tz: "America/New_York",
         },
         jobId: "weekly-competitive-scout",
       }
     );
-    console.log("[MINDS-WORKER] Weekly Competitive Scout scheduled (Wednesday 8 AM ET)");
+    console.log("[MINDS-WORKER] Weekly Competitive Scout scheduled (Tuesday 6 AM ET)");
   } catch (err: any) {
     console.error("[MINDS-WORKER] Failed to set up Competitive Scout schedule:", err);
   }
