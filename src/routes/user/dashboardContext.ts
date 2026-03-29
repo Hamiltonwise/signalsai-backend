@@ -47,6 +47,9 @@ dashboardContextRoutes.get(
           "week1_win_type",
           "week1_win_shown_at",
           "created_at",
+          "trial_end_at",
+          "trial_status",
+          "stripe_customer_id",
         )
         .first();
 
@@ -134,6 +137,12 @@ dashboardContextRoutes.get(
         org_created_at: org.created_at || null,
         has_referral_data: hasReferralData,
         intelligence_mode: intelligenceMode,
+        trial: org.trial_end_at ? {
+          ends_at: org.trial_end_at,
+          status: org.trial_status || "active",
+          days_remaining: Math.max(0, Math.ceil((new Date(org.trial_end_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
+          is_subscribed: !!org.stripe_customer_id,
+        } : null,
       });
     } catch (error: any) {
       console.error("[DashboardContext] Error:", error.message);

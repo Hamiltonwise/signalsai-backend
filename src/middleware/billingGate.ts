@@ -90,13 +90,14 @@ export const billingGateMiddleware = async (
 
     const org = await db("organizations")
       .where({ id: orgUser.organization_id })
-      .select("subscription_status")
+      .select("subscription_status", "trial_end_at", "stripe_customer_id")
       .first();
 
     if (!org) {
       return next();
     }
 
+    // Explicitly locked out (cancelled, failed payment, admin action)
     if (org.subscription_status === "inactive") {
       return res.status(402).json({
         success: false,
@@ -104,6 +105,18 @@ export const billingGateMiddleware = async (
         message:
           "Your account is locked. Please add billing information to continue.",
       });
+    }
+
+    // Trial expired: no Stripe subscription and past trial_end_at
+    if (org.trial_end_at && !org.stripe_customer_id) {
+      const trialEnd = new Date(org.trial_end_at);
+      if (trialEnd < new Date()) {
+        return res.status(402).json({
+          success: false,
+          errorCode: "TRIAL_EXPIRED",
+          message: "Your free trial has ended. Subscribe to continue.",
+        });
+      }
     }
 
     return next();

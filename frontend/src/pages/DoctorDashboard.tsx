@@ -846,6 +846,38 @@ export default function DoctorDashboard() {
 
   return (
     <>
+    {/* Trial countdown banner — shows when trial is ending soon */}
+    {dashCtx?.trial && !dashCtx?.trial.is_subscribed && dashCtx?.trial.days_remaining <= 3 && dashCtx?.trial.days_remaining > 0 && (
+      <div className="bg-[#D56753] text-white text-center py-2.5 px-4 text-sm font-medium">
+        Your trial ends in {dashCtx?.trial.days_remaining} day{dashCtx?.trial.days_remaining !== 1 ? "s" : ""}. Your intelligence goes dark after that.{" "}
+        <a href="/settings/billing" className="underline font-bold hover:text-white/90">Subscribe now</a>
+      </div>
+    )}
+
+    {/* Trial expired overlay — full lockout after trial ends */}
+    {dashCtx?.trial && !dashCtx?.trial.is_subscribed && dashCtx?.trial.days_remaining <= 0 && (
+      <div className="fixed inset-0 z-50 bg-white/95 flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-[#D56753]/10 flex items-center justify-center mx-auto">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D56753" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          </div>
+          <div>
+            <h2 className="text-2xl font-extrabold text-[#212D40]">Your trial has ended</h2>
+            <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+              We're still watching your market. Subscribe to see what changed while you were away.
+            </p>
+          </div>
+          <a
+            href="/settings/billing"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-[#D56753] text-white font-semibold rounded-xl shadow-lg shadow-[#D56753]/25 hover:brightness-105 transition-all"
+          >
+            Subscribe to continue
+          </a>
+          <p className="text-xs text-gray-400">Your data is saved. Pick up right where you left off.</p>
+        </div>
+      </div>
+    )}
+
     {/* Billing prompt bar — top of dashboard, quiet, dismissable */}
     <BillingPromptBar
       orgId={orgId}

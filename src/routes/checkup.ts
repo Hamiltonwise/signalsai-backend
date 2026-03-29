@@ -746,6 +746,14 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
         referral_code: await generateReferralCode(),
       }, trx);
 
+      // Set trial period: 7 days from now
+      const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await trx("organizations").where({ id: newOrg.id }).update({
+        trial_start_at: new Date(),
+        trial_end_at: trialEnd,
+        trial_status: "active",
+      });
+
       // Set source_channel from referral or source query param
       const sourceChannel = req.body.source_channel || req.query.ref || req.query.source || null;
       if (sourceChannel) {
@@ -897,6 +905,41 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       console.log(`[Checkup] Welcome Intelligence enqueued for org ${org.id} (fires in 4h)`);
     } catch (wiErr: any) {
       console.error(`[Checkup] Failed to enqueue Welcome Intelligence:`, wiErr.message);
+    }
+
+    // Set trial columns on org + enqueue 7-day email sequence
+    try {
+      const trialStart = new Date();
+      const trialEnd = new Date(trialStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+      await db("organizations").where({ id: org.id }).update({
+        trial_start_at: trialStart,
+        trial_end_at: trialEnd,
+        trial_status: "active",
+      });
+
+      const trialQueue = getMindsQueue("trial-email");
+      const trialDays = [
+        { day: 1, delayMs: 0 },                              // Immediate
+        { day: 3, delayMs: 2 * 24 * 60 * 60 * 1000 },       // 2 days
+        { day: 5, delayMs: 4 * 24 * 60 * 60 * 1000 },       // 4 days
+        { day: 6, delayMs: 5 * 24 * 60 * 60 * 1000 },       // 5 days
+        { day: 7, delayMs: 6 * 24 * 60 * 60 * 1000 },       // 6 days
+      ];
+      for (const { day, delayMs } of trialDays) {
+        await trialQueue.add(
+          `trial:day${day}:${org.id}`,
+          { orgId: org.id, day },
+          {
+            jobId: `trial-day${day}-${org.id}`,
+            delay: delayMs,
+            attempts: 3,
+            backoff: { type: "exponential", delay: 60000 },
+          }
+        );
+      }
+      console.log(`[Checkup] Trial started + email sequence enqueued for org ${org.id}`);
+    } catch (trialErr: any) {
+      console.error(`[Checkup] Failed to set up trial:`, trialErr.message);
     }
 
     // Queue Week 1 Win job (24 hours after signup)
