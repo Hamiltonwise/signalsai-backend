@@ -110,6 +110,7 @@ import morningBriefingRoutes from "./routes/admin/morningBriefing";
 import seoRoutes from "./routes/seo";
 import foundationRoutes from "./routes/foundation";
 import intelligenceRoutes from "./routes/intelligence";
+import marketRoutes from "./routes/market";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -306,6 +307,7 @@ app.use("/api/admin/morning-briefing", morningBriefingRoutes); // Agent: Morning
 app.use("/api/seo", seoRoutes); // WO-7: Programmatic SEO pages + hub/spoke + stats
 app.use("/api/foundation", foundationRoutes); // WO-11: Foundation application submissions
 app.use("/api/intelligence", intelligenceRoutes); // WO-8: Practice owner intelligence dashboard
+app.use("/api/market", marketRoutes); // Programmatic city pages market data
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);
