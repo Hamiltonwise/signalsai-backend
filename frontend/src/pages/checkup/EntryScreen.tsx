@@ -210,7 +210,7 @@ export default function EntryScreen() {
         <p className="mt-4 text-base text-slate-500 leading-relaxed max-w-sm mx-auto">
           {selectedPlace
             ? `See how you rank against every ${competitorTerm(selectedPlace.category, selectedPlace.types, selectedPlace.name)} in ${selectedPlace.city || "your market"}.`
-            : "Get your Business Health Score in 60 seconds. No login required."}
+            : "Get your Business Clarity Score in 60 seconds. No login required."}
         </p>
       </div>
 

@@ -16,7 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { PlaceDetails } from "../../api/places";
-import { sendCheckupEmail, triggerBuild } from "../../api/checkup";
+import { sendCheckupEmail, triggerBuild, createCompetitorInvite } from "../../api/checkup";
 import { trackEvent } from "../../api/tracking";
 import { withTimeout, getSourceChannel } from "./conferenceFallback";
 
@@ -410,6 +410,73 @@ function GapBar({ gap }: { gap: CheckupGapItem }) {
 // Gap Section — routes review_race to ReviewRaceCard, others to GapBar
 // ---------------------------------------------------------------------------
 
+// ─── Viral Loop: Competitor Invite Section ──────────────────────────
+
+function CompetitorInviteSection({
+  competitors,
+  senderName,
+}: {
+  competitors: Array<{ name: string; placeId: string; rating: number; reviewCount: number }>;
+  senderName: string;
+}) {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  const handleInvite = async (competitor: { name: string; placeId: string }) => {
+    setLoadingId(competitor.placeId);
+    try {
+      const res = await createCompetitorInvite({
+        competitorPlaceId: competitor.placeId,
+        competitorName: competitor.name,
+        senderName,
+      });
+      if (res.success && res.inviteUrl) {
+        await navigator.clipboard.writeText(res.inviteUrl);
+        setCopiedId(competitor.placeId);
+        setTimeout(() => setCopiedId(null), 3000);
+        trackEvent("checkup.competitor_invite_created", {
+          competitorName: competitor.name,
+        });
+      }
+    } catch { /* silent */ }
+    finally { setLoadingId(null); }
+  };
+
+  if (competitors.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-dashed border-[#D56753]/20 bg-[#D56753]/[0.02] p-5">
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+        Know any of these businesses?
+      </p>
+      <div className="space-y-2">
+        {competitors.slice(0, 4).map((c) => (
+          <div key={c.placeId} className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-[#212D40] truncate">{c.name}</p>
+              <p className="text-xs text-gray-400">{c.reviewCount} reviews, {c.rating} stars</p>
+            </div>
+            <button
+              onClick={() => handleInvite(c)}
+              disabled={loadingId === c.placeId}
+              className="shrink-0 ml-3 text-xs font-semibold text-[#D56753] hover:underline disabled:opacity-40"
+            >
+              {copiedId === c.placeId
+                ? "Link copied!"
+                : loadingId === c.placeId
+                  ? "..."
+                  : "Send them their checkup"}
+            </button>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-gray-400 mt-3">
+        They'll see their own score. Your data is never shared.
+      </p>
+    </div>
+  );
+}
+
 function GapSection({ gaps }: { gaps: CheckupGapItem[] }) {
   if (!gaps || gaps.length === 0) return null;
 
@@ -660,7 +727,7 @@ export default function ResultsScreen() {
       {/* Practice name + market context */}
       <div className="text-center">
         <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-2">
-          Business Health Score
+          Business Clarity Score
         </p>
         <h2 className="text-2xl font-extrabold text-[#212D40]">{place.name}</h2>
         {market && (
@@ -811,6 +878,14 @@ export default function ResultsScreen() {
       {/* Gap Progress Bars — concrete closeable units */}
       {state.gaps && state.gaps.length > 0 && (
         <GapSection gaps={state.gaps} />
+      )}
+
+      {/* Viral Loop: Send competitors their free checkup */}
+      {state.competitors && state.competitors.length > 0 && (
+        <CompetitorInviteSection
+          competitors={state.competitors}
+          senderName={state.place?.name || ""}
+        />
       )}
 
       {/* Findings — first visible, rest blurred */}
