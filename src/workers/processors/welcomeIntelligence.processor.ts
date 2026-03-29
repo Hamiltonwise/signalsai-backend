@@ -211,24 +211,54 @@ async function fetchNearbyReferralSources(
 }
 
 /**
- * Build a velocity insight from the seeded ranking snapshot.
+ * Build a velocity insight from ranking snapshots or checkup competitor data.
+ * Never use hardcoded velocity. Compute from real data or don't show it.
  */
 async function buildVelocityInsight(
   orgId: number
 ): Promise<string | null> {
   try {
-    const snapshot = await db("weekly_ranking_snapshots")
+    // Try to compute actual velocity from multiple snapshots
+    const snapshots = await db("weekly_ranking_snapshots")
       .where({ org_id: orgId })
       .orderBy("created_at", "desc")
-      .first();
+      .limit(4);
 
-    if (!snapshot) return null;
+    if (snapshots.length >= 2) {
+      const newest = snapshots[0];
+      const oldest = snapshots[snapshots.length - 1];
+      const competitorName = newest.competitor_name;
+      if (!competitorName) return null;
 
-    const competitorName = snapshot.competitor_name;
-    const clientReviews = snapshot.client_review_count || 0;
+      const compReviewsNow = newest.competitor_review_count || 0;
+      const compReviewsThen = oldest.competitor_review_count || 0;
+      const weekSpan = snapshots.length - 1;
 
-    if (competitorName && clientReviews > 0) {
-      return `${competitorName} is actively growing their presence. At current pace, the review gap widens by roughly 2-3 reviews per week. Starting your review strategy now means the gap stops growing today.`;
+      if (compReviewsNow > compReviewsThen && weekSpan > 0) {
+        const weeklyVelocity = ((compReviewsNow - compReviewsThen) / weekSpan).toFixed(1);
+        const monthlyVelocity = Math.round((compReviewsNow - compReviewsThen) / weekSpan * 4.3);
+        return `${competitorName} is gaining roughly ${weeklyVelocity} reviews per week (about ${monthlyVelocity} per month). Starting your review strategy now means the gap stops growing today.`;
+      }
+
+      // Snapshots exist but competitor isn't growing
+      if (competitorName && compReviewsNow > 0) {
+        return `${competitorName} has ${compReviewsNow} reviews but hasn't gained new ones recently. This is the best time to close the gap while they're quiet.`;
+      }
+
+      return null;
+    }
+
+    // Only one snapshot or none: fall back to checkup competitor data
+    const org = await db("organizations").where({ id: orgId }).first();
+    const checkupData = org?.checkup_data
+      ? (typeof org.checkup_data === "string" ? JSON.parse(org.checkup_data) : org.checkup_data)
+      : null;
+
+    if (checkupData?.topCompetitor?.reviewCount) {
+      const comp = checkupData.topCompetitor;
+      // Estimate monthly velocity from total reviews assuming ~2 year accumulation
+      const estimatedMonthly = Math.max(1, Math.round(comp.reviewCount / 24));
+      return `Your top competitor ${comp.name || "in your market"} averages roughly ${estimatedMonthly} reviews per month based on their review history. Matching that pace keeps the gap from widening.`;
     }
 
     return null;

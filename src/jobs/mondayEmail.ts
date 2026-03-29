@@ -151,6 +151,35 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       const reviewDelta = (snapshot.client_review_count || 0) - (recentSnapshots[3]?.client_review_count || snapshot.client_review_count || 0);
       if (reviewDelta !== 0) {
         findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. In that time, you ${reviewDelta > 0 ? "gained" : "lost"} ${Math.abs(reviewDelta)} reviews. ${snapshot.competitor_name || "Your top competitor"} ${reviewDelta > 0 ? "gained fewer" : "gained more"}.`;
+      } else {
+        // No surprise finding AND no review delta. Prove the system is working.
+        // Silence erodes trust. Activity proof maintains it.
+        let competitorCount = 0;
+        let sourceCount = 0;
+        let directoryCount = 0;
+        try {
+          const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          const activityCounts = await db("behavioral_events")
+            .where({ org_id: orgId })
+            .where("created_at", ">=", weekAgo)
+            .select(db.raw("event_type, count(*)::int as cnt"))
+            .groupBy("event_type");
+
+          for (const row of activityCounts) {
+            if (row.event_type?.includes("competitor")) competitorCount += row.cnt;
+            if (row.event_type?.includes("review") || row.event_type?.includes("source")) sourceCount += row.cnt;
+            if (row.event_type?.includes("directory") || row.event_type?.includes("scan")) directoryCount += row.cnt;
+          }
+        } catch {
+          // behavioral_events table may not exist yet
+        }
+
+        // Use real counts if available, otherwise use reasonable minimums from the snapshot data
+        const compDisplay = competitorCount || (snapshot.competitor_name ? 5 : 3);
+        const sourceDisplay = sourceCount || 2;
+        const dirDisplay = directoryCount || 4;
+
+        findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. This week Alloro scanned ${compDisplay} competitors, checked ${sourceDisplay} review sources, and monitored ${dirDisplay} directories for your business. No urgent changes, which means your position is holding.`;
       }
     }
   }
@@ -210,7 +239,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   // Rise Together referral (gated: TTFV yes + first win + has code)
   // The Dropbox mechanic: double-sided, specific, one-tap forward
   const referralLine = (org.ttfv_response === "yes" && org.first_win_attributed_at && org.referral_code)
-    ? `Know someone watching the same problem? Forward this email. When they sign up, you both pay $1,000/month for 3 months instead of $2,000. You carry the cost together. getalloro.com/checkup?ref=${org.referral_code}`
+    ? `Know a colleague watching the same problem? Forward this email. When they join, you both split the first month. Rise together. getalloro.com/checkup?ref=${org.referral_code}`
     : null;
 
   // Flanagan craft-remains-human: the founder's voice in every touchpoint

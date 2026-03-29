@@ -278,7 +278,37 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
     }
   }
 
-  // Even the fallback should feel alive, not generic
+  // Even the fallback should use real data, not generic copy.
+  // Pull from checkup_score or checkup_data on the org to give a personalized first impression.
+  const orgForFallback = org || await db("organizations").where({ id: orgId }).first();
+  const fallbackCheckup = orgForFallback?.checkup_data
+    ? (typeof orgForFallback.checkup_data === "string" ? tryParseJSON(orgForFallback.checkup_data) : orgForFallback.checkup_data)
+    : null;
+  const fallbackScore = orgForFallback?.checkup_score || fallbackCheckup?.score?.total || null;
+
+  // If we have a checkup score, lead with it
+  if (fallbackScore) {
+    const fallbackComp = fallbackCheckup?.topCompetitor;
+    if (fallbackComp?.name && fallbackComp?.reviewCount) {
+      return {
+        headline: `Your top competitor is ${fallbackComp.name} with ${fallbackComp.reviewCount} reviews.`,
+        body: `Connect your Google Business Profile so Alloro can track them weekly and alert you when the gap changes.`,
+        action_text: "Connect Google",
+        action_url: "/settings/integrations",
+        priority_level: 5,
+      };
+    }
+
+    return {
+      headline: `Your Business Clarity Score is ${fallbackScore}.`,
+      body: `Connect Google to start tracking your market in real time. Your Monday brief will show exactly where you stand and what to do next.`,
+      action_text: "Connect Google",
+      action_url: "/settings/integrations",
+      priority_level: 5,
+    };
+  }
+
+  // Absolute last resort: still reference the Monday brief, but no fake agent count
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const nextMonday = new Date();
   nextMonday.setDate(nextMonday.getDate() + ((8 - nextMonday.getDay()) % 7 || 7));
@@ -286,9 +316,9 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
 
   return {
     headline: "Your first Monday brief arrives " + mondayStr + " at 7am.",
-    body: "47 agents are scanning your market right now. When they find something specific about your competitive position, it will be in that email. One finding. One action. See you Monday.",
-    action_text: null,
-    action_url: null,
+    body: "Connect your Google Business Profile so we can scan your market and find your first insight. One finding. One action. See you Monday.",
+    action_text: "Connect Google",
+    action_url: "/settings/integrations",
     priority_level: 5,
   };
 }

@@ -1240,7 +1240,6 @@ export default function DoctorDashboard() {
           </div>
 
           {/* 1. Business Clarity Score ring */}
-          {isRankingError && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
           <motion.div variants={cardVariants}>
             <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { localVisibility: checkupCtx.data.score.localVisibility, onlinePresence: checkupCtx.data.score.onlinePresence, reviewHealth: checkupCtx.data.score.reviewHealth } : null} />
           </motion.div>
@@ -1261,10 +1260,12 @@ export default function DoctorDashboard() {
             </motion.div>
           )}
 
-          {/* 2. One sentence finding */}
-          <motion.div variants={cardVariants}>
-            <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
-          </motion.div>
+          {/* 2. One sentence finding — hide entirely when no competitor data */}
+          {effectiveRanking?.topCompetitor && (
+            <motion.div variants={cardVariants}>
+              <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
+            </motion.div>
+          )}
 
           {/* GBP Connect card — only show when a higher-priority OneActionCard rule is active.
               When OneActionCard itself shows the GBP rule, this would be a duplicate. */}
@@ -1298,14 +1299,12 @@ export default function DoctorDashboard() {
             </motion.div>
           )}
 
-          {/* 4. PatientPath breadcrumb -- quiet, lower */}
-          {isWebsiteError && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
-          {isOwnerOrManager && <motion.div variants={cardVariants}><WebsiteCard website={websiteData ?? null} /></motion.div>}
+          {/* 4. PatientPath breadcrumb -- quiet, lower. Hide card entirely on error instead of showing generic text. */}
+          {isOwnerOrManager && !isWebsiteError && <motion.div variants={cardVariants}><WebsiteCard website={websiteData ?? null} /></motion.div>}
 
           {/* ══ BELOW THE FOLD ══ */}
           {isOwnerOrManager && <motion.div variants={cardVariants}><ProoflineFindings findings={prooflineFindings} checkupCtx={checkupCtx} /></motion.div>}
           {canSendReviews && <motion.div variants={cardVariants}><ReviewRequestCard placeId={effectiveRanking?.placeId ?? null} practiceName={practiceName} /></motion.div>}
-          {isProfileUnavailable && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
           {isOwnerOrManager && <motion.div variants={cardVariants}><ReferralCard referralCode={referralCode} /></motion.div>}
         </>
       ) : (
@@ -1318,10 +1317,23 @@ export default function DoctorDashboard() {
         </>
       )}
 
-      {/* Exit emotion — Peak-End Rule (only on Overview mode) */}
+      {/* Exit emotion -- Peak-End Rule: the LAST thing seen determines memory.
+          Context-aware. Never generic. Make them leave feeling better than when they arrived. */}
       {mode === "standard" && !isLoading && (
         <div className="text-center py-6">
-          <p className="text-xs text-gray-400">You checked in. That puts you ahead.</p>
+          <p className="text-xs text-gray-400">
+            {winData && winData.daysAgo <= 3
+              ? "Something moved this week. Because you acted."
+              : streakData && streakData.count >= 8
+                ? `Week ${streakData.count}. You've been watching your market longer than most ever will.`
+                : streakData && streakData.count >= 3
+                  ? `${streakData.count} weeks of clarity. That compounds.`
+                  : effectiveRanking?.rankPosition === 1
+                    ? "You're #1. Every week you check in, you stay there."
+                    : effectiveRanking?.topCompetitor?.name
+                      ? `${effectiveRanking.topCompetitor.name} didn't check theirs today. You did.`
+                      : "You checked in. That puts you ahead of everyone who didn't."}
+          </p>
           <div className="h-px bg-gray-100 mt-6 mx-auto max-w-[12rem]" />
         </div>
       )}
