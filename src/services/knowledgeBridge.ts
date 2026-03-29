@@ -388,6 +388,116 @@ const SEED_HEURISTICS = [
       "trust",
     ]),
   },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Kyle Norton",
+    category: "growth",
+    core_principle:
+      "Before optimizing, measure conversion at every pipeline stage. Coach the bottleneck, not the outcome.",
+    agent_heuristic:
+      "When advising on growth, identify which pipeline stage has the lowest conversion rate first. Coach that stage specifically instead of pushing the final metric. A 2% improvement at the bottleneck beats a 10% push at the top.",
+    anti_pattern:
+      "Never optimize top-of-funnel when the bottleneck is mid-funnel. Pouring more leads into a broken pipeline wastes the owner's time and money.",
+    tags: JSON.stringify([
+      "conversion_optimizer",
+      "growth",
+      "pipeline",
+      "analytics",
+      "coaching",
+    ]),
+  },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Elena Verna",
+    category: "plg",
+    core_principle:
+      "Does the free product create expansion demand without a sales touch? If expansion requires a human, PLG is broken.",
+    agent_heuristic:
+      "Every free touchpoint (checkup, referral base report) must create enough value that the user self-escalates to paid. If the conversion path requires a sales call, the free experience is not valuable enough.",
+    anti_pattern:
+      "Never rely on outbound follow-up to convert free users. If the product does not sell itself, the product needs work, not more sales effort.",
+    tags: JSON.stringify([
+      "conversion_optimizer",
+      "plg",
+      "growth",
+      "checkup",
+      "onboarding",
+    ]),
+  },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Wes Bush",
+    category: "plg",
+    core_principle:
+      "Time to first value is the single most important PLG metric. Every step before the aha moment is friction to eliminate.",
+    agent_heuristic:
+      "Measure the time between signup and the moment the owner says 'I see it.' Every screen, form field, or loading state between those two moments is a candidate for elimination.",
+    anti_pattern:
+      "Never add steps between signup and first value. Every additional click reduces the probability of reaching the aha moment.",
+    tags: JSON.stringify([
+      "conversion_optimizer",
+      "plg",
+      "onboarding",
+      "ttfv",
+      "friction",
+    ]),
+  },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Leah Tharin",
+    category: "pricing",
+    core_principle:
+      "Map decision moments. Monetize only at positive-gap moments where the user got more than expected.",
+    agent_heuristic:
+      "Identify the moments in the user journey where surprise value is delivered (score reveal, first competitive insight, milestone celebration). These are the only appropriate moments to introduce pricing or upsell. Never monetize a neutral or negative moment.",
+    anti_pattern:
+      "Never present pricing when the user is confused, frustrated, or has not yet received value. Billing prompts at negative moments destroy trust permanently.",
+    tags: JSON.stringify([
+      "conversion_optimizer",
+      "pricing",
+      "billing",
+      "monetization",
+      "plg",
+    ]),
+  },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Tomasz Tunguz",
+    category: "analytics",
+    core_principle:
+      "Know your LTV/CAC, NRR, and payback period cold. If unmeasured, measuring is the priority.",
+    agent_heuristic:
+      "Before recommending any growth initiative, verify the core unit economics are measured. If LTV/CAC ratio, net revenue retention, or payback period are unknown, measuring them is the first priority. Scaling without unit economics is flying blind.",
+    anti_pattern:
+      "Never recommend scaling spend or effort without knowing the unit economics. Growth without measurement is gambling.",
+    tags: JSON.stringify([
+      "cfo_agent",
+      "analytics",
+      "retention",
+      "growth",
+      "metrics",
+      "revenue",
+    ]),
+  },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Hiten Shah",
+    category: "retention",
+    core_principle:
+      "Watch what users do, not what they say. One conversation with a churned user is worth a month of features.",
+    agent_heuristic:
+      "Prioritize behavioral data (dashboard visits, action completions, time between logins) over survey responses or feature requests. When a user churns, the exit interview is the most valuable data point in the system.",
+    anti_pattern:
+      "Never build features based on what users say they want without verifying it matches what they actually do. Stated preferences and revealed preferences diverge constantly.",
+    tags: JSON.stringify([
+      "learning_agent",
+      "cs_agent",
+      "retention",
+      "analytics",
+      "churn",
+      "behavioral",
+    ]),
+  },
 ];
 
 // ── Seed Function ───────────────────────────────────────────────────
@@ -444,6 +554,7 @@ const AGENT_TAG_MAP: Record<string, string[]> = {
   welcome_intelligence: ["welcome_intelligence", "all"],
   one_action_card: ["one_action_card", "all"],
   dashboard: ["dashboard", "all"],
+  dreamweaver: ["cs_agent", "hospitality", "delight", "all"],
 };
 
 /**
