@@ -154,7 +154,7 @@ export async function sendCheckupResultEmail(data: CheckupResultEmailData) {
   // Subject uses real competitor name per WO7 spec
   const subject = data.topCompetitorName
     ? `Your score vs ${data.topCompetitorName} in ${data.city}`
-    : `Your Business Health Score: ${data.compositeScore}`;
+    : `Your Business Clarity Score: ${data.compositeScore}`;
 
   const body = wrapInBaseTemplate(content, {
     preheader: `${data.practiceName} scored ${data.compositeScore}/100. Here's what we found.`,

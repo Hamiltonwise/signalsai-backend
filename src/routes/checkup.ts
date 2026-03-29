@@ -39,7 +39,7 @@ const emailLimiter = rateLimit({
  *
  * Runs a competitor analysis for the Free Referral Base Checkup.
  * Takes a practice's Place details, discovers competitors via Google Places,
- * and returns a Business Health Score with sub-scores.
+ * and returns a Business Clarity Score with sub-scores.
  *
  * Body: { name, city, state, category, types, rating, reviewCount, placeId }
  */
@@ -555,7 +555,7 @@ checkupRoutes.post("/email", emailLimiter, async (req, res) => {
           competitor_name: topCompetitorName || null,
           subject: topCompetitorName
             ? `Your score vs ${topCompetitorName} in ${city}`
-            : `Your Business Health Score: ${compositeScore}`,
+            : `Your Business Clarity Score: ${compositeScore}`,
         },
       }).catch(() => {}); // Fire-and-forget
 
@@ -1115,6 +1115,47 @@ checkupRoutes.get("/shared/:shareId", async (req, res) => {
     console.error("[Checkup] Shared get error:", error.message);
     return res.status(500).json({ success: false, error: "Failed to load share" });
   }
+});
+
+// ─── Viral Loop: Competitor Invitations ──────────────────────────────
+
+checkupRoutes.post("/invite-competitor", async (req, res) => {
+  try {
+    const { competitorPlaceId, competitorName, senderSessionId, senderName } = req.body;
+    if (!competitorPlaceId || !competitorName) {
+      return res.status(400).json({ success: false, error: "Missing competitor info" });
+    }
+
+    const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
+    let inviteToken = "";
+    for (let i = 0; i < 8; i++) inviteToken += chars[Math.floor(Math.random() * chars.length)];
+
+    await db("checkup_invitations").insert({
+      sender_session_id: senderSessionId || null,
+      sender_name: senderName || null,
+      competitor_place_id: competitorPlaceId,
+      competitor_name: competitorName,
+      invite_token: inviteToken,
+    });
+
+    const baseUrl = process.env.APP_URL || "https://getalloro.com";
+    const inviteUrl = `${baseUrl}/checkup?placeId=${encodeURIComponent(competitorPlaceId)}&name=${encodeURIComponent(competitorName)}&ref=competitor-invite&t=${inviteToken}`;
+
+    return res.json({ success: true, inviteUrl, inviteToken });
+  } catch (error: any) {
+    console.error("[Checkup] Invite error:", error.message);
+    return res.status(500).json({ success: false, error: "Failed to create invite" });
+  }
+});
+
+checkupRoutes.get("/invite/:token", async (req, res) => {
+  const { token } = req.params;
+  db("checkup_invitations").where({ invite_token: token }).update({ opened: true, opened_at: new Date() }).catch(() => {});
+  const invite = await db("checkup_invitations").where({ invite_token: token }).first();
+  if (invite) {
+    return res.redirect(`/checkup?placeId=${encodeURIComponent(invite.competitor_place_id)}&name=${encodeURIComponent(invite.competitor_name)}&ref=competitor-invite&t=${token}`);
+  }
+  return res.redirect("/checkup");
 });
 
 export default checkupRoutes;

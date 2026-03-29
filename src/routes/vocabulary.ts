@@ -22,7 +22,7 @@ const UNIVERSAL_FALLBACK: Record<string, string | number> = {
   referralTerm: "referral source",
   caseType: "new customer",
   primaryMetric: "customer acquisition",
-  healthScoreLabel: "Business Health Score",
+  healthScoreLabel: "Business Clarity Score",
   competitorTerm: "competitor",
   providerTerm: "owner",
   locationTerm: "business",
@@ -55,7 +55,7 @@ vocabularyRoutes.get(
 
       // Get org to determine vertical
       const org = await db("organizations").where({ id: orgId }).first();
-      const vertical = org?.organization_type === "health" ? "endodontics" : null;
+      const vertical = org?.vertical || org?.organization_type || null;
 
       // Check for org-level override first (it stores the vertical too)
       const orgConfig = await db("vocabulary_configs").where({ org_id: orgId }).first();
@@ -131,7 +131,7 @@ vocabularyRoutes.patch(
       } else {
         await db("vocabulary_configs").insert({
           org_id: orgId,
-          vertical: vertical || "endodontics",
+          vertical: vertical || "general",
           overrides: JSON.stringify(overrides || {}),
         });
       }

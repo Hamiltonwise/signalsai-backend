@@ -31,7 +31,7 @@ const VALID_DOMAINS = ["product", "gtm", "operations", "personal", "legal_financ
 const EXTRACTION_SYSTEM = `You are an intelligence analyst for Alloro, a dental/medical practice intelligence company. You extract actionable intelligence from source material.
 
 Alloro's context:
-- Sells business intelligence to dental specialists (endodontists, orthodontists, etc.)
+- Sells business intelligence to local service businesses
 - $2,000/month DFY product: website + competitive intelligence + referral tracking
 - Currently pre-revenue, approaching AAE conference (April 14, 2026)
 - Founder: Corey (vision/sales), Jo (operations), Dave (engineering)

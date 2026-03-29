@@ -1,9 +1,9 @@
 /**
- * CS Agent — Claude-powered account-aware chat for doctors.
+ * CS Agent — Claude-powered account-aware chat for business owners.
  *
  * POST /api/cs-agent/chat
- * Takes the doctor's message + account context, returns Claude's response.
- * System prompt injected with full practice data.
+ * Takes the user's message + account context, returns Claude's response.
+ * System prompt injected with full business data.
  */
 
 import express from "express";
@@ -136,7 +136,7 @@ async function buildSystemPrompt(orgId: number, locationId?: number): Promise<st
     }
   }
 
-  const specialty = ranking?.specialty || "practice";
+  const specialty = ranking?.specialty || "business";
   const city = ranking?.search_city || ranking?.location || "";
 
   return `You are the Alloro intelligence assistant for ${practiceName}.
@@ -160,7 +160,7 @@ Rules:
 - If asked about something Alloro doesn't track yet: explain what data upload or connection would unlock it, and link to /settings/integrations.
 - If asked about score: explain each sub-score (Local Visibility /40, Online Presence /40, Review Health /20) and what moves each one.
 - If asked about reviews: tell them exactly how many more they need to pass the next competitor and recommend sending review requests.
-- Keep answers concise — 2-3 paragraphs max. Doctors are busy.
+- Keep answers concise — 2-3 paragraphs max. Business owners are busy.
 - You are not a generic AI. You are their account intelligence. Every answer should reference their specific data.
 - Do not hallucinate data. If a number isn't available, say "I don't have that data yet" and explain what would unlock it.`;
 }

@@ -147,7 +147,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
   // Referral line (gated: TTFV yes + first win + has code)
   const referralLine = (org.ttfv_response === "yes" && org.first_win_attributed_at && org.referral_code)
-    ? `Know another doctor flying blind? Share this. You both get one month free. getalloro.com/checkup?ref=${org.referral_code}`
+    ? `Know another business owner flying blind? Share this. You both get one month free. getalloro.com/checkup?ref=${org.referral_code}`
     : null;
 
   // Send via email service
