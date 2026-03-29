@@ -93,7 +93,7 @@ function narrativeGreeting(streak: StreakInfo, win: WinInfo, hasRanking: boolean
   if (win && win.daysAgo <= 3) return "It worked.";
   if (streak && streak.count >= 12) return `Week ${streak.count}.`;
   if (streak && streak.count >= 4) return `Week ${streak.count} of watching your market.`;
-  if (!hasRanking) return "Your market is being watched for the first time.";
+  if (!hasRanking) return "We already found something.";
   return `${getGreeting()}.`;
 }
 
@@ -101,7 +101,7 @@ function narrativeSubhead(streak: StreakInfo, win: WinInfo, practiceName: string
   if (win && win.daysAgo <= 3 && win.detail) return win.detail;
   if (streak && streak.count >= 12) return `${streak.count} weeks of ${streak.label}. Here's what moved.`;
   if (streak && streak.count >= 4) return `Here's what changed for ${practiceName}.`;
-  return `What Alloro found this week for ${practiceName}.`;
+  return `What Alloro found for ${practiceName}.`;
 }
 
 // ─── Score Helpers ──────────────────────────────────────────────────

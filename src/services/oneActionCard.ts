@@ -225,23 +225,68 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
     ? (typeof org.checkup_data === "string" ? tryParseJSON(org.checkup_data) : org.checkup_data)
     : null;
 
-  if (checkup?.market?.rank && checkup?.topCompetitor?.name) {
-    const gap = (checkup.topCompetitor.reviewCount || 0) - (checkup.reviewCount || 0);
+  if (checkup?.score && checkup?.market) {
+    const scores = checkup.score;
+    const comp = checkup.topCompetitor;
     const city = checkup.market.city || "your market";
-    return {
-      headline: `You're #${checkup.market.rank} in ${city}. ${checkup.topCompetitor.name} is #1.`,
-      body: gap > 0
-        ? `They have ${gap} more reviews. Every review you collect this week closes that gap. Ask 3 customers before Friday.`
-        : `Your review count is competitive. Hold your position by asking 2 customers this week.`,
-      action_text: "Request a review",
-      action_url: "/dashboard/reviews",
-      priority_level: 5,
-    };
+
+    // Find the weakest sub-score and give a specific action the checkup didn't show
+    const subScores = [
+      { key: "localVisibility", score: scores.localVisibility || 0, max: 40, label: "local visibility" },
+      { key: "onlinePresence", score: scores.onlinePresence || 0, max: 40, label: "online presence" },
+      { key: "reviewHealth", score: scores.reviewHealth || 0, max: 20, label: "review health" },
+    ];
+    subScores.sort((a, b) => (a.score / a.max) - (b.score / b.max));
+    const weakest = subScores[0];
+
+    // Velocity projection (new intelligence the checkup didn't show)
+    const gap = comp ? (comp.reviewCount || 0) - (checkup.reviewCount || 0) : 0;
+    const avgMarketReviews = checkup.market.avgReviews || 0;
+    const estimatedMonthlyGrowth = avgMarketReviews > 0 ? Math.round(avgMarketReviews / 24) : 2;
+
+    if (weakest.key === "localVisibility" && comp?.name) {
+      return {
+        headline: `${comp.name} is outranking you because of one thing you can fix today.`,
+        body: `Your local visibility score is ${weakest.score}/${weakest.max}. The fastest fix: add your complete services list to your Google Business Profile. It takes 10 minutes and directly impacts how you appear in "${checkup.market.city} specialist" searches.`,
+        action_text: "Fix this now",
+        action_url: "/settings/integrations",
+        priority_level: 4,
+      };
+    }
+
+    if (weakest.key === "reviewHealth" && gap > 0 && comp?.name) {
+      const weeksToClose = Math.ceil(gap / Math.max(1, estimatedMonthlyGrowth / 4));
+      return {
+        headline: `${gap} reviews between you and ${comp.name}. Closeable in ${Math.min(weeksToClose, 52)} weeks.`,
+        body: `Your competitors in ${city} add roughly ${estimatedMonthlyGrowth} reviews per month. Match that pace and the gap starts closing this quarter. Text the review link to your last 3 customers today.`,
+        action_text: "Send review requests",
+        action_url: "/dashboard/reviews",
+        priority_level: 4,
+      };
+    }
+
+    if (comp?.name) {
+      return {
+        headline: `Your online presence is the gap between you and ${comp.name}.`,
+        body: comp.rating && checkup.market.avgRating
+          ? `The ${city} market average rating is ${checkup.market.avgRating.toFixed(1)}. ${comp.name} has ${comp.rating}. Every 0.1-star improvement changes how Google ranks you. Connect your profile to start tracking automatically.`
+          : `Connect your Google Business Profile so Alloro can monitor your visibility against ${comp.name} every week.`,
+        action_text: "Connect Google",
+        action_url: "/settings/integrations",
+        priority_level: 4,
+      };
+    }
   }
 
+  // Even the fallback should feel alive, not generic
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const nextMonday = new Date();
+  nextMonday.setDate(nextMonday.getDate() + ((8 - nextMonday.getDay()) % 7 || 7));
+  const mondayStr = `${dayNames[nextMonday.getDay()]}, ${nextMonday.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
+
   return {
-    headline: "Alloro is watching your market.",
-    body: "Your first ranking intelligence report arrives after the next Sunday scan. Check back Monday.",
+    headline: "Your first Monday brief arrives " + mondayStr + " at 7am.",
+    body: "47 agents are scanning your market right now. When they find something specific about your competitive position, it will be in that email. One finding. One action. See you Monday.",
     action_text: null,
     action_url: null,
     priority_level: 5,
