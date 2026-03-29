@@ -36,6 +36,18 @@ import { processMarketSignalScout } from "./processors/marketSignalScout.process
 import { processTechnologyHorizon } from "./processors/technologyHorizon.processor";
 import { processProgrammaticSEO } from "./processors/programmaticSEO.processor";
 import { processWeeklyDigest } from "./processors/weeklyDigest.processor";
+import { processGhostWriter } from "./processors/ghostWriter.processor";
+import { processFoundationOperations } from "./processors/foundationOperations.processor";
+import { processVerticalReadiness } from "./processors/verticalReadiness.processor";
+import { processHumanDeploymentScout } from "./processors/humanDeploymentScout.processor";
+import { processCMOAgent } from "./processors/cmoAgent.processor";
+import { processTrendScout } from "./processors/trendScout.processor";
+import { processPodcastScout } from "./processors/podcastScout.processor";
+import { processCFOAgent } from "./processors/cfoAgent.processor";
+import { processCLOAgent } from "./processors/cloAgent.processor";
+import { processCPAPersonal } from "./processors/cpaPersonal.processor";
+import { processFinancialAdvisor } from "./processors/financialAdvisor.processor";
+import { processRealEstateAgent } from "./processors/realEstateAgent.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -485,8 +497,164 @@ const weeklyDigestWorker = new Worker(
   }
 );
 
+// Ghost Writer worker (daily 8 AM PT)
+const ghostWriterWorker = new Worker(
+  "minds-ghost-writer",
+  async (job) => {
+    await processGhostWriter(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Foundation Operations worker (weekly Monday 9 AM PT + monthly 1st of month)
+const foundationOpsWorker = new Worker(
+  "minds-foundation-ops",
+  async (job) => {
+    await processFoundationOperations(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Vertical Readiness Scout worker (monthly 1st Sunday 6 PM PT)
+const verticalReadinessWorker = new Worker(
+  "minds-vertical-readiness",
+  async (job) => {
+    await processVerticalReadiness(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Human Deployment Scout worker (weekly Sunday 7 PM PT)
+const humanDeploymentScoutWorker = new Worker(
+  "minds-human-deployment-scout",
+  async (job) => {
+    await processHumanDeploymentScout(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// CMO Agent worker (weekly Monday 6 AM PT)
+const cmoAgentWorker = new Worker(
+  "minds-cmo-agent",
+  async (job) => {
+    await processCMOAgent(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Trend Scout worker (weekly Sunday 6 PM PT)
+const trendScoutWorker = new Worker(
+  "minds-trend-scout",
+  async (job) => {
+    await processTrendScout(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Podcast Scout worker (weekly Monday 5 AM PT)
+const podcastScoutWorker = new Worker(
+  "minds-podcast-scout",
+  async (job) => {
+    await processPodcastScout(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// CFO Agent worker (monthly 1st Monday 8 AM PT)
+const cfoAgentWorker = new Worker(
+  "minds-cfo-agent",
+  async (job) => {
+    await processCFOAgent(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// CLO Agent worker (weekly Tuesday 6 AM PT)
+const cloAgentWorker = new Worker(
+  "minds-clo-agent",
+  async (job) => {
+    await processCLOAgent(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// CPA Personal worker (monthly 1st Monday 7 AM PT)
+const cpaPersonalWorker = new Worker(
+  "minds-cpa-personal",
+  async (job) => {
+    await processCPAPersonal(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Financial Advisor worker (monthly 1st Monday 7:30 AM PT + weekly price checks)
+const financialAdvisorWorker = new Worker(
+  "minds-financial-advisor",
+  async (job) => {
+    await processFinancialAdvisor(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Real Estate Agent worker (monthly 1st Monday 8:30 AM PT)
+const realEstateAgentWorker = new Worker(
+  "minds-real-estate-agent",
+  async (job) => {
+    await processRealEstateAgent(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -532,6 +700,18 @@ async function shutdown(): Promise<void> {
   await technologyHorizonWorker.close();
   await programmaticSEOWorker.close();
   await weeklyDigestWorker.close();
+  await ghostWriterWorker.close();
+  await foundationOpsWorker.close();
+  await verticalReadinessWorker.close();
+  await humanDeploymentScoutWorker.close();
+  await cmoAgentWorker.close();
+  await trendScoutWorker.close();
+  await podcastScoutWorker.close();
+  await cfoAgentWorker.close();
+  await cloAgentWorker.close();
+  await cpaPersonalWorker.close();
+  await financialAdvisorWorker.close();
+  await realEstateAgentWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -985,6 +1165,280 @@ async function setupWeeklyDigestSchedule(): Promise<void> {
   }
 }
 
+// Set up Ghost Writer schedule (daily 8 AM PT)
+async function setupGhostWriterSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("ghost-writer");
+    await queue.add(
+      "daily-ghost-writer",
+      {},
+      {
+        repeat: {
+          pattern: "0 8 * * *", // 8 AM America/Los_Angeles every day
+          tz: "America/Los_Angeles",
+        },
+        jobId: "daily-ghost-writer",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily Ghost Writer scheduled (8 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Ghost Writer schedule:", err);
+  }
+}
+
+// Set up Foundation Operations schedule (weekly Monday 9 AM PT + monthly 1st of month)
+async function setupFoundationOpsSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("foundation-ops");
+    await queue.add(
+      "weekly-foundation-ops",
+      {},
+      {
+        repeat: {
+          pattern: "0 9 * * 1", // 9 AM America/Los_Angeles every Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-foundation-ops",
+      }
+    );
+    await queue.add(
+      "monthly-foundation-ops",
+      {},
+      {
+        repeat: {
+          pattern: "0 9 1 * *", // 9 AM America/Los_Angeles, 1st of every month
+          tz: "America/Los_Angeles",
+        },
+        jobId: "monthly-foundation-ops",
+      }
+    );
+    console.log("[MINDS-WORKER] Foundation Operations scheduled (weekly Monday 9 AM PT + monthly 1st)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Foundation Operations schedule:", err);
+  }
+}
+
+// Set up Vertical Readiness Scout schedule (monthly 1st Sunday 6 PM PT)
+async function setupVerticalReadinessSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("vertical-readiness");
+    await queue.add(
+      "monthly-vertical-readiness",
+      {},
+      {
+        repeat: {
+          pattern: "0 18 1-7 * 0", // 6 PM America/Los_Angeles, 1st-7th of month, only Sunday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "monthly-vertical-readiness",
+      }
+    );
+    console.log("[MINDS-WORKER] Vertical Readiness Scout scheduled (1st Sunday 6 PM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Vertical Readiness schedule:", err);
+  }
+}
+
+// Set up Human Deployment Scout schedule (weekly Sunday 7 PM PT)
+async function setupHumanDeploymentScoutSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("human-deployment-scout");
+    await queue.add(
+      "weekly-human-deployment-scout",
+      {},
+      {
+        repeat: {
+          pattern: "0 19 * * 0", // 7 PM America/Los_Angeles every Sunday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-human-deployment-scout",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly Human Deployment Scout scheduled (Sunday 7 PM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Human Deployment Scout schedule:", err);
+  }
+}
+
+// Set up CMO Agent schedule (weekly Monday 6 AM PT)
+async function setupCMOAgentSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("cmo-agent");
+    await queue.add(
+      "weekly-cmo-agent",
+      {},
+      {
+        repeat: {
+          pattern: "0 6 * * 1", // 6 AM America/Los_Angeles every Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-cmo-agent",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly CMO Agent scheduled (Monday 6 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up CMO Agent schedule:", err);
+  }
+}
+
+// Set up Trend Scout schedule (weekly Sunday 6 PM PT)
+async function setupTrendScoutSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("trend-scout");
+    await queue.add(
+      "weekly-trend-scout",
+      {},
+      {
+        repeat: {
+          pattern: "0 18 * * 0", // 6 PM America/Los_Angeles every Sunday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-trend-scout",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly Trend Scout scheduled (Sunday 6 PM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Trend Scout schedule:", err);
+  }
+}
+
+// Set up Podcast Scout schedule (weekly Monday 5 AM PT)
+async function setupPodcastScoutSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("podcast-scout");
+    await queue.add(
+      "weekly-podcast-scout",
+      {},
+      {
+        repeat: {
+          pattern: "0 5 * * 1", // 5 AM America/Los_Angeles every Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-podcast-scout",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly Podcast Scout scheduled (Monday 5 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Podcast Scout schedule:", err);
+  }
+}
+
+// Set up CFO Agent schedule (monthly 1st Monday 8 AM PT)
+async function setupCFOAgentSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("cfo-agent");
+    await queue.add(
+      "monthly-cfo-agent",
+      {},
+      {
+        repeat: {
+          pattern: "0 8 1-7 * 1", // 8 AM PT, 1st-7th of month, only Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "monthly-cfo-agent",
+      }
+    );
+    console.log("[MINDS-WORKER] Monthly CFO Agent scheduled (1st Monday 8 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up CFO Agent schedule:", err);
+  }
+}
+
+// Set up CLO Agent schedule (weekly Tuesday 6 AM PT)
+async function setupCLOAgentSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("clo-agent");
+    await queue.add(
+      "weekly-clo-agent",
+      {},
+      {
+        repeat: {
+          pattern: "0 6 * * 2", // 6 AM America/Los_Angeles every Tuesday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-clo-agent",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly CLO Agent scheduled (Tuesday 6 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up CLO Agent schedule:", err);
+  }
+}
+
+// Set up CPA Personal schedule (monthly 1st Monday 7 AM PT)
+async function setupCPAPersonalSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("cpa-personal");
+    await queue.add(
+      "monthly-cpa-personal",
+      {},
+      {
+        repeat: {
+          pattern: "0 7 1-7 * 1", // 7 AM PT, 1st-7th of month, only Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "monthly-cpa-personal",
+      }
+    );
+    console.log("[MINDS-WORKER] Monthly CPA Personal scheduled (1st Monday 7 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up CPA Personal schedule:", err);
+  }
+}
+
+// Set up Financial Advisor schedule (monthly 1st Monday 7:30 AM PT + weekly price checks)
+async function setupFinancialAdvisorSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("financial-advisor");
+    await queue.add(
+      "monthly-financial-advisor",
+      {},
+      {
+        repeat: {
+          pattern: "30 7 1-7 * 1", // 7:30 AM PT, 1st-7th of month, only Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "monthly-financial-advisor",
+      }
+    );
+    await queue.add(
+      "weekly-price-check",
+      {},
+      {
+        repeat: {
+          pattern: "0 7 * * 1", // 7 AM PT every Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-price-check",
+      }
+    );
+    console.log("[MINDS-WORKER] Financial Advisor scheduled (monthly 1st Monday 7:30 AM PT + weekly price checks)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Financial Advisor schedule:", err);
+  }
+}
+
+// Set up Real Estate Agent schedule (monthly 1st Monday 8:30 AM PT)
+async function setupRealEstateAgentSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("real-estate-agent");
+    await queue.add(
+      "monthly-real-estate-agent",
+      {},
+      {
+        repeat: {
+          pattern: "30 8 1-7 * 1", // 8:30 AM PT, 1st-7th of month, only Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "monthly-real-estate-agent",
+      }
+    );
+    console.log("[MINDS-WORKER] Monthly Real Estate Agent scheduled (1st Monday 8:30 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Real Estate Agent schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
@@ -1007,5 +1461,17 @@ setupMarketSignalScoutSchedule();
 setupTechnologyHorizonSchedule();
 setupProgrammaticSEOSchedule();
 setupWeeklyDigestSchedule();
+setupGhostWriterSchedule();
+setupFoundationOpsSchedule();
+setupVerticalReadinessSchedule();
+setupHumanDeploymentScoutSchedule();
+setupCMOAgentSchedule();
+setupTrendScoutSchedule();
+setupPodcastScoutSchedule();
+setupCFOAgentSchedule();
+setupCLOAgentSchedule();
+setupCPAPersonalSchedule();
+setupFinancialAdvisorSchedule();
+setupRealEstateAgentSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
