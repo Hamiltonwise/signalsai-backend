@@ -50,7 +50,19 @@ export async function up(knex: Knex): Promise<void> {
       PRIMARY KEY (user_id, organization_id)
     );
 
-    -- 5. google_accounts
+    -- 5. invitations
+    CREATE TABLE IF NOT EXISTS invitations (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(255) NOT NULL,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      role VARCHAR(255) NOT NULL,
+      token VARCHAR(255) NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      status VARCHAR(50) DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS google_accounts (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id),
@@ -176,6 +188,7 @@ export async function down(knex: Knex): Promise<void> {
     DROP TABLE IF EXISTS agent_results;
     DROP TABLE IF EXISTS practice_rankings;
     DROP TABLE IF EXISTS google_accounts;
+    DROP TABLE IF EXISTS invitations;
     DROP TABLE IF EXISTS organization_users;
     DROP TABLE IF EXISTS organizations;
     DROP TABLE IF EXISTS otp_codes;
