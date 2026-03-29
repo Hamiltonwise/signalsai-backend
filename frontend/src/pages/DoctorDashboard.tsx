@@ -40,6 +40,7 @@ import { apiGet, apiPatch } from "@/api/index";
 import agents from "@/api/agents";
 import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
 import OneActionCard from "@/components/dashboard/OneActionCard";
+import CardCapture from "@/components/dashboard/CardCapture";
 import AlloroActivityCard from "@/components/dashboard/AlloroActivityCard";
 // ReferralCard defined locally (line ~569) with referralCode prop
 import CSAgentChat from "@/components/dashboard/CSAgentChat";
@@ -1173,6 +1174,14 @@ export default function DoctorDashboard() {
             topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
           />
         </motion.div>
+      )}
+
+      {/* Card Capture — soft prompt during trial days 3-7 */}
+      {dashCtx?.trial && (
+        <CardCapture
+          trialDaysRemaining={dashCtx.trial.days_remaining}
+          isSubscribed={dashCtx.trial.is_subscribed}
+        />
       )}
 
       {/* Onboarding Checklist — below One Action Card */}
