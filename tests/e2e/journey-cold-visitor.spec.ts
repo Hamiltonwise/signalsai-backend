@@ -49,7 +49,7 @@ test.describe("Cold Visitor: Checkup to Dashboard", () => {
 
     // Step 7: Wait for post-signup transition
     // Flow: results -> building screen (3.5s) -> owner-profile or dashboard
-    await page.waitForURL("**/checkup/building|**/owner-profile|**/dashboard|**/thank-you|**/new-account-onboarding", { timeout: 20_000 });
+    await page.waitForURL(/\/(checkup\/building|owner-profile|dashboard|thank-you|new-account-onboarding)/, { timeout: 20_000 });
     await page.screenshot({ path: "test-results/cold-07-transition.png" });
 
     // Step 8: Wait for final destination (building auto-redirects after 3.5s)
