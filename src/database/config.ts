@@ -5,6 +5,22 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 const config: { [key: string]: Knex.Config } = {
+  test: {
+    client: "pg",
+    connection: process.env.DATABASE_URL || {
+      host: process.env.DB_HOST || "localhost",
+      port: parseInt(process.env.DB_PORT || "5432"),
+      user: process.env.DB_USER || "alloro",
+      password: process.env.DB_PASSWORD || "alloro_test",
+      database: process.env.DB_NAME || "alloro_test",
+    },
+    migrations: {
+      directory: "./src/database/migrations",
+      extension: "ts",
+    },
+    pool: { min: 1, max: 5 },
+    useNullAsDefault: true,
+  },
   production: {
     client: "pg",
     connection: {
