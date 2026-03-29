@@ -17,6 +17,7 @@ import { analyzeReviewSentiment } from "../services/reviewSentiment";
 import { db } from "../database/connection";
 import { getMindsQueue } from "../workers/queues";
 import { detectPreset } from "../services/vocabularyAutoMapper";
+import { attributeCheckupToOrg } from "../services/firstPatientAttribution";
 
 const checkupRoutes = express.Router();
 
@@ -653,6 +654,16 @@ checkupRoutes.post("/track", async (req, res) => {
       session_id: sessionId || null,
       properties: properties || {},
     });
+
+    // First Patient Attribution: if a checkup event carries a ref_code,
+    // attribute it to the referring org (fire-and-forget)
+    const refCode = properties?.ref_code as string | undefined;
+    if (refCode) {
+      attributeCheckupToOrg(refCode, sessionId, properties).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[Checkup] Attribution error (non-blocking):", message);
+      });
+    }
 
     return res.json({ success: true });
   } catch (error: any) {
