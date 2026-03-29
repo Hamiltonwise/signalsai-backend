@@ -462,6 +462,24 @@ export default function ResultsScreen() {
   const isValidEmail = (v: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
 
+  // Common email domain typos that cause delivery failure
+  const EMAIL_TYPO_MAP: Record<string, string> = {
+    "gmial.com": "gmail.com", "gamil.com": "gmail.com", "gmai.com": "gmail.com",
+    "gnail.com": "gmail.com", "gmaill.com": "gmail.com", "gmail.co": "gmail.com",
+    "yaho.com": "yahoo.com", "yahooo.com": "yahoo.com", "yhaoo.com": "yahoo.com",
+    "hotmal.com": "hotmail.com", "hotmial.com": "hotmail.com",
+    "outloo.com": "outlook.com", "outlok.com": "outlook.com",
+    "icoud.com": "icloud.com", "iclould.com": "icloud.com",
+  };
+  const suggestEmailFix = (v: string): string | null => {
+    const domain = v.trim().split("@")[1]?.toLowerCase();
+    if (domain && EMAIL_TYPO_MAP[domain]) {
+      return v.trim().replace(/@.*$/, `@${EMAIL_TYPO_MAP[domain]}`);
+    }
+    return null;
+  };
+  const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
+
   // Track: checkup.gate_viewed (fires once when results render)
   useEffect(() => {
     if (!state?.place || !state?.score) return;
@@ -545,7 +563,7 @@ export default function ResultsScreen() {
           setEmailSending(false);
           return;
         }
-        setEmailError(createData.error || "Account creation failed.");
+        setEmailError(createData.error || "We couldn't create your account. Check your email and password, then try again.");
         setEmailSending(false);
         return;
       }
@@ -626,7 +644,7 @@ export default function ResultsScreen() {
         : `See why ${topCompetitor.name} ranks above you in ${cityLabel}.`
       : market && market.totalCompetitors > 0
         ? `${market.totalCompetitors} competitors in ${market.city} are fighting for your referrals. See where you stand.`
-        : `Unlock your competitive breakdown for ${cityLabel}.`;
+        : `See what's keeping you from position 1 in ${cityLabel}.`;
 
   return (
     <div className="w-full max-w-md mt-2 sm:mt-6 space-y-7 pb-6">
@@ -835,7 +853,7 @@ export default function ResultsScreen() {
               <Lock className="w-4 h-4 text-[#D56753]" />
             </div>
             <span className="text-base font-bold text-[#212D40]">
-              {topCompetitor ? `Your ${topCompetitor.name} Comparison` : "Unlock Full Report"}
+              {topCompetitor ? `Your ${topCompetitor.name} Comparison` : `Your ${cityLabel} Competitive Report`}
             </span>
           </div>
           <p className="text-sm text-slate-600 mb-5 leading-relaxed">{blurGateCta}</p>
@@ -845,8 +863,10 @@ export default function ResultsScreen() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
-                placeholder="Your email"
+                onChange={(e) => { setEmail(e.target.value); setEmailError(""); setEmailSuggestion(suggestEmailFix(e.target.value)); }}
+                onBlur={() => setEmailSuggestion(suggestEmailFix(email))}
+                placeholder="Your work email"
+                autoComplete="email"
                 required
                 className={`w-full h-10 sm:h-12 px-3 sm:px-4 rounded-xl bg-slate-50 border text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
                   emailError
@@ -854,6 +874,15 @@ export default function ResultsScreen() {
                     : "border-slate-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
                 }`}
               />
+              {emailSuggestion && (
+                <button
+                  type="button"
+                  onClick={() => { setEmail(emailSuggestion); setEmailSuggestion(null); }}
+                  className="text-xs text-[#D56753] mt-1 hover:underline"
+                >
+                  Did you mean {emailSuggestion}?
+                </button>
+              )}
               {emailError && (
                 <p className="text-xs text-red-500 mt-1">
                   {emailError.includes("already") ? (

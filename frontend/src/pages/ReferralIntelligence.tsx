@@ -284,6 +284,31 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
       <p className="text-xs text-gray-400 text-center mt-4">
         Works with most scheduling and management systems, and any spreadsheet format.
       </p>
+
+      {/* PMS export guides -- the #1 activation blocker per Sentiment Lattice */}
+      <details className="mt-6">
+        <summary className="text-xs font-semibold text-[#D56753] cursor-pointer hover:underline">
+          How to export from your system
+        </summary>
+        <div className="mt-3 space-y-3 text-xs text-gray-500">
+          <div>
+            <p className="font-semibold text-[#212D40]">Dentrix</p>
+            <p>Reports &gt; Referral Analysis &gt; Date Range: Last 12 Months &gt; Export to CSV. The file will have patient name, referring doctor, and date columns.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-[#212D40]">Eaglesoft</p>
+            <p>Reports &gt; Practice Management &gt; Referral Source Report &gt; Select date range &gt; Export. Save as CSV or Excel.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-[#212D40]">Open Dental</p>
+            <p>Reports &gt; Standard &gt; Referral Analysis &gt; Set date range &gt; Click "Export." The file includes referral source, patient count, and dates.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-[#212D40]">Any other system</p>
+            <p>Export any report that includes referral source and date. Four columns are all Alloro needs: patient ID, referral source, date, and procedure type. Even two columns (source + date) work.</p>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }

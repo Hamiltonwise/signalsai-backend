@@ -49,7 +49,7 @@ const PRACTICE = {
 const REFERRING_GPS = [
   {
     name: "Dr. Sarah Chen",
-    practice: "Chen Family Dentistry",
+    practice: "Chen Family Practice",
     referrals: 18,
     trend: "up" as const,
     trendLabel: "+3 vs last quarter",

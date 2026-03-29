@@ -170,11 +170,12 @@ function resolveAction(props: OneActionCardProps): OneAction {
 
   // Rule 5: GBP NOT CONNECTED
   if (!props.gbpConnected) {
+    const compName = props.topCompetitorName || "your nearest competitor";
     return {
       severity: "default",
-      title: "Connect your Google Business Profile to unlock your full intelligence picture.",
-      detail: "Without GBP connected, Alloro can only see public data. Connecting unlocks review management, post scheduling, and deeper ranking insights.",
-      cta: "Connect now",
+      title: `Connect Google to see how ${compName} compares to you in real time.`,
+      detail: "Live ranking data, review alerts, and weekly position tracking activate the moment you connect. Takes 30 seconds.",
+      cta: "Connect Google",
       ctaLink: "/settings/integrations",
       icon: Link2,
       rule: "gbp_not_connected",
@@ -186,9 +187,9 @@ function resolveAction(props: OneActionCardProps): OneAction {
   return {
     severity: "default",
     title: `Ask your next 3 customers for a Google review.`,
-    detail: `Each review closes the gap with ${compName} by one position. Text the link right after their visit, they remember you best in the first hour.`,
+    detail: `Each review closes the gap with ${compName}. Text the link right after their visit, they remember you best in the first hour.`,
     cta: "Send a review request",
-    ctaLink: "/dashboard#review-request",
+    ctaLink: "/dashboard/reviews",
     icon: Star,
     rule: "healthy_state",
   };

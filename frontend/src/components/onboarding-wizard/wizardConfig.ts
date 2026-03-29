@@ -189,7 +189,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     targetSelector: null,
     title: "Welcome to Your To-Do List",
     description:
-      "Your practice roadmap. Complete these tasks to capture revenue opportunities and fix issues before they become problems.",
+      "Your growth roadmap. Complete these tasks to capture revenue opportunities and fix issues before they become problems.",
     isPageOverview: true,
   },
   {
@@ -198,7 +198,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     targetSelector: "[data-wizard-target='tasks-team']",
     title: "Team Tasks",
     description:
-      "Action items for your practice staff. Each task is prioritized based on potential revenue impact.",
+      "Action items for your team. Each task is prioritized based on potential revenue impact.",
     scrollToElement: true,
   },
   {

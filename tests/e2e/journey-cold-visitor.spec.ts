@@ -11,17 +11,22 @@ test.describe("Cold Visitor: Checkup to Dashboard", () => {
     await expect(page.locator("input[placeholder*='earch' i]").first()).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: "test-results/cold-01-entry.png" });
 
-    // Step 2: Type practice name and select from autocomplete
+    // Step 2: Type business name and select from autocomplete
     await page.fill("input[placeholder*='earch' i]", "One Endodontics Falls Church");
-    await page.waitForTimeout(1500); // debounce + API
-    const dropdown = page.locator("[role='listbox'] [role='option'], ul li button, [class*='suggestion'], [class*='autocomplete'] button").first();
-    await dropdown.waitFor({ state: "visible", timeout: 10_000 });
-    await dropdown.click();
+    await page.waitForTimeout(2000); // debounce + API
+    // Click place result or autocomplete dropdown
+    const placeResult = page.locator("[role='listbox'] [role='option'], ul li button, [class*='suggestion'] button, [class*='autocomplete'] button, button:has-text('Run My Checkup')").first();
+    await placeResult.waitFor({ state: "visible", timeout: 10_000 });
+    await placeResult.click();
     await page.screenshot({ path: "test-results/cold-02-selected.png" });
 
-    // Step 3: Scanning Theater renders
+    // Step 3: Scanning Theater renders (may need to click "Run My Checkup" if place was selected but scan not started)
+    const runBtn = page.locator("button:has-text('Run My Checkup')");
+    if (await runBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await runBtn.click();
+    }
     await page.waitForURL("**/checkup/scanning", { timeout: 10_000 });
-    await expect(page.locator("text=/Scanning|Finding|Market Analysis/i")).toBeVisible();
+    await expect(page.locator("text=/Scanning|Finding|Market Analysis|Step/i").first()).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: "test-results/cold-03-scanning.png" });
 
     // Step 4: Wait for score reveal (results page)

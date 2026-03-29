@@ -601,7 +601,7 @@ export default function ScanningTheater() {
           analysisRef.current = fallback;
           setApiDone(true);
         } else {
-          setError("Something went wrong. Please try again.");
+          setError("We couldn't reach our analysis servers. Check your connection and try again.");
         }
       }
     }

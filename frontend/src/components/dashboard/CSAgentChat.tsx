@@ -90,7 +90,7 @@ export default function CSAgentChat({
   const starters = [
     score != null
       ? `Why is my score ${score}?`
-      : "What data do you have on my practice?",
+      : "What data do you have on my business?",
     ...(hasReferralData ? ["Who are my top referring GPs?"] : []),
     "What should I do this week?",
   ];

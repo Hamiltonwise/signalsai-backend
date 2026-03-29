@@ -234,7 +234,7 @@ export default function EntryScreen() {
 
         {/* Search error */}
         {searchError && !isSearching && (
-          <p className="text-xs text-[#D56753] mt-2 ml-1">Search unavailable. Try again.</p>
+          <p className="text-xs text-[#D56753] mt-2 ml-1">We couldn't search right now. Check your connection and try again.</p>
         )}
 
         {/* No results found */}

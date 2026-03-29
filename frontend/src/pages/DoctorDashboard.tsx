@@ -89,19 +89,33 @@ function getGreeting(): string {
 type StreakInfo = { type: string; count: number; label: string } | null;
 type WinInfo = { headline: string; detail: string | null; daysAgo: number } | null;
 
-function narrativeGreeting(streak: StreakInfo, win: WinInfo, hasRanking: boolean): string {
+function narrativeGreeting(
+  streak: StreakInfo,
+  win: WinInfo,
+  hasRanking: boolean,
+  checkupRank?: number | null,
+  checkupCity?: string | null,
+): string {
   if (win && win.daysAgo <= 3) return "It worked.";
   if (streak && streak.count >= 12) return `Week ${streak.count}.`;
   if (streak && streak.count >= 4) return `Week ${streak.count} of watching your market.`;
+  if (checkupRank && checkupCity) return `You're #${checkupRank} in ${checkupCity}.`;
   if (!hasRanking) return "We already found something.";
   return `${getGreeting()}.`;
 }
 
-function narrativeSubhead(streak: StreakInfo, win: WinInfo, practiceName: string): string {
+function narrativeSubhead(
+  streak: StreakInfo,
+  win: WinInfo,
+  practiceName: string,
+  checkupCompetitor?: string | null,
+): string {
   if (win && win.daysAgo <= 3 && win.detail) return win.detail;
   if (streak && streak.count >= 12) return `${streak.count} weeks of ${streak.label}. Here's what moved.`;
   if (streak && streak.count >= 4) return `Here's what changed for ${practiceName}.`;
-  return `What Alloro found for ${practiceName}.`;
+  if (checkupCompetitor) return `${checkupCompetitor} is ahead. Here's what to do about it.`;
+  if (practiceName && practiceName !== "Your Practice") return `What Alloro found for ${practiceName}.`;
+  return "Your market is being watched. Here's what we found.";
 }
 
 // ─── Score Helpers ──────────────────────────────────────────────────
@@ -847,12 +861,12 @@ export default function DoctorDashboard() {
           <h1 className="text-xl sm:text-2xl font-bold text-[#212D40] truncate">
             {mode === "growth"
               ? "Close the gap."
-              : narrativeGreeting(streakData, winData, !!effectiveRanking)}
+              : narrativeGreeting(streakData, winData, !!effectiveRanking, effectiveRanking?.rankPosition, effectiveRanking?.location)}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {mode === "growth"
               ? `What stands between ${practiceName} and the next position.`
-              : narrativeSubhead(streakData, winData, practiceName)}
+              : narrativeSubhead(streakData, winData, practiceName, effectiveRanking?.topCompetitor?.name)}
           </p>
           {locationName && (
             <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">

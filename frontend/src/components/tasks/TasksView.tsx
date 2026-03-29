@@ -652,7 +652,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
             </div>
           </div>
           <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
-            Practice Roadmap.
+            Growth Roadmap.
           </h1>
           <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
             Complete these{" "}
@@ -675,7 +675,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
                   Team Tasks
                 </h2>
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
-                  Action items for practice staff
+                  Action items for your team
                 </p>
               </div>
             </div>
