@@ -363,33 +363,35 @@ const FEED_EVENT_TYPES = [
   "welcome_intelligence.sent",
 ];
 
+// Dharmesh/Flanagan principle: every action framed as "Alloro did this FOR you"
+// Not "[metric] changed" but "Alloro [verb]" -- amplifier, not reporter
 const EVENT_LABELS: Record<string, (props: Record<string, any>) => string> = {
   "ranking_improvement": (p) =>
-    `Your ranking for '${p.keyword || "your market"}' moved from #${p.from || "?"} to #${p.to || "?"}.`,
+    `Alloro tracked your move from #${p.from || "?"} to #${p.to || "?"} for '${p.keyword || "your market"}'.`,
   "review_growth": (p) =>
-    `You gained ${p.count || "new"} review${p.count !== 1 ? "s" : ""} this week.`,
+    `Alloro counted ${p.count || "new"} new review${p.count !== 1 ? "s" : ""} this week.`,
   "review_request.sent": () =>
-    "Review request sent to a recent patient.",
+    "Alloro sent a review request to a recent customer.",
   "first_win.achieved": (p) =>
-    p.description || "A milestone was reached. Your first win with Alloro.",
+    p.description || "Alloro caught something. You acted. It worked.",
   "clearpath.build_triggered": () =>
-    "Your PatientPath website build was started.",
+    "Alloro started building your website from your market data.",
   "competitor.disruption_detected": (p) =>
-    `${p.competitor_name || "A competitor"} made a move. ${p.detail || "Review or ranking change detected."}`,
+    `Alloro spotted ${p.competitor_name || "a competitor"} making a move. ${p.detail || ""}`,
   "one_action.completed": () =>
-    "You completed this week's recommended action.",
+    "You completed the action Alloro recommended. That matters.",
   "referral.submitted": (p) =>
-    `New referral from ${p.referrer_name || "a colleague"}.`,
+    `Alloro logged a new referral from ${p.referrer_name || "a colleague"}.`,
   "weekly_digest.posted": () =>
-    "Weekly intelligence digest was delivered.",
+    "Alloro assembled your weekly intelligence digest.",
   "gp.gone_dark": (p) =>
-    `${p.gp_name || "A referring provider"} hasn't sent a referral in ${p.days_silent || "60+"} days.`,
+    `Alloro noticed ${p.gp_name || "a referral source"} has been quiet for ${p.days_silent || "60+"} days.`,
   "gp.drift_detected": (p) =>
-    `Referral volume from ${p.gp_name || "a provider"} is declining.`,
+    `Alloro detected declining referrals from ${p.gp_name || "a source"}.`,
   "result_email.sent": () =>
-    "Your checkup results were emailed.",
+    "Alloro sent your competitive analysis results.",
   "welcome_intelligence.sent": () =>
-    "Welcome intelligence package was delivered.",
+    "Alloro delivered your welcome intelligence package.",
 };
 
 function formatRelativeTime(date: Date): string {

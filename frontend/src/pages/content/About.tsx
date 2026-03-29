@@ -79,7 +79,7 @@ export default function About() {
                 reviews is the reason your phone rings less, not your clinical
                 quality. The information exists. It has always existed. But it
                 was locked inside systems built for enterprises with dedicated
-                analytics teams -- not for a practice owner who spends their day
+                analytics teams -- not for a business owner who spends their day
                 doing the work.
               </p>
             </div>
@@ -116,7 +116,7 @@ export default function About() {
                 realizing that no product on the market actually solved the core
                 issue. Every tool gave doctors more data. None of them gave
                 doctors clarity. He built Alloro because he lived the problem:
-                watching smart, hardworking practice owners make decisions
+                watching smart, hardworking business owners make decisions
                 without the information that would have changed those decisions.
                 The unfair advantage is not technology. It is knowing exactly
                 what these business owners need to hear, because he has spent

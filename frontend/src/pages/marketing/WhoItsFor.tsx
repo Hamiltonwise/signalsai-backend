@@ -127,7 +127,7 @@ export default function WhoItsFor() {
             to="/checkup"
             className="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-[#D56753] text-white text-base font-semibold px-8 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
           >
-            Run your free Business Clarity Checkup
+            See where you rank
           </Link>
           <p className="mt-3 text-xs text-gray-400">
             Free. 60 seconds. No account required.

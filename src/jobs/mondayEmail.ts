@@ -159,6 +159,9 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     ? `Know someone watching the same problem? Forward this email. When they sign up, you both pay $1,000/month for 3 months instead of $2,000. You carry the cost together. getalloro.com/checkup?ref=${org.referral_code}`
     : null;
 
+  // Flanagan craft-remains-human: the founder's voice in every touchpoint
+  const founderLine = "Built by Corey, after watching business owners work harder than they should have to. If any of this is off, reply. I read every one.";
+
   // Send via email service
   try {
     const success = await sendMondayBriefEmail({
@@ -174,6 +177,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       rankingUpdate,
       competitorNote,
       referralLine,
+      founderLine,
     });
 
     if (success) {

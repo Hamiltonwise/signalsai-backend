@@ -25,7 +25,7 @@ export default function BlogRedirect() {
             to="/checkup"
             className="inline-flex items-center justify-center rounded-xl bg-[#D56753] text-white text-base font-semibold px-8 py-4 hover:brightness-110 active:scale-[0.98] transition-all"
           >
-            Run your free Business Clarity Checkup
+            See where you rank
           </Link>
         </div>
       </section>

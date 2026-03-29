@@ -141,7 +141,7 @@ export default function Story() {
             to="/checkup"
             className="inline-flex items-center justify-center rounded-xl bg-white text-[#212D40] text-base font-semibold px-8 py-4 hover:bg-gray-50 active:scale-[0.98] transition-all"
           >
-            Run your free Business Clarity Checkup
+            See where you rank
           </Link>
         </div>
       </section>

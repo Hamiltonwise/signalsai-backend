@@ -787,6 +787,32 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
         await trx("organizations").where({ id: newOrg.id }).update(checkupUpdates);
       }
 
+      // Biestman blinder: auto-detect vertical from GBP category and set vocabulary config
+      const category = req.body.category || checkup_data?.market?.specialty || null;
+      if (category) {
+        const CATEGORY_TO_VERTICAL: Record<string, string> = {
+          endodontist: "endodontics", orthodontist: "orthodontics", dentist: "general_dentistry",
+          chiropractor: "chiropractic", "physical therapist": "physical_therapy",
+          optometrist: "optometry", veterinarian: "veterinary", attorney: "legal",
+          lawyer: "legal", accountant: "financial_advisor", cpa: "financial_advisor",
+          "financial advisor": "financial_advisor", "real estate agent": "real_estate",
+          barber: "general", "hair salon": "general", plumber: "general",
+          electrician: "general", hvac: "general",
+        };
+        const vertical = CATEGORY_TO_VERTICAL[category.toLowerCase()] || "general";
+        const hasVocabTable = await trx.schema.hasTable("vocabulary_configs");
+        if (hasVocabTable) {
+          const existing = await trx("vocabulary_configs").where({ org_id: newOrg.id }).first();
+          if (!existing) {
+            await trx("vocabulary_configs").insert({
+              org_id: newOrg.id,
+              vertical,
+              overrides: JSON.stringify({}),
+            });
+          }
+        }
+      }
+
       // Link user to org
       await OrganizationUserModel.create({
         organization_id: newOrg.id,

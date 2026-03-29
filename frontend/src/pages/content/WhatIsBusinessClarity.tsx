@@ -52,7 +52,7 @@ const FAQ_SCHEMA = {
     },
     {
       "@type": "Question",
-      name: "How do I get business clarity for my practice?",
+      name: "How do I get business clarity for my business?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "Start with a free Business Clarity Checkup at getalloro.com/checkup. In 60 seconds you see your competitors by name, your competitive position, and the single move that changes it. No login, no sales call. From there, Alloro delivers ongoing intelligence -- Monday briefs, drift alerts, and one-action recommendations -- so clarity is not a one-time event but a continuous state.",
@@ -63,7 +63,7 @@ const FAQ_SCHEMA = {
       name: "Why is business clarity rare for small business owners?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Because the tools that provide it have historically been built for enterprises with dedicated analytics teams. A solo practice owner or small business operator does not have a chief strategy officer reading their data every morning. Business clarity requires both the data and the interpretation layer -- and until recently, the interpretation layer was a person that cost $200,000 a year.",
+        text: "Because the tools that provide it have historically been built for enterprises with dedicated analytics teams. A solo business owner or small business operator does not have a chief strategy officer reading their data every morning. Business clarity requires both the data and the interpretation layer -- and until recently, the interpretation layer was a person that cost $200,000 a year.",
       },
     },
   ],
@@ -178,7 +178,7 @@ export default function WhatIsBusinessClarity() {
               <ArrowRight className="h-5 w-5" />
             </button>
             <p className="text-xs text-gray-400 mt-3">
-              Free Business Clarity Checkup. No login required. 60 seconds.
+              free market scan. No login required. 60 seconds.
             </p>
           </div>
         </div>

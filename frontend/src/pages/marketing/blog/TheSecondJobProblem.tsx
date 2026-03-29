@@ -110,7 +110,7 @@ export default function TheSecondJobProblem() {
             Curious what your business is saying?
           </p>
           <p className="text-sm text-[#212D40]/50 mb-4">
-            Run your free Business Clarity Checkup. 60 seconds.
+            See where you rank. 60 seconds.
           </p>
           <Link
             to="/checkup"

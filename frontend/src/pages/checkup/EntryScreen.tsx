@@ -101,7 +101,7 @@ const NAME_SPECIALTY_PATTERNS: [RegExp, string][] = [
  * 3. primaryTypeDisplayName if non-generic (e.g., "Hair Salon", "Chiropractor")
  * 4. Fallback: "competitor"
  */
-function competitorTerm(
+export function competitorTerm(
   category: string,
   types: string[],
   name: string
@@ -257,15 +257,15 @@ export default function EntryScreen() {
       {/* Headline — strong hierarchy, updates with specialty */}
       <div className="text-center mb-10">
         <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-3">
-          Free Business Analysis
+          Free. 60 seconds.
         </p>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight leading-tight">
-          How does your business<br />stack up?
+          See where you rank.
         </h1>
         <p className="mt-4 text-base text-slate-500 leading-relaxed max-w-sm mx-auto">
           {selectedPlace
-            ? `See how you rank against every ${competitorTerm(selectedPlace.category, selectedPlace.types, selectedPlace.name)} in ${selectedPlace.city || "your market"}.`
-            : "Get your Business Clarity Score in 60 seconds. No login required."}
+            ? `We already know who's ahead of you in ${selectedPlace.city || "your market"}. Type your name to find out.`
+            : "We already know who's ahead of you. Type your name to find out."}
         </p>
       </div>
 

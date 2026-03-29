@@ -131,7 +131,7 @@ export default function ProductPage() {
               to="/checkup"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-sm font-semibold px-6 py-3 hover:brightness-110 active:scale-[0.98] transition-all"
             >
-              Start with a Free Checkup <ArrowRight className="w-4 h-4" />
+              See Where You Rank <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
