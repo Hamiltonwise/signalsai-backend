@@ -1043,7 +1043,7 @@ export default function DoctorDashboard() {
           {/* Ambient "someone is watching" signal -- Guidara's returning guest mechanic */}
           <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1.5">
             <span className="w-1 h-1 rounded-full bg-[#D56753]/40 animate-breathe" />
-            43 agents ran overnight. This is what they found.
+            Your market was scanned overnight. Here's what moved.
           </p>
         </div>
         <ModeToggle mode={mode} onChange={setMode} />

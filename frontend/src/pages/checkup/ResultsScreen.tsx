@@ -520,7 +520,7 @@ function CompetitorInviteSection({
   return (
     <div className="rounded-2xl border border-dashed border-[#D56753]/20 bg-[#D56753]/[0.02] p-5">
       <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-        Know any of these businesses?
+        Your competitors haven't seen this yet
       </p>
       <div className="space-y-2">
         {competitors.slice(0, 4).map((c) => (
@@ -538,7 +538,7 @@ function CompetitorInviteSection({
                 ? "Link copied!"
                 : loadingId === c.placeId
                   ? "..."
-                  : "Send them their checkup"}
+                  : "Show them where they rank"}
             </button>
           </div>
         ))}
