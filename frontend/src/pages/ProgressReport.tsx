@@ -820,7 +820,7 @@ export default function ProgressReport() {
           {practiceName}
         </h1>
         <p className="text-sm text-gray-500 mt-2">
-          {firstName}, here's everything Alloro has done for your business this year.
+          {firstName}, here's everything that happened for your business this year.
         </p>
       </div>
 
@@ -867,7 +867,7 @@ export default function ProgressReport() {
               )}
             </div>
             <p className="text-white/60 text-xs mt-4">
-              You didn't do most of this. Alloro did.
+              You didn't do most of this. It happened while you were with customers.
             </p>
           </div>
         );

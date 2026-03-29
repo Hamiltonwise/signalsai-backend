@@ -83,7 +83,7 @@ export default function AlloroActivityCard() {
   return (
     <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-4">
       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2.5">
-        What Alloro did this week
+        What happened this week
       </p>
       <div className="space-y-1.5">
         {described.map((item, i) => (

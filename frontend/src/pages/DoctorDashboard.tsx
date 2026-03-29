@@ -115,8 +115,8 @@ function narrativeSubhead(
   if (streak && streak.count >= 12) return `${streak.count} weeks of ${streak.label}. Here's what moved.`;
   if (streak && streak.count >= 4) return `Here's what changed for ${practiceName}.`;
   if (checkupCompetitor) return `${checkupCompetitor} is ahead. Here's what to do about it.`;
-  if (practiceName && practiceName !== "Your Practice") return `What Alloro found for ${practiceName}.`;
-  return "Your market is being watched. Here's what we found.";
+  if (practiceName && practiceName !== "Your Practice") return `Here's what's happening for ${practiceName}.`;
+  return "Here's what changed in your market.";
 }
 
 // ─── Score Helpers ──────────────────────────────────────────────────
@@ -671,9 +671,7 @@ export default function DoctorDashboard() {
   const week1WinData = dashCtx?.week1_win ?? null;
   const orgCreatedAt = dashCtx?.org_created_at ?? null;
   const hasReferralData = dashCtx?.has_referral_data ?? false;
-  const _accountAgeDays = orgCreatedAt
-    ? Math.floor((Date.now() - new Date(orgCreatedAt).getTime()) / (1000 * 60 * 60 * 24))
-    : null;
+  void orgCreatedAt; // used by milestone cards
 
   const { data: rankingData, isLoading: isRankingLoading, isError: isRankingError } = useQuery({
     queryKey: ["client-ranking", orgId, locationId],
@@ -950,7 +948,7 @@ export default function DoctorDashboard() {
               Win detected
             </p>
             <p className="text-base font-bold leading-snug">
-              {winData.headline || "Alloro caught something. You acted. It worked."}
+              {winData.headline || "Something changed. You acted. It worked."}
             </p>
             {winData.detail && (
               <p className="text-sm text-white/75 mt-2.5 leading-relaxed">{winData.detail}</p>
