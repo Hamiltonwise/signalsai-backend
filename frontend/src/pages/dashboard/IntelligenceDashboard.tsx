@@ -118,7 +118,7 @@ function AEOTab() {
     return (
       <EmptyState
         icon={<MessageSquare className="h-8 w-8 text-gray-300" />}
-        text="FAQ content for your practice is being prepared. This helps search engines answer questions about your practice directly."
+        text="FAQ content for your business is being prepared. This helps search engines answer questions about your business directly."
       />
     );
   }
@@ -162,7 +162,7 @@ function CROTab() {
     return (
       <EmptyState
         icon={<BarChart3 className="h-8 w-8 text-gray-300" />}
-        text="Conversion experiments will start automatically as your site gets traffic. We test different calls-to-action to find what works best for your practice."
+        text="Conversion experiments will start automatically as your site gets traffic. We test different calls-to-action to find what works best for your business."
       />
     );
   }

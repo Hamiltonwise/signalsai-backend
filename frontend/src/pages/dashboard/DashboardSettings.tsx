@@ -85,18 +85,18 @@ export default function DashboardSettings() {
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 space-y-6">
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-[#212D40]">Settings</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Manage your practice profile and preferences.</p>
+        <p className="text-sm text-gray-500 mt-0.5">Manage your account and preferences.</p>
       </div>
 
-      {/* Section 1: Practice Info */}
+      {/* Section 1: Account Info */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <SettingsIcon className="h-5 w-5 text-gray-400" />
-          <h2 className="text-sm font-bold text-[#212D40]">Practice info</h2>
+          <h2 className="text-sm font-bold text-[#212D40]">Account info</h2>
         </div>
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-gray-500">Practice name</label>
+            <label className="text-xs font-medium text-gray-500">Business name</label>
             <p className="text-sm font-semibold text-[#212D40] mt-0.5">{practiceName}</p>
           </div>
           <div>

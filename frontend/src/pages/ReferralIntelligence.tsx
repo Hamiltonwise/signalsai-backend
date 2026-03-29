@@ -302,7 +302,7 @@ function GPDiscoverySection() {
   const [selectedGP, setSelectedGP] = useState<DiscoveredGP | null>(null);
   const [copiedField, setCopiedField] = useState<"subject" | "body" | null>(null);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["gp-discovery", radius],
     queryFn: async (): Promise<DiscoveryResponse> => {
       return apiGet({ path: `/user/referrals/discover?radius=${radius}` });

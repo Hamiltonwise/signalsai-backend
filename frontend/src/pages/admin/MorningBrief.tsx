@@ -353,7 +353,9 @@ function SceneSetter() {
   else if (redCount === 1) healthSummary = "One needs your attention.";
   else if (amberCount > 0) healthSummary = `${amberCount === 1 ? "One needs a check" : `${amberCount} need a check`}.`;
 
-  if (total === 0) return null;
+  if (total === 0) return (
+    <p className="text-base text-gray-400">{dayName}, {monthName} {dateNum}. No clients yet. Agents standing by.</p>
+  );
 
   return (
     <p className="text-base text-gray-500">

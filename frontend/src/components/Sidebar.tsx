@@ -266,7 +266,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Main navigation items — role-gated
   const mainNavItems = [
     {
-      label: "Practice Hub",
+      label: "Home",
       icon: <LayoutDashboard size={18} />,
       path: "/dashboard",
       showDuringOnboarding: true,

@@ -544,7 +544,7 @@ function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
   const comp = ranking.topCompetitor;
   const activities: { text: string; dot: string }[] = [];
   if (comp.reviewCount > 0) activities.push({ text: `${comp.name || "Your top competitor"} has ${comp.reviewCount} reviews at ${comp.rating} stars`, dot: "bg-amber-400" });
-  if (ranking.totalCompetitors && ranking.totalCompetitors > 5) activities.push({ text: `${ranking.totalCompetitors} practices compete in ${ranking.location || "your market"}`, dot: "bg-blue-400" });
+  if (ranking.totalCompetitors && ranking.totalCompetitors > 5) activities.push({ text: `${ranking.totalCompetitors} competitors in ${ranking.location || "your market"}`, dot: "bg-blue-400" });
   if (ranking.rankPosition && ranking.rankPosition > 3) activities.push({ text: "Top 3 positions get 70% of new client search clicks", dot: "bg-gray-300" });
 
   if (activities.length === 0) return null;
