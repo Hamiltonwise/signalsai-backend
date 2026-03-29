@@ -159,9 +159,14 @@ export async function generateOzMoments(data: OzMomentData): Promise<OzMoment[]>
       "",
       `TOP COMPETITOR: ${data.competitorName}`,
       `COMPETITOR RATING: ${data.competitorRating}★ (${data.competitorReviewCount} reviews)`,
-      `COMPETITOR WEBSITE: ${data.competitorHasWebsite ? "Yes" : "No website listed"}`,
-      `COMPETITOR PHOTOS: ${data.competitorPhotoCount} on Google profile`,
-      data.competitorHours ? `COMPETITOR HOURS: ${data.competitorHours}` : "",
+      `COMPETITOR WEBSITE: ${data.competitorHasWebsite ? "Yes" : "NO WEBSITE (this is their vulnerability -- you can exploit this)"}`,
+      `COMPETITOR PHOTOS: ${data.competitorPhotoCount} on Google profile${data.competitorPhotoCount < 10 ? " (LOW -- stale profile, vulnerability)" : ""}`,
+      data.competitorHours ? `COMPETITOR HOURS: ${data.competitorHours}` : "COMPETITOR HOURS: NOT LISTED (vulnerability -- customers can't tell when they're open)",
+      "",
+      `COMPETITOR VULNERABILITIES TO HIGHLIGHT:`,
+      !data.competitorHasWebsite ? `- ${data.competitorName} has no website listed on Google. You do. That's a visibility edge they can't close overnight.` : "",
+      data.competitorPhotoCount < data.clientPhotoCount ? `- You have more Google photos (${data.clientPhotoCount}) than ${data.competitorName} (${data.competitorPhotoCount}). Visual presence matters.` : "",
+      data.competitorRating && data.clientRating > data.competitorRating ? `- Your rating (${data.clientRating}★) is higher than ${data.competitorName}'s (${data.competitorRating}★). That's trust you've earned.` : "",
       "",
       `COMPETITOR REVIEWS:`,
       competitorReviewBlock,
@@ -189,14 +194,17 @@ Generate exactly 2 insights. Each must:
 3. Frame the CONSEQUENCE in dollars or competitive position (not just the observation)
 4. Be something the business owner almost certainly does NOT know
 5. Never use em-dashes
+6. If no reviews are available, focus on structural gaps: photos, website, hours, review count trajectory, market position
 
 Look for these patterns (Oz Pearlman homework, deepest specificity wins):
 - Review text that reveals an operational blind spot the owner can't see from inside
-- A gap between what THEIR customers praise and what the competitor's customers praise (e.g. "47 of your reviews mention 'gentle.' No competitor uses this word on their site.")
+- A gap between what THEIR customers praise and what the competitor's customers praise
 - A specific competitive advantage the owner has but isn't leveraging
 - A vulnerability that will cost them position in the next 6 months if unchanged
 - Photo count, website, or hours gaps that signal professionalism differences
-- Years in business combined with competitive trajectory (e.g. "You've been open 4 years. In that time, [competitor] gained 223 reviews. You gained 61.")
+- Review count velocity gaps (e.g. "[competitor] has 89 reviews. You have 11. At current pace, the gap grows by ~6 reviews every month.")
+- Missing website when competitor has one (invisible to Google searchers)
+- Market rank trajectory based on current data
 - Google's editorial summary vs what the owner probably thinks their business is known for
 - Review recency patterns (e.g. "Your last review was 3 months ago. [Competitor] got 4 this week.")
 

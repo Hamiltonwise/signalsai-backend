@@ -538,11 +538,76 @@ async function handleSubscriptionCreated(
     },
   }).catch(() => {});
 
+  // ─── Referral reward: "Split the check. We all rise together." ───
+  // When a referred friend subscribes, both get one free month.
+  if (org.referred_by_org_id) {
+    try {
+      const stripe = getStripe();
+      const referrerOrg = await db("organizations")
+        .where({ id: org.referred_by_org_id })
+        .select("id", "name", "stripe_customer_id")
+        .first();
+
+      if (referrerOrg?.stripe_customer_id) {
+        // Create a one-time 100% off coupon for the referrer's next invoice
+        const coupon = await stripe.coupons.create({
+          percent_off: 100,
+          duration: "once",
+          name: `Referral reward: ${org.name} joined`,
+          metadata: { referrer_org_id: String(referrerOrg.id), referred_org_id: String(org.id) },
+        });
+
+        // Apply to referrer's subscription
+        const referrerSubs = await stripe.subscriptions.list({
+          customer: referrerOrg.stripe_customer_id,
+          status: "active",
+          limit: 1,
+        });
+        if (referrerSubs.data.length > 0) {
+          // Apply coupon to next invoice via invoice item credit
+          await stripe.invoiceItems.create({
+            customer: referrerOrg.stripe_customer_id,
+            amount: -200000, // -$2,000 credit (one month free)
+            currency: "usd",
+            description: `Referral reward: ${org.name} joined Alloro. We all rise together.`,
+          });
+        }
+
+        // Notify referrer via notification bell
+        await db("notifications").insert({
+          organization_id: referrerOrg.id,
+          title: "Your referral paid off",
+          message: `${org.name} just joined Alloro. Your free month starts on your next billing cycle. We all rise together.`,
+          type: "system",
+          read: false,
+          metadata: JSON.stringify({ source: "referral_reward", referred_org: org.name }),
+          created_at: new Date(),
+          updated_at: new Date(),
+        }).catch(() => {});
+
+        // Track the reward
+        BehavioralEventModel.create({
+          event_type: "referral.reward_applied",
+          org_id: referrerOrg.id,
+          properties: {
+            referred_org_name: org.name,
+            referred_org_id: org.id,
+            coupon_id: coupon.id,
+          },
+        }).catch(() => {});
+
+        console.log(`[Referral] Reward applied: ${referrerOrg.name} gets free month for referring ${org.name}`);
+      }
+    } catch (err: any) {
+      console.error("[Referral] Reward application failed (non-blocking):", err.message);
+    }
+  }
+
   // Post to #alloro-brief
   if (ALLORO_BRIEF_WEBHOOK) {
     axios
       .post(ALLORO_BRIEF_WEBHOOK, {
-        text: `New subscriber: ${org.name} $2,000/mo`,
+        text: `New subscriber: ${org.name} $2,000/mo${org.referred_by_org_id ? " (referral)" : ""}`,
       })
       .catch(() => {});
   }

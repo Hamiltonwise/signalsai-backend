@@ -84,33 +84,46 @@ export default function SharedResults() {
 
         {card && (
           <div className="max-w-md w-full mt-8">
-            {/* Context */}
+            {/* Context — competitive framing */}
+            <p className="text-center text-base font-semibold text-[#212D40] mb-1">
+              A colleague scored {card.score}. Where do you rank?
+            </p>
             <p className="text-center text-sm text-[#212D40]/50 mb-6">
-              A colleague shared their market snapshot with you.
+              {card.specialty} in {card.city}
             </p>
 
             {/* Score card */}
             <div className="rounded-2xl border-2 border-[#212D40]/10 bg-white overflow-hidden shadow-sm">
               <div className="h-1.5 bg-[#D56753]" />
               <div className="p-6">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-4 text-center">
-                  Market Snapshot: {card.specialty} in {card.city}
-                </p>
-
-                {/* Score ring */}
-                <div className="flex justify-center mb-6">
-                  <div className="w-28 h-28 rounded-full border-4 border-[#D56753]/20 flex items-center justify-center relative">
+                {/* Score ring — large and prominent */}
+                <div className="flex justify-center mb-3">
+                  <div className="w-36 h-36 rounded-full flex items-center justify-center relative">
                     <div
                       className="absolute inset-0 rounded-full"
                       style={{
-                        background: `conic-gradient(#D56753 ${card.score * 3.6}deg, transparent 0deg)`,
-                        mask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))",
-                        WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 4px))",
+                        background: `conic-gradient(${card.score >= 75 ? "#10b981" : card.score >= 40 ? "#f59e0b" : "#D56753"} ${card.score * 3.6}deg, #f1f5f9 0deg)`,
+                        mask: "radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px))",
+                        WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px))",
                       }}
                     />
-                    <span className="text-3xl font-black text-[#212D40]">{card.score}</span>
+                    <div className="flex flex-col items-center">
+                      <span className="text-4xl font-black text-[#212D40]">{card.score}</span>
+                      <span className="text-[11px] font-semibold text-[#212D40]/50">/ 100</span>
+                    </div>
                   </div>
                 </div>
+
+                {/* Score tier message */}
+                <p className={`text-sm text-center font-medium mb-5 ${
+                  card.score >= 75 ? "text-emerald-600" : card.score >= 40 ? "text-amber-600" : "text-[#D56753]"
+                }`}>
+                  {card.score >= 75
+                    ? "Strong foundation."
+                    : card.score >= 40
+                      ? "Room to grow, and we know exactly where."
+                      : "There's a clear path forward."}
+                </p>
 
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
@@ -140,27 +153,24 @@ export default function SharedResults() {
 
                 {/* CTA */}
                 <div className="border-t border-gray-100 pt-6">
-                  <p className="text-center text-base font-bold text-[#212D40] mb-2">
-                    Where do you rank?
-                  </p>
-                  <p className="text-center text-sm text-[#212D40]/50 mb-4">
-                    Run your own free Checkup. 60 seconds.
-                  </p>
                   <Link
                     to="/checkup"
                     className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#D56753] text-white text-base font-semibold px-6 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
                   >
-                    See my market
+                    Check your score
                     <ArrowRight className="w-4 h-4" />
                   </Link>
+                  <p className="text-center text-xs text-[#212D40]/40 mt-3">
+                    Free. 60 seconds. No one sees your results but you.
+                  </p>
+
+                  {/* Competitive nudge */}
+                  <p className="text-center text-sm font-bold text-[#212D40] mt-4">
+                    Can you beat {card.score}?
+                  </p>
                 </div>
               </div>
             </div>
-
-            {/* Trust line */}
-            <p className="text-center text-[11px] text-gray-400 mt-6">
-              Free. No account required. No sensitive data.
-            </p>
           </div>
         )}
       </main>

@@ -41,6 +41,7 @@ import agents from "@/api/agents";
 import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
 import OneActionCard from "@/components/dashboard/OneActionCard";
 import AlloroActivityCard from "@/components/dashboard/AlloroActivityCard";
+// ReferralCard defined locally (line ~569) with referralCode prop
 import CSAgentChat from "@/components/dashboard/CSAgentChat";
 import TTFVSensor from "@/components/dashboard/TTFVSensor";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
@@ -51,6 +52,7 @@ import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
 import StreakBadge from "@/components/dashboard/StreakBadge";
 import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
+import { fireConfetti } from "@/lib/confetti";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -766,6 +768,7 @@ export default function DoctorDashboard() {
       setShowGbpReveal(true);
       searchParams.delete("gbp");
       setSearchParams(searchParams, { replace: true });
+      setTimeout(() => fireConfetti({ x: 0.5, y: 0.3 }), 300);
       setTimeout(() => setShowGbpReveal(false), 12000);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -923,6 +926,15 @@ export default function DoctorDashboard() {
   const streakData = streaksAndWin?.streak ?? null;
   const winData = streaksAndWin?.win ?? null;
 
+  // Confetti on win detection (fires once per session)
+  const [winCelebrated, setWinCelebrated] = useState(false);
+  useEffect(() => {
+    if (winData && winData.daysAgo <= 1 && !winCelebrated) {
+      setWinCelebrated(true);
+      setTimeout(() => fireConfetti({ x: 0.5, y: 0.4 }), 500);
+    }
+  }, [winData, winCelebrated]);
+
   // One Action Card — backend intelligence engine
   const { data: oneActionResponse } = useQuery({
     queryKey: ["one-action-card", orgId],
@@ -1023,10 +1035,15 @@ export default function DoctorDashboard() {
           </p>
           {locationName && (
             <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-breathe" />
               {locationName}
             </p>
           )}
+          {/* Ambient "someone is watching" signal -- Guidara's returning guest mechanic */}
+          <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1.5">
+            <span className="w-1 h-1 rounded-full bg-[#D56753]/40 animate-breathe" />
+            43 agents ran overnight. This is what they found.
+          </p>
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
       </motion.div>
@@ -1193,6 +1210,8 @@ export default function DoctorDashboard() {
 
       {/* What Alloro did this week -- the retention mechanic */}
       {!isLoading && <motion.div variants={cardVariants}><AlloroActivityCard /></motion.div>}
+
+      {/* Referral card rendered below in the isOwnerOrManager block with referralCode prop */}
 
       {isLoading && (
         <div className="space-y-4">

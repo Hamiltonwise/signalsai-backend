@@ -200,7 +200,7 @@ export default function CSAgentChat({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about your practice..."
+                placeholder="Ask about your business..."
                 rows={1}
                 className="flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 max-h-24"
                 style={{ minHeight: "40px" }}

@@ -127,6 +127,28 @@ dashboardContextRoutes.get(
         hasReferralData = Number(refCount?.cnt || 0) > 0;
       }
 
+      // Referral stats for the "Split the Check" card
+      let referralStats = null;
+      const orgForRef = await db("organizations")
+        .where({ id: orgId })
+        .select("referral_code")
+        .first()
+        .catch(() => null);
+      if (orgForRef?.referral_code) {
+        const referredOrgs = await db("organizations")
+          .where({ referred_by_org_id: orgId })
+          .whereNotNull("stripe_customer_id")
+          .count("id as cnt")
+          .first()
+          .catch(() => null);
+        const converted = Number(referredOrgs?.cnt || 0);
+        referralStats = {
+          referral_code: orgForRef.referral_code,
+          referrals_converted: converted,
+          months_earned: converted, // 1 month per conversion
+        };
+      }
+
       return res.json({
         success: true,
         checkup_context: checkupContext,
@@ -137,6 +159,7 @@ dashboardContextRoutes.get(
         org_created_at: org.created_at || null,
         has_referral_data: hasReferralData,
         intelligence_mode: intelligenceMode,
+        referral_stats: referralStats,
         trial: org.trial_end_at ? {
           ends_at: org.trial_end_at,
           status: org.trial_status || "active",

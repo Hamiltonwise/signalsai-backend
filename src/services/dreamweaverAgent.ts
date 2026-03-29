@@ -226,5 +226,31 @@ async function findLegendsForOrg(org: any): Promise<LegendOpportunity[]> {
     }
   }
 
+  // ─── Legend 8: The Clean Week ──────────────────────────────────
+  // Guidara: the absence of a problem is itself a gift.
+  // The most unreasonable hospitality: permission to not worry.
+  if (daysActive >= 14) {
+    const recentAlerts = await db("behavioral_events")
+      .where({ org_id: org.id })
+      .whereIn("event_type", ["gp.gone_dark", "gp.drift_detected", "competitor.disruption_detected"])
+      .where("created_at", ">=", new Date(now.getTime() - 7 * 86_400_000))
+      .count("id as count")
+      .first();
+
+    const alertCount = Number(recentAlerts?.count || 0);
+    if (alertCount === 0) {
+      legends.push({
+        orgId: org.id,
+        orgName: org.name,
+        legendType: "clean_week",
+        headline: "Quiet week. Nothing needs your attention.",
+        detail: `No competitor moved. No referral source drifted. ${org.name} is holding steady. Alloro watched so you didn't have to.`,
+        action: "monday_email",
+        priority: 5,
+        shareability: 4,
+      });
+    }
+  }
+
   return legends;
 }
