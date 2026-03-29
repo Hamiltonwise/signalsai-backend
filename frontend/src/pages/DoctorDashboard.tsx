@@ -154,17 +154,25 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
     return (
       <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-            <MapPin className="w-5 h-5 text-gray-400" />
+          <div className="w-10 h-10 rounded-xl bg-[#D56753]/10 flex items-center justify-center">
+            <MapPin className="w-5 h-5 text-[#D56753]" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#212D40]">Market Position</p>
-            <p className="text-xs text-gray-400">Scan scheduled</p>
+            <p className="text-sm font-bold text-[#212D40]">Scanning your market</p>
+            <p className="text-xs text-[#D56753]">In progress</p>
           </div>
         </div>
-        <p className="text-sm text-gray-500">
-          Your first market scan is scheduled. Check back tomorrow to see where you rank.
+        <p className="text-sm text-gray-500 leading-relaxed">
+          We started watching your market the moment you signed up. Your first position report arrives Monday morning.
         </p>
+        <div className="mt-4 space-y-2">
+          {["Finding your competitors", "Counting their reviews", "Measuring your visibility"].map((step, i) => (
+            <div key={i} className="flex items-center gap-2.5 text-xs text-gray-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#D56753]/40 animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />
+              {step}
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -210,9 +218,10 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
       </p>
 
       {ranking.rankScore != null && (
-        <div className="mt-4">
-          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${scoreBg(ranking.rankScore)} ${scoreColor(ranking.rankScore)}`}>
-            Score: {ranking.rankScore}/100
+        <div className="mt-4 flex items-center gap-2">
+          <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-bold ${scoreBg(ranking.rankScore)} ${scoreColor(ranking.rankScore)} transition-all duration-700`}>
+            <span className="inline-block w-2 h-2 rounded-full bg-current opacity-60 animate-pulse mr-1.5" />
+            Business Clarity Score: {ranking.rankScore}/100
           </span>
         </div>
       )}
