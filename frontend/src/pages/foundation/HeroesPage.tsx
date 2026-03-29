@@ -31,6 +31,14 @@ export default function HeroesPage() {
           business ownership. You learned discipline, leadership, and sacrifice. Those
           skills built your business. Alloro gives you the clarity to protect it.
         </p>
+        <div className="mt-6 rounded-xl bg-[#212D40] p-5 text-center">
+          <p className="text-sm font-bold text-white">
+            Veterans, active duty spouses, first responders, Gold Star families: Alloro is free. Forever.
+          </p>
+          <p className="text-xs text-white/50 mt-1">
+            Not discounted. Not a trial. Full access. No time limit.
+          </p>
+        </div>
 
         <div className="mt-12 space-y-8">
           <div className="flex gap-4">

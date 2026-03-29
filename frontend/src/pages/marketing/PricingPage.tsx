@@ -73,12 +73,12 @@ export default function PricingPage() {
           {/* Split the check */}
           <div className="mt-8 rounded-xl border-2 border-[#212D40]/10 bg-[#212D40]/[0.02] p-6 text-center">
             <p className="text-sm font-bold text-[#212D40] mb-1">
-              Share the clarity. You both get a free month.
+              Rise Together. Split month one.
             </p>
             <p className="text-xs text-[#212D40]/50 leading-relaxed">
-              Invite a colleague. When they subscribe, you both get one month free.
-              Not a discount. A shared investment in each other's business.
-              We all rise together.
+              Know a colleague who should see their market? When they join,
+              you both pay $1,000 for month one instead of $2,000.
+              Not a discount. A shared investment. We all rise together.
             </p>
           </div>
 

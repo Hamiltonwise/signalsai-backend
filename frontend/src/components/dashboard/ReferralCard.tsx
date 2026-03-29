@@ -1,5 +1,5 @@
 /**
- * Referral Card -- "Share the clarity. You both get a free month."
+ * Referral Card -- "Rise Together. Split month one."
  *
  * Not a "referral program" widget. A natural invitation that feels
  * like the user's own idea, not a sales ask. Oz principle: the
@@ -53,7 +53,7 @@ export default function ReferralCard() {
             See how a colleague ranks.
           </p>
           <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-            Send them your link. When they join, you both get a free month. We all rise together.
+            Send them your link. When they join, you both split month one. Rise together.
           </p>
 
           {/* Copy link */}

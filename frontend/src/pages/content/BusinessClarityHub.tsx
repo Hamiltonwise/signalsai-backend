@@ -137,8 +137,8 @@ export default function BusinessClarityHub() {
                       {vertical.description}
                     </p>
                     {!vertical.ready && (
-                      <span className="inline-block mt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
-                        Coming soon
+                      <span className="inline-block mt-2 text-[10px] font-semibold uppercase tracking-wider text-[#D56753]/60 bg-[#D56753]/5 px-2 py-0.5 rounded">
+                        Run your free checkup
                       </span>
                     )}
                   </div>

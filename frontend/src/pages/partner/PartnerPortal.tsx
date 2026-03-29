@@ -176,14 +176,14 @@ function ProgressTracker() {
     },
     {
       label: "Get your first practice signed up",
-      reward: "Your first referred account earns you a free month",
+      reward: "Your first referred account: you both split month one",
       complete: accounts >= 1,
       progress: accounts >= 1 ? undefined : `${accounts}/1`,
       cta: accounts >= 1 ? "Done" : "Keep sharing",
     },
     {
       label: "Earn your first referral month",
-      reward: "One free month of Alloro for every practice that signs up",
+      reward: "Split month one with every business you refer",
       complete: hasActive,
       cta: hasActive ? "Earned" : "Unlocks after step 4",
     },

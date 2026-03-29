@@ -23,10 +23,10 @@ export default function RisePage() {
 
           <div className="space-y-5 text-base text-[#212D40]/80 leading-relaxed">
             <p>
-              For three months, you both pay $1,000/month.
-              At month four, you're both at standard rate.
-              And you've both had three months of clarity
-              that changes how you see your business.
+              When a colleague joins, you both split month one.
+              $1,000 each instead of $2,000. After that, standard rate.
+              One month of shared clarity. One month to see
+              what this does for your business.
             </p>
             <p>
               The pre-written message is already in your Monday email.

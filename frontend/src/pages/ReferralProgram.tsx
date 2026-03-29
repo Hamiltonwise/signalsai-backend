@@ -111,7 +111,7 @@ export default function ReferralProgram() {
         <div className="rounded-2xl bg-[#212D40] p-6 text-center">
           <Gift className="w-6 h-6 text-[#D56753] mx-auto mb-3" />
           <p className="text-base font-bold text-white">
-            You both get one month free when you subscribe.
+            You both split month one. $1,000 each instead of $2,000.
           </p>
           <p className="mt-2 text-xs text-white/40">
             Applied automatically. No code needed.

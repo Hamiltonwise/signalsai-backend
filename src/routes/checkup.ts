@@ -2,6 +2,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import {
   discoverCompetitorsViaPlaces,
+  discoverCompetitorsWithFallback,
   filterBySpecialty,
 } from "../controllers/practice-ranking/feature-services/service.places-competitor-discovery";
 import { filterByDriveTime } from "../utils/driveTimeMarket";
@@ -21,6 +22,111 @@ import { getMindsQueue } from "../workers/queues";
 import { detectPreset } from "../services/vocabularyAutoMapper";
 import { attributeCheckupToOrg } from "../services/firstPatientAttribution";
 import { trackReferralSignup } from "../services/referralReward";
+import { getPlaceDetails } from "../controllers/places/feature-services/GooglePlacesApiService";
+
+// ─── First Impression Scoring Config ────────────────────────────────────────
+// Per-specialty review volume benchmarks: what "strong" looks like for this vertical
+const REVIEW_VOLUME_BENCHMARKS: Record<string, number> = {
+  endodontist: 80,
+  orthodontist: 150,
+  dentist: 100,
+  "general dentist": 100,
+  "pediatric dentist": 100,
+  periodontist: 80,
+  prosthodontist: 60,
+  "oral surgeon": 80,
+  barber: 150,
+  "med spa": 200,
+  medspa: 200,
+  "plastic surgeon": 100,
+  chiropractor: 80,
+  optometrist: 60,
+  veterinarian: 100,
+  "physical therapist": 40,
+  attorney: 30,
+  lawyer: 30,
+  accountant: 20,
+  cpa: 20,
+  "hair salon": 150,
+  plumber: 50,
+  electrician: 50,
+  hvac: 50,
+  roofer: 30,
+  landscaper: 40,
+  "auto repair": 60,
+  "financial advisor": 20,
+  "real estate agent": 40,
+};
+
+// Per-specialty competitive search radii (miles)
+const COMPETITIVE_RADII_MILES: Record<string, number> = {
+  barber: 5,
+  chiropractor: 5,
+  dentist: 10,
+  "general dentist": 10,
+  "hair salon": 10,
+  optometrist: 10,
+  "physical therapist": 10,
+  veterinarian: 10,
+  "pediatric dentist": 10,
+  orthodontist: 15,
+  "med spa": 15,
+  medspa: 15,
+  endodontist: 25,
+  periodontist: 25,
+  "oral surgeon": 25,
+  "plastic surgeon": 40,
+  "oculofacial surgeon": 75,
+  prosthodontist: 75,
+};
+
+// Score label thresholds
+function getScoreLabel(score: number): string {
+  if (score >= 80) return "Strong first impression";
+  if (score >= 60) return "Solid foundation";
+  if (score >= 40) return "Room to improve";
+  return "Needs attention";
+}
+
+/**
+ * Derive the real specialty from the business name.
+ * Google Places lumps all dental specialists under "Dentist", so we inspect the
+ * business name for specialty keywords before falling back to the Google category.
+ */
+function deriveSpecialtyFromName(name: string, category: string): string {
+  const n = name.toLowerCase();
+
+  const rules: Array<{ keywords: string[]; specialty: string }> = [
+    // Dental specialties (Google calls them all "Dentist")
+    { keywords: ["endodontic", "endo ", "root canal"],       specialty: "endodontist" },
+    { keywords: ["orthodontic", "ortho ", "braces"],         specialty: "orthodontist" },
+    { keywords: ["periodontic", "perio ", "gum"],            specialty: "periodontist" },
+    { keywords: ["prosthodontic"],                           specialty: "prosthodontist" },
+    { keywords: ["pediatric dent", "children"],              specialty: "pediatric dentist" },
+    { keywords: ["oral surg"],                               specialty: "oral surgeon" },
+    // Medical
+    { keywords: ["oculofacial", "oculoplastic", "facial plastic"], specialty: "plastic surgeon" },
+    { keywords: ["med spa", "medspa", "medical spa", "aesthetics"], specialty: "medspa" },
+    { keywords: ["chiropractic", "chiropractor"],            specialty: "chiropractor" },
+    { keywords: ["optometr", "eye care", "vision"],          specialty: "optometrist" },
+    { keywords: ["veterinar", "animal", "pet"],              specialty: "veterinarian" },
+    // Personal services
+    { keywords: ["barber"],                                  specialty: "barber" },
+    { keywords: ["physical therap", "pt "],                  specialty: "physical therapist" },
+    // Professional services
+    { keywords: ["law ", "attorney", "legal"],               specialty: "attorney" },
+    { keywords: ["cpa", "accounting", "tax"],                specialty: "accountant" },
+  ];
+
+  for (const rule of rules) {
+    if (rule.keywords.some((kw) => n.includes(kw))) {
+      return rule.specialty;
+    }
+  }
+
+  // No name match, fall back to Google category, then generic
+  return category || "local business";
+}
 
 const checkupRoutes = express.Router();
 
@@ -67,7 +173,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       event_type: "checkup.scan_started",
       properties: { name, city, category: category || null, placeId: placeId || null },
     }).catch(() => {});
-    const specialty = category || name || "local business";
+    const specialty = deriveSpecialtyFromName(name, category || "");
 
     // Specialty-aware economics: use vertical avgCaseValue for dollar estimates
     // Universal: any GBP-listed business type can run a checkup
@@ -105,7 +211,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const econ = specialtyEconomics[specKey] || { avgCaseValue: 200, conversionRate: 0.03 };
 
     // Detect vocabulary for this vertical -- drives language in findings
-    const vocabPreset = detectPreset(category || specialty, types);
+    const vocabPreset = detectPreset(specialty, types);
     const customerWord = vocabPreset.patientTerm; // "patient", "client", "customer", "pet owner"
     const competitorWord = vocabPreset.competitorTerm; // "competitor"
     const locationWord = vocabPreset.locationTerm; // "practice", "firm", "shop", "clinic"
@@ -116,29 +222,49 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // Per-rank dollar impact: each position below #3 costs visibility
     const perRankImpact = Math.round(econ.avgCaseValue * 1.5);
 
-    // Build location bias from practice coordinates (25-mile radius)
+    // Build location bias from practice coordinates using specialty-aware radius
+    const competitiveRadiusMiles = COMPETITIVE_RADII_MILES[specKey] || 10;
+    const competitiveRadiusMeters = Math.round(competitiveRadiusMiles * 1609.34);
     const locationBias = location?.latitude && location?.longitude
-      ? { lat: location.latitude, lng: location.longitude, radiusMeters: 40234 }
+      ? { lat: location.latitude, lng: location.longitude, radiusMeters: competitiveRadiusMeters }
       : undefined;
 
     console.log(
       `[Checkup] Analyzing: ${name} in ${marketLocation} (${specialty})${locationBias ? ` [${locationBias.lat.toFixed(4)},${locationBias.lng.toFixed(4)}]` : " [no coordinates]"}`
     );
 
-    // Discover competitors — biased to practice's actual location
-    const allCompetitors = await discoverCompetitorsViaPlaces(
+    // Discover competitors with specialty-aware fallback broadening.
+    // An endodontist is compared to endodontists first. Only if fewer than 5
+    // same-specialty competitors exist does it broaden to general dentists.
+    const discoveryResult = await discoverCompetitorsWithFallback(
       specialty,
       marketLocation,
       15,
       locationBias
     );
 
-    // Filter to relevant specialty
-    const specialtyFiltered = filterBySpecialty(allCompetitors, specialty);
+    const { competitors: discoveredCompetitors, broadened, broadeningCategory } = discoveryResult;
 
-    // Remove the practice itself from competitors
-    const selfFiltered = specialtyFiltered.filter(
-      (c) => c.placeId !== placeId && c.name.toLowerCase() !== name.toLowerCase()
+    // Remove the practice itself from competitors (match by placeId or name)
+    const clientNameLower = name.toLowerCase();
+
+    // Multi-location detection: find other locations of the same business
+    // by matching the business name in the raw discovery results
+    const multiLocationMatches = discoveredCompetitors.filter((c) => {
+      if (c.placeId === placeId) return false; // exclude the analyzed location
+      const cNameLower = c.name.toLowerCase();
+      // Match if the competitor name contains the client name or vice versa
+      // (e.g. "1Endodontics - Falls Church" and "1Endodontics - Fairfax")
+      return cNameLower.includes(clientNameLower) || clientNameLower.includes(cNameLower);
+    });
+    const multiLocationCount = multiLocationMatches.length;
+    const multiLocationPlaceIds = new Set(multiLocationMatches.map((c) => c.placeId));
+
+    // Exclude both self and other locations of the same business from competitors
+    const selfFiltered = discoveredCompetitors.filter(
+      (c) => c.placeId !== placeId
+        && c.name.toLowerCase() !== clientNameLower
+        && !multiLocationPlaceIds.has(c.placeId)
     );
 
     // Filter by drive time — only competitors within specialty threshold
@@ -151,26 +277,19 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         )
       : selfFiltered.map((c) => ({ ...c, driveTimeMinutes: 0 }));
 
-    // --- Score Calculation ---
+    // --- First Impression Score Calculation ---
+    // Question: "When a qualified prospect sees your Google profile, do they choose you or swipe past?"
     const clientRating = rating ?? 0;
     const clientReviews = reviewCount ?? 0;
 
-    // Competitor averages
+    // Competitor averages (kept for findings/intelligence layer, NOT for scoring)
     const compCount = otherCompetitors.length || 1;
     const avgRating =
       otherCompetitors.reduce((s, c) => s + c.totalScore, 0) / compCount;
     const avgReviews =
       otherCompetitors.reduce((s, c) => s + c.reviewsCount, 0) / compCount;
-    const maxReviews = Math.max(
-      ...otherCompetitors.map((c) => c.reviewsCount),
-      1
-    );
 
-    // --- Sub-scores: Market Rank /40, Rating vs Market /40, Review Volume /20 ---
-    // Honest names for what we actually measure with Stage 1 (public) data.
-    // Balanced: average business = 50-65. Leaders = 75-85. Struggling = 35-50.
-
-    // Market Rank (0-40) — rank by review count among nearby competitors
+    // Rank (kept for findings/intelligence, not for score)
     const allWithClient = [
       { name, reviewsCount: clientReviews, totalScore: clientRating },
       ...otherCompetitors,
@@ -183,105 +302,315 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       allWithClient.findIndex(
         (c) => c.name.toLowerCase() === name.toLowerCase()
       ) + 1;
-    const totalInMarket = allWithClient.length;
-    const rankPct = (totalInMarket - rank) / Math.max(totalInMarket - 1, 1);
-    const reviewRatio = Math.min(1, clientReviews / maxReviews);
-    // 60% rank, 40% reviews. Mid-pack with decent reviews = ~18/40.
-    const localVisibility = Math.round(
-      Math.min(40, Math.max(0, (rankPct * 0.6 + reviewRatio * 0.4) * 40))
-    );
 
-    // Rating vs Market (0-40) — star rating compared to market average
-    const ratingDiff = clientRating - avgRating;
-    // Baseline 0.42 (average = ~17/40). Beat average to go higher.
-    // 4.5+ gets a small bonus (these are genuinely strong).
-    const ratingPct = Math.min(1, Math.max(0,
-      0.42 + ratingDiff * 0.3 + (clientRating >= 4.5 ? 0.05 : 0)
-    ));
-    const onlinePresence = Math.round(
-      Math.min(40, Math.max(0, ratingPct * 40))
-    );
-
-    // Review Volume (0-20) — review count relative to market average
-    // At average = 12/20. 1.5x average = 16/20. 2x+ = 20/20.
-    const reviewHealthRaw = avgReviews > 0
-      ? Math.pow(clientReviews / avgReviews, 0.5) // gentle diminishing returns
-      : 0.4;
-    const reviewHealth = Math.round(
-      Math.min(20, Math.max(0, Math.min(1, reviewHealthRaw) * 20))
-    );
-
-    // Composite score (sum of sub-scores, 0-100)
-    const compositeScore = localVisibility + onlinePresence + reviewHealth;
-
-    // Score breakdown logged to behavioral_events, not console
-
-    // Top competitor (for blur gate CTA)
+    // Top competitor (for blur gate CTA and findings)
     const topCompetitor = otherCompetitors[0] || null;
 
-    // Build findings
-    const findings = [];
+    // --- Fetch review details from Google for response rate + recency ---
+    let reviewResponseRate = 0;
+    let hasRespondedToNegative = false;
+    let allReviewsPositive = false;
+    let lastReviewDaysAgo = 999;
 
-    // Finding 1: Review gap
+    if (placeId) {
+      try {
+        const placeDetails = await getPlaceDetails(placeId);
+        const googleReviews: any[] = placeDetails?.reviews || [];
+        if (googleReviews.length > 0) {
+          const withResponse = googleReviews.filter((r: any) => !!r.ownerResponse);
+          reviewResponseRate = Math.round((withResponse.length / googleReviews.length) * 100);
+
+          const negativeReviews = googleReviews.filter((r: any) => (r.rating || 5) <= 3);
+          allReviewsPositive = negativeReviews.length === 0;
+          if (negativeReviews.length > 0) {
+            hasRespondedToNegative = negativeReviews.some((r: any) => !!r.ownerResponse);
+          }
+
+          // Recency: parse publishTime to get days since last review
+          const now = Date.now();
+          for (const r of googleReviews) {
+            if (r.publishTime) {
+              const pubDate = new Date(r.publishTime).getTime();
+              if (!isNaN(pubDate)) {
+                const daysAgo = Math.floor((now - pubDate) / (1000 * 60 * 60 * 24));
+                if (daysAgo < lastReviewDaysAgo) lastReviewDaysAgo = daysAgo;
+              }
+            }
+          }
+          // If publishTime not available, try relativePublishTimeDescription
+          if (lastReviewDaysAgo === 999) {
+            for (const r of googleReviews) {
+              const desc = r.relativePublishTimeDescription || "";
+              if (desc.includes("a week ago") || desc.includes("days ago") || desc.includes("yesterday") || desc.includes("an hour ago")) {
+                lastReviewDaysAgo = 7; // Approximate
+                break;
+              } else if (desc.includes("2 weeks ago")) {
+                lastReviewDaysAgo = 14;
+                break;
+              } else if (desc.includes("a month ago") || desc.includes("3 weeks ago")) {
+                lastReviewDaysAgo = 30;
+                break;
+              } else if (desc.includes("2 months ago")) {
+                lastReviewDaysAgo = 60;
+                break;
+              }
+            }
+          }
+        }
+      } catch (reviewFetchErr) {
+        // Non-blocking: if review fetch fails, score with what we have
+        console.error("[Checkup] Review detail fetch failed (non-blocking):", reviewFetchErr instanceof Error ? reviewFetchErr.message : reviewFetchErr);
+      }
+    }
+
+    // ─── TRUST SIGNAL (0-30) ────────────────────────────────────────────
+    // Rating strength (0-12)
+    let ratingStrengthPts = 1;
+    if (clientRating >= 5.0) ratingStrengthPts = 12;
+    else if (clientRating >= 4.8) ratingStrengthPts = 10;
+    else if (clientRating >= 4.5) ratingStrengthPts = 7;
+    else if (clientRating >= 4.0) ratingStrengthPts = 4;
+
+    // Review volume relative to specialty benchmark (0-10)
+    const benchmark = REVIEW_VOLUME_BENCHMARKS[specKey] || 50;
+    const volumeRatio = Math.min(1, clientReviews / benchmark);
+    const reviewVolumePts = Math.round(volumeRatio * 10);
+
+    // Review recency (0-8)
+    let recencyPts = 0;
+    if (lastReviewDaysAgo <= 7) recencyPts = 8;
+    else if (lastReviewDaysAgo <= 14) recencyPts = 6;
+    else if (lastReviewDaysAgo <= 30) recencyPts = 4;
+    else if (lastReviewDaysAgo <= 60) recencyPts = 2;
+
+    const trustSignal = Math.min(30, ratingStrengthPts + reviewVolumePts + recencyPts);
+
+    // ─── FIRST IMPRESSION (0-30) ────────────────────────────────────────
+    const clientPhotos = req.body.photosCount ?? 0;
+
+    // Photo count (0-10)
+    let photoPts = 0;
+    if (clientPhotos >= 20) photoPts = 10;
+    else if (clientPhotos >= 10) photoPts = 7;
+    else if (clientPhotos >= 5) photoPts = 4;
+    else if (clientPhotos >= 1) photoPts = 2;
+
+    // Profile completeness (0-10): hours + phone + website + description
+    const hasHours = req.body.regularOpeningHours
+      ? (req.body.regularOpeningHours.periods?.length || 0) > 0
+      : !!req.body.hasHours;
+    const hasPhone = !!req.body.phone;
+    const hasWebsite = !!req.body.websiteUri;
+    const hasDescription = !!req.body.editorialSummary;
+    const completenessCount = [hasHours, hasPhone, hasWebsite, hasDescription].filter(Boolean).length;
+    let completenessPts = 0;
+    if (completenessCount === 4) completenessPts = 10;
+    else if (completenessCount === 3) completenessPts = 7;
+    else if (completenessCount === 2) completenessPts = 4;
+    else if (completenessCount === 1) completenessPts = 2;
+
+    // Editorial summary exists (0-5)
+    const editorialPts = hasDescription ? 5 : 0;
+
+    // Business status operational (0-5)
+    const businessStatus = req.body.businessStatus || "OPERATIONAL";
+    const statusPts = (businessStatus === "OPERATIONAL" || businessStatus === "OPEN") ? 5 : 0;
+
+    const firstImpression = Math.min(30, photoPts + completenessPts + editorialPts + statusPts);
+
+    // ─── RESPONSIVENESS (0-20) ──────────────────────────────────────────
+    // Review response rate (0-12)
+    let responseRatePts = 0;
+    if (reviewResponseRate >= 80) responseRatePts = 12;
+    else if (reviewResponseRate >= 50) responseRatePts = 8;
+    else if (reviewResponseRate >= 20) responseRatePts = 5;
+    else if (reviewResponseRate >= 1) responseRatePts = 2;
+
+    // Responded to negative reviews (0-8)
+    let negativeResponsePts = 0;
+    if (allReviewsPositive) negativeResponsePts = 4; // No negatives to respond to
+    else if (hasRespondedToNegative) negativeResponsePts = 8;
+
+    const responsiveness = Math.min(20, responseRatePts + negativeResponsePts);
+
+    // ─── COMPETITIVE EDGE (0-20) ────────────────────────────────────────
+    // Only calculated if same-specialty competitors were found
+    let competitiveEdge = 10; // Neutral default when no competitors
+    let competitiveDataLimited = otherCompetitors.length === 0;
+
+    if (otherCompetitors.length > 0) {
+      // Rating advantage (0-8)
+      const ratingAdvantage = clientRating - avgRating;
+      // Scale: +0.5 above avg = 8pts, at avg = 4pts, -0.5 below = 0pts
+      const ratingAdvantagePts = Math.round(Math.min(8, Math.max(0, (ratingAdvantage + 0.5) * 8)));
+
+      // Review volume advantage (0-8)
+      const maxReviews = Math.max(...otherCompetitors.map((c) => c.reviewsCount), 1);
+      const volumeAdvantage = clientReviews / maxReviews;
+      // Scale: leading = 8pts, half of leader = 4pts, far behind = 0pts
+      const volumeAdvantagePts = Math.round(Math.min(8, volumeAdvantage * 8));
+
+      // Unique strengths bonus (0-4) - based on Oz findings later, start with 0
+      const uniqueStrengthsPts = 0; // Updated after Oz analysis
+
+      competitiveEdge = Math.min(20, ratingAdvantagePts + volumeAdvantagePts + uniqueStrengthsPts);
+      competitiveDataLimited = false;
+    }
+
+    // Composite score (sum of sub-scores, 0-100)
+    const compositeScore = trustSignal + firstImpression + responsiveness + competitiveEdge;
+    const scoreLabel = getScoreLabel(compositeScore);
+
+    // Build findings — framed as: "Here's what a prospect sees when they compare you to alternatives"
+    const findings: Array<{
+      type: string;
+      title: string;
+      detail: string;
+      value: number;
+      impact: number;
+    }> = [];
+
+    // Finding 1: What prospects see first — your review social proof
     if (topCompetitor && topCompetitor.reviewsCount > clientReviews) {
       const gap = topCompetitor.reviewsCount - clientReviews;
+      const annualImpact = Math.round(gap * perReviewImpact / 12);
       findings.push({
         type: "review_gap",
-        title: "Review Gap",
-        detail: `${topCompetitor.name} has ${gap} more reviews than you`,
+        title: "Prospects See Fewer Reviews",
+        detail: `When a prospect compares you to ${topCompetitor.name}, they see ${gap} fewer reviews on your profile. Improving this gap could generate an estimated $${annualImpact.toLocaleString()} in additional inquiries per year.`,
         value: gap,
-        impact: Math.round(gap * perReviewImpact / 12), // specialty-adjusted annual impact
+        impact: annualImpact,
       });
     } else {
       findings.push({
         type: "review_lead",
-        title: "Review Leadership",
-        detail: `You lead your market in review count`,
+        title: "Strongest Social Proof in Your Market",
+        detail: `Prospects see you have the most reviews among nearby ${competitorWord}s. That credibility drives clicks.`,
         value: clientReviews,
         impact: 0,
       });
     }
 
-    // Finding 2: Rating comparison
+    // Finding 2: Rating impression
     if (clientRating < avgRating) {
+      const starImpact = Math.round((avgRating - clientRating) * perStarImpact);
       findings.push({
         type: "rating_gap",
-        title: "Rating Below Average",
-        detail: `Your ${clientRating}★ rating is below the market average of ${avgRating.toFixed(1)}★`,
+        title: "Rating Below What Prospects Expect",
+        detail: `Prospects see a ${clientRating}★ rating while nearby alternatives average ${avgRating.toFixed(1)}★. Improving your rating could generate an estimated $${starImpact.toLocaleString()} in additional inquiries per year.`,
         value: avgRating - clientRating,
-        impact: Math.round((avgRating - clientRating) * perStarImpact),
+        impact: starImpact,
       });
     } else {
       findings.push({
         type: "rating_strong",
-        title: "Strong Rating",
-        detail: `Your ${clientRating}★ rating ${clientRating > avgRating ? "beats" : "matches"} the market average of ${avgRating.toFixed(1)}★`,
+        title: "Rating Makes a Strong First Impression",
+        detail: `Your ${clientRating}★ rating ${clientRating > avgRating ? "stands out above" : "matches"} the market average of ${avgRating.toFixed(1)}★. Prospects trust what they see.`,
         value: clientRating - avgRating,
         impact: 0,
       });
     }
 
-    // Finding 3: Market position
-    findings.push({
-      type: "market_rank",
-      title: "Market Position",
-      detail: `You rank #${rank} of ${totalInMarket} ${competitorWord}s in ${city}`,
-      value: rank,
-      impact: rank > 3 ? Math.round((rank - 3) * perRankImpact) : 0,
-    });
+    // Finding 3: Review recency — freshness signals active business
+    if (lastReviewDaysAgo <= 14) {
+      findings.push({
+        type: "recency_strong",
+        title: "Recent Reviews Signal Active Business",
+        detail: `Your most recent review is from the last ${lastReviewDaysAgo <= 7 ? "week" : "two weeks"}. Prospects see an active, current business.`,
+        value: lastReviewDaysAgo,
+        impact: 0,
+      });
+    } else if (lastReviewDaysAgo > 30) {
+      const recencyImpact = Math.round(econ.avgCaseValue * econ.conversionRate * 12);
+      findings.push({
+        type: "recency_stale",
+        title: "Reviews Look Stale to Prospects",
+        detail: `Your most recent review is over ${lastReviewDaysAgo > 60 ? "60" : "30"} days old. Prospects may wonder if you're still active. Fresh reviews could generate an estimated $${recencyImpact.toLocaleString()} in additional inquiries per year.`,
+        value: lastReviewDaysAgo,
+        impact: recencyImpact,
+      });
+    }
 
-    // Finding 4: Zero competitors guidance
-    if (otherCompetitors.length === 0) {
+    // Finding 4: Response rate — shows prospects the owner cares
+    if (reviewResponseRate < 50 && !allReviewsPositive) {
+      const responseImpact = Math.round(econ.avgCaseValue * econ.conversionRate * 6);
+      findings.push({
+        type: "response_gap",
+        title: "Prospects See Unanswered Reviews",
+        detail: `You've responded to ${reviewResponseRate}% of your reviews. Prospects notice when owners engage. Improving response rate could generate an estimated $${responseImpact.toLocaleString()} in additional inquiries per year.`,
+        value: reviewResponseRate,
+        impact: responseImpact,
+      });
+    } else if (reviewResponseRate >= 80) {
+      findings.push({
+        type: "response_strong",
+        title: "Strong Owner Engagement Visible",
+        detail: `You've responded to ${reviewResponseRate}% of your reviews. Prospects see an owner who cares.`,
+        value: reviewResponseRate,
+        impact: 0,
+      });
+    }
+
+    // Finding 5: Profile completeness
+    if (completenessCount < 4) {
+      const missingItems: string[] = [];
+      if (!hasHours) missingItems.push("business hours");
+      if (!hasPhone) missingItems.push("phone number");
+      if (!hasWebsite) missingItems.push("website");
+      if (!hasDescription) missingItems.push("business description");
+      findings.push({
+        type: "profile_incomplete",
+        title: "Incomplete Profile Reduces Trust",
+        detail: `Prospects see a profile missing ${missingItems.join(", ")}. Complete profiles get more clicks. This takes minutes to fix.`,
+        value: missingItems.length,
+        impact: Math.round(econ.avgCaseValue * missingItems.length * 0.5),
+      });
+    }
+
+    // Finding 6: Zero competitors guidance
+    if (competitiveDataLimited) {
       findings.push({
         type: "no_competitors",
-        title: "Limited Market Data",
-        detail: "We could not find competitors in your immediate area. Your score reflects your profile strength. Connect Google Business Profile for deeper market intelligence.",
+        title: "Competitive Data Limited",
+        detail: "We could not find same-specialty competitors in your immediate area. Your score reflects your profile strength as a prospect would see it. Connect Google Business Profile for deeper intelligence.",
+        value: 0,
+        impact: 0,
+      });
+    }
+
+    // Finding 6: Multi-location awareness
+    if (multiLocationCount > 0) {
+      const locationCities = multiLocationMatches
+        .map((c) => {
+          // Extract city from address (usually "123 Main St, City, State ZIP")
+          const parts = c.address.split(",").map((p) => p.trim());
+          return parts.length >= 2 ? parts[parts.length - 2] : c.address;
+        })
+        .filter(Boolean)
+        .slice(0, 4);
+      const locationList = locationCities.length > 0 ? ` (${locationCities.join(", ")})` : "";
+      findings.push({
+        type: "multi_location",
+        title: "Multiple Locations Detected",
+        detail: `We found ${multiLocationCount + 1} locations for ${name}${locationList}. This analysis covers your ${city} location.`,
+        value: multiLocationCount + 1,
+        impact: 0,
+      });
+    }
+
+    // Finding 7: Broadened search notice
+    if (broadened && broadeningCategory) {
+      findings.push({
+        type: "broadened_search",
+        title: "Expanded Comparison",
+        detail: `We found fewer than 5 ${specialty} ${competitorWord}s nearby, so we included ${broadeningCategory} ${competitorWord}s for a more complete picture.`,
         value: 0,
         impact: 0,
       });
     }
 
     // Total estimated annual impact
+    // For leaders: this is "revenue protected". For others: "revenue at risk".
     const totalImpact = findings.reduce((s, f) => s + f.impact, 0);
 
     // --- Gap-to-next: concrete closeable units ---
@@ -413,28 +742,24 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // ─── Oz Reveals: insights from public data the owner never gave us ───
 
     // Photo count comparison (Google Places gives us this for free)
-    const clientPhotos = req.body.photosCount ?? 0;
     const topCompPhotos = topCompetitor?.photosCount ?? 0;
     if (topCompetitor && topCompPhotos > clientPhotos && topCompPhotos > 10) {
+      const photoImpact = Math.round((topCompPhotos - clientPhotos) * econ.avgCaseValue * 0.002);
       findings.push({
         type: "photo_gap",
-        title: `${topCompetitor.name} has ${topCompPhotos} photos. You have ${clientPhotos || "none"}.`,
-        detail: `Businesses with 40+ Google photos get 35% more clicks to their website. Each photo is free visibility.`,
+        title: "Prospects See More Photos on Alternatives",
+        detail: `${topCompetitor.name} has ${topCompPhotos} photos. You have ${clientPhotos || "none"}. Improving your photo count could generate an estimated $${photoImpact.toLocaleString()} in additional inquiries per year.`,
         value: topCompPhotos - clientPhotos,
-        impact: Math.round((topCompPhotos - clientPhotos) * econ.avgCaseValue * 0.002),
+        impact: photoImpact,
       });
     }
 
-    // Hours completeness (competitor has full hours, you don't)
-    // Derive from regularOpeningHours if available, fall back to hasHours flag
-    const clientHasHours = req.body.regularOpeningHours
-      ? (req.body.regularOpeningHours.periods?.length || 0) > 0
-      : !!req.body.hasHours;
-    if (!clientHasHours && topCompetitor?.hasHours) {
+    // Hours completeness (prospect-framed)
+    if (!hasHours && topCompetitor?.hasHours) {
       findings.push({
         type: "hours_missing",
-        title: "Your Google profile is missing business hours",
-        detail: `${topCompetitor.name}'s hours are listed. Yours aren't. Google prioritizes profiles with complete information. This takes 2 minutes to fix.`,
+        title: "Prospects Can't See Your Hours",
+        detail: `${topCompetitor.name}'s hours are listed. Yours aren't. Prospects skip profiles without hours. This takes 2 minutes to fix.`,
         value: 0,
         impact: Math.round(econ.avgCaseValue * 0.5),
       });
@@ -563,17 +888,25 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     }).catch(() => {});
 
     console.log(
-      `[Checkup] Score: ${compositeScore} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: ✓" : ""}${ozMoments.length > 0 ? ` | Oz: ${ozMoments.length}` : ""}${surpriseFindings.length > 0 ? ` | Surprise: ${surpriseFindings.length}` : ""}`
+      `[Checkup] Score: ${compositeScore} (${scoreLabel}) | Trust:${trustSignal} Impression:${firstImpression} Response:${responsiveness} Edge:${competitiveEdge} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: yes" : ""}${ozMoments.length > 0 ? ` | Oz: ${ozMoments.length}` : ""}${surpriseFindings.length > 0 ? ` | Surprise: ${surpriseFindings.length}` : ""}`
     );
 
     return res.json({
       success: true,
       score: {
         composite: compositeScore,
-        visibility: localVisibility,
-        reputation: onlinePresence,
-        competitive: reviewHealth,
+        // New First Impression sub-scores
+        trustSignal,
+        firstImpression,
+        responsiveness,
+        competitiveEdge,
+        // Legacy aliases for frontend compatibility during transition
+        visibility: trustSignal,
+        reputation: firstImpression,
+        competitive: responsiveness,
       },
+      scoreLabel,
+      competitiveDataLimited,
       topCompetitor: topCompetitor
         ? {
             name: topCompetitor.name,
@@ -596,13 +929,25 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       ozMoments: ozMoments.length > 0 ? ozMoments : undefined,
       surpriseFindings: surpriseFindings.length > 0 ? surpriseFindings.slice(0, 5) : undefined,
       totalImpact,
+      impactLabel: compositeScore >= 80 ? "revenue_protected" : "revenue_at_risk",
       market: {
         city,
         totalCompetitors: otherCompetitors.length,
         avgRating: Math.round(avgRating * 10) / 10,
         avgReviews: Math.round(avgReviews),
         rank,
+        broadened: broadened || false,
+        broadeningCategory: broadeningCategory || null,
       },
+      multiLocation: multiLocationCount > 0 ? {
+        totalLocations: multiLocationCount + 1,
+        analyzedCity: city,
+        otherLocations: multiLocationMatches.slice(0, 5).map((c) => ({
+          name: c.name,
+          address: c.address,
+          placeId: c.placeId,
+        })),
+      } : null,
       gaps,
       vocabulary: {
         customerTerm: customerWord,

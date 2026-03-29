@@ -33,9 +33,13 @@ export const CONFERENCE_ANALYSIS = {
   success: true as const,
   score: {
     composite: 61,
-    visibility: 22,
-    reputation: 24,
-    competitive: 15,
+    trustSignal: 18,
+    firstImpression: 20,
+    responsiveness: 13,
+    competitiveEdge: 10,
+    visibility: 18,
+    reputation: 20,
+    competitive: 13,
   },
   topCompetitor: {
     name: "Summit Specialists",
@@ -133,9 +137,13 @@ export const BARBER_DEMO_ANALYSIS = {
   success: true as const,
   score: {
     composite: 54,
-    visibility: 18,
-    reputation: 22,
-    competitive: 14,
+    trustSignal: 16,
+    firstImpression: 18,
+    responsiveness: 10,
+    competitiveEdge: 10,
+    visibility: 16,
+    reputation: 18,
+    competitive: 10,
   },
   topCompetitor: {
     name: "South Congress Cuts",
@@ -289,9 +297,11 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
 
   // Composite 38-72 (realistic range for most practices)
   const composite = 38 + Math.abs(seed % 35);
-  const visibility = 10 + Math.abs((seed >> 4) % 18);
-  const reputation = 12 + Math.abs((seed >> 8) % 18);
-  const competitive = composite - visibility - reputation;
+  // New First Impression sub-scores (trust /30, impression /30, response /20, edge /20)
+  const trustSignal = 8 + Math.abs((seed >> 4) % 14); // 8-21
+  const firstImpression = 8 + Math.abs((seed >> 8) % 14); // 8-21
+  const responsiveness = 4 + Math.abs((seed >> 12) % 10); // 4-13
+  const competitiveEdge = Math.max(3, composite - trustSignal - firstImpression - responsiveness);
 
   const rank = 2 + Math.abs((seed >> 12) % 4); // #2 through #5
   const totalCompetitors = 4 + Math.abs((seed >> 16) % 4); // 4-7
@@ -304,7 +314,17 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
 
   return {
     ...CONFERENCE_ANALYSIS,
-    score: { composite, visibility, reputation, competitive: Math.max(competitive, 3) },
+    score: {
+      composite,
+      trustSignal,
+      firstImpression,
+      responsiveness,
+      competitiveEdge,
+      // Legacy aliases
+      visibility: trustSignal,
+      reputation: firstImpression,
+      competitive: responsiveness,
+    },
     topCompetitor: {
       ...CONFERENCE_ANALYSIS.topCompetitor,
       reviewCount: topReviews,

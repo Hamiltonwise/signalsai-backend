@@ -555,10 +555,18 @@ export default function ScanningTheater() {
       place,
       score: {
         composite: result.score.composite,
-        localVisibility: result.score.visibility,
-        onlinePresence: result.score.reputation,
-        reviewHealth: result.score.competitive,
+        // New First Impression sub-scores
+        trustSignal: result.score.trustSignal ?? result.score.visibility,
+        firstImpression: result.score.firstImpression ?? result.score.reputation,
+        responsiveness: result.score.responsiveness ?? result.score.competitive,
+        competitiveEdge: result.score.competitiveEdge ?? 10,
+        // Legacy aliases for backward compatibility
+        localVisibility: result.score.visibility ?? result.score.trustSignal,
+        onlinePresence: result.score.reputation ?? result.score.firstImpression,
+        reviewHealth: result.score.competitive ?? result.score.responsiveness,
       },
+      scoreLabel: (result as any).scoreLabel || undefined,
+      competitiveDataLimited: (result as any).competitiveDataLimited || false,
       topCompetitor: result.topCompetitor,
       competitors: result.competitors,
       findings: result.findings,

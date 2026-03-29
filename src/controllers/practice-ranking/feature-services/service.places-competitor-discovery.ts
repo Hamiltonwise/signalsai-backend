@@ -166,30 +166,39 @@ function normalizeSpecialty(specialty: string): string {
 }
 
 // =====================================================================
+// BROADENING MAP: specialty -> adjacent broader category for fallback
+// =====================================================================
+
+const BROADENING_MAP: Record<string, string> = {
+  // Dental specialties broaden to general dentist
+  endodontics: "dentist",
+  orthodontics: "dentist",
+  periodontics: "dentist",
+  oral_surgery: "dentist",
+  pediatric: "dentist",
+  prosthodontics: "dentist",
+  // Medical specialties broaden to their parent category
+  plastic_surgery: "cosmetic doctor",
+  medspa: "dermatologist",
+  chiropractic: "doctor",
+  physical_therapy: "doctor",
+  optometry: "eye doctor",
+  // Professional services broaden generically
+  accounting: "financial services",
+  financial_advisor: "financial services",
+  // Home services broaden to general contractor
+  home_services: "contractor",
+};
+
+// =====================================================================
 // DISCOVERY
 // =====================================================================
 
 /**
- * Discover competitors via Google Places Text Search API.
- *
- * @param specialty - Practice specialty (e.g. "endodontist", "orthodontics")
- * @param marketLocation - Market location (e.g. "Austin, TX")
- * @param limit - Maximum results (default 20)
- * @returns Array of discovered competitors
+ * Convert raw Google Places results to DiscoveredCompetitor array.
  */
-export async function discoverCompetitorsViaPlaces(
-  specialty: string,
-  marketLocation: string,
-  limit: number = 20,
-  locationBias?: { lat: number; lng: number; radiusMeters?: number },
-): Promise<DiscoveredCompetitor[]> {
-  const searchQuery = `${specialty} in ${marketLocation}`;
-  log(`Searching: "${searchQuery}" (limit: ${limit})${locationBias ? ` [biased to ${locationBias.lat.toFixed(4)},${locationBias.lng.toFixed(4)}]` : ""}`);
-
-  const places = await textSearch(searchQuery, limit, locationBias);
-  log(`Found ${places.length} raw results`);
-
-  const competitors: DiscoveredCompetitor[] = places.map((place: any) => {
+function placesToCompetitors(places: any[]): DiscoveredCompetitor[] {
+  return places.map((place: any) => {
     const hours = place.regularOpeningHours;
     const hasHours = !!hours;
     const hoursComplete = hasHours
@@ -216,6 +225,34 @@ export async function discoverCompetitorsViaPlaces(
         : undefined,
     };
   });
+}
+
+/**
+ * Discover competitors via Google Places Text Search API.
+ *
+ * Uses the business's specific category for the search query. If the specialty
+ * is specific (endodontist, orthodontist, plastic surgeon, etc.) and fewer than
+ * 5 same-specialty competitors are found, automatically broadens to adjacent
+ * categories (endodontist -> dentist, orthodontist -> dentist, etc.).
+ *
+ * @param specialty - Practice specialty (e.g. "endodontist", "orthodontics")
+ * @param marketLocation - Market location (e.g. "Austin, TX")
+ * @param limit - Maximum results (default 20)
+ * @returns Array of discovered competitors
+ */
+export async function discoverCompetitorsViaPlaces(
+  specialty: string,
+  marketLocation: string,
+  limit: number = 20,
+  locationBias?: { lat: number; lng: number; radiusMeters?: number },
+): Promise<DiscoveredCompetitor[]> {
+  const searchQuery = `${specialty} in ${marketLocation}`;
+  log(`Searching: "${searchQuery}" (limit: ${limit})${locationBias ? ` [biased to ${locationBias.lat.toFixed(4)},${locationBias.lng.toFixed(4)}]` : ""}`);
+
+  const places = await textSearch(searchQuery, limit, locationBias);
+  log(`Found ${places.length} raw results`);
+
+  const competitors = placesToCompetitors(places);
 
   // Sort by review count (desc), then rating (desc), then placeId (deterministic)
   competitors.sort((a, b) => {
@@ -225,6 +262,76 @@ export async function discoverCompetitorsViaPlaces(
   });
 
   return competitors;
+}
+
+/**
+ * Discover competitors with specialty-aware fallback broadening.
+ *
+ * 1. Search for exact specialty (e.g. "endodontist in San Diego, CA")
+ * 2. Filter to same-specialty matches
+ * 3. If fewer than 5, broaden to adjacent category (e.g. "dentist in San Diego, CA")
+ *    and merge results, deduplicating by placeId
+ *
+ * @returns Object with competitors array and whether broadening was used
+ */
+export async function discoverCompetitorsWithFallback(
+  specialty: string,
+  marketLocation: string,
+  limit: number = 20,
+  locationBias?: { lat: number; lng: number; radiusMeters?: number },
+): Promise<{
+  competitors: DiscoveredCompetitor[];
+  broadened: boolean;
+  broadeningCategory: string | null;
+}> {
+  const MIN_SAME_SPECIALTY = 5;
+
+  // Step 1: Discover with exact specialty
+  const allCompetitors = await discoverCompetitorsViaPlaces(
+    specialty, marketLocation, limit, locationBias,
+  );
+
+  // Step 2: Filter to same specialty
+  const specialtyFiltered = filterBySpecialty(allCompetitors, specialty);
+
+  // Step 3: If enough same-specialty competitors, return them
+  if (specialtyFiltered.length >= MIN_SAME_SPECIALTY) {
+    return { competitors: specialtyFiltered, broadened: false, broadeningCategory: null };
+  }
+
+  // Step 4: Check if this specialty has a broadening category
+  const normalizedSpec = normalizeSpecialty(specialty);
+  const broaderCategory = BROADENING_MAP[normalizedSpec];
+
+  if (!broaderCategory) {
+    // No broadening available, return what we have
+    log(`Only ${specialtyFiltered.length} same-specialty results, no broadening category for "${specialty}"`);
+    return { competitors: specialtyFiltered, broadened: false, broadeningCategory: null };
+  }
+
+  log(`Only ${specialtyFiltered.length} same-specialty results. Broadening to "${broaderCategory}"`);
+
+  // Step 5: Search with broader category
+  const broaderResults = await discoverCompetitorsViaPlaces(
+    broaderCategory, marketLocation, limit, locationBias,
+  );
+
+  // Step 6: Merge, deduplicating by placeId (specialty results first)
+  const seenIds = new Set(specialtyFiltered.map((c) => c.placeId));
+  const additionalCompetitors = broaderResults.filter((c) => !seenIds.has(c.placeId));
+
+  const merged = [...specialtyFiltered, ...additionalCompetitors];
+
+  // Re-sort merged results
+  merged.sort((a, b) => {
+    if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
+    if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+    return a.placeId.localeCompare(b.placeId);
+  });
+
+  log(`After broadening: ${specialtyFiltered.length} same-specialty + ${additionalCompetitors.length} broader = ${merged.length} total`);
+
+  return { competitors: merged, broadened: true, broadeningCategory: broaderCategory };
 }
 
 // =====================================================================

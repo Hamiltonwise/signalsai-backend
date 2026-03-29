@@ -31,6 +31,14 @@ export default function FoundersPage() {
           building without a playbook. No family in the profession. No inherited client
           base. Just skill, determination, and a vision for what their business could become.
         </p>
+        <div className="mt-6 rounded-xl bg-[#D56753] p-5 text-center">
+          <p className="text-sm font-bold text-white">
+            First-year business owners: $400/month. Everything included.
+          </p>
+          <p className="text-xs text-white/70 mt-1">
+            Same product. Same intelligence. Same 47 agents. Community pricing because the first year is the hardest.
+          </p>
+        </div>
 
         <div className="mt-12 space-y-8">
           <div className="flex gap-4">

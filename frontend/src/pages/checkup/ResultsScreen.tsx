@@ -14,6 +14,10 @@ import {
   Copy,
   Share2,
   Zap,
+  Shield,
+  Image,
+  Reply,
+  Swords,
 } from "lucide-react";
 import type { PlaceDetails } from "../../api/places";
 import { sendCheckupEmail, triggerBuild, createCompetitorInvite } from "../../api/checkup";
@@ -64,10 +68,18 @@ export interface CheckupResults {
   place: PlaceDetails;
   score: {
     composite: number;
+    // New First Impression sub-scores
+    trustSignal: number;
+    firstImpression: number;
+    responsiveness: number;
+    competitiveEdge: number;
+    // Legacy aliases (backend sends both during transition)
     localVisibility: number;
     onlinePresence: number;
     reviewHealth: number;
   };
+  scoreLabel?: string;
+  competitiveDataLimited?: boolean;
   topCompetitor: CheckupCompetitor | null;
   competitors: CheckupCompetitor[];
   findings: CheckupFinding[];
@@ -275,13 +287,21 @@ function FindingCard({
   blurred: boolean;
 }) {
   const isPositive =
-    finding.type.includes("lead") || finding.type.includes("strong");
+    finding.type.includes("lead") || finding.type.includes("strong") || finding.type === "recency_strong" || finding.type === "response_strong";
   const isSentiment = finding.type === "sentiment_insight";
   const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     review_gap: MessageSquare,
     review_lead: MessageSquare,
     rating_gap: Star,
     rating_strong: Star,
+    recency_strong: Star,
+    recency_stale: Star,
+    response_gap: Reply,
+    response_strong: Reply,
+    profile_incomplete: Globe,
+    photo_gap: Image,
+    hours_missing: Globe,
+    no_competitors: MapPin,
     market_rank: MapPin,
     sentiment_insight: Zap,
   };
@@ -859,57 +879,71 @@ export default function ResultsScreen() {
         </p>
       )}
 
-      {/* Sub-scores — transparent breakdown with plain-English explanation */}
+      {/* Sub-scores — First Impression breakdown */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] space-y-6">
-        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Behind the Score</p>
-
-        {/* Local Visibility */}
-        <div className="space-y-2">
-          <SubScoreBar label="Local Visibility" score={score.localVisibility} maxScore={40} icon={Eye} />
-          <p className="text-xs text-slate-500 leading-relaxed pl-11">
-            {market && market.rank > 0 ? (
-              <>
-                You rank <span className="font-semibold text-slate-700">#{market.rank} of {market.totalCompetitors}</span> {place.category ? `${place.category.toLowerCase()}s` : "competitors"} in {market.city}.
-                {topCompetitor && <> <span className="font-semibold text-slate-700">{topCompetitor.name}</span> holds #1 with {topCompetitor.reviewCount} reviews. You have {place.reviewCount}.</>}
-              </>
-            ) : (
-              <>Position data is being calculated. Check back after the next scan.</>
-            )}
-          </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Behind the Score</p>
+          {state.scoreLabel && (
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              score.composite >= 80 ? "bg-emerald-50 text-emerald-700" :
+              score.composite >= 60 ? "bg-blue-50 text-blue-700" :
+              score.composite >= 40 ? "bg-amber-50 text-amber-700" :
+              "bg-red-50 text-red-700"
+            }`}>{state.scoreLabel}</span>
+          )}
         </div>
 
-        {/* Online Presence */}
+        {/* Trust Signal */}
         <div className="space-y-2">
-          <SubScoreBar label="Online Presence" score={score.onlinePresence} maxScore={40} icon={Globe} />
+          <SubScoreBar label="Trust Signal" score={score.trustSignal ?? score.localVisibility} maxScore={30} icon={Shield} />
           <p className="text-xs text-slate-500 leading-relaxed pl-11">
             {place.rating ? (
               <>
-                Your <span className="font-semibold text-slate-700">{place.rating}-star rating</span> {market && market.avgRating ? (
+                Your <span className="font-semibold text-slate-700">{place.rating}-star rating</span> with{" "}
+                <span className="font-semibold text-slate-700">{place.reviewCount} review{place.reviewCount !== 1 ? "s" : ""}</span>.
+                {market && market.avgRating > 0 && (
                   place.rating >= market.avgRating
-                    ? <>is above the {market.city} market average of {market.avgRating.toFixed(1)}.</>
-                    : <>is below the {market.city} market average of {market.avgRating.toFixed(1)}. Every 0.1-star improvement moves your score.</>
-                ) : <>contributes to your online presence score.</>}
-                {!place.websiteUri && <> No website linked on your profile, which reduces visibility.</>}
+                    ? <> Prospects see a rating above the {market.city} average of {market.avgRating.toFixed(1)}.</>
+                    : <> The {market.city} average is {market.avgRating.toFixed(1)}. Every improvement matters.</>
+                )}
               </>
             ) : (
-              <>Your Google Business Profile data is being analyzed.</>
+              <>Rating and review data is being analyzed.</>
             )}
           </p>
         </div>
 
-        {/* Review Health */}
+        {/* First Impression */}
         <div className="space-y-2">
-          <SubScoreBar label="Review Health" score={score.reviewHealth} maxScore={20} icon={MessageSquare} />
+          <SubScoreBar label="First Impression" score={score.firstImpression ?? score.onlinePresence} maxScore={30} icon={Image} />
           <p className="text-xs text-slate-500 leading-relaxed pl-11">
-            You have <span className="font-semibold text-slate-700">{place.reviewCount} review{place.reviewCount !== 1 ? "s" : ""}</span>
-            {place.rating ? <> averaging {place.rating} stars</> : null}.
-            {market && market.avgReviews > 0 && (
-              place.reviewCount >= market.avgReviews
-                ? <> That's above the local average of {Math.round(market.avgReviews)}.</>
-                : <> The local average is {Math.round(market.avgReviews)}. Each new review closes the gap.</>
-            )}
-            {topCompetitor && topCompetitor.reviewCount > place.reviewCount && (
-              <> <span className="font-semibold text-slate-700">{topCompetitor.name}</span> has {topCompetitor.reviewCount}.</>
+            Photos, business hours, contact info, and description completeness.
+            {!place.websiteUri && <> No website linked on your profile, which reduces trust.</>}
+            {" "}Prospects decide in seconds whether to call or scroll past.
+          </p>
+        </div>
+
+        {/* Responsiveness */}
+        <div className="space-y-2">
+          <SubScoreBar label="Responsiveness" score={score.responsiveness ?? score.reviewHealth} maxScore={20} icon={Reply} />
+          <p className="text-xs text-slate-500 leading-relaxed pl-11">
+            How actively you engage with reviews. Prospects notice when owners respond, especially to negative feedback.
+          </p>
+        </div>
+
+        {/* Competitive Edge */}
+        <div className="space-y-2">
+          <SubScoreBar label="Competitive Edge" score={score.competitiveEdge ?? 10} maxScore={20} icon={Swords} />
+          <p className="text-xs text-slate-500 leading-relaxed pl-11">
+            {state.competitiveDataLimited ? (
+              <>Competitive data limited in your area. This score reflects your profile strength alone.</>
+            ) : market && market.totalCompetitors > 0 ? (
+              <>
+                How you compare to <span className="font-semibold text-slate-700">{market.totalCompetitors}</span> nearby alternatives.
+                {topCompetitor && <> <span className="font-semibold text-slate-700">{topCompetitor.name}</span> is the closest comparison.</>}
+              </>
+            ) : (
+              <>Profile strength score. Connect your account for competitive intelligence.</>
             )}
           </p>
         </div>
@@ -917,7 +951,7 @@ export default function ResultsScreen() {
 
       {/* Transparency — what this score is based on */}
       <p className="text-[11px] text-slate-400 text-center leading-relaxed -mt-3">
-        Based on public Google data for {market?.totalCompetitors || 0} nearby competitors.
+        Based on public Google data{market?.totalCompetitors ? ` and ${market.totalCompetitors} nearby alternatives` : ""}.
         {" "}A full audit with connected accounts reveals more.
       </p>
 

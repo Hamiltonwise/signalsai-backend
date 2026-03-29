@@ -1,0 +1,26 @@
+[
+  {
+    "to": "drchen@artfulortho.com",
+    "firstName": "Dr. Chen",
+    "businessName": "Artful Orthodontics",
+    "city": "Winter Garden FL",
+    "competitorName": "The Smile Home",
+    "competitorCategory": "Dentist",
+    "clientRating": 4.9,
+    "clientReviews": 65,
+    "competitorRating": 4.6,
+    "competitorReviews": 247,
+    "rank": 6,
+    "totalCompetitors": 6,
+    "ozMoment1": "The Smile Home's last 1-star review explicitly blamed unanswered calls and texts. Your reviews never mention communication delays.",
+    "ozMoment2": "Amy Trietiak's recent review praised your pricing as 'more affordable' with 'newer technology.' The Smile Home has zero reviews mentioning value or affordability.",
+    "subjectLine": "Dr. Chen, your 4.9-star rating tells a story The Smile Home's doesn't.",
+    "previewText": "I ran a free analysis on Artful Orthodontics. One thing stood out.",
+    "body": "Dr. Chen,\n\nThe Smile Home's last 1-star review explicitly blamed unanswered calls and texts. Your reviews never mention communication delays.\n\nYou've built trust through responsiveness that The Smile Home lost. This operational advantage compounds into patient lifetime value and referrals over 90 days.\n\nFull analysis (free, 10 seconds): https://app.getalloro.com/checkup?q=Artful%20Orthodontics&city=Winter%20Garden%20FL\n\nCorey Wise\nBend, Oregon",
+    "checkupLink": "https://app.getalloro.com/checkup?q=Artful%20Orthodontics&city=Winter%20Garden%20FL",
+    "generatedAt": "2026-03-29T17:46:37.653Z",
+    "verified": true,
+    "manualReview": false,
+    "warnings": []
+  }
+]
