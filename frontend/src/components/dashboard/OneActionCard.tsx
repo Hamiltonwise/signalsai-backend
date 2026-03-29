@@ -14,6 +14,7 @@
  * 6. HEALTHY STATE (Default)
  */
 
+import { Link } from "react-router-dom";
 import {
   AlertTriangle,
   CreditCard,
@@ -185,8 +186,9 @@ function resolveAction(props: OneActionCardProps): OneAction {
   return {
     severity: "default",
     title: `Ask your next 3 customers for a Google review.`,
-    detail: `Each review closes the gap with ${compName} by one position. Text the link right after their visit — they remember you best in the first hour.`,
-    cta: "How to ask",
+    detail: `Each review closes the gap with ${compName} by one position. Text the link right after their visit, they remember you best in the first hour.`,
+    cta: "Send a review request",
+    ctaLink: "/dashboard#review-request",
     icon: Star,
     rule: "healthy_state",
   };
@@ -244,13 +246,13 @@ export default function OneActionCard(props: OneActionCardProps) {
             {action.detail}
           </p>
           {action.ctaLink ? (
-            <a
-              href={action.ctaLink}
+            <Link
+              to={action.ctaLink}
               className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${styles.ctaColor} hover:underline`}
             >
               {action.cta}
               <ChevronRight className="h-3 w-3" />
-            </a>
+            </Link>
           ) : (
             <button
               className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${styles.ctaColor} hover:underline`}

@@ -541,7 +541,7 @@ export default function ResultsScreen() {
 
       if (!createRes.ok || !createData.success) {
         if (createData.existingAccount) {
-          setEmailError("Welcome back! Sign in at /signin to see your dashboard.");
+          setEmailError("Welcome back! You already have an account.");
           setEmailSending(false);
           return;
         }
@@ -1018,7 +1018,7 @@ export default function ResultsScreen() {
                 <button
                   type="submit"
                   disabled={emailSending}
-                  className="w-full h-13 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-70"
+                  className="w-full h-[3.25rem] flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-70"
                 >
                   {emailSending
                     ? "Creating your account..."

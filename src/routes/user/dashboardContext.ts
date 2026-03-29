@@ -92,6 +92,18 @@ dashboardContextRoutes.get(
         }
       }
 
+      // Check if referral source data exists for this org
+      let hasReferralData = false;
+      const hasReferralSourcesTable = await db.schema.hasTable("referral_sources").catch(() => false);
+      if (hasReferralSourcesTable) {
+        const refCount = await db("referral_sources")
+          .where({ organization_id: orgId })
+          .count("id as cnt")
+          .first()
+          .catch(() => null);
+        hasReferralData = Number(refCount?.cnt || 0) > 0;
+      }
+
       return res.json({
         success: true,
         checkup_context: checkupContext,
@@ -99,6 +111,8 @@ dashboardContextRoutes.get(
         patientpath_status: org.patientpath_status || null,
         has_ranking_snapshot: false,
         week1_win: week1Win,
+        org_created_at: org.created_at || null,
+        has_referral_data: hasReferralData,
       });
     } catch (error: any) {
       console.error("[DashboardContext] Error:", error.message);

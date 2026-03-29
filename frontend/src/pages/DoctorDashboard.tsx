@@ -654,6 +654,11 @@ export default function DoctorDashboard() {
   });
   const checkupCtx = dashCtx?.checkup_context ?? null;
   const week1WinData = dashCtx?.week1_win ?? null;
+  const orgCreatedAt = dashCtx?.org_created_at ?? null;
+  const hasReferralData = dashCtx?.has_referral_data ?? false;
+  const accountAgeDays = orgCreatedAt
+    ? Math.floor((Date.now() - new Date(orgCreatedAt).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
 
   const { data: rankingData, isLoading: isRankingLoading, isError: isRankingError } = useQuery({
     queryKey: ["client-ranking", orgId, locationId],
@@ -1000,7 +1005,9 @@ export default function DoctorDashboard() {
       {/* What Alloro did while you slept */}
       {!isLoading && effectiveRanking && (
         <p className="text-[11px] text-gray-400 text-center -mt-2">
-          47 agents watching your market. Last scan: {new Date().toLocaleDateString("en-US", { weekday: "long" })}.
+          {accountAgeDays !== null && accountAgeDays < 7
+            ? "Alloro is learning your market. First full report arrives Monday."
+            : `47 agents watching your market. Last scan: ${new Date().toLocaleDateString("en-US", { weekday: "long" })}.`}
         </p>
       )}
 
@@ -1028,8 +1035,11 @@ export default function DoctorDashboard() {
           {/* 2. One sentence finding */}
           <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
 
-          {/* GBP Connect card — single prompt, no duplicate banner (WO-29) */}
-          {!hasGoogleConnection && <GBPConnectCard gbpConnected={hasGoogleConnection} orgId={orgId} />}
+          {/* GBP Connect card — only show when a higher-priority OneActionCard rule is active.
+              When OneActionCard itself shows the GBP rule, this would be a duplicate. */}
+          {!hasGoogleConnection && (oneActionData || driftGPData || competitorVelocityData) && (
+            <GBPConnectCard gbpConnected={hasGoogleConnection} orgId={orgId} />
+          )}
 
           {/* PatientPath Research Brief reveal (WO-43) */}
           {checkupCtx?.research_findings && checkupCtx.research_findings.length > 0 && (
@@ -1082,6 +1092,7 @@ export default function DoctorDashboard() {
         practiceName={practiceName}
         score={effectiveRanking?.rankScore ?? null}
         locationId={locationId}
+        hasReferralData={hasReferralData}
       />
 
       {/* TTFV Sensor — bottom bar, 90s after first load */}

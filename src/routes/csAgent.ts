@@ -117,6 +117,25 @@ async function buildSystemPrompt(orgId: number, locationId?: number): Promise<st
   const totalReviewRequests = Object.values(reviewCounts).reduce((s, n) => s + n, 0);
   const reviewConversions = reviewCounts.converted || 0;
 
+  // Referral source data (top referring GPs)
+  let referralInfo = "";
+  const hasReferralSourcesTable = await db.schema.hasTable("referral_sources").catch(() => false);
+  if (hasReferralSourcesTable) {
+    const topReferrers = await db("referral_sources")
+      .where({ organization_id: orgId })
+      .orderBy("referral_count", "desc")
+      .limit(5)
+      .select("provider_name", "practice_name", "referral_count")
+      .catch(() => []);
+
+    if (topReferrers.length > 0) {
+      const lines = topReferrers.map(
+        (r: any) => `${r.provider_name}${r.practice_name ? ` (${r.practice_name})` : ""}: ${r.referral_count} referrals`
+      );
+      referralInfo = `Top referring providers:\n${lines.map((l: string) => `- ${l}`).join("\n")}`;
+    }
+  }
+
   const specialty = ranking?.specialty || "practice";
   const city = ranking?.search_city || ranking?.location || "";
 
@@ -133,6 +152,8 @@ You have access to their current data:
 
 Recent agent findings:
 ${findingSummaries.length > 0 ? findingSummaries.map(f => `- ${f}`).join("\n") : "- No agent findings yet. Agents will run on their next scheduled cycle."}
+
+${referralInfo || "Referral data: Not yet available. Referral tracking activates when GP referral sources are uploaded via /settings/integrations."}
 
 Rules:
 - Be specific. Name competitors. Cite numbers. Never be vague.

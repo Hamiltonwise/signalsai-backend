@@ -13,12 +13,14 @@ interface CSAgentChatProps {
   practiceName: string;
   score: number | null;
   locationId?: number | null;
+  hasReferralData?: boolean;
 }
 
 export default function CSAgentChat({
   practiceName,
   score,
   locationId,
+  hasReferralData = false,
 }: CSAgentChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -89,7 +91,7 @@ export default function CSAgentChat({
     score != null
       ? `Why is my score ${score}?`
       : "What data do you have on my practice?",
-    "Who are my top referring GPs?",
+    ...(hasReferralData ? ["Who are my top referring GPs?"] : []),
     "What should I do this week?",
   ];
 
