@@ -10,6 +10,11 @@
  */
 
 import { db } from "../../database/connection";
+import {
+  prepareAgentContext,
+  recordAgentAction,
+  closeLoop,
+} from "./agentRuntime";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -47,6 +52,18 @@ const RATING_CHANGE_THRESHOLD = 0.2; // 0.2-star shift is notable
 export async function runCompetitiveScoutForOrg(
   orgId: number
 ): Promise<ScoutSummary | null> {
+  const agentCtx = { agentName: "competitive_scout", orgId, topic: "competitor_movements" };
+
+  // Prepare runtime context (events, heuristics, orchestrator check)
+  const runtime = await prepareAgentContext(agentCtx);
+
+  if (!runtime.orchestratorApproval.allowed) {
+    console.log(
+      `[CompetitiveScout] Blocked by orchestrator for org ${orgId}: ${runtime.orchestratorApproval.reason}`
+    );
+    return null;
+  }
+
   const org = await db("organizations").where({ id: orgId }).first();
   if (!org) return null;
 
@@ -90,6 +107,24 @@ export async function runCompetitiveScoutForOrg(
     movements,
     scannedAt: new Date().toISOString(),
   };
+
+  // Record the agent action
+  await recordAgentAction(agentCtx, {
+    type: "scan_complete",
+    headline: `Scanned ${org.name}: ${movements.length} movement(s) detected`,
+    detail: movements.map((m) => m.headline).join("; ") || "No movements found",
+  });
+
+  // Close the loop
+  await closeLoop(agentCtx, {
+    expected: "Detect competitor movements from weekly snapshots",
+    actual: `${movements.length} movement(s) detected for ${org.name}`,
+    success: true,
+    learning:
+      movements.length > 0
+        ? `Detected ${movements.map((m) => m.type).join(", ")} for org ${orgId}`
+        : undefined,
+  });
 
   if (movements.length > 0) {
     console.log(

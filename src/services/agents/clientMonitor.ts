@@ -14,6 +14,11 @@
  */
 
 import { db } from "../../database/connection";
+import {
+  prepareAgentContext,
+  recordAgentAction,
+  closeLoop,
+} from "./agentRuntime";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -53,6 +58,11 @@ const DEFAULT_WEIGHT = 1;
  * Returns a summary with GREEN/AMBER/RED counts.
  */
 export async function runClientMonitor(): Promise<ClientMonitorSummary> {
+  const agentCtx = { agentName: "client_monitor", topic: "health_scoring" };
+
+  // Prepare runtime context (no specific org, runs across all)
+  const runtime = await prepareAgentContext(agentCtx);
+
   const orgs = await db("organizations")
     .whereIn("subscription_status", ["active", "trial"])
     .select("id", "name");
@@ -108,6 +118,24 @@ export async function runClientMonitor(): Promise<ClientMonitorSummary> {
     scoredAt: new Date().toISOString(),
     details,
   };
+
+  // Record the agent action
+  await recordAgentAction(agentCtx, {
+    type: "scan_complete",
+    headline: `Client health scored: ${summary.green} green, ${summary.amber} amber, ${summary.red} red`,
+    detail: `Scored ${details.length} orgs. ${summary.red} flagged RED for follow-up.`,
+  });
+
+  // Close the loop
+  await closeLoop(agentCtx, {
+    expected: "Score all active orgs and classify health",
+    actual: `${details.length} orgs scored: ${summary.green}G/${summary.amber}A/${summary.red}R`,
+    success: true,
+    learning:
+      summary.red > 0
+        ? `${summary.red} orgs flagged RED, tasks created for follow-up`
+        : undefined,
+  });
 
   console.log(
     `[ClientMonitor] Complete: ${summary.green} green, ${summary.amber} amber, ${summary.red} red`,

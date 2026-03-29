@@ -12,6 +12,12 @@
  */
 
 import { db } from "../../database/connection";
+import {
+  prepareAgentContext,
+  recordAgentAction,
+  closeLoop,
+  type RuntimeContext,
+} from "./agentRuntime";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -46,6 +52,18 @@ const DEFAULT_CASE_VALUE = 1200;
 export async function runIntelligenceForOrg(
   orgId: number,
 ): Promise<IntelligenceSummary | null> {
+  const agentCtx = { agentName: "intelligence_agent", orgId, topic: "intelligence_findings" };
+
+  // Prepare runtime context (events, heuristics, orchestrator check)
+  const runtime = await prepareAgentContext(agentCtx);
+
+  if (!runtime.orchestratorApproval.allowed) {
+    console.log(
+      `[IntelligenceAgent] Blocked by orchestrator for org ${orgId}: ${runtime.orchestratorApproval.reason}`,
+    );
+    return null;
+  }
+
   const org = await db("organizations").where({ id: orgId }).first();
   if (!org) return null;
 
@@ -72,12 +90,12 @@ export async function runIntelligenceForOrg(
   // Build context for synthesis
   const context = buildContext(org, snapshots, recentEvents, referralSources);
 
-  // Attempt Claude synthesis, fall back to template findings
+  // Attempt Claude synthesis (with heuristics injected), fall back to template findings
   let findings: IntelligenceFinding[];
 
   if (process.env.ANTHROPIC_API_KEY) {
     try {
-      findings = await synthesizeWithClaude(context);
+      findings = await synthesizeWithClaude(context, runtime);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(
@@ -123,6 +141,26 @@ export async function runIntelligenceForOrg(
     findings,
     generatedAt: new Date().toISOString(),
   };
+
+  // Record the agent action
+  await recordAgentAction(agentCtx, {
+    type: "findings_produced",
+    headline: `${findings.length} finding(s) produced for ${org.name}`,
+    detail: findings.map((f) => f.headline).join("; "),
+    humanNeed: findings[0]?.humanNeed,
+    economicConsequence: findings[0]?.economicConsequence?.thirtyDay,
+  });
+
+  // Close the loop
+  await closeLoop(agentCtx, {
+    expected: "Produce 3 intelligence findings with biological-economic lens",
+    actual: `${findings.length} finding(s) produced for ${org.name}`,
+    success: findings.length > 0,
+    learning:
+      findings.length < 3
+        ? `Only produced ${findings.length}/3 findings, may need more data`
+        : undefined,
+  });
 
   console.log(
     `[IntelligenceAgent] ${org.name}: ${findings.length} finding(s) produced`,
@@ -215,9 +253,20 @@ function buildContext(
 
 async function synthesizeWithClaude(
   context: OrgContext,
+  runtime?: RuntimeContext,
 ): Promise<IntelligenceFinding[]> {
   const Anthropic = (await import("@anthropic-ai/sdk")).default;
   const client = new Anthropic();
+
+  // Build heuristic guidance section from Knowledge Bridge
+  let heuristicSection = "";
+  if (runtime?.heuristics && runtime.heuristics.length > 0) {
+    heuristicSection = `
+
+KNOWLEDGE LATTICE HEURISTICS (apply these lenses to your analysis):
+${runtime.heuristics.map((h, i) => `${i + 1}. ${h}`).join("\n")}
+`;
+  }
 
   const prompt = `You are the Intelligence Agent for Alloro, a business intelligence platform for licensed specialists.
 
@@ -233,12 +282,14 @@ ${context.eventSummary}
 
 REFERRAL SOURCES:
 ${context.referralSummary}
-
+${heuristicSection}
 Return a JSON array of exactly 3 findings. Each finding must have:
 - headline: one sentence, specific and data-backed
 - detail: 2-3 sentences with context and recommended action
 - humanNeed: one of "safety", "belonging", "purpose", "status"
 - economicConsequence: object with thirtyDay, ninetyDay, yearDay strings (dollar figures)
+
+Important: never use em-dashes. Use commas or periods instead.
 
 Return ONLY the JSON array, no markdown fences.`;
 
