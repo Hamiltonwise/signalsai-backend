@@ -6,7 +6,7 @@
  */
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ThankYouDrafts from "../components/dashboard/ThankYouDrafts";
 import {
   TrendingUp,
@@ -18,8 +18,14 @@ import {
   Upload,
   Camera,
   FileText,
+  Search,
+  MapPin,
+  Mail,
+  Copy,
+  Loader2,
+  X,
 } from "lucide-react";
-import { apiGet } from "@/api/index";
+import { apiGet, apiPost } from "@/api/index";
 import { useLocationContext } from "@/contexts/locationContext";
 import { useAuth } from "@/hooks/useAuth";
 import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
@@ -57,6 +63,38 @@ interface IntelligenceData {
   topReferrers: Referrer[];
   driftAlerts: DriftAlert[];
   recommendedAction: RecommendedAction | null;
+}
+
+interface DiscoveredGP {
+  name: string;
+  address: string;
+  distance: number;
+  specialty: string;
+  placeId: string;
+  phone: string | null;
+}
+
+interface DiscoveryResponse {
+  success: boolean;
+  gps: DiscoveredGP[];
+  gated: boolean;
+  gate_message?: string;
+  existing_count?: number;
+  radius?: number;
+  message?: string;
+}
+
+interface OutreachResult {
+  success: boolean;
+  letter?: {
+    success: boolean;
+    subject: string;
+    body: string;
+    confidence: number;
+    dataQuality: number;
+    warnings?: string[];
+  };
+  error?: string;
 }
 
 // ─── Trend Icon ─────────────────────────────────────────────────────
@@ -250,6 +288,260 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
   );
 }
 
+// ─── GP Discovery ──────────────────────────────────────────────────
+
+const RADIUS_OPTIONS = [
+  { value: 1, label: "1 mi" },
+  { value: 3, label: "3 mi" },
+  { value: 5, label: "5 mi" },
+  { value: 10, label: "10 mi" },
+];
+
+function GPDiscoverySection() {
+  const [radius, setRadius] = useState(5);
+  const [selectedGP, setSelectedGP] = useState<DiscoveredGP | null>(null);
+  const [copiedField, setCopiedField] = useState<"subject" | "body" | null>(null);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["gp-discovery", radius],
+    queryFn: async (): Promise<DiscoveryResponse> => {
+      return apiGet({ path: `/user/referrals/discover?radius=${radius}` });
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const outreachMutation = useMutation({
+    mutationFn: async (gp: DiscoveredGP): Promise<OutreachResult> => {
+      return apiPost({
+        path: "/user/referrals/discover/outreach",
+        passedData: {
+          gpName: gp.name,
+          gpAddress: gp.address,
+          distance: gp.distance,
+        },
+      });
+    },
+  });
+
+  const handleDraftIntroduction = (gp: DiscoveredGP) => {
+    setSelectedGP(gp);
+    outreachMutation.mutate(gp);
+  };
+
+  const handleCopy = (text: string, field: "subject" | "body") => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    });
+  };
+
+  const handleClosePreview = () => {
+    setSelectedGP(null);
+    outreachMutation.reset();
+    setCopiedField(null);
+  };
+
+  // Gated: no PMS data
+  if (data?.gated) return null;
+
+  return (
+    <div>
+      <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-1.5">
+        <Search className="h-3.5 w-3.5" />
+        Discover New Referral Sources
+      </h2>
+
+      {/* Radius selector */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-xs text-gray-500">Search radius:</span>
+        <div className="flex gap-1">
+          {RADIUS_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setRadius(opt.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                radius === opt.value
+                  ? "bg-[#212D40] text-white"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+        </div>
+      )}
+
+      {/* Message (e.g. no API key) */}
+      {!isLoading && data?.message && data.gps.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center">
+          <MapPin className="h-6 w-6 text-gray-300 mx-auto mb-2" />
+          <p className="text-sm text-gray-500">{data.message}</p>
+        </div>
+      )}
+
+      {/* GP results */}
+      {!isLoading && data && data.gps.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs text-gray-400">
+            {data.gps.length} referral source{data.gps.length !== 1 ? "s" : ""} found within {data.radius || radius} miles not in your referral history
+          </p>
+
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            {data.gps.map((gp, i) => (
+              <div
+                key={gp.placeId}
+                className={`flex items-center justify-between px-4 py-3.5 ${
+                  i > 0 ? "border-t border-gray-100" : ""
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#212D40] truncate">{gp.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-gray-400">{gp.specialty}</span>
+                    <span className="text-xs text-gray-300">|</span>
+                    <span className="text-xs text-gray-400 flex items-center gap-0.5">
+                      <MapPin className="h-3 w-3" />
+                      {gp.distance} mi
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDraftIntroduction(gp)}
+                  disabled={outreachMutation.isPending && selectedGP?.placeId === gp.placeId}
+                  className="shrink-0 ml-3 flex items-center gap-1.5 rounded-xl bg-[#D56753] px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+                >
+                  {outreachMutation.isPending && selectedGP?.placeId === gp.placeId ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Mail className="h-3.5 w-3.5" />
+                  )}
+                  Draft Introduction
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No results found */}
+      {!isLoading && data && !data.message && data.gps.length === 0 && !data.gated && (
+        <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center">
+          <MapPin className="h-6 w-6 text-gray-300 mx-auto mb-2" />
+          <p className="text-sm text-gray-500">
+            No new referral sources found within {radius} miles. Try a larger radius.
+          </p>
+        </div>
+      )}
+
+      {/* Letter preview modal */}
+      {selectedGP && outreachMutation.data?.success && outreachMutation.data.letter?.success && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div>
+                <p className="text-sm font-bold text-[#212D40]">Introduction to {selectedGP.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {outreachMutation.data.letter.confidence}% confidence
+                </p>
+              </div>
+              <button
+                onClick={handleClosePreview}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="h-4 w-4 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Subject */}
+            <div className="px-5 py-3 border-b border-gray-50">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Subject</p>
+                <button
+                  onClick={() => handleCopy(outreachMutation.data!.letter!.subject, "subject")}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-[#D56753] hover:underline"
+                >
+                  <Copy className="h-3 w-3" />
+                  {copiedField === "subject" ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <p className="text-sm font-semibold text-[#212D40] mt-1">
+                {outreachMutation.data.letter.subject}
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="px-5 py-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Body</p>
+                <button
+                  onClick={() => handleCopy(outreachMutation.data!.letter!.body, "body")}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-[#D56753] hover:underline"
+                >
+                  <Copy className="h-3 w-3" />
+                  {copiedField === "body" ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-[#212D40] leading-relaxed whitespace-pre-wrap">
+                {outreachMutation.data.letter.body}
+              </div>
+            </div>
+
+            {/* Warnings */}
+            {outreachMutation.data.letter.warnings && outreachMutation.data.letter.warnings.length > 0 && (
+              <div className="px-5 pb-3">
+                {outreachMutation.data.letter.warnings.map((w, i) => (
+                  <p key={i} className="text-[10px] text-amber-500">{w}</p>
+                ))}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  const letter = outreachMutation.data!.letter!;
+                  handleCopy(`Subject: ${letter.subject}\n\n${letter.body}`, "body");
+                }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#D56753] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:brightness-105 active:scale-[0.98]"
+              >
+                <Copy className="h-4 w-4" />
+                Copy Full Letter
+              </button>
+              <button
+                onClick={handleClosePreview}
+                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Outreach error */}
+      {selectedGP && outreachMutation.isError && (
+        <div className="mt-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+          <p className="text-xs text-red-600">Failed to generate introduction letter. Please try again.</p>
+          <button
+            onClick={handleClosePreview}
+            className="text-xs text-red-500 font-semibold mt-1 hover:underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function ReferralIntelligence() {
@@ -320,6 +612,9 @@ export default function ReferralIntelligence() {
 
           {/* Top Referrers */}
           <TopReferrers referrers={data.topReferrers} />
+
+          {/* GP Discovery (WO-56) */}
+          <GPDiscoverySection />
         </>
       )}
 
