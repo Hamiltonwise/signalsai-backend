@@ -68,6 +68,7 @@ const BlogPost1 = React.lazy(() => import("./pages/marketing/blog/TheSecondJobPr
 const BlogPost2 = React.lazy(() => import("./pages/marketing/blog/GoogleBusinessProfileScore"));
 const BlogPost3 = React.lazy(() => import("./pages/marketing/blog/WhyYourCompetitorKeepsShowingUp"));
 const SharedResults = React.lazy(() => import("./pages/checkup/SharedResults"));
+const ClarityCard = React.lazy(() => import("./pages/ClarityCard"));
 const Compare = React.lazy(() => import("./pages/Compare"));
 const LegalPracticeMarketing = React.lazy(() => import("./pages/content/LegalPracticeMarketing"));
 const FinancialAdvisorMarketing = React.lazy(() => import("./pages/content/FinancialAdvisorMarketing"));
@@ -199,6 +200,7 @@ function App() {
                 <Route path="building" element={<BuildingScreen />} />
               </Route>
               <Route path="/checkup/shared/:shareId" element={<SharedResults />} />
+              <Route path="/clarity/:id" element={<ClarityCard />} />
 
               {/* Public demo — no auth required */}
               <Route path="/demo" element={<Demo />} />

@@ -111,6 +111,7 @@ import seoRoutes from "./routes/seo";
 import foundationRoutes from "./routes/foundation";
 import intelligenceRoutes from "./routes/intelligence";
 import marketRoutes from "./routes/market";
+import publicScoreCardRoutes from "./routes/publicScoreCard";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -308,6 +309,7 @@ app.use("/api/seo", seoRoutes); // WO-7: Programmatic SEO pages + hub/spoke + st
 app.use("/api/foundation", foundationRoutes); // WO-11: Foundation application submissions
 app.use("/api/intelligence", intelligenceRoutes); // WO-8: Practice owner intelligence dashboard
 app.use("/api/market", marketRoutes); // Programmatic city pages market data
+app.use("/api/clarity-card", publicScoreCardRoutes); // Public score card for viral sharing
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);
