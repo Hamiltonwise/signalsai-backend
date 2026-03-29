@@ -14,6 +14,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   Copy,
   ExternalLink,
@@ -27,6 +28,12 @@ import {
   MapPin,
   Users,
 } from "lucide-react";
+import {
+  staggerContainer,
+  cardVariants,
+  fadeInUp,
+  scaleInFade,
+} from "@/lib/animations";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import { apiGet, apiPatch } from "@/api/index";
@@ -43,6 +50,7 @@ import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
 import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
 import StreakBadge from "@/components/dashboard/StreakBadge";
 import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
+import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -96,13 +104,15 @@ function narrativeGreeting(
   hasRanking: boolean,
   checkupRank?: number | null,
   checkupCity?: string | null,
+  firstName?: string | null,
 ): string {
-  if (win && win.daysAgo <= 3) return "It worked.";
-  if (streak && streak.count >= 12) return `Week ${streak.count}.`;
-  if (streak && streak.count >= 4) return `Week ${streak.count} of watching your market.`;
-  if (checkupRank && checkupCity) return `You're #${checkupRank} in ${checkupCity}.`;
-  if (!hasRanking) return "We already found something.";
-  return `${getGreeting()}.`;
+  const name = firstName ? `, ${firstName}` : "";
+  if (win && win.daysAgo <= 3) return `It worked${name}.`;
+  if (streak && streak.count >= 12) return `Week ${streak.count}${name}.`;
+  if (streak && streak.count >= 4) return `Week ${streak.count} of watching your market${name}.`;
+  if (checkupRank && checkupCity) return `You're #${checkupRank} in ${checkupCity}${name}.`;
+  if (!hasRanking) return `We already found something${name}.`;
+  return `${getGreeting()}${name}.`;
 }
 
 function narrativeSubhead(
@@ -165,7 +175,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
       : null;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6">
+    <div className="rounded-2xl border border-gray-200 bg-white p-6 card-lift">
       <div className="flex items-start justify-between mb-1">
         <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
           Market Position
@@ -188,10 +198,10 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
 
       <div className="mt-2">
         <span className="text-5xl font-black text-[#212D40]">
-          #{ranking.rankPosition}
+          #<AnimatedNumber value={ranking.rankPosition} duration={600} />
         </span>
         <span className="text-lg text-gray-400 ml-2">
-          of {ranking.totalCompetitors}
+          of <AnimatedNumber value={ranking.totalCompetitors || 0} duration={800} />
         </span>
       </div>
 
@@ -466,8 +476,8 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
           <Share2 className="w-5 h-5 text-[#212D40]" />
         </div>
         <div>
-          <p className="text-sm font-bold text-[#212D40]">Refer a Colleague</p>
-          <p className="text-xs text-gray-500">You both get one month free</p>
+          <p className="text-sm font-bold text-[#212D40]">Rise Together</p>
+          <p className="text-xs text-gray-500">Share this with a colleague. When they join, you both split month one.</p>
         </div>
       </div>
       <div className="flex gap-2">
@@ -490,7 +500,7 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
           }`}
         >
           <Copy className="h-3 w-3" />
-          {copied ? "Copied!" : "Copy link"}
+          {copied ? "Copied!" : "Share the link"}
         </button>
       </div>
     </div>
@@ -885,14 +895,19 @@ export default function DoctorDashboard() {
       finding={prooflineFindings[0]?.detail || null}
     />
 
-    <div className="mx-auto max-w-2xl space-y-5 px-4 py-6 sm:py-8">
+    <motion.div
+      className="mx-auto max-w-2xl space-y-8 px-4 py-8 sm:py-12"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <motion.div variants={fadeInUp} className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-[#212D40] truncate">
+          <h1 className="font-heading text-xl sm:text-2xl font-bold text-[#212D40] truncate">
             {mode === "growth"
               ? "Close the gap."
-              : narrativeGreeting(streakData, winData, !!effectiveRanking, effectiveRanking?.rankPosition, effectiveRanking?.location)}
+              : narrativeGreeting(streakData, winData, !!effectiveRanking, effectiveRanking?.rankPosition, effectiveRanking?.location, userProfile?.firstName)}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {mode === "growth"
@@ -907,11 +922,11 @@ export default function DoctorDashboard() {
           )}
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
-      </div>
+      </motion.div>
 
       {/* GBP instant value reveal (WO-42) */}
       {showGbpReveal && (
-        <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5">
+        <motion.div variants={cardVariants} className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5">
           <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 mb-2">
             Connected
           </p>
@@ -933,12 +948,12 @@ export default function DoctorDashboard() {
           <p className="text-xs text-emerald-600 mt-2">
             Rankings, reviews, and competitor activity are now tracked automatically.
           </p>
-        </div>
+        </motion.div>
       )}
 
       {/* Milestone check-in card (WO-51/52) */}
       {!isLoading && milestoneCard && (
-        <div className="rounded-2xl border border-[#212D40]/15 bg-white p-5">
+        <motion.div variants={cardVariants} className="rounded-2xl border border-[#212D40]/15 bg-white p-5">
           <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-3">
             Your first {milestoneCard.milestone} days.
           </p>
@@ -967,12 +982,12 @@ export default function DoctorDashboard() {
               The one thing that hasn't yet: {milestoneCard.gap}
             </p>
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* Win celebration card (WO-34) -- Fitbit vibration moment */}
       {!isLoading && winData && (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#D56753] to-[#c05544] p-6 text-white shadow-[0_8px_30px_rgba(213,103,83,0.3)]">
+        <motion.div variants={scaleInFade} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#D56753] to-[#c05544] p-6 text-white shadow-[0_8px_30px_rgba(213,103,83,0.3)]">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
           <div className="relative">
@@ -989,29 +1004,31 @@ export default function DoctorDashboard() {
               <p className="text-[10px] text-white/50 mt-3 uppercase tracking-wide">Just happened</p>
             )}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* One Action Card — first visible element below greeting (WO-29) */}
       {!isLoading && (
-        <OneActionCard
-          serverCard={oneActionData}
-          billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
-          driftGP={driftGPData}
-          rankingDrop={
-            effectiveRanking?.previousPosition && effectiveRanking?.rankPosition &&
-            effectiveRanking.rankPosition - effectiveRanking.previousPosition >= 2
-              ? {
-                  previousPosition: effectiveRanking.previousPosition,
-                  currentPosition: effectiveRanking.rankPosition,
-                  keyword: effectiveRanking.specialty || undefined,
-                }
-              : null
-          }
-          competitorVelocity={competitorVelocityData}
-          gbpConnected={hasGoogleConnection}
-          topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
-        />
+        <motion.div variants={scaleInFade}>
+          <OneActionCard
+            serverCard={oneActionData}
+            billingActive={billingStatus?.hasStripeSubscription !== false || billingStatus?.isAdminGranted === true}
+            driftGP={driftGPData}
+            rankingDrop={
+              effectiveRanking?.previousPosition && effectiveRanking?.rankPosition &&
+              effectiveRanking.rankPosition - effectiveRanking.previousPosition >= 2
+                ? {
+                    previousPosition: effectiveRanking.previousPosition,
+                    currentPosition: effectiveRanking.rankPosition,
+                    keyword: effectiveRanking.specialty || undefined,
+                  }
+                : null
+            }
+            competitorVelocity={competitorVelocityData}
+            gbpConnected={hasGoogleConnection}
+            topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
+          />
+        </motion.div>
       )}
 
       {/* Onboarding Checklist — below One Action Card */}
@@ -1048,7 +1065,7 @@ export default function DoctorDashboard() {
       )}
 
       {/* What Alloro did this week -- the retention mechanic */}
-      {!isLoading && <AlloroActivityCard />}
+      {!isLoading && <motion.div variants={cardVariants}><AlloroActivityCard /></motion.div>}
 
       {isLoading && (
         <div className="space-y-4">
@@ -1060,19 +1077,39 @@ export default function DoctorDashboard() {
 
       {mode === "standard" ? (
         <>
-          {/* ══ ABOVE THE FOLD — spec layer order ══ */}
+          {/* ══ YOUR MARKET — section divider ══ */}
+          <div className="flex items-center gap-3 pt-2">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400">Your Market</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
 
           {/* 1. Business Clarity Score ring */}
           {isRankingError && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
-          <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { localVisibility: checkupCtx.data.score.localVisibility, onlinePresence: checkupCtx.data.score.onlinePresence, reviewHealth: checkupCtx.data.score.reviewHealth } : null} />
+          <motion.div variants={cardVariants}>
+            <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { localVisibility: checkupCtx.data.score.localVisibility, onlinePresence: checkupCtx.data.score.onlinePresence, reviewHealth: checkupCtx.data.score.reviewHealth } : null} />
+          </motion.div>
+
+          {/* Benchmark social proof — belonging signal */}
+          {effectiveRanking?.location && (
+            <p className="text-xs text-gray-400 text-center -mt-2">
+              {(effectiveRanking.totalCompetitors ?? 0) < 10
+                ? `Among the first business owners using Business Clarity in ${effectiveRanking.location}.`
+                : `One of ${effectiveRanking.totalCompetitors} business owners using Business Clarity in ${effectiveRanking.location}.`}
+            </p>
+          )}
 
           {/* Streak badge (WO-33) */}
           {streakData && streakData.count >= 2 && (
-            <StreakBadge type={streakData.type} count={streakData.count} label={streakData.label} />
+            <motion.div variants={cardVariants}>
+              <StreakBadge type={streakData.type} count={streakData.count} label={streakData.label} />
+            </motion.div>
           )}
 
           {/* 2. One sentence finding */}
-          <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
+          <motion.div variants={cardVariants}>
+            <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
+          </motion.div>
 
           {/* GBP Connect card — only show when a higher-priority OneActionCard rule is active.
               When OneActionCard itself shows the GBP rule, this would be a duplicate. */}
@@ -1082,7 +1119,7 @@ export default function DoctorDashboard() {
 
           {/* PatientPath Research Brief reveal (WO-43) */}
           {checkupCtx?.research_findings && checkupCtx.research_findings.length > 0 && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-5">
+            <motion.div variants={cardVariants} className="rounded-2xl border border-gray-200 bg-white p-5">
               <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-3">
                 Before we built your site, we studied your business.
               </p>
@@ -1103,27 +1140,35 @@ export default function DoctorDashboard() {
                   Preview my site
                 </a>
               )}
-            </div>
+            </motion.div>
           )}
 
-          {/* 4. PatientPath breadcrumb — quiet, lower */}
+          {/* 4. PatientPath breadcrumb -- quiet, lower */}
           {isWebsiteError && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
-          {isOwnerOrManager && <WebsiteCard website={websiteData ?? null} />}
+          {isOwnerOrManager && <motion.div variants={cardVariants}><WebsiteCard website={websiteData ?? null} /></motion.div>}
 
           {/* ══ BELOW THE FOLD ══ */}
-          {isOwnerOrManager && <ProoflineFindings findings={prooflineFindings} checkupCtx={checkupCtx} />}
-          {canSendReviews && <ReviewRequestCard placeId={effectiveRanking?.placeId ?? null} practiceName={practiceName} />}
+          {isOwnerOrManager && <motion.div variants={cardVariants}><ProoflineFindings findings={prooflineFindings} checkupCtx={checkupCtx} /></motion.div>}
+          {canSendReviews && <motion.div variants={cardVariants}><ReviewRequestCard placeId={effectiveRanking?.placeId ?? null} practiceName={practiceName} /></motion.div>}
           {isProfileUnavailable && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
-          {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
+          {isOwnerOrManager && <motion.div variants={cardVariants}><ReferralCard referralCode={referralCode} /></motion.div>}
         </>
       ) : (
         <>
-          <GrowthPositionTrack ranking={effectiveRanking} />
-          <GapToNext ranking={effectiveRanking} />
-          <CompetitorActivityFeed ranking={effectiveRanking} />
-          {canSendReviews && <ReviewRequestCard placeId={effectiveRanking?.placeId ?? null} practiceName={practiceName} />}
-          {isOwnerOrManager && <ReferralCard referralCode={referralCode} />}
+          <motion.div variants={cardVariants}><GrowthPositionTrack ranking={effectiveRanking} /></motion.div>
+          <motion.div variants={cardVariants}><GapToNext ranking={effectiveRanking} /></motion.div>
+          <motion.div variants={cardVariants}><CompetitorActivityFeed ranking={effectiveRanking} /></motion.div>
+          {canSendReviews && <motion.div variants={cardVariants}><ReviewRequestCard placeId={effectiveRanking?.placeId ?? null} practiceName={practiceName} /></motion.div>}
+          {isOwnerOrManager && <motion.div variants={cardVariants}><ReferralCard referralCode={referralCode} /></motion.div>}
         </>
+      )}
+
+      {/* Exit emotion — Peak-End Rule (only on Overview mode) */}
+      {mode === "standard" && !isLoading && (
+        <div className="text-center py-6">
+          <p className="text-xs text-gray-400">You checked in. That puts you ahead.</p>
+          <div className="h-px bg-gray-100 mt-6 mx-auto max-w-[12rem]" />
+        </div>
       )}
 
       {/* CS Agent — floating chat */}
@@ -1159,7 +1204,7 @@ export default function DoctorDashboard() {
         liveUrl={websiteData ? `https://${websiteData.generated_hostname}.sites.getalloro.com` : null}
         hostname={websiteData?.generated_hostname || null}
       />
-    </div>
+    </motion.div>
     </>
   );
 }
