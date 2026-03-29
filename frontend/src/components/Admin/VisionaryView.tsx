@@ -47,6 +47,16 @@ export default function VisionaryView() {
     staleTime: 60_000,
   });
 
+  // Corey's personal task queue -- Chief of Staff view
+  const { data: tasksData } = useQuery({
+    queryKey: ["corey-tasks"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/dream-team/tasks?owner=Corey" });
+      return res?.success ? (res.tasks as Array<{ id: number; title: string; status: string; priority: string; due_date?: string; source?: string }>) : [];
+    },
+    staleTime: 60_000,
+  });
+
   const { data: signalData } = useQuery({
     queryKey: ["admin-signal"],
     queryFn: async () => {
@@ -118,6 +128,33 @@ export default function VisionaryView() {
           </div>
         </div>
       )}
+
+      {/* Zone 2.5: What Needs You -- Chief of Staff task queue */}
+      {(() => {
+        const openTasks = (tasksData || []).filter((t) => t.status !== "done" && t.status !== "completed");
+        if (openTasks.length === 0) return null;
+        return (
+          <div className="bg-white border border-gray-200 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">What Needs You</p>
+              <span className="text-[10px] font-bold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">{openTasks.length}</span>
+            </div>
+            <div className="space-y-2">
+              {openTasks.slice(0, 5).map((t) => (
+                <div key={t.id} className="flex items-start gap-2 py-1 border-b border-gray-100 last:border-0">
+                  <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                    t.priority === "urgent" ? "bg-red-500" : t.priority === "high" ? "bg-amber-500" : "bg-gray-300"
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[#212D40] font-medium truncate">{t.title}</p>
+                    {t.source && <p className="text-[10px] text-gray-400">{t.source}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Zone 3: Client Health at a Glance */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">

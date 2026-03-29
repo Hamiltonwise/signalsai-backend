@@ -13,6 +13,7 @@
     "db:make-migration": "knex migrate:make",
     "db:make-seed": "knex seed:make",
     "seed:demo": "tsx src/scripts/seedDemoAccount.ts",
+    "seed:tasks": "tsx src/scripts/seedCoreyTasks.ts",
     "sync:agents": "tsx src/scripts/syncAgentRegistry.ts",
     "benchmark:baseline": "tsx src/scripts/captureBaseline.ts",
     "smoke": "tsx src/scripts/smokeTest.ts",

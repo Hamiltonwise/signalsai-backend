@@ -7,6 +7,14 @@ export interface CheckupScore {
   reputation: number;
   visibility: number;
   competitive: number;
+  // Extended sub-scores (populated when available)
+  trustSignal?: number;
+  firstImpression?: number;
+  responsiveness?: number;
+  competitiveEdge?: number;
+  localVisibility?: number;
+  onlinePresence?: number;
+  reviewHealth?: number;
 }
 
 export interface CheckupCompetitor {

@@ -277,10 +277,81 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         )
       : selfFiltered.map((c) => ({ ...c, driveTimeMinutes: 0 }));
 
+    // --- Server-side data enrichment ---
+    // If we have placeId but the frontend didn't pass scoring fields,
+    // fetch everything we need directly from Google Places API.
+    let enrichedPhotosCount = req.body.photosCount ?? 0;
+    let enrichedHours = req.body.regularOpeningHours;
+    let enrichedHasHours = req.body.hasHours;
+    let enrichedPhone = req.body.phone;
+    let enrichedWebsite = req.body.websiteUri;
+    let enrichedEditorialSummary = req.body.editorialSummary;
+    let enrichedBusinessStatus = req.body.businessStatus || "OPERATIONAL";
+    let enrichedOpeningDate = req.body.openingDate;
+    let enrichedReviews: any[] = req.body.reviews || [];
+    let enrichedRating = rating;
+    let enrichedReviewCount = reviewCount;
+    let placeDetails: any = null;
+
+    if (placeId) {
+      try {
+        placeDetails = await getPlaceDetails(placeId);
+        if (placeDetails) {
+          // Enrich photos: Google returns a photos array
+          if (!enrichedPhotosCount && placeDetails.photos) {
+            enrichedPhotosCount = placeDetails.photos.length;
+          }
+          // Enrich hours
+          if (!enrichedHours && placeDetails.regularOpeningHours) {
+            enrichedHours = placeDetails.regularOpeningHours;
+          }
+          // Enrich phone
+          if (!enrichedPhone && (placeDetails.nationalPhoneNumber || placeDetails.internationalPhoneNumber)) {
+            enrichedPhone = placeDetails.nationalPhoneNumber || placeDetails.internationalPhoneNumber;
+          }
+          // Enrich website
+          if (!enrichedWebsite && placeDetails.websiteUri) {
+            enrichedWebsite = placeDetails.websiteUri;
+          }
+          // Enrich editorial summary
+          if (!enrichedEditorialSummary && placeDetails.editorialSummary) {
+            enrichedEditorialSummary = typeof placeDetails.editorialSummary === "string"
+              ? placeDetails.editorialSummary
+              : placeDetails.editorialSummary?.text || placeDetails.editorialSummary;
+          }
+          // Enrich business status
+          if (placeDetails.businessStatus) {
+            enrichedBusinessStatus = placeDetails.businessStatus;
+          }
+          // Enrich opening date
+          if (!enrichedOpeningDate && placeDetails.openingDate) {
+            enrichedOpeningDate = placeDetails.openingDate;
+          }
+          // Enrich reviews (for surprise findings and scoring)
+          if ((!enrichedReviews || !enrichedReviews.length) && placeDetails.reviews) {
+            enrichedReviews = placeDetails.reviews;
+          }
+          // Enrich rating and review count from the API if not provided
+          if (!enrichedRating && placeDetails.rating) {
+            enrichedRating = placeDetails.rating;
+          }
+          if (!enrichedReviewCount && placeDetails.userRatingCount) {
+            enrichedReviewCount = placeDetails.userRatingCount;
+          }
+          console.log(
+            `[Checkup] Enriched from Places API: photos=${enrichedPhotosCount}, hours=${!!enrichedHours}, phone=${!!enrichedPhone}, website=${!!enrichedWebsite}, editorial=${!!enrichedEditorialSummary}, reviews=${enrichedReviews?.length || 0}`
+          );
+        }
+      } catch (enrichErr) {
+        // Non-blocking: if enrichment fails, score with what the frontend sent
+        console.error("[Checkup] Places enrichment failed (non-blocking):", enrichErr instanceof Error ? enrichErr.message : enrichErr);
+      }
+    }
+
     // --- First Impression Score Calculation ---
     // Question: "When a qualified prospect sees your Google profile, do they choose you or swipe past?"
-    const clientRating = rating ?? 0;
-    const clientReviews = reviewCount ?? 0;
+    const clientRating = enrichedRating ?? 0;
+    const clientReviews = enrichedReviewCount ?? 0;
 
     // Competitor averages (kept for findings/intelligence layer, NOT for scoring)
     const compCount = otherCompetitors.length || 1;
@@ -306,60 +377,53 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // Top competitor (for blur gate CTA and findings)
     const topCompetitor = otherCompetitors[0] || null;
 
-    // --- Fetch review details from Google for response rate + recency ---
+    // --- Extract review signals from enriched data ---
     let reviewResponseRate = 0;
     let hasRespondedToNegative = false;
     let allReviewsPositive = false;
     let lastReviewDaysAgo = 999;
 
-    if (placeId) {
-      try {
-        const placeDetails = await getPlaceDetails(placeId);
-        const googleReviews: any[] = placeDetails?.reviews || [];
-        if (googleReviews.length > 0) {
-          const withResponse = googleReviews.filter((r: any) => !!r.ownerResponse);
-          reviewResponseRate = Math.round((withResponse.length / googleReviews.length) * 100);
+    // Use already-fetched placeDetails reviews (no second API call needed)
+    const googleReviews: any[] = placeDetails?.reviews || [];
+    if (googleReviews.length > 0) {
+      const withResponse = googleReviews.filter((r: any) => !!r.ownerResponse);
+      reviewResponseRate = Math.round((withResponse.length / googleReviews.length) * 100);
 
-          const negativeReviews = googleReviews.filter((r: any) => (r.rating || 5) <= 3);
-          allReviewsPositive = negativeReviews.length === 0;
-          if (negativeReviews.length > 0) {
-            hasRespondedToNegative = negativeReviews.some((r: any) => !!r.ownerResponse);
-          }
+      const negativeReviews = googleReviews.filter((r: any) => (r.rating || 5) <= 3);
+      allReviewsPositive = negativeReviews.length === 0;
+      if (negativeReviews.length > 0) {
+        hasRespondedToNegative = negativeReviews.some((r: any) => !!r.ownerResponse);
+      }
 
-          // Recency: parse publishTime to get days since last review
-          const now = Date.now();
-          for (const r of googleReviews) {
-            if (r.publishTime) {
-              const pubDate = new Date(r.publishTime).getTime();
-              if (!isNaN(pubDate)) {
-                const daysAgo = Math.floor((now - pubDate) / (1000 * 60 * 60 * 24));
-                if (daysAgo < lastReviewDaysAgo) lastReviewDaysAgo = daysAgo;
-              }
-            }
-          }
-          // If publishTime not available, try relativePublishTimeDescription
-          if (lastReviewDaysAgo === 999) {
-            for (const r of googleReviews) {
-              const desc = r.relativePublishTimeDescription || "";
-              if (desc.includes("a week ago") || desc.includes("days ago") || desc.includes("yesterday") || desc.includes("an hour ago")) {
-                lastReviewDaysAgo = 7; // Approximate
-                break;
-              } else if (desc.includes("2 weeks ago")) {
-                lastReviewDaysAgo = 14;
-                break;
-              } else if (desc.includes("a month ago") || desc.includes("3 weeks ago")) {
-                lastReviewDaysAgo = 30;
-                break;
-              } else if (desc.includes("2 months ago")) {
-                lastReviewDaysAgo = 60;
-                break;
-              }
-            }
+      // Recency: parse publishTime to get days since last review
+      const now = Date.now();
+      for (const r of googleReviews) {
+        if (r.publishTime) {
+          const pubDate = new Date(r.publishTime).getTime();
+          if (!isNaN(pubDate)) {
+            const daysAgo = Math.floor((now - pubDate) / (1000 * 60 * 60 * 24));
+            if (daysAgo < lastReviewDaysAgo) lastReviewDaysAgo = daysAgo;
           }
         }
-      } catch (reviewFetchErr) {
-        // Non-blocking: if review fetch fails, score with what we have
-        console.error("[Checkup] Review detail fetch failed (non-blocking):", reviewFetchErr instanceof Error ? reviewFetchErr.message : reviewFetchErr);
+      }
+      // If publishTime not available, try relativePublishTimeDescription
+      if (lastReviewDaysAgo === 999) {
+        for (const r of googleReviews) {
+          const desc = r.relativePublishTimeDescription || "";
+          if (desc.includes("a week ago") || desc.includes("days ago") || desc.includes("yesterday") || desc.includes("an hour ago")) {
+            lastReviewDaysAgo = 7; // Approximate
+            break;
+          } else if (desc.includes("2 weeks ago")) {
+            lastReviewDaysAgo = 14;
+            break;
+          } else if (desc.includes("a month ago") || desc.includes("3 weeks ago")) {
+            lastReviewDaysAgo = 30;
+            break;
+          } else if (desc.includes("2 months ago")) {
+            lastReviewDaysAgo = 60;
+            break;
+          }
+        }
       }
     }
 
@@ -372,9 +436,18 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     else if (clientRating >= 4.0) ratingStrengthPts = 4;
 
     // Review volume relative to specialty benchmark (0-10)
+    // Uses log scale so volume well above benchmark is rewarded strongly
+    // 1378 reviews / 80 benchmark = 17x should score 10/10
     const benchmark = REVIEW_VOLUME_BENCHMARKS[specKey] || 50;
-    const volumeRatio = Math.min(1, clientReviews / benchmark);
-    const reviewVolumePts = Math.round(volumeRatio * 10);
+    const volumeRatio = clientReviews / benchmark;
+    let reviewVolumePts = 0;
+    if (volumeRatio >= 3) reviewVolumePts = 10;      // 3x+ benchmark = full marks
+    else if (volumeRatio >= 2) reviewVolumePts = 9;   // 2-3x benchmark
+    else if (volumeRatio >= 1.5) reviewVolumePts = 8;  // 1.5-2x benchmark
+    else if (volumeRatio >= 1) reviewVolumePts = 7;    // at benchmark
+    else if (volumeRatio >= 0.5) reviewVolumePts = 5;  // half benchmark
+    else if (volumeRatio >= 0.25) reviewVolumePts = 3; // quarter benchmark
+    else if (volumeRatio > 0) reviewVolumePts = 1;     // some reviews
 
     // Review recency (0-8)
     let recencyPts = 0;
@@ -386,7 +459,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const trustSignal = Math.min(30, ratingStrengthPts + reviewVolumePts + recencyPts);
 
     // ─── FIRST IMPRESSION (0-30) ────────────────────────────────────────
-    const clientPhotos = req.body.photosCount ?? 0;
+    const clientPhotos = enrichedPhotosCount;
 
     // Photo count (0-10)
     let photoPts = 0;
@@ -396,12 +469,12 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     else if (clientPhotos >= 1) photoPts = 2;
 
     // Profile completeness (0-10): hours + phone + website + description
-    const hasHours = req.body.regularOpeningHours
-      ? (req.body.regularOpeningHours.periods?.length || 0) > 0
-      : !!req.body.hasHours;
-    const hasPhone = !!req.body.phone;
-    const hasWebsite = !!req.body.websiteUri;
-    const hasDescription = !!req.body.editorialSummary;
+    const hasHours = enrichedHours
+      ? (enrichedHours.periods?.length || 0) > 0
+      : !!enrichedHasHours;
+    const hasPhone = !!enrichedPhone;
+    const hasWebsite = !!enrichedWebsite;
+    const hasDescription = !!enrichedEditorialSummary;
     const completenessCount = [hasHours, hasPhone, hasWebsite, hasDescription].filter(Boolean).length;
     let completenessPts = 0;
     if (completenessCount === 4) completenessPts = 10;
@@ -413,7 +486,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const editorialPts = hasDescription ? 5 : 0;
 
     // Business status operational (0-5)
-    const businessStatus = req.body.businessStatus || "OPERATIONAL";
+    const businessStatus = enrichedBusinessStatus;
     const statusPts = (businessStatus === "OPERATIONAL" || businessStatus === "OPEN") ? 5 : 0;
 
     const firstImpression = Math.min(30, photoPts + completenessPts + editorialPts + statusPts);
@@ -444,16 +517,17 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       // Scale: +0.5 above avg = 8pts, at avg = 4pts, -0.5 below = 0pts
       const ratingAdvantagePts = Math.round(Math.min(8, Math.max(0, (ratingAdvantage + 0.5) * 8)));
 
-      // Review volume advantage (0-8)
+      // Review volume advantage (0-12) -- market leaders should feel it
       const maxReviews = Math.max(...otherCompetitors.map((c) => c.reviewsCount), 1);
       const volumeAdvantage = clientReviews / maxReviews;
-      // Scale: leading = 8pts, half of leader = 4pts, far behind = 0pts
-      const volumeAdvantagePts = Math.round(Math.min(8, volumeAdvantage * 8));
+      let volumeAdvantagePts = 0;
+      if (volumeAdvantage >= 3) volumeAdvantagePts = 12;       // 3x+ the top competitor
+      else if (volumeAdvantage >= 2) volumeAdvantagePts = 10;  // 2x the top competitor
+      else if (volumeAdvantage >= 1) volumeAdvantagePts = 8;   // leading
+      else if (volumeAdvantage >= 0.5) volumeAdvantagePts = 4; // half of leader
+      else volumeAdvantagePts = Math.round(volumeAdvantage * 4); // far behind
 
-      // Unique strengths bonus (0-4) - based on Oz findings later, start with 0
-      const uniqueStrengthsPts = 0; // Updated after Oz analysis
-
-      competitiveEdge = Math.min(20, ratingAdvantagePts + volumeAdvantagePts + uniqueStrengthsPts);
+      competitiveEdge = Math.min(20, ratingAdvantagePts + volumeAdvantagePts);
       competitiveDataLimited = false;
     }
 
@@ -724,8 +798,8 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
 
     // Gap 4: GBP completeness (we know if they have website/phone from Places data)
     const missingGbpItems: string[] = [];
-    if (!req.body.websiteUri) missingGbpItems.push("website");
-    if (!req.body.phone) missingGbpItems.push("phone number");
+    if (!enrichedWebsite) missingGbpItems.push("website");
+    if (!enrichedPhone) missingGbpItems.push("phone number");
     if (missingGbpItems.length > 0) {
       gaps.push({
         id: "gbp_completeness",
@@ -788,8 +862,8 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
           clientRating: clientRating,
           clientReviewCount: clientReviews,
           clientReviews: [], // Fetched inside ozMoment.ts from placeId
-          clientHasWebsite: !!req.body.websiteUri,
-          clientPhotoCount: req.body.photosCount ?? 0,
+          clientHasWebsite: !!enrichedWebsite,
+          clientPhotoCount: enrichedPhotosCount,
           clientCategory: specialty,
           clientCity: city,
           competitorName: topCompetitor?.name || null,
@@ -807,9 +881,9 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
           vertical: vocabPreset.vertical,
           avgCaseValue: econ.avgCaseValue,
           // Deep Oz data: Google gives us these for free
-          openingDate: req.body.openingDate || null,
-          editorialSummary: req.body.editorialSummary || null,
-          businessStatus: req.body.businessStatus || null,
+          openingDate: enrichedOpeningDate || null,
+          editorialSummary: enrichedEditorialSummary || null,
+          businessStatus: enrichedBusinessStatus || null,
         }),
       ]);
 
@@ -832,16 +906,18 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // ─── Surprise Findings: Oz Pearlman homework from expanded data ───
     let surpriseFindings: SurpriseFinding[] = [];
     try {
-      // Transform frontend review format to PlaceReview format expected by surprise findings
-      const clientReviewsForSurprise = (req.body.reviews || []).map((r: any) => ({
-        text: { text: r.text || "" },
-        originalText: { text: r.text || "" },
-        rating: r.rating || 0,
-        authorAttribution: { displayName: r.author || "Anonymous" },
-        relativePublishTimeDescription: r.time || r.when || "",
-        publishTime: r.time || r.when || undefined,
-        // ownerResponse is not available from frontend data
-      }));
+      // Use enriched reviews from Google Places API (already in the right format)
+      // Fall back to frontend-provided reviews only if API data unavailable
+      const clientReviewsForSurprise = googleReviews.length > 0
+        ? googleReviews
+        : (req.body.reviews || []).map((r: any) => ({
+            text: { text: r.text || "" },
+            originalText: { text: r.text || "" },
+            rating: r.rating || 0,
+            authorAttribution: { displayName: r.author || "Anonymous" },
+            relativePublishTimeDescription: r.time || r.when || "",
+            publishTime: r.time || r.when || undefined,
+          }));
 
       surpriseFindings = await generateSurpriseFindings({
         place: {
@@ -849,12 +925,12 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
           rating: clientRating,
           userRatingCount: clientReviews,
           reviews: clientReviewsForSurprise,
-          photos: req.body.photos || new Array(req.body.photosCount || 0),
-          regularOpeningHours: req.body.regularOpeningHours || undefined,
-          editorialSummary: req.body.editorialSummary
-            ? { text: req.body.editorialSummary }
+          photos: placeDetails?.photos || req.body.photos || new Array(enrichedPhotosCount || 0),
+          regularOpeningHours: enrichedHours || undefined,
+          editorialSummary: enrichedEditorialSummary
+            ? { text: typeof enrichedEditorialSummary === "string" ? enrichedEditorialSummary : enrichedEditorialSummary?.text || "" }
             : undefined,
-          websiteUri: req.body.websiteUri || undefined,
+          websiteUri: enrichedWebsite || undefined,
         },
         competitors: otherCompetitors.slice(0, 5).map((c) => ({
           name: c.name,
