@@ -123,15 +123,15 @@ export default function HomePage() {
       <section className="bg-[#212D40] px-5 py-16 sm:py-24">
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="text-[26px] sm:text-[42px] font-extrabold text-white leading-tight tracking-tight">
-            Every agency you've hired said
-            {" "}<span className="text-[#D56753]">"give it more time."</span>
+            Your business is telling you something.
+            {" "}<span className="text-[#D56753]">We know what it is.</span>
           </h1>
           <p className="mt-4 text-lg sm:text-xl text-white/50 leading-relaxed">
-            We don't say that.<br className="hidden sm:block" />
-            We show you what's happening right now.
+            Every Monday morning, one finding you didn't know.<br className="hidden sm:block" />
+            Named competitors. Real numbers. One clear action.
           </p>
           <p className="mt-2 text-sm text-white/30">
-            Enter your business name. 60 seconds. No account needed.
+            See where you rank in 60 seconds. Free. No account needed.
           </p>
 
           <div className="mt-8">
@@ -139,7 +139,7 @@ export default function HomePage() {
           </div>
 
           <p className="mt-4 text-xs text-white/25">
-            Free. No credit card. No sales call.
+            Free. No credit card. No sales call. Cancel anytime.
             We find something specific or we tell you.
           </p>
         </div>
@@ -212,14 +212,14 @@ export default function HomePage() {
           <ThreeThing
             verb="GROW"
             lines={[
-              "SEO, AEO, and CRO run automatically.",
-              "When a customer asks an AI assistant for a specialist, your business is the answer. When a referral source searches before they send, they find you first. You didn't write anything. The agents did.",
+              "Your online visibility runs on autopilot.",
+              "When customers search for someone like you, you show up. When they ask Siri or ChatGPT, you're the answer. When a referral source looks you up before they send, they find you first. You never wrote a word.",
             ]}
           />
           <ThreeThing
             verb="WATCH"
             lines={[
-              "47 agents monitor your business around the clock.",
+              "Your business speaks all the time. We listen so you don't have to.",
               "Every Monday, one email. One thing that's specific, true, and actionable. The catch before it costs you. The move before your competitor makes it. You don't check. It tells you.",
             ]}
           />
@@ -368,24 +368,23 @@ export default function HomePage() {
       <section className="bg-[#D56753] px-5 py-16 sm:py-20">
         <div className="max-w-xl mx-auto text-white space-y-6 leading-relaxed">
           <p className="text-base">
-            Not everyone can afford $2,000/month right now.
+            10% of every Alloro subscription funds the Heroes & Founders Foundation.
           </p>
           <p className="text-base">
-            If you're a veteran, an active duty spouse,
-            a first responder, or a Gold Star family member
-            who owns a business, Alloro is free.
-            Not discounted. Free. Forever.
+            Veterans, active duty spouses, first responders,
+            and Gold Star family members who own a business
+            get Alloro free. Not discounted. Free. Forever.
+            Because the people who chose to serve first
+            deserve the intelligence everyone else pays for.
           </p>
           <p className="text-base">
-            If you're in your first year of business ownership,
-            Alloro is $400/month. Everything included.
-            No stripped version. No waitlist.
+            First-year business owners pay $400/month.
+            Everything included. No stripped version. No waitlist.
+            We all rise together.
           </p>
           <p className="text-base font-semibold">
-            The people who served our communities are heroes. And founders.
-          </p>
-          <p className="text-base">
-            They deserve the intelligence everyone else pays for.
+            When you subscribe, you are not just buying clarity for yourself.
+            You are making it possible for someone who served to have it too.
           </p>
           <Link
             to="/foundation"
@@ -471,6 +470,12 @@ export default function HomePage() {
                 url: "https://getalloro.com",
                 description: "Business Clarity platform for local service professionals",
                 logo: "https://getalloro.com/logo.png",
+                founder: {
+                  "@type": "Person",
+                  name: "Corey Wise",
+                  jobTitle: "Founder",
+                },
+                sameAs: ["https://www.linkedin.com/company/getalloro"],
               },
               {
                 "@type": "WebSite",
@@ -478,6 +483,65 @@ export default function HomePage() {
                 url: "https://getalloro.com",
                 name: "Alloro - Business Clarity",
                 publisher: { "@id": "https://getalloro.com/#organization" },
+              },
+              {
+                "@type": "SoftwareApplication",
+                name: "Alloro",
+                applicationCategory: "BusinessApplication",
+                operatingSystem: "Web",
+                offers: {
+                  "@type": "Offer",
+                  price: "2000",
+                  priceCurrency: "USD",
+                  priceValidUntil: "2027-12-31",
+                },
+                description: "Business Clarity platform. 47 AI agents monitor your competitive position, build your web presence, and deliver one actionable finding every Monday.",
+                featureList: "Competitive intelligence, AI-built websites, Review monitoring, Referral tracking, SEO and AEO optimization",
+              },
+              {
+                "@type": "FAQPage",
+                mainEntity: [
+                  {
+                    "@type": "Question",
+                    name: "What is a Business Clarity Score?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "A Business Clarity Score is a composite rating (0-100) of your local visibility, online presence, and review health compared to every competitor in your market. It is calculated from public Google data in 60 seconds.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "How much does Alloro cost?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "Alloro is $2,000/month with no contracts. Cancel anytime. Veterans, active duty spouses, first responders, and Gold Star family members get Alloro free forever through the Heroes and Founders Foundation. First-year business owners pay $400/month.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "What does Alloro do for my business?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "Alloro runs 47 AI agents that monitor your competitive position, build and optimize your website, track your reviews and referral sources, and deliver one specific, actionable finding every Monday morning. You run your business. Alloro does the rest.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "Do I need to do anything after signing up?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "No. After entering your business name, Alloro automatically builds your website, indexes it for search engines, monitors your competitors, and sends you a weekly intelligence brief. The system runs without your involvement.",
+                    },
+                  },
+                  {
+                    "@type": "Question",
+                    name: "What types of businesses does Alloro work for?",
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: "Alloro serves all local service businesses: dental, medical, legal, veterinary, chiropractic, optometry, financial advisory, real estate, and more. The platform automatically adapts its language and intelligence to your specific industry.",
+                    },
+                  },
+                ],
               },
             ],
           }),

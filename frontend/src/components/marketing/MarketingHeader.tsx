@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { label: "How It Works", to: "/how-it-works" },
   { label: "Heroes & Founders", to: "/foundation" },
   { label: "Our Story", to: "/story" },
+  { label: "Blog", to: "/blog" },
 ];
 
 export default function MarketingHeader() {

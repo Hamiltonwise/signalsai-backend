@@ -51,42 +51,47 @@ export default function PricingPage() {
                   desc="Alloro scans your market every week and delivers one finding, one action, and one score. In plain English. Before you see your first client."
                 />
                 <IncludeItem
-                  title="Your PatientPath presence layer."
-                  desc="A professional, conversion-optimized web presence built from your real market data. Live within one hour of signup."
+                  title="Your Alloro website, built in one hour."
+                  desc="A professional, conversion-optimized web presence built from your real market data and Google reviews. Live within one hour of signup."
                 />
                 <IncludeItem
-                  title="GP referral intelligence."
-                  desc="When you connect your business data, Alloro monitors every referring relationship and alerts you when one starts to drift, with the dollar figure attached."
+                  title="Revenue source intelligence."
+                  desc="Connect your business data and Alloro monitors every relationship that drives revenue. When one starts to drift, you know first, with the dollar figure attached."
                 />
                 <IncludeItem
                   title="Competitive intelligence."
                   desc="Weekly competitive position tracking across local search, reviews, and online visibility. Your score. Their score. What changed."
                 />
                 <IncludeItem
-                  title="The Business Clarity Layer."
-                  desc="Connect your scheduling software and Alloro tells you which procedure mix is underperforming relative to your market. Connect billing data and the Monday email puts a dollar figure on every finding."
+                  title="The full Business Clarity layer."
+                  desc="Connect your data and Alloro puts a dollar figure on every finding. What's working, what's slipping, and what to do about it this week."
                 />
               </div>
             </div>
           </div>
 
-          {/* Foundation line */}
-          <p className="mt-6 text-center text-sm text-[#212D40]/50 leading-relaxed max-w-md mx-auto">
-            10% of every Alloro subscription goes directly to
-            Heroes &amp; Founders Foundation. When you subscribe,
-            you support a veteran or public servant who built
-            something too.
-          </p>
+          {/* Split the check */}
+          <div className="mt-8 rounded-xl border-2 border-[#212D40]/10 bg-[#212D40]/[0.02] p-6 text-center">
+            <p className="text-sm font-bold text-[#212D40] mb-1">
+              Share the clarity. You both get a free month.
+            </p>
+            <p className="text-xs text-[#212D40]/50 leading-relaxed">
+              Invite a colleague. When they subscribe, you both get one month free.
+              Not a discount. A shared investment in each other's business.
+              We all rise together.
+            </p>
+          </div>
 
-          {/* Founding partners */}
-          <div className="mt-8 rounded-xl border border-gray-200 bg-white p-5 text-center">
+          {/* Foundation line */}
+          <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5 text-center">
             <p className="text-sm text-[#212D40]/70 leading-relaxed">
-              First-year practitioners and veteran-owned businesses
-              may qualify for subsidized access through Heroes &amp;
-              Founders Foundation.{" "}
+              10% of every subscription funds{" "}
               <Link to="/foundation" className="text-[#D56753] font-semibold hover:underline">
-                Learn more &rarr;
+                Heroes & Founders Foundation
               </Link>
+              . Veterans and first-year business owners get access
+              at no cost or reduced cost. The people who served first
+              deserve the intelligence everyone else pays for.
             </p>
           </div>
 
@@ -96,11 +101,11 @@ export default function PricingPage() {
               to="/checkup"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-[#D56753] text-white text-base font-semibold px-8 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
             >
-              Start with the free Checkup
+              See your numbers first
               <ArrowRight className="w-4 h-4" />
             </Link>
             <p className="mt-3 text-xs text-gray-400">
-              No credit card. No commitment. 60 seconds.
+              Free Checkup. No credit card. 60 seconds. Then decide.
             </p>
           </div>
         </div>
