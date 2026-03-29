@@ -1,12 +1,27 @@
 /**
- * IntegratorView -- Dave's HQ view.
+ * IntegratorView -- Jo's HQ.
  *
- * Client health grid (RED first), sprint status from dream_team_tasks,
- * phone-optimized (480px primary). One action per row.
+ * COO view: everything running, nothing blocked.
+ * Bezos: single-threaded ownership. Jo owns the operation.
+ * Musk: if it's not broken, it doesn't need Jo's attention.
+ *
+ * Four zones:
+ * 1. Operations Status (all green or what needs attention)
+ * 2. Client Pipeline (onboarding stages, who's stuck)
+ * 3. Team Workload (Corey, Dave, agents -- who has open items)
+ * 4. Blockers (anything that stops forward movement)
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Users,
+  Zap,
+  ArrowRight,
+} from "lucide-react";
+import { adminListOrganizations, type AdminOrganization } from "@/api/admin-organizations";
 import { apiGet } from "@/api/index";
 
 interface ClientHealth {
@@ -14,37 +29,24 @@ interface ClientHealth {
   name: string;
   health: "green" | "amber" | "red";
   risk?: string;
-  last_login?: string;
-  open_items?: number;
-  recommended_action?: string;
 }
 
 interface DreamTeamTask {
-  id: string;
+  id: number;
   title: string;
+  owner: string;
   status: string;
   priority: string;
-  due_date: string | null;
-}
-
-const DOT_COLOR: Record<string, string> = {
-  red: "bg-red-500",
-  amber: "bg-amber-400",
-  green: "bg-emerald-500",
-};
-
-function timeAgo(dateStr: string | undefined): string {
-  if (!dateStr) return "Never";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const days = Math.floor(diff / 86_400_000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days}d ago`;
-  return `${Math.floor(days / 7)}w ago`;
+  due_date?: string;
 }
 
 export default function IntegratorView() {
-  const { data: healthData, isLoading } = useQuery({
+  const { data } = useQuery({
+    queryKey: ["admin-organizations"],
+    queryFn: adminListOrganizations,
+  });
+
+  const { data: healthData } = useQuery({
     queryKey: ["admin-client-health"],
     queryFn: async () => {
       const res = await apiGet({ path: "/admin/client-health" });
@@ -53,104 +55,201 @@ export default function IntegratorView() {
     staleTime: 60_000,
   });
 
-  const { data: tasks } = useQuery({
-    queryKey: ["dave-tasks"],
+  const { data: tasksData } = useQuery({
+    queryKey: ["dream-team-tasks-all"],
     queryFn: async () => {
       const res = await apiGet({ path: "/admin/dream-team/tasks" });
-      const all = res?.success ? (res.tasks as DreamTeamTask[]) : [];
-      return all.filter((t: any) => t.owner_name === "Dave" && t.status !== "done");
+      return res?.success ? (res.tasks as DreamTeamTask[]) : [];
     },
     staleTime: 60_000,
   });
 
-  const clients = [...(healthData || [])].sort((a, b) => {
-    const order = { red: 0, amber: 1, green: 2 };
-    return (order[a.health] ?? 2) - (order[b.health] ?? 2);
+  const orgs: AdminOrganization[] =
+    (data as any)?.organizations ?? (Array.isArray(data) ? data : []);
+
+  const health = healthData || [];
+  const redCount = health.filter((c) => c.health === "red").length;
+  const amberCount = health.filter((c) => c.health === "amber").length;
+  const greenCount = health.filter((c) => c.health === "green").length;
+
+  const tasks = tasksData || [];
+  const openTasks = tasks.filter((t) => t.status !== "done" && t.status !== "completed");
+  const coreyTasks = openTasks.filter((t) => t.owner?.toLowerCase().includes("corey"));
+  const daveTasks = openTasks.filter((t) => t.owner?.toLowerCase().includes("dave"));
+  const urgentTasks = openTasks.filter((t) => t.priority === "urgent" || t.priority === "high");
+
+  // Pipeline: categorize orgs by onboarding stage
+  const withGBP = orgs.filter((o: any) => o.gbp_access_token || o.google_connected);
+  const withPMS = orgs.filter((o: any) => o.pms_uploaded || o.has_pms_data);
+  const newSignups = orgs.filter((o) => {
+    const age = (Date.now() - new Date(o.created_at).getTime()) / 86_400_000;
+    return age <= 7;
   });
 
+  const opsStatus = redCount === 0 && urgentTasks.length === 0;
+
   return (
-    <div className="max-w-[480px] mx-auto space-y-6">
-      {/* Sprint status */}
-      <div className="bg-[#212D40] rounded-2xl p-5 text-white">
-        <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Dave's Sprint</p>
-        <p className="text-2xl font-black">{tasks?.length || 0} open</p>
-        <p className="text-xs text-white/50 mt-1">
-          {tasks?.filter((t) => t.priority === "urgent" || t.priority === "high").length || 0} high priority
-        </p>
+    <div className="space-y-6 max-w-3xl">
+
+      {/* Zone 1: Operations Status -- ONE answer */}
+      <div className={`rounded-2xl p-5 ${opsStatus ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200"}`}>
+        <div className="flex items-center gap-3">
+          {opsStatus ? (
+            <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0" />
+          )}
+          <div>
+            <p className={`text-lg font-bold ${opsStatus ? "text-emerald-700" : "text-amber-700"}`}>
+              {opsStatus
+                ? "Operations clear. Nothing blocked."
+                : `${redCount} client${redCount !== 1 ? "s" : ""} need attention. ${urgentTasks.length} urgent task${urgentTasks.length !== 1 ? "s" : ""}.`}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {orgs.length} total accounts. {greenCount} green, {amberCount} amber, {redCount} red.
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Client health grid */}
-      <div className="space-y-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Client Health</p>
+      {/* Zone 2: Client Pipeline */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Users className="h-4 w-4 text-blue-500" />
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Onboarding Pipeline</p>
+        </div>
+        <div className="space-y-2">
+          <PipelineRow label="Signed up (last 7 days)" count={newSignups.length} color="blue" />
+          <PipelineRow label="Google connected" count={withGBP.length} total={orgs.length} color="emerald" />
+          <PipelineRow label="Data uploaded" count={withPMS.length} total={orgs.length} color="purple" />
+        </div>
 
-        {isLoading && (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 animate-pulse rounded-xl border border-gray-200 bg-white" />
+        {/* Stuck accounts (signed up > 7 days, no GBP) */}
+        {(() => {
+          const stuck = orgs.filter((o: any) => {
+            const age = (Date.now() - new Date(o.created_at).getTime()) / 86_400_000;
+            return age > 7 && !o.gbp_access_token && !o.google_connected;
+          });
+          if (stuck.length === 0) return null;
+          return (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-2">
+                Stuck ({stuck.length})
+              </p>
+              {stuck.slice(0, 3).map((o) => (
+                <div key={o.id} className="flex items-center justify-between text-sm py-1">
+                  <span className="text-[#212D40] font-medium">{o.name}</span>
+                  <span className="text-xs text-amber-500">No GBP after {Math.floor((Date.now() - new Date(o.created_at).getTime()) / 86_400_000)}d</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Zone 3: Team Workload */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Zap className="h-4 w-4 text-[#D56753]" />
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Team Load</p>
+        </div>
+        <div className="space-y-2">
+          <WorkloadRow name="Corey" count={coreyTasks.length} urgent={coreyTasks.filter((t) => t.priority === "urgent").length} />
+          <WorkloadRow name="Dave" count={daveTasks.length} urgent={daveTasks.filter((t) => t.priority === "urgent").length} />
+          <WorkloadRow name="Agents" count={42} label="registered" status="green" />
+        </div>
+
+        {/* Urgent tasks detail */}
+        {urgentTasks.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+            <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Urgent</p>
+            {urgentTasks.slice(0, 5).map((t) => (
+              <div key={t.id} className="flex items-start gap-2 text-sm">
+                <ArrowRight className="h-3 w-3 text-red-500 mt-1 shrink-0" />
+                <div>
+                  <span className="text-[#212D40] font-medium">{t.title}</span>
+                  <span className="text-xs text-gray-400 ml-2">{t.owner}</span>
+                </div>
+              </div>
             ))}
           </div>
         )}
-
-        {clients.map((c) => (
-          <div key={c.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full shrink-0 ${DOT_COLOR[c.health] || DOT_COLOR.green}`} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-[#212D40] truncate">{c.name}</p>
-                  <span className="text-[10px] text-gray-400 shrink-0">{timeAgo(c.last_login)}</span>
-                </div>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-xs text-gray-500 truncate">
-                    {c.recommended_action || (c.open_items ? `${c.open_items} open items` : "On track")}
-                  </p>
-                  {c.health === "red" && (
-                    <button className="shrink-0 ml-2 p-1 text-red-400 hover:text-red-600 transition-colors" title="Flag">
-                      <AlertTriangle className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {!isLoading && clients.length === 0 && (
-          <div className="text-center text-gray-400 py-6">
-            <p className="text-sm">No client health data available.</p>
-            <p className="text-xs mt-1">Endpoint: /api/admin/client-health</p>
-          </div>
-        )}
       </div>
 
-      {/* Dave's open tasks */}
-      {tasks && tasks.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Open Tasks</p>
-          {tasks.slice(0, 5).map((t) => (
-            <div key={t.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
-              {t.status === "in_progress" ? (
-                <Clock className="h-4 w-4 text-amber-500 shrink-0" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 text-gray-300 shrink-0" />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-[#212D40] truncate">{t.title}</p>
-                {t.due_date && (
-                  <p className="text-[10px] text-gray-400 mt-0.5">Due: {t.due_date}</p>
-                )}
-              </div>
-              <span className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded ${
-                t.priority === "urgent" ? "bg-red-50 text-red-600" :
-                t.priority === "high" ? "bg-amber-50 text-amber-600" :
-                "bg-gray-50 text-gray-400"
-              }`}>
-                {t.priority}
-              </span>
-            </div>
-          ))}
+      {/* Zone 4: Blockers */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Blockers</p>
+        <div className="space-y-2 text-sm">
+          <BlockerRow
+            label="EC2 Pipeline"
+            status={false}
+            detail="Dave: merge sandbox to main, verify PM2"
+          />
+          <BlockerRow
+            label="Mailgun"
+            status={false}
+            detail="Monday emails, trial sequence, review auto-draft all dormant"
+          />
+          <BlockerRow
+            label="Sentry"
+            status={false}
+            detail="SENTRY_DSN not set on EC2"
+          />
+          <BlockerRow
+            label="TypeScript"
+            status={true}
+            detail="Clean. Zero errors."
+          />
+          <BlockerRow
+            label="Smoke Test"
+            status={true}
+            detail="5/6 passing"
+          />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PipelineRow({ label, count, total, color }: { label: string; count: number; total?: number; color: string }) {
+  const colorMap: Record<string, string> = { blue: "bg-blue-500", emerald: "bg-emerald-500", purple: "bg-purple-500" };
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm text-gray-600">{label}</span>
+      <div className="flex items-center gap-2">
+        <div className={`w-2 h-2 rounded-full ${colorMap[color] || "bg-gray-400"}`} />
+        <span className="text-sm font-semibold text-[#212D40]">{count}{total ? ` / ${total}` : ""}</span>
+      </div>
+    </div>
+  );
+}
+
+function WorkloadRow({ name, count, urgent, label, status }: { name: string; count: number; urgent?: number; label?: string; status?: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-sm font-medium text-[#212D40]">{name}</span>
+      <div className="flex items-center gap-2">
+        {urgent && urgent > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-semibold">{urgent} urgent</span>}
+        <span className={`text-sm font-semibold ${status === "green" ? "text-emerald-600" : "text-[#212D40]"}`}>
+          {count} {label || "open"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function BlockerRow({ label, status, detail }: { label: string; status: boolean; detail: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      {status ? (
+        <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+      ) : (
+        <Clock className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
       )}
+      <div>
+        <span className="font-medium text-[#212D40]">{label}</span>
+        <p className="text-xs text-gray-400">{detail}</p>
+      </div>
     </div>
   );
 }

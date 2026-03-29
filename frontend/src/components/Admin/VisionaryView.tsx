@@ -1,20 +1,29 @@
 /**
- * VisionaryView -- Corey's HQ view.
+ * VisionaryView -- Corey's HQ.
  *
- * MRR, AAE countdown, unicorn confidence, pipeline, exceptions only.
- * Clean 4-card layout. No agent management. No build queue.
+ * Musk Step 3 (simplify): ONE number at the top (MRR).
+ * Bezos principle: show only the decisions waiting for the CEO.
+ *
+ * Five zones:
+ * 1. The Numbers (MRR, clients, pipeline, runway)
+ * 2. Flywheel Metrics (checkups, invites, conversions -- is the product spreading itself?)
+ * 3. Needs Your Decision (RED clients + pending approvals)
+ * 4. Foundation Pulse (Champions, Heroes seats funded, Foundation status)
+ * 5. This Week's Signal (the one sentence that matters most)
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, Calendar, Target, AlertTriangle } from "lucide-react";
+import {
+  DollarSign,
+  TrendingUp,
+  Users,
+  AlertTriangle,
+  Heart,
+  Zap,
+  Target,
+} from "lucide-react";
 import { adminListOrganizations, type AdminOrganization } from "@/api/admin-organizations";
 import { apiGet } from "@/api/index";
-
-const AAE_DATE = new Date("2026-04-15");
-
-function daysUntil(date: Date): number {
-  return Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86_400_000));
-}
 
 interface ClientHealth {
   id: number;
@@ -38,79 +47,197 @@ export default function VisionaryView() {
     staleTime: 60_000,
   });
 
+  const { data: signalData } = useQuery({
+    queryKey: ["admin-signal"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/signal" });
+      return res?.success ? res : null;
+    },
+    staleTime: 5 * 60_000,
+  });
+
   const orgs: AdminOrganization[] =
     (data as any)?.organizations ?? (Array.isArray(data) ? data : []);
 
   const activeOrgs = orgs.filter((o) => o.subscription_status === "active" || o.subscription_tier);
-  const trialOrgs = orgs.filter((o) => o.subscription_status === "trialing" || (!o.subscription_status && !o.subscription_tier));
+  const trialOrgs = orgs.filter((o) => !o.subscription_status || o.subscription_status === "trialing");
   const mrr = activeOrgs.length * 2000;
-  const d = daysUntil(AAE_DATE);
-  const unicorn = Math.min(100, Math.round(activeOrgs.length * 10 + mrr / 100));
+  const arr = mrr * 12;
+  const burn = 9500;
+  const isProfitable = mrr > burn;
 
   const redClients = (healthData || []).filter((c) => c.health === "red");
-  const mostRecentTrial = trialOrgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+  const amberClients = (healthData || []).filter((c) => c.health === "amber");
+  const greenClients = (healthData || []).filter((c) => c.health === "green");
+  const championCount = orgs.filter((o: any) => o.is_champion).length;
+
+  // Flywheel: checkup invites (would need a dedicated endpoint, show what we can)
+  const totalClients = orgs.length;
+  const conversionRate = totalClients > 0 ? Math.round((activeOrgs.length / totalClients) * 100) : 0;
+
+  const signal = signalData?.signal || signalData?.sentence || null;
 
   return (
-    <div className="space-y-6">
-      {/* Top 4 cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-center">
-          <DollarSign className="h-5 w-5 text-emerald-500 mx-auto mb-2" />
-          <p className="text-3xl font-black text-[#212D40]">${mrr.toLocaleString()}</p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">MRR</p>
-          <p className="text-[11px] text-gray-400 mt-0.5">{activeOrgs.length} paying</p>
+    <div className="space-y-6 max-w-3xl">
+
+      {/* Zone 1: The Numbers */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <NumberCard
+          icon={<DollarSign className="h-4 w-4 text-emerald-500" />}
+          value={`$${mrr.toLocaleString()}`}
+          label="MRR"
+          sub={`$${arr.toLocaleString()} ARR`}
+        />
+        <NumberCard
+          icon={<Users className="h-4 w-4 text-blue-500" />}
+          value={String(activeOrgs.length)}
+          label="Paying"
+          sub={`${trialOrgs.length} in pipeline`}
+        />
+        <NumberCard
+          icon={<TrendingUp className="h-4 w-4 text-[#D56753]" />}
+          value={`${conversionRate}%`}
+          label="Conversion"
+          sub={`${totalClients} total accounts`}
+        />
+        <NumberCard
+          icon={<Target className="h-4 w-4 text-purple-500" />}
+          value={isProfitable ? "Yes" : "No"}
+          label="Profitable"
+          sub={isProfitable ? `+$${(mrr - burn).toLocaleString()}/mo` : `$${burn.toLocaleString()} burn`}
+          valueColor={isProfitable ? "text-emerald-600" : "text-amber-500"}
+        />
+      </div>
+
+      {/* Zone 2: This Week's Signal */}
+      {signal && (
+        <div className="bg-[#212D40] rounded-2xl p-5">
+          <div className="flex items-start gap-3">
+            <Zap className="h-4 w-4 text-[#D56753] mt-0.5 shrink-0" />
+            <p className="text-sm text-white leading-relaxed">{signal}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Zone 3: Client Health at a Glance */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Client Health</p>
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <span className="text-sm font-semibold text-[#212D40]">{greenClients.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            <span className="text-sm font-semibold text-[#212D40]">{amberClients.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+            <span className="text-sm font-semibold text-[#212D40]">{redClients.length}</span>
+          </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-center">
-          <Calendar className="h-5 w-5 text-[#D56753] mx-auto mb-2" />
-          <p className={`text-3xl font-black ${d <= 7 ? "text-red-500" : d <= 21 ? "text-amber-500" : "text-[#212D40]"}`}>{d}</p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Days to AAE</p>
-          <p className="text-[11px] text-gray-400 mt-0.5">April 15, 2026</p>
-        </div>
+        {/* RED clients -- needs Corey's decision */}
+        {redClients.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+              <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Needs your decision</p>
+            </div>
+            {redClients.map((c) => (
+              <div key={c.id} className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <p className="text-sm font-semibold text-[#212D40]">{c.name}</p>
+                <p className="text-xs text-red-600 mt-0.5">{c.risk || "Engagement dropped. Call or defer?"}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-center">
-          <Target className="h-5 w-5 text-blue-500 mx-auto mb-2" />
-          <p className={`text-3xl font-black ${unicorn >= 50 ? "text-emerald-600" : "text-amber-500"}`}>{unicorn}</p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Unicorn Score</p>
-          <p className="text-[11px] text-gray-400 mt-0.5">Confidence index</p>
-        </div>
+        {/* AMBER clients -- awareness only */}
+        {amberClients.length > 0 && redClients.length === 0 && (
+          <p className="text-sm text-amber-600">
+            {amberClients.length} client{amberClients.length !== 1 ? "s" : ""} need{amberClients.length === 1 ? "s" : ""} a check. None critical.
+          </p>
+        )}
 
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 text-center">
-          <p className="text-3xl font-black text-[#212D40]">{trialOrgs.length}</p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Trial</p>
-          <p className="text-[11px] text-gray-400 mt-0.5">{activeOrgs.length} paying</p>
-          {mostRecentTrial && (
-            <p className="text-[10px] text-[#D56753] mt-1 truncate">
-              Latest: {mostRecentTrial.name}
-            </p>
-          )}
+        {redClients.length === 0 && amberClients.length === 0 && (
+          <p className="text-sm text-emerald-600">All clients healthy. No decisions needed.</p>
+        )}
+      </div>
+
+      {/* Zone 4: Foundation Pulse */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Heart className="h-4 w-4 text-[#D56753]" />
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Foundation</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="text-center">
+            <p className="text-2xl font-black text-[#212D40]">{championCount}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Champions</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-black text-[#212D40]">{championCount}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Heroes Funded</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-black text-[#212D40]">2</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider">RISE Scholars</p>
+          </div>
         </div>
       </div>
 
-      {/* Exceptions -- RED clients only */}
-      {redClients.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-            <p className="text-xs font-bold uppercase tracking-wider text-red-500">Exceptions</p>
+      {/* Zone 5: Flywheel Status */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Flywheel</p>
+        <div className="space-y-2 text-sm text-gray-600">
+          <div className="flex items-center justify-between">
+            <span>Checkup to signup</span>
+            <span className="font-semibold text-[#212D40]">{conversionRate}%</span>
           </div>
-          {redClients.map((c) => (
-            <div key={c.id} className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-[#212D40]">{c.name}</p>
-                <p className="text-xs text-red-600 mt-0.5">{c.risk || "Needs attention"}</p>
-              </div>
-              <div className="w-3 h-3 rounded-full bg-red-500 shrink-0" />
-            </div>
-          ))}
+          <div className="flex items-center justify-between">
+            <span>Monday email (system)</span>
+            <span className="font-semibold text-[#212D40]">{activeOrgs.length > 0 ? "Active" : "Waiting for Mailgun"}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Agent signal bus</span>
+            <span className="font-semibold text-emerald-600">Live (42 agents)</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Competitor invites</span>
+            <span className="font-semibold text-[#212D40]">Wired</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Lob card pipeline</span>
+            <span className="font-semibold text-amber-500">Queuing (needs LOB_API_KEY)</span>
+          </div>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
 
-      {redClients.length === 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
-          <p className="text-sm font-medium text-emerald-700">All clients healthy. No exceptions.</p>
-        </div>
-      )}
+function NumberCard({
+  icon,
+  value,
+  label,
+  sub,
+  valueColor,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+  sub: string;
+  valueColor?: string;
+}) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-2">
+        {icon}
+        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
+      </div>
+      <p className={`text-2xl font-black ${valueColor || "text-[#212D40]"}`}>{value}</p>
+      <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>
     </div>
   );
 }

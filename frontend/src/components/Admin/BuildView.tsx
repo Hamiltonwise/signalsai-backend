@@ -1,145 +1,146 @@
 /**
- * BuildView -- CC/Terminal view of HQ.
+ * BuildView -- Dave's HQ.
  *
- * Build state summary, env vars at risk, active work orders, Sentry placeholder.
+ * CTO view: infrastructure health, deployment status, what to do next.
+ * Musk Step 4 (accelerate): show the critical path, remove ambiguity.
+ * Bezos: two-pizza team, single-threaded ownership.
+ *
+ * Four zones:
+ * 1. System Health (one answer: green or what's broken)
+ * 2. Dave's Queue (open tasks, sorted by priority)
+ * 3. Infrastructure Checklist (env vars, services, connections)
+ * 4. Migrations
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { Terminal, AlertTriangle, CheckCircle2, Shield } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Server,
+  Database,
+  GitBranch,
+} from "lucide-react";
 import { apiGet } from "@/api/index";
 
 interface DreamTeamTask {
-  id: string;
+  id: number;
   title: string;
+  owner: string;
   status: string;
   priority: string;
-  due_date: string | null;
-  owner_name: string;
+  due_date?: string;
 }
-
-interface BuildEvent {
-  id: string;
-  event_type: string;
-  properties: any;
-  created_at: string;
-}
-
-const ENV_VARS = [
-  { name: "GOOGLE_PLACES_API", desc: "Places autocomplete + competitor data", critical: true },
-  { name: "ROUTES_API_KEY", desc: "Drive time competitor filtering", critical: false },
-  { name: "TWILIO_ACCOUNT_SID", desc: "SMS review requests", critical: false },
-  { name: "TWILIO_AUTH_TOKEN", desc: "SMS review requests", critical: false },
-  { name: "SENTRY_DSN", desc: "Error monitoring", critical: false },
-  { name: "ALLORO_N8N_WEBHOOK_URL", desc: "Monday email delivery", critical: true },
-  { name: "MAILGUN_API_KEY", desc: "Email delivery", critical: true },
-  { name: "MAILGUN_DOMAIN", desc: "Email delivery", critical: true },
-];
 
 export default function BuildView() {
-  const { data: tasks } = useQuery({
-    queryKey: ["dave-tasks-build"],
+  const { data: healthData } = useQuery({
+    queryKey: ["api-health"],
     queryFn: async () => {
-      const res = await apiGet({ path: "/admin/dream-team/tasks" });
-      const all = res?.success ? (res.tasks as DreamTeamTask[]) : [];
-      return all.filter((t: any) => t.owner_name === "Dave" && t.status !== "done");
+      try {
+        const res = await fetch("/api/health");
+        return res.ok ? await res.json() : null;
+      } catch { return null; }
+    },
+    staleTime: 30_000,
+  });
+
+  const { data: tasksData } = useQuery({
+    queryKey: ["dream-team-tasks-dave"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/dream-team/tasks?owner=dave" });
+      return res?.success ? (res.tasks as DreamTeamTask[]) : [];
     },
     staleTime: 60_000,
   });
 
-  const { data: buildEvents } = useQuery({
-    queryKey: ["build-events"],
-    queryFn: async () => {
-      const res = await apiGet({ path: "/admin/behavioral-events?type=build&limit=10" });
-      return res?.success ? (res.events as BuildEvent[]) : [];
-    },
-    staleTime: 60_000,
-  });
+  const apiHealthy = healthData?.status === "ok";
+  const tasks = (tasksData || []).filter((t) => t.status !== "done" && t.status !== "completed");
+  const urgentTasks = tasks.filter((t) => t.priority === "urgent" || t.priority === "high");
 
   return (
-    <div className="space-y-6">
-      {/* Build state summary */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Terminal className="h-4 w-4 text-[#D56753]" />
-          <p className="text-xs font-bold uppercase tracking-wider text-[#D56753]">Build State</p>
+    <div className="space-y-6 max-w-3xl">
+      <div className={`rounded-2xl p-5 ${apiHealthy ? "bg-emerald-50 border border-emerald-200" : "bg-red-50 border border-red-200"}`}>
+        <div className="flex items-center gap-3">
+          {apiHealthy ? (
+            <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertTriangle className="h-6 w-6 text-red-600 shrink-0" />
+          )}
+          <div>
+            <p className={`text-lg font-bold ${apiHealthy ? "text-emerald-700" : "text-red-700"}`}>
+              {apiHealthy ? "Systems operational." : "API health check failed."}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {urgentTasks.length > 0
+                ? `${urgentTasks.length} urgent task${urgentTasks.length !== 1 ? "s" : ""} in your queue.`
+                : `${tasks.length} open task${tasks.length !== 1 ? "s" : ""}.`}
+            </p>
+          </div>
         </div>
+      </div>
 
-        {buildEvents && buildEvents.length > 0 ? (
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <GitBranch className="h-4 w-4 text-[#D56753]" />
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Your Queue ({tasks.length})</p>
+        </div>
+        {tasks.length === 0 ? (
+          <p className="text-sm text-emerald-600">Queue clear.</p>
+        ) : (
           <div className="space-y-2">
-            {buildEvents.map((e) => (
-              <div key={e.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-[#212D40] truncate font-mono text-xs">
-                    {e.properties?.file || e.event_type}
-                  </p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">
-                    {e.properties?.status || "committed"} -- {new Date(e.created_at).toLocaleString()}
-                  </p>
-                </div>
+            {tasks.slice(0, 10).map((t) => (
+              <div key={t.id} className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
+                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                  t.priority === "urgent" ? "bg-red-500" : t.priority === "high" ? "bg-amber-500" : "bg-gray-300"
+                }`} />
+                <p className="text-sm font-medium text-[#212D40] truncate flex-1">{t.title}</p>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${
+                  t.priority === "urgent" ? "bg-red-100 text-red-600" : t.priority === "high" ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-500"
+                }`}>{t.priority || "normal"}</span>
               </div>
             ))}
-          </div>
-        ) : (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 text-center text-gray-400">
-            <p className="text-sm">No build events tracked yet.</p>
-            <p className="text-xs mt-1">Events with type "build.*" will appear here.</p>
           </div>
         )}
       </div>
 
-      {/* Env vars at risk */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-amber-500" />
-          <p className="text-xs font-bold uppercase tracking-wider text-amber-500">Environment Variables</p>
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Server className="h-4 w-4 text-blue-500" />
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Infrastructure</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          {ENV_VARS.map((v, i) => (
-            <div key={v.name} className={`px-4 py-3 flex items-center justify-between ${i > 0 ? "border-t border-gray-100" : ""}`}>
-              <div className="min-w-0">
-                <p className="text-xs font-mono text-[#212D40]">{v.name}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{v.desc}</p>
-              </div>
-              <span className={`text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                v.critical ? "bg-red-50 text-red-500 border border-red-200" : "bg-amber-50 text-amber-600 border border-amber-200"
-              }`}>
-                Unconfirmed
-              </span>
-            </div>
-          ))}
+        <div className="space-y-2 text-sm">
+          <InfraRow label="API Server" ok={apiHealthy} detail={apiHealthy ? "Responding" : "Not responding"} />
+          <InfraRow label="Database" ok={apiHealthy} detail={apiHealthy ? "Connected" : "Unknown"} />
+          <InfraRow label="Redis / BullMQ" ok={null} detail="Verify: redis-cli ping on EC2" />
+          <InfraRow label="Mailgun" ok={false} detail="ALLORO_EMAIL_SERVICE_WEBHOOK not set" />
+          <InfraRow label="Sentry" ok={false} detail="SENTRY_DSN not set" />
+          <InfraRow label="Anthropic API" ok={null} detail="ANTHROPIC_API_KEY needed for agents" />
+          <InfraRow label="Lob Cards" ok={false} detail="LOB_API_KEY not set. Cards queuing." />
+          <InfraRow label="Google Places" ok={null} detail="Rotate key (exposed Mar 23)" />
         </div>
       </div>
 
-      {/* Active Work Orders (Dave's tasks) */}
-      {tasks && tasks.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Active Work Orders (Dave)</p>
-          <div className="space-y-2">
-            {tasks.map((t) => (
-              <div key={t.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${
-                  t.priority === "urgent" ? "bg-red-500" :
-                  t.priority === "high" ? "bg-amber-400" : "bg-gray-300"
-                }`} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-[#212D40] truncate">{t.title}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">
-                    {t.status} {t.due_date ? `-- due ${t.due_date}` : ""}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Database className="h-4 w-4 text-purple-500" />
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Pending Migrations</p>
         </div>
-      )}
+        <p className="font-mono text-xs text-gray-600">npx knex migrate:latest</p>
+        <p className="text-xs text-gray-400 mt-2">Run on EC2 after pulling latest. Includes: week1_win, checkup_invitations, champion fields.</p>
+      </div>
+    </div>
+  );
+}
 
-      {/* Sentry placeholder */}
-      <div className="bg-gray-50 border border-dashed border-gray-300 rounded-2xl p-6 text-center">
-        <AlertTriangle className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-        <p className="text-sm font-medium text-gray-400">Sentry Error Monitoring</p>
-        <p className="text-xs text-gray-300 mt-1">Connect SENTRY_DSN to activate.</p>
-        <p className="text-[10px] text-gray-300 mt-0.5">Dave's task: add DSN to .env</p>
+function InfraRow({ label, ok, detail }: { label: string; ok: boolean | null; detail: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      {ok === true ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+        : ok === false ? <Clock className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+        : <Clock className="h-4 w-4 text-gray-300 mt-0.5 shrink-0" />}
+      <div>
+        <span className="font-medium text-[#212D40]">{label}</span>
+        <span className="text-xs text-gray-400 ml-2">{detail}</span>
       </div>
     </div>
   );

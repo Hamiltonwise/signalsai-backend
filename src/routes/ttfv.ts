@@ -9,6 +9,7 @@
 import express from "express";
 import { db } from "../database/connection";
 import axios from "axios";
+import { detectTTFV } from "../services/ttfvDetection";
 
 const ttfvRoutes = express.Router();
 
@@ -129,6 +130,30 @@ ttfvRoutes.post("/:orgId/ttfv", async (req: any, res) => {
     return res.json({ success: true, response });
   } catch (error: any) {
     console.error("[TTFV] Response error:", error.message);
+    return res.status(500).json({ success: false, error: "Internal error" });
+  }
+});
+
+/**
+ * GET /api/org/:orgId/ttfv-detection
+ * Autonomous TTFV detection based on behavioral signals.
+ * Returns score, signals, and reached status.
+ */
+ttfvRoutes.get("/:orgId/ttfv-detection", async (req: any, res) => {
+  try {
+    const orgId = parseInt(req.params.orgId, 10);
+    if (!orgId || orgId !== req.organizationId) {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
+
+    const result = await detectTTFV(orgId);
+
+    return res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error: any) {
+    console.error("[TTFV] Detection error:", error.message);
     return res.status(500).json({ success: false, error: "Internal error" });
   }
 });
