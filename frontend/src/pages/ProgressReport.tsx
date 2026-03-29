@@ -20,6 +20,7 @@ import {
   Zap,
   BarChart3,
   Award,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiGet, apiPatch } from "@/api/index";
@@ -555,6 +556,201 @@ function TrajectorySection({ statements }: { statements: string[] }) {
   );
 }
 
+// ─── Intelligence Building State (new accounts) ───────────────────
+
+interface CheckupContext {
+  score: number | null;
+  data: {
+    market?: {
+      rank?: number;
+      totalCompetitors?: number;
+      city?: string;
+      avgRating?: number;
+      avgReviews?: number;
+    };
+    topCompetitor?: {
+      name?: string;
+      reviewCount?: number;
+      rating?: number;
+    };
+    score?: {
+      localVisibility?: number;
+      onlinePresence?: number;
+      reviewHealth?: number;
+      visibility?: number;
+    };
+    place?: { rating?: number };
+  };
+  top_competitor_name?: string | null;
+}
+
+interface StreakInfo {
+  type: string;
+  count: number;
+  label: string;
+}
+
+function isProgressEmpty(
+  enhanced: EnhancedProgressData | null | undefined,
+  data: ProgressData | null | undefined,
+): boolean {
+  if (!enhanced && !data) return true;
+
+  const noMilestones = !enhanced?.milestones || enhanced.milestones.length === 0;
+  const noTrajectory =
+    !enhanced?.trajectory_statements ||
+    enhanced.trajectory_statements.length === 0 ||
+    (enhanced.trajectory_statements.length === 1 &&
+      enhanced.trajectory_statements[0].includes("first trajectory projection"));
+  const noPositionGain =
+    enhanced?.year_summary?.positions_gained == null ||
+    enhanced.year_summary.positions_gained === 0;
+  const noTasks = !data?.yearInReview || data.yearInReview.tasksCompleted === 0;
+  const noMoves = !data?.topMoves || data.topMoves.length === 0;
+
+  return noMilestones && noTrajectory && noPositionGain && noTasks && noMoves;
+}
+
+function IntelligenceBuildingState({
+  checkupCtx,
+  streak,
+  daysActive,
+}: {
+  checkupCtx: CheckupContext | null;
+  streak: StreakInfo | null;
+  daysActive: number;
+}) {
+  const score = checkupCtx?.score;
+  const market = checkupCtx?.data?.market;
+  const rank = market?.rank;
+  const totalCompetitors = market?.totalCompetitors;
+  const city = market?.city;
+
+  return (
+    <div className="space-y-6">
+      {/* Hero */}
+      <div className="bg-[#212D40] rounded-2xl p-5 sm:p-8 text-center text-white">
+        <Search className="h-8 w-8 mx-auto mb-3 text-white/50" />
+        <p className="text-xl sm:text-2xl font-extrabold">Your intelligence is building.</p>
+        <p className="text-sm text-white/60 mt-2 max-w-md mx-auto">
+          Alloro is watching your market, tracking competitors, and building the data needed for
+          your full progress report.
+        </p>
+      </div>
+
+      {/* Checkup snapshot */}
+      {score != null && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
+            What we know so far
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-gray-50 rounded-xl p-4 text-center">
+              <p className="text-3xl font-black text-[#212D40] tabular-nums">{Math.round(score)}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">
+                Checkup Score
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5">/100</p>
+            </div>
+            {rank != null && (
+              <div className="bg-gray-50 rounded-xl p-4 text-center">
+                <p className="text-3xl font-black text-[#212D40] tabular-nums">#{rank}</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">
+                  Market Position
+                </p>
+                {totalCompetitors && (
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    of {totalCompetitors} competitors
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {totalCompetitors != null && city && (
+            <p className="text-sm text-[#212D40]/80 leading-relaxed">
+              Alloro found {totalCompetitors} competitors in {city}.
+              {rank != null ? ` Your position: #${rank}.` : ""}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Streak */}
+      {streak && streak.count >= 2 && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#D56753]/10 flex items-center justify-center shrink-0">
+            <Zap className="w-5 h-5 text-[#D56753]" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-[#212D40]">
+              Week {streak.count} of {streak.label}
+            </p>
+            <p className="text-xs text-gray-500">
+              Every week adds another data point to your trajectory.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Timeline */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-4">
+          What happens next
+        </p>
+        <div className="space-y-4">
+          {[
+            {
+              week: "Week 1",
+              label: "Market mapped",
+              desc: "Competitors identified, baseline scores captured.",
+              done: daysActive >= 7,
+            },
+            {
+              week: "Week 2",
+              label: "First patterns detected",
+              desc: "Review velocity, competitor movement, and ranking shifts.",
+              done: daysActive >= 14,
+            },
+            {
+              week: "Week 4",
+              label: "Full trajectory available",
+              desc: "Projections, milestones, and your complete progress report.",
+              done: daysActive >= 30,
+            },
+          ].map((step, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                  step.done
+                    ? "bg-emerald-100 text-emerald-600"
+                    : "bg-gray-100 text-gray-400"
+                }`}
+              >
+                {step.done ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <span className="text-xs font-bold">{i + 1}</span>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#212D40]">
+                  {step.week}: {step.label}
+                  {step.done && (
+                    <span className="text-emerald-600 text-xs font-medium ml-2">Done</span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────
 
 export default function ProgressReport() {
@@ -579,6 +775,31 @@ export default function ProgressReport() {
     },
     staleTime: 5 * 60_000,
   });
+
+  // Checkup context for new-account fallback
+  const { data: dashCtx } = useQuery({
+    queryKey: ["dashboard-context"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/dashboard-context" });
+      return res?.success ? res : null;
+    },
+    staleTime: 30 * 60_000,
+  });
+  const checkupCtx = (dashCtx?.checkup_context as CheckupContext) ?? null;
+
+  // Streak data
+  const { data: streaksResponse } = useQuery({
+    queryKey: ["user-streaks-progress"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/streaks" });
+      return res?.success ? { streak: res.streak as StreakInfo | null } : { streak: null };
+    },
+    staleTime: 10 * 60_000,
+  });
+  const streakData = streaksResponse?.streak ?? null;
+
+  const daysActive = enhanced?.year_summary?.days_active ?? 0;
+  const showIntelligenceBuilding = isProgressEmpty(enhanced, data) && checkupCtx != null;
 
   const handleSetGoals = async (goals: Goals) => {
     // Save goals to org setup_progress
@@ -612,8 +833,17 @@ export default function ProgressReport() {
         </div>
       )}
 
+      {/* New account: intelligence building state */}
+      {!isLoading && showIntelligenceBuilding && (
+        <IntelligenceBuildingState
+          checkupCtx={checkupCtx}
+          streak={streakData}
+          daysActive={daysActive}
+        />
+      )}
+
       {/* 90/180/365-Day Milestone Story (WO-44) */}
-      {enhanced?.year_summary && (() => {
+      {!showIntelligenceBuilding && enhanced?.year_summary && (() => {
         const days = enhanced.year_summary.days_active;
         const milestone = days >= 365 ? 365 : days >= 180 ? 180 : days >= 90 ? 90 : null;
         if (!milestone) return null;
@@ -643,8 +873,8 @@ export default function ProgressReport() {
         );
       })()}
 
-      {/* Content */}
-      {data && (
+      {/* Content -- only when not in intelligence-building state */}
+      {!showIntelligenceBuilding && data && (
         <>
           {/* Enhanced Your Year section if available, else original */}
           {enhanced?.year_summary ? (
@@ -673,8 +903,8 @@ export default function ProgressReport() {
         <p className="text-sm text-gray-500">Progress data is being compiled. Check back Monday.</p>
       )}
 
-      {/* No data state */}
-      {!isLoading && !isProgressError && !data && (
+      {/* No data state -- only when intelligence building isn't shown */}
+      {!isLoading && !isProgressError && !data && !showIntelligenceBuilding && (
         <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-400">
           <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-40" />
           <p className="text-base font-medium">Your first progress report is building.</p>
