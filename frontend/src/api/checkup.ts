@@ -155,3 +155,21 @@ export async function validateReferralCode(
     return { success: false, valid: false };
   }
 }
+
+/** Create a competitor invitation URL for the viral checkup loop */
+export async function createCompetitorInvite(params: {
+  competitorPlaceId: string;
+  competitorName: string;
+  senderName?: string;
+}): Promise<{ success: boolean; inviteUrl?: string }> {
+  try {
+    const response = await fetch("/api/checkup/invite-competitor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    return response.json();
+  } catch {
+    return { success: false };
+  }
+}

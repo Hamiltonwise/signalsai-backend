@@ -149,3 +149,124 @@ export function updateEngagementScoreAsync(orgId: number | null): void {
     console.error(`[BehavioralIntel] Score update failed for org ${orgId}:`, err.message);
   });
 }
+
+// ─── Agent Signal Bus ────────────────────────────────────────────────
+// Structured findings that agents write for other agents to consume.
+// Uses existing behavioral_events table with event_type "agent.finding".
+// No new table needed.
+
+export interface AgentFinding {
+  agentName: string;
+  findingType: string;
+  priority: number;       // 1 (low) to 10 (critical). 8+ means "requires human action within 24h"
+  headline: string;       // Human-readable, email-ready
+  detail: string;
+  orgId: number;
+  dollarImpact?: number;
+  competitorName?: string;
+  actionUrl?: string;
+}
+
+/**
+ * Record a structured finding from any agent.
+ * Downstream consumers: Monday email, morning briefing, one-action card.
+ */
+export async function recordAgentFinding(finding: AgentFinding): Promise<void> {
+  await db("behavioral_events").insert({
+    id: db.raw("gen_random_uuid()"),
+    event_type: "agent.finding",
+    org_id: finding.orgId,
+    properties: JSON.stringify({
+      agent_name: finding.agentName,
+      finding_type: finding.findingType,
+      priority: finding.priority,
+      headline: finding.headline,
+      detail: finding.detail,
+      dollar_impact: finding.dollarImpact ?? null,
+      competitor_name: finding.competitorName ?? null,
+      action_url: finding.actionUrl ?? null,
+    }),
+    created_at: new Date(),
+  });
+}
+
+/**
+ * Get the highest-priority agent finding for an org within a time window.
+ */
+export async function getTopAgentFinding(
+  orgId: number,
+  daysBack: number = 7
+): Promise<AgentFinding | null> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - daysBack);
+
+  const rows = await db("behavioral_events")
+    .where({ event_type: "agent.finding", org_id: orgId })
+    .where("created_at", ">=", cutoff)
+    .orderBy("created_at", "desc")
+    .limit(20)
+    .select("properties");
+
+  if (rows.length === 0) return null;
+
+  let best: { props: any; priority: number } | null = null;
+  for (const row of rows) {
+    const props = typeof row.properties === "string" ? JSON.parse(row.properties) : row.properties || {};
+    const priority = props.priority ?? 0;
+    if (!best || priority > best.priority) {
+      best = { props, priority };
+    }
+  }
+
+  if (!best) return null;
+  return {
+    agentName: best.props.agent_name,
+    findingType: best.props.finding_type,
+    priority: best.priority,
+    headline: best.props.headline,
+    detail: best.props.detail,
+    orgId,
+    dollarImpact: best.props.dollar_impact,
+    competitorName: best.props.competitor_name,
+    actionUrl: best.props.action_url,
+  };
+}
+
+/**
+ * Get ALL agent findings across orgs within a time window, sorted by priority desc.
+ * Used by morning briefing to synthesize all overnight signals.
+ */
+export async function getAgentFindings(
+  orgId: number | null,
+  daysBack: number = 1
+): Promise<AgentFinding[]> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - daysBack);
+
+  const query = db("behavioral_events")
+    .where({ event_type: "agent.finding" })
+    .where("created_at", ">=", cutoff)
+    .orderBy("created_at", "desc")
+    .limit(50);
+
+  if (orgId) query.andWhere({ org_id: orgId });
+
+  const rows = await query.select("properties", "org_id");
+
+  return rows
+    .map((row: any) => {
+      const props = typeof row.properties === "string" ? JSON.parse(row.properties) : row.properties || {};
+      return {
+        agentName: props.agent_name,
+        findingType: props.finding_type,
+        priority: props.priority ?? 0,
+        headline: props.headline,
+        detail: props.detail,
+        orgId: row.org_id,
+        dollarImpact: props.dollar_impact,
+        competitorName: props.competitor_name,
+        actionUrl: props.action_url,
+      } as AgentFinding;
+    })
+    .sort((a, b) => b.priority - a.priority);
+}
