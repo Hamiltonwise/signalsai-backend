@@ -23,6 +23,11 @@ import {
   Shield,
   Sun,
   Trophy,
+  Map,
+  Navigation,
+  CheckCircle2,
+  Circle,
+  Target,
 } from "lucide-react";
 import FounderMode from "./FounderMode";
 import {} from "react-router-dom";
@@ -811,6 +816,262 @@ function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
   );
 }
 
+// Panel 8: Live Roadmap (Google Maps for Alloro)
+
+interface RoadmapPhaseEntry {
+  id: number;
+  name: string;
+  label: string;
+  description: string;
+  mrrTarget: string;
+  clientTarget: string;
+  status: "complete" | "current" | "upcoming";
+}
+
+interface RoadmapMilestone {
+  name: string;
+  target: number;
+  current: number;
+  estimatedDate: string;
+}
+
+interface RoadmapState {
+  currentMRR: number;
+  currentClients: number;
+  checkupsCompleted: number;
+  trialConversionRate: number;
+  referralRate: number;
+  monthlyGrowthRate: number;
+  currentPhase: string;
+  phaseIndex: number;
+  phaseDescription: string;
+  nextMilestone: RoadmapMilestone;
+  courseCorrection: string | null;
+  etaToUnicorn: string;
+  phases: RoadmapPhaseEntry[];
+}
+
+function RoadmapPanel() {
+  const { data: roadmap, isLoading } = useQuery<RoadmapState>({
+    queryKey: ["admin-roadmap"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/roadmap" });
+      return res;
+    },
+    retry: false,
+    staleTime: 60_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/40 via-white to-indigo-50/30 p-8 shadow-sm">
+        <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
+        <div className="space-y-4">
+          <div className="h-6 w-2/3 animate-pulse rounded bg-gray-200" />
+          <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
+          <div className="h-32 w-full animate-pulse rounded bg-gray-100" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!roadmap) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+        <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
+        <p className="text-sm text-gray-400">Roadmap data unavailable. Check backend connection.</p>
+      </div>
+    );
+  }
+
+  const milestoneProgress =
+    roadmap.nextMilestone.target > 0
+      ? Math.min(100, Math.round((roadmap.nextMilestone.current / roadmap.nextMilestone.target) * 100))
+      : 0;
+
+  return (
+    <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/40 via-white to-indigo-50/30 p-8 shadow-sm">
+      <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
+
+      {/* Current Position */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <Navigation className="h-4 w-4 text-[#D56753]" />
+          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+            Current Position
+          </p>
+        </div>
+        <p className="text-xl font-semibold text-[#212D40]">
+          {roadmap.currentPhase}. ${roadmap.currentMRR.toLocaleString()} MRR. {roadmap.currentClients} client{roadmap.currentClients !== 1 ? "s" : ""}.
+        </p>
+        <p className="text-sm text-gray-500 mt-1">
+          {roadmap.phaseDescription}
+        </p>
+      </div>
+
+      {/* Next Turn */}
+      <div className="mb-6 rounded-xl bg-white border border-blue-100 p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Target className="h-4 w-4 text-blue-500" />
+          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+            Next Turn
+          </p>
+        </div>
+        <p className="text-sm font-medium text-[#212D40] mb-2">
+          {roadmap.nextMilestone.name}
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <div className="h-2.5 w-full rounded-full bg-gray-100">
+              <div
+                className="h-2.5 rounded-full bg-blue-500 transition-all duration-700"
+                style={{ width: `${Math.max(2, milestoneProgress)}%` }}
+              />
+            </div>
+          </div>
+          <span className="text-xs font-bold text-[#212D40] shrink-0">
+            {milestoneProgress}%
+          </span>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">
+          ETA: {roadmap.nextMilestone.estimatedDate}
+        </p>
+      </div>
+
+      {/* Phase Timeline */}
+      <div className="mb-6">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3">
+          Route Timeline
+        </p>
+        <div className="relative">
+          {/* Vertical line */}
+          <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-200" />
+
+          <div className="space-y-1">
+            {roadmap.phases.map((phase) => (
+              <div key={phase.id} className="flex items-start gap-3 relative">
+                <div className="shrink-0 mt-0.5 z-10">
+                  {phase.status === "complete" ? (
+                    <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                  ) : phase.status === "current" ? (
+                    <div className="h-6 w-6 rounded-full border-[3px] border-[#D56753] bg-white flex items-center justify-center">
+                      <div className="h-2 w-2 rounded-full bg-[#D56753]" />
+                    </div>
+                  ) : (
+                    <Circle className="h-6 w-6 text-gray-300" />
+                  )}
+                </div>
+                <div
+                  className={`flex-1 rounded-lg px-3 py-2 ${
+                    phase.status === "current"
+                      ? "bg-white border border-[#D56753]/30 shadow-sm"
+                      : phase.status === "complete"
+                        ? "bg-emerald-50/50"
+                        : ""
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p
+                      className={`text-sm font-semibold ${
+                        phase.status === "current"
+                          ? "text-[#D56753]"
+                          : phase.status === "complete"
+                            ? "text-emerald-700"
+                            : "text-gray-400"
+                      }`}
+                    >
+                      {phase.name}: {phase.label}
+                    </p>
+                    <span className="text-[10px] text-gray-400">
+                      {phase.mrrTarget} MRR / {phase.clientTarget} clients
+                    </span>
+                  </div>
+                  <p
+                    className={`text-xs mt-0.5 ${
+                      phase.status === "current" ? "text-gray-600" : "text-gray-400"
+                    }`}
+                  >
+                    {phase.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ETA to Unicorn */}
+      <div className="mb-6 rounded-xl bg-gradient-to-r from-[#212D40] to-[#2d3d54] p-4">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+          ETA to Unicorn
+        </p>
+        <p className="text-sm text-white leading-relaxed">
+          {roadmap.etaToUnicorn}
+        </p>
+      </div>
+
+      {/* Course Correction */}
+      {roadmap.courseCorrection && (
+        <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">
+              Course Correction
+            </p>
+          </div>
+          <p className="text-sm text-amber-800 leading-relaxed">
+            {roadmap.courseCorrection}
+          </p>
+        </div>
+      )}
+
+      {/* Key Metrics Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6">
+        <div className="rounded-xl bg-white border border-gray-100 p-3 text-center">
+          <p className="text-lg font-black text-[#212D40]">
+            ${roadmap.currentMRR.toLocaleString()}
+          </p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5">
+            MRR
+          </p>
+        </div>
+        <div className="rounded-xl bg-white border border-gray-100 p-3 text-center">
+          <p className="text-lg font-black text-[#212D40]">
+            {roadmap.currentClients}
+          </p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5">
+            Clients
+          </p>
+        </div>
+        <div className="rounded-xl bg-white border border-gray-100 p-3 text-center">
+          <p className="text-lg font-black text-[#212D40]">
+            {roadmap.checkupsCompleted}
+          </p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5">
+            Checkups
+          </p>
+        </div>
+        <div className="rounded-xl bg-white border border-gray-100 p-3 text-center">
+          <p className="text-lg font-black text-[#212D40]">
+            {roadmap.trialConversionRate > 0 ? `${roadmap.trialConversionRate}%` : "--"}
+          </p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5">
+            Trial Conv.
+          </p>
+        </div>
+        <div className="rounded-xl bg-white border border-gray-100 p-3 text-center">
+          <p className="text-lg font-black text-[#212D40]">
+            {roadmap.referralRate > 0 ? `${roadmap.referralRate}%` : "--"}
+          </p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5">
+            Referral Rate
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- Main Component --------------------------------------------------------
 
 export default function VisionaryView() {
@@ -874,10 +1135,13 @@ export default function VisionaryView() {
         {/* Panel 1: Morning Briefing -- full width */}
         <MorningBriefingPanel healthData={healthData} />
 
-        {/* Panel 2: The Scoreboard -- full width */}
+        {/* Panel 2: Live Roadmap -- full width */}
+        <RoadmapPanel />
+
+        {/* Panel 3: The Scoreboard -- full width */}
         <ScoreboardPanel orgs={orgs} />
 
-        {/* Panels 3 + 4: Revenue | Pipeline -- side by side */}
+        {/* Panels 4 + 5: Revenue | Pipeline -- side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RevenuePanel orgs={orgs} />
           <PipelineFunnelPanel orgs={orgs} healthData={healthData} />
