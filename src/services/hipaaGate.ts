@@ -82,7 +82,7 @@ export async function signBAA(orgId: number, actorEmail?: string): Promise<BAASt
     action: "baa.signed",
     targetType: "organization",
     targetId: String(orgId),
-  }).catch(() => {});
+  });
 
   const status = await checkBAAStatus(orgId);
   return status;
@@ -98,13 +98,13 @@ export async function revokeBAA(orgId: number, actorEmail?: string): Promise<BAA
       baa_signed_at: null,
     });
 
-  await logAuditEvent({
+  logAuditEvent({
     actorType: "admin",
     actorId: actorEmail || "system",
     action: "baa.revoked",
     targetType: "organization",
     targetId: String(orgId),
-  }).catch(() => {});
+  });
 
   const status = await checkBAAStatus(orgId);
   return status;

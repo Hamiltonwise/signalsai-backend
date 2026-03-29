@@ -72,6 +72,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "dentist",
       locationTerm: "practice",
       avgCaseValue: 800,
+      intelligenceMode: "hybrid",
     },
   },
   {
@@ -87,6 +88,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "veterinarian",
       locationTerm: "clinic",
       avgCaseValue: 400,
+      intelligenceMode: "hybrid",
     },
   },
   {
@@ -102,6 +104,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "attorney",
       locationTerm: "firm",
       avgCaseValue: 3000,
+      intelligenceMode: "hybrid",
     },
   },
   {
@@ -117,6 +120,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "accountant",
       locationTerm: "firm",
       avgCaseValue: 2000,
+      intelligenceMode: "hybrid",
     },
   },
   {
@@ -132,6 +136,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "chiropractor",
       locationTerm: "office",
       avgCaseValue: 600,
+      intelligenceMode: "referral_based",
     },
   },
   {
@@ -147,6 +152,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "therapist",
       locationTerm: "clinic",
       avgCaseValue: 800,
+      intelligenceMode: "referral_based",
     },
   },
   {
@@ -162,6 +168,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "optometrist",
       locationTerm: "office",
       avgCaseValue: 500,
+      intelligenceMode: "hybrid",
     },
   },
   {
@@ -177,6 +184,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "stylist",
       locationTerm: "shop",
       avgCaseValue: 50,
+      intelligenceMode: "direct_acquisition",
     },
   },
   {
@@ -192,6 +200,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "contractor",
       locationTerm: "business",
       avgCaseValue: 1200,
+      intelligenceMode: "direct_acquisition",
     },
   },
   {
@@ -207,6 +216,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "owner",
       locationTerm: "restaurant",
       avgCaseValue: 30,
+      intelligenceMode: "direct_acquisition",
     },
   },
   {
@@ -222,6 +232,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "mechanic",
       locationTerm: "shop",
       avgCaseValue: 600,
+      intelligenceMode: "direct_acquisition",
     },
   },
   {
@@ -237,6 +248,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "agent",
       locationTerm: "office",
       avgCaseValue: 8000,
+      intelligenceMode: "hybrid",
     },
   },
   {
@@ -252,6 +264,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "trainer",
       locationTerm: "gym",
       avgCaseValue: 150,
+      intelligenceMode: "direct_acquisition",
     },
   },
   {
@@ -267,6 +280,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "provider",
       locationTerm: "practice",
       avgCaseValue: 1200,
+      intelligenceMode: "hybrid",
     },
   },
 ];
@@ -283,6 +297,7 @@ const UNIVERSAL_FALLBACK: VocabularyPreset = {
   providerTerm: "owner",
   locationTerm: "business",
   avgCaseValue: 500,
+  intelligenceMode: "direct_acquisition",
 };
 
 /**

@@ -12,6 +12,7 @@ import express from "express";
 import { authenticateToken } from "../../middleware/auth";
 import { rbacMiddleware } from "../../middleware/rbac";
 import { db } from "../../database/connection";
+import { detectPreset } from "../../services/vocabularyAutoMapper";
 
 const dashboardContextRoutes = express.Router();
 
@@ -92,6 +93,25 @@ dashboardContextRoutes.get(
         }
       }
 
+      // Detect intelligence mode from vocabulary config or GBP category
+      let intelligenceMode: string = "direct_acquisition";
+      const vocabRow = await db("vocabulary_configs")
+        .where({ organization_id: orgId })
+        .select("vertical")
+        .first()
+        .catch(() => null);
+      if (vocabRow?.vertical) {
+        const preset = detectPreset(vocabRow.vertical);
+        intelligenceMode = preset.intelligenceMode;
+      } else if (org.checkup_data) {
+        // Fallback: detect from checkup category
+        const cData = typeof org.checkup_data === "string" ? JSON.parse(org.checkup_data) : org.checkup_data;
+        if (cData?.place?.category) {
+          const preset = detectPreset(cData.place.category, cData.place?.types);
+          intelligenceMode = preset.intelligenceMode;
+        }
+      }
+
       // Check if referral source data exists for this org
       let hasReferralData = false;
       const hasReferralSourcesTable = await db.schema.hasTable("referral_sources").catch(() => false);
@@ -113,6 +133,7 @@ dashboardContextRoutes.get(
         week1_win: week1Win,
         org_created_at: org.created_at || null,
         has_referral_data: hasReferralData,
+        intelligence_mode: intelligenceMode,
       });
     } catch (error: any) {
       console.error("[DashboardContext] Error:", error.message);
