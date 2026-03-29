@@ -1,12 +1,13 @@
 /**
- * Billing Prompt — shown after TTFV "Yes" response.
+ * Billing Prompt -- shown when autonomous TTFV detection reaches threshold.
  *
- * Card with score, one finding, pricing CTA.
- * Dismissable. Only shown once (marks billing_prompt_shown_at).
+ * Instead of a flat pricing message, shows loss-aversion copy
+ * based on real TTFV signals (review growth, competitor data, engagement).
+ * Only visible when TTFV score >= 50.
  */
 
 import { useState, useEffect } from "react";
-import { X, ArrowRight } from "lucide-react";
+import { X, ArrowRight, TrendingUp, Shield } from "lucide-react";
 
 interface BillingPromptProps {
   orgId: number | null;
@@ -14,9 +15,21 @@ interface BillingPromptProps {
   finding?: string | null;
 }
 
+interface TTFVSignals {
+  reached: boolean;
+  signals: string[];
+  score: number;
+}
+
 export default function BillingPromptBar({ orgId, score, finding }: BillingPromptProps) {
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [ttfvData, setTtfvData] = useState<TTFVSignals | null>(null);
+  const [lossContext, setLossContext] = useState<{
+    reviewGrowth: number;
+    competitorName: string | null;
+    competitorGap: number | null;
+  }>({ reviewGrowth: 0, competitorName: null, competitorGap: null });
 
   useEffect(() => {
     if (!orgId || dismissed) return;
@@ -25,12 +38,50 @@ export default function BillingPromptBar({ orgId, score, finding }: BillingPromp
     async function check() {
       try {
         const token = localStorage.getItem("auth_token");
-        const res = await fetch("/api/checkup/ttfv-status", {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        if (data.showBilling) setVisible(true);
+        const headers: Record<string, string> = token
+          ? { Authorization: `Bearer ${token}` }
+          : {};
+
+        // Fetch TTFV detection + billing status in parallel
+        const [ttfvRes, statusRes] = await Promise.all([
+          fetch(`/api/org/${orgId}/ttfv-detection`, { headers }).catch(() => null),
+          fetch("/api/checkup/ttfv-status", { headers }).catch(() => null),
+        ]);
+
+        if (cancelled) return;
+
+        // Check TTFV detection signals
+        let ttfvReached = false;
+        if (ttfvRes?.ok) {
+          const data = await ttfvRes.json();
+          if (data.success) {
+            setTtfvData(data);
+            ttfvReached = data.reached;
+          }
+        }
+
+        // Fallback to legacy billing check
+        if (!ttfvReached && statusRes?.ok) {
+          const data = await statusRes.json();
+          if (data.showBilling) ttfvReached = true;
+        }
+
+        // Only show when TTFV is actually detected
+        if (ttfvReached) {
+          setVisible(true);
+          // Fetch loss-aversion context
+          try {
+            const contextRes = await fetch(`/api/org/${orgId}/ttfv`, { headers });
+            if (contextRes.ok) {
+              const ctx = await contextRes.json();
+              setLossContext({
+                reviewGrowth: ctx.reviewGrowth || 0,
+                competitorName: ctx.competitorName || null,
+                competitorGap: ctx.competitorGap || null,
+              });
+            }
+          } catch { /* non-critical */ }
+        }
       } catch { /* non-critical */ }
     }
 
@@ -55,6 +106,22 @@ export default function BillingPromptBar({ orgId, score, finding }: BillingPromp
 
   if (!visible || dismissed) return null;
 
+  // Build loss-aversion headline
+  const headlines: string[] = [];
+  if (lossContext.reviewGrowth > 0) {
+    headlines.push(
+      `You have gained ${lossContext.reviewGrowth} review${lossContext.reviewGrowth > 1 ? "s" : ""} since joining.`
+    );
+  }
+  if (lossContext.competitorName && lossContext.competitorGap != null) {
+    headlines.push(
+      `${lossContext.competitorName} is ${lossContext.competitorGap} reviews away.`
+    );
+  }
+  const headlineText = headlines.length > 0
+    ? `${headlines.join(" ")} Keep your intelligence running.`
+    : "Your competitive intelligence is building momentum. Keep it running.";
+
   return (
     <div className="mx-auto max-w-2xl px-4 mb-4">
       <div className="rounded-2xl border border-[#212D40]/10 bg-[#212D40] p-5 text-white relative">
@@ -70,12 +137,31 @@ export default function BillingPromptBar({ orgId, score, finding }: BillingPromp
           <p className="text-3xl font-black mb-1">{score}<span className="text-lg text-white/50">/100</span></p>
         )}
 
+        {/* TTFV signals */}
+        {ttfvData && ttfvData.signals.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {ttfvData.signals.map((signal) => (
+              <span
+                key={signal}
+                className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/70"
+              >
+                {signal === "Growing reviews" ? (
+                  <TrendingUp className="h-3 w-3 text-emerald-400" />
+                ) : (
+                  <Shield className="h-3 w-3 text-[#D56753]" />
+                )}
+                {signal}
+              </span>
+            ))}
+          </div>
+        )}
+
         {finding && (
-          <p className="text-sm text-white/70 leading-relaxed mb-4">{finding}</p>
+          <p className="text-sm text-white/70 leading-relaxed mb-3">{finding}</p>
         )}
 
         <p className="text-sm font-medium text-white/90 mb-3">
-          Your intelligence continues automatically. $2,000/month. No contracts. Cancel anytime.
+          {headlineText}
         </p>
 
         <div className="flex items-center gap-3">
