@@ -694,7 +694,9 @@ export default function ResultsScreen() {
               score,
               topCompetitor: topCompetitor || null,
               market: market || null,
-              findingSummary: findings[0]?.detail || null,
+              findings: findings || [],
+              ozMoments: state.ozMoments || [],
+              place: { rating: place.rating, category: place.category, types: place.types },
               placeId: place.placeId || null,
               reviewCount: place.reviewCount || 0,
             },
@@ -1293,16 +1295,44 @@ export default function ResultsScreen() {
           </p>
         </div>
 
-        {/* Share prompt — viral loop for unicorn path */}
+        {/* ═══ SHAREABLE SCORE CARD — the Spotify Wrapped artifact ═══ */}
+        {/* Designed for screenshots. The visual that gets texted to colleagues. */}
+        <div className="rounded-2xl overflow-hidden shadow-lg">
+          <div className="bg-[#212D40] p-6 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-3">
+              Business Clarity Score
+            </p>
+            <p className="text-5xl font-black text-white">{score.composite}</p>
+            <p className="text-sm font-semibold text-white/60 mt-1">{place.name}</p>
+            {market && (
+              <p className="text-xs text-white/30 mt-1">
+                #{market.rank} of {market.totalCompetitors} in {market.city}
+              </p>
+            )}
+          </div>
+          {state.ozMoments && state.ozMoments[0] && (
+            <div className="bg-[#D56753] px-6 py-4">
+              <p className="text-sm font-semibold text-white leading-snug">
+                {state.ozMoments[0].hook}
+              </p>
+            </div>
+          )}
+          <div className="bg-[#1a2533] px-6 py-3 flex items-center justify-between">
+            <p className="text-[10px] text-white/25">getalloro.com/checkup</p>
+            <p className="text-[10px] font-bold text-white/25 tracking-wider">ALLORO</p>
+          </div>
+        </div>
+
+        {/* Share prompt — viral loop */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-2">
             <Share2 className="w-4 h-4 text-slate-400" />
             <span className="text-sm font-medium text-slate-700">
-              Know someone who should see this? Share your link. You both save a month.
+              Know a colleague who should see their market?
             </span>
           </div>
           <p className="text-xs text-slate-500 mb-3">
-            We all rise together.
+            Send them a link. When they join, you both split month one.
           </p>
           <button
             type="button"
