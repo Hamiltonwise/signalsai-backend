@@ -66,7 +66,7 @@ export async function bootstrapOrganization(
     {
       name: practiceName || `User ${userId}'s Organization`,
       domain: domain,
-      referral_code: generateReferralCode(),
+      referral_code: await generateReferralCode(),
       referred_by_org_id: referredByOrgId,
     },
     trx

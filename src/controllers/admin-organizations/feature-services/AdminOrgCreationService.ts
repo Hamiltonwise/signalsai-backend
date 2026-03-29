@@ -119,7 +119,7 @@ export async function createOrganizationWithUser(
       {
         name: organization.name.trim(),
         domain: organization.domain?.trim() || undefined,
-        referral_code: generateReferralCode(),
+        referral_code: await generateReferralCode(),
       },
       trx
     );

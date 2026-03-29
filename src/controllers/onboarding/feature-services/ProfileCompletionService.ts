@@ -62,7 +62,7 @@ export async function completeOnboardingWithProfile(
             profileData.practiceName ||
             `${profileData.firstName}'s Organization`,
           domain: profileData.domainName,
-          referral_code: generateReferralCode(),
+          referral_code: await generateReferralCode(),
           referred_by_org_id: referredByOrgId,
         },
         trx

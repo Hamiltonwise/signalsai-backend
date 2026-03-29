@@ -697,7 +697,7 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       // Create organization
       const newOrg = await OrganizationModel.create({
         name: practice_name || `${normalizedEmail.split("@")[0]}'s Practice`,
-        referral_code: generateReferralCode(),
+        referral_code: await generateReferralCode(),
       }, trx);
 
       // Set source_channel from referral or source query param

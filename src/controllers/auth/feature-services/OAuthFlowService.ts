@@ -258,7 +258,7 @@ export async function completeOAuthFlow(
           organizationId = orgUser.organization_id;
         } else {
           const newOrg = await OrganizationModel.create(
-            { name: `${googleProfile.name}'s Organization`, referral_code: generateReferralCode() },
+            { name: `${googleProfile.name}'s Organization`, referral_code: await generateReferralCode() },
             trx,
           );
           organizationId = newOrg.id;
