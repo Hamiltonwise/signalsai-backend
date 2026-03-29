@@ -68,14 +68,14 @@ export const CONFERENCE_ANALYSIS = {
     {
       type: "market_rank",
       title: "Market Position",
-      detail: "You rank #3 of 5 specialists in Salt Lake City. Patients searching see Summit and Pioneer before you.",
+      detail: "You rank #3 of 5 specialists in Salt Lake City. People searching see Summit and Pioneer before you.",
       value: 3,
       impact: 0,
     },
     {
       type: "sentiment_insight",
-      title: "Your patients mention wait times",
-      detail: "4 of your last 10 reviews mention wait time or scheduling delays. Summit Specialists reviews never mention this. Patients notice.",
+      title: "Your reviews mention wait times",
+      detail: "4 of your last 10 reviews mention wait time or scheduling delays. Summit Specialists reviews never mention this. Clients notice.",
       value: 0,
       impact: 0,
     },
@@ -95,7 +95,7 @@ export const CONFERENCE_ANALYSIS = {
       current: 61,
       target: 284,
       unit: "reviews",
-      action: "Ask 3 patients for a Google review this week. At that pace, you close the gap in 18 weeks.",
+      action: "Ask 3 clients for a Google review this week. At that pace, you close the gap in 18 weeks.",
       timeEstimate: "~18 weeks at current pace",
       competitorName: "Summit Specialists",
       velocity: {

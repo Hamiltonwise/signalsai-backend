@@ -102,7 +102,7 @@ export default function EntryScreen() {
           setQuery(res.place.name);
         }
       })
-      .catch(() => {})
+      .catch(() => { if (!cancelled) setSearchError(true); })
       .finally(() => { if (!cancelled) setIsSelecting(false); });
     return () => { cancelled = true; };
   }, [urlPlaceId]);

@@ -780,7 +780,7 @@ export default function ResultsScreen() {
               navigator.clipboard.writeText(shareUrl).then(() => {
                 setLinkCopied(true);
                 setTimeout(() => setLinkCopied(false), 2000);
-              });
+              }).catch(() => {});
             }
           }}
           className="shrink-0 flex items-center gap-2 text-sm font-semibold text-[#212D40] bg-white rounded-lg px-5 py-2.5 hover:bg-gray-50 active:scale-[0.98] transition-all"
@@ -959,7 +959,7 @@ export default function ResultsScreen() {
                           body: JSON.stringify({
                             email: vendorEmail.trim(),
                             referring_place_id: place.placeId,
-                            wants_checkup_for_other_practices: vendorWantsMore,
+                            wants_checkup_for_other_locations: vendorWantsMore,
                           }),
                         }).catch(() => {});
                         setVendorSubmitted(true);
