@@ -56,7 +56,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     }
 
     const marketLocation = state ? `${city}, ${state}` : city;
-    const specialty = category || "dentist";
+    const specialty = category || name || "local business";
 
     // Specialty-aware economics: use vertical avgCaseValue for dollar estimates
     const specialtyEconomics: Record<string, { avgCaseValue: number; conversionRate: number }> = {
@@ -759,6 +759,16 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
     }).catch(() => {});
 
     console.log(`[Checkup] Account created: ${normalizedEmail} -> org ${org.id}`);
+
+    // Auto-configure vocabulary from GBP category
+    try {
+      const { autoConfigureVocabulary } = await import("../services/vocabularyAutoMapper");
+      const gbpCategory = checkup_data?.place?.category || req.body.category || "";
+      const gbpTypes = checkup_data?.place?.types || req.body.types || [];
+      await autoConfigureVocabulary(org.id, gbpCategory, gbpTypes);
+    } catch (e) {
+      console.warn("[Checkup] Vocabulary auto-config failed, will use universal defaults:", (e as Error).message);
+    }
 
     // Enqueue PatientPath build pipeline (Phase 1: research)
     try {
