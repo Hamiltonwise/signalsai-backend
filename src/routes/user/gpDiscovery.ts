@@ -86,18 +86,20 @@ gpDiscoveryRoutes.post(
         } catch { /* ignore */ }
       }
 
+      const dataPoints: string[] = [];
+      if (irreplaceableThing) dataPoints.push(`Differentiator: ${irreplaceableThing}`);
+      if (distance) dataPoints.push(`Located ${distance} miles away`);
+
       const ctx: OutreachContext = {
-        sender_name: senderName,
-        sender_role: "Specialist",
-        sender_location: gpAddress || "your area",
-        target_name: `Dr. ${gpName}`,
-        target_type: "gp",
-        intelligence: {
-          irreplaceable_thing: irreplaceableThing,
-        },
         purpose: "gp_introduction",
-        tone: "warm",
-        max_words: 120,
+        recipientName: `Dr. ${gpName}`,
+        recipientRole: "General Practitioner",
+        businessName: senderName,
+        senderName,
+        senderSpecialty: "Specialist",
+        dataPoints,
+        city: gpAddress || undefined,
+        existingRelationship: false,
       };
 
       const result = await generateOutreach(ctx);

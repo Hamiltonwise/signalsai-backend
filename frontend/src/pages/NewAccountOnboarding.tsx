@@ -38,10 +38,10 @@ export default function NewAccountOnboarding() {
             </span>
           </div>
           <h1 className="text-4xl font-black text-alloro-navy font-heading tracking-tight mb-3">
-            Connect Your Practice
+            Connect Your Business
           </h1>
           <p className="text-lg text-slate-500 font-medium">
-            Link your Google Business Profile to unlock practice insights
+            Link your Google Business Profile to unlock business insights
           </p>
         </div>
 

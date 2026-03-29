@@ -88,10 +88,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const userMapping: DomainMapping = {
               domain:
                 status.profile?.domainName ||
-                "Your Practice",
+                "Your Business",
               displayName:
                 status.profile?.practiceName ||
-                "Your Practice",
+                "Your Business",
               gbp_accountId: status.propertyIds.gbp?.[0]?.accountId || "",
               gbp_locationId: status.propertyIds.gbp?.[0]?.locationId || "",
             };

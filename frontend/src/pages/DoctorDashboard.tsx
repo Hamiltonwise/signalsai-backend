@@ -747,7 +747,7 @@ export default function DoctorDashboard() {
 
   // Setup progress — tracks checklist completion state
   const queryClient = useQueryClient();
-  const { data: setupProgress } = useQuery({
+  const { data: setupProgress, isLoading: isSetupLoading } = useQuery({
     queryKey: ["setup-progress"],
     queryFn: async () => {
       const res = await apiGet({ path: "/onboarding/setup-progress" });
@@ -820,7 +820,11 @@ export default function DoctorDashboard() {
 
   const [mode, setMode] = useState<"standard" | "growth">("standard");
   const [drawerCompetitor, setDrawerCompetitor] = useState<{ name: string; rating: number; reviewCount: number } | null>(null);
-  const isLoading = isRankingLoading || isAgentLoading;
+
+  // Initial loading gate: wait for the 3 most important queries before showing content.
+  // This prevents the "popcorn" effect where cards pop in one by one.
+  const isInitialLoading = isRankingLoading || isAgentLoading || isSetupLoading;
+  const isLoading = isInitialLoading;
 
   return (
     <>

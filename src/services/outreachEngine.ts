@@ -10,129 +10,263 @@
  */
 
 export interface OutreachContext {
-  sender_name: string;
-  sender_role: string;
-  sender_location: string;
-  target_name: string;
-  target_type: "prospect" | "gp" | "client" | "patient";
-  intelligence: {
-    rank?: number;
-    total_in_market?: number;
-    top_competitor?: string;
-    review_gap?: number;
-    score?: number;
-    specific_finding?: string;
-    days_silent?: number;
-    last_interaction?: string;
-    estimated_value?: number;
-    irreplaceable_thing?: string;
-  };
   purpose: "cold_outreach" | "gp_introduction" | "win_back" | "follow_up";
-  tone: "professional" | "warm" | "direct";
-  max_words: number;
+  recipientName: string;
+  recipientRole?: string;
+  businessName: string;
+  senderName: string;
+  senderSpecialty?: string;
+  dataPoints?: string[];
+  city?: string;
+  existingRelationship?: boolean;
 }
 
 export interface OutreachResult {
+  success: boolean;
   subject: string;
   body: string;
-  confidence_score: number;
-  data_quality: "high" | "medium" | "low";
-  missing_data: string[];
+  confidence: number;
+  dataQuality: number;
+  warnings?: string[];
 }
 
+/**
+ * Calculate data quality score (0-100) based on optional field population.
+ * Each optional field adds to the score. All required fields are assumed present.
+ */
+function calculateDataQuality(ctx: OutreachContext): { score: number; warnings: string[] } {
+  const warnings: string[] = [];
+
+  // Required fields (purpose, recipientName, businessName, senderName) give a baseline of 40
+  let score = 40;
+
+  // Each optional field adds points
+  if (ctx.recipientRole) {
+    score += 10;
+  } else {
+    warnings.push("Missing recipientRole, message will be less targeted");
+  }
+
+  if (ctx.senderSpecialty) {
+    score += 10;
+  } else {
+    warnings.push("Missing senderSpecialty, cannot highlight expertise");
+  }
+
+  if (ctx.dataPoints && ctx.dataPoints.length > 0) {
+    // Up to 20 points for data points (5 per point, max 4 counted)
+    const pointScore = Math.min(ctx.dataPoints.length, 4) * 5;
+    score += pointScore;
+  } else {
+    warnings.push("No dataPoints provided, output will be generic");
+  }
+
+  if (ctx.city) {
+    score += 10;
+  } else {
+    warnings.push("Missing city, cannot localize message");
+  }
+
+  if (ctx.existingRelationship !== undefined) {
+    score += 10;
+  }
+
+  return { score: Math.min(score, 100), warnings };
+}
+
+/**
+ * System prompts tuned per outreach purpose.
+ */
 const SYSTEM_PROMPTS: Record<string, string> = {
-  cold_outreach:
-    "You write prospecting emails for a business intelligence sales representative. Audience: local service business owners (specialists, attorneys, CPAs, veterinarians). Goal: book a 20-minute call. Open with the specific finding about their business. One CTA: run a free Business Clarity Checkup or book a brief call. Never say 'I hope this email finds you well.' Write as a person, not software.",
-  gp_introduction:
-    "You write introduction letters from a specialist to a referring source they have never met. Warm, collegial, specific. Include a specific reason for reaching out (proximity, specialty gap, shared demographics). End with a low-friction offer. Never open with 'I am reaching out to introduce myself.'",
-  win_back:
-    "You write personalized win-back messages to a client or referral source who has gone quiet. Warm, personal, zero sales pressure. One question: how are they doing. One sentence: we noticed you haven't been back. One low-friction invite.",
-  follow_up:
-    "You write follow-up messages after a prior interaction. Reference the specific prior interaction. Move the conversation forward by one step.",
+  cold_outreach: [
+    "You write prospecting emails for a business intelligence platform.",
+    "Audience: local service business owners (specialists, attorneys, CPAs, veterinarians).",
+    "Goal: book a 20-minute call.",
+    "Open with the most specific data point available about their business.",
+    "One CTA: run a free Business Clarity Checkup or book a brief call.",
+    "Never say 'I hope this email finds you well.'",
+    "Write as a person, not software.",
+    "Under 100 words for the body.",
+    "No em-dashes. Use commas or periods instead.",
+    "HIPAA compliant: no patient names, use initials only if referencing individuals.",
+    "Sign with the sender's name.",
+    "Return format: first line is SUBJECT: followed by the subject line.",
+    "Then a blank line, then the body text.",
+  ].join(" "),
+  gp_introduction: [
+    "You write introduction letters from a specialist to a referring source they have never met.",
+    "Warm, collegial, specific.",
+    "Include a specific reason for reaching out (proximity, specialty gap, shared demographics).",
+    "End with a low-friction offer (lunch, brief call, office visit).",
+    "Never open with 'I am reaching out to introduce myself.'",
+    "Under 100 words for the body.",
+    "No em-dashes. Use commas or periods instead.",
+    "HIPAA compliant: no patient names, use initials only if referencing individuals.",
+    "Sign with the sender's name.",
+    "Return format: first line is SUBJECT: followed by the subject line.",
+    "Then a blank line, then the body text.",
+  ].join(" "),
+  win_back: [
+    "You write personalized win-back messages to a client or referral source who has gone quiet.",
+    "Warm, personal, zero sales pressure.",
+    "One question: how are they doing.",
+    "One sentence: we noticed you haven't been back.",
+    "One low-friction invite.",
+    "Under 100 words for the body.",
+    "No em-dashes. Use commas or periods instead.",
+    "HIPAA compliant: no patient names, use initials only if referencing individuals.",
+    "Sign with the sender's name.",
+    "Return format: first line is SUBJECT: followed by the subject line.",
+    "Then a blank line, then the body text.",
+  ].join(" "),
+  follow_up: [
+    "You write follow-up messages after a prior interaction.",
+    "Reference the specific prior interaction if data points mention one.",
+    "Move the conversation forward by one step.",
+    "Warm and professional.",
+    "Under 100 words for the body.",
+    "No em-dashes. Use commas or periods instead.",
+    "HIPAA compliant: no patient names, use initials only if referencing individuals.",
+    "Sign with the sender's name.",
+    "Return format: first line is SUBJECT: followed by the subject line.",
+    "Then a blank line, then the body text.",
+  ].join(" "),
 };
 
 /**
- * Calculate confidence score based on available data.
+ * Template fallbacks when ANTHROPIC_API_KEY is not available.
  */
-function calculateConfidence(ctx: OutreachContext): { score: number; quality: "high" | "medium" | "low"; missing: string[] } {
-  let score = 100;
-  const missing: string[] = [];
-
-  if (!ctx.intelligence.rank) { score -= 15; missing.push("market rank"); }
-  if (!ctx.intelligence.top_competitor) { score -= 10; missing.push("competitor name"); }
-  if (!ctx.intelligence.specific_finding) { score -= 20; missing.push("specific finding"); }
-  if (!ctx.intelligence.score) { score -= 10; missing.push("business score"); }
-  if (!ctx.target_name || ctx.target_name === "Unknown") { score -= 15; missing.push("target name"); }
-  if (!ctx.intelligence.review_gap && ctx.purpose === "cold_outreach") { score -= 10; missing.push("review gap"); }
-  if (!ctx.intelligence.irreplaceable_thing && ctx.purpose === "gp_introduction") { score -= 10; missing.push("differentiator"); }
-
-  score = Math.max(10, score);
-  const quality = score >= 70 ? "high" : score >= 40 ? "medium" : "low";
-
-  return { score, quality, missing };
-}
+const TEMPLATE_FALLBACKS: Record<string, { subject: string; body: (ctx: OutreachContext) => string }> = {
+  cold_outreach: {
+    subject: "Something stood out about your practice",
+    body: (ctx) =>
+      `${ctx.recipientName},\n\nI came across ${ctx.businessName}${ctx.city ? ` in ${ctx.city}` : ""} and noticed something interesting about your competitive position that I think you should see.\n\nWould you have 20 minutes this week for a quick call?\n\n${ctx.senderName}`,
+  },
+  gp_introduction: {
+    subject: "Introduction from a nearby colleague",
+    body: (ctx) =>
+      `${ctx.recipientName},\n\nI'm ${ctx.senderName}${ctx.senderSpecialty ? `, a ${ctx.senderSpecialty},` : ""} practicing${ctx.city ? ` in ${ctx.city}` : " nearby"}. I wanted to introduce myself and see if there's an opportunity for us to collaborate on patient care.\n\nWould you be open to a brief call or coffee?\n\n${ctx.senderName}`,
+  },
+  win_back: {
+    subject: "Checking in",
+    body: (ctx) =>
+      `${ctx.recipientName},\n\nIt's been a while since we connected, and I wanted to check in. How are things going at ${ctx.businessName}?\n\nNo agenda here. Just wanted to say hello and see if there's anything we can help with.\n\n${ctx.senderName}`,
+  },
+  follow_up: {
+    subject: "Following up on our conversation",
+    body: (ctx) =>
+      `${ctx.recipientName},\n\nI wanted to follow up on our recent conversation. I have some additional thoughts I think would be valuable for ${ctx.businessName}.\n\nDo you have a few minutes this week?\n\n${ctx.senderName}`,
+  },
+};
 
 /**
- * Build the user prompt from context.
+ * Build the user prompt from context for the Claude API call.
  */
-function buildPrompt(ctx: OutreachContext): string {
-  const intel = ctx.intelligence;
+function buildUserPrompt(ctx: OutreachContext): string {
   const lines = [
-    `From: ${ctx.sender_name}, ${ctx.sender_role} in ${ctx.sender_location}`,
-    `To: ${ctx.target_name} (${ctx.target_type})`,
+    `Sender: ${ctx.senderName}${ctx.senderSpecialty ? `, ${ctx.senderSpecialty}` : ""}`,
+    `Recipient: ${ctx.recipientName}${ctx.recipientRole ? ` (${ctx.recipientRole})` : ""}`,
+    `Business: ${ctx.businessName}`,
     `Purpose: ${ctx.purpose}`,
-    `Tone: ${ctx.tone}`,
-    `Max words: ${ctx.max_words}`,
-    "",
-    "Available intelligence:",
   ];
 
-  if (intel.rank) lines.push(`- Market rank: #${intel.rank} of ${intel.total_in_market || "?"}`);
-  if (intel.top_competitor) lines.push(`- Top competitor: ${intel.top_competitor}`);
-  if (intel.review_gap) lines.push(`- Review gap: ${intel.review_gap} reviews behind`);
-  if (intel.score) lines.push(`- Business score: ${intel.score}/100`);
-  if (intel.specific_finding) lines.push(`- Key finding: ${intel.specific_finding}`);
-  if (intel.days_silent) lines.push(`- Days since last interaction: ${intel.days_silent}`);
-  if (intel.estimated_value) lines.push(`- Estimated value: $${intel.estimated_value.toLocaleString()}/year`);
-  if (intel.irreplaceable_thing) lines.push(`- Differentiator: ${intel.irreplaceable_thing}`);
+  if (ctx.city) lines.push(`City: ${ctx.city}`);
+  if (ctx.existingRelationship !== undefined) {
+    lines.push(`Existing relationship: ${ctx.existingRelationship ? "yes" : "no"}`);
+  }
+
+  if (ctx.dataPoints && ctx.dataPoints.length > 0) {
+    lines.push("");
+    lines.push("Data points:");
+    for (const point of ctx.dataPoints) {
+      lines.push(`- ${point}`);
+    }
+  }
 
   lines.push("");
-  lines.push("Rules:");
-  lines.push("- No em-dashes");
-  lines.push("- No generic filler ('I hope this finds you well', 'Thank you for your time')");
-  lines.push("- Open with the most specific piece of intelligence available");
-  lines.push("- One clear CTA");
-  lines.push(`- Under ${ctx.max_words} words`);
-  lines.push("");
-  lines.push("Return format: first line is the subject line, then a blank line, then the body.");
+  lines.push("Write the outreach message now.");
 
   return lines.join("\n");
 }
 
 /**
- * Generate outreach copy using Claude API.
+ * Parse Claude's response into subject and body.
+ */
+function parseResponse(text: string): { subject: string; body: string } {
+  const lines = text.split("\n");
+
+  // Look for SUBJECT: prefix
+  const subjectLine = lines.find((l) => l.trim().toUpperCase().startsWith("SUBJECT:"));
+  if (subjectLine) {
+    const subject = subjectLine.replace(/^subject:\s*/i, "").trim();
+    const subjectIndex = lines.indexOf(subjectLine);
+    const body = lines
+      .slice(subjectIndex + 1)
+      .join("\n")
+      .trim();
+    return { subject, body };
+  }
+
+  // Fallback: first non-empty line is subject, rest is body
+  const firstNonEmpty = lines.findIndex((l) => l.trim().length > 0);
+  if (firstNonEmpty === -1) {
+    return { subject: "Following up", body: text };
+  }
+
+  const subject = lines[firstNonEmpty].trim();
+  const body = lines
+    .slice(firstNonEmpty + 1)
+    .join("\n")
+    .trim();
+
+  return { subject, body: body || text };
+}
+
+/**
+ * Generate personalized outreach copy.
+ *
+ * Calculates data quality from optional field population.
+ * If quality < 40, returns early with insufficient-data warning.
+ * Uses Claude API (claude-sonnet-4-6) when ANTHROPIC_API_KEY is set.
+ * Falls back to purpose-specific templates when the key is missing.
  */
 export async function generateOutreach(ctx: OutreachContext): Promise<OutreachResult> {
-  const { score, quality, missing } = calculateConfidence(ctx);
+  const { score: dataQuality, warnings } = calculateDataQuality(ctx);
 
-  const systemPrompt = SYSTEM_PROMPTS[ctx.purpose] || SYSTEM_PROMPTS.cold_outreach;
-  const userPrompt = buildPrompt(ctx);
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    // Fallback template when no API key
+  // Bail early if we don't have enough data for a personalized message
+  if (dataQuality < 40) {
     return {
-      subject: `Quick note about your ${ctx.sender_location} market`,
-      body: `${ctx.target_name}, I noticed something about your competitive position in ${ctx.sender_location} that I think you should see. Would you have 20 minutes this week? -- ${ctx.sender_name}`,
-      confidence_score: Math.min(score, 30),
-      data_quality: "low",
-      missing_data: [...missing, "AI generation (no API key)"],
+      success: false,
+      subject: "",
+      body: "",
+      confidence: 0,
+      dataQuality,
+      warnings: [...warnings, "Insufficient data for personalized outreach"],
     };
   }
 
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+
+  // No API key: return template fallback
+  if (!apiKey) {
+    const template = TEMPLATE_FALLBACKS[ctx.purpose] || TEMPLATE_FALLBACKS.cold_outreach;
+    return {
+      success: true,
+      subject: template.subject,
+      body: template.body(ctx),
+      confidence: Math.round(dataQuality * 0.5),
+      dataQuality,
+      warnings: [...warnings, "Generated from template (no ANTHROPIC_API_KEY)"],
+    };
+  }
+
+  // Call Claude API
   try {
     const Anthropic = (await import("@anthropic-ai/sdk")).default;
     const client = new Anthropic({ apiKey });
+
+    const systemPrompt = SYSTEM_PROMPTS[ctx.purpose] || SYSTEM_PROMPTS.cold_outreach;
+    const userPrompt = buildUserPrompt(ctx);
 
     const response = await client.messages.create({
       model: "claude-sonnet-4-6",
@@ -142,28 +276,32 @@ export async function generateOutreach(ctx: OutreachContext): Promise<OutreachRe
     });
 
     const text = response.content[0]?.type === "text" ? response.content[0].text : "";
-    const lines = text.split("\n");
+    const { subject, body } = parseResponse(text);
 
-    // First non-empty line is subject, rest is body
-    const subject = lines.find((l) => l.trim().length > 0)?.trim() || "Following up";
-    const bodyStart = lines.findIndex((l) => l.trim().length > 0);
-    const body = lines.slice(bodyStart + 1).join("\n").trim() || text;
+    // Confidence scales with data quality: high quality data + AI generation = high confidence
+    const confidence = Math.round(dataQuality * 0.9);
 
     return {
+      success: true,
       subject,
       body,
-      confidence_score: score,
-      data_quality: quality,
-      missing_data: missing,
+      confidence,
+      dataQuality,
+      warnings: warnings.length > 0 ? warnings : undefined,
     };
-  } catch (error: any) {
-    console.error("[OutreachEngine] Claude API error:", error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[OutreachEngine] Claude API error:", message);
+
+    // Fall back to template on API failure
+    const template = TEMPLATE_FALLBACKS[ctx.purpose] || TEMPLATE_FALLBACKS.cold_outreach;
     return {
-      subject: `About your business in ${ctx.sender_location}`,
-      body: `${ctx.target_name}, I have some specific intelligence about your market that I think would be valuable. Can we connect briefly? -- ${ctx.sender_name}`,
-      confidence_score: Math.min(score, 20),
-      data_quality: "low",
-      missing_data: [...missing, `AI error: ${error.message}`],
+      success: true,
+      subject: template.subject,
+      body: template.body(ctx),
+      confidence: Math.round(dataQuality * 0.4),
+      dataQuality,
+      warnings: [...warnings, `AI generation failed: ${message}, using template fallback`],
     };
   }
 }

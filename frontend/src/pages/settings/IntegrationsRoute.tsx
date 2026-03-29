@@ -101,10 +101,10 @@ export const IntegrationsRoute: React.FC = () => {
       <section className="xl:col-span-5 space-y-6">
         <div className="px-1">
           <h2 className="text-lg font-black text-alloro-navy tracking-tight mb-1">
-            Practice Details
+            Business Details
           </h2>
           <p className="text-slate-500 text-sm">
-            Your practice information and contact details
+            Your business information and contact details
           </p>
         </div>
         <motion.div

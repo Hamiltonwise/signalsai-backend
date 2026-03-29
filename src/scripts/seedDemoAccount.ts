@@ -293,7 +293,7 @@ async function seed() {
   const hasBehavioralEvents = await db.schema.hasTable("behavioral_events");
   if (hasBehavioralEvents) {
     const existingEvents = await db("behavioral_events")
-      .where({ organization_id: orgId })
+      .where({ org_id: orgId })
       .count("id as count")
       .first();
 
@@ -301,48 +301,55 @@ async function seed() {
       const now = new Date();
       await db("behavioral_events").insert([
         {
-          organization_id: orgId,
+          id: db.raw("gen_random_uuid()"),
+          org_id: orgId,
           event_type: "first_win.achieved",
-          metadata: JSON.stringify({
+          properties: JSON.stringify({
             headline: "Alloro caught something. You acted. It worked.",
             detail: "Dr. Rodriguez was quiet for 47 days. You called her Tuesday. She sent 2 cases by Friday. $18,000/year protected.",
           }),
           created_at: new Date(now.getTime() - 5 * 86_400_000),
         },
         {
-          organization_id: orgId,
+          id: db.raw("gen_random_uuid()"),
+          org_id: orgId,
           event_type: "one_action.completed",
-          metadata: JSON.stringify({ action: "Call Dr. Rodriguez" }),
+          properties: JSON.stringify({ action: "Call Dr. Rodriguez" }),
           created_at: new Date(now.getTime() - 7 * 86_400_000),
         },
         {
-          organization_id: orgId,
+          id: db.raw("gen_random_uuid()"),
+          org_id: orgId,
           event_type: "one_action.completed",
-          metadata: JSON.stringify({ action: "Request 3 Google reviews" }),
+          properties: JSON.stringify({ action: "Request 3 Google reviews" }),
           created_at: new Date(now.getTime() - 14 * 86_400_000),
         },
         {
-          organization_id: orgId,
+          id: db.raw("gen_random_uuid()"),
+          org_id: orgId,
           event_type: "one_action.completed",
-          metadata: JSON.stringify({ action: "Add services to GBP" }),
+          properties: JSON.stringify({ action: "Add services to GBP" }),
           created_at: new Date(now.getTime() - 21 * 86_400_000),
         },
         {
-          organization_id: orgId,
+          id: db.raw("gen_random_uuid()"),
+          org_id: orgId,
           event_type: "monday_email.opened",
-          metadata: JSON.stringify({}),
+          properties: JSON.stringify({}),
           created_at: new Date(now.getTime() - 7 * 86_400_000),
         },
         {
-          organization_id: orgId,
+          id: db.raw("gen_random_uuid()"),
+          org_id: orgId,
           event_type: "monday_email.opened",
-          metadata: JSON.stringify({}),
+          properties: JSON.stringify({}),
           created_at: new Date(now.getTime() - 14 * 86_400_000),
         },
         {
-          organization_id: orgId,
+          id: db.raw("gen_random_uuid()"),
+          org_id: orgId,
           event_type: "competitor.review_surge",
-          metadata: JSON.stringify({ competitor: "Wasatch Endodontics", reviews_added: 6 }),
+          properties: JSON.stringify({ competitor: "Wasatch Endodontics", reviews_added: 6 }),
           created_at: new Date(now.getTime() - 3 * 86_400_000),
         },
       ]);

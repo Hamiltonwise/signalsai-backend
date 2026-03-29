@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
 import {
   Eye,
+  EyeOff,
   Globe,
   MessageSquare,
   Lock,
@@ -444,6 +445,7 @@ export default function ResultsScreen() {
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [relationship, setRelationship] = useState("owner");
@@ -616,13 +618,15 @@ export default function ResultsScreen() {
 
   // Blur gate CTA -- named competitor, named city (40-60% higher conversion per Unbounce/Optimizely)
   const cityLabel = place.city || "your market";
-  const blurGateCta = topCompetitor
-    ? score.composite >= 80
-      ? `You're ahead in ${cityLabel}, but ${topCompetitor.name} is closing the gap. See the full picture.`
-      : `See why ${topCompetitor.name} ranks above you in ${cityLabel}.`
-    : market && market.totalCompetitors > 0
-      ? `${market.totalCompetitors} competitors in ${market.city} are fighting for your referrals. See where you stand.`
-      : `Unlock your competitive breakdown for ${cityLabel}.`;
+  const blurGateCta = market?.rank === 1
+    ? `You're #1 in ${cityLabel}. See exactly what's protecting your position and what could change it.`
+    : topCompetitor
+      ? score.composite >= 80
+        ? `You're ahead in ${cityLabel}, but ${topCompetitor.name} is closing the gap. See the full picture.`
+        : `See why ${topCompetitor.name} ranks above you in ${cityLabel}.`
+      : market && market.totalCompetitors > 0
+        ? `${market.totalCompetitors} competitors in ${market.city} are fighting for your referrals. See where you stand.`
+        : `Unlock your competitive breakdown for ${cityLabel}.`;
 
   return (
     <div className="w-full max-w-md mt-2 sm:mt-6 space-y-7 pb-6">
@@ -654,7 +658,15 @@ export default function ResultsScreen() {
       </div>
 
       {/* Diagnostic sentence — the difference between a number and a diagnosis */}
-      {market && topCompetitor && market.rank > 0 && topCompetitor.reviewCount > place.reviewCount && (
+      {market && market.rank === 1 && topCompetitor && (
+        <p className="text-sm text-emerald-700 text-center leading-relaxed -mt-2 font-medium">
+          <span className="font-semibold">{place.name}</span> is #1 in {market.city}.
+          {place.reviewCount > topCompetitor.reviewCount
+            ? ` ${place.reviewCount - topCompetitor.reviewCount} reviews ahead of ${topCompetitor.name}.`
+            : ` ${topCompetitor.name} is close behind.`}
+        </p>
+      )}
+      {market && topCompetitor && market.rank > 1 && topCompetitor.reviewCount > place.reviewCount && (
         <p className="text-sm text-slate-600 text-center leading-relaxed -mt-2">
           <span className="font-semibold text-[#212D40]">{place.name}</span> ranks
           #{market.rank} in {market.city}.{" "}
@@ -852,19 +864,30 @@ export default function ResultsScreen() {
             </div>
             {/* Password — creates account directly */}
             <div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
-                placeholder="Create a password"
-                required
-                minLength={8}
-                className={`w-full h-10 sm:h-12 px-3 sm:px-4 rounded-xl bg-slate-50 border text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
-                  passwordError
-                    ? "border-red-400 focus:border-red-400 focus:ring-red-400/10"
-                    : "border-slate-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
-                }`}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
+                  placeholder="Create a password"
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  className={`w-full h-10 sm:h-12 px-3 sm:px-4 pr-10 rounded-xl bg-slate-50 border text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
+                    passwordError
+                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/10"
+                      : "border-slate-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
+              </div>
               {passwordError && (
                 <p className="text-xs text-red-500 mt-1">{passwordError}</p>
               )}
@@ -999,11 +1022,13 @@ export default function ResultsScreen() {
                 >
                   {emailSending
                     ? "Creating your account..."
-                    : topCompetitor
-                      ? `See why ${topCompetitor.name} ranks above you`
-                      : market?.city
-                        ? `See what's keeping you from #1 in ${market.city}`
-                        : "Unlock my full report"}
+                    : market?.rank === 1
+                      ? `You're #1. See what keeps you there.`
+                      : topCompetitor
+                        ? `See why ${topCompetitor.name} ranks above you`
+                        : market?.city
+                          ? `See what's keeping you from #1 in ${market.city}`
+                          : "Unlock my full report"}
                   {!emailSending && <ArrowRight className="w-4 h-4" />}
                 </button>
               </>

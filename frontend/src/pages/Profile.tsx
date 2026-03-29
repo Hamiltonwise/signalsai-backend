@@ -44,7 +44,7 @@ const Profile = () => {
                 Intelligence Ecosystem
               </h1>
               <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
-                Your practice at a glance
+                Your business at a glance
               </span>
             </div>
           </div>
@@ -147,7 +147,7 @@ const Profile = () => {
 
                 <div>
                   <label className="text-[10px] font-black text-alloro-textDark/60 uppercase tracking-widest mb-2 block">
-                    Practice Name
+                    Business Name
                   </label>
                   <input
                     type="text"
@@ -201,7 +201,7 @@ const Profile = () => {
                 </div>
                 <div className="flex justify-between items-center p-4 rounded-xl bg-slate-50 border border-black/5">
                   <span className="text-[10px] font-black text-alloro-textDark/60 uppercase tracking-widest">
-                    Practice
+                    Business
                   </span>
                   <span className="font-bold text-alloro-textDark">
                     {formData.practiceName}

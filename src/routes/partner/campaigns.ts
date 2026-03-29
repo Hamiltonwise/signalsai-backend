@@ -76,23 +76,23 @@ campaignRoutes.post(
       const org = await db("organizations").where({ id: orgId }).first("name");
       const senderName = org?.name || "Alloro Partner";
 
+      const dataPoints: string[] = [];
+      if (rank) dataPoints.push(`Ranked #${rank}${totalInMarket ? ` of ${totalInMarket}` : ""} in market`);
+      if (topCompetitor) dataPoints.push(`Top competitor: ${topCompetitor}`);
+      if (reviewGap) dataPoints.push(`${reviewGap} reviews behind the leader`);
+      if (score) dataPoints.push(`Business score: ${score}/100`);
+      if (specificFinding) dataPoints.push(specificFinding);
+
       const ctx: OutreachContext = {
-        sender_name: senderName,
-        sender_role: "Business Intelligence Partner",
-        sender_location: targetCity || "your area",
-        target_name: targetName || "Doctor",
-        target_type: "prospect",
-        intelligence: {
-          rank: rank || undefined,
-          total_in_market: totalInMarket || undefined,
-          top_competitor: topCompetitor || undefined,
-          review_gap: reviewGap || undefined,
-          score: score || undefined,
-          specific_finding: specificFinding || undefined,
-        },
         purpose: "cold_outreach",
-        tone: "professional",
-        max_words: 120,
+        recipientName: targetName || "Doctor",
+        recipientRole: "Business Owner",
+        businessName: senderName,
+        senderName,
+        senderSpecialty: "Business Intelligence Partner",
+        dataPoints,
+        city: targetCity || undefined,
+        existingRelationship: false,
       };
 
       const result = await generateOutreach(ctx);

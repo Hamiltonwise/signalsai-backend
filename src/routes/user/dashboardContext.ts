@@ -10,6 +10,7 @@
 
 import express from "express";
 import { authenticateToken } from "../../middleware/auth";
+import { rbacMiddleware } from "../../middleware/rbac";
 import { db } from "../../database/connection";
 
 const dashboardContextRoutes = express.Router();
@@ -23,6 +24,7 @@ const dashboardContextRoutes = express.Router();
 dashboardContextRoutes.get(
   "/",
   authenticateToken,
+  rbacMiddleware,
   async (req: any, res) => {
     try {
       const orgId = req.user?.organizationId || req.organizationId;
