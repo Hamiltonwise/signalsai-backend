@@ -262,11 +262,12 @@ async function seed() {
           gp_name: "Dr. Rodriguez",
           name: "Dr. Rodriguez",
           gp_practice: "Rodriguez Family Dental",
-          referral_count: 5,
-          recent_referral_count: 0,
+          referral_count: 8,
+          total_referrals: 24,
+          recent_referral_count: 2,
           prior_3_month_avg: 1.7,
           monthly_average: 1.7,
-          last_referral_date: sixtySevenDaysAgo,
+          last_referral_date: new Date(now.getTime() - 5 * 86400000),
         },
       ];
 
@@ -286,6 +287,97 @@ async function seed() {
       overrides: JSON.stringify({}),
     });
     console.log("[SeedDemo] Seeded vocabulary config");
+  }
+
+  // ── 7. Seed behavioral events for win celebration + actions ──
+  const hasBehavioralEvents = await db.schema.hasTable("behavioral_events");
+  if (hasBehavioralEvents) {
+    const existingEvents = await db("behavioral_events")
+      .where({ organization_id: orgId })
+      .count("id as count")
+      .first();
+
+    if (Number(existingEvents?.count) === 0) {
+      const now = new Date();
+      await db("behavioral_events").insert([
+        {
+          organization_id: orgId,
+          event_type: "first_win.achieved",
+          metadata: JSON.stringify({
+            headline: "Alloro caught something. You acted. It worked.",
+            detail: "Dr. Rodriguez sent her first referral in 47 days. You called her Tuesday. She sent 2 cases by Friday.",
+          }),
+          created_at: new Date(now.getTime() - 5 * 86_400_000),
+        },
+        {
+          organization_id: orgId,
+          event_type: "one_action.completed",
+          metadata: JSON.stringify({ action: "Call Dr. Rodriguez" }),
+          created_at: new Date(now.getTime() - 7 * 86_400_000),
+        },
+        {
+          organization_id: orgId,
+          event_type: "one_action.completed",
+          metadata: JSON.stringify({ action: "Request 3 Google reviews" }),
+          created_at: new Date(now.getTime() - 14 * 86_400_000),
+        },
+        {
+          organization_id: orgId,
+          event_type: "one_action.completed",
+          metadata: JSON.stringify({ action: "Add services to GBP" }),
+          created_at: new Date(now.getTime() - 21 * 86_400_000),
+        },
+        {
+          organization_id: orgId,
+          event_type: "monday_email.opened",
+          metadata: JSON.stringify({}),
+          created_at: new Date(now.getTime() - 7 * 86_400_000),
+        },
+        {
+          organization_id: orgId,
+          event_type: "monday_email.opened",
+          metadata: JSON.stringify({}),
+          created_at: new Date(now.getTime() - 14 * 86_400_000),
+        },
+        {
+          organization_id: orgId,
+          event_type: "competitor.review_surge",
+          metadata: JSON.stringify({ competitor: "Wasatch Endodontics", reviews_added: 6 }),
+          created_at: new Date(now.getTime() - 3 * 86_400_000),
+        },
+      ]);
+      console.log("[SeedDemo] Seeded 7 behavioral events (win + actions + emails + competitor)");
+    }
+  }
+
+  // ── 8. Seed thank-you draft for Dr. Rodriguez (WO-47) ──
+  const hasThankYou = await db.schema.hasTable("referral_thank_you_drafts");
+  if (hasThankYou) {
+    const existing = await db("referral_thank_you_drafts")
+      .where({ organization_id: orgId })
+      .first();
+    if (!existing) {
+      await db("referral_thank_you_drafts").insert({
+        organization_id: orgId,
+        gp_name: "Rodriguez",
+        patient_initials: "M.K.",
+        body: "Dr. Rodriguez, thank you for referring M.K. to us last week. The treatment went smoothly and we will send a full report to your office by Thursday. It is genuinely good to be working together again. -- Valley Endodontics",
+        status: "pending",
+      });
+      console.log("[SeedDemo] Seeded thank-you draft for Dr. Rodriguez");
+    }
+  }
+
+  // ── 9. Seed week1_win on org (WO-48) ──
+  const hasWeek1 = await db.schema.hasColumn("organizations", "week1_win_headline");
+  if (hasWeek1) {
+    await db("organizations").where({ id: orgId }).update({
+      week1_win_headline: "Your Google Business Profile was 71% complete. We fixed it.",
+      week1_win_detail: "Missing: services list and business description. Both are now live. These are the two most searched fields on any GBP.",
+      week1_win_type: "gbp_completeness",
+      week1_win_shown_at: new Date(Date.now() - 85 * 86_400_000),
+    });
+    console.log("[SeedDemo] Seeded Week 1 win data");
   }
 
   console.log(`\n[SeedDemo] Done!`);
