@@ -16,6 +16,7 @@ import { BehavioralEventModel } from "../models/BehavioralEventModel";
 import { analyzeReviewSentiment } from "../services/reviewSentiment";
 import { db } from "../database/connection";
 import { getMindsQueue } from "../workers/queues";
+import { detectPreset } from "../services/vocabularyAutoMapper";
 
 const checkupRoutes = express.Router();
 
@@ -92,6 +93,12 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     };
     const specKey = specialty.toLowerCase();
     const econ = specialtyEconomics[specKey] || { avgCaseValue: 200, conversionRate: 0.03 };
+
+    // Detect vocabulary for this vertical -- drives language in findings
+    const vocabPreset = detectPreset(category || specialty, types);
+    const customerWord = vocabPreset.patientTerm; // "patient", "client", "customer", "pet owner"
+    const competitorWord = vocabPreset.competitorTerm; // "competitor"
+    const locationWord = vocabPreset.locationTerm; // "practice", "firm", "shop", "clinic"
     // Per-review dollar impact: each review gap costs a fraction of a case per month
     const perReviewImpact = Math.round(econ.avgCaseValue * econ.conversionRate * 12);
     // Per-star dollar impact: each 0.1 star gap reduces conversion
@@ -248,7 +255,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     findings.push({
       type: "market_rank",
       title: "Market Position",
-      detail: `You rank #${rank} of ${totalInMarket} ${specialty}s in ${city}`,
+      detail: `You rank #${rank} of ${totalInMarket} ${competitorWord}s in ${city}`,
       value: rank,
       impact: rank > 3 ? Math.round((rank - 3) * perRankImpact) : 0,
     });
@@ -312,7 +319,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         current: clientReviews,
         target: nextAbove.reviewsCount + 1,
         unit: "reviews",
-        action: `Ask ${thisWeekAsk} customer${thisWeekAsk !== 1 ? "s" : ""} for a Google review this week. Start with your most recent happy customer — they remember you best.`,
+        action: `Ask ${thisWeekAsk} ${customerWord}${thisWeekAsk !== 1 ? "s" : ""} for a Google review this week. Start with your most recent happy ${customerWord} — they remember you best.`,
         timeEstimate: weeksToPass
           ? weeksToPass <= 4 ? `~${weeksToPass} week${weeksToPass !== 1 ? "s" : ""} at current pace`
             : weeksToPass <= 12 ? `~${Math.ceil(weeksToPass / 4)} months at current pace`
@@ -448,6 +455,14 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         rank,
       },
       gaps,
+      vocabulary: {
+        customerTerm: customerWord,
+        competitorTerm: competitorWord,
+        locationTerm: locationWord,
+        vertical: vocabPreset.vertical,
+        intelligenceMode: vocabPreset.intelligenceMode,
+        healthScoreLabel: vocabPreset.healthScoreLabel,
+      },
     });
   } catch (error: any) {
     console.error("[Checkup] Analysis error:", error.message);

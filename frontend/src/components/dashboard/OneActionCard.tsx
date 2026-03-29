@@ -50,9 +50,11 @@ interface ServerCard {
 interface OneActionCardProps {
   // Backend intelligence (overrides local rules when present)
   serverCard?: ServerCard | null;
+  // Intelligence mode drives which rules fire
+  intelligenceMode?: "referral_based" | "direct_acquisition" | "hybrid";
   // Rule 1: Billing
   billingActive: boolean;
-  // Rule 2: GP Gone Dark
+  // Rule 2: GP Gone Dark (skipped for direct_acquisition)
   driftGP?: {
     name: string;
     practice: string;
@@ -122,8 +124,8 @@ function resolveAction(props: OneActionCardProps): OneAction {
     };
   }
 
-  // Rule 2: GP GONE DARK
-  if (props.driftGP) {
+  // Rule 2: GP GONE DARK (only for referral_based and hybrid verticals)
+  if (props.driftGP && props.intelligenceMode !== "direct_acquisition") {
     const gp = props.driftGP;
     return {
       severity: "red",

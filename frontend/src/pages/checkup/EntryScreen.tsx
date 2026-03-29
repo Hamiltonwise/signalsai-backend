@@ -11,17 +11,56 @@ import type { PlaceSuggestion, PlaceDetails } from "../../api/places";
  * Maps machine keys → human-readable display labels.
  */
 const SPECIALTY_TYPE_MAP: Record<string, string> = {
+  // Dental
   orthodontist: "orthodontist",
   endodontist: "endodontist",
   periodontist: "periodontist",
   prosthodontist: "prosthodontist",
   oral_surgeon: "oral surgeon",
   pediatric_dentist: "pediatric dentist",
-  // Non-dental specialties that Google types resolve cleanly
+  dentist: "dentist",
+  dental_clinic: "dentist",
+  // Healthcare
   chiropractor: "chiropractor",
-  physiotherapist: "physiotherapist",
+  physiotherapist: "physical therapist",
+  physical_therapist: "physical therapist",
   optometrist: "optometrist",
-  veterinarian: "veterinarian",
+  optician: "optometrist",
+  veterinary_care: "veterinarian",
+  animal_hospital: "veterinarian",
+  dermatologist: "dermatologist",
+  plastic_surgeon: "plastic surgeon",
+  // Professional services
+  lawyer: "attorney",
+  law_firm: "attorney",
+  accounting: "accountant",
+  tax_preparation_service: "accountant",
+  financial_planner: "financial advisor",
+  real_estate_agency: "real estate agent",
+  real_estate_agent: "real estate agent",
+  insurance_agency: "insurance agent",
+  // Personal services
+  barber_shop: "barber",
+  beauty_salon: "salon",
+  hair_salon: "salon",
+  hair_care: "salon",
+  spa: "spa",
+  // Home services
+  plumber: "plumber",
+  electrician: "electrician",
+  hvac_contractor: "HVAC contractor",
+  roofing_contractor: "roofer",
+  contractor: "contractor",
+  locksmith: "locksmith",
+  // Other
+  gym: "gym",
+  fitness_center: "gym",
+  personal_trainer: "trainer",
+  auto_repair: "auto shop",
+  mechanic: "mechanic",
+  restaurant: "restaurant",
+  cafe: "cafe",
+  bakery: "bakery",
 };
 
 /**
@@ -29,12 +68,28 @@ const SPECIALTY_TYPE_MAP: Record<string, string> = {
  * Checked in order — first match wins.
  */
 const NAME_SPECIALTY_PATTERNS: [RegExp, string][] = [
+  // Dental
   [/orthodontic/i, "orthodontist"],
   [/endodontic/i, "endodontist"],
   [/periodontic/i, "periodontist"],
   [/prosthodontic/i, "prosthodontist"],
   [/oral\s*surg/i, "oral surgeon"],
   [/pediatric\s*dent/i, "pediatric dentist"],
+  // Non-dental
+  [/barber/i, "barber"],
+  [/salon|beauty|hair/i, "salon"],
+  [/chiropractic/i, "chiropractor"],
+  [/physical\s*therap/i, "physical therapist"],
+  [/veterinar|animal\s*hosp/i, "veterinarian"],
+  [/law\s*(firm|office)|attorney/i, "attorney"],
+  [/\bcpa\b|account/i, "accountant"],
+  [/financial\s*(advis|plan)/i, "financial advisor"],
+  [/real\s*estate/i, "real estate agent"],
+  [/plumb/i, "plumber"],
+  [/electric/i, "electrician"],
+  [/\bhvac\b/i, "HVAC contractor"],
+  [/auto\s*(repair|body|shop)|mechanic/i, "auto shop"],
+  [/fitness|gym|crossfit/i, "gym"],
 ];
 
 /**
@@ -68,7 +123,7 @@ function competitorTerm(
   }
 
   // 4. Fallback
-  return "provider in your area";
+  return "business in your area";
 }
 
 export default function EntryScreen() {
