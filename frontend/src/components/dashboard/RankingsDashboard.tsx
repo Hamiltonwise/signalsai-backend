@@ -590,7 +590,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                 priority: 1,
                 title: "Increase review requests",
                 description:
-                  "Send review requests to recent patients to boost velocity",
+                  "Send review requests to recent clients to boost velocity",
               },
               {
                 priority: 2,
@@ -665,7 +665,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
             <span className="text-alloro-orange underline underline-offset-8 font-black">
               Rank and Reviews
             </span>{" "}
-            compare to the practices nearby.
+            compare to the businesses nearby.
           </p>
         </section>
 
@@ -782,11 +782,11 @@ function PerformanceDashboard({
           dir={rankTrend?.dir}
         />
         <KPICard
-          label="Happy Patients"
+          label="Happy Clients"
           value={Number(clientRating).toFixed(1)}
           rating
           sub={`Market Avg: ${marketAvgRating.toFixed(1)}`}
-          tooltip="Measures overall patient satisfaction based on review ratings and feedback sentiment analysis."
+          tooltip="Measures overall client satisfaction based on review ratings and feedback sentiment analysis."
         />
         <KPICard
           label="Total Reviews"
@@ -822,7 +822,7 @@ function PerformanceDashboard({
         <div className="px-10 py-8 border-b border-black/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="text-left">
             <h2 className="text-xl font-black font-heading text-alloro-navy tracking-tight">
-              Nearby Practices
+              Nearby Competitors
             </h2>
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
               How you compare to the neighbors
@@ -836,7 +836,7 @@ function PerformanceDashboard({
           <table className="w-full text-left border-collapse table-fixed">
             <thead className="bg-slate-50/50 text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.25em] border-b border-black/5">
               <tr>
-                <th className="px-10 py-5 w-[40%]">Practice Name</th>
+                <th className="px-10 py-5 w-[40%]">Business Name</th>
                 <th className="px-4 py-5 text-center w-[15%]">Rank</th>
                 <th className="px-4 py-5 text-center w-[20%]">Reviews</th>
                 <th className="px-10 py-5 text-right w-[25%]">
@@ -1278,7 +1278,7 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
     {
       id: 1,
       title: "Respond to 3 pending Google reviews",
-      description: "You have 3 reviews from the past week that need responses. Responding to reviews improves your local ranking and shows potential patients you care.",
+      description: "You have 3 reviews from the past week that need responses. Responding to reviews improves your local ranking and shows potential clients you care.",
       status: "pending",
       category: "Reputation",
       agentType: "ranking",
@@ -1292,7 +1292,7 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
     {
       id: 2,
       title: "Add 5 new photos to Google Business Profile",
-      description: "Practices with 100+ photos get 520% more calls. Your current photo count is below average for your area.",
+      description: "Businesses with 100+ photos get 520% more calls. Your current photo count is below average for your area.",
       status: "pending",
       category: "GBP",
       agentType: "ranking",
@@ -1306,7 +1306,7 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
     {
       id: 3,
       title: "Create a Google Business post about services",
-      description: "Regular GBP posts boost your visibility. Post about a service or special offer to engage potential patients.",
+      description: "Regular GBP posts boost your visibility. Post about a service or special offer to engage potential clients.",
       status: "pending",
       category: "GBP",
       agentType: "ranking",

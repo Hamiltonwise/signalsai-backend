@@ -156,7 +156,7 @@ export default function ReviewRequestCard({
 
       {/* Send form */}
       <form onSubmit={handleSend} className="space-y-3">
-        {/* Patient name */}
+        {/* Client name */}
         <input
           type="text"
           value={name}

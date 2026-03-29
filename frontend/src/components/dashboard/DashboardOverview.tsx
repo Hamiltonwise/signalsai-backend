@@ -702,7 +702,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
     "Competitor gaining ground",
   ];
   const fallbackTopFixes: (TopFix | string)[] = [
-    "Request more patient reviews",
+    "Request more client reviews",
     "Optimize GBP keywords",
     "Increase posting frequency",
   ];
@@ -934,7 +934,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           >
             <div className="flex items-center gap-4 px-1">
               <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-alloro-textDark/40 whitespace-nowrap">
-                Monthly Practice Totals
+                Monthly Business Totals
               </h3>
               <div className="h-px w-full bg-black/10"></div>
             </div>
@@ -1560,7 +1560,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                         : "N/A"}
                     </span>
                     <h3 className="text-2xl lg:text-3xl font-black font-heading text-alloro-navy tracking-tight">
-                      {prooflineTitle || "Practice Health Update"}
+                      {prooflineTitle || "Business Clarity Update"}
                     </h3>
                   </div>
                   <button
@@ -1601,7 +1601,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
               onClick={() => setShowDataHub(!showDataHub)}
               className="w-full sm:w-auto inline-flex items-center justify-center px-12 py-7 bg-white border border-alloro-orange/20 text-alloro-orange text-[12px] font-black uppercase tracking-[0.3em] rounded-2xl hover:bg-alloro-orange hover:text-white transition-all shadow-premium active:scale-95 group"
             >
-              {showDataHub ? "Hide Detail Data" : "See Detailed Practice Data"}
+              {showDataHub ? "Hide Detail Data" : "See Detailed Business Data"}
               <div
                 className={`ml-4 transition-transform duration-500 ${
                   showDataHub ? "rotate-180" : "group-hover:translate-y-1"
@@ -1632,7 +1632,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           />
           <div className="space-y-4">
             <p className="text-[11px] text-alloro-textDark/20 font-black tracking-[0.4em] uppercase">
-              Alloro Practice Intelligence • v2.6.0
+              Alloro Business Intelligence • v2.6.0
             </p>
             <div className="flex items-center justify-center gap-10 text-[10px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em]">
               <span className="flex items-center gap-3">
