@@ -7,7 +7,7 @@
 ### Dave (blocks everything)
 - [ ] Follow DEPLOY-PLAYBOOK.md (30 minutes)
 - [ ] Rotate Google Places API key
-- [ ] Reset Sean's sandbox password
+- [ ] Reset Shawn's sandbox password
 - [ ] Push .github/workflows/e2e.yml with workflow-scoped PAT
 
 ### Corey
@@ -17,11 +17,11 @@
 - [ ] Order business cards with QR code
 - [ ] Confirm booth #835 assignment with AAE
 
-### Sean Meeting (April 3)
-- [ ] Sean can log into sandbox.getalloro.com (Dave: password reset)
+### Shawn Meeting (April 3)
+- [ ] Shawn can log into sandbox.getalloro.com (Dave: password reset)
 - [ ] Demo account shows all features (Dave: run seed:demo)
-- [ ] Corey walks Sean through the dashboard live
-- [ ] Collect Sean's feedback on: One Action Card, score breakdown, checklist
+- [ ] Corey walks Shawn through the dashboard live
+- [ ] Collect Shawn's feedback on: One Action Card, score breakdown, checklist
 
 ## Week 2 (April 5 - April 11)
 
