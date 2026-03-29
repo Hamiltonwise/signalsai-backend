@@ -1,21 +1,28 @@
 /**
- * Visionary View — Corey's HQ
+ * Visionary View -- Corey's CEO War Room
  *
- * Panel 1: MRR, runway, days to AAE, unicorn confidence
- * Panel 2: Exception-only client alerts (red dots only)
- * Panel 3: Pipeline
- * Panel 4: One action — what needs Corey's decision today
- *
- * Closes in 90 seconds. No agent management. No build queue.
+ * Open it, see everything in 60 seconds, close it. Six panels:
+ * 1. Morning Briefing (top, full width)
+ * 2. Revenue (left column)
+ * 3. Pipeline Funnel (right column)
+ * 4. Needs Your Decision (full width, red accent)
+ * 5. Agent Health (bottom left)
+ * 6. Portfolio Score (bottom right)
  */
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   DollarSign,
-  Calendar,
-  Zap,
   TrendingUp,
+  TrendingDown,
+  Users,
+  AlertTriangle,
+  Activity,
+  Shield,
+  Zap,
+  Sun,
+  ChevronRight,
 } from "lucide-react";
 import FounderMode from "./FounderMode";
 import { useNavigate } from "react-router-dom";
@@ -23,168 +30,624 @@ import {
   adminListOrganizations,
   type AdminOrganization,
 } from "@/api/admin-organizations";
+import { fetchSchedules, type Schedule } from "@/api/schedules";
+import {
+  fetchDreamTeamTasks,
+  type DreamTeamTask,
+} from "@/api/dream-team";
+import { apiGet } from "@/api/index";
 
-const AAE_DATE = new Date("2026-04-14");
+// ---- Helpers ---------------------------------------------------------------
 
-function daysUntilAAE(): number {
-  return Math.max(0, Math.ceil((AAE_DATE.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+const TIER_PRICING: Record<string, number> = {
+  DWY: 997,
+  DFY: 2497,
+};
+
+const MONTHLY_BURN = 9500;
+
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return "never";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
+
+// ---- Interfaces ------------------------------------------------------------
+
+interface ClientHealthEntry {
+  id: number;
+  name: string;
+  health: "green" | "amber" | "red";
+  score?: number;
+  risk?: string;
+  last_login?: string;
+}
+
+interface MorningBriefing {
+  id?: number;
+  topEvent?: string;
+  headline?: string;
+  summary?: string;
+  signups?: number;
+  competitor_moves?: number;
+  reviews_received?: number;
+  generated_at?: string;
+}
+
+// ---- Panel Components ------------------------------------------------------
+
+function Panel({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border border-gray-200 bg-white p-6 shadow-sm ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PanelHeader({
+  icon: Icon,
+  label,
+  iconColor = "text-gray-400",
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  iconColor?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <Icon className={`h-4 w-4 ${iconColor}`} />
+      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+// Panel 1: Morning Briefing
+function MorningBriefingPanel({
+  healthData,
+}: {
+  healthData: ClientHealthEntry[];
+}) {
+  const { data: briefingRaw, isLoading } = useQuery({
+    queryKey: ["morning-briefing-latest"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/morning-briefing/latest" });
+      return res?.success !== false ? res : null;
+    },
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+
+  const briefing: MorningBriefing | null = briefingRaw ?? null;
+
+  const greenCount = healthData.filter((c) => c.health === "green").length;
+  const amberCount = healthData.filter((c) => c.health === "amber").length;
+  const redCount = healthData.filter((c) => c.health === "red").length;
+
+  const headline =
+    briefing?.topEvent || briefing?.headline || briefing?.summary || null;
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-8 shadow-sm">
+      <PanelHeader icon={Sun} label="Morning Briefing" iconColor="text-amber-500" />
+
+      {isLoading ? (
+        <div className="h-8 w-2/3 animate-pulse rounded bg-gray-200" />
+      ) : headline ? (
+        <p className="text-xl font-semibold text-[#212D40] leading-relaxed mb-6">
+          {headline}
+        </p>
+      ) : (
+        <p className="text-lg text-gray-400 mb-6">
+          Briefing generates at 6:30am ET
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="rounded-xl bg-white border border-gray-100 p-4 text-center">
+          <p className="text-2xl font-black text-[#212D40]">
+            {briefing?.signups ?? 0}
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
+            New Signups
+          </p>
+        </div>
+        <div className="rounded-xl bg-white border border-gray-100 p-4 text-center">
+          <p className="text-2xl font-black text-[#212D40]">
+            {briefing?.competitor_moves ?? 0}
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
+            Competitor Moves
+          </p>
+        </div>
+        <div className="rounded-xl bg-white border border-gray-100 p-4 text-center">
+          <p className="text-2xl font-black text-[#212D40]">
+            {briefing?.reviews_received ?? 0}
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
+            Reviews
+          </p>
+        </div>
+        <div className="rounded-xl bg-white border border-gray-100 p-4 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-sm font-bold text-[#212D40]">{greenCount}</span>
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <span className="text-sm font-bold text-[#212D40]">{amberCount}</span>
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <span className="text-sm font-bold text-[#212D40]">{redCount}</span>
+          </div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
+            Client Health
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Panel 2: Revenue
+function RevenuePanel({ orgs }: { orgs: AdminOrganization[] }) {
+  const activeOrgs = orgs.filter(
+    (o) => o.subscription_status === "active" || o.subscription_tier
+  );
+
+  const mrr = activeOrgs.reduce((sum, o) => {
+    const tier = o.subscription_tier || "DWY";
+    return sum + (TIER_PRICING[tier] ?? 0);
+  }, 0);
+
+  // Simple month-over-month proxy: compare created_at this month vs last month
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const lastMonthOrgs = activeOrgs.filter((o) => {
+    const d = new Date(o.created_at);
+    return d.getMonth() === (thisMonth === 0 ? 11 : thisMonth - 1);
+  });
+  const thisMonthOrgs = activeOrgs.filter((o) => {
+    const d = new Date(o.created_at);
+    return d.getMonth() === thisMonth;
+  });
+  const growth = thisMonthOrgs.length - lastMonthOrgs.length;
+
+  const monthlyDelta = mrr - MONTHLY_BURN;
+  const isProfitable = monthlyDelta >= 0;
+  const runwayMonths = !isProfitable && mrr > 0
+    ? Math.floor(MONTHLY_BURN / Math.max(1, MONTHLY_BURN - mrr))
+    : null;
+
+  return (
+    <Panel>
+      <PanelHeader icon={DollarSign} label="Revenue" iconColor="text-emerald-600" />
+
+      <div className="space-y-5">
+        <div>
+          <p className="text-4xl font-black text-[#212D40]">
+            ${mrr.toLocaleString()}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Monthly Recurring Revenue
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {growth >= 0 ? (
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+          ) : (
+            <TrendingDown className="h-4 w-4 text-red-500" />
+          )}
+          <span
+            className={`text-sm font-semibold ${
+              growth >= 0 ? "text-emerald-600" : "text-red-600"
+            }`}
+          >
+            {growth >= 0 ? "+" : ""}
+            {growth} net new this month
+          </span>
+        </div>
+
+        <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
+          <p className="text-xs text-gray-400 mb-1">
+            Runway (${MONTHLY_BURN.toLocaleString()} burn)
+          </p>
+          {isProfitable ? (
+            <p className="text-lg font-bold text-emerald-600">
+              Profitable. +${monthlyDelta.toLocaleString()}/mo
+            </p>
+          ) : mrr === 0 ? (
+            <p className="text-lg font-bold text-gray-400">
+              Pre-revenue
+            </p>
+          ) : (
+            <p className="text-lg font-bold text-amber-600">
+              {runwayMonths} months runway at current burn
+            </p>
+          )}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+// Panel 3: Pipeline Funnel
+function PipelineFunnelPanel({
+  orgs,
+  healthData,
+}: {
+  orgs: AdminOrganization[];
+  healthData: ClientHealthEntry[];
+}) {
+  // Count orgs at each stage
+  const checkupStarted = orgs.filter(
+    (o) => !o.subscription_tier && !o.connections?.gbp
+  ).length;
+  const accountCreated = orgs.filter(
+    (o) => !o.subscription_tier && o.connections?.gbp
+  ).length;
+  const inTrial = orgs.filter(
+    (o) => o.subscription_status === "trial"
+  ).length;
+  const onboarding = orgs.filter(
+    (o) =>
+      o.subscription_status === "active" &&
+      o.subscription_tier &&
+      !o.connections?.gbp
+  ).length;
+  const active = orgs.filter(
+    (o) =>
+      o.subscription_status === "active" &&
+      o.subscription_tier &&
+      o.connections?.gbp
+  ).length;
+  const atRisk = healthData.filter((c) => c.health === "red").length;
+
+  const stages = [
+    { label: "Checkup Started", count: checkupStarted, color: "bg-gray-300" },
+    { label: "Account Created", count: accountCreated, color: "bg-blue-300" },
+    { label: "In Trial", count: inTrial, color: "bg-blue-400" },
+    { label: "Onboarding", count: onboarding, color: "bg-amber-400" },
+    { label: "Active", count: active, color: "bg-emerald-500" },
+    { label: "At Risk", count: atRisk, color: "bg-red-500" },
+  ];
+
+  const maxCount = Math.max(1, ...stages.map((s) => s.count));
+
+  return (
+    <Panel>
+      <PanelHeader icon={Users} label="Pipeline Funnel" iconColor="text-blue-500" />
+      <div className="space-y-3">
+        {stages.map((stage) => (
+          <div key={stage.label}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-600">
+                {stage.label}
+              </span>
+              <span className="text-sm font-bold text-[#212D40]">
+                {stage.count}
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-gray-100">
+              <div
+                className={`h-2 rounded-full ${stage.color} transition-all`}
+                style={{
+                  width: `${Math.max(2, (stage.count / maxCount) * 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+// Panel 4: Needs Your Decision
+function DecisionPanel({ tasks }: { tasks: DreamTeamTask[] }) {
+  const urgent = tasks.filter(
+    (t) =>
+      (t.priority === "urgent" || t.priority === "high") &&
+      t.status === "open"
+  );
+
+  const hasItems = urgent.length > 0;
+
+  return (
+    <div
+      className={`rounded-2xl border p-6 shadow-sm ${
+        hasItems
+          ? "border-red-300 bg-red-50/50"
+          : "border-gray-200 bg-white"
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <AlertTriangle
+          className={`h-4 w-4 ${hasItems ? "text-red-500" : "text-gray-400"}`}
+        />
+        <p
+          className={`text-[11px] font-bold uppercase tracking-wider ${
+            hasItems ? "text-red-500" : "text-gray-400"
+          }`}
+        >
+          Needs Your Decision
+          {hasItems && (
+            <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+              {urgent.length}
+            </span>
+          )}
+        </p>
+      </div>
+
+      {!hasItems ? (
+        <p className="text-sm text-gray-400">
+          Nothing needs your decision right now. Focus time.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {urgent.map((t) => (
+            <div
+              key={t.id}
+              className="flex items-center justify-between rounded-xl bg-white border border-red-200 px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#212D40] truncate">
+                  {t.title}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {t.owner_name} . {timeAgo(t.created_at)}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 ml-3 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                  t.priority === "urgent"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-amber-100 text-amber-700"
+                }`}
+              >
+                {t.priority}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Panel 5: Agent Health
+function AgentHealthPanel({ schedules }: { schedules: Schedule[] }) {
+  const total = schedules.length;
+  const running = schedules.filter(
+    (s) => s.latest_run?.status === "running"
+  ).length;
+  const failed = schedules.filter(
+    (s) => s.latest_run?.status === "failed"
+  );
+  const neverRun = schedules.filter((s) => !s.latest_run);
+  const nominal = total - failed.length - neverRun.length;
+
+  return (
+    <Panel>
+      <PanelHeader icon={Activity} label="Agent Health" iconColor="text-[#D56753]" />
+
+      <p className="text-sm text-[#212D40] font-medium mb-3">
+        {nominal}/{total} agents nominal.{" "}
+        {failed.length > 0
+          ? `${failed.length} failed.`
+          : ""}{" "}
+        {neverRun.length > 0
+          ? `${neverRun.length} never run.`
+          : ""}
+        {running > 0 ? ` ${running} running now.` : ""}
+      </p>
+
+      {failed.length > 0 && (
+        <div className="space-y-1.5">
+          {failed.map((s) => (
+            <div
+              key={s.id}
+              className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+              <span className="text-xs font-medium text-red-700 truncate">
+                {s.display_name}
+              </span>
+              <span className="text-[10px] text-red-400 ml-auto shrink-0">
+                {timeAgo(s.last_run_at)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {failed.length === 0 && neverRun.length === 0 && (
+        <p className="text-xs text-emerald-600 font-medium">All systems green.</p>
+      )}
+    </Panel>
+  );
+}
+
+// Panel 6: Portfolio Score
+function PortfolioScorePanel({
+  healthData,
+}: {
+  healthData: ClientHealthEntry[];
+}) {
+  // Average score from client health data, or derive from green/amber/red
+  let avgScore = 0;
+  if (healthData.length > 0) {
+    const hasScores = healthData.some((c) => c.score !== undefined);
+    if (hasScores) {
+      const total = healthData.reduce((sum, c) => sum + (c.score ?? 50), 0);
+      avgScore = Math.round(total / healthData.length);
+    } else {
+      // Derive from health status: green=90, amber=60, red=25
+      const total = healthData.reduce((sum, c) => {
+        if (c.health === "green") return sum + 90;
+        if (c.health === "amber") return sum + 60;
+        return sum + 25;
+      }, 0);
+      avgScore = Math.round(total / healthData.length);
+    }
+  }
+
+  const scoreColor =
+    avgScore >= 80
+      ? "text-emerald-600"
+      : avgScore >= 60
+        ? "text-amber-600"
+        : avgScore >= 40
+          ? "text-orange-600"
+          : "text-red-600";
+
+  const ringColor =
+    avgScore >= 80
+      ? "stroke-emerald-500"
+      : avgScore >= 60
+        ? "stroke-amber-500"
+        : avgScore >= 40
+          ? "stroke-orange-500"
+          : "stroke-red-500";
+
+  const circumference = 2 * Math.PI * 45;
+  const offset = circumference - (avgScore / 100) * circumference;
+
+  return (
+    <Panel className="flex flex-col items-center justify-center">
+      <PanelHeader icon={Shield} label="Portfolio Score" iconColor="text-[#212D40]" />
+
+      <div className="relative w-32 h-32 mb-3">
+        <svg className="w-32 h-32 -rotate-90" viewBox="0 0 100 100">
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            stroke="#f3f4f6"
+            strokeWidth="6"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            className={ringColor}
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            style={{ transition: "stroke-dashoffset 0.8s ease" }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`text-3xl font-black ${scoreColor}`}>
+            {healthData.length > 0 ? avgScore : "--"}
+          </span>
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-400 text-center">
+        {healthData.length > 0
+          ? `Across ${healthData.length} client${healthData.length !== 1 ? "s" : ""}`
+          : "No client data yet"}
+      </p>
+    </Panel>
+  );
+}
+
+// ---- Main Component --------------------------------------------------------
 
 export default function VisionaryView() {
   const navigate = useNavigate();
   const [founderOpen, setFounderOpen] = useState(false);
 
-  const { data } = useQuery({
+  // Fetch organizations
+  const { data: orgData } = useQuery({
     queryKey: ["admin-organizations"],
     queryFn: adminListOrganizations,
   });
 
   const orgs: AdminOrganization[] =
-    (data as any)?.organizations ?? (Array.isArray(data) ? data : []);
+    (orgData as any)?.organizations ?? (Array.isArray(orgData) ? orgData : []);
 
-  const activeOrgs = orgs.filter(
-    (o) => o.subscription_status === "active" || o.subscription_tier
-  );
-  const estimatedMRR = activeOrgs.length * 2000;
+  // Fetch client health
+  const { data: healthRaw } = useQuery({
+    queryKey: ["admin-client-health-visionary"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/client-health" });
+      return res?.success !== false
+        ? ((res?.clients || res?.entries || []) as ClientHealthEntry[])
+        : [];
+    },
+    retry: false,
+    staleTime: 60_000,
+  });
+  const healthData: ClientHealthEntry[] = healthRaw ?? [];
 
-  // Exception-only: orgs without GBP or with issues
-  const exceptions = orgs.filter((o) => !o.connections?.gbp);
+  // Fetch schedules
+  const { data: scheduleData } = useQuery({
+    queryKey: ["admin-schedules"],
+    queryFn: fetchSchedules,
+  });
+  const schedules: Schedule[] = Array.isArray(scheduleData)
+    ? scheduleData
+    : [];
+
+  // Fetch tasks
+  const { data: taskData } = useQuery({
+    queryKey: ["dream-team-tasks-visionary"],
+    queryFn: () => fetchDreamTeamTasks(),
+    retry: false,
+    staleTime: 60_000,
+  });
+  const tasks: DreamTeamTask[] = taskData?.tasks ?? [];
 
   return (
     <>
-    {/* Founder Mode overlay */}
-    {founderOpen && <FounderMode onClose={() => setFounderOpen(false)} />}
+      {founderOpen && <FounderMode onClose={() => setFounderOpen(false)} />}
 
-    {/* F badge — top right, no label */}
-    <button
-      onClick={() => setFounderOpen(true)}
-      className="fixed top-4 right-4 z-40 w-8 h-8 rounded-lg bg-[#212D40] text-white text-xs font-black flex items-center justify-center hover:bg-[#D56753] transition-colors"
-      title="Founder Mode"
-    >
-      F
-    </button>
+      {/* F badge */}
+      <button
+        onClick={() => setFounderOpen(true)}
+        className="fixed top-4 right-4 z-40 w-8 h-8 rounded-lg bg-[#212D40] text-white text-xs font-black flex items-center justify-center hover:bg-[#D56753] transition-colors"
+        title="Founder Mode"
+      >
+        F
+      </button>
 
-    <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
-      {/* Panel 1: Key Numbers */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 text-center">
-          <DollarSign className="h-5 w-5 text-emerald-600 mx-auto mb-2" />
-          <p className="text-2xl font-black text-[#212D40]">
-            ${(estimatedMRR / 1000).toFixed(0)}k
-          </p>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
-            MRR
-          </p>
+      <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
+        {/* Panel 1: Morning Briefing -- full width */}
+        <MorningBriefingPanel healthData={healthData} />
+
+        {/* Panels 2 + 3: Revenue | Pipeline -- side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <RevenuePanel orgs={orgs} />
+          <PipelineFunnelPanel orgs={orgs} healthData={healthData} />
         </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 text-center">
-          <Calendar className="h-5 w-5 text-[#D56753] mx-auto mb-2" />
-          <p className="text-2xl font-black text-[#212D40]">
-            {daysUntilAAE()}
-          </p>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
-            Days to AAE
-          </p>
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 text-center">
-          <TrendingUp className="h-5 w-5 text-blue-500 mx-auto mb-2" />
-          <p className="text-2xl font-black text-[#212D40]">
-            {orgs.length}
-          </p>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
-            Accounts
-          </p>
-        </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 text-center">
-          <Zap className="h-5 w-5 text-amber-500 mx-auto mb-2" />
-          <p className="text-2xl font-black text-[#212D40]">
-            {activeOrgs.length}/{orgs.length}
-          </p>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
-            Active
-          </p>
+
+        {/* Panel 4: Needs Your Decision -- full width */}
+        <DecisionPanel tasks={tasks} />
+
+        {/* Panels 5 + 6: Agent Health | Portfolio Score -- side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AgentHealthPanel schedules={schedules} />
+          <PortfolioScorePanel healthData={healthData} />
         </div>
       </div>
-
-      {/* Panel 2: Exception-only alerts */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
-          Exceptions Only
-        </p>
-        {exceptions.length === 0 ? (
-          <p className="text-sm text-emerald-600 font-medium">
-            All clear. No accounts need attention right now.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {exceptions.map((org) => (
-              <button
-                key={org.id}
-                onClick={() => navigate(`/admin/organizations/${org.id}`)}
-                className="w-full flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-left hover:border-amber-300 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                  <span className="text-sm font-semibold text-[#212D40]">
-                    {org.name}
-                  </span>
-                </div>
-                <span className="text-xs text-amber-600">Needs setup</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Panel 3: Pipeline */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
-          Pipeline
-        </p>
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div>
-            <p className="text-xl font-black text-[#212D40]">{orgs.length}</p>
-            <p className="text-[10px] text-gray-400 uppercase font-bold mt-1">Total</p>
-          </div>
-          <div>
-            <p className="text-xl font-black text-emerald-600">{activeOrgs.length}</p>
-            <p className="text-[10px] text-gray-400 uppercase font-bold mt-1">Paying</p>
-          </div>
-          <div>
-            <p className="text-xl font-black text-amber-600">{orgs.length - activeOrgs.length}</p>
-            <p className="text-[10px] text-gray-400 uppercase font-bold mt-1">In funnel</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Panel 4: One Action */}
-      <div className="rounded-2xl border border-[#D56753]/20 bg-[#D56753]/[0.03] p-6">
-        <div className="flex items-center gap-2 mb-3">
-          <Zap className="h-5 w-5 text-[#D56753]" />
-          <p className="text-xs font-bold uppercase tracking-wider text-[#D56753]">
-            Needs Your Decision
-          </p>
-        </div>
-        {exceptions.length > 0 ? (
-          <>
-            <p className="text-sm font-bold text-[#212D40]">
-              {exceptions.map((o) => o.name || `Org #${o.id}`).join(" and ")} {exceptions.length === 1 ? "hasn't" : "haven't"} connected Google yet.
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Push onboarding or defer?
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-sm font-bold text-[#212D40]">
-              Nothing urgent. Focus on AAE prep.
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              All accounts are connected and running. {daysUntilAAE()} days to conference.
-            </p>
-          </>
-        )}
-      </div>
-    </div>
     </>
   );
 }
