@@ -13,6 +13,13 @@
 import { db } from "../database/connection";
 import { sendMondayBriefEmail } from "../emails/templates/MondayBriefEmail";
 import { getMostShareableFinding } from "../services/behavioralIntelligence";
+import {
+  generateSurpriseFindings,
+  pickMondayFinding,
+  type SurpriseFinding,
+} from "../services/surpriseFindings";
+import { discoverCompetitorsViaPlaces, filterBySpecialty } from "../controllers/practice-ranking/feature-services/service.places-competitor-discovery";
+import { getPlaceDetails } from "../controllers/places/feature-services/GooglePlacesApiService";
 
 /**
  * Send Monday email for a single org.
@@ -94,10 +101,57 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   ).length;
 
   if (steadyWeeks >= 3) {
-    // Surface most unusual data point
-    const reviewDelta = (snapshot.client_review_count || 0) - (recentSnapshots[3]?.client_review_count || snapshot.client_review_count || 0);
-    if (reviewDelta !== 0) {
-      findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. In that time, you ${reviewDelta > 0 ? "gained" : "lost"} ${Math.abs(reviewDelta)} reviews. ${snapshot.competitor_name || "Your top competitor"} ${reviewDelta > 0 ? "gained fewer" : "gained more"}.`;
+    // Surface a surprise finding from fresh competitive data instead of "no changes"
+    let usedSurpriseFinding = false;
+    try {
+      // Look up org's place_id and market data for fresh scan
+      const orgData = await db("organizations").where({ id: orgId }).select("checkup_data", "business_data").first();
+      const parsed = orgData?.checkup_data ? (typeof orgData.checkup_data === "string" ? JSON.parse(orgData.checkup_data) : orgData.checkup_data) : null;
+      const placeId = parsed?.placeId || null;
+      const marketCity = parsed?.market?.city || snapshot.keyword?.split(" in ")?.[1] || null;
+      const specialty = parsed?.market?.specialty || "local business";
+
+      if (placeId && marketCity) {
+        const placeDetails = await getPlaceDetails(placeId);
+        const competitors = await discoverCompetitorsViaPlaces(specialty, marketCity, 10);
+        const filtered = filterBySpecialty(competitors, specialty);
+
+        const allFindings = await generateSurpriseFindings({
+          place: placeDetails || {},
+          competitors: filtered.slice(0, 5).map((c) => ({
+            name: c.name,
+            totalScore: c.totalScore,
+            reviewsCount: c.reviewsCount,
+            photosCount: c.photosCount,
+            hasHours: c.hasHours,
+            hoursComplete: c.hoursComplete,
+            website: c.website,
+          })),
+          market: {
+            city: marketCity,
+            avgRating: filtered.length > 0 ? filtered.reduce((s, c) => s + c.totalScore, 0) / filtered.length : 0,
+            avgReviews: filtered.length > 0 ? filtered.reduce((s, c) => s + c.reviewsCount, 0) / filtered.length : 0,
+            rank: snapshot.position || 0,
+            totalCompetitors: filtered.length,
+          },
+        });
+
+        const mondayFinding = pickMondayFinding(allFindings);
+        if (mondayFinding) {
+          findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. But here's what changed in your market:\n\n${mondayFinding.headline}\n\n${mondayFinding.detail}`;
+          usedSurpriseFinding = true;
+        }
+      }
+    } catch (sfErr) {
+      console.error("[MondayEmail] Surprise finding for steady-state failed (non-blocking):", sfErr instanceof Error ? sfErr.message : sfErr);
+    }
+
+    if (!usedSurpriseFinding) {
+      // Fallback to original review delta analysis
+      const reviewDelta = (snapshot.client_review_count || 0) - (recentSnapshots[3]?.client_review_count || snapshot.client_review_count || 0);
+      if (reviewDelta !== 0) {
+        findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. In that time, you ${reviewDelta > 0 ? "gained" : "lost"} ${Math.abs(reviewDelta)} reviews. ${snapshot.competitor_name || "Your top competitor"} ${reviewDelta > 0 ? "gained fewer" : "gained more"}.`;
+      }
     }
   }
 

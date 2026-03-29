@@ -202,9 +202,9 @@ Look for these patterns (Oz Pearlman homework, deepest specificity wins):
 Respond in exactly this JSON format, nothing else:
 [
   {
-    "hook": "One sentence. The jaw-drop. Named competitor. Specific data point.",
-    "implication": "One sentence. What this means for their business in the next 90 days.",
-    "action": "One sentence. What to do about it this week.",
+    "hook": "MAX 25 words. The jaw-drop. Named competitor. One specific data point. No commas splitting two ideas.",
+    "implication": "One sentence, max 30 words. What this means in dollars or position over 90 days.",
+    "action": "One sentence, max 20 words. What to do THIS WEEK.",
     "shareability": 8
   },
   {
@@ -222,8 +222,16 @@ Respond in exactly this JSON format, nothing else:
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) return [];
 
-    const moments: OzMoment[] = JSON.parse(jsonMatch[0]);
-    return moments.filter((m) => m.hook && m.implication && m.action);
+    const raw = JSON.parse(jsonMatch[0]) as any[];
+    const moments: OzMoment[] = raw
+      .filter((m: any) => m.hook && m.implication && m.action)
+      .map((m: any) => ({
+        hook: String(m.hook),
+        implication: String(m.implication),
+        action: String(m.action),
+        shareability: typeof m.shareability === "number" ? m.shareability : 7,
+      }));
+    return moments;
   } catch (err) {
     console.error("[OzMoment] Generation failed:", err instanceof Error ? err.message : err);
     return [];

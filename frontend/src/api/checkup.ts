@@ -82,6 +82,11 @@ export async function analyzeCheckup(params: {
   hasHours?: boolean;
   websiteUri?: string | null;
   phone?: string | null;
+  // Oz homework: deeper signals
+  editorialSummary?: string | null;
+  openingDate?: string | null;
+  businessStatus?: string | null;
+  reviews?: Array<{ text: string; rating: number; author: string; time?: string; when?: string }> | null;
 }): Promise<CheckupAnalysis> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000); // 45s timeout

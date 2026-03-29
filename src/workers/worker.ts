@@ -21,6 +21,7 @@ import { processPatientPathBuild } from "./processors/patientpathBuild.processor
 import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
 import { processWeek1Win } from "./processors/week1Win.processor";
 import { processMondayEmail } from "./processors/mondayEmail.processor";
+import { runDreamweaver } from "../services/dreamweaverAgent";
 import { processCompetitiveScout } from "./processors/competitiveScout.processor";
 import { processClientMonitor } from "./processors/clientMonitor.processor";
 import { processMorningBriefing } from "./processors/morningBriefing.processor";

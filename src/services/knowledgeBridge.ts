@@ -498,6 +498,27 @@ const SEED_HEURISTICS = [
       "behavioral",
     ]),
   },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Oz Pearlman",
+    category: "intelligence",
+    core_principle:
+      "The audience never sees the preparation. Do the homework before they arrive. Cross-reference two public facts into one private-feeling insight. Never reveal the data source.",
+    agent_heuristic:
+      "Before presenting any finding, combine at least two independent data points into a single insight the business owner could not have reached alone. The checkup, welcome email, and Monday brief each use different combinations so every touchpoint feels like fresh homework.",
+    anti_pattern:
+      "Never show raw data without cross-referencing. A review count alone is a number. A review count compared to the competitor's response rate is intelligence.",
+    tags: JSON.stringify([
+      "intelligence",
+      "surprise",
+      "checkup",
+      "hospitality",
+      "welcome_intelligence",
+      "monday_email",
+      "score_reveal",
+      "delight",
+    ]),
+  },
 ];
 
 // ── Seed Function ───────────────────────────────────────────────────

@@ -16,6 +16,13 @@ import { Job } from "bullmq";
 import { db } from "../../database/connection";
 import { sendEmail } from "../../emails/emailService";
 import { wrapInBaseTemplate } from "../../emails/templates/base";
+import {
+  generateSurpriseFindings,
+  pickWelcomeFindings,
+  type SurpriseFinding,
+} from "../../services/surpriseFindings";
+import { discoverCompetitorsViaPlaces, filterBySpecialty } from "../../controllers/practice-ranking/feature-services/service.places-competitor-discovery";
+import { getPlaceDetails } from "../../controllers/places/feature-services/GooglePlacesApiService";
 
 interface WelcomeIntelligenceData {
   orgId: number;
@@ -53,6 +60,45 @@ export async function processWelcomeIntelligence(
   // Fetch competitor velocity data
   const velocityInsight = await buildVelocityInsight(data.orgId);
 
+  // Homework Findings: surprise insights NOT shown in the checkup.
+  // This is the SECOND Oz moment, 4 hours later.
+  let homeworkFindings: SurpriseFinding[] = [];
+  try {
+    if (data.placeId && data.city) {
+      const placeDetails = await getPlaceDetails(data.placeId);
+      const specialty = data.specialty || "local business";
+      const marketLocation = data.stateAbbr ? `${data.city}, ${data.stateAbbr}` : data.city;
+      const competitors = await discoverCompetitorsViaPlaces(specialty, marketLocation, 10);
+      const filtered = filterBySpecialty(competitors, specialty);
+
+      const allFindings = await generateSurpriseFindings({
+        place: placeDetails || {},
+        competitors: filtered.slice(0, 5).map((c) => ({
+          name: c.name,
+          totalScore: c.totalScore,
+          reviewsCount: c.reviewsCount,
+          photosCount: c.photosCount,
+          hasHours: c.hasHours,
+          hoursComplete: c.hoursComplete,
+          website: c.website,
+        })),
+        market: {
+          city: data.city,
+          avgRating: filtered.length > 0 ? filtered.reduce((s, c) => s + c.totalScore, 0) / filtered.length : 0,
+          avgReviews: filtered.length > 0 ? filtered.reduce((s, c) => s + c.reviewsCount, 0) / filtered.length : 0,
+          rank: 0,
+          totalCompetitors: filtered.length,
+        },
+      });
+
+      // Pick findings that weren't in the checkup (skip first 5, take next 2)
+      homeworkFindings = pickWelcomeFindings(allFindings, 5);
+      console.log(`[WelcomeIntelligence] Generated ${allFindings.length} total findings, ${homeworkFindings.length} held back for welcome email`);
+    }
+  } catch (hwErr) {
+    console.error("[WelcomeIntelligence] Homework findings failed (non-blocking):", hwErr instanceof Error ? hwErr.message : hwErr);
+  }
+
   // Build and send email
   const emailContent = buildWelcomeIntelligenceEmail({
     practiceName: data.practiceName,
@@ -61,6 +107,7 @@ export async function processWelcomeIntelligence(
     velocityInsight,
     checkupScore: data.checkupScore,
     topCompetitorName: data.topCompetitorName,
+    homeworkFindings,
   });
 
   await sendEmail({
@@ -80,6 +127,7 @@ export async function processWelcomeIntelligence(
       properties: JSON.stringify({
         nearby_gps_found: nearbyGPs.length,
         has_velocity_insight: !!velocityInsight,
+        homework_findings_count: homeworkFindings.length,
       }),
     })
     .catch(() => {});
@@ -168,8 +216,9 @@ function buildWelcomeIntelligenceEmail(params: {
   velocityInsight: string | null;
   checkupScore: number | null;
   topCompetitorName: string | null;
+  homeworkFindings?: SurpriseFinding[];
 }): string {
-  const { practiceName, city, nearbyGPs, velocityInsight, checkupScore, topCompetitorName } = params;
+  const { practiceName, city, nearbyGPs, velocityInsight, checkupScore, topCompetitorName, homeworkFindings } = params;
 
   const gpRows = nearbyGPs
     .slice(0, 5)
@@ -220,6 +269,24 @@ function buildWelcomeIntelligenceEmail(params: {
       <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
         Each of these practices sees patients who may need your specialty. The ones with high review counts have the most patient volume to refer from.
       </p>
+      ` : ""}
+
+      ${homeworkFindings && homeworkFindings.length > 0 ? `
+      <div style="background: rgba(213, 103, 83, 0.08); border: 1px solid rgba(213, 103, 83, 0.2); border-radius: 12px; padding: 20px; margin: 24px 0;">
+        <h2 style="color: #D56753; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px 0;">
+          We Kept Digging
+        </h2>
+        ${homeworkFindings.map((f) => `
+        <div style="margin-bottom: 16px;">
+          <p style="color: #212D40; font-size: 15px; font-weight: 600; margin: 0 0 4px 0;">
+            ${escapeHtml(f.headline)}
+          </p>
+          <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin: 0;">
+            ${escapeHtml(f.detail)}
+          </p>
+        </div>
+        `).join("")}
+      </div>
       ` : ""}
 
       ${velocityInsight ? `

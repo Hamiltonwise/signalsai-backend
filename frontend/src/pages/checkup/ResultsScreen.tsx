@@ -916,15 +916,18 @@ export default function ResultsScreen() {
       {/* ═══ OZ MOMENTS: The jaw-drop insights from combined data ═══ */}
       {/* These use progressive specificity: named competitor + specific number + consequence.
           The goal: make the person stop scrolling and think "how did they know that?" */}
-      {state.ozMoments && state.ozMoments.length > 0 && (
+      {/* Oz Pearlman moments: the "how did they know that?" reveal */}
+      {revealStage >= 1 && state.ozMoments && state.ozMoments.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#212D40]/40">
-            What we found
+          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
+            We already knew this about you
           </p>
           {state.ozMoments.map((moment, i) => (
             <div
               key={i}
-              className="rounded-2xl bg-[#212D40] p-5 space-y-2.5"
+              className={`rounded-2xl bg-[#212D40] p-5 space-y-2.5 transition-all duration-700 ${
+                revealStage >= 2 ? "opacity-100 translate-y-0" : i === 0 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
             >
               <p className="text-[15px] font-bold text-white leading-snug">
                 {moment.hook}

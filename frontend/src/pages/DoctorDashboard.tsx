@@ -412,44 +412,28 @@ function CompetitorGap({ ranking, onCompetitorClick }: { ranking: RankingData | 
 function buildCheckupIntelligence(ctx: any): string[] {
   if (!ctx?.data) return [];
   const insights: string[] = [];
-  const { market, topCompetitor, score } = ctx.data;
+  const { market, topCompetitor, findings, ozMoments } = ctx.data;
 
-  if (topCompetitor?.rating && market?.avgRating && market.avgRating > 4.5) {
+  // Priority 1: Oz Moments from the Checkup (the strongest "how did they know?" hits)
+  if (ozMoments && Array.isArray(ozMoments)) {
+    for (const oz of ozMoments.slice(0, 2)) {
+      if (oz.hook) insights.push(oz.hook);
+    }
+  }
+
+  // Priority 2: Original Checkup findings (review gap, rating gap, sentiment)
+  if (findings && Array.isArray(findings)) {
+    for (const f of findings) {
+      if (f.detail && !insights.includes(f.detail)) {
+        insights.push(f.detail);
+      }
+    }
+  }
+
+  // Priority 3: Market context (only if we don't have enough from above)
+  if (insights.length < 2 && topCompetitor?.reviewCount && market?.rank) {
     insights.push(
-      `The average rating in your market is ${market.avgRating.toFixed(1)} stars. Practices below that lose visibility in Google's local pack.`
-    );
-  }
-
-  if (topCompetitor?.reviewCount && market?.avgReviews) {
-    const gap = topCompetitor.reviewCount - (market.avgReviews || 0);
-    if (gap > 20) {
-      insights.push(
-        `${topCompetitor.name} has ${topCompetitor.reviewCount} reviews, ${gap} more than the market average. Each review increases local search ranking and client trust.`
-      );
-    }
-    if (topCompetitor.reviewCount > 50) {
-      const weeksToClose = Math.ceil(topCompetitor.reviewCount / 3);
-      insights.push(
-        `At 3 reviews per week, it would take ${weeksToClose} weeks to match ${topCompetitor.name}. Starting now changes your trajectory by Q3.`
-      );
-    }
-  }
-
-  if (market?.totalCompetitors && market.rank) {
-    if (market.rank > Math.ceil(market.totalCompetitors / 2)) {
-      insights.push(
-        `You rank #${market.rank} of ${market.totalCompetitors} in ${market.city || "your market"}. The top 3 capture over 70% of new client searches.`
-      );
-    } else if (market.rank <= 3) {
-      insights.push(
-        `You're #${market.rank} of ${market.totalCompetitors} in ${market.city || "your market"}. Holding a top-3 position means you appear in Google's local pack for most searches.`
-      );
-    }
-  }
-
-  if (score?.visibility != null && score.visibility < 50) {
-    insights.push(
-      `Your online visibility score is ${score.visibility}/100. Potential clients searching for your specialty may find a competitor first.`
+      `You rank #${market.rank} of ${market.totalCompetitors} in ${market.city || "your market"}. ${topCompetitor.name} holds #1 with ${topCompetitor.reviewCount} reviews.`
     );
   }
 
