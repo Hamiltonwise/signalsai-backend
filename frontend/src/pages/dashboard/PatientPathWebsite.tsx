@@ -63,7 +63,7 @@ export default function PatientPathWebsite() {
             <Globe className="h-7 w-7 text-emerald-600" />
           </div>
           <h1 className="text-xl font-bold text-[#212D40] mb-2">
-            Your PatientPath Website
+            Your Alloro Website
           </h1>
           <p className="text-sm text-gray-500 mb-6">
             {websiteData.generated_hostname}
@@ -139,7 +139,7 @@ export default function PatientPathWebsite() {
       <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8">
         <Globe className="h-10 w-10 text-gray-300 mx-auto mb-4" />
         <h1 className="text-xl font-bold text-[#212D40] mb-2">
-          Your PatientPath Website
+          Your Alloro Website
         </h1>
         <p className="text-sm text-gray-500">
           Your website is being built. We'll notify you when it's ready for review.

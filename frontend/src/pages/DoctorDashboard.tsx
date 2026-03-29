@@ -415,7 +415,7 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
           </div>
         </div>
         <p className="text-sm text-gray-500">
-          Your PatientPath website is being built. You'll get a notification when it's live.
+          Your website is being built. You'll get a notification when it's live.
         </p>
       </div>
     );
@@ -1032,7 +1032,7 @@ export default function DoctorDashboard() {
         <>
           {/* ══ ABOVE THE FOLD — spec layer order ══ */}
 
-          {/* 1. Practice Health Score ring */}
+          {/* 1. Business Clarity Score ring */}
           {isRankingError && <p className="text-xs text-gray-400 italic">Data temporarily unavailable.</p>}
           <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { localVisibility: checkupCtx.data.score.localVisibility, onlinePresence: checkupCtx.data.score.onlinePresence, reviewHealth: checkupCtx.data.score.reviewHealth } : null} />
 

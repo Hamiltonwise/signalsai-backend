@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -147,6 +148,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [hasWebsite, setHasWebsite] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // Intelligence mode determines which nav items to show
+  const { data: dashCtx } = useQuery({
+    queryKey: ["dashboard-context"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/dashboard-context" });
+      return res?.success ? res : null;
+    },
+    staleTime: 30 * 60_000,
+  });
+  const intelligenceMode = dashCtx?.intelligence_mode || "referral_based";
+  const showReferralHub = intelligenceMode !== "direct_acquisition";
   const [userTaskCount, setUserTaskCount] = useState<number>(0);
   const [unreadNotificationCount, setUnreadNotificationCount] =
     useState<number>(0);
@@ -271,11 +284,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: "/dashboard",
       showDuringOnboarding: true,
     },
-    // Referrals Hub: owner + manager only (contains referral intelligence)
-    ...(isManagerOrAbove
+    // Referrals Hub: owner + manager only, hidden for direct_acquisition verticals
+    ...(isManagerOrAbove && showReferralHub
       ? [
           {
-            label: "Referrals Hub",
+            label: intelligenceMode === "hybrid" ? "Revenue Sources" : "Referrals Hub",
             icon: <Activity size={18} />,
             path: "/pmsStatistics",
             showDuringOnboarding: false,

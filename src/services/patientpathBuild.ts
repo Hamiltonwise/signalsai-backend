@@ -55,14 +55,14 @@ async function fetchPlaceWithReviews(placeId: string): Promise<any> {
 
 // ─── Research Agent prompt ──────────────────────────────────────────
 
-const RESEARCH_SYSTEM = `You are a research analyst preparing intelligence for a dental/medical practice website builder. You analyze Google reviews and competitor data to find what makes a practice irreplaceable.
+const RESEARCH_SYSTEM = `You are a research analyst preparing intelligence for a local service business website builder. You analyze Google reviews and competitor data to find what makes a business irreplaceable to its customers.
 
 Extract and return JSON with these exact keys:
 
 {
-  "irreplaceable_thing": "One sentence that captures what makes this practice irreplaceable, derived from review patterns no competitor shares. Example: 'Patients describe Dr. Kargoli as the doctor who explains the entire procedure before touching an instrument -- no other endodontist in the market gets this comment.'",
-  "fear_categories": ["Top 3 patient fears BEFORE their first appointment, extracted from review language. Example: 'fear of pain during root canal', 'fear of unnecessary procedures', 'fear of high costs'"],
-  "praise_patterns": ["3-5 specific phrases patients actually use in reviews. Exact quotes, not paraphrased. Example: 'gentle hands', 'explained everything', 'felt no pain'"],
+  "irreplaceable_thing": "One sentence that captures what makes this business irreplaceable, derived from review patterns no competitor shares.",
+  "fear_categories": ["Top 3 customer concerns BEFORE their first visit, extracted from review language. What hesitations do new customers have?"],
+  "praise_patterns": ["3-5 specific phrases customers actually use in reviews. Exact quotes, not paraphrased."],
   "top_competitor_name": "Name of the #1 competitor by review count",
   "practice_personality": "One word: warm | clinical | premium | family | boutique | high-tech",
   "review_themes": ["3 recurring themes across reviews"]
