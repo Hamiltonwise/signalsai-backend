@@ -6,7 +6,9 @@ import jwt from "jsonwebtoken";
  * Top-level const would capture the value before dotenv loads .env (ESM hoisting).
  */
 function getJwtSecret(): string {
-  return process.env.JWT_SECRET || "dev-secret-key-change-in-prod";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("FATAL: JWT_SECRET environment variable is not set. Server cannot start without it.");
+  return secret;
 }
 
 export interface AuthRequest extends Request {

@@ -22,6 +22,7 @@ interface VocabularyPreset {
   providerTerm: string;
   locationTerm: string;
   avgCaseValue: number;
+  intelligenceMode: "referral_based" | "direct_acquisition" | "hybrid";
 }
 
 // GBP category patterns mapped to vocabulary presets
@@ -39,6 +40,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "doctor",
       locationTerm: "practice",
       avgCaseValue: 1500,
+      intelligenceMode: "referral_based",
     },
   },
   {
@@ -54,6 +56,7 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
       providerTerm: "doctor",
       locationTerm: "practice",
       avgCaseValue: 5500,
+      intelligenceMode: "hybrid",
     },
   },
   {

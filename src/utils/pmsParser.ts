@@ -108,14 +108,20 @@ const HEADER_PATTERNS: [RegExp, ColumnSignal][] = [
   [/^#$/i, { field: "referrals", score: 5 }],
   [/qty|quantity/i, { field: "referrals", score: 5 }],
 
-  // Patient name/ID (for dedup)
+  // Customer/patient/client name/ID (for dedup -- universal field detection)
   [/^patient$/i, { field: "patient", score: 10 }],
   [/patient[\s_-]?(name|id)/i, { field: "patient", score: 10 }],
+  [/^client$/i, { field: "patient", score: 10 }],
+  [/client[\s_-]?(name|id)/i, { field: "patient", score: 10 }],
+  [/^customer$/i, { field: "patient", score: 10 }],
+  [/customer[\s_-]?(name|id)/i, { field: "patient", score: 10 }],
   [/^(first|last)[\s_-]?name$/i, { field: "patient", score: 7 }],
-  [/^name$/i, { field: "patient", score: 3 }], // low score — ambiguous
+  [/^name$/i, { field: "patient", score: 3 }], // low score -- ambiguous
   [/chart[\s_-]?(number|#|id)/i, { field: "patient", score: 9 }],
   [/^id$/i, { field: "patient", score: 4 }],
-  [/account[\s_-]?(number|#)/i, { field: "patient", score: 7 }],
+  [/account[\s_-]?(number|#|id)/i, { field: "patient", score: 8 }],
+  [/contact[\s_-]?(name|id)/i, { field: "patient", score: 8 }],
+  [/lead[\s_-]?(name|id)/i, { field: "patient", score: 7 }],
 ];
 
 // ---------------------------------------------------------------------------

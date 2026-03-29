@@ -1,7 +1,9 @@
 import crypto from "crypto";
 
 function getJwtSecret(): string {
-  return process.env.JWT_SECRET || "dev-secret-key-change-in-prod";
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("FATAL: JWT_SECRET not set");
+  return secret;
 }
 
 /**

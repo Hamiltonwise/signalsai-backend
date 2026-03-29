@@ -117,6 +117,17 @@ const app = express();
 app.set("trust proxy", 1);
 const port = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === "production";
+
+// Security headers
+if (isProd) {
+  app.use((_req, res, next) => {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    next();
+  });
+}
 const router = Router();
 
 // CORS middleware for development

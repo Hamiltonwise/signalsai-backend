@@ -14,7 +14,7 @@ When asked to evaluate or modify your own output, apply the Three-Response Safet
 
 ## Review Checklist
 
-Runs against every output. All five checks must pass.
+Runs against every output. All six checks must pass.
 
 ### Check 1: Dollar Figure Verification
 Does this contain a dollar figure?
@@ -63,11 +63,31 @@ Reclassify if needed:
 - A Monday email send is Yellow (client-facing)
 - Signing a BAA is Red (legal commitment)
 
+### Check 6: Compliance Gate (Healthcare Verticals)
+Does this output involve a healthcare-vertical organization?
+- If yes: verify no PHI (Protected Health Information) is exposed in the output
+- PHI includes: patient names, appointment dates, procedure types, health conditions, phone numbers tied to care, insurance IDs
+- Review text from Google that mentions health conditions is PHI if tied to a known patient
+- PMS upload data containing patient records is ePHI and must be encrypted at rest (AES-256) and in transit (TLS 1.3)
+- Any Claude API call that includes PHI in the prompt must be logged in the audit trail
+
+**2026 HIPAA Security Rule requirements (effective ~January 2027):**
+- All safeguards are now MANDATORY (no more "addressable" exceptions)
+- MFA required for all ePHI access (FIDO2/biometric, not SMS)
+- 72-hour incident response and system restoration requirement
+- Annual penetration testing and biannual vulnerability scans
+- Technology asset inventory must be maintained and updated annually
+- BAA must include: permitted uses, safeguard requirements, breach notification procedures, subcontractor compliance, PHI access/amendment rights, accounting of disclosures, HHS access, return/destruction at termination, termination provisions
+
+**Penalty context:** $141 to $2,134,831 per violation. One viral breach costs more than the entire client base is worth.
+
+Non-healthcare verticals (legal, real estate, financial, home services): skip this check entirely. The vocabulary config `vertical` field determines applicability.
+
 ## Output
 
 ### CLEARED
 ```
-[Output type] cleared. [N]/5 checks passed.
+[Output type] cleared. [N]/6 checks passed.
 ```
 Proceeds without notification. No Slack post. No delay.
 

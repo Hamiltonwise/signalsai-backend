@@ -42,6 +42,7 @@ export interface DiscoveredCompetitor {
 // Google Places API primaryType values mapped to our specialty keys
 // These are the machine-readable types Google uses (snake_case)
 const SPECIALTY_PRIMARY_TYPES: Record<string, string[]> = {
+  // Dental
   orthodontics: ["orthodontist"],
   endodontics: ["endodontist"],
   periodontics: ["periodontist"],
@@ -49,10 +50,26 @@ const SPECIALTY_PRIMARY_TYPES: Record<string, string[]> = {
   pediatric: ["pediatric_dentist"],
   prosthodontics: ["prosthodontist"],
   general: ["dentist", "dental_clinic"],
+  // Non-dental verticals: Google Places types
+  barber: ["barber_shop", "beauty_salon", "hair_salon"],
+  hair_salon: ["beauty_salon", "hair_salon", "hair_care"],
+  veterinary: ["veterinary_care", "animal_hospital"],
+  legal: ["lawyer", "law_firm", "attorney"],
+  accounting: ["accounting", "tax_preparation_service", "financial_planner"],
+  chiropractic: ["chiropractor"],
+  physical_therapy: ["physical_therapist", "physiotherapist"],
+  optometry: ["optometrist", "optician", "eye_care_center"],
+  home_services: ["plumber", "electrician", "hvac_contractor", "roofing_contractor", "contractor", "locksmith"],
+  real_estate: ["real_estate_agency", "real_estate_agent"],
+  fitness: ["gym", "fitness_center", "personal_trainer"],
+  automotive: ["auto_repair", "mechanic", "car_repair", "auto_body_shop"],
+  food_service: ["restaurant", "cafe", "bakery", "coffee_shop"],
+  medspa: ["medical_spa", "spa", "dermatologist", "plastic_surgeon"],
+  financial_advisor: ["financial_planner", "financial_advisor", "investment_service"],
 };
 
-// All dental-related primary types (for broad filtering of non-dental junk)
-const ALL_DENTAL_TYPES = [
+// Dental-related primary types (used for dental specialty sub-filtering)
+const DENTAL_TYPES = [
   "dentist",
   "dental_clinic",
   "orthodontist",
@@ -61,6 +78,12 @@ const ALL_DENTAL_TYPES = [
   "oral_surgeon",
   "pediatric_dentist",
   "prosthodontist",
+];
+
+// All known valid business types across all verticals
+const ALL_KNOWN_TYPES = [
+  ...DENTAL_TYPES,
+  ...Object.values(SPECIALTY_PRIMARY_TYPES).flat(),
 ];
 
 // =====================================================================
@@ -72,10 +95,12 @@ function log(message: string): void {
 }
 
 /**
- * Normalize specialty input to internal key (same logic as ranking algorithm)
+ * Normalize specialty input to internal key.
+ * Supports dental specialties + all universal verticals.
  */
 function normalizeSpecialty(specialty: string): string {
   const aliases: Record<string, string> = {
+    // Dental
     orthodontist: "orthodontics",
     endodontist: "endodontics",
     periodontist: "periodontics",
@@ -90,8 +115,49 @@ function normalizeSpecialty(specialty: string): string {
     pediatric: "pediatric",
     prosthodontics: "prosthodontics",
     general: "general",
+    // Non-dental
+    barber: "barber",
+    "barber shop": "barber",
+    "hair salon": "hair_salon",
+    salon: "hair_salon",
+    veterinarian: "veterinary",
+    veterinary: "veterinary",
+    attorney: "legal",
+    lawyer: "legal",
+    legal: "legal",
+    accountant: "accounting",
+    cpa: "accounting",
+    accounting: "accounting",
+    chiropractor: "chiropractic",
+    chiropractic: "chiropractic",
+    "physical therapist": "physical_therapy",
+    physical_therapy: "physical_therapy",
+    optometrist: "optometry",
+    optometry: "optometry",
+    plumber: "home_services",
+    electrician: "home_services",
+    hvac: "home_services",
+    contractor: "home_services",
+    home_services: "home_services",
+    "real estate agent": "real_estate",
+    realtor: "real_estate",
+    real_estate: "real_estate",
+    "financial advisor": "financial_advisor",
+    financial_advisor: "financial_advisor",
+    gym: "fitness",
+    "personal trainer": "fitness",
+    fitness: "fitness",
+    "auto repair": "automotive",
+    mechanic: "automotive",
+    automotive: "automotive",
+    restaurant: "food_service",
+    cafe: "food_service",
+    food_service: "food_service",
+    "med spa": "medspa",
+    medspa: "medspa",
+    dermatologist: "medspa",
   };
-  return aliases[specialty.toLowerCase().trim()] || "general";
+  return aliases[specialty.toLowerCase().trim()] || specialty.toLowerCase().trim();
 }
 
 // =====================================================================
@@ -161,20 +227,16 @@ export async function discoverCompetitorsViaPlaces(
 // =====================================================================
 
 /**
- * Filter out non-dental results from Text Search.
+ * Filter competitors to same-category businesses.
  *
- * Google classifies most dental specialists as primaryType: "dentist"
- * regardless of actual specialty (endodontists, periodontists, etc. all
- * show as "dentist"). The Text Search query already scopes by specialty
- * (e.g. "endodontist in Austin, TX"), so this filter's job is just to
- * remove non-dental junk (restaurants, pharmacies, medical offices).
- *
- * For specialty-specific filtering, we check the display category name
- * against SPECIALTY_CATEGORIES as a secondary signal.
+ * Universal: works for any GBP-listed business type. For dental specialists,
+ * applies strict specialty matching. For all other verticals, uses the
+ * Google Places types from SPECIALTY_PRIMARY_TYPES to reject junk results
+ * while trusting the Text Search query's category scoping.
  *
  * @param competitors - Raw discovered competitors
- * @param specialty - Target specialty (e.g. "endodontist", "endodontics")
- * @returns Filtered competitors that are dental businesses
+ * @param specialty - Target specialty (e.g. "endodontist", "barber", "cpa")
+ * @returns Filtered competitors in the same business category
  */
 export function filterBySpecialty(
   competitors: DiscoveredCompetitor[],
@@ -186,9 +248,9 @@ export function filterBySpecialty(
   ).map((name) => name.toLowerCase());
 
   const beforeCount = competitors.length;
-
-  // For specialists, only accept same-specialty matches.
-  // For general dentists, accept all dental types.
+  const isDentalVertical = DENTAL_TYPES.some((t) =>
+    (SPECIALTY_PRIMARY_TYPES[normalizedSpecialty] || []).includes(t)
+  ) || normalizedSpecialty === "general";
   const isGeneral = normalizedSpecialty === "general";
   const specialtyTypes = SPECIALTY_PRIMARY_TYPES[normalizedSpecialty] || [];
 
@@ -196,25 +258,41 @@ export function filterBySpecialty(
     const pt = comp.primaryType.toLowerCase();
     const displayCat = comp.category.toLowerCase();
 
-    // First gate: must be a dental business at all (reject non-dental junk)
-    const isDental =
-      ALL_DENTAL_TYPES.includes(pt) ||
-      comp.types?.some((t) => ALL_DENTAL_TYPES.includes(t.toLowerCase()));
-    if (!isDental) return false;
+    if (isDentalVertical) {
+      // Dental verticals: strict type filtering (existing behavior)
+      const isDental =
+        DENTAL_TYPES.includes(pt) ||
+        comp.types?.some((t) => DENTAL_TYPES.includes(t.toLowerCase()));
+      if (!isDental) return false;
+      if (isGeneral) return true;
+      if (specialtyTypes.includes(pt)) return true;
+      if (comp.types?.some((t) => specialtyTypes.includes(t.toLowerCase()))) return true;
+      if (targetDisplayNames.some((name) => displayCat.includes(name))) return true;
+      return false;
+    }
 
-    // General dentists: accept any dental business
-    if (isGeneral) return true;
+    // Non-dental verticals: accept if type matches any of the vertical's known types
+    if (specialtyTypes.length > 0) {
+      const matchesType =
+        specialtyTypes.includes(pt) ||
+        comp.types?.some((t) => specialtyTypes.includes(t.toLowerCase()));
+      if (matchesType) return true;
 
-    // Specialists: accept if primaryType matches the target specialty
-    if (specialtyTypes.includes(pt)) return true;
+      // Fallback: check display category contains the specialty keyword
+      const specLower = specialty.toLowerCase();
+      if (displayCat.includes(specLower)) return true;
 
-    // Also accept if any type in the types array matches
-    if (comp.types?.some((t) => specialtyTypes.includes(t.toLowerCase()))) return true;
+      return false;
+    }
 
-    // Fallback: match on display category name from SPECIALTY_CATEGORIES
-    if (targetDisplayNames.some((name) => displayCat.includes(name))) return true;
-
-    return false;
+    // Unknown vertical with no type mapping: trust the Text Search results.
+    // Google Text Search for "barber in Austin" already returns barbershops.
+    // Only reject obvious junk (hospitals, schools, government buildings).
+    const junkTypes = ["hospital", "school", "university", "government", "church", "museum", "library"];
+    if (junkTypes.some((j) => pt.includes(j) || comp.types?.some((t) => t.toLowerCase().includes(j)))) {
+      return false;
+    }
+    return true;
   });
 
   const afterCount = filtered.length;

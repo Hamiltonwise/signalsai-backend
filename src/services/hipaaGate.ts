@@ -1,56 +1,74 @@
 /**
- * HIPAA Gate Service
+ * Compliance Gate Service
  *
- * WO-HIPAA-GATE: Checks and manages BAA status for PMS upload gating.
+ * Vertical-aware data upload gating.
+ * Healthcare verticals: BAA required before uploading data with PHI.
+ * Non-healthcare verticals: upload allowed without BAA (no PHI involved).
  *
- * The moment a user can upload a file that might contain patient names,
- * Alloro becomes a Business Associate under HIPAA. This gate must exist
- * before the PMS parser ships to production.
- *
- * baa_signed and baa_signed_at columns already exist on organizations.
+ * baa_signed and baa_signed_at columns exist on organizations.
  */
 
 import { db } from "../database/connection";
+import { logAuditEvent } from "./auditLogger";
+
+// ─── Vertical Classification ────────────────────────────────────────
+
+const HEALTHCARE_VERTICALS = new Set([
+  "endodontics",
+  "orthodontics",
+  "general_dentistry",
+  "chiropractic",
+  "physical_therapy",
+  "optometry",
+  "medical",
+  "dental",
+  "veterinary",
+]);
+
+function isHealthcareVertical(vertical: string | null | undefined): boolean {
+  if (!vertical) return false;
+  return HEALTHCARE_VERTICALS.has(vertical.toLowerCase());
+}
 
 // ─── Types ──────────────────────────────────────────────────────────
 
 export interface BAAStatus {
   baaSigned: boolean;
   baaSignedAt: string | null;
-  canUploadPMS: boolean;
+  canUploadData: boolean;
+  requiresBAA: boolean;
+  vertical: string | null;
 }
 
 // ─── Check BAA Status ───────────────────────────────────────────────
 
-/**
- * Check if an org has a signed BAA on file.
- * Must return true before any PMS data upload is allowed.
- */
 export async function checkBAAStatus(orgId: number): Promise<BAAStatus> {
   const org = await db("organizations")
     .where({ id: orgId })
-    .select("baa_signed", "baa_signed_at")
+    .select("baa_signed", "baa_signed_at", "id")
     .first();
 
   if (!org) {
-    return { baaSigned: false, baaSignedAt: null, canUploadPMS: false };
+    return { baaSigned: false, baaSignedAt: null, canUploadData: false, requiresBAA: true, vertical: null };
   }
+
+  // Check vertical from vocabulary config
+  const vocabConfig = await db("vocabulary_configs").where({ org_id: orgId }).first();
+  const vertical = vocabConfig?.vertical || null;
+  const requiresBAA = isHealthcareVertical(vertical);
 
   return {
     baaSigned: !!org.baa_signed,
     baaSignedAt: org.baa_signed_at ? new Date(org.baa_signed_at).toISOString() : null,
-    canUploadPMS: !!org.baa_signed,
+    canUploadData: requiresBAA ? !!org.baa_signed : true,
+    requiresBAA,
+    vertical,
   };
 }
 
 // ─── Sign BAA (superAdmin only) ─────────────────────────────────────
 
-/**
- * Mark an org's BAA as signed.
- * Called by Corey after attorney review and client signature.
- * superAdmin-gated at the route level.
- */
-export async function signBAA(orgId: number): Promise<BAAStatus> {
+export async function signBAA(orgId: number, actorEmail?: string): Promise<BAAStatus> {
   await db("organizations")
     .where({ id: orgId })
     .update({
@@ -58,21 +76,21 @@ export async function signBAA(orgId: number): Promise<BAAStatus> {
       baa_signed_at: new Date(),
     });
 
-  console.log(`[HIPAA] BAA signed for org ${orgId}`);
+  await logAuditEvent({
+    actorType: "admin",
+    actorId: actorEmail || "system",
+    action: "baa.signed",
+    targetType: "organization",
+    targetId: String(orgId),
+  }).catch(() => {});
 
-  return {
-    baaSigned: true,
-    baaSignedAt: new Date().toISOString(),
-    canUploadPMS: true,
-  };
+  const status = await checkBAAStatus(orgId);
+  return status;
 }
 
 // ─── Revoke BAA (superAdmin only) ───────────────────────────────────
 
-/**
- * Revoke an org's BAA. Used if agreement needs to be re-signed.
- */
-export async function revokeBAA(orgId: number): Promise<BAAStatus> {
+export async function revokeBAA(orgId: number, actorEmail?: string): Promise<BAAStatus> {
   await db("organizations")
     .where({ id: orgId })
     .update({
@@ -80,35 +98,26 @@ export async function revokeBAA(orgId: number): Promise<BAAStatus> {
       baa_signed_at: null,
     });
 
-  console.log(`[HIPAA] BAA revoked for org ${orgId}`);
+  await logAuditEvent({
+    actorType: "admin",
+    actorId: actorEmail || "system",
+    action: "baa.revoked",
+    targetType: "organization",
+    targetId: String(orgId),
+  }).catch(() => {});
 
-  return {
-    baaSigned: false,
-    baaSignedAt: null,
-    canUploadPMS: false,
-  };
+  const status = await checkBAAStatus(orgId);
+  return status;
 }
 
-// ─── PMS Upload Guard ───────────────────────────────────────────────
+// ─── Data Upload Guard ──────────────────────────────────────────────
 
 /**
- * Guard function for PMS upload endpoints.
- * Returns true if upload is allowed, false if BAA gate blocks it.
- * Use this in the PMS upload route handler before processing any file.
- *
- * Usage:
- *   if (!await canUploadPMS(orgId)) {
- *     return res.status(403).json({
- *       success: false,
- *       error: "BAA_REQUIRED",
- *       message: "A signed Business Associate Agreement is required before uploading patient data.",
- *       action_url: "/settings/baa",
- *     });
- *   }
+ * Guard function for data upload endpoints.
+ * Healthcare verticals: requires signed BAA before upload.
+ * Non-healthcare verticals: always allowed.
  */
 export async function canUploadPMS(orgId: number): Promise<boolean> {
   const status = await checkBAAStatus(orgId);
-  return status.canUploadPMS;
+  return status.canUploadData;
 }
-
-// T2 registers PATCH /api/user/baa-signed

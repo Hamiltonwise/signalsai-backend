@@ -256,8 +256,14 @@ referralIntelligenceRoutes.post(
 
       // Get org info for context
       const org = await db("organizations").where({ id: orgId }).first();
-      const orgSpecialty = specialty || org?.specialty || "specialist";
-      const orgDoctor = doctorName || org?.doctor_name || org?.name || "Doctor";
+      const orgSpecialty = specialty || org?.specialty || "business owner";
+      const orgDoctor = doctorName || org?.doctor_name || org?.name || "there";
+
+      // Get vocabulary for vertical-aware language
+      const vocabConfig = await db("vocabulary_configs").where({ org_id: orgId }).first();
+      const vertical = vocabConfig?.vertical || "general";
+      const isHealthcare = ["endodontics", "orthodontics", "general_dentistry", "chiropractic", "physical_therapy", "optometry", "veterinary", "medical", "dental"].includes(vertical);
+      const referralTerm = vocabConfig?.config?.referralTerm || (isHealthcare ? "referring provider" : "referral source");
 
       const Anthropic = (await import("@anthropic-ai/sdk")).default;
       const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -268,22 +274,21 @@ referralIntelligenceRoutes.post(
       const response = await ai.messages.create({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 300,
-        system: `Write a professional, warm thank-you note from a specialist to a referring GP.
+        system: `Write a professional, warm thank-you note from a ${orgSpecialty} to a ${referralTerm} who sent them a referral.
 
 Rules:
 - Under 75 words
 - Warm but professional
-- Do NOT confirm patient identity (HIPAA)
-- Mention that a clinical report will follow
-- Sign with the specialist's first name only
+${isHealthcare ? "- Do NOT confirm patient identity (HIPAA compliance)\n- Use initials only if referencing individuals" : "- Reference the referral relationship specifically"}
+- Sign with the sender's first name only
 - No generic phrases like "thank you for your continued support"
 - Specific to this referral relationship
 - No em-dashes
 - Return ONLY the note text, no JSON`,
         messages: [{
           role: "user",
-          content: `Specialist: ${orgDoctor}, ${orgSpecialty}
-Referring GP: Dr. ${gpName}
+          content: `From: ${orgDoctor}, ${orgSpecialty}
+To: ${gpName}
 
 Write a brief thank-you note for a recent referral.`,
         }],

@@ -59,19 +59,39 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const specialty = category || name || "local business";
 
     // Specialty-aware economics: use vertical avgCaseValue for dollar estimates
+    // Universal: any GBP-listed business type can run a checkup
     const specialtyEconomics: Record<string, { avgCaseValue: number; conversionRate: number }> = {
+      // Healthcare
       endodontist: { avgCaseValue: 1500, conversionRate: 0.03 },
       orthodontist: { avgCaseValue: 800, conversionRate: 0.025 },
       dentist: { avgCaseValue: 500, conversionRate: 0.02 },
       chiropractor: { avgCaseValue: 400, conversionRate: 0.025 },
       "physical therapist": { avgCaseValue: 350, conversionRate: 0.02 },
       optometrist: { avgCaseValue: 300, conversionRate: 0.02 },
-      attorney: { avgCaseValue: 3000, conversionRate: 0.015 },
       veterinarian: { avgCaseValue: 250, conversionRate: 0.03 },
+      "med spa": { avgCaseValue: 600, conversionRate: 0.025 },
+      dermatologist: { avgCaseValue: 400, conversionRate: 0.02 },
+      "plastic surgeon": { avgCaseValue: 8000, conversionRate: 0.01 },
+      // Professional services
+      attorney: { avgCaseValue: 3000, conversionRate: 0.015 },
+      lawyer: { avgCaseValue: 3000, conversionRate: 0.015 },
+      accountant: { avgCaseValue: 2000, conversionRate: 0.015 },
+      cpa: { avgCaseValue: 2000, conversionRate: 0.015 },
       "financial advisor": { avgCaseValue: 5000, conversionRate: 0.01 },
+      "real estate agent": { avgCaseValue: 8000, conversionRate: 0.008 },
+      // Home services
+      plumber: { avgCaseValue: 300, conversionRate: 0.04 },
+      electrician: { avgCaseValue: 350, conversionRate: 0.04 },
+      "hvac": { avgCaseValue: 400, conversionRate: 0.035 },
+      roofer: { avgCaseValue: 5000, conversionRate: 0.015 },
+      landscaper: { avgCaseValue: 200, conversionRate: 0.04 },
+      // Personal services
+      barber: { avgCaseValue: 35, conversionRate: 0.08 },
+      "hair salon": { avgCaseValue: 60, conversionRate: 0.06 },
+      "auto repair": { avgCaseValue: 400, conversionRate: 0.03 },
     };
     const specKey = specialty.toLowerCase();
-    const econ = specialtyEconomics[specKey] || { avgCaseValue: 500, conversionRate: 0.02 };
+    const econ = specialtyEconomics[specKey] || { avgCaseValue: 200, conversionRate: 0.03 };
     // Per-review dollar impact: each review gap costs a fraction of a case per month
     const perReviewImpact = Math.round(econ.avgCaseValue * econ.conversionRate * 12);
     // Per-star dollar impact: each 0.1 star gap reduces conversion
