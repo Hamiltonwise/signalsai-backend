@@ -14,6 +14,7 @@ import { generateToken } from "../controllers/auth-otp/feature-services/service.
 import { sendCheckupResultEmail } from "../emails/templates/CheckupResultEmail";
 import { BehavioralEventModel } from "../models/BehavioralEventModel";
 import { analyzeReviewSentiment } from "../services/reviewSentiment";
+import { generateOzMoments, type OzMoment } from "../services/ozMoment";
 import { db } from "../database/connection";
 import { getMindsQueue } from "../workers/queues";
 import { detectPreset } from "../services/vocabularyAutoMapper";
@@ -390,34 +391,101 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       });
     }
 
-    // Review sentiment analysis: the "how did they know that" finding
-    // Runs in parallel with gap calculations. Non-blocking: if it fails, checkup still works.
+    // ─── Oz Reveals: insights from public data the owner never gave us ───
+
+    // Photo count comparison (Google Places gives us this for free)
+    const clientPhotos = req.body.photosCount ?? 0;
+    const topCompPhotos = topCompetitor?.photosCount ?? 0;
+    if (topCompetitor && topCompPhotos > clientPhotos && topCompPhotos > 10) {
+      findings.push({
+        type: "photo_gap",
+        title: `${topCompetitor.name} has ${topCompPhotos} photos. You have ${clientPhotos || "none"}.`,
+        detail: `Businesses with 40+ Google photos get 35% more clicks to their website. Each photo is free visibility.`,
+        value: topCompPhotos - clientPhotos,
+        impact: Math.round((topCompPhotos - clientPhotos) * econ.avgCaseValue * 0.002),
+      });
+    }
+
+    // Hours completeness (competitor has full hours, you don't)
+    const clientHasHours = !!req.body.hasHours;
+    if (!clientHasHours && topCompetitor?.hasHours) {
+      findings.push({
+        type: "hours_missing",
+        title: "Your Google profile is missing business hours",
+        detail: `${topCompetitor.name}'s hours are listed. Yours aren't. Google prioritizes profiles with complete information. This takes 2 minutes to fix.`,
+        value: 0,
+        impact: Math.round(econ.avgCaseValue * 0.5),
+      });
+    }
+
+    // Review response gap (we can detect this from review data)
+    // This one really feels like mind-reading: "you haven't responded to your reviews"
+
+    // ─── AI Analysis: Sentiment + Oz Moments (parallel, non-blocking) ───
     let sentimentInsight = null;
+    let ozMoments: OzMoment[] = [];
+
     if (placeId) {
-      try {
-        sentimentInsight = await analyzeReviewSentiment(
+      // Fetch client reviews for both analyses
+      const clientReviewsRaw = req.body.reviews || [];
+
+      // Run sentiment and Oz moments in parallel
+      const [sentimentResult, ozResult] = await Promise.allSettled([
+        analyzeReviewSentiment(
           placeId,
           name,
           topCompetitor?.placeId || null,
           topCompetitor?.name || null,
           specialty,
-        );
-        if (sentimentInsight) {
-          findings.push({
-            type: "sentiment_insight",
-            title: sentimentInsight.title,
-            detail: sentimentInsight.detail,
-            value: 0,
-            impact: 0,
-          });
-        }
-      } catch (err: any) {
-        console.error("[Checkup] Sentiment analysis failed (non-blocking):", err.message);
+        ),
+        generateOzMoments({
+          clientName: name,
+          clientRating: clientRating,
+          clientReviewCount: clientReviews,
+          clientReviews: clientReviewsRaw.map((r: any) => ({
+            text: r.text || "",
+            rating: r.rating || 0,
+            author: r.author || "Anonymous",
+            when: r.time || "",
+          })),
+          clientHasWebsite: !!req.body.websiteUri,
+          clientPhotoCount: req.body.photosCount ?? 0,
+          clientCategory: specialty,
+          clientCity: city,
+          competitorName: topCompetitor?.name || null,
+          competitorRating: topCompetitor?.totalScore || null,
+          competitorReviewCount: topCompetitor?.reviewsCount || null,
+          competitorReviews: [], // Reviews fetched inside ozMoment.ts if needed
+          competitorHasWebsite: !!topCompetitor?.website,
+          competitorPhotoCount: topCompetitor?.photosCount ?? 0,
+          competitorHours: null, // Could extract from competitor data
+          marketRank: rank,
+          totalCompetitors: otherCompetitors.length,
+          avgRating: Math.round(avgRating * 10) / 10,
+          avgReviews: Math.round(avgReviews),
+          vertical: vocabPreset.vertical,
+          avgCaseValue: econ.avgCaseValue,
+        }),
+      ]);
+
+      if (sentimentResult.status === "fulfilled" && sentimentResult.value) {
+        sentimentInsight = sentimentResult.value;
+        findings.push({
+          type: "sentiment_insight",
+          title: sentimentInsight.title,
+          detail: sentimentInsight.detail,
+          value: 0,
+          impact: 0,
+        });
+      }
+
+      if (ozResult.status === "fulfilled" && ozResult.value.length > 0) {
+        ozMoments = ozResult.value;
       }
     }
 
     console.log(
-      `[Checkup] Score: ${compositeScore} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: ✓" : ""}`
+      `[Checkup] Score: ${compositeScore} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: ✓" : ""}${ozMoments.length > 0 ? ` | Oz: ${ozMoments.length}` : ""}`
     );
 
     return res.json({
@@ -447,6 +515,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       })),
       findings,
       sentimentInsight: sentimentInsight || null,
+      ozMoments: ozMoments.length > 0 ? ozMoments : undefined,
       totalImpact,
       market: {
         city,

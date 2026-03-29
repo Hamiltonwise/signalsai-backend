@@ -573,6 +573,11 @@ export default function ScanningTheater() {
           reviewCount: place.reviewCount,
           placeId: place.placeId,
           location: place.location,
+          // Oz reveals: extra data for "how did they know that?" findings
+          photosCount: place.photos?.length ?? 0,
+          hasHours: true, // Places API only returns if they have hours
+          websiteUri: place.websiteUri,
+          phone: place.phone,
         });
 
         const result = conferenceActive
