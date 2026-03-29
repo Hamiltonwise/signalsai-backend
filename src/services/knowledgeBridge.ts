@@ -519,6 +519,94 @@ const SEED_HEURISTICS = [
       "delight",
     ]),
   },
+
+  // ── ICP Deep Research: StoryBrand + Hero's Journey ────────────────
+
+  {
+    source: "knowledge_lattice",
+    leader_name: "Donald Miller",
+    category: "storybrand",
+    core_principle:
+      "The hero is the business owner, not the platform. Every narrative positions the owner as the one who took action.",
+    agent_heuristic:
+      "The hero is the business owner, not Alloro. Every output positions the owner as the one who took action. Never take credit for the result.",
+    anti_pattern:
+      "Never say 'Alloro found' or 'Our agents detected.' The owner discovered it. The owner's business shows it. Credit belongs to the hero.",
+    tags: JSON.stringify([
+      "all",
+      "copy",
+      "email",
+      "notification",
+    ]),
+  },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Joseph Campbell",
+    category: "heros_journey",
+    core_principle:
+      "The hero's journey maps to the product experience: threshold crossing, reward, resurrection.",
+    agent_heuristic:
+      "The Checkup is the threshold crossing. The Monday email is the reward. The first win is the resurrection. Match the emotional tone to the journey stage.",
+    anti_pattern:
+      "Never deliver a resurrection-stage message (celebration, milestone) before the hero has crossed the threshold (completed the checkup). Respect the sequence.",
+    tags: JSON.stringify([
+      "checkup",
+      "monday_email",
+      "intelligence",
+      "dreamweaver",
+    ]),
+  },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Donald Miller",
+    category: "clarity",
+    core_principle:
+      "If you confuse, you lose. Clarity beats cleverness on every surface.",
+    agent_heuristic:
+      "If you confuse, you lose. One message per surface. One CTA per screen. One action per email.",
+    anti_pattern:
+      "Never stack multiple CTAs on one screen or multiple asks in one email. Every additional option reduces the probability of any action.",
+    tags: JSON.stringify([
+      "copy",
+      "email",
+      "dashboard",
+      "cmo",
+    ]),
+  },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Donald Miller",
+    category: "villain_framing",
+    core_principle:
+      "The villain is opacity, not competitors. Frame every finding as revealing what was invisible.",
+    agent_heuristic:
+      "The villain is opacity, not competitors. Frame every finding as 'now you can see what was invisible' not 'your competitor is beating you.'",
+    anti_pattern:
+      "Never position a competitor as the enemy. The enemy is always the lack of visibility. Competitors are context, not threats.",
+    tags: JSON.stringify([
+      "intelligence",
+      "monday_email",
+      "notification",
+      "score_reveal",
+    ]),
+  },
+  {
+    source: "knowledge_lattice",
+    leader_name: "Donald Miller",
+    category: "transformation",
+    core_principle:
+      "Business owners do not want software. They want the end of Sunday night dread. Sell the transformation, not the mechanism.",
+    agent_heuristic:
+      "Business owners don't want software. They want the end of Sunday night dread. Sell the transformation, not the mechanism.",
+    anti_pattern:
+      "Never lead with features, dashboards, or data capabilities. Lead with the feeling: control, clarity, confidence, freedom.",
+    tags: JSON.stringify([
+      "copy",
+      "marketing",
+      "cmo",
+      "conversion",
+    ]),
+  },
 ];
 
 // ── Seed Function ───────────────────────────────────────────────────

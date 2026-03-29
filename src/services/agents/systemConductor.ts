@@ -220,12 +220,63 @@ async function checkConsistency(
 
 // ── Gate 4: Voice ───────────────────────────────────────────────────
 
+/**
+ * Patterns where Alloro takes credit instead of positioning the
+ * business owner as the hero (StoryBrand BrandScript violation).
+ */
+const HERO_VIOLATIONS: { pattern: RegExp; rewrite: string }[] = [
+  {
+    pattern: /\balloro found\b/i,
+    rewrite: '"You discovered" or "Your business shows"',
+  },
+  {
+    pattern: /\balloro detected\b/i,
+    rewrite: '"You can now see" or "Your data reveals"',
+  },
+  {
+    pattern: /\bour agents found\b/i,
+    rewrite: '"Your business shows" or "You discovered"',
+  },
+  {
+    pattern: /\bour system detected\b/i,
+    rewrite: '"Your numbers reveal" or "You can now see"',
+  },
+  {
+    pattern: /\bwe found\b/i,
+    rewrite: '"You discovered" or "Your business shows"',
+  },
+  {
+    pattern: /\bwe detected\b/i,
+    rewrite: '"You can now see" or "Your data reveals"',
+  },
+  {
+    pattern: /\bwe identified\b/i,
+    rewrite: '"You identified" or "Your data shows"',
+  },
+  {
+    pattern: /\balloro identified\b/i,
+    rewrite: '"You identified" or "Your business reveals"',
+  },
+];
+
 function checkVoice(input: ConductorInput): ConductorResult | null {
   const fullText = `${input.headline} ${input.body}`;
 
+  // Standard vocabulary violations
   for (const { pattern, label } of VOICE_VIOLATIONS) {
     if (pattern.test(fullText)) {
       return hold("voice", `Output contains prohibited term: ${label}.`);
+    }
+  }
+
+  // StoryBrand hero check: the business owner is the hero, not Alloro
+  for (const { pattern, rewrite } of HERO_VIOLATIONS) {
+    if (pattern.test(fullText)) {
+      return hold(
+        "voice",
+        `BrandScript violation: output takes credit instead of positioning the owner as the hero. ` +
+          `Found: "${fullText.match(pattern)?.[0]}". Rewrite using: ${rewrite}.`,
+      );
     }
   }
 
