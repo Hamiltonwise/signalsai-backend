@@ -37,18 +37,27 @@ test.describe("Cold Visitor: Checkup to Dashboard", () => {
     await page.screenshot({ path: "test-results/cold-05-gate-filled.png" });
 
     // Step 6: Submit account creation
-    await page.locator("button:has-text('Unlock'), button:has-text('Create')").first().click();
+    await page.locator("button:has-text('See why'), button:has-text('Unlock'), button:has-text('Create'), button:has-text('See what')").first().click();
     await page.screenshot({ path: "test-results/cold-06-submitted.png" });
 
-    // Step 7: Building screen or redirect to dashboard/thank-you
-    await page.waitForURL("**/checkup/building|**/dashboard|**/thank-you", { timeout: 15_000 });
+    // Step 7: Building screen or redirect
+    await page.waitForURL("**/checkup/building|**/owner-profile|**/dashboard|**/thank-you", { timeout: 15_000 });
     await page.screenshot({ path: "test-results/cold-07-transition.png" });
 
-    // Step 8: Eventually lands on dashboard or thank-you with content (not blank)
+    // Step 8: If on owner-profile, skip to dashboard
+    if (page.url().includes("/owner-profile")) {
+      const skipBtn = page.locator("text=/Skip/i").first();
+      if (await skipBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await skipBtn.click();
+      }
+      await page.waitForURL("**/dashboard**", { timeout: 10_000 });
+    }
+
+    // Step 9: Eventually lands on dashboard or thank-you with content (not blank)
     await page.waitForURL("**/dashboard**|**/thank-you**", { timeout: 15_000 });
     const content = page.locator("h1, h2, [class*='card'], [class*='score']").first();
     await expect(content).toBeVisible({ timeout: 10_000 });
-    await page.screenshot({ path: "test-results/cold-08-final.png" });
+    await page.screenshot({ path: "test-results/cold-09-final.png" });
   });
 });
 
