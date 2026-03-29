@@ -60,7 +60,34 @@ async function seed() {
       referral_code: generateReferralCode(),
       patientpath_status: "preview_ready",
       ttfv_response: "yes",
-      first_win_attributed_at: new Date(),
+      first_win_attributed_at: new Date(Date.now() - 5 * 86_400_000),
+      checkup_score: 61,
+      checkup_data: JSON.stringify({
+        score: { composite: 61, localVisibility: 22, onlinePresence: 24, reviewHealth: 15 },
+        market: { city: "Salt Lake City", totalCompetitors: 7, avgRating: 4.5, avgReviews: 142, rank: 4 },
+        topCompetitor: { name: "Wasatch Endodontics", rating: 4.9, reviewCount: 281, placeId: "demo-wasatch" },
+        reviewCount: 58,
+      }),
+      owner_profile: JSON.stringify({
+        vision_3yr: "I want to be the #1 endodontist in SLC and have Fridays off to coach my daughter's soccer team.",
+        sunday_fear: "Losing Dr. Rodriguez as a referral source. She used to send 5 cases a month.",
+        confidence_score: 6,
+        confidence_threat: "DSO buyout offers keep coming. Hard to say no when the business feels like a second job.",
+        people_challenge: "yes",
+        personal_goal: "Fly fish on Fridays. Watch Sophie's games. Stop checking rankings on Sunday nights.",
+        completed_at: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+      }),
+      owner_archetype: "craftsman",
+      archetype_confidence: 0.85,
+      research_brief: JSON.stringify({
+        findings: [
+          "127 of your Google reviews mention 'gentle' or 'painless.' No competitor in your market uses this language on their site.",
+          "You are the only endodontist within 15 miles offering same-day emergency appointments, but it is not on your website.",
+          "Wasatch Endodontics has team photos from 2019. Yours are current and show matching scrubs.",
+        ],
+        irreplaceable_thing: "Same-day emergency access with a reputation for gentle, painless care",
+      }),
+      created_at: new Date(Date.now() - 90 * 86_400_000),
     });
     console.log(`[SeedDemo] Updated org: ${orgId}`);
   } else {
@@ -76,7 +103,34 @@ async function seed() {
         referral_code: generateReferralCode(),
         patientpath_status: "preview_ready",
         ttfv_response: "yes",
-        first_win_attributed_at: new Date(),
+        first_win_attributed_at: new Date(Date.now() - 5 * 86_400_000),
+        checkup_score: 61,
+        checkup_data: JSON.stringify({
+          score: { composite: 61, localVisibility: 22, onlinePresence: 24, reviewHealth: 15 },
+          market: { city: "Salt Lake City", totalCompetitors: 7, avgRating: 4.5, avgReviews: 142, rank: 4 },
+          topCompetitor: { name: "Wasatch Endodontics", rating: 4.9, reviewCount: 281, placeId: "demo-wasatch" },
+          reviewCount: 58,
+        }),
+        owner_profile: JSON.stringify({
+          vision_3yr: "I want to be the #1 endodontist in SLC and have Fridays off to coach my daughter's soccer team.",
+          sunday_fear: "Losing Dr. Rodriguez as a referral source. She used to send 5 cases a month.",
+          confidence_score: 6,
+          confidence_threat: "DSO buyout offers keep coming. Hard to say no when the business feels like a second job.",
+          people_challenge: "yes",
+          personal_goal: "Fly fish on Fridays. Watch Sophie's games. Stop checking rankings on Sunday nights.",
+          completed_at: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+        }),
+        owner_archetype: "craftsman",
+        archetype_confidence: 0.85,
+        research_brief: JSON.stringify({
+          findings: [
+            "127 of your Google reviews mention 'gentle' or 'painless.' No competitor in your market uses this language on their site.",
+            "You are the only endodontist within 15 miles offering same-day emergency appointments, but it is not on your website.",
+            "Wasatch Endodontics has team photos from 2019. Yours are current and show matching scrubs.",
+          ],
+          irreplaceable_thing: "Same-day emergency access with a reputation for gentle, painless care",
+        }),
+        created_at: new Date(Date.now() - 90 * 86_400_000),
       })
       .returning("*");
     orgId = org.id;
@@ -115,25 +169,45 @@ async function seed() {
     .first();
 
   if (!existingSnapshot) {
-    await db("weekly_ranking_snapshots").insert({
-      org_id: orgId,
-      week_start: weekStart,
-      position: 4,
-      keyword: "endodontist salt lake city",
-      bullets: JSON.stringify([
-        "You rank #4 for endodontist in Salt Lake City.",
-        "Wasatch Endodontics has 223 more reviews than you.",
-        "At your current pace, that gap grows by 8 reviews per month.",
-      ]),
-      competitor_note: "Wasatch Endodontics added 6 reviews this week.",
-      finding_headline: "Dr. Demo, Wasatch Endodontics is pulling away.",
-      dollar_figure: 3200,
-      competitor_position: 1,
-      competitor_name: "Wasatch Endodontics",
-      competitor_review_count: 281,
-      client_review_count: 58,
-    });
-    console.log("[SeedDemo] Seeded ranking snapshot");
+    // Seed 8 weeks of snapshots for streak and delta data
+    const snapshots = [
+      { weeksAgo: 7, position: 7, clientReviews: 41, compReviews: 265, score: 48 },
+      { weeksAgo: 6, position: 6, clientReviews: 43, compReviews: 268, score: 51 },
+      { weeksAgo: 5, position: 6, clientReviews: 45, compReviews: 270, score: 53 },
+      { weeksAgo: 4, position: 5, clientReviews: 48, compReviews: 273, score: 56 },
+      { weeksAgo: 3, position: 5, clientReviews: 51, compReviews: 275, score: 58 },
+      { weeksAgo: 2, position: 4, clientReviews: 54, compReviews: 278, score: 59 },
+      { weeksAgo: 1, position: 4, clientReviews: 56, compReviews: 280, score: 60 },
+      { weeksAgo: 0, position: 4, clientReviews: 58, compReviews: 281, score: 61 },
+    ];
+
+    for (const s of snapshots) {
+      const ws = new Date();
+      ws.setDate(ws.getDate() - ws.getDay() + 1 - s.weeksAgo * 7);
+      const weekStartStr = ws.toISOString().split("T")[0];
+
+      await db("weekly_ranking_snapshots").insert({
+        org_id: orgId,
+        week_start: weekStartStr,
+        position: s.position,
+        rank_score: s.score,
+        keyword: "endodontist salt lake city",
+        bullets: JSON.stringify([
+          `You rank #${s.position} for endodontist in Salt Lake City.`,
+          `Wasatch Endodontics has ${s.compReviews - s.clientReviews} more reviews than you.`,
+        ]),
+        competitor_note: "Wasatch Endodontics continues steady review growth.",
+        finding_headline: s.position <= 4
+          ? "You moved up. Here's what's next."
+          : "Wasatch Endodontics is pulling away.",
+        dollar_figure: Math.round((s.compReviews - s.clientReviews) * 14),
+        competitor_position: 1,
+        competitor_name: "Wasatch Endodontics",
+        competitor_review_count: s.compReviews,
+        client_review_count: s.clientReviews,
+      }).catch(() => {}); // Ignore duplicate week conflicts
+    }
+    console.log("[SeedDemo] Seeded 8 weeks of ranking snapshots (streak + delta)");
   }
 
   // ── 5. Seed referral_sources (if table exists) ──
