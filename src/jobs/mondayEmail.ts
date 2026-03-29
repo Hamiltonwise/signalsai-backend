@@ -12,7 +12,7 @@
 
 import { db } from "../database/connection";
 import { sendMondayBriefEmail } from "../emails/templates/MondayBriefEmail";
-import { getTopAgentFinding } from "../services/behavioralIntelligence";
+import { getMostShareableFinding } from "../services/behavioralIntelligence";
 
 /**
  * Send Monday email for a single org.
@@ -60,11 +60,13 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   // 2. Build payload
   const weekNumber = Math.min(4, Math.ceil(new Date().getDate() / 7));
 
-  // Check agent signal bus for highest-priority finding from last 7 days
-  const topFinding = await getTopAgentFinding(orgId, 7);
+  // Check agent signal bus for the most shareable finding from last 7 days
+  // The Monday email is designed to be phone-shown at study clubs.
+  // Shareability > priority for the email headline.
+  const topFinding = await getMostShareableFinding(orgId, 7);
 
-  // Finding headline: prefer high-priority agent finding over snapshot
-  const findingHeadline = (topFinding && topFinding.priority >= 5)
+  // Finding headline: prefer shareable agent finding over snapshot
+  const findingHeadline = (topFinding && (topFinding.shareability >= 6 || topFinding.priority >= 5))
     ? topFinding.headline
     : snapshot.finding_headline || "Your market position this week";
 

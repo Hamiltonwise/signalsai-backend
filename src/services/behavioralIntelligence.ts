@@ -159,7 +159,8 @@ export interface AgentFinding {
   agentName: string;
   findingType: string;
   priority: number;       // 1 (low) to 10 (critical). 8+ means "requires human action within 24h"
-  headline: string;       // Human-readable, email-ready
+  shareability: number;   // 1 (internal only) to 10 (study club bomb). A finding is shareable if it names a person, includes a dollar figure, and would make a stranger stop.
+  headline: string;       // Human-readable, email-ready, phone-showable
   detail: string;
   orgId: number;
   dollarImpact?: number;
@@ -182,6 +183,7 @@ export async function recordAgentFinding(finding: AgentFinding): Promise<void> {
       priority: finding.priority,
       headline: finding.headline,
       detail: finding.detail,
+      shareability: finding.shareability ?? 1,
       dollar_impact: finding.dollarImpact ?? null,
       competitor_name: finding.competitorName ?? null,
       action_url: finding.actionUrl ?? null,
@@ -223,6 +225,53 @@ export async function getTopAgentFinding(
     agentName: best.props.agent_name,
     findingType: best.props.finding_type,
     priority: best.priority,
+    shareability: best.props.shareability ?? 1,
+    headline: best.props.headline,
+    detail: best.props.detail,
+    orgId,
+    dollarImpact: best.props.dollar_impact,
+    competitorName: best.props.competitor_name,
+    actionUrl: best.props.action_url,
+  };
+}
+
+/**
+ * Get the most shareable finding for the Monday email.
+ * Optimizes for "study club bomb" potential: findings that get phone-shown.
+ * A finding is shareable if it names a person, includes a dollar figure, and would make a stranger stop.
+ */
+export async function getMostShareableFinding(
+  orgId: number,
+  daysBack: number = 7
+): Promise<AgentFinding | null> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - daysBack);
+
+  const rows = await db("behavioral_events")
+    .where({ event_type: "agent.finding", org_id: orgId })
+    .where("created_at", ">=", cutoff)
+    .orderBy("created_at", "desc")
+    .limit(20)
+    .select("properties");
+
+  if (rows.length === 0) return null;
+
+  let best: { props: any; score: number } | null = null;
+  for (const row of rows) {
+    const props = typeof row.properties === "string" ? JSON.parse(row.properties) : row.properties || {};
+    // Composite: shareability weighted 2x, priority 1x
+    const score = (props.shareability ?? 1) * 2 + (props.priority ?? 0);
+    if (!best || score > best.score) {
+      best = { props, score };
+    }
+  }
+
+  if (!best) return null;
+  return {
+    agentName: best.props.agent_name,
+    findingType: best.props.finding_type,
+    priority: best.props.priority ?? 0,
+    shareability: best.props.shareability ?? 1,
     headline: best.props.headline,
     detail: best.props.detail,
     orgId,
@@ -260,6 +309,7 @@ export async function getAgentFindings(
         agentName: props.agent_name,
         findingType: props.finding_type,
         priority: props.priority ?? 0,
+        shareability: props.shareability ?? 1,
         headline: props.headline,
         detail: props.detail,
         orgId: row.org_id,

@@ -282,6 +282,12 @@ ${competitorText || "None found"}`,
       patientpath_preview_url: previewUrl,
     });
 
+    // Queue physical card (Lob) for when site goes live
+    const { queueLobCard } = await import("./lobCardTrigger");
+    await queueLobCard(orgId).catch((err: any) => {
+      console.error(`[PatientPath] Lob card queue failed for org ${orgId}:`, err.message);
+    });
+
     // Write to notifications table (feeds the bell popover)
     await db("notifications").insert({
       organization_id: orgId,
