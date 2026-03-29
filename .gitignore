@@ -53,3 +53,4 @@ signals-google-key.json
 # Playwright test results
 test-results/
 playwright-report/
+public/

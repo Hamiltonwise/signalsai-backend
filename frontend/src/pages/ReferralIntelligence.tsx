@@ -240,25 +240,25 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-8">
       <h3 className="text-lg font-bold text-[#212D40] text-center mb-2">
-        See which GPs are sending you clients
+        See who sends you business
       </h3>
       <p className="text-sm text-gray-500 text-center mb-6">
-        Upload your scheduling data. One file is all it takes.
+        Drop anything that shows who your customers come from.
+        A spreadsheet, a screenshot, a photo of a report. Alloro reads it.
       </p>
 
-      {/* Three equal upload options */}
+      {/* Three universal import options */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Option 1: Drag and drop / file input */}
         <button
           type="button"
           onClick={onUpload}
           className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all"
         >
           <Upload className="h-6 w-6 text-[#D56753]" />
-          <span className="text-sm font-semibold text-[#212D40]">Drag and drop any file</span>
+          <span className="text-sm font-semibold text-[#212D40]">Drop a file</span>
+          <span className="text-[11px] text-gray-400">CSV, Excel, PDF, any format</span>
         </button>
 
-        {/* Option 2: Take a photo (mobile) / Upload image (desktop) */}
         <button
           type="button"
           onClick={onUpload}
@@ -266,49 +266,26 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
         >
           <Camera className="h-6 w-6 text-[#D56753]" />
           <span className="text-sm font-semibold text-[#212D40]">
-            {isTouchDevice ? "Take a photo" : "Upload an image"}
+            {isTouchDevice ? "Take a photo" : "Upload a screenshot"}
           </span>
+          <span className="text-[11px] text-gray-400">Of a report, spreadsheet, or screen</span>
         </button>
 
-        {/* Option 3: Paste text */}
         <button
           type="button"
           onClick={onUpload}
           className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all"
         >
           <FileText className="h-6 w-6 text-[#D56753]" />
-          <span className="text-sm font-semibold text-[#212D40]">Paste text</span>
+          <span className="text-sm font-semibold text-[#212D40]">Paste anything</span>
+          <span className="text-[11px] text-gray-400">Names, numbers, notes from any source</span>
         </button>
       </div>
 
       <p className="text-xs text-gray-400 text-center mt-4">
-        Works with most scheduling and management systems, and any spreadsheet format.
+        Alloro figures out what the data means. You don't need specific columns or formats.
+        If it shows who sends you business, that's enough.
       </p>
-
-      {/* PMS export guides -- the #1 activation blocker per Sentiment Lattice */}
-      <details className="mt-6">
-        <summary className="text-xs font-semibold text-[#D56753] cursor-pointer hover:underline">
-          How to export from your system
-        </summary>
-        <div className="mt-3 space-y-3 text-xs text-gray-500">
-          <div>
-            <p className="font-semibold text-[#212D40]">Dentrix</p>
-            <p>Reports &gt; Referral Analysis &gt; Date Range: Last 12 Months &gt; Export to CSV. The file will have patient name, referring doctor, and date columns.</p>
-          </div>
-          <div>
-            <p className="font-semibold text-[#212D40]">Eaglesoft</p>
-            <p>Reports &gt; Practice Management &gt; Referral Source Report &gt; Select date range &gt; Export. Save as CSV or Excel.</p>
-          </div>
-          <div>
-            <p className="font-semibold text-[#212D40]">Open Dental</p>
-            <p>Reports &gt; Standard &gt; Referral Analysis &gt; Set date range &gt; Click "Export." The file includes referral source, patient count, and dates.</p>
-          </div>
-          <div>
-            <p className="font-semibold text-[#212D40]">Any other system</p>
-            <p>Export any report that includes referral source and date. Four columns are all Alloro needs: patient ID, referral source, date, and procedure type. Even two columns (source + date) work.</p>
-          </div>
-        </div>
-      </details>
     </div>
   );
 }
