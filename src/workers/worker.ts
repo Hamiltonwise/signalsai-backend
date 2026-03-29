@@ -58,6 +58,7 @@ import { processTrialAutoConvert } from "./processors/trialAutoConvert.processor
 import { processVideoStatus } from "./processors/videoStatus.processor";
 import { processStateOfClarity } from "./processors/stateOfClarity.processor";
 import { runProductEvolution } from "../jobs/productEvolution";
+import { runCollectiveIntelligence } from "../services/collectiveIntelligence";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -780,6 +781,22 @@ const stateOfClarityWorker = new Worker(
   }
 );
 
+// Collective Intelligence Engine (weekly Sunday 8 PM PT)
+// Layer 5: The intelligence network. Analyzes patterns across ALL accounts.
+// Discovers heuristics no individual business could find alone.
+// Runs BEFORE Product Evolution so evolution proposals can reference network data.
+const collectiveIntelligenceWorker = new Worker(
+  "minds-collective-intelligence",
+  async () => {
+    await runCollectiveIntelligence();
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Product Evolution Engine (weekly Sunday 11 PM PT)
 // The self-improving product. Reads its own usage data, identifies friction,
 // reads source code, and drafts improvement proposals for Dave.
@@ -796,7 +813,7 @@ const productEvolutionWorker = new Worker(
 );
 
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, dreamweaverWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker, bugTriageWorker, strategicIntelligenceWorker, partnershipsWorker, csAgentWorker, trialEmailWorker, trialAutoConvertWorker, videoStatusWorker, stateOfClarityWorker, productEvolutionWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, dreamweaverWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker, bugTriageWorker, strategicIntelligenceWorker, partnershipsWorker, csAgentWorker, trialEmailWorker, trialAutoConvertWorker, videoStatusWorker, stateOfClarityWorker, collectiveIntelligenceWorker, productEvolutionWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -863,6 +880,7 @@ async function shutdown(): Promise<void> {
   await trialAutoConvertWorker.close();
   await videoStatusWorker.close();
   await stateOfClarityWorker.close();
+  await collectiveIntelligenceWorker.close();
   await productEvolutionWorker.close();
   await closeWbQueues();
   await connection.quit();

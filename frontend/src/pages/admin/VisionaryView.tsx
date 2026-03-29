@@ -1,13 +1,14 @@
 /**
  * Visionary View -- Corey's CEO War Room
  *
- * Open it, see everything in 60 seconds, close it. Six panels:
+ * Open it, see everything in 60 seconds, close it. Seven panels:
  * 1. Morning Briefing (top, full width)
- * 2. Revenue (left column)
- * 3. Pipeline Funnel (right column)
- * 4. Needs Your Decision (full width, red accent)
- * 5. Agent Health (bottom left)
- * 6. Portfolio Score (bottom right)
+ * 2. The Scoreboard (CEO north star tracking, full width)
+ * 3. Revenue (left column)
+ * 4. Pipeline Funnel (right column)
+ * 5. Needs Your Decision (full width, red accent)
+ * 6. Agent Health (bottom left)
+ * 7. Portfolio Score (bottom right)
  */
 
 import { useState } from "react";
@@ -21,6 +22,7 @@ import {
   Activity,
   Shield,
   Sun,
+  Trophy,
 } from "lucide-react";
 import FounderMode from "./FounderMode";
 import {} from "react-router-dom";
@@ -567,6 +569,248 @@ function PortfolioScorePanel({
   );
 }
 
+// Panel 7: The Scoreboard (CEO North Star Tracking)
+
+const RECORDS_TO_BEAT = [
+  {
+    record: "Most capital-efficient vertical SaaS",
+    who: "Veeva ($7M to $32B)",
+    theirTime: "6 years",
+    alloroTarget: "3 years",
+  },
+  {
+    record: "Smallest team at unicorn (revenue)",
+    who: "Instagram (13 people)",
+    theirTime: "2 years",
+    alloroTarget: "< 3 years, 3 people",
+  },
+  {
+    record: "Fastest bootstrapped to $1B",
+    who: "Zapier ($2.68M raised)",
+    theirTime: "10 years",
+    alloroTarget: "3 years",
+  },
+  {
+    record: "First AI-agent-operated unicorn",
+    who: "Nobody",
+    theirTime: "Never done",
+    alloroTarget: "First",
+  },
+];
+
+interface ConfidenceScore {
+  label: string;
+  value: number;
+  color: string;
+}
+
+const CONFIDENCE_SCORES: ConfidenceScore[] = [
+  { label: "FYM Confidence", value: 71, color: "bg-emerald-500" },
+  { label: "Unicorn Confidence", value: 58, color: "bg-[#D56753]" },
+  { label: "Rice Cooker (Autonomous Ops)", value: 74, color: "bg-blue-500" },
+];
+
+interface Milestone {
+  name: string;
+  target: string;
+  progress: string;
+  status: "done" | "in-progress" | "upcoming";
+}
+
+function buildMilestones(orgCount: number): Milestone[] {
+  const aaeDate = new Date("2026-04-14T00:00:00");
+  const now = new Date();
+  const daysUntilAAE = Math.max(
+    0,
+    Math.ceil((aaeDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  );
+  const aaeStatus: Milestone["status"] =
+    daysUntilAAE <= 0 ? "done" : "in-progress";
+
+  return [
+    {
+      name: "AAE Demo",
+      target: "April 14, 2026",
+      progress: daysUntilAAE <= 0 ? "Complete" : `${daysUntilAAE} days left`,
+      status: aaeStatus,
+    },
+    {
+      name: "50 Checkups",
+      target: "50 submitted",
+      progress: `${Math.min(orgCount, 50)} / 50`,
+      status: orgCount >= 50 ? "done" : orgCount > 0 ? "in-progress" : "upcoming",
+    },
+    {
+      name: "$50K MRR",
+      target: "$50,000/mo",
+      progress: `${orgCount} paying orgs`,
+      status: "upcoming",
+    },
+    {
+      name: "100 Clients",
+      target: "100 organizations",
+      progress: `${orgCount} / 100`,
+      status: orgCount >= 100 ? "done" : orgCount > 0 ? "in-progress" : "upcoming",
+    },
+    {
+      name: "First State of Clarity Report",
+      target: "At 50 checkups",
+      progress: orgCount >= 50 ? "Ready" : "Waiting for 50 checkups",
+      status: orgCount >= 50 ? "in-progress" : "upcoming",
+    },
+    {
+      name: "$500K MRR",
+      target: "$500,000/mo",
+      progress: "Milestone",
+      status: "upcoming",
+    },
+    {
+      name: "Anthropic Customer Story",
+      target: "At 12 months of results",
+      progress: "Upcoming",
+      status: "upcoming",
+    },
+  ];
+}
+
+function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
+  const milestones = buildMilestones(orgs.length);
+
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/60 via-white to-orange-50/40 p-8 shadow-sm">
+      <PanelHeader icon={Trophy} label="The Scoreboard" iconColor="text-amber-600" />
+
+      {/* Records to Beat */}
+      <div className="mb-8">
+        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+          Records to Beat
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Record
+                </th>
+                <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Who
+                </th>
+                <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Their Time
+                </th>
+                <th className="pb-2 text-[10px] font-bold uppercase tracking-wider text-[#D56753]">
+                  Alloro Target
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {RECORDS_TO_BEAT.map((r) => (
+                <tr key={r.record} className="border-b border-gray-100 last:border-0">
+                  <td className="py-2.5 pr-4 text-xs font-medium text-[#212D40]">
+                    {r.record}
+                  </td>
+                  <td className="py-2.5 pr-4 text-xs text-gray-500">{r.who}</td>
+                  <td className="py-2.5 pr-4 text-xs text-gray-500">{r.theirTime}</td>
+                  <td className="py-2.5 text-xs font-semibold text-[#D56753]">
+                    {r.alloroTarget}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Live Confidence Scores */}
+      <div className="mb-8">
+        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+          Live Confidence Scores
+        </p>
+        <div className="space-y-3">
+          {CONFIDENCE_SCORES.map((score) => (
+            <div key={score.label}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-gray-600">
+                  {score.label}
+                </span>
+                <span className="text-sm font-bold text-[#212D40]">
+                  {score.value}%
+                </span>
+              </div>
+              <div className="h-2.5 w-full rounded-full bg-gray-100">
+                <div
+                  className={`h-2.5 rounded-full ${score.color} transition-all duration-700`}
+                  style={{ width: `${score.value}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-gray-400 mt-2 italic">
+          Scores from internal calibration. Updated quarterly.
+        </p>
+      </div>
+
+      {/* Milestone Timeline */}
+      <div>
+        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+          Milestone Timeline
+        </p>
+        <div className="space-y-2">
+          {milestones.map((m) => (
+            <div
+              key={m.name}
+              className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
+                m.status === "done"
+                  ? "bg-emerald-50 border-emerald-200"
+                  : m.status === "in-progress"
+                    ? "bg-white border-amber-200"
+                    : "bg-gray-50 border-gray-100"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                    m.status === "done"
+                      ? "bg-emerald-500"
+                      : m.status === "in-progress"
+                        ? "bg-amber-400"
+                        : "bg-gray-300"
+                  }`}
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#212D40] truncate">
+                    {m.name}
+                  </p>
+                  <p className="text-[10px] text-gray-400">{m.target}</p>
+                </div>
+              </div>
+              <div className="text-right shrink-0 ml-3">
+                <p className="text-xs font-bold text-[#212D40]">{m.progress}</p>
+                <p
+                  className={`text-[10px] font-bold uppercase ${
+                    m.status === "done"
+                      ? "text-emerald-600"
+                      : m.status === "in-progress"
+                        ? "text-amber-600"
+                        : "text-gray-400"
+                  }`}
+                >
+                  {m.status === "done"
+                    ? "Complete"
+                    : m.status === "in-progress"
+                      ? "In Progress"
+                      : "Upcoming"}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- Main Component --------------------------------------------------------
 
 export default function VisionaryView() {
@@ -630,7 +874,10 @@ export default function VisionaryView() {
         {/* Panel 1: Morning Briefing -- full width */}
         <MorningBriefingPanel healthData={healthData} />
 
-        {/* Panels 2 + 3: Revenue | Pipeline -- side by side */}
+        {/* Panel 2: The Scoreboard -- full width */}
+        <ScoreboardPanel orgs={orgs} />
+
+        {/* Panels 3 + 4: Revenue | Pipeline -- side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RevenuePanel orgs={orgs} />
           <PipelineFunnelPanel orgs={orgs} healthData={healthData} />

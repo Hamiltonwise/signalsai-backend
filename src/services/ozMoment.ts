@@ -25,6 +25,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { getPlaceDetails } from "../controllers/places/feature-services/GooglePlacesApiService";
+import { db } from "../database/connection";
 
 let anthropic: Anthropic | null = null;
 function getAnthropic(): Anthropic {
@@ -173,7 +174,28 @@ export async function generateOzMoments(data: OzMomentData): Promise<OzMoment[]>
     );
   }
 
-  const brief = briefParts.filter(Boolean).join("\n");
+  // Layer 5: Inject collective intelligence heuristics
+  // These are patterns discovered across ALL Alloro accounts.
+  // No individual business owner could know these. Only the network can.
+  let networkIntelligence = "";
+  try {
+    const hasHeuristics = await db.schema.hasTable("knowledge_heuristics");
+    if (hasHeuristics) {
+      const heuristics = await db("knowledge_heuristics")
+        .where("source", "collective_intelligence")
+        .where("confidence", ">=", 0.5)
+        .orderBy("confidence", "desc")
+        .limit(3)
+        .select("insight", "actionable", "sample_size");
+
+      if (heuristics.length > 0) {
+        networkIntelligence = "\n\nNETWORK INTELLIGENCE (patterns across all Alloro businesses, use these to make insights even more specific):\n" +
+          heuristics.map((h: any) => `- ${h.insight} (n=${h.sample_size})`).join("\n");
+      }
+    }
+  } catch {}
+
+  const brief = briefParts.filter(Boolean).join("\n") + networkIntelligence;
 
   try {
     const response = await getAnthropic().messages.create({
@@ -182,9 +204,9 @@ export async function generateOzMoments(data: OzMomentData): Promise<OzMoment[]>
       messages: [
         {
           role: "user",
-          content: `You are a competitive intelligence analyst. A business owner just entered their business name into a free tool. You have 10 seconds of their attention. Your job is to say something SO specific about their business that they stop and think "how did they know that?"
+          content: `You are a competitive intelligence analyst with access to aggregate data from hundreds of businesses. A business owner just entered their business name into a free tool. You have 10 seconds of their attention. Your job is to say something SO specific about their business that they stop and think "how did they know that?"
 
-Here is everything we know about their business and market:
+Here is everything we know about their business, their market, and patterns from our network:
 
 ${brief}
 
