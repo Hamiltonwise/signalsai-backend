@@ -51,6 +51,7 @@ const ReviewRequests = React.lazy(() => import("./pages/dashboard/ReviewRequests
 const DashboardSettings = React.lazy(() => import("./pages/dashboard/DashboardSettings"));
 const IntelligenceDashboard = React.lazy(() => import("./pages/dashboard/IntelligenceDashboard"));
 const GPDiscoveryPage = React.lazy(() => import("./pages/partner/GPDiscoveryPage"));
+const CampaignIntelligence = React.lazy(() => import("./pages/partner/CampaignIntelligence"));
 const Changelog = React.lazy(() => import("./pages/Changelog"));
 const ReferralProgram = React.lazy(() => import("./pages/ReferralProgram"));
 
@@ -236,6 +237,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <PartnerPortal />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/partner/campaigns"
+                element={
+                  <ProtectedRoute>
+                    <CampaignIntelligence />
                   </ProtectedRoute>
                 }
               />
