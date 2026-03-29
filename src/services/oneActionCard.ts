@@ -185,8 +185,8 @@ async function checkPatientPath(orgId: number): Promise<OneActionCard | null> {
 
   if (org.patientpath_status === "preview_ready") {
     return {
-      headline: "Your PatientPath website is ready to review.",
-      body: "We built it from your Google reviews, your market data, and what makes your practice irreplaceable. Take a look.",
+      headline: "Your website is ready to review.",
+      body: "We built it from your Google reviews, your market data, and what makes your business stand out. Take a look.",
       action_text: "Preview your site",
       action_url: "/dashboard/website",
       priority_level: 4,

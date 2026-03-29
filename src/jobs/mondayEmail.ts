@@ -32,8 +32,13 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   const user = await db("users").where({ id: orgUser.user_id }).first();
   if (!user?.email) return false;
 
-  const doctorName = [user.first_name, user.last_name].filter(Boolean).join(" ") || "Doctor";
-  const doctorLastName = user.last_name || doctorName;
+  const ownerName = [user.first_name, user.last_name].filter(Boolean).join(" ") || org.name || "there";
+  const ownerLastName = user.last_name || ownerName;
+
+  // Load vocabulary for this org's vertical
+  const vocabConfig = await db("vocabulary_configs").where({ org_id: orgId }).first();
+  const customerTerm = vocabConfig?.config?.patientTerm || "customer";
+  const competitorFallback = vocabConfig?.config?.competitorTerm || "the #1 competitor";
 
   // 1. Fetch most recent snapshot
   const snapshot = await db("weekly_ranking_snapshots")
@@ -58,7 +63,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   const findingHeadline = snapshot.finding_headline || "Your market position this week";
 
   // Subject line: ALWAYS specific
-  const subjectLine = `${doctorLastName}, ${findingHeadline.toLowerCase()}`;
+  const subjectLine = `${ownerLastName}, ${findingHeadline.toLowerCase()}`;
 
   // Finding body: bullets + autonomous action line
   let findingBody = bullets.join("\n\n");
@@ -94,7 +99,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
   if (reviewGap > 0 && reviewGap <= 15) {
     const needed = Math.min(reviewGap, 3);
-    fiveMinuteFix = `5-MINUTE FIX: Send a review request to ${needed} patient${needed !== 1 ? "s" : ""} who visited this week. You're ${reviewGap} review${reviewGap !== 1 ? "s" : ""} behind ${snapshot.competitor_name || "the #1 practice"}. Three reviews per week closes that gap in ${Math.ceil(reviewGap / 3)} weeks.`;
+    fiveMinuteFix = `5-MINUTE FIX: Send a review request to ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} from this week. You're ${reviewGap} review${reviewGap !== 1 ? "s" : ""} behind ${snapshot.competitor_name || competitorFallback}. Three reviews per week closes that gap in ${Math.ceil(reviewGap / 3)} weeks.`;
   } else if (reviewGap > 15) {
     fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. Consistent weekly reviews compound. At 3/week, you close a ${reviewGap}-review gap by ${new Date(Date.now() + Math.ceil(reviewGap / 3) * 7 * 86400000).toLocaleDateString("en-US", { month: "long", year: "numeric" })}.`;
   } else if (steadyWeeks >= 3) {
@@ -150,8 +155,8 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     const success = await sendMondayBriefEmail({
       recipientEmail: user.email,
       practiceName: org.name,
-      doctorName,
-      doctorLastName,
+      doctorName: ownerName,
+      doctorLastName: ownerLastName,
       subjectLine,
       findingHeadline,
       findingBody,

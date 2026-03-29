@@ -47,7 +47,9 @@ export async function generateSnapshotForOrg(orgId: number): Promise<boolean> {
     .where({ organization_id: orgId, is_primary: true })
     .first();
 
-  const specialty = org.organization_type === "health" ? "dentist" : "business";
+  // Derive search specialty from GBP category or org type
+  const gbpCategory = location?.business_data?.category || org.specialty || "";
+  const specialty = gbpCategory || (org.organization_type === "health" ? org.name : "business");
   const address = location?.business_data?.address || org.operational_jurisdiction || "";
 
   // 1. Query Places API for current position
