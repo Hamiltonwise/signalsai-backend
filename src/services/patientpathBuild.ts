@@ -298,6 +298,15 @@ ${competitorText || "None found"}`,
     }).catch(() => {});
 
     console.log(`[PatientPath] Complete for ${org.name}: "${researchBrief.irreplaceable_thing?.slice(0, 80)}..."`);
+
+    // Play 3: The Will Guidara Moment -- mail a physical card
+    try {
+      const { sendPatientPathCard } = await import("./lobCardService");
+      await sendPatientPathCard(orgId);
+    } catch (e) {
+      console.warn(`[PatientPath] Lob card skipped:`, (e as Error).message);
+    }
+
     return true;
 
   } catch (err: any) {
