@@ -582,7 +582,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               { factor: "Review Count", weight: "20%", direction: "positive" },
             ],
             render_text:
-              "Your practice is performing well but has room for improvement in review velocity.",
+              "Your business is performing well but has room for improvement in review velocity.",
             verdict: "Good standing with growth opportunities",
             confidence: 85,
             top_recommendations: [
@@ -810,7 +810,7 @@ function PerformanceDashboard({
           }
           trend={scoreTrend?.value}
           dir={scoreTrend?.dir}
-          tooltip="Alloro's proprietary score measuring your practice's overall digital authority and local search dominance."
+          tooltip="Alloro's proprietary score measuring your business's overall digital authority and local search dominance."
         />
       </section>
 

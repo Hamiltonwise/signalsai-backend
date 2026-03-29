@@ -20,6 +20,7 @@ import { db } from "../database/connection";
 import { getMindsQueue } from "../workers/queues";
 import { detectPreset } from "../services/vocabularyAutoMapper";
 import { attributeCheckupToOrg } from "../services/firstPatientAttribution";
+import { trackReferralSignup } from "../services/referralReward";
 
 const checkupRoutes = express.Router();
 
@@ -60,6 +61,12 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     }
 
     const marketLocation = state ? `${city}, ${state}` : city;
+
+    // Log scan start (funnel measurement)
+    BehavioralEventModel.create({
+      event_type: "checkup.scan_started",
+      properties: { name, city, category: category || null, placeId: placeId || null },
+    }).catch(() => {});
     const specialty = category || name || "local business";
 
     // Specialty-aware economics: use vertical avgCaseValue for dollar estimates
@@ -518,6 +525,16 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       console.error("[Checkup] Surprise findings failed (non-blocking):", sfErr instanceof Error ? sfErr.message : sfErr);
     }
 
+    // Log scan completed (funnel measurement)
+    BehavioralEventModel.create({
+      event_type: "checkup.scan_completed",
+      properties: {
+        name, city, score: compositeScore, rank, competitors: otherCompetitors.length,
+        topCompetitor: topCompetitor?.name || null,
+        ozMoments: ozMoments.length, surpriseFindings: surpriseFindings.length,
+      },
+    }).catch(() => {});
+
     console.log(
       `[Checkup] Score: ${compositeScore} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: ✓" : ""}${ozMoments.length > 0 ? ` | Oz: ${ozMoments.length}` : ""}${surpriseFindings.length > 0 ? ` | Surprise: ${surpriseFindings.length}` : ""}`
     );
@@ -943,6 +960,24 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
     }).catch(() => {});
 
     console.log(`[Checkup] Account created: ${normalizedEmail} -> org ${org.id}`);
+
+    // Referral tracking: if a ref code was passed, link the referrer and notify them
+    const refCodeParam = req.body.ref_code || req.body.source_channel || req.query.ref;
+    if (refCodeParam && typeof refCodeParam === "string") {
+      try {
+        const referrerOrg = await OrganizationModel.findByReferralCode(refCodeParam);
+        if (referrerOrg && referrerOrg.id !== org.id) {
+          // Set referred_by_org_id on the new org
+          await db("organizations").where({ id: org.id }).update({
+            referred_by_org_id: referrerOrg.id,
+          });
+          // Track the referral signup
+          await trackReferralSignup(referrerOrg.id, org.id, refCodeParam);
+        }
+      } catch (refErr: any) {
+        console.error("[Checkup] Referral tracking error (non-blocking):", refErr.message);
+      }
+    }
 
     // Auto-configure vocabulary from GBP category
     try {

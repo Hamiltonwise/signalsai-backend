@@ -46,10 +46,10 @@ export const Settings: React.FC = () => {
               </div>
               <div className="text-left">
                 <h1 className="text-3xl lg:text-5xl font-black font-heading text-alloro-navy tracking-tighter leading-none mb-2">
-                  {userProfile?.practiceName || "Your Practice"}
+                  {userProfile?.practiceName || "Your Business"}
                 </h1>
                 <p className="text-slate-500 text-sm font-medium">
-                  Manage your practice details and connect your Google
+                  Manage your business details and connect your Google
                   integrations
                 </p>
               </div>

@@ -12,6 +12,7 @@ import { authenticateToken } from "../middleware/auth";
 import { rbacMiddleware, requireRole, type RBACRequest } from "../middleware/rbac";
 import * as BillingController from "../controllers/billing/BillingController";
 import { db } from "../database/connection";
+import { createSetupIntent, confirmCardOnFile } from "../services/trialCardCapture";
 
 const billingRoutes = express.Router();
 
@@ -143,6 +144,54 @@ billingRoutes.post(
       return res.status(500).json({ success: false });
     }
   },
+);
+
+// POST /api/billing/setup-intent — Create a Stripe SetupIntent for card-on-file capture
+billingRoutes.post(
+  "/setup-intent",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin"),
+  async (req: RBACRequest, res) => {
+    try {
+      const orgId = req.organizationId;
+      if (!orgId) return res.status(400).json({ success: false, error: "Organization required" });
+
+      const result = await createSetupIntent(orgId);
+      if (!result) {
+        return res.status(503).json({ success: false, error: "Billing is not configured" });
+      }
+      return res.json({ success: true, clientSecret: result.clientSecret });
+    } catch (err: any) {
+      console.error("[Billing] SetupIntent error:", err.message);
+      return res.status(500).json({ success: false, error: "Failed to create setup intent" });
+    }
+  }
+);
+
+// POST /api/billing/confirm-card — Confirm a card on file after SetupIntent completes
+billingRoutes.post(
+  "/confirm-card",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin"),
+  async (req: RBACRequest, res) => {
+    try {
+      const orgId = req.organizationId;
+      if (!orgId) return res.status(400).json({ success: false, error: "Organization required" });
+
+      const { setupIntentId } = req.body;
+      if (!setupIntentId) {
+        return res.status(400).json({ success: false, error: "setupIntentId required" });
+      }
+
+      const confirmed = await confirmCardOnFile(orgId, setupIntentId);
+      return res.json({ success: confirmed });
+    } catch (err: any) {
+      console.error("[Billing] Confirm card error:", err.message);
+      return res.status(500).json({ success: false, error: "Failed to confirm card" });
+    }
+  }
 );
 
 // POST /api/billing/create-portal-session — Alias for portal (used by cancel flow)

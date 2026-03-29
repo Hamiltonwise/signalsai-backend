@@ -650,7 +650,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
   // Use wizard demo trajectory or real trajectory
   const trajectory = isWizardActive
     ? (wizardDemoData?.prooflineData?.trajectory ??
-      "Your practice is showing <hl>strong momentum</hl> this month. New patient starts are up 12% and your local visibility continues to improve.")
+      "Your business is showing <hl>strong momentum</hl> this month. New customer activity is up 12% and your local visibility continues to improve.")
     : prooflineResult?.trajectory;
 
   // Use wizard demo user profile or real user profile for lastName
@@ -849,10 +849,10 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             <IntelligencePulse />
             <div className="flex flex-col text-left">
               <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
-                Practice Hub
+                Business Hub
               </h1>
               <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
-                Overview of your Practice
+                Overview of your Business
               </span>
             </div>
           </div>
@@ -920,7 +920,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             </div>
           ) : (
             <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
-              Welcome to your practice dashboard. We're loading your latest
+              Welcome to your dashboard. We're loading your latest
               insights.
             </p>
           )}

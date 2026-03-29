@@ -21,6 +21,7 @@ import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { sendEmail } from "../../emails/emailService";
 import { isStripeConfigured } from "../../config/stripe";
 import { BehavioralEventModel } from "../../models/BehavioralEventModel";
+import { applyReferralReward } from "../../services/referralReward";
 
 const ALLORO_BRIEF_WEBHOOK = process.env.ALLORO_BRIEF_SLACK_WEBHOOK || "";
 
@@ -601,6 +602,13 @@ async function handleSubscriptionCreated(
     } catch (err: any) {
       console.error("[Referral] Reward application failed (non-blocking):", err.message);
     }
+  }
+
+  // Apply referral reward via referrals table (tracks both orgs, applies coupons)
+  try {
+    await applyReferralReward(org.id);
+  } catch (err: any) {
+    console.error("[Referral] applyReferralReward in webhook (non-blocking):", err.message);
   }
 
   // Post to #alloro-brief

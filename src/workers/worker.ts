@@ -54,6 +54,7 @@ import { processStrategicIntelligence } from "./processors/strategicIntelligence
 import { processPartnerships } from "./processors/partnerships.processor";
 import { processCSAgent } from "./processors/csAgent.processor";
 import { processTrialEmail } from "./processors/trialEmail.processor";
+import { processTrialAutoConvert } from "./processors/trialAutoConvert.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -737,8 +738,21 @@ const trialEmailWorker = new Worker(
   }
 );
 
+// Trial Auto-Convert worker (daily 8 AM ET, converts trials with card on file)
+const trialAutoConvertWorker = new Worker(
+  "minds-trial-auto-convert",
+  async (job) => {
+    await processTrialAutoConvert(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, dreamweaverWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker, bugTriageWorker, strategicIntelligenceWorker, partnershipsWorker, csAgentWorker, trialEmailWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, dreamweaverWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker, bugTriageWorker, strategicIntelligenceWorker, partnershipsWorker, csAgentWorker, trialEmailWorker, trialAutoConvertWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -802,6 +816,7 @@ async function shutdown(): Promise<void> {
   await partnershipsWorker.close();
   await csAgentWorker.close();
   await trialEmailWorker.close();
+  await trialAutoConvertWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -1613,6 +1628,27 @@ async function setupCSAgentSchedule(): Promise<void> {
   }
 }
 
+// Set up Trial Auto-Convert schedule (daily 8 AM ET)
+async function setupTrialAutoConvertSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("trial-auto-convert");
+    await queue.add(
+      "daily-trial-auto-convert",
+      {},
+      {
+        repeat: {
+          pattern: "0 8 * * *", // 8 AM America/New_York every day
+          tz: "America/New_York",
+        },
+        jobId: "daily-trial-auto-convert",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily Trial Auto-Convert scheduled (8 AM ET)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Trial Auto-Convert schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
@@ -1651,5 +1687,6 @@ setupBugTriageSchedule();
 setupStrategicIntelligenceSchedule();
 setupPartnershipsSchedule();
 setupCSAgentSchedule();
+setupTrialAutoConvertSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
