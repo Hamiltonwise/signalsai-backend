@@ -574,11 +574,15 @@ export default function ScanningTheater() {
           reviewCount: place.reviewCount,
           placeId: place.placeId,
           location: place.location,
-          // Oz reveals: extra data for "how did they know that?" findings
+          // Oz reveals: every public data point compounds the "how did they know?" moment
           photosCount: place.photos?.length ?? 0,
-          hasHours: true, // Places API only returns if they have hours
+          hasHours: true,
           websiteUri: place.websiteUri,
           phone: place.phone,
+          editorialSummary: place.editorialSummary,
+          openingDate: place.openingDate,
+          businessStatus: place.businessStatus,
+          reviews: place.reviews?.map((r) => ({ text: r.text, rating: r.rating, author: r.authorName, time: r.relativeTime })) || [],
         });
 
         const result = conferenceActive

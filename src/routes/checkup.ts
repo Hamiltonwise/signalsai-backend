@@ -15,6 +15,7 @@ import { sendCheckupResultEmail } from "../emails/templates/CheckupResultEmail";
 import { BehavioralEventModel } from "../models/BehavioralEventModel";
 import { analyzeReviewSentiment } from "../services/reviewSentiment";
 import { generateOzMoments, type OzMoment } from "../services/ozMoment";
+import { generateSurpriseFindings, type SurpriseFinding } from "../services/surpriseFindings";
 import { db } from "../database/connection";
 import { getMindsQueue } from "../workers/queues";
 import { detectPreset } from "../services/vocabularyAutoMapper";
@@ -482,8 +483,43 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       }
     }
 
+    // ─── Surprise Findings: Oz Pearlman homework from expanded data ───
+    let surpriseFindings: SurpriseFinding[] = [];
+    try {
+      surpriseFindings = await generateSurpriseFindings({
+        place: {
+          displayName: { text: name },
+          rating: clientRating,
+          userRatingCount: clientReviews,
+          reviews: req.body.reviews || [],
+          photos: req.body.photos || new Array(req.body.photosCount || 0),
+          regularOpeningHours: req.body.regularOpeningHours || undefined,
+          editorialSummary: req.body.editorialSummary || undefined,
+          websiteUri: req.body.websiteUri || undefined,
+        },
+        competitors: otherCompetitors.slice(0, 5).map((c) => ({
+          name: c.name,
+          totalScore: c.totalScore,
+          reviewsCount: c.reviewsCount,
+          photosCount: c.photosCount,
+          hasHours: c.hasHours,
+          hoursComplete: c.hoursComplete,
+          website: c.website,
+        })),
+        market: {
+          city,
+          avgRating: Math.round(avgRating * 10) / 10,
+          avgReviews: Math.round(avgReviews),
+          rank,
+          totalCompetitors: otherCompetitors.length,
+        },
+      });
+    } catch (sfErr) {
+      console.error("[Checkup] Surprise findings failed (non-blocking):", sfErr instanceof Error ? sfErr.message : sfErr);
+    }
+
     console.log(
-      `[Checkup] Score: ${compositeScore} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: ✓" : ""}${ozMoments.length > 0 ? ` | Oz: ${ozMoments.length}` : ""}`
+      `[Checkup] Score: ${compositeScore} | Competitors: ${otherCompetitors.length} | Top: ${topCompetitor?.name || "none"}${sentimentInsight ? " | Sentiment: ✓" : ""}${ozMoments.length > 0 ? ` | Oz: ${ozMoments.length}` : ""}${surpriseFindings.length > 0 ? ` | Surprise: ${surpriseFindings.length}` : ""}`
     );
 
     return res.json({
@@ -514,6 +550,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings,
       sentimentInsight: sentimentInsight || null,
       ozMoments: ozMoments.length > 0 ? ozMoments : undefined,
+      surpriseFindings: surpriseFindings.length > 0 ? surpriseFindings.slice(0, 5) : undefined,
       totalImpact,
       market: {
         city,

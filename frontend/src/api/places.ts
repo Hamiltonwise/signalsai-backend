@@ -40,6 +40,10 @@ export interface PlaceDetails {
   location: { latitude: number; longitude: number } | null;
   reviews?: PlaceReview[];
   photos?: PlacePhoto[];
+  // Deep Oz data from Google Places
+  editorialSummary?: string | null;
+  openingDate?: string | null;
+  businessStatus?: string | null;
 }
 
 export interface AutocompleteResponse {
