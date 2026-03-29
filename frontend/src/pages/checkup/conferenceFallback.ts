@@ -109,6 +109,103 @@ export const CONFERENCE_ANALYSIS = {
   ],
 };
 
+// ─── Barber demo (conference mode ?vertical=barber) ────────────────
+
+export const BARBER_DEMO_PLACE: PlaceDetails = {
+  placeId: "conference-demo-barber",
+  name: "Main Street Barbers",
+  formattedAddress: "2401 S Congress Ave, Austin, TX 78704",
+  city: "Austin",
+  state: "TX",
+  displayString: "Main Street Barbers, Austin, TX",
+  practiceSearchString: "Main Street Barbers, Austin, TX",
+  domain: "mainstreetbarbers.com",
+  websiteUri: null,
+  phone: null,
+  rating: 4.7,
+  reviewCount: 38,
+  category: "Barber shop",
+  types: ["barber_shop", "beauty_salon"],
+  location: { latitude: 30.2469, longitude: -97.7495 },
+};
+
+export const BARBER_DEMO_ANALYSIS = {
+  success: true as const,
+  score: {
+    composite: 54,
+    visibility: 18,
+    reputation: 22,
+    competitive: 14,
+  },
+  topCompetitor: {
+    name: "South Congress Cuts",
+    rating: 4.8,
+    reviewCount: 127,
+    placeId: "conf-scc",
+    location: { lat: 30.249, lng: -97.751 },
+  },
+  competitors: [
+    { name: "South Congress Cuts", rating: 4.8, reviewCount: 127, placeId: "conf-scc", location: { lat: 30.249, lng: -97.751 }, driveTimeMinutes: 4 },
+    { name: "Finley's Barber Shop", rating: 4.6, reviewCount: 89, placeId: "conf-finley", location: { lat: 30.244, lng: -97.745 }, driveTimeMinutes: 6 },
+    { name: "The Bourgeois Pig", rating: 4.5, reviewCount: 64, placeId: "conf-bp", location: { lat: 30.251, lng: -97.753 }, driveTimeMinutes: 5 },
+  ],
+  findings: [
+    {
+      type: "review_gap",
+      title: "89 reviews separate you from Finley's",
+      detail: "South Congress Cuts has 127 reviews to your 38. Customers searching 'barber near me' see them first.",
+      value: 89,
+      impact: 2800,
+    },
+    {
+      type: "rating_gap",
+      title: "Your 4.7 is strong but not #1",
+      detail: "South Congress Cuts holds 4.8. That 0.1 gap costs visibility in Google's local pack.",
+      value: 0.1,
+      impact: 140,
+    },
+    {
+      type: "market_rank",
+      title: "You rank #3 of 4 barbers on South Congress",
+      detail: "People searching see South Congress Cuts and Finley's before you.",
+      value: 3,
+      impact: 0,
+    },
+    {
+      type: "sentiment_insight",
+      title: "Your reviews mention atmosphere",
+      detail: "6 of your last 10 reviews mention the vibe, music, or conversation. Your competitors' reviews focus on speed. That's your edge.",
+      value: 0,
+      impact: 0,
+    },
+  ],
+  totalImpact: 2940,
+  market: {
+    city: "Austin",
+    totalCompetitors: 3,
+    avgRating: 4.65,
+    avgReviews: 80,
+    rank: 3,
+  },
+  gaps: [
+    {
+      id: "review_race",
+      label: "89 reviews to pass South Congress Cuts",
+      current: 38,
+      target: 127,
+      unit: "reviews",
+      action: "Ask 3 clients for a Google review this week. Text the link right after their cut.",
+      timeEstimate: "~12 weeks at 2/week",
+      competitorName: "South Congress Cuts",
+      velocity: {
+        clientWeekly: 0.8,
+        competitorWeekly: 2.1,
+        weeksToPass: 69,
+      },
+    },
+  ],
+};
+
 /**
  * Get the source channel, checking URL params then localStorage.
  * Persists on first detection so it survives React Router navigation.
@@ -124,11 +221,26 @@ export function getSourceChannel(): string | null {
 }
 
 /**
+ * Get the conference demo vertical (e.g. "barber", "cpa").
+ * Defaults to null (use dental/specialist demo).
+ */
+export function getConferenceVertical(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const v = params.get("vertical");
+  if (v) {
+    localStorage.setItem("alloro_conference_vertical", v);
+    return v;
+  }
+  return localStorage.getItem("alloro_conference_vertical");
+}
+
+/**
  * Clear all persisted flow params (call after flow completes).
  */
 export function clearFlowParams(): void {
   localStorage.removeItem("alloro_conference_mode");
   localStorage.removeItem("alloro_source_channel");
+  localStorage.removeItem("alloro_conference_vertical");
 }
 
 /**
