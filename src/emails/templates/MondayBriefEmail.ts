@@ -60,7 +60,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
     ? createCard(`
         <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Estimated Monthly Impact</p>
         <p style="margin: 0; font-size: 28px; font-weight: 800; color: ${BRAND_COLORS.navy};">$${dollarFigure.toLocaleString()}</p>
-        <p style="margin: 4px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">revenue at risk from competitive gaps</p>
+        <p style="margin: 4px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">at risk if this trend continues</p>
       `)
     : "";
 
@@ -95,7 +95,10 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
     ${referralSection}
 
     <p style="margin: 24px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5;">
-      This brief was generated automatically from your market data. Alloro monitors your competitive position every week so you don't have to.
+      If any of this is off, reply. I read every reply personally.
+    </p>
+    <p style="margin: 8px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">
+      Corey
     </p>
   `;
 
