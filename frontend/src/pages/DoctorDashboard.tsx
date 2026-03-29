@@ -236,7 +236,7 @@ function narrativeSubhead(
   if (streak && streak.count >= 12) return `${streak.count} weeks of ${streak.label}. Here's what moved.`;
   if (streak && streak.count >= 4) return `Here's what changed for ${practiceName}.`;
   if (checkupCompetitor) return `${checkupCompetitor} is ahead. Here's what to do about it.`;
-  if (practiceName && practiceName !== "Your Practice") return `Here's what's happening for ${practiceName}.`;
+  if (practiceName && practiceName !== "Your Business") return `Here's what's happening for ${practiceName}.`;
   return "Here's what changed in your market.";
 }
 
@@ -753,7 +753,7 @@ export default function DoctorDashboard() {
 
   const orgId = userProfile?.organizationId || null;
   const locationId = selectedLocation?.id ?? null;
-  const practiceName = selectedLocation?.name || userProfile?.practiceName || "Your Practice";
+  const practiceName = selectedLocation?.name || userProfile?.practiceName || "Your Business";
   const locationName = selectedLocation?.name || null;
 
   const userRole = getPriorityItem("user_role") as string | null;
