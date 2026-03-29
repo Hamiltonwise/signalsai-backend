@@ -39,7 +39,7 @@ interface DecisionProps {
 
 export const Decision: React.FC<DecisionProps> = ({
   className = "",
-  selectedDomain,
+  selectedDomain: _selectedDomain,
 }) => {
   const { clarityData, isLoading, error } = useClarity();
 

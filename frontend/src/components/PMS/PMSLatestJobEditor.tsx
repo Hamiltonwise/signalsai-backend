@@ -195,10 +195,12 @@ export const PMSLatestJobEditor: React.FC<PMSLatestJobEditorProps> = ({
   useEffect(() => {
     if (isOpen && !hasInitializedRef.current) {
       const normalized = normaliseMonthEntries(initialData);
+      console.log("🔍 Modal loaded - normalized data from backend:", {
         monthsCount: normalized.length,
         secondMonthSources: normalized[1]?.sources,
       });
       const uiMonths = transformBackendToUI(normalized);
+      console.log("🎯 Transformed to UI format:", {
         monthsCount: uiMonths.length,
         secondMonthRows: uiMonths[1]?.rows,
       });
@@ -414,6 +416,7 @@ export const PMSLatestJobEditor: React.FC<PMSLatestJobEditorProps> = ({
       const backendData = transformUIToBackend(months);
       const payload = JSON.stringify(backendData, null, 2);
 
+      console.log("💾 Saving modal changes - transformed data being sent:", {
         backendData,
         monthsSent: backendData.length,
         secondMonthSources: backendData[1]?.sources,

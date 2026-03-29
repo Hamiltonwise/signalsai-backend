@@ -548,7 +548,7 @@ export function DFYWebsite() {
           ]);
           setIsDirty(true);
         },
-        (selector, _currentSrc) => {
+        (_selector, _currentSrc) => {
           // Reuse same image handler — simplified for reload case
         },
       );

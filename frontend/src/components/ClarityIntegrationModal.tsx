@@ -21,7 +21,7 @@ interface BaseIntegrationModalProps {
 export const ClarityIntegrationModal: React.FC<BaseIntegrationModalProps> = ({
   isOpen,
   onClose,
-  clientId,
+  clientId: _clientId,
   onSuccess,
 }) => {
   // Mock state for demo purposes

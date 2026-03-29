@@ -39,11 +39,9 @@ interface ConsiderationProps {
 
 export const Consideration: React.FC<ConsiderationProps> = ({
   className = "",
-  selectedDomain,
+  selectedDomain: _selectedDomain,
 }) => {
   const { gbpData, isLoading, error } = useGBP();
-
-  // selectedDomain is passed as prop - GBP Context automatically handles data fetching when domain changes
 
   // Helper function to format numbers
   const formatNumber = (num: number): string => {

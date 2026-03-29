@@ -49,7 +49,7 @@ const mockMTDComparison = {
 export const GBPIntegrationModal: React.FC<BaseIntegrationModalProps> = ({
   isOpen,
   onClose,
-  clientId,
+  clientId: _clientId,
   onSuccess,
 }) => {
   // Mock state for demo purposes
