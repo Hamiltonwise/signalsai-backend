@@ -84,6 +84,8 @@ const HeroesPage = React.lazy(() => import("./pages/foundation/HeroesPage"));
 const FoundersPage = React.lazy(() => import("./pages/foundation/FoundersPage"));
 const FoundationApply = React.lazy(() => import("./pages/foundation/FoundationApply"));
 
+const PatientPathPreview = React.lazy(() => import("./pages/dashboard/PatientPathPreview"));
+const MarketPage = React.lazy(() => import("./pages/market/MarketPage"));
 const TasksPage = React.lazy(() => import("./pages/TasksPage"));
 const ProductPage = React.lazy(() => import("./pages/marketing/ProductPage"));
 const RisePage = React.lazy(() => import("./pages/marketing/RisePage"));
@@ -339,6 +341,7 @@ function App() {
                 <Route path="/dashboard/intelligence" element={<IntelligenceDashboard />} />
                 <Route path="/dashboard/anniversary" element={<AnniversaryReport />} />
                 <Route path="/dashboard/locations" element={<Locations />} />
+                <Route path="/dashboard/patientpath-preview" element={<PatientPathPreview />} />
                 <Route path="/dashboard/refer/:orgSlug?" element={<GPDiscoveryPage />} />
                 <Route path="/patientJourneyInsights" element={<Navigate to="/dashboard/referrals" replace />} />
                 <Route path="/pmsStatistics" element={<Navigate to="/dashboard/referrals" replace />} />
@@ -367,6 +370,9 @@ function App() {
               <Route element={<AdminLayout />}>
                 <Route path="/admin/*" element={<Admin />} />
               </Route>
+
+              {/* Programmatic city pages: /market/:specialty/:city */}
+              <Route path="/market/:specialty/:city" element={<MarketPage />} />
 
               {/* Programmatic SEO pages: /[specialty]-[city]-[state] */}
               <Route path="/:pageSlug" element={<ProgrammaticPage />} />
