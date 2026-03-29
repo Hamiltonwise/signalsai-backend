@@ -114,21 +114,35 @@ gpDiscoveryRoutes.get(
         });
       }
 
-      // Search for GPs / primary care / dentists near the practice
-      const searchQueries = [
-        "general practitioner",
-        "family medicine",
-        "primary care physician",
-        "general dentist",
-      ];
-
-      // Determine the most relevant search based on specialty
+      // Search for referral sources near the business -- vertical-aware
       const spec = (location.specialty || "").toLowerCase();
-      let queries: string[];
-      if (spec.includes("dent") || spec.includes("endo") || spec.includes("ortho") || spec.includes("perio")) {
-        queries = ["general dentist", "family dentist"];
-      } else {
-        queries = searchQueries;
+
+      // Vertical-specific referral source queries
+      const REFERRAL_SOURCE_QUERIES: Record<string, string[]> = {
+        dental: ["general dentist", "family dentist"],
+        endo: ["general dentist", "family dentist"],
+        ortho: ["general dentist", "family dentist", "pediatric dentist"],
+        perio: ["general dentist", "periodontist"],
+        chiro: ["family medicine", "orthopedic surgeon", "physical therapist"],
+        physical_ther: ["orthopedic surgeon", "family medicine", "sports medicine"],
+        optom: ["family medicine", "ophthalmologist"],
+        attorney: ["insurance broker", "real estate agent", "financial advisor", "accountant"],
+        lawyer: ["insurance broker", "real estate agent", "financial advisor", "accountant"],
+        account: ["attorney", "financial advisor", "insurance broker", "bank"],
+        cpa: ["attorney", "financial advisor", "insurance broker", "bank"],
+        "financial adv": ["accountant", "attorney", "insurance broker", "real estate agent"],
+        veterinar: ["animal shelter", "pet store", "dog trainer"],
+        "real estate": ["mortgage broker", "home inspector", "insurance agent", "attorney"],
+        medspa: ["dermatologist", "plastic surgeon", "family medicine"],
+      };
+
+      // Find matching queries or fall back to generic professional services
+      let queries: string[] = ["general practitioner", "family medicine", "primary care physician"];
+      for (const [key, q] of Object.entries(REFERRAL_SOURCE_QUERIES)) {
+        if (spec.includes(key)) {
+          queries = q;
+          break;
+        }
       }
 
       const allPlaces: any[] = [];
