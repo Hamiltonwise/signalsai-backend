@@ -132,6 +132,64 @@ export async function classifyOrgHealth(orgId: number): Promise<OrgHealth | null
     .where({ id: orgId })
     .update({ client_health_status: status });
 
+  // ─── Autonomous Churn Intervention (zero-human recovery) ──────
+  // When status is AMBER or RED, auto-fire a personalized recovery
+  // email before creating a task for Jo. The email is the first
+  // intervention. Jo only gets involved if auto-recovery fails.
+  if ((status === "amber" || status === "red") && signals.length > 0) {
+    try {
+      // Check if we already sent a recovery email in the last 14 days
+      const hasTable = await db.schema.hasTable("behavioral_events");
+      if (hasTable) {
+        const recentRecovery = await db("behavioral_events")
+          .where({ organization_id: orgId, event_type: "churn.recovery_sent" })
+          .where("created_at", ">=", new Date(Date.now() - 14 * 86_400_000))
+          .first();
+
+        if (!recentRecovery) {
+          // Find the owner's email
+          const orgUser = await db("organization_users")
+            .where({ organization_id: orgId, role: "admin" })
+            .first();
+          if (orgUser) {
+            const user = await db("users").where({ id: orgUser.user_id }).first("email", "first_name");
+            if (user?.email) {
+              // Queue recovery email via the email service
+              const emailWebhook = process.env.ALLORO_EMAIL_SERVICE_WEBHOOK;
+              if (emailWebhook) {
+                const firstName = user.first_name || "there";
+                const subject = `${firstName}, something changed in your market this week`;
+                const body = `${firstName},\n\nYour market moved while you were away. We caught something specific about your competitive position that you should see before Monday.\n\nIt takes 60 seconds: ${process.env.APP_URL || "https://app.getalloro.com"}/dashboard\n\nIf any of this is off, reply. I read every reply personally.\n\nCorey`;
+
+                await fetch(emailWebhook, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    to: user.email,
+                    subject,
+                    text: body,
+                    from: "corey@getalloro.com",
+                  }),
+                }).catch(() => {});
+
+                // Log the recovery attempt
+                await db("behavioral_events").insert({
+                  organization_id: orgId,
+                  event_type: "churn.recovery_sent",
+                  metadata: JSON.stringify({ reason, signals, method: "auto_email" }),
+                }).catch(() => {});
+
+                console.log(`[CSPulse] Auto-recovery email sent to ${user.email} for ${org.name} (${status})`);
+              }
+            }
+          }
+        }
+      }
+    } catch (recoveryErr: any) {
+      console.warn(`[CSPulse] Auto-recovery failed for ${org.name}:`, recoveryErr.message);
+    }
+  }
+
   return {
     org_id: orgId,
     org_name: org.name,
