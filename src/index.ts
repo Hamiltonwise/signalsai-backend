@@ -11,6 +11,7 @@ Sentry.init({
 import express from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import path from "path";
+import { db } from "./database/connection";
 
 import { Router } from "express";
 
@@ -43,6 +44,7 @@ import adminMediaRoutes from "./routes/admin/media";
 import adminSettingsRoutes from "./routes/admin/settings";
 import adminSchedulesRoutes from "./routes/admin/schedules";
 import adminSignalRoutes from "./routes/admin/signal";
+import checkupFunnelRoutes from "./routes/admin/checkupFunnel";
 import adminDreamTeamRoutes from "./routes/admin/dreamTeam";
 import adminBatchCheckupRoutes from "./routes/admin/batchCheckup";
 import adminFirefliesRoutes from "./routes/admin/firefliesWebhook";
@@ -239,6 +241,7 @@ app.use("/api/admin/websites/:projectId/media", adminMediaRoutes);
 app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin/schedules", adminSchedulesRoutes);
 app.use("/api/admin/signal", adminSignalRoutes);
+app.use("/api/admin/checkup-funnel", checkupFunnelRoutes);
 app.use("/api/admin/dream-team", adminDreamTeamRoutes);
 app.use("/api/admin/batch-checkup", adminBatchCheckupRoutes);
 app.use("/api/admin", adminFirefliesRoutes); // Fireflies webhook + dream team tasks
@@ -316,6 +319,51 @@ Sentry.setupExpressErrorHandler(app);
 
 if (isProd) {
   app.use(express.static(path.join(__dirname, "../public")));
+
+  // Dynamic OG tags for checkup share links (social media crawlers)
+  // When iMessage/WhatsApp/Twitter fetches the URL, serve a page with
+  // dynamic meta tags so the preview shows the score and competitive framing.
+  // Regular browsers get the SPA which renders the full SharedResults component.
+  app.get("/checkup/shared/:shareId", async (req, res, next) => {
+    const ua = (req.headers["user-agent"] || "").toLowerCase();
+    const isCrawler = /facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot|imessage|applebot|googlebot|bingbot/i.test(ua);
+    if (!isCrawler) return next(); // Regular browser: serve SPA
+
+    try {
+      const share = await db("checkup_shares").where({ share_id: req.params.shareId }).first();
+      if (!share) return next();
+
+      const title = share.rank && share.rank <= 3
+        ? `I scored ${share.score}/100 in ${share.city}. #${share.rank} in my market.`
+        : `I scored ${share.score}/100. Can you beat it?`;
+      const description = share.top_competitor_name
+        ? `${share.total_competitors} competitors in ${share.city}. ${share.top_competitor_name} is the one to watch. Free, 60 seconds.`
+        : `${share.total_competitors} competitors in ${share.city}. See where you rank. Free, 60 seconds.`;
+      const url = `${process.env.APP_URL || "https://app.getalloro.com"}/checkup/shared/${share.share_id}`;
+
+      res.send(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>${title}</title>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="${title}"/>
+<meta property="og:description" content="${description}"/>
+<meta property="og:url" content="${url}"/>
+<meta property="og:site_name" content="Alloro"/>
+<meta property="og:image" content="https://getalloro.com/og-alloro.png"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="${title}"/>
+<meta name="twitter:description" content="${description}"/>
+<meta http-equiv="refresh" content="0;url=${url}"/>
+</head>
+<body><p>Redirecting...</p></body>
+</html>`);
+    } catch {
+      next();
+    }
+  });
+
   app.get("/{*splat}", (_req, res) => {
     res.sendFile(path.join(__dirname, "../public/index.html"));
   });
