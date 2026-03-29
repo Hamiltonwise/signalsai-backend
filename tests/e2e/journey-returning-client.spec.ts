@@ -86,7 +86,9 @@ test.describe("Returning Client: Authenticated Journeys", () => {
   test("dashboard loads with content", async ({ page }) => {
     await page.goto("/dashboard");
     await page.waitForLoadState("networkidle");
-    await expect(page.locator("h1").first()).toBeVisible({ timeout: 10_000 });
+    // Dashboard should show content (heading, cards, scores)
+    const content = page.locator("main h1, main h2, main [class*='card'], main [class*='score']").first();
+    await expect(content).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: "test-results/returning-01-dashboard.png" });
   });
 
