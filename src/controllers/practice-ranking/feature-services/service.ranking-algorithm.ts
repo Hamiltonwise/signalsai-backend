@@ -48,28 +48,88 @@ const COMPETITIVE_FACTOR_WEIGHTS = {
 };
 
 // Map frontend specialty values to internal keys
-// Frontend sends: "orthodontist", "endodontist", etc.
-// Backend uses: "orthodontics", "endodontics", etc.
+// Universal: supports any service business vertical
 const SPECIALTY_ALIASES: Record<string, string> = {
+  // Dental
   orthodontist: "orthodontics",
   endodontist: "endodontics",
   periodontist: "periodontics",
   "oral surgeon": "oral_surgery",
   prosthodontist: "prosthodontics",
-  "pediatric dentist": "pediatric",
-  // Also support the internal keys directly
+  "pediatric dentist": "pediatric_dental",
   orthodontics: "orthodontics",
   endodontics: "endodontics",
   periodontics: "periodontics",
   oral_surgery: "oral_surgery",
-  pediatric: "pediatric",
+  pediatric_dental: "pediatric_dental",
   prosthodontics: "prosthodontics",
+  dentist: "general_dental",
+  "dental clinic": "general_dental",
+  "dental practice": "general_dental",
+  "dental office": "general_dental",
+  general_dental: "general_dental",
+  // Barber / Hair
+  barber: "barber",
+  "barber shop": "barber",
+  barbershop: "barber",
+  "hair salon": "hair_salon",
+  salon: "hair_salon",
+  hair_salon: "hair_salon",
+  // Plumbing
+  plumber: "plumber",
+  "plumbing company": "plumber",
+  "plumbing service": "plumber",
+  // Electrical
+  electrician: "electrician",
+  "electrical contractor": "electrician",
+  "electrical service": "electrician",
+  // Legal
+  attorney: "attorney",
+  lawyer: "attorney",
+  "law firm": "attorney",
+  "law office": "attorney",
+  // Accounting
+  cpa: "cpa",
+  accountant: "cpa",
+  "accounting firm": "cpa",
+  "tax preparer": "cpa",
+  // Chiropractic
+  chiropractor: "chiropractor",
+  "chiropractic office": "chiropractor",
+  "chiropractic clinic": "chiropractor",
+  // Optometry
+  optometrist: "optometrist",
+  "eye doctor": "optometrist",
+  "optometry clinic": "optometrist",
+  "vision center": "optometrist",
+  // Veterinary
+  veterinarian: "veterinarian",
+  vet: "veterinarian",
+  "animal hospital": "veterinarian",
+  "veterinary clinic": "veterinarian",
+  // Restaurant
+  restaurant: "restaurant",
+  cafe: "restaurant",
+  "coffee shop": "restaurant",
+  bistro: "restaurant",
+  // Fitness
+  gym: "fitness",
+  "fitness center": "fitness",
+  "personal trainer": "fitness",
+  "yoga studio": "fitness",
+  fitness: "fitness",
+  // Med Spa
+  "med spa": "medspa",
+  medspa: "medspa",
+  "medical spa": "medspa",
+  // Automotive
+  "auto repair": "automotive",
+  "auto shop": "automotive",
+  "car repair": "automotive",
+  mechanic: "automotive",
+  automotive: "automotive",
+  // General fallback
   general: "general",
-  // Common fallback aliases
-  dentist: "general",
-  "dental clinic": "general",
-  "dental practice": "general",
-  "dental office": "general",
 };
 
 /**
@@ -81,58 +141,176 @@ function normalizeSpecialty(specialty: string): string {
   return SPECIALTY_ALIASES[normalized] || "general";
 }
 
-// Category matching configurations
+// Category matching configurations -- universal across verticals
 const SPECIALTY_CATEGORIES: Record<string, string[]> = {
+  // Dental
   orthodontics: ["Orthodontist", "Orthodontic practice", "Orthodontics"],
   endodontics: ["Endodontist", "Endodontic practice", "Root canal specialist"],
   periodontics: ["Periodontist", "Periodontal practice", "Gum specialist"],
-  oral_surgery: [
-    "Oral surgeon",
-    "Oral and maxillofacial surgeon",
-    "Oral surgery clinic",
-  ],
-  pediatric: ["Pediatric dentist", "Children's dentist", "Kids dentist"],
+  oral_surgery: ["Oral surgeon", "Oral and maxillofacial surgeon", "Oral surgery clinic"],
+  pediatric_dental: ["Pediatric dentist", "Children's dentist", "Kids dentist"],
   prosthodontics: ["Prosthodontist", "Prosthodontic practice"],
-  general: ["Dentist", "Dental clinic", "Dental practice", "Dental office"],
+  general_dental: ["Dentist", "Dental clinic", "Dental practice", "Dental office"],
+  // Barber / Hair
+  barber: ["Barber shop", "Barbershop", "Barber"],
+  hair_salon: ["Hair salon", "Beauty salon", "Salon", "Hair stylist"],
+  // Plumbing
+  plumber: ["Plumber", "Plumbing company", "Plumbing service", "Plumbing contractor"],
+  // Electrical
+  electrician: ["Electrician", "Electrical contractor", "Electrical service", "Electric company"],
+  // Legal
+  attorney: ["Attorney", "Lawyer", "Law firm", "Law office", "Legal services"],
+  // Accounting
+  cpa: ["CPA", "Accountant", "Accounting firm", "Tax preparer", "Tax advisor"],
+  // Chiropractic
+  chiropractor: ["Chiropractor", "Chiropractic office", "Chiropractic clinic", "Chiropractic center"],
+  // Optometry
+  optometrist: ["Optometrist", "Eye doctor", "Optometry clinic", "Vision center", "Eye care center"],
+  // Veterinary
+  veterinarian: ["Veterinarian", "Vet", "Animal hospital", "Veterinary clinic", "Pet hospital"],
+  // Restaurant
+  restaurant: ["Restaurant", "Cafe", "Coffee shop", "Bistro", "Diner", "Eatery"],
+  // Fitness
+  fitness: ["Gym", "Fitness center", "Personal trainer", "Yoga studio", "Health club", "CrossFit"],
+  // Med Spa
+  medspa: ["Med spa", "Medical spa", "Medspa", "Aesthetic clinic"],
+  // Automotive
+  automotive: ["Auto repair", "Auto shop", "Car repair", "Mechanic", "Auto service", "Automotive repair"],
+  // General fallback
+  general: ["Local business", "Business", "Service provider"],
 };
 
-// Specialty keywords for name matching
+// Specialty keywords for name matching -- universal across verticals
 const SPECIALTY_KEYWORDS: Record<string, string[]> = {
+  // Dental
   orthodontics: ["orthodont", "braces", "invisalign", "ortho", "smile"],
   endodontics: ["endodont", "root canal", "endo"],
   periodontics: ["periodont", "gum", "perio"],
   oral_surgery: ["oral surgery", "oral surgeon", "maxillofacial"],
-  pediatric: ["pediatric", "kids", "children", "pedo"],
+  pediatric_dental: ["pediatric", "kids", "children", "pedo"],
   prosthodontics: ["prosthodont", "dentures", "implants", "crowns"],
+  general_dental: ["dental", "dentist", "family dent", "cosmetic dent"],
+  // Barber / Hair
+  barber: ["barber", "haircut", "fade", "trim", "shave", "grooming"],
+  hair_salon: ["salon", "hair", "stylist", "beauty", "color", "highlights"],
+  // Plumbing
+  plumber: ["plumb", "pipe", "drain", "water heater", "leak", "sewer"],
+  // Electrical
+  electrician: ["electric", "wiring", "power", "lighting", "panel", "circuit"],
+  // Legal
+  attorney: ["law", "attorney", "lawyer", "legal", "counsel", "litigation"],
+  // Accounting
+  cpa: ["account", "tax", "cpa", "bookkeep", "audit", "financial"],
+  // Chiropractic
+  chiropractor: ["chiropractic", "chiropractor", "spine", "adjustment", "wellness"],
+  // Optometry
+  optometrist: ["optom", "eye", "vision", "optical", "glasses", "contacts"],
+  // Veterinary
+  veterinarian: ["vet", "animal", "pet", "veterinar"],
+  // Restaurant
+  restaurant: ["restaurant", "grill", "kitchen", "dining", "bistro", "cafe", "coffee"],
+  // Fitness
+  fitness: ["fitness", "gym", "training", "crossfit", "yoga", "pilates", "strength"],
+  // Med Spa
+  medspa: ["med spa", "medspa", "aesthetic", "botox", "filler", "laser", "rejuvenation"],
+  // Automotive
+  automotive: ["auto", "car", "mechanic", "motor", "brake", "tire", "transmission"],
 };
 
-// Benchmarks for normalization (industry averages)
-const BENCHMARKS = {
+// Default benchmarks for normalization (used when no competitor data is available)
+const DEFAULT_BENCHMARKS = {
   reviewCount: {
     min: 0,
     avg: 150,
     excellent: 400,
-    max: 800, // Cap for normalization
+    max: 800,
   },
   reviewVelocity: {
     min: 0,
     avg: 8,
     excellent: 20,
-    max: 40, // reviews per month
+    max: 40,
   },
   gbpPosts: {
     min: 0,
     avg: 2,
     excellent: 4,
-    max: 8, // posts per month (30 days)
+    max: 8,
   },
   gbpPhotos: {
     min: 0,
     avg: 10,
     excellent: 30,
-    max: 100, // total photos
+    max: 100,
   },
 };
+
+// Mutable benchmarks that get overridden by dynamic calculation
+let BENCHMARKS = { ...DEFAULT_BENCHMARKS };
+
+/**
+ * Calculate dynamic benchmarks from actual competitor data.
+ * If competitors average 30 reviews, the benchmark scales accordingly
+ * instead of assuming dental-sized numbers (150 avg, 400 excellent).
+ */
+export function calculateDynamicBenchmarks(
+  competitors: Array<{ totalReviews: number; reviewsLast30d?: number }>,
+): typeof DEFAULT_BENCHMARKS {
+  if (!competitors || competitors.length === 0) {
+    return { ...DEFAULT_BENCHMARKS };
+  }
+
+  const reviews = competitors.map((c) => c.totalReviews).filter((r) => r > 0);
+  const velocities = competitors.map((c) => c.reviewsLast30d || 0);
+
+  if (reviews.length === 0) {
+    return { ...DEFAULT_BENCHMARKS };
+  }
+
+  const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+  const avg = (arr: number[]) => (arr.length > 0 ? sum(arr) / arr.length : 0);
+  const percentile = (arr: number[], p: number) => {
+    const sorted = [...arr].sort((a, b) => a - b);
+    const idx = Math.ceil((p / 100) * sorted.length) - 1;
+    return sorted[Math.max(0, idx)];
+  };
+
+  const avgReviews = Math.round(avg(reviews));
+  const p75Reviews = percentile(reviews, 75);
+  const maxReviews = Math.max(...reviews);
+
+  const avgVelocity = Math.round(avg(velocities));
+  const p75Velocity = percentile(velocities, 75);
+  const maxVelocity = Math.max(...velocities);
+
+  return {
+    reviewCount: {
+      min: 0,
+      avg: Math.max(1, avgReviews),
+      excellent: Math.max(avgReviews + 1, Math.round(p75Reviews)),
+      max: Math.max(p75Reviews + 1, Math.round(maxReviews * 1.2)),
+    },
+    reviewVelocity: {
+      min: 0,
+      avg: Math.max(1, avgVelocity),
+      excellent: Math.max(avgVelocity + 1, Math.round(p75Velocity)),
+      max: Math.max(p75Velocity + 1, Math.round(maxVelocity * 1.2)),
+    },
+    // Posts and photos benchmarks stay as defaults (not dependent on competitor data)
+    gbpPosts: { ...DEFAULT_BENCHMARKS.gbpPosts },
+    gbpPhotos: { ...DEFAULT_BENCHMARKS.gbpPhotos },
+  };
+}
+
+/**
+ * Apply dynamic benchmarks globally for a scoring run.
+ * Call this before scoring practices with competitor data.
+ */
+export function applyDynamicBenchmarks(
+  competitors: Array<{ totalReviews: number; reviewsLast30d?: number }>,
+): void {
+  BENCHMARKS = calculateDynamicBenchmarks(competitors);
+}
 
 export interface PracticeData {
   name: string;
@@ -210,17 +388,19 @@ function calculateCategoryMatchScore(
     };
   }
 
-  // Check if it's a general dental category (partial credit)
+  // Check if it's a general/broad category (partial credit)
   const generalCategories = SPECIALTY_CATEGORIES.general;
+  const generalDentalCategories = SPECIALTY_CATEGORIES.general_dental || [];
+  const broadCategories = [...generalCategories, ...generalDentalCategories];
   if (
-    generalCategories.some((cat) =>
+    broadCategories.some((cat) =>
       normalizedCategory.includes(cat.toLowerCase()),
     )
   ) {
     return {
       score: maxScore * 0.6,
       max: maxScore,
-      details: `Primary category "${primaryCategory}" is general dental, not specialty-specific`,
+      details: `Primary category "${primaryCategory}" is a broad category, not specialty-specific`,
     };
   }
 
@@ -763,6 +943,8 @@ export default {
   calculateCompetitiveScore,
   rankPractices,
   calculateBenchmarks,
+  calculateDynamicBenchmarks,
+  applyDynamicBenchmarks,
   FACTOR_WEIGHTS,
   COMPETITIVE_FACTOR_WEIGHTS,
   SPECIALTY_CATEGORIES,

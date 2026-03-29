@@ -29,6 +29,7 @@ import {
   calculateRankingScore,
   rankPractices,
   calculateBenchmarks,
+  applyDynamicBenchmarks,
   PracticeData,
   FACTOR_WEIGHTS,
 } from "./service.ranking-algorithm";
@@ -536,7 +537,7 @@ export async function processLocationRanking(
 
   const clientPracticeData: PracticeData = {
     name: gbpLocationName || profileData?.title || domain,
-    primaryCategory: profileData?.primaryCategory || "Dentist",
+    primaryCategory: profileData?.primaryCategory || specialty || "Local Business",
     secondaryCategories: profileData?.additionalCategories || [],
     totalReviews: gbpData?.reviews?.allTime?.totalReviewCount || 0,
     averageRating: gbpData?.reviews?.allTime?.averageRating || 0,
@@ -549,6 +550,14 @@ export async function processLocationRanking(
     descriptionLength: profileData?.description?.length || 0,
     photosCount: clientPhotosCount,
   };
+
+  // Apply dynamic benchmarks from actual competitor data before scoring
+  applyDynamicBenchmarks(
+    competitorDetails.map((c) => ({
+      totalReviews: c.totalReviews,
+      reviewsLast30d: c.reviewsLast30d,
+    })),
+  );
 
   // Pass keywords to ranking algorithm for the "keyword in name" scoring factor
   const clientRanking = calculateRankingScore(

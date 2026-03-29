@@ -50,7 +50,7 @@ export interface RankingLlmPayload {
 // PROMPT
 // =====================================================================
 
-const SYSTEM_PROMPT = `You are an expert SEO and local search analyst specializing in dental specialty practices. Analyze the practice's ranking performance against competitors and provide actionable insights.
+const SYSTEM_PROMPT = `You are an expert SEO and local search analyst specializing in local service businesses. Analyze the business's ranking performance against competitors and provide actionable insights.
 
 ## Ranking Factors (8 weighted factors)
 1. Primary Category Match (25%)
@@ -71,7 +71,7 @@ const SYSTEM_PROMPT = `You are an expert SEO and local search analyst specializi
 - Be specific with numbers and comparisons
 - Reference actual competitor data
 - Prioritize by impact and effort
-- The title and recommendations should use less technical terms and should be easily understood by a doctor or someone who does not have a technical background
+- The title and recommendations should use less technical terms and should be easily understood by a business owner who does not have a technical background
 
 ## Output Schema
 

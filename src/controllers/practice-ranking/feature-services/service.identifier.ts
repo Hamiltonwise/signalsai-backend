@@ -116,20 +116,74 @@ function deriveSpecialtyFromGbp(gbpData: any): string {
     gbpData?.profile?.primaryCategory || ""
   ).toLowerCase();
 
+  if (!primaryCategory) return "general";
+
   const categoryMap: Record<string, string> = {
+    // Dental
     orthodontist: "orthodontist",
     endodontist: "endodontist",
     periodontist: "periodontist",
     "oral surgeon": "oral surgeon",
     "pediatric dentist": "pediatric dentist",
     prosthodontist: "prosthodontist",
+    dentist: "dentist",
+    dental: "dentist",
+    // Barber / Hair
+    barber: "barber",
+    "hair salon": "hair salon",
+    salon: "hair salon",
+    beauty: "hair salon",
+    // Plumbing
+    plumber: "plumber",
+    plumbing: "plumber",
+    // Electrical
+    electrician: "electrician",
+    electrical: "electrician",
+    // Legal
+    attorney: "attorney",
+    lawyer: "attorney",
+    "law firm": "attorney",
+    legal: "attorney",
+    // Accounting
+    accountant: "cpa",
+    cpa: "cpa",
+    "tax preparer": "cpa",
+    accounting: "cpa",
+    // Chiropractic
+    chiropractor: "chiropractor",
+    chiropractic: "chiropractor",
+    // Optometry
+    optometrist: "optometrist",
+    "eye doctor": "optometrist",
+    optometry: "optometrist",
+    // Veterinary
+    veterinarian: "veterinarian",
+    "animal hospital": "veterinarian",
+    veterinary: "veterinarian",
+    // Restaurant
+    restaurant: "restaurant",
+    cafe: "restaurant",
+    "coffee shop": "restaurant",
+    // Fitness
+    gym: "fitness",
+    "fitness center": "fitness",
+    "personal trainer": "fitness",
+    // Med Spa
+    "med spa": "medspa",
+    "medical spa": "medspa",
+    medspa: "medspa",
+    // Automotive
+    "auto repair": "automotive",
+    mechanic: "automotive",
+    "auto shop": "automotive",
   };
 
   for (const [keyword, specialty] of Object.entries(categoryMap)) {
     if (primaryCategory.includes(keyword)) return specialty;
   }
 
-  return "dentist";
+  // Return the raw GBP category if no mapping found, rather than defaulting to "dentist"
+  return primaryCategory || "general";
 }
 
 /**

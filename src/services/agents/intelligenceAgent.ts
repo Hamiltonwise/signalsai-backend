@@ -41,7 +41,7 @@ interface IntelligenceSummary {
 
 // ── Case value defaults ─────────────────────────────────────────────
 
-const DEFAULT_CASE_VALUE = 1200;
+const DEFAULT_CASE_VALUE = 500; // Universal fallback, overridden by vocabulary lookup
 
 // ── Core ────────────────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ export async function runIntelligenceForOrg(
     .limit(20);
 
   // Build context for synthesis
-  const context = buildContext(org, snapshots, recentEvents, referralSources);
+  const context = await buildContext(org, snapshots, recentEvents, referralSources);
 
   // Attempt Claude synthesis (with heuristics injected), fall back to template findings
   let findings: IntelligenceFinding[];
@@ -216,12 +216,12 @@ interface OrgContext {
   caseValue: number;
 }
 
-function buildContext(
+async function buildContext(
   org: any,
   snapshots: any[],
   events: any[],
   referralSources: any[],
-): OrgContext {
+): Promise<OrgContext> {
   const snapshotLines = snapshots.map((s: any) => {
     return `Week ${s.week_start}: position #${s.client_position ?? "N/A"}, reviews ${s.client_review_count ?? 0}, competitor ${s.competitor_name ?? "none"} at ${s.competitor_review_count ?? 0} reviews`;
   });
@@ -239,13 +239,28 @@ function buildContext(
     return `${r.source_name || "Unknown"}: ${r.referral_count ?? 0} referrals`;
   });
 
+  // Look up avgCaseValue from vocabulary config for the org's vertical
+  let caseValue = DEFAULT_CASE_VALUE;
+  try {
+    const config = await db("vocabulary_configs").where({ org_id: org.id }).first();
+    if (config?.vertical) {
+      const defaults = await db("vocabulary_defaults").where({ vertical: config.vertical }).first();
+      if (defaults?.config) {
+        const parsed = typeof defaults.config === "string" ? JSON.parse(defaults.config) : defaults.config;
+        if (parsed.avgCaseValue) caseValue = parsed.avgCaseValue;
+      }
+    }
+  } catch {
+    // Fall through to default
+  }
+
   return {
     orgName: org.name,
     orgId: org.id,
     snapshotSummary: snapshotLines.join("\n") || "No ranking snapshots",
     eventSummary: eventLines.join(", ") || "No recent events",
     referralSummary: referralLines.join("\n") || "No referral sources",
-    caseValue: DEFAULT_CASE_VALUE,
+    caseValue,
   };
 }
 
@@ -268,7 +283,7 @@ ${runtime.heuristics.map((h, i) => `${i + 1}. ${h}`).join("\n")}
 `;
   }
 
-  const prompt = `You are the Intelligence Agent for Alloro, a business intelligence platform for licensed specialists.
+  const prompt = `You are the Intelligence Agent for Alloro, a business intelligence platform for local service businesses.
 
 Analyze this data for ${context.orgName} and produce exactly 3 findings. Each finding must pass the biological-economic lens: identify which core human need is threatened (safety, belonging, purpose, or status) and the dollar consequence at 30, 90, and 365 days.
 

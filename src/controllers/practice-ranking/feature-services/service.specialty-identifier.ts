@@ -145,7 +145,7 @@ export async function identifyAndUpdate(
       log(
         `[Batch ${batchId}] ⚠ Failed to auto-detect: ${identifyError.message}. Using defaults.`,
       );
-      specialty = specialty || "dentist";
+      specialty = specialty || "local business";
       marketLocation = marketLocation || "Unknown, US";
 
       await db("practice_rankings").where({ id: rankingId }).update({

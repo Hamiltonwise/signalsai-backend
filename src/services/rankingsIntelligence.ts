@@ -151,8 +151,8 @@ Market: ${address || specialty}`,
     ];
   }
 
-  // 4. Dollar figure
-  const avgCaseValue = 1500;
+  // 4. Dollar figure (use vocabulary config for org's vertical, fallback to $200)
+  const avgCaseValue = await getAvgCaseValueForOrg(orgId);
   const compVelocity = topCompetitorReviews / 104;
   const clientVelocity = clientReviews / 104;
   const velocityGap = Math.max(0, compVelocity - clientVelocity);
@@ -247,4 +247,24 @@ export async function generateAllSnapshots(): Promise<{ generated: number; total
 
   console.log(`[RankingsIntel] Generated ${generated}/${orgs.length} snapshots`);
   return { generated, total: orgs.length };
+}
+
+/**
+ * Look up avgCaseValue from vocabulary config for the org's vertical.
+ * Falls back to $200 (universal default) instead of dental-specific $1,500.
+ */
+async function getAvgCaseValueForOrg(orgId: number): Promise<number> {
+  try {
+    const config = await db("vocabulary_configs").where({ org_id: orgId }).first();
+    if (config?.vertical) {
+      const defaults = await db("vocabulary_defaults").where({ vertical: config.vertical }).first();
+      if (defaults?.config) {
+        const parsed = typeof defaults.config === "string" ? JSON.parse(defaults.config) : defaults.config;
+        if (parsed.avgCaseValue) return parsed.avgCaseValue;
+      }
+    }
+  } catch {
+    // Fall through to default
+  }
+  return 200;
 }

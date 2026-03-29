@@ -374,5 +374,5 @@ async function getAvgCaseValue(orgId: number): Promise<number> {
       if (parsed.avgCaseValue) return parsed.avgCaseValue;
     }
   }
-  return 1500; // default
+  return 500; // universal fallback
 }
