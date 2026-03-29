@@ -77,6 +77,11 @@ export async function analyzeCheckup(params: {
   reviewCount: number;
   placeId: string;
   location?: { latitude: number; longitude: number } | null;
+  // Oz reveals: extra GBP data for deeper insights
+  photosCount?: number;
+  hasHours?: boolean;
+  websiteUri?: string | null;
+  phone?: string | null;
 }): Promise<CheckupAnalysis> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000); // 45s timeout

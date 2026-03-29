@@ -522,6 +522,7 @@ export default function ScanningTheater() {
       totalImpact: result.totalImpact,
       market: result.market,
       gaps: (result as any).gaps || [],
+      ozMoments: (result as any).ozMoments || undefined,
       refCode,
       intent,
     };

@@ -19,6 +19,14 @@ export const PLACE_DETAILS_FIELD_MASK = [
   "location",
   "reviews",
   "photos",
+  // Oz Pearlman homework: deeper signals for personalized reveals
+  "editorialSummary",      // Google's AI summary of the business
+  "regularOpeningHours",   // Full business hours (for competitor comparison)
+  "currentOpeningHours",   // Are they open right now?
+  "businessStatus",        // OPERATIONAL, CLOSED_TEMPORARILY, etc.
+  "priceLevel",            // Price tier
+  "openingDate",           // When the business opened (years in business)
+  "reviews.publishTime",   // Review timestamps (for recency analysis)
 ].join(",");
 
 /**
@@ -56,4 +64,7 @@ export const TEXT_SEARCH_FIELD_MASK = [
   "places.regularOpeningHours",
   "places.photos",
   "places.location",
+  // Oz Pearlman homework: surprise findings from competitor data
+  "places.editorialSummary",    // Google's AI summary of the business
+  "places.reviews",             // Review text + timestamps for recency analysis
 ].join(",");

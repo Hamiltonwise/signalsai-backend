@@ -426,9 +426,6 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     let ozMoments: OzMoment[] = [];
 
     if (placeId) {
-      // Fetch client reviews for both analyses
-      const clientReviewsRaw = req.body.reviews || [];
-
       // Run sentiment and Oz moments in parallel
       const [sentimentResult, ozResult] = await Promise.allSettled([
         analyzeReviewSentiment(
@@ -440,25 +437,22 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         ),
         generateOzMoments({
           clientName: name,
+          clientPlaceId: placeId || null,
           clientRating: clientRating,
           clientReviewCount: clientReviews,
-          clientReviews: clientReviewsRaw.map((r: any) => ({
-            text: r.text || "",
-            rating: r.rating || 0,
-            author: r.author || "Anonymous",
-            when: r.time || "",
-          })),
+          clientReviews: [], // Fetched inside ozMoment.ts from placeId
           clientHasWebsite: !!req.body.websiteUri,
           clientPhotoCount: req.body.photosCount ?? 0,
           clientCategory: specialty,
           clientCity: city,
           competitorName: topCompetitor?.name || null,
+          competitorPlaceId: topCompetitor?.placeId || null,
           competitorRating: topCompetitor?.totalScore || null,
           competitorReviewCount: topCompetitor?.reviewsCount || null,
-          competitorReviews: [], // Reviews fetched inside ozMoment.ts if needed
+          competitorReviews: [], // Fetched inside ozMoment.ts from placeId
           competitorHasWebsite: !!topCompetitor?.website,
           competitorPhotoCount: topCompetitor?.photosCount ?? 0,
-          competitorHours: null, // Could extract from competitor data
+          competitorHours: null,
           marketRank: rank,
           totalCompetitors: otherCompetitors.length,
           avgRating: Math.round(avgRating * 10) / 10,

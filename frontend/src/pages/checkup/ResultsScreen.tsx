@@ -80,6 +80,12 @@ export interface CheckupResults {
     rank: number;
   };
   gaps?: CheckupGapItem[];
+  ozMoments?: Array<{
+    hook: string;
+    implication: string;
+    action: string;
+    shareability: number;
+  }>;
   refCode?: string;
   intent?: string;
 }
@@ -585,6 +591,21 @@ export default function ResultsScreen() {
   const [weeklyUpdates, setWeeklyUpdates] = useState(true);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // Oz Pearlman sequential reveal: score first, then competitors, then finding, then gate
+  const [revealStage, setRevealStage] = useState(0);
+  useEffect(() => {
+    // Stage 0: score ring (immediate)
+    // Stage 1: competitors + diagnostic (after 2s)
+    // Stage 2: sub-scores + gaps (after 4s)
+    // Stage 3: findings + gate (after 6s)
+    const timers = [
+      setTimeout(() => setRevealStage(1), 2000),
+      setTimeout(() => setRevealStage(2), 4000),
+      setTimeout(() => setRevealStage(3), 6000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
   // Vendor path state
   const [vendorEmail, setVendorEmail] = useState("");
   const [vendorEmailError, setVendorEmailError] = useState("");
@@ -793,7 +814,7 @@ export default function ResultsScreen() {
       {/* Practice name + market context */}
       <div className="text-center">
         <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-2">
-          Business Clarity Score
+          Your Market Position
         </p>
         <h2 className="text-2xl font-extrabold text-[#212D40]">{place.name}</h2>
         {market && (
@@ -809,8 +830,8 @@ export default function ResultsScreen() {
       </div>
       <ScoreCelebrationText score={score.composite} />
 
-      {/* Diagnostic sentence — the difference between a number and a diagnosis */}
-      {market && market.rank === 1 && topCompetitor && (
+      {/* Stage 1: Diagnostic sentence — the difference between a number and a diagnosis */}
+      {revealStage >= 1 && market && market.rank === 1 && topCompetitor && (
         <p className="text-sm text-emerald-700 text-center leading-relaxed -mt-2 font-medium">
           <span className="font-semibold">{place.name}</span> is #1 in {market.city}.
           {place.reviewCount > topCompetitor.reviewCount
@@ -892,15 +913,44 @@ export default function ResultsScreen() {
         {" "}A full audit with connected accounts reveals more.
       </p>
 
-      {/* Share prompt — right after score, natural moment. Oz principle: make sharing feel
-           like the user's own idea, never a referral ask. The insight drives the impulse. */}
+      {/* ═══ OZ MOMENTS: The jaw-drop insights from combined data ═══ */}
+      {/* These use progressive specificity: named competitor + specific number + consequence.
+          The goal: make the person stop scrolling and think "how did they know that?" */}
+      {state.ozMoments && state.ozMoments.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#212D40]/40">
+            What we found
+          </p>
+          {state.ozMoments.map((moment, i) => (
+            <div
+              key={i}
+              className="rounded-2xl bg-[#212D40] p-5 space-y-2.5"
+            >
+              <p className="text-[15px] font-bold text-white leading-snug">
+                {moment.hook}
+              </p>
+              <p className="text-sm text-white/60 leading-relaxed">
+                {moment.implication}
+              </p>
+              <div className="pt-1.5 border-t border-white/10">
+                <p className="text-xs text-[#D56753] font-medium">
+                  {moment.action}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Share prompt — right after Oz moments, when the impulse is strongest.
+           Oz principle: the share is the user's own idea, not an ask. */}
       <div className="bg-[#212D40] rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4">
         <div className="flex-1 text-center sm:text-left">
           <p className="text-sm font-semibold text-white">
-            See how a colleague ranks.
+            Know someone who should see their market?
           </p>
           <p className="text-xs text-white/50 mt-1">
-            Send them a link to run their own Checkup. No names shared. You both get a free month when they join.
+            Send them a link to run their own scan. No names shared.
           </p>
         </div>
         <button
