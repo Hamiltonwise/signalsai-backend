@@ -110,6 +110,30 @@ function getScoreRingColor(score: number): string {
 // Score Ring — animated circular gauge
 // ---------------------------------------------------------------------------
 
+function useCountUp(target: number, duration = 1500): number {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (target <= 0) { setValue(0); return; }
+    const start = performance.now();
+    let raf: number;
+
+    function tick(now: number) {
+      const elapsed = now - start;
+      const t = Math.min(elapsed / duration, 1);
+      // ease-out cubic for a satisfying deceleration
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(Math.round(eased * target));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    }
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+
+  return value;
+}
+
 function ScoreRing({
   score,
   size = 140,
@@ -122,9 +146,13 @@ function ScoreRing({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;
+  const displayScore = useCountUp(score, 1500);
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div
+      className={`relative ${score >= 75 ? "animate-score-celebrate" : ""}`}
+      style={{ width: size, height: size }}
+    >
       <svg width={size} height={size} className="-rotate-90">
         <circle
           cx={size / 2}
@@ -147,12 +175,38 @@ function ScoreRing({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-4xl font-bold text-slate-900">{score}</span>
+        <span className="text-4xl font-bold text-slate-900">{displayScore}</span>
         <span className={`text-sm font-semibold ${getScoreLabelColor(score)}`}>
           {getScoreLabel(score)}
         </span>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Score Celebration Text -- delight layer beneath the ring
+// ---------------------------------------------------------------------------
+
+function ScoreCelebrationText({ score }: { score: number }) {
+  if (score >= 75) {
+    return (
+      <p className="text-sm text-emerald-600 text-center font-medium -mt-1 animate-fade-in">
+        That&apos;s a strong foundation.
+      </p>
+    );
+  }
+  if (score >= 40) {
+    return (
+      <p className="text-sm text-slate-500 text-center -mt-1 animate-fade-in">
+        Room to grow, and we know exactly where.
+      </p>
+    );
+  }
+  return (
+    <p className="text-sm text-slate-500 text-center -mt-1 animate-fade-in">
+      There&apos;s a clear path forward. Let&apos;s start.
+    </p>
   );
 }
 
@@ -431,7 +485,19 @@ function CompetitorInviteSection({
         senderName,
       });
       if (res.success && res.inviteUrl) {
-        await navigator.clipboard.writeText(res.inviteUrl);
+        // Norton frictionless handoff: use Web Share API on mobile, clipboard on desktop
+        if (navigator.share) {
+          await navigator.share({
+            title: `Free Business Checkup for ${competitor.name}`,
+            text: `See how ${competitor.name} ranks in your market. 60 seconds, free.`,
+            url: res.inviteUrl,
+          }).catch(() => {
+            // User cancelled share sheet, fall back to clipboard
+            navigator.clipboard.writeText(res.inviteUrl!);
+          });
+        } else {
+          await navigator.clipboard.writeText(res.inviteUrl);
+        }
         setCopiedId(competitor.placeId);
         setTimeout(() => setCopiedId(null), 3000);
         trackEvent("checkup.competitor_invite_created", {
@@ -741,6 +807,7 @@ export default function ResultsScreen() {
       <div className="flex justify-center py-2">
         <ScoreRing score={score.composite} size={180} strokeWidth={12} />
       </div>
+      <ScoreCelebrationText score={score.composite} />
 
       {/* Diagnostic sentence — the difference between a number and a diagnosis */}
       {market && market.rank === 1 && topCompetitor && (
@@ -829,10 +896,10 @@ export default function ResultsScreen() {
       <div className="bg-[#212D40] rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4">
         <div className="flex-1 text-center sm:text-left">
           <p className="text-sm font-semibold text-white">
-            Know a colleague who should see their market?
+            Know someone who should see this? Share your link. You both save a month.
           </p>
           <p className="text-xs text-white/50 mt-1">
-            Send them a link to run their own checkup. No names shared.
+            We all rise together.
           </p>
         </div>
         <button
@@ -871,7 +938,7 @@ export default function ResultsScreen() {
           className="shrink-0 flex items-center gap-2 text-sm font-semibold text-[#212D40] bg-white rounded-lg px-5 py-2.5 hover:bg-gray-50 active:scale-[0.98] transition-all"
         >
           <Share2 className="w-3.5 h-3.5" />
-          {linkCopied ? "Copied!" : "Invite a colleague"}
+          {linkCopied ? "Copied!" : "Share and split the check"}
         </button>
       </div>
 
@@ -931,7 +998,13 @@ export default function ResultsScreen() {
               {topCompetitor ? `Your ${topCompetitor.name} Comparison` : `Your ${cityLabel} Competitive Report`}
             </span>
           </div>
-          <p className="text-sm text-slate-600 mb-5 leading-relaxed">{blurGateCta}</p>
+          <p className="text-sm text-slate-600 mb-4 leading-relaxed">{blurGateCta}</p>
+          {market && market.totalCompetitors > 3 && (
+            <p className="text-[11px] text-slate-400 mb-4 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {market.totalCompetitors} businesses in {market.city} are in this market. Intelligence is how you stay ahead.
+            </p>
+          )}
           <form onSubmit={handleEmailSubmit} className="space-y-3">
             {/* Email */}
             <div>
@@ -1138,8 +1211,20 @@ export default function ResultsScreen() {
               </>
             )}
           </form>
-          <p className="text-[11px] text-slate-400 text-center mt-5 leading-relaxed">
-            Your full report takes 30 seconds to unlock.
+          {/* Trust signals -- 15-42% conversion lift per Baymard Institute */}
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mt-5">
+            <span className="text-[11px] text-slate-400 flex items-center gap-1">
+              <Lock className="w-3 h-3" /> No credit card
+            </span>
+            <span className="text-[11px] text-slate-400">
+              Cancel anytime
+            </span>
+            <span className="text-[11px] text-slate-400">
+              Your data stays yours
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-300 text-center mt-2 leading-relaxed">
+            Built on Claude by Anthropic. Your data is never sold or shared.
           </p>
         </div>
       ) : (
@@ -1159,11 +1244,11 @@ export default function ResultsScreen() {
           <div className="flex items-center gap-2 mb-2">
             <Share2 className="w-4 h-4 text-slate-400" />
             <span className="text-sm font-medium text-slate-700">
-              Know a colleague who should see their market?
+              Know someone who should see this? Share your link. You both save a month.
             </span>
           </div>
           <p className="text-xs text-slate-500 mb-3">
-            Send them a link to run their own checkup. No names shared.
+            We all rise together.
           </p>
           <button
             type="button"
@@ -1202,7 +1287,7 @@ export default function ResultsScreen() {
             className="flex items-center gap-2 text-sm font-medium text-[#212D40] border border-[#212D40]/20 rounded-lg px-4 py-2.5 hover:border-[#212D40]/40 transition-colors"
           >
             <Copy className="w-3.5 h-3.5" />
-            {linkCopied ? "Copied!" : "Invite a colleague"}
+            {linkCopied ? "Copied!" : "Share and split the check"}
           </button>
         </div>
         </>
