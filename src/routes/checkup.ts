@@ -459,6 +459,10 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
           avgReviews: Math.round(avgReviews),
           vertical: vocabPreset.vertical,
           avgCaseValue: econ.avgCaseValue,
+          // Deep Oz data: Google gives us these for free
+          openingDate: req.body.openingDate || null,
+          editorialSummary: req.body.editorialSummary || null,
+          businessStatus: req.body.businessStatus || null,
         }),
       ]);
 
