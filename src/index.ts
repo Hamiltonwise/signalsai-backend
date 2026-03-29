@@ -106,6 +106,7 @@ import healthRoutes from "./routes/health";
 import adminSearchRoutes from "./routes/admin/search";
 import adminUserManagementRoutes from "./routes/admin/userManagement";
 import adminFeatureFlagRoutes from "./routes/admin/featureFlags";
+import experimentRoutes from "./routes/admin/experiments";
 import adminWebhookHealthRoutes from "./routes/admin/webhookHealth";
 import adminAuditLogRoutes from "./routes/admin/auditLog";
 import mailgunInboundRoutes from "./routes/webhooks/mailgunInbound";
@@ -312,6 +313,7 @@ app.use("/api/user", userProgressReportRoutes); // Enhanced progress report data
 app.use("/api/admin/search", adminSearchRoutes); // WO-ADMIN-SEARCH: cross-collection search for HQ
 app.use("/api/admin/users", adminUserManagementRoutes); // T6: User CRUD (GET/POST/PATCH/DELETE)
 app.use("/api/admin/feature-flags", adminFeatureFlagRoutes); // T6: Feature flag management
+app.use("/api/admin/experiments", experimentRoutes); // Kenji Lopez-Alt Experiment Lab
 app.use("/api/admin/webhooks", adminWebhookHealthRoutes); // T6: Webhook health monitoring
 app.use("/api/admin/audit-log", adminAuditLogRoutes); // T6: Audit log viewer
 app.use("/api/webhooks/mailgun", mailgunInboundRoutes); // T3: Mailgun inbound email processing

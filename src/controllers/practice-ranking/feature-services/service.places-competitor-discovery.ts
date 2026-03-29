@@ -64,7 +64,8 @@ const SPECIALTY_PRIMARY_TYPES: Record<string, string[]> = {
   fitness: ["gym", "fitness_center", "personal_trainer"],
   automotive: ["auto_repair", "mechanic", "car_repair", "auto_body_shop"],
   food_service: ["restaurant", "cafe", "bakery", "coffee_shop"],
-  medspa: ["medical_spa", "spa", "dermatologist", "plastic_surgeon"],
+  medspa: ["medical_spa", "spa", "dermatologist"],
+  plastic_surgery: ["plastic_surgeon", "cosmetic_surgeon"],
   financial_advisor: ["financial_planner", "financial_advisor", "investment_service"],
 };
 
@@ -156,6 +157,10 @@ function normalizeSpecialty(specialty: string): string {
     "med spa": "medspa",
     medspa: "medspa",
     dermatologist: "medspa",
+    "plastic surgeon": "plastic_surgery",
+    "plastic surgery": "plastic_surgery",
+    "cosmetic surgeon": "plastic_surgery",
+    plastic_surgery: "plastic_surgery",
   };
   return aliases[specialty.toLowerCase().trim()] || specialty.toLowerCase().trim();
 }
@@ -285,13 +290,36 @@ export function filterBySpecialty(
       return false;
     }
 
-    // Unknown vertical with no type mapping: trust the Text Search results.
-    // Google Text Search for "barber in Austin" already returns barbershops.
-    // Only reject obvious junk (hospitals, schools, government buildings).
-    const junkTypes = ["hospital", "school", "university", "government", "church", "museum", "library"];
+    // Unknown vertical with no type mapping: trust the Text Search results,
+    // but reject obvious junk and cross-specialty medical businesses.
+    const junkTypes = [
+      "hospital", "school", "university", "government", "church", "museum", "library",
+      // Medical cross-contamination: urgent care and general medical should not
+      // match specialist searches (e.g. plastic surgeon should not match urgent care)
+      "urgent_care", "emergency_room", "pharmacy", "drugstore",
+    ];
     if (junkTypes.some((j) => pt.includes(j) || comp.types?.some((t) => t.toLowerCase().includes(j)))) {
       return false;
     }
+
+    // For unknown specialties that look medical/specialist, require the competitor's
+    // display category to share at least one significant word with the search specialty.
+    // This prevents "Plastic Surgeon" from matching "Urgent Care" or "Family Medicine".
+    const specWords = specialty.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
+    if (specWords.length > 0) {
+      const catWords = displayCat.toLowerCase().split(/\s+/);
+      const nameWords = comp.name.toLowerCase().split(/\s+/);
+      const hasOverlap = specWords.some(
+        (sw) => catWords.some((cw) => cw.includes(sw) || sw.includes(cw))
+          || nameWords.some((nw) => nw.includes(sw) || sw.includes(nw))
+      );
+      if (!hasOverlap) {
+        // Also check if the competitor's types overlap with the client types
+        // (e.g. both have "doctor" or "plastic_surgeon" in their types)
+        return false;
+      }
+    }
+
     return true;
   });
 

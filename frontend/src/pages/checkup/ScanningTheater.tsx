@@ -620,7 +620,8 @@ export default function ScanningTheater() {
           location: place.location,
           // Oz reveals: every public data point compounds the "how did they know?" moment
           photosCount: place.photos?.length ?? 0,
-          hasHours: true,
+          hasHours: !!(place.regularOpeningHours?.periods?.length),
+          regularOpeningHours: place.regularOpeningHours || undefined,
           websiteUri: place.websiteUri,
           phone: place.phone,
           editorialSummary: place.editorialSummary,

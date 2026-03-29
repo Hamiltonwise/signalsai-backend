@@ -110,8 +110,7 @@ export default function DynamicArticle() {
   // Simple markdown-to-HTML: headings, paragraphs, bold, italic, lists
   const renderBody = (body: string) => {
     const lines = body.split("\n");
-    const elements: JSX.Element[] = [];
-    let inList = false;
+    const elements: React.ReactElement[] = [];
     let listItems: string[] = [];
 
     const flushList = () => {
@@ -126,7 +125,6 @@ export default function DynamicArticle() {
           </ul>
         );
         listItems = [];
-        inList = false;
       }
     };
 
@@ -144,7 +142,6 @@ export default function DynamicArticle() {
       }
 
       if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-        inList = true;
         listItems.push(trimmed.slice(2));
         continue;
       }

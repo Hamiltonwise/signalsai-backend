@@ -44,6 +44,10 @@ export interface PlaceDetails {
   editorialSummary?: string | null;
   openingDate?: string | null;
   businessStatus?: string | null;
+  regularOpeningHours?: {
+    weekdayDescriptions?: string[];
+    periods?: any[];
+  } | null;
 }
 
 export interface AutocompleteResponse {

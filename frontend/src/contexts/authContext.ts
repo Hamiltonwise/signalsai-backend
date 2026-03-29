@@ -25,6 +25,8 @@ export interface BillingState {
   isAdminGranted: boolean;
   isLockedOut: boolean;
   subscriptionStatus: string;
+  subscriptionTier?: string;
+  isFoundation?: boolean;
 }
 
 export interface AuthContextType {

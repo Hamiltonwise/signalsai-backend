@@ -80,6 +80,7 @@ export async function analyzeCheckup(params: {
   // Oz reveals: extra GBP data for deeper insights
   photosCount?: number;
   hasHours?: boolean;
+  regularOpeningHours?: { weekdayDescriptions?: string[]; periods?: any[] } | null;
   websiteUri?: string | null;
   phone?: string | null;
   // Oz homework: deeper signals

@@ -426,7 +426,10 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     }
 
     // Hours completeness (competitor has full hours, you don't)
-    const clientHasHours = !!req.body.hasHours;
+    // Derive from regularOpeningHours if available, fall back to hasHours flag
+    const clientHasHours = req.body.regularOpeningHours
+      ? (req.body.regularOpeningHours.periods?.length || 0) > 0
+      : !!req.body.hasHours;
     if (!clientHasHours && topCompetitor?.hasHours) {
       findings.push({
         type: "hours_missing",
@@ -504,15 +507,28 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // ─── Surprise Findings: Oz Pearlman homework from expanded data ───
     let surpriseFindings: SurpriseFinding[] = [];
     try {
+      // Transform frontend review format to PlaceReview format expected by surprise findings
+      const clientReviewsForSurprise = (req.body.reviews || []).map((r: any) => ({
+        text: { text: r.text || "" },
+        originalText: { text: r.text || "" },
+        rating: r.rating || 0,
+        authorAttribution: { displayName: r.author || "Anonymous" },
+        relativePublishTimeDescription: r.time || r.when || "",
+        publishTime: r.time || r.when || undefined,
+        // ownerResponse is not available from frontend data
+      }));
+
       surpriseFindings = await generateSurpriseFindings({
         place: {
           displayName: { text: name },
           rating: clientRating,
           userRatingCount: clientReviews,
-          reviews: req.body.reviews || [],
+          reviews: clientReviewsForSurprise,
           photos: req.body.photos || new Array(req.body.photosCount || 0),
           regularOpeningHours: req.body.regularOpeningHours || undefined,
-          editorialSummary: req.body.editorialSummary || undefined,
+          editorialSummary: req.body.editorialSummary
+            ? { text: req.body.editorialSummary }
+            : undefined,
           websiteUri: req.body.websiteUri || undefined,
         },
         competitors: otherCompetitors.slice(0, 5).map((c) => ({

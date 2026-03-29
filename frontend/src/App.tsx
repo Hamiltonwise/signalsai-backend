@@ -63,7 +63,6 @@ const WhoItsFor = React.lazy(() => import("./pages/marketing/WhoItsFor"));
 const PricingPage = React.lazy(() => import("./pages/marketing/PricingPage"));
 const StoryPage = React.lazy(() => import("./pages/marketing/Story"));
 const BlogPage = React.lazy(() => import("./pages/marketing/Blog"));
-const BlogRedirect = React.lazy(() => import("./pages/marketing/BlogRedirect"));
 const DynamicArticle = React.lazy(() => import("./pages/content/DynamicArticle"));
 const BlogPost1 = React.lazy(() => import("./pages/marketing/blog/TheSecondJobProblem"));
 const BlogPost2 = React.lazy(() => import("./pages/marketing/blog/GoogleBusinessProfileScore"));

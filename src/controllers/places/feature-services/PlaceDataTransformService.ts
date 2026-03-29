@@ -36,6 +36,13 @@ export interface PlaceDetails {
   location: any | null;
   reviews: PlaceReview[];
   photos: PlacePhoto[];
+  regularOpeningHours?: {
+    weekdayDescriptions?: string[];
+    periods?: any[];
+  } | null;
+  editorialSummary?: string | null;
+  openingDate?: string | null;
+  businessStatus?: string | null;
 }
 
 /**
@@ -124,6 +131,11 @@ export function transformPlaceDetailsResponse(
       widthPx: p.widthPx || 400,
       heightPx: p.heightPx || 300,
     })),
+    regularOpeningHours: data.regularOpeningHours || null,
+    // Deep Oz data: editorial summary, opening date, business status
+    editorialSummary: data.editorialSummary?.text || null,
+    openingDate: data.openingDate || null,
+    businessStatus: data.businessStatus || null,
   };
 }
 

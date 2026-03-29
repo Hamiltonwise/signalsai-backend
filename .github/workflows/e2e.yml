@@ -13,7 +13,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: alloro
           POSTGRES_PASSWORD: alloro_test
@@ -28,6 +28,11 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://alloro:alloro_test@localhost:5432/alloro_test
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_USER: alloro
+      DB_PASSWORD: alloro_test
+      DB_NAME: alloro_test
       JWT_SECRET: e2e-test-secret
       NODE_ENV: test
 
@@ -52,19 +57,34 @@ jobs:
         run: npx ts-node src/scripts/seedDemoAccount.ts
         continue-on-error: true
 
+      - name: Build backend
+        run: npm run build
+
       - name: Build frontend
         run: cd frontend && npm run build
+
+      - name: Move frontend build into public
+        run: |
+          rm -rf public || true
+          mkdir -p public
+          cp -r frontend/dist/* public/
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
       - name: Start server
-        run: npm run start &
+        run: npm run start > server.log 2>&1 &
         env:
           PORT: 3000
+          NODE_ENV: production
 
       - name: Wait for server
-        run: npx wait-on http://localhost:3000/api/health --timeout 30000
+        run: |
+          npx wait-on http://localhost:3000/api/health --timeout 60000 || {
+            echo "=== SERVER LOG ==="
+            cat server.log
+            exit 1
+          }
 
       - name: Run E2E tests
         run: npx playwright test --reporter=list,html
