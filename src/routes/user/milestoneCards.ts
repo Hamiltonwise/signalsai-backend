@@ -70,9 +70,28 @@ milestoneCardRoutes.get(
         .count("id as count")
         .first();
 
+      // Check if the Sunday fear was resolved (first win exists)
+      const orgFull = await db("organizations").where({ id: orgId }).first("first_win_attributed_at");
+      const fearResolved = !!orgFull?.first_win_attributed_at;
+
+      // Get win detail for the resolution callback
+      let winDetail: string | null = null;
+      if (fearResolved) {
+        const winEvent = await db("behavioral_events")
+          .where({ organization_id: orgId, event_type: "first_win.achieved" })
+          .orderBy("created_at", "desc")
+          .first("metadata");
+        if (winEvent?.metadata) {
+          const meta = typeof winEvent.metadata === "string" ? JSON.parse(winEvent.metadata) : winEvent.metadata;
+          winDetail = meta?.detail || null;
+        }
+      }
+
       const card = {
         milestone,
         sunday_fear: profile?.sunday_fear || null,
+        sunday_fear_resolved: fearResolved,
+        sunday_fear_resolution: winDetail,
         vision_3yr: profile?.vision_3yr || null,
         moved,
         gap,

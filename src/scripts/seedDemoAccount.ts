@@ -305,7 +305,7 @@ async function seed() {
           event_type: "first_win.achieved",
           metadata: JSON.stringify({
             headline: "Alloro caught something. You acted. It worked.",
-            detail: "Dr. Rodriguez sent her first referral in 47 days. You called her Tuesday. She sent 2 cases by Friday.",
+            detail: "Dr. Rodriguez was quiet for 47 days. You called her Tuesday. She sent 2 cases by Friday. $18,000/year protected.",
           }),
           created_at: new Date(now.getTime() - 5 * 86_400_000),
         },

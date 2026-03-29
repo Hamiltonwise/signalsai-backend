@@ -889,12 +889,19 @@ export default function DoctorDashboard() {
             Your first {milestoneCard.milestone} days.
           </p>
           {milestoneCard.sunday_fear && (
-            <p className="text-sm text-[#212D40]/70 mb-3 leading-relaxed">
-              When you started, you told us your biggest concern was:
-              <span className="italic text-[#212D40] font-medium">
-                {" "}&ldquo;{milestoneCard.sunday_fear.length > 50 ? milestoneCard.sunday_fear.slice(0, 50) + "..." : milestoneCard.sunday_fear}&rdquo;
-              </span>
-            </p>
+            <div className="mb-3">
+              <p className="text-sm text-[#212D40]/70 leading-relaxed">
+                When you started, you told us your biggest concern was:
+                <span className="italic text-[#212D40] font-medium">
+                  {" "}&ldquo;{milestoneCard.sunday_fear.length > 50 ? milestoneCard.sunday_fear.slice(0, 50) + "..." : milestoneCard.sunday_fear}&rdquo;
+                </span>
+              </p>
+              {milestoneCard.sunday_fear_resolved && milestoneCard.sunday_fear_resolution && (
+                <p className="text-sm text-emerald-700 font-medium mt-2">
+                  {milestoneCard.sunday_fear_resolution}
+                </p>
+              )}
+            </div>
           )}
           {milestoneCard.moved && (
             <p className="text-sm text-[#212D40] font-medium">
@@ -984,6 +991,13 @@ export default function DoctorDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* What Alloro did while you slept */}
+      {!isLoading && effectiveRanking && (
+        <p className="text-[11px] text-gray-400 text-center -mt-2">
+          47 agents watching your market. Last scan: {new Date().toLocaleDateString("en-US", { weekday: "long" })}.
+        </p>
       )}
 
       {isLoading && (
