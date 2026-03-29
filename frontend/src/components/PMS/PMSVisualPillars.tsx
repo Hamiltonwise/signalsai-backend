@@ -977,16 +977,6 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
       return;
     }
 
-      "✅ handleConfirmApproval called with latestJobId:",
-      latestJobId,
-    );
-      keyData_months: keyData?.months,
-      keyData_sources: keyData?.sources,
-      monthlyData: monthlyData,
-      totalProduction: totalProduction,
-      doctorPercentage: doctorPercentage,
-      totalReferrals: totalReferrals,
-    });
 
     setIsConfirming(true);
     setBannerError(null);

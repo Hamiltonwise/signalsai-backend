@@ -44,9 +44,6 @@ export const Consideration: React.FC<ConsiderationProps> = ({
   const { gbpData, isLoading, error } = useGBP();
 
   // selectedDomain is passed as prop - GBP Context automatically handles data fetching when domain changes
-    "Consideration component received selectedDomain:",
-    selectedDomain
-  );
 
   // Helper function to format numbers
   const formatNumber = (num: number): string => {

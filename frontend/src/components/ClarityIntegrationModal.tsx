@@ -42,9 +42,6 @@ export const ClarityIntegrationModal: React.FC<BaseIntegrationModalProps> = ({
   }, [isOpen]);
 
   const handleConnect = async () => {
-      "Clarity Modal: Starting demo connection with clientId:",
-      clientId
-    );
     setIsLoading(true);
     setError(null);
 

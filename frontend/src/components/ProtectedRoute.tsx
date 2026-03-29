@@ -17,9 +17,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const isAuthenticated = !!authToken || !!token;
 
   if (!isAuthenticated) {
-      "[ProtectedRoute] No JWT token found; redirecting to signin",
-      { currentTime: new Date().toISOString() }
-    );
     return <Navigate to="/signin" replace />;
   }
 
