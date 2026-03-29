@@ -126,6 +126,12 @@ export function competitorTerm(
   return "business in your area";
 }
 
+const USER_QUESTION_PLACEHOLDERS = [
+  "Where my clients come from",
+  "Why my competitor ranks higher",
+  "If my marketing is working",
+];
+
 export default function EntryScreen() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -143,6 +149,8 @@ export default function EntryScreen() {
   const [noResults, setNoResults] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [referrerName, setReferrerName] = useState<string | null>(null);
+  const [userQuestion, setUserQuestion] = useState("");
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
   // Auto-select place from URL params (homepage CTA flow)
   useEffect(() => {
@@ -171,6 +179,14 @@ export default function EntryScreen() {
       }
     });
   }, [refCode]);
+
+  // Rotate placeholder examples for the "one question" input
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % USER_QUESTION_PLACEHOLDERS.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, []);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionTokenRef = useRef(crypto.randomUUID());
@@ -241,7 +257,7 @@ export default function EntryScreen() {
 
   const handleContinue = () => {
     if (!selectedPlace) return;
-    navigate("/checkup/scanning", { state: { place: selectedPlace, refCode, intent } });
+    navigate("/checkup/scanning", { state: { place: selectedPlace, refCode, intent, userQuestion: userQuestion.trim() || undefined } });
   };
 
   return (
@@ -378,10 +394,25 @@ export default function EntryScreen() {
             </div>
           </div>
 
+          {/* The One Question — optional, personal */}
+          <div className="mt-5 pt-4 border-t border-slate-100">
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              What do you wish you knew about your business?
+              <span className="ml-1 text-slate-300">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={userQuestion}
+              onChange={(e) => setUserQuestion(e.target.value)}
+              placeholder={USER_QUESTION_PLACEHOLDERS[placeholderIndex]}
+              className="w-full h-10 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-[#212D40] placeholder:text-slate-300 transition-all focus:outline-none focus:border-[#D56753]/40 focus:ring-2 focus:ring-[#D56753]/8"
+            />
+          </div>
+
           <button
             type="button"
             onClick={handleContinue}
-            className="mt-6 w-full h-[3.25rem] flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all"
+            className="mt-5 w-full h-[3.25rem] flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all"
           >
             Run My Checkup
             <ArrowRight className="w-4 h-4" />

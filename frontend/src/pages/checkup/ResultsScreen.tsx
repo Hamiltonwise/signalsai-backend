@@ -88,6 +88,7 @@ export interface CheckupResults {
   }>;
   refCode?: string;
   intent?: string;
+  userQuestion?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -1014,6 +1015,11 @@ export default function ResultsScreen() {
       {/* Findings — first visible, rest blurred */}
       <div className="space-y-3">
         <h2 className="text-sm font-bold text-[#212D40] uppercase tracking-wide">Key Findings</h2>
+        {state.userQuestion && (
+          <div className="bg-[#D56753]/5 border border-[#D56753]/15 rounded-xl px-4 py-3 text-sm text-[#212D40]">
+            You asked: &ldquo;{state.userQuestion}&rdquo;. Here&apos;s what we found.
+          </div>
+        )}
         {findings.map((f, i) => (
           <FindingCard
             key={f.type}
