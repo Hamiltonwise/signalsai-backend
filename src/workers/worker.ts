@@ -24,6 +24,18 @@ import { processMondayEmail } from "./processors/mondayEmail.processor";
 import { processCompetitiveScout } from "./processors/competitiveScout.processor";
 import { processClientMonitor } from "./processors/clientMonitor.processor";
 import { processMorningBriefing } from "./processors/morningBriefing.processor";
+import { processIntelligenceAgent } from "./processors/intelligenceAgent.processor";
+import { processLearningAgent } from "./processors/learningAgent.processor";
+import { processCSExpander } from "./processors/csExpander.processor";
+import { processCSCoach } from "./processors/csCoach.processor";
+import { processConversionOptimizer } from "./processors/conversionOptimizer.processor";
+import { processContentPerformance } from "./processors/contentPerformance.processor";
+import { processNothingGetsLost } from "./processors/nothingGetsLost.processor";
+import { processAEOMonitor } from "./processors/aeoMonitor.processor";
+import { processMarketSignalScout } from "./processors/marketSignalScout.processor";
+import { processTechnologyHorizon } from "./processors/technologyHorizon.processor";
+import { processProgrammaticSEO } from "./processors/programmaticSEO.processor";
+import { processWeeklyDigest } from "./processors/weeklyDigest.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -317,8 +329,164 @@ const morningBriefingWorker = new Worker(
   }
 );
 
+// Intelligence Agent worker (daily 5 AM PT)
+const intelligenceAgentWorker = new Worker(
+  "minds-intelligence-agent",
+  async (job) => {
+    await processIntelligenceAgent(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Learning Agent worker (weekly Sunday 9 PM PT)
+const learningAgentWorker = new Worker(
+  "minds-learning-agent",
+  async (job) => {
+    await processLearningAgent(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// CS Expander worker (monthly 1st Monday 9 AM ET + on first_win events)
+const csExpanderWorker = new Worker(
+  "minds-cs-expander",
+  async (job) => {
+    await processCSExpander(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// CS Coach worker (weekly Sunday 8 PM PT)
+const csCoachWorker = new Worker(
+  "minds-cs-coach",
+  async (job) => {
+    await processCSCoach(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Conversion Optimizer worker (weekly Monday 6 AM PT)
+const conversionOptimizerWorker = new Worker(
+  "minds-conversion-optimizer",
+  async (job) => {
+    await processConversionOptimizer(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Content Performance worker (weekly Sunday 6 PM PT)
+const contentPerformanceWorker = new Worker(
+  "minds-content-performance",
+  async (job) => {
+    await processContentPerformance(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Nothing Gets Lost worker (daily 7 AM PT + weekly Sundays)
+const nothingGetsLostWorker = new Worker(
+  "minds-nothing-gets-lost",
+  async (job) => {
+    await processNothingGetsLost(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// AEO Monitor worker (weekly Monday 5 AM PT)
+const aeoMonitorWorker = new Worker(
+  "minds-aeo-monitor",
+  async (job) => {
+    await processAEOMonitor(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Market Signal Scout worker (daily 6 AM PT)
+const marketSignalScoutWorker = new Worker(
+  "minds-market-signal-scout",
+  async (job) => {
+    await processMarketSignalScout(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Technology Horizon worker (daily 6 AM PT)
+const technologyHorizonWorker = new Worker(
+  "minds-technology-horizon",
+  async (job) => {
+    await processTechnologyHorizon(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Programmatic SEO worker (weekly Monday 4 AM PT)
+const programmaticSEOWorker = new Worker(
+  "minds-programmatic-seo",
+  async (job) => {
+    await processProgrammaticSEO(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Weekly Digest worker (Sunday 8 PM PT)
+const weeklyDigestWorker = new Worker(
+  "minds-weekly-digest",
+  async (job) => {
+    await processWeeklyDigest(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -352,6 +520,18 @@ async function shutdown(): Promise<void> {
   await competitiveScoutWorker.close();
   await clientMonitorWorker.close();
   await morningBriefingWorker.close();
+  await intelligenceAgentWorker.close();
+  await learningAgentWorker.close();
+  await csExpanderWorker.close();
+  await csCoachWorker.close();
+  await conversionOptimizerWorker.close();
+  await contentPerformanceWorker.close();
+  await nothingGetsLostWorker.close();
+  await aeoMonitorWorker.close();
+  await marketSignalScoutWorker.close();
+  await technologyHorizonWorker.close();
+  await programmaticSEOWorker.close();
+  await weeklyDigestWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -542,6 +722,269 @@ async function setupMorningBriefingSchedule(): Promise<void> {
   }
 }
 
+// Set up Intelligence Agent schedule (daily 5 AM PT = 12 PM UTC / 1 PM UTC non-DST)
+async function setupIntelligenceAgentSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("intelligence-agent");
+    await queue.add(
+      "daily-intelligence-agent",
+      {},
+      {
+        repeat: {
+          pattern: "0 5 * * *", // 5 AM America/Los_Angeles every day
+          tz: "America/Los_Angeles",
+        },
+        jobId: "daily-intelligence-agent",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily Intelligence Agent scheduled (5 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Intelligence Agent schedule:", err);
+  }
+}
+
+// Set up Learning Agent schedule (weekly Sunday 9 PM PT)
+async function setupLearningAgentSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("learning-agent");
+    await queue.add(
+      "weekly-learning-agent",
+      {},
+      {
+        repeat: {
+          pattern: "0 21 * * 0", // 9 PM America/Los_Angeles every Sunday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-learning-agent",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly Learning Agent scheduled (Sunday 9 PM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Learning Agent schedule:", err);
+  }
+}
+
+// Set up CS Expander schedule (monthly 1st Monday 9 AM ET)
+async function setupCSExpanderSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("cs-expander");
+    await queue.add(
+      "monthly-cs-expander",
+      {},
+      {
+        repeat: {
+          pattern: "0 9 1-7 * 1", // 9 AM ET, 1st-7th of month, only Monday
+          tz: "America/New_York",
+        },
+        jobId: "monthly-cs-expander",
+      }
+    );
+    console.log("[MINDS-WORKER] Monthly CS Expander scheduled (1st Monday 9 AM ET)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up CS Expander schedule:", err);
+  }
+}
+
+// Set up CS Coach schedule (weekly Sunday 8 PM PT)
+async function setupCSCoachSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("cs-coach");
+    await queue.add(
+      "weekly-cs-coach",
+      {},
+      {
+        repeat: {
+          pattern: "0 20 * * 0", // 8 PM America/Los_Angeles every Sunday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-cs-coach",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly CS Coach scheduled (Sunday 8 PM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up CS Coach schedule:", err);
+  }
+}
+
+// Set up Conversion Optimizer schedule (weekly Monday 6 AM PT)
+async function setupConversionOptimizerSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("conversion-optimizer");
+    await queue.add(
+      "weekly-conversion-optimizer",
+      {},
+      {
+        repeat: {
+          pattern: "0 6 * * 1", // 6 AM America/Los_Angeles every Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-conversion-optimizer",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly Conversion Optimizer scheduled (Monday 6 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Conversion Optimizer schedule:", err);
+  }
+}
+
+// Set up Content Performance schedule (weekly Sunday 6 PM PT)
+async function setupContentPerformanceSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("content-performance");
+    await queue.add(
+      "weekly-content-performance",
+      {},
+      {
+        repeat: {
+          pattern: "0 18 * * 0", // 6 PM America/Los_Angeles every Sunday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-content-performance",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly Content Performance scheduled (Sunday 6 PM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Content Performance schedule:", err);
+  }
+}
+
+// Set up Nothing Gets Lost schedule (daily 7 AM PT + weekly Sundays)
+async function setupNothingGetsLostSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("nothing-gets-lost");
+    await queue.add(
+      "daily-nothing-gets-lost",
+      {},
+      {
+        repeat: {
+          pattern: "0 7 * * *", // 7 AM America/Los_Angeles every day
+          tz: "America/Los_Angeles",
+        },
+        jobId: "daily-nothing-gets-lost",
+      }
+    );
+    await queue.add(
+      "weekly-nothing-gets-lost",
+      {},
+      {
+        repeat: {
+          pattern: "0 19 * * 0", // 7 PM America/Los_Angeles every Sunday (weekly fuller scan)
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-nothing-gets-lost",
+      }
+    );
+    console.log("[MINDS-WORKER] Nothing Gets Lost scheduled (daily 7 AM PT + weekly Sunday 7 PM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Nothing Gets Lost schedule:", err);
+  }
+}
+
+// Set up AEO Monitor schedule (weekly Monday 5 AM PT)
+async function setupAEOMonitorSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("aeo-monitor");
+    await queue.add(
+      "weekly-aeo-monitor",
+      {},
+      {
+        repeat: {
+          pattern: "0 5 * * 1", // 5 AM America/Los_Angeles every Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-aeo-monitor",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly AEO Monitor scheduled (Monday 5 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up AEO Monitor schedule:", err);
+  }
+}
+
+// Set up Market Signal Scout schedule (daily 6 AM PT)
+async function setupMarketSignalScoutSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("market-signal-scout");
+    await queue.add(
+      "daily-market-signal-scout",
+      {},
+      {
+        repeat: {
+          pattern: "0 6 * * *", // 6 AM America/Los_Angeles every day
+          tz: "America/Los_Angeles",
+        },
+        jobId: "daily-market-signal-scout",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily Market Signal Scout scheduled (6 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Market Signal Scout schedule:", err);
+  }
+}
+
+// Set up Technology Horizon schedule (daily 6 AM PT)
+async function setupTechnologyHorizonSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("technology-horizon");
+    await queue.add(
+      "daily-technology-horizon",
+      {},
+      {
+        repeat: {
+          pattern: "5 6 * * *", // 6:05 AM America/Los_Angeles every day (offset from Market Signal Scout)
+          tz: "America/Los_Angeles",
+        },
+        jobId: "daily-technology-horizon",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily Technology Horizon scheduled (6:05 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Technology Horizon schedule:", err);
+  }
+}
+
+// Set up Programmatic SEO schedule (weekly Monday 4 AM PT)
+async function setupProgrammaticSEOSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("programmatic-seo");
+    await queue.add(
+      "weekly-programmatic-seo",
+      {},
+      {
+        repeat: {
+          pattern: "0 4 * * 1", // 4 AM America/Los_Angeles every Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-programmatic-seo",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly Programmatic SEO scheduled (Monday 4 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Programmatic SEO schedule:", err);
+  }
+}
+
+// Set up Weekly Digest schedule (Sunday 8 PM PT)
+async function setupWeeklyDigestSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("weekly-digest");
+    await queue.add(
+      "weekly-digest",
+      {},
+      {
+        repeat: {
+          pattern: "0 20 * * 0", // 8 PM America/Los_Angeles every Sunday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "weekly-digest",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly Digest scheduled (Sunday 8 PM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Weekly Digest schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
@@ -552,5 +995,17 @@ setupMondayEmailSchedule();
 setupCompetitiveScoutSchedule();
 setupClientMonitorSchedule();
 setupMorningBriefingSchedule();
+setupIntelligenceAgentSchedule();
+setupLearningAgentSchedule();
+setupCSExpanderSchedule();
+setupCSCoachSchedule();
+setupConversionOptimizerSchedule();
+setupContentPerformanceSchedule();
+setupNothingGetsLostSchedule();
+setupAEOMonitorSchedule();
+setupMarketSignalScoutSchedule();
+setupTechnologyHorizonSchedule();
+setupProgrammaticSEOSchedule();
+setupWeeklyDigestSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
