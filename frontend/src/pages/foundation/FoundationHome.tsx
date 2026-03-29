@@ -54,8 +54,8 @@ export default function FoundationHome() {
             </div>
             <h3 className="text-base font-bold text-[#212D40]">RISE Scholars</h3>
             <p className="text-sm text-gray-500 mt-2">
-              Full access to Alloro's business intelligence platform for veterans
-              building practices. No cost. No catch. No expiration.
+              Full access to Alloro's business clarity platform for veterans
+              building businesses. No cost. No catch. No expiration.
             </p>
           </div>
           <div className="text-center">

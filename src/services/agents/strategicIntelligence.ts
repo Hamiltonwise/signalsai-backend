@@ -205,7 +205,7 @@ async function generateBriefWithClaude(
       messages: [
         {
           role: "user",
-          content: `You are a strategic intelligence analyst for Alloro, a universal business intelligence platform targeting licensed specialists (initial beachhead: dental practices).
+          content: `You are a strategic intelligence analyst for Alloro, a universal business clarity platform targeting licensed specialists (initial beachhead: dental practices).
 
 Analyze the following competitor website snapshots and produce a strategic brief.
 

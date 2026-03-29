@@ -817,7 +817,7 @@ export default function ResultsScreen() {
       {/* Practice name + market context */}
       <div className="text-center">
         <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-2">
-          Your Market Position
+          How You Stack Up
         </p>
         <h2 className="text-2xl font-extrabold text-[#212D40]">{place.name}</h2>
         {market && (
@@ -923,7 +923,7 @@ export default function ResultsScreen() {
       {revealStage >= 1 && state.ozMoments && state.ozMoments.length > 0 && (
         <div className="space-y-3">
           <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
-            We already knew this about you
+            The pattern we spotted
           </p>
           {state.ozMoments.map((moment, i) => (
             <div

@@ -110,7 +110,7 @@ async function generateWithClaude(input: ContentInput): Promise<ContentResult> {
 - Leave placeholders for practice name (needs permission) and human details (Corey fills in)`,
   };
 
-  const prompt = `You are the Content Agent for Alloro, a business intelligence platform for licensed specialists.
+  const prompt = `You are the Content Agent for Alloro, a business clarity platform for licensed specialists.
 
 Generate AEO-optimized content for this topic:
 

@@ -135,7 +135,7 @@ async function generateWithClaude(
       messages: [
         {
           role: "user",
-          content: `You are a conference intelligence analyst for Alloro, a universal business intelligence platform for licensed specialists.
+          content: `You are a conference intelligence analyst for Alloro, a universal business clarity platform for licensed specialists.
 
 Conference: ${input.conferenceName}
 Dates: ${input.dates}

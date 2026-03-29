@@ -93,7 +93,7 @@ function generateTemplatePitch(
     category: source.category,
     recentEpisodeTitle: recentEpisode,
     recentEpisodeUrl: "",
-    topicGap: "How AI-powered business intelligence is giving specialists clarity they cannot get from their accountant or marketing agency",
+    topicGap: "How business clarity is giving specialists insights they cannot get from their accountant or marketing agency",
     pitchDraft: `${source.host.split("&")[0].split(",")[0].trim()},
 
 I just listened to "${recentEpisode}" and [specific observation about what made it valuable].
@@ -221,7 +221,7 @@ Category: ${source.category}
 Recent Episode: "${recentEpisode}"
 Estimated Audience: ${source.estimatedAudience}
 
-About Corey: USAF veteran, SDVOSB founder, built Alloro (AI business intelligence for licensed specialists), speaking at AAE in April. Built a free Referral Base Checkup that shows specialists their competitive landscape in 2 minutes.
+About Corey: USAF veteran, SDVOSB founder, built Alloro (AI-powered business clarity for licensed specialists), speaking at AAE in April. Built a free Referral Base Checkup that shows specialists their competitive landscape in 2 minutes.
 
 Pitch Rules:
 1. Open with a specific reference to the recent episode (proves we listened)

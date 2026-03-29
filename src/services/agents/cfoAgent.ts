@@ -305,7 +305,7 @@ async function synthesizeWithClaude(
   const Anthropic = (await import("@anthropic-ai/sdk")).default;
   const client = new Anthropic();
 
-  const prompt = `You are the CFO Agent for Alloro, a business intelligence platform for licensed specialists.
+  const prompt = `You are the CFO Agent for Alloro, a business clarity platform for licensed specialists.
 
 Analyze these financial metrics and produce exactly 3 insights. Each insight must identify which core human need is threatened (safety, belonging, purpose, or status) and the dollar consequence at 30, 90, and 365 days.
 

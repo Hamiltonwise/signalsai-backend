@@ -79,7 +79,7 @@ function calculateDataQuality(ctx: OutreachContext): { score: number; warnings: 
  */
 const SYSTEM_PROMPTS: Record<string, string> = {
   cold_outreach: [
-    "You write prospecting emails for a business intelligence platform.",
+    "You write prospecting emails for a business clarity platform.",
     "Audience: local service business owners (specialists, attorneys, CPAs, veterinarians).",
     "Goal: book a 20-minute call.",
     "Open with the most specific data point available about their business.",

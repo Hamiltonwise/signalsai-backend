@@ -100,6 +100,7 @@ import adminCaseStudiesRoutes from "./routes/admin/caseStudies";
 import gpDiscoveryRoutes from "./routes/partner/gpDiscovery";
 import billingAdminRoutes from "./routes/admin/billingAdmin";
 import userExportRoutes from "./routes/user/export";
+import userProgressReportRoutes from "./routes/user/progressReport";
 import healthRoutes from "./routes/health";
 import adminSearchRoutes from "./routes/admin/search";
 import adminUserManagementRoutes from "./routes/admin/userManagement";
@@ -300,6 +301,7 @@ app.use("/api/admin/case-studies", adminCaseStudiesRoutes); // T6: Case study CR
 app.use("/api/partner", gpDiscoveryRoutes); // T5: GP Discovery + referral form
 app.use("/api/admin/billing", billingAdminRoutes); // WO-BILLING-RECOVERY: at-risk accounts
 app.use("/api/user/export", userExportRoutes); // WO-EXPORT-API: rankings CSV, referrals CSV, checkup JSON
+app.use("/api/user", userProgressReportRoutes); // Enhanced progress report data
 app.use("/api/admin/search", adminSearchRoutes); // WO-ADMIN-SEARCH: cross-collection search for HQ
 app.use("/api/admin/users", adminUserManagementRoutes); // T6: User CRUD (GET/POST/PATCH/DELETE)
 app.use("/api/admin/feature-flags", adminFeatureFlagRoutes); // T6: Feature flag management

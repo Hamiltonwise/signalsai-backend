@@ -125,7 +125,7 @@ async function synthesizeWithClaude(
   const Anthropic = (await import("@anthropic-ai/sdk")).default;
   const client = new Anthropic();
 
-  const prompt = `You are the Competitive Intelligence Agent for Alloro, a business intelligence platform for licensed specialists.
+  const prompt = `You are the Competitive Intelligence Agent for Alloro, a business clarity platform for licensed specialists.
 
 The Competitive Scout detected a movement. Analyze what it means strategically.
 

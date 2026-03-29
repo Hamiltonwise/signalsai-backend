@@ -313,7 +313,7 @@ partnerRoutes.get(
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1500,
-        system: `You are a Chief Marketing Officer for a dental industry partner who uses Alloro — a business intelligence platform that scores dental practices against their competitors and builds their online presence.
+        system: `You are a Chief Marketing Officer for a dental industry partner who uses Alloro — a business clarity platform that scores dental practices against their competitors and builds their online presence.
 
 You analyze this partner's pipeline data and generate proactive campaign recommendations. You speak with strategic authority. Every recommendation must be specific to their actual data — never generic.
 
@@ -414,7 +414,7 @@ partnerRoutes.post(
         systemPrompt += `[VOICE PROFILE]\n${voiceProfile}\n[END VOICE PROFILE]\n\nWrite in this person's voice exactly. Every email must sound like them, not like software.\n\n`;
       }
 
-      systemPrompt += `You write emails for a partner whose audience is dental practice owners and specialists. ${voiceProfile ? "Match the voice profile above precisely." : "Tone: warm, direct, professional — never pushy."} She is building trust, not closing sales. Alloro is a business intelligence platform that shows practices their competitive position and automatically builds their online presence.
+      systemPrompt += `You write emails for a partner whose audience is dental practice owners and specialists. ${voiceProfile ? "Match the voice profile above precisely." : "Tone: warm, direct, professional — never pushy."} She is building trust, not closing sales. Alloro is a business clarity platform that shows practices their competitive position and automatically builds their online presence.
 
 Rules:
 - Write emails that feel personal and specific, never like a template

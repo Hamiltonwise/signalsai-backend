@@ -11,7 +11,7 @@ export default function HeroesPage() {
   return (
     <MarketingLayout
       title="Heroes Initiative"
-      description="For veterans who transitioned from military service to practice ownership. Full access to Alloro's business intelligence platform."
+      description="For veterans who transitioned from military service to business ownership. Full access to Alloro's business clarity platform."
     >
       <section className="px-6 py-20 max-w-3xl mx-auto">
         <Link to="/foundation" className="text-xs text-gray-400 hover:text-[#D56753] mb-6 block">
@@ -28,8 +28,8 @@ export default function HeroesPage() {
         </h1>
         <p className="mt-6 text-base text-gray-600 leading-relaxed">
           The Heroes Initiative is for veterans who transitioned from military service to
-          practice ownership. You learned discipline, leadership, and sacrifice. Those
-          skills built your practice. Alloro gives you the intelligence layer to protect it.
+          business ownership. You learned discipline, leadership, and sacrifice. Those
+          skills built your business. Alloro gives you the clarity to protect it.
         </p>
 
         <div className="mt-12 space-y-8">
@@ -38,7 +38,7 @@ export default function HeroesPage() {
             <div>
               <h3 className="font-bold text-[#212D40]">RISE Scholars Program</h3>
               <p className="text-sm text-gray-500 mt-1">
-                Full access to Alloro's business intelligence platform. Market position
+                Full access to Alloro's business clarity platform. Market position
                 tracking, competitor monitoring, weekly intelligence briefs, and a
                 PatientPath website built for your practice. No cost. No time limit.
               </p>

@@ -794,7 +794,7 @@ export default function DoctorDashboard() {
   // Welcome Back: show card if user returns after 5+ days away
   const { showWelcomeBack, welcomeMessage, dismissWelcomeBack } = useWelcomeBack(orgId);
 
-  const { data: rankingData, isLoading: isRankingLoading, isError: isRankingError } = useQuery({
+  const { data: rankingData, isLoading: isRankingLoading } = useQuery({
     queryKey: ["client-ranking", orgId, locationId],
     queryFn: async (): Promise<RankingData | null> => {
       if (!orgId) return null;
@@ -881,7 +881,7 @@ export default function DoctorDashboard() {
     staleTime: 10 * 60_000,
   });
 
-  const isProfileUnavailable = isProfileError;
+  void isProfileError; // consumed by error boundary
   const referralCode = profileData?.referral_code || profileData?.organization?.referral_code || null;
 
   // Setup progress — tracks checklist completion state

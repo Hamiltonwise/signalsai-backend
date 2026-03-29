@@ -89,7 +89,7 @@ campaignRoutes.post(
         recipientRole: "Business Owner",
         businessName: senderName,
         senderName,
-        senderSpecialty: "Business Intelligence Partner",
+        senderSpecialty: "Business Clarity Partner",
         dataPoints,
         city: targetCity || undefined,
         existingRelationship: false,

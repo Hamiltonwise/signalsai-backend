@@ -283,7 +283,7 @@ ${runtime.heuristics.map((h, i) => `${i + 1}. ${h}`).join("\n")}
 `;
   }
 
-  const prompt = `You are the Intelligence Agent for Alloro, a business intelligence platform for local service businesses.
+  const prompt = `You are the Intelligence Agent for Alloro, a business clarity platform for local service businesses.
 
 Analyze this data for ${context.orgName} and produce exactly 3 findings. Each finding must pass the biological-economic lens: identify which core human need is threatened (safety, belonging, purpose, or status) and the dollar consequence at 30, 90, and 365 days.
 

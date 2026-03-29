@@ -39,7 +39,7 @@ export default function CardCapture({
       // Try to create a SetupIntent via the API
       const res = await apiPost({
         path: "/billing/setup-intent",
-        body: {},
+        passedData: {},
       });
 
       if (res?.success && res.clientSecret) {

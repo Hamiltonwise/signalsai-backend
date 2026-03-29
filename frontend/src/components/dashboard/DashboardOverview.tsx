@@ -1632,7 +1632,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           />
           <div className="space-y-4">
             <p className="text-[11px] text-alloro-textDark/20 font-black tracking-[0.4em] uppercase">
-              Alloro Business Intelligence • v2.6.0
+              Alloro Business Clarity • v2.6.0
             </p>
             <div className="flex items-center justify-center gap-10 text-[10px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em]">
               <span className="flex items-center gap-3">
