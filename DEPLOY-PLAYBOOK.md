@@ -9,6 +9,14 @@ Do them in order. Skip nothing.
 # SSH into EC2
 ssh -i your-key.pem ec2-user@sandbox.getalloro.com
 
+# Pull latest code and rebuild (REQUIRED -- nanoid ESM fix from March 29)
+cd /home/ec2-user/alloro
+git checkout sandbox && git pull origin sandbox
+npm ci
+cd frontend && npm ci && npm run build && cd ..
+npm run build
+rm -rf public && mkdir -p public && cp -r frontend/dist/* public/
+
 # Verify Node, PM2, Redis are running
 node --version    # Needs 20.19+ or 22+
 pm2 --version     # Should be installed
@@ -75,7 +83,7 @@ npx knex migrate:status | tail -5
 ## Step 3: Seed Demo Account (1 minute)
 
 ```bash
-npx ts-node src/scripts/seedDemoAccount.ts
+npx tsx src/scripts/seedDemoAccount.ts
 ```
 
 Expected output:
