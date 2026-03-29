@@ -92,16 +92,16 @@ export async function analyzeReviewSentiment(
       messages: [
         {
           role: "user",
-          content: `You are analyzing Google reviews for a ${specialty} practice called "${clientName}".
+          content: `You are analyzing Google reviews for a ${specialty} business called "${clientName}".
 
 YOUR REVIEWS:
 ${clientReviewText}
 
 ${competitorName ? `TOP COMPETITOR (${competitorName}) REVIEWS:\n${competitorReviewText}` : ""}
 
-Extract ONE specific insight the practice owner probably doesn't know. Look for:
-- A recurring theme patients mention (positive or negative) that the owner may not realize is visible
-- A specific strength patients praise that the competitor's patients don't mention (or vice versa)
+Extract ONE specific insight the business owner probably doesn't know. Look for:
+- A recurring theme customers mention (positive or negative) that the owner may not realize is visible
+- A specific strength customers praise that the competitor's customers don't mention (or vice versa)
 - A pattern in negative feedback that reveals an operational blind spot
 
 Respond in exactly this JSON format, nothing else:

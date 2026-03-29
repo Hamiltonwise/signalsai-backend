@@ -33,6 +33,7 @@ export interface MondayBriefData {
   rankingUpdate: string;
   competitorNote: string;
   referralLine: string | null;
+  founderLine?: string | null;
 }
 
 export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boolean> {

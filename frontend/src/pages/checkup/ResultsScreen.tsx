@@ -488,8 +488,8 @@ function CompetitorInviteSection({
         // Norton frictionless handoff: use Web Share API on mobile, clipboard on desktop
         if (navigator.share) {
           await navigator.share({
-            title: `Free Business Checkup for ${competitor.name}`,
-            text: `See how ${competitor.name} ranks in your market. 60 seconds, free.`,
+            title: `${competitor.name}, see where you rank`,
+            text: `We already know who's ahead of ${competitor.name}. 60 seconds to find out.`,
             url: res.inviteUrl,
           }).catch(() => {
             // User cancelled share sheet, fall back to clipboard
@@ -892,14 +892,15 @@ export default function ResultsScreen() {
         {" "}A full audit with connected accounts reveals more.
       </p>
 
-      {/* Share prompt — right after score, natural moment */}
+      {/* Share prompt — right after score, natural moment. Oz principle: make sharing feel
+           like the user's own idea, never a referral ask. The insight drives the impulse. */}
       <div className="bg-[#212D40] rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4">
         <div className="flex-1 text-center sm:text-left">
           <p className="text-sm font-semibold text-white">
-            Know someone who should see this? Share your link. You both save a month.
+            See how a colleague ranks.
           </p>
           <p className="text-xs text-white/50 mt-1">
-            We all rise together.
+            Send them a link to run their own Checkup. No names shared. You both get a free month when they join.
           </p>
         </div>
         <button
