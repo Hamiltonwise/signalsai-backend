@@ -349,7 +349,7 @@ export default function HomePage() {
           </div>
           <div className="border-t border-gray-200 pt-6 space-y-2">
             <p className="text-base font-semibold text-[#212D40]">
-              Alloro is $2,000/month.
+              Alloro is $2,000/month. No contracts. Cancel anytime.
             </p>
             <p className="text-sm text-[#212D40]/70 leading-relaxed">
               It runs while you sleep.

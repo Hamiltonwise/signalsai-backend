@@ -86,6 +86,7 @@ import reviewDraftRoutes from "./routes/user/reviewDrafts";
 import streakRoutes from "./routes/user/streaks";
 import ownerProfileRoutes from "./routes/user/ownerProfile";
 import milestoneCardRoutes from "./routes/user/milestoneCards";
+import activityRoutes from "./routes/user/activity";
 import referralThankYouRoutes from "./routes/user/referralThankYou";
 import campaignRoutes from "./routes/partner/campaigns";
 import gpDiscoveryUserRoutes from "./routes/user/gpDiscovery";
@@ -280,6 +281,7 @@ app.use("/api/user/review-drafts", reviewDraftRoutes); // WO-49: Review auto-dra
 app.use("/api/user", streakRoutes); // WO-33: Growth/Action/Review streaks
 app.use("/api/user", ownerProfileRoutes); // WO-50: Owner Profile (Lemonis Protocol)
 app.use("/api/user", milestoneCardRoutes); // WO-51/52: Milestone check-in cards
+app.use("/api/user", activityRoutes); // What Alloro did this week
 app.use("/api/user", referralThankYouRoutes); // WO-47: Referral Thank-You auto-draft
 app.use("/api/user", gpDiscoveryUserRoutes); // WO-56: GP Discovery outreach
 app.use("/api/partner/campaigns", campaignRoutes); // WO-55: Partner Campaign Intelligence

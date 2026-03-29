@@ -33,6 +33,7 @@ import { apiGet, apiPatch } from "@/api/index";
 import agents from "@/api/agents";
 import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
 import OneActionCard from "@/components/dashboard/OneActionCard";
+import AlloroActivityCard from "@/components/dashboard/AlloroActivityCard";
 import CSAgentChat from "@/components/dashboard/CSAgentChat";
 import TTFVSensor from "@/components/dashboard/TTFVSensor";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
@@ -670,7 +671,7 @@ export default function DoctorDashboard() {
   const week1WinData = dashCtx?.week1_win ?? null;
   const orgCreatedAt = dashCtx?.org_created_at ?? null;
   const hasReferralData = dashCtx?.has_referral_data ?? false;
-  const accountAgeDays = orgCreatedAt
+  const _accountAgeDays = orgCreatedAt
     ? Math.floor((Date.now() - new Date(orgCreatedAt).getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
@@ -1016,14 +1017,8 @@ export default function DoctorDashboard() {
         </div>
       )}
 
-      {/* What Alloro did while you slept */}
-      {!isLoading && effectiveRanking && (
-        <p className="text-[11px] text-gray-400 text-center -mt-2">
-          {accountAgeDays !== null && accountAgeDays < 7
-            ? "Alloro is learning your market. First full report arrives Monday."
-            : `47 agents watching your market. Last scan: ${new Date().toLocaleDateString("en-US", { weekday: "long" })}.`}
-        </p>
-      )}
+      {/* What Alloro did this week -- the retention mechanic */}
+      {!isLoading && <AlloroActivityCard />}
 
       {isLoading && (
         <div className="space-y-4">
