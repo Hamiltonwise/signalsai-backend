@@ -13,6 +13,8 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "../../database/connection";
+import { isHeyGenConfigured } from "../heygenService";
+import { generateVideoFromContent } from "./productionCoordinator";
 
 // -- Types ------------------------------------------------------------------
 
@@ -27,6 +29,7 @@ interface ContentBrief {
   cta: string;
   woundAddressed: string;
   economicContext: string;
+  linkedinPost?: string;
 }
 
 interface CMOResult {
@@ -49,6 +52,7 @@ const TEMPLATE_BRIEFS: ContentBrief[] = [
     cta: "Run a free Checkup to see your referral landscape",
     woundAddressed: "Safety: fear of invisible loss as referral sources shift to competitors",
     economicContext: "Average specialist loses 3-4 referrals per month to competitors ranking above them. At $1,200 per patient, that is $4,800 walking out the door monthly.",
+    linkedinPost: "Your referral sources shifted last quarter. You probably did not notice.\n\nWe analyzed referral patterns across hundreds of specialist practices. The average practice loses 3-4 referring doctors per month to competitors who rank higher online. At $1,200 per patient, that is $4,800 walking out the door every month, invisibly.\n\nThe painful part: most specialists find out 6 months too late, when the revenue dip is already baked in.\n\nOne practice owner told us, \"I thought my referrals were steady. Turns out two of my top sources started sending patients to someone closer with better reviews.\"\n\nYou trained for years to be great at your craft. Your referral network should reflect that.\n\nRun your free Business Clarity Checkup at alloro.io",
   },
   {
     topic: "Online presence gap",
@@ -61,6 +65,7 @@ const TEMPLATE_BRIEFS: ContentBrief[] = [
     cta: "See your online presence score with a free Checkup",
     woundAddressed: "Status: the gap between clinical excellence and online visibility",
     economicContext: "77% of patients check online reviews before booking. A profile with fewer reviews than competitors costs 2-3 new patients per week.",
+    linkedinPost: "A potential patient just Googled your name. What they found decided everything in 55 seconds.\n\n77% of patients check online reviews before they ever pick up the phone. If your profile has fewer reviews than the specialist down the street, you lose 2-3 new patients per week without knowing it.\n\nHere is what makes it worse: your clinical work is excellent. Your patients love you. But the internet does not know that, because your online presence was never designed to show it.\n\nThe gap between how good you are and how good you look online is costing you real revenue, every single week.\n\nYou did not go through years of training to lose patients to someone with a better Google profile.\n\nSee your online presence score in 2 minutes. Run your free Business Clarity Checkup at alloro.io",
   },
   {
     topic: "Practice owner freedom",
@@ -73,6 +78,7 @@ const TEMPLATE_BRIEFS: ContentBrief[] = [
     cta: "Get clarity on your business in 2 minutes",
     woundAddressed: "Purpose: the gap between why they bought the practice and what they actually do all day",
     economicContext: "Practice owners spend an average of 8 hours per week on marketing tasks they were never trained for. At their clinical hourly rate, that is $2,400/week in opportunity cost.",
+    linkedinPost: "You bought your practice to have freedom. Instead, you got a second job.\n\nThe average practice owner spends 8 hours per week on marketing tasks they were never trained for. Checking reviews. Updating listings. Wondering if that website redesign actually did anything.\n\nAt their clinical hourly rate, that is $2,400 per week in opportunity cost. Over a year, that is $124,800 in time that could have been spent treating patients or, better yet, at home.\n\nYou trained for years in a craft you love. The business side was supposed to be the easy part.\n\nIt does not have to stay this way. Clarity on what is actually working, and what is quietly costing you, changes everything.\n\nGet clarity on your business in 2 minutes. Run your free Business Clarity Checkup at alloro.io",
   },
 ];
 
@@ -128,6 +134,13 @@ Rules:
 - Include a specific dollar figure or time figure in the economic context
 - Declarative openings, not questions
 
+For each brief, also generate a linkedinPost field:
+- 150-200 words max
+- Hook in first line (pattern interrupt)
+- One insight from the article
+- CTA: "Run your free Business Clarity Checkup at alloro.io"
+- No hashtags. No em-dashes.
+
 Return JSON in this exact format:
 {
   "briefs": [
@@ -141,7 +154,8 @@ Return JSON in this exact format:
       "publishDay": "string",
       "cta": "string",
       "woundAddressed": "string",
-      "economicContext": "string"
+      "economicContext": "string",
+      "linkedinPost": "string (150-200 words, hook + insight + CTA)"
     }
   ]
 }`,
@@ -281,6 +295,7 @@ async function writeBriefEvents(briefs: ContentBrief[]): Promise<void> {
           cta: brief.cta,
           wound_addressed: brief.woundAddressed,
           economic_context: brief.economicContext,
+          linkedin_post: brief.linkedinPost || null,
         }),
       });
     } catch (err: any) {
@@ -400,6 +415,34 @@ Return JSON in this exact format:
     });
 
     console.log(`[CMOAgent] Draft created for: ${brief.title} (slug: ${slug})`);
+
+    // Trigger HeyGen video generation if configured
+    if (isHeyGenConfigured()) {
+      try {
+        const contentRecord = await db("published_content")
+          .where("slug", slug)
+          .first();
+        if (contentRecord) {
+          const videoResult = await generateVideoFromContent({
+            id: contentRecord.id,
+            title: contentRecord.title,
+            body: contentRecord.body,
+            slug: contentRecord.slug,
+          });
+          if (videoResult.success) {
+            console.log(
+              `[CMOAgent] Video queued for draft: ${slug} (video_id: ${videoResult.videoId})`
+            );
+          } else {
+            console.warn(
+              `[CMOAgent] Video generation skipped for "${slug}": ${videoResult.error}`
+            );
+          }
+        }
+      } catch (videoErr: any) {
+        console.error("[CMOAgent] Video generation failed:", videoErr.message);
+      }
+    }
   } catch (err: any) {
     console.error("[CMOAgent] Draft generation failed:", err.message);
   }

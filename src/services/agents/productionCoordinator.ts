@@ -10,7 +10,13 @@
  * Returns { checklist, estimatedCompletionTime, platforms[] }.
  */
 
+import Anthropic from "@anthropic-ai/sdk";
 import { db } from "../../database/connection";
+import {
+  createVideo,
+  isHeyGenConfigured,
+  type HeyGenVideoResult,
+} from "../heygenService";
 
 // -- Types ------------------------------------------------------------------
 
@@ -192,6 +198,152 @@ export async function generateProductionChecklist(
   );
 
   return result;
+}
+
+// -- Video Generation -------------------------------------------------------
+
+interface PublishedContentRecord {
+  id: number;
+  title: string;
+  body: string;
+  slug: string;
+}
+
+/**
+ * Generate a HeyGen video from a published_content record.
+ * 1. Condenses the body into a 60-90 second video script via Claude
+ * 2. Calls HeyGen to generate the video
+ * 3. Stores video_id and status on the content record
+ * 4. Writes "content.video_queued" behavioral event
+ */
+export async function generateVideoFromContent(
+  content: PublishedContentRecord
+): Promise<HeyGenVideoResult> {
+  if (!isHeyGenConfigured()) {
+    console.log("[ProductionCoordinator] HeyGen not configured, skipping video generation.");
+    return {
+      success: false,
+      status: "failed",
+      error: "HeyGen is not configured. Set HEYGEN_API_KEY to enable video generation.",
+    };
+  }
+
+  // Step 1: Condense the article body into a 60-90 second video script
+  let script: string;
+  try {
+    script = await condenseToVideoScript(content.title, content.body);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[ProductionCoordinator] Script generation failed:", message);
+    return {
+      success: false,
+      status: "failed",
+      error: `Failed to generate video script: ${message}`,
+    };
+  }
+
+  // Step 2: Call HeyGen
+  const result = await createVideo({
+    script,
+    title: content.title,
+  });
+
+  if (!result.success || !result.videoId) {
+    console.error(
+      `[ProductionCoordinator] HeyGen video creation failed for "${content.title}": ${result.error}`
+    );
+    return result;
+  }
+
+  // Step 3: Store video_id and status on the content record
+  try {
+    await db("published_content").where("id", content.id).update({
+      video_id: result.videoId,
+      video_status: result.status,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[ProductionCoordinator] Failed to update content record:", message);
+  }
+
+  // Step 4: Write behavioral event
+  try {
+    await db("behavioral_events").insert({
+      event_type: "content.video_queued",
+      properties: JSON.stringify({
+        content_id: content.id,
+        slug: content.slug,
+        title: content.title,
+        video_id: result.videoId,
+        script_length: script.length,
+        estimated_duration: result.estimatedDuration,
+      }),
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[ProductionCoordinator] Failed to write video_queued event:", message);
+  }
+
+  console.log(
+    `[ProductionCoordinator] Video queued for "${content.title}" (video_id: ${result.videoId})`
+  );
+
+  return result;
+}
+
+/**
+ * Use Claude to condense an article body into a 60-90 second video script.
+ * Under 3000 characters (HeyGen limit).
+ */
+async function condenseToVideoScript(
+  title: string,
+  body: string
+): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    // Fallback: take the first ~2500 chars of the body as a rough script
+    console.warn(
+      "[ProductionCoordinator] No ANTHROPIC_API_KEY, using truncated body as script."
+    );
+    const truncated = body.replace(/[#*_\[\]()]/g, "").slice(0, 2500);
+    return truncated;
+  }
+
+  const client = new Anthropic({ apiKey });
+
+  const message = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 1500,
+    messages: [
+      {
+        role: "user",
+        content: `You are a video scriptwriter for Alloro, a business clarity platform for licensed specialists.
+
+Convert this blog article into a 60-90 second spoken video script. Return ONLY the script text, nothing else.
+
+Title: ${title}
+
+Article:
+${body.slice(0, 8000)}
+
+Rules:
+- Write for spoken delivery, not reading. Short sentences. Natural rhythm.
+- Open with a hook that names the pain point in the first 10 seconds.
+- One core insight from the article, explained simply.
+- End with a clear call to action: "Run your free Business Clarity Checkup at alloro.io"
+- No em-dashes. Use commas, periods, or semicolons.
+- No jargon: no "leverage," "optimize," "empower," "solution," "platform," "dashboard."
+- Maximum 2800 characters (this is a hard limit for the video rendering engine).
+- Do not include stage directions, timestamps, or speaker labels.`,
+      },
+    ],
+  });
+
+  const text =
+    message.content[0].type === "text" ? message.content[0].text : "";
+
+  // Enforce the 3000 char limit
+  return text.slice(0, 3000);
 }
 
 // -- Event Writing ----------------------------------------------------------

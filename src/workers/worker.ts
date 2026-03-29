@@ -55,6 +55,7 @@ import { processPartnerships } from "./processors/partnerships.processor";
 import { processCSAgent } from "./processors/csAgent.processor";
 import { processTrialEmail } from "./processors/trialEmail.processor";
 import { processTrialAutoConvert } from "./processors/trialAutoConvert.processor";
+import { processVideoStatus } from "./processors/videoStatus.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -751,8 +752,21 @@ const trialAutoConvertWorker = new Worker(
   }
 );
 
+// Video Status worker (every 5 minutes, polls HeyGen for pending videos)
+const videoStatusWorker = new Worker(
+  "minds-video-status",
+  async (job) => {
+    await processVideoStatus(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, dreamweaverWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker, bugTriageWorker, strategicIntelligenceWorker, partnershipsWorker, csAgentWorker, trialEmailWorker, trialAutoConvertWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, dreamweaverWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker, bugTriageWorker, strategicIntelligenceWorker, partnershipsWorker, csAgentWorker, trialEmailWorker, trialAutoConvertWorker, videoStatusWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -817,6 +831,7 @@ async function shutdown(): Promise<void> {
   await csAgentWorker.close();
   await trialEmailWorker.close();
   await trialAutoConvertWorker.close();
+  await videoStatusWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -1649,6 +1664,27 @@ async function setupTrialAutoConvertSchedule(): Promise<void> {
   }
 }
 
+// Set up Video Status schedule (every 5 minutes, polls HeyGen for pending videos)
+async function setupVideoStatusSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("video-status");
+    await queue.add(
+      "video-status-check",
+      {},
+      {
+        repeat: {
+          pattern: "*/5 * * * *", // Every 5 minutes
+          tz: "UTC",
+        },
+        jobId: "video-status-check",
+      }
+    );
+    console.log("[MINDS-WORKER] Video status check scheduled (every 5 min)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up video status schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
@@ -1688,5 +1724,6 @@ setupStrategicIntelligenceSchedule();
 setupPartnershipsSchedule();
 setupCSAgentSchedule();
 setupTrialAutoConvertSchedule();
+setupVideoStatusSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
