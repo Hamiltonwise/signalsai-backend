@@ -48,6 +48,10 @@ import { processCLOAgent } from "./processors/cloAgent.processor";
 import { processCPAPersonal } from "./processors/cpaPersonal.processor";
 import { processFinancialAdvisor } from "./processors/financialAdvisor.processor";
 import { processRealEstateAgent } from "./processors/realEstateAgent.processor";
+import { processBugTriage } from "./processors/bugTriage.processor";
+import { processStrategicIntelligence } from "./processors/strategicIntelligence.processor";
+import { processPartnerships } from "./processors/partnerships.processor";
+import { processCSAgent } from "./processors/csAgent.processor";
 import { getMindsQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -653,8 +657,60 @@ const realEstateAgentWorker = new Worker(
   }
 );
 
+// Bug Triage worker (hourly)
+const bugTriageWorker = new Worker(
+  "minds-bug-triage",
+  async (job) => {
+    await processBugTriage(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Strategic Intelligence worker (monthly 1st Monday 10 AM PT)
+const strategicIntelligenceWorker = new Worker(
+  "minds-strategic-intelligence",
+  async (job) => {
+    await processStrategicIntelligence(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// Partnerships Agent worker (monthly 1st Monday 11 AM PT)
+const partnershipsWorker = new Worker(
+  "minds-partnerships",
+  async (job) => {
+    await processPartnerships(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
+// CS Agent worker (daily 7:30 AM PT -- proactive interventions)
+const csAgentWorker = new Worker(
+  "minds-cs-agent",
+  async (job) => {
+    await processCSAgent(job);
+  },
+  {
+    connection,
+    concurrency: 1,
+    prefix: '{minds}',
+  }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, patientpathBuildWorker, welcomeIntelligenceWorker, week1WinWorker, mondayEmailWorker, competitiveScoutWorker, clientMonitorWorker, morningBriefingWorker, intelligenceAgentWorker, learningAgentWorker, csExpanderWorker, csCoachWorker, conversionOptimizerWorker, contentPerformanceWorker, nothingGetsLostWorker, aeoMonitorWorker, marketSignalScoutWorker, technologyHorizonWorker, programmaticSEOWorker, weeklyDigestWorker, ghostWriterWorker, foundationOpsWorker, verticalReadinessWorker, humanDeploymentScoutWorker, cmoAgentWorker, trendScoutWorker, podcastScoutWorker, cfoAgentWorker, cloAgentWorker, cpaPersonalWorker, financialAdvisorWorker, realEstateAgentWorker, bugTriageWorker, strategicIntelligenceWorker, partnershipsWorker, csAgentWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -712,6 +768,10 @@ async function shutdown(): Promise<void> {
   await cpaPersonalWorker.close();
   await financialAdvisorWorker.close();
   await realEstateAgentWorker.close();
+  await bugTriageWorker.close();
+  await strategicIntelligenceWorker.close();
+  await partnershipsWorker.close();
+  await csAgentWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -1439,6 +1499,90 @@ async function setupRealEstateAgentSchedule(): Promise<void> {
   }
 }
 
+// Set up Bug Triage schedule (hourly)
+async function setupBugTriageSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("bug-triage");
+    await queue.add(
+      "hourly-bug-triage",
+      {},
+      {
+        repeat: {
+          pattern: "0 * * * *", // Every hour on the hour
+          tz: "America/Los_Angeles",
+        },
+        jobId: "hourly-bug-triage",
+      }
+    );
+    console.log("[MINDS-WORKER] Hourly Bug Triage scheduled");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Bug Triage schedule:", err);
+  }
+}
+
+// Set up Strategic Intelligence schedule (monthly 1st Monday 10 AM PT)
+async function setupStrategicIntelligenceSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("strategic-intelligence");
+    await queue.add(
+      "monthly-strategic-intelligence",
+      {},
+      {
+        repeat: {
+          pattern: "0 10 1-7 * 1", // 10 AM PT, 1st-7th of month, only Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "monthly-strategic-intelligence",
+      }
+    );
+    console.log("[MINDS-WORKER] Monthly Strategic Intelligence scheduled (1st Monday 10 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Strategic Intelligence schedule:", err);
+  }
+}
+
+// Set up Partnerships Agent schedule (monthly 1st Monday 11 AM PT)
+async function setupPartnershipsSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("partnerships");
+    await queue.add(
+      "monthly-partnerships",
+      {},
+      {
+        repeat: {
+          pattern: "0 11 1-7 * 1", // 11 AM PT, 1st-7th of month, only Monday
+          tz: "America/Los_Angeles",
+        },
+        jobId: "monthly-partnerships",
+      }
+    );
+    console.log("[MINDS-WORKER] Monthly Partnerships Agent scheduled (1st Monday 11 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Partnerships schedule:", err);
+  }
+}
+
+// Set up CS Agent schedule (daily 7:30 AM PT -- proactive interventions)
+async function setupCSAgentSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("cs-agent");
+    await queue.add(
+      "daily-cs-agent",
+      {},
+      {
+        repeat: {
+          pattern: "30 7 * * *", // 7:30 AM America/Los_Angeles every day
+          tz: "America/Los_Angeles",
+        },
+        jobId: "daily-cs-agent",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily CS Agent scheduled (7:30 AM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up CS Agent schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
@@ -1473,5 +1617,9 @@ setupCLOAgentSchedule();
 setupCPAPersonalSchedule();
 setupFinancialAdvisorSchedule();
 setupRealEstateAgentSchedule();
+setupBugTriageSchedule();
+setupStrategicIntelligenceSchedule();
+setupPartnershipsSchedule();
+setupCSAgentSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
