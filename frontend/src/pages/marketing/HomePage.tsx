@@ -483,6 +483,14 @@ export default function HomePage() {
                 url: "https://getalloro.com",
                 name: "Alloro - Business Clarity",
                 publisher: { "@id": "https://getalloro.com/#organization" },
+                potentialAction: {
+                  "@type": "SearchAction",
+                  target: {
+                    "@type": "EntryPoint",
+                    urlTemplate: "https://getalloro.com/checkup?q={search_term_string}",
+                  },
+                  "query-input": "required name=search_term_string",
+                },
               },
               {
                 "@type": "SoftwareApplication",

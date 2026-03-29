@@ -163,6 +163,11 @@ Return JSON in this exact format:
     await writeBriefEvents(result.briefs);
     await writeSummaryEvent(result);
 
+    // Generate a full draft for the highest-priority brief
+    if (briefs.length > 0) {
+      await generateDraftForTopBrief(client, briefs[0]);
+    }
+
     console.log(
       `[CMOAgent] Generated ${briefs.length} content briefs (AI mode)`
     );
@@ -298,5 +303,104 @@ async function writeSummaryEvent(result: CMOResult): Promise<void> {
     });
   } catch (err: any) {
     console.error("[CMOAgent] Failed to write summary event:", err.message);
+  }
+}
+
+// -- Draft Generation ---------------------------------------------------------
+
+/**
+ * Generate a full article draft for the highest-priority content brief.
+ * Stores as status='draft' in published_content so admin can review before publishing.
+ */
+async function generateDraftForTopBrief(
+  client: Anthropic,
+  brief: ContentBrief,
+): Promise<void> {
+  try {
+    const slug = brief.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .slice(0, 200);
+
+    // Check if slug already exists
+    const existing = await db("published_content").where("slug", slug).first();
+    if (existing) {
+      console.log(`[CMOAgent] Draft slug "${slug}" already exists, skipping.`);
+      return;
+    }
+
+    const message = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 6000,
+      messages: [
+        {
+          role: "user",
+          content: `You are the Content Agent for Alloro, a business clarity platform for licensed specialists.
+
+Write a full blog article based on this content brief. Return ONLY valid JSON.
+
+Brief:
+- Topic: ${brief.topic}
+- Title: ${brief.title}
+- Angle: ${brief.angle}
+- Target keywords: ${brief.targetKeywords.join(", ")}
+- Wound addressed: ${brief.woundAddressed}
+- Economic context: ${brief.economicContext}
+- CTA: ${brief.cta}
+
+Rules:
+- Write in markdown format (use ## for headings, **bold**, *italic*)
+- 800-1200 words
+- No em-dashes. Use commas, periods, or semicolons
+- No jargon: no "leverage," "optimize," "empower," "solution," "platform," "dashboard"
+- Lead with the wound (pain), then the medicine (insight)
+- Include specific numbers and data points
+- End with a clear call to action
+- Write 2-4 FAQ items related to the topic
+
+Return JSON in this exact format:
+{
+  "body": "markdown article text",
+  "metaDescription": "150 char SEO description",
+  "faqItems": [
+    { "question": "string", "answer": "string" }
+  ]
+}`,
+        },
+      ],
+    });
+
+    const text =
+      message.content[0].type === "text" ? message.content[0].text : "";
+    const parsed = JSON.parse(text);
+
+    await db("published_content").insert({
+      slug,
+      title: brief.title,
+      body: parsed.body || "",
+      meta_description: parsed.metaDescription || "",
+      faq_items: JSON.stringify(parsed.faqItems || []),
+      category: brief.topic,
+      author_name: "Alloro Intelligence",
+      status: "draft",
+    });
+
+    // Log behavioral event
+    await db("behavioral_events").insert({
+      event_type: "content.draft_created",
+      properties: JSON.stringify({
+        slug,
+        title: brief.title,
+        topic: brief.topic,
+        platform: brief.platform,
+        word_count: (parsed.body || "").split(/\s+/).length,
+      }),
+    });
+
+    console.log(`[CMOAgent] Draft created for: ${brief.title} (slug: ${slug})`);
+  } catch (err: any) {
+    console.error("[CMOAgent] Draft generation failed:", err.message);
   }
 }

@@ -9,6 +9,8 @@ Disallow: /api
 
 Sitemap: https://getalloro.com/sitemap.xml
 
+# Dynamic sitemap generated server-side at /sitemap.xml
+
 # LLM context files
 # See https://llmstxt.org for specification
 Allow: /llms.txt

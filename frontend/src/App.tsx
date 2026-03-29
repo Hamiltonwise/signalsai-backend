@@ -64,6 +64,7 @@ const PricingPage = React.lazy(() => import("./pages/marketing/PricingPage"));
 const StoryPage = React.lazy(() => import("./pages/marketing/Story"));
 const BlogPage = React.lazy(() => import("./pages/marketing/Blog"));
 const BlogRedirect = React.lazy(() => import("./pages/marketing/BlogRedirect"));
+const DynamicArticle = React.lazy(() => import("./pages/content/DynamicArticle"));
 const BlogPost1 = React.lazy(() => import("./pages/marketing/blog/TheSecondJobProblem"));
 const BlogPost2 = React.lazy(() => import("./pages/marketing/blog/GoogleBusinessProfileScore"));
 const BlogPost3 = React.lazy(() => import("./pages/marketing/blog/WhyYourCompetitorKeepsShowingUp"));
@@ -266,7 +267,7 @@ function App() {
               <Route path="/blog/the-second-job-problem" element={<BlogPost1 />} />
               <Route path="/blog/google-business-profile-score" element={<BlogPost2 />} />
               <Route path="/blog/why-your-competitor-keeps-showing-up" element={<BlogPost3 />} />
-              <Route path="/blog/:slug" element={<BlogRedirect />} />
+              <Route path="/blog/:slug" element={<DynamicArticle />} />
               <Route
                 path="/signin"
                 element={

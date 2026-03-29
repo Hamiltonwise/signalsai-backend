@@ -115,6 +115,10 @@ import foundationRoutes from "./routes/foundation";
 import intelligenceRoutes from "./routes/intelligence";
 import marketRoutes from "./routes/market";
 import publicScoreCardRoutes from "./routes/publicScoreCard";
+import sitemapRoutes from "./routes/sitemap";
+import contentRoutes from "./routes/content";
+import contentPublishRoutes from "./routes/admin/contentPublish";
+import alloroLabsRoutes from "./routes/alloroLabs";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -315,11 +319,17 @@ app.use("/api/foundation", foundationRoutes); // WO-11: Foundation application s
 app.use("/api/intelligence", intelligenceRoutes); // WO-8: Practice owner intelligence dashboard
 app.use("/api/market", marketRoutes); // Programmatic city pages market data
 app.use("/api/clarity-card", publicScoreCardRoutes); // Public score card for viral sharing
+app.use("/api/content", contentRoutes); // Public content API for dynamic articles
+app.use("/api/admin/content", contentPublishRoutes); // Admin content publishing pipeline
+app.use("/api/labs", alloroLabsRoutes); // Alloro Labs: anonymized benchmark data
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);
 
 if (isProd) {
+  // Dynamic sitemap — must be before static file serving and catch-all
+  app.use("/sitemap.xml", sitemapRoutes);
+
   app.use(express.static(path.join(__dirname, "../public")));
 
   // Dynamic OG tags for checkup share links (social media crawlers)
