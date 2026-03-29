@@ -153,9 +153,10 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     // behavioral_events table may not exist yet, continue with snapshot competitor_note
   }
 
-  // Referral line (gated: TTFV yes + first win + has code)
+  // Rise Together referral (gated: TTFV yes + first win + has code)
+  // The Dropbox mechanic: double-sided, specific, one-tap forward
   const referralLine = (org.ttfv_response === "yes" && org.first_win_attributed_at && org.referral_code)
-    ? `Know another business owner flying blind? Share this. You both get one month free. getalloro.com/checkup?ref=${org.referral_code}`
+    ? `Know someone watching the same problem? Forward this email. When they sign up, you both pay $1,000/month for 3 months instead of $2,000. You carry the cost together. getalloro.com/checkup?ref=${org.referral_code}`
     : null;
 
   // Send via email service

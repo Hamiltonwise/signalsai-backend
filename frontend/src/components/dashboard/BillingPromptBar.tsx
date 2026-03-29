@@ -75,16 +75,21 @@ export default function BillingPromptBar({ orgId, score, finding }: BillingPromp
         )}
 
         <p className="text-sm font-medium text-white/90 mb-3">
-          Continue seeing your full picture -- $2,000/month.
+          Your intelligence continues automatically. $2,000/month. No contracts. Cancel anytime.
         </p>
 
-        <a
-          href="/settings/billing"
-          className="inline-flex items-center gap-2 rounded-lg bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-105 active:scale-[0.98] transition-all"
-        >
-          Keep it running
-          <ArrowRight className="h-4 w-4" />
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href="/settings/billing"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#D56753] px-5 py-2.5 text-sm font-semibold text-white hover:brightness-105 active:scale-[0.98] transition-all"
+          >
+            Keep it running
+            <ArrowRight className="h-4 w-4" />
+          </a>
+          <p className="text-xs text-white/30">
+            Your market data stays yours either way.
+          </p>
+        </div>
       </div>
     </div>
   );
