@@ -236,12 +236,35 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // Discover competitors with specialty-aware fallback broadening.
     // An endodontist is compared to endodontists first. Only if fewer than 5
     // same-specialty competitors exist does it broaden to general dentists.
-    const discoveryResult = await discoverCompetitorsWithFallback(
-      specialty,
-      marketLocation,
-      15,
-      locationBias
-    );
+    // Wrapped with a timeout so wide-radius specialties (e.g. oculofacial 75mi)
+    // don't cause the entire checkup to fail.
+    let discoveryResult: {
+      competitors: Awaited<ReturnType<typeof discoverCompetitorsWithFallback>>["competitors"];
+      broadened: boolean;
+      broadeningCategory: string | null;
+    };
+
+    const COMPETITOR_TIMEOUT_MS = 15000; // 15 seconds max for competitor discovery
+    try {
+      const discoveryPromise = discoverCompetitorsWithFallback(
+        specialty,
+        marketLocation,
+        15,
+        locationBias
+      );
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Competitor discovery timed out")), COMPETITOR_TIMEOUT_MS)
+      );
+      discoveryResult = await Promise.race([discoveryPromise, timeoutPromise]);
+    } catch (discoveryErr) {
+      // Fallback: return results based on the business's own profile only.
+      // Competitive Edge will default to neutral 10/20.
+      console.error(
+        `[Checkup] Competitor discovery failed for "${name}" (non-fatal):`,
+        discoveryErr instanceof Error ? discoveryErr.message : discoveryErr
+      );
+      discoveryResult = { competitors: [], broadened: false, broadeningCategory: null };
+    }
 
     const { competitors: discoveredCompetitors, broadened, broadeningCategory } = discoveryResult;
 
@@ -297,23 +320,26 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       try {
         placeDetails = await getPlaceDetails(placeId);
         if (placeDetails) {
-          // Enrich photos: Google returns a photos array
-          if (!enrichedPhotosCount && placeDetails.photos) {
+          // Enrich photos: Google Places API v1 returns photos as an array of
+          // photo objects with .name (resource path) and .widthPx/.heightPx.
+          // We count them for scoring purposes.
+          if (placeDetails.photos && placeDetails.photos.length > 0) {
             enrichedPhotosCount = placeDetails.photos.length;
           }
-          // Enrich hours
+          // Enrich hours: API v1 returns regularOpeningHours with .periods[]
+          // and .weekdayDescriptions[] -- either indicates hours are present.
           if (!enrichedHours && placeDetails.regularOpeningHours) {
             enrichedHours = placeDetails.regularOpeningHours;
           }
-          // Enrich phone
+          // Enrich phone: API v1 field is nationalPhoneNumber (not formatted_phone_number)
           if (!enrichedPhone && (placeDetails.nationalPhoneNumber || placeDetails.internationalPhoneNumber)) {
             enrichedPhone = placeDetails.nationalPhoneNumber || placeDetails.internationalPhoneNumber;
           }
-          // Enrich website
+          // Enrich website: API v1 field is websiteUri (not website)
           if (!enrichedWebsite && placeDetails.websiteUri) {
             enrichedWebsite = placeDetails.websiteUri;
           }
-          // Enrich editorial summary
+          // Enrich editorial summary: API v1 returns { text: "...", languageCode: "en" }
           if (!enrichedEditorialSummary && placeDetails.editorialSummary) {
             enrichedEditorialSummary = typeof placeDetails.editorialSummary === "string"
               ? placeDetails.editorialSummary
@@ -385,13 +411,24 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
 
     // Use already-fetched placeDetails reviews (no second API call needed)
     const googleReviews: any[] = placeDetails?.reviews || [];
+    // Google Places API v1 does NOT include ownerResponse in review objects.
+    // The authorAttribution field exists for the reviewer, but there is no
+    // ownerResponse field (unlike the legacy API). We detect this data limitation
+    // and assign a neutral score instead of penalizing the business.
+    let responseDataAvailable = false;
     if (googleReviews.length > 0) {
       const withResponse = googleReviews.filter((r: any) => !!r.ownerResponse);
-      reviewResponseRate = Math.round((withResponse.length / googleReviews.length) * 100);
+      // If ANY review has an ownerResponse, the data is available (some API versions or
+      // cached results may include it). If zero reviews have responses, assume the field
+      // is simply not returned by the API rather than that the owner never responds.
+      responseDataAvailable = withResponse.length > 0;
+      if (responseDataAvailable) {
+        reviewResponseRate = Math.round((withResponse.length / googleReviews.length) * 100);
+      }
 
       const negativeReviews = googleReviews.filter((r: any) => (r.rating || 5) <= 3);
       allReviewsPositive = negativeReviews.length === 0;
-      if (negativeReviews.length > 0) {
+      if (negativeReviews.length > 0 && responseDataAvailable) {
         hasRespondedToNegative = negativeReviews.some((r: any) => !!r.ownerResponse);
       }
 
@@ -469,8 +506,11 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     else if (clientPhotos >= 1) photoPts = 2;
 
     // Profile completeness (0-10): hours + phone + website + description
+    // Google Places API v1 returns regularOpeningHours with either periods[]
+    // or weekdayDescriptions[] (or both). Check all variants.
     const hasHours = enrichedHours
       ? (enrichedHours.periods?.length || 0) > 0
+        || (enrichedHours.weekdayDescriptions?.length || 0) > 0
       : !!enrichedHasHours;
     const hasPhone = !!enrichedPhone;
     const hasWebsite = !!enrichedWebsite;
@@ -492,17 +532,27 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const firstImpression = Math.min(30, photoPts + completenessPts + editorialPts + statusPts);
 
     // ─── RESPONSIVENESS (0-20) ──────────────────────────────────────────
-    // Review response rate (0-12)
+    // Google Places API v1 limitation: ownerResponse is not returned in review
+    // objects. When response data is unavailable, we assign a neutral 10/20
+    // rather than penalizing the business for a data gap we cannot measure.
     let responseRatePts = 0;
-    if (reviewResponseRate >= 80) responseRatePts = 12;
-    else if (reviewResponseRate >= 50) responseRatePts = 8;
-    else if (reviewResponseRate >= 20) responseRatePts = 5;
-    else if (reviewResponseRate >= 1) responseRatePts = 2;
-
-    // Responded to negative reviews (0-8)
     let negativeResponsePts = 0;
-    if (allReviewsPositive) negativeResponsePts = 4; // No negatives to respond to
-    else if (hasRespondedToNegative) negativeResponsePts = 8;
+
+    if (!responseDataAvailable) {
+      // Data unavailable: neutral score (not a judgment, just unknown)
+      responseRatePts = 6;
+      negativeResponsePts = 4;
+    } else {
+      // Review response rate (0-12)
+      if (reviewResponseRate >= 80) responseRatePts = 12;
+      else if (reviewResponseRate >= 50) responseRatePts = 8;
+      else if (reviewResponseRate >= 20) responseRatePts = 5;
+      else if (reviewResponseRate >= 1) responseRatePts = 2;
+
+      // Responded to negative reviews (0-8)
+      if (allReviewsPositive) negativeResponsePts = 4; // No negatives to respond to
+      else if (hasRespondedToNegative) negativeResponsePts = 8;
+    }
 
     const responsiveness = Math.min(20, responseRatePts + negativeResponsePts);
 
@@ -606,23 +656,28 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     }
 
     // Finding 4: Response rate — shows prospects the owner cares
-    if (reviewResponseRate < 50 && !allReviewsPositive) {
-      const responseImpact = Math.round(econ.avgCaseValue * econ.conversionRate * 6);
-      findings.push({
-        type: "response_gap",
-        title: "Prospects See Unanswered Reviews",
-        detail: `You've responded to ${reviewResponseRate}% of your reviews. Prospects notice when owners engage. Improving response rate could generate an estimated $${responseImpact.toLocaleString()} in additional inquiries per year.`,
-        value: reviewResponseRate,
-        impact: responseImpact,
-      });
-    } else if (reviewResponseRate >= 80) {
-      findings.push({
-        type: "response_strong",
-        title: "Strong Owner Engagement Visible",
-        detail: `You've responded to ${reviewResponseRate}% of your reviews. Prospects see an owner who cares.`,
-        value: reviewResponseRate,
-        impact: 0,
-      });
+    // Only show response rate findings when the API actually provides owner response data.
+    // Google Places API v1 does not include ownerResponse in review objects, so we skip
+    // this finding when data is unavailable rather than showing misleading 0% stats.
+    if (responseDataAvailable) {
+      if (reviewResponseRate < 50 && !allReviewsPositive) {
+        const responseImpact = Math.round(econ.avgCaseValue * econ.conversionRate * 6);
+        findings.push({
+          type: "response_gap",
+          title: "Prospects See Unanswered Reviews",
+          detail: `You've responded to ${reviewResponseRate}% of your reviews. Prospects notice when owners engage. Improving response rate could generate an estimated $${responseImpact.toLocaleString()} in additional inquiries per year.`,
+          value: reviewResponseRate,
+          impact: responseImpact,
+        });
+      } else if (reviewResponseRate >= 80) {
+        findings.push({
+          type: "response_strong",
+          title: "Strong Owner Engagement Visible",
+          detail: `You've responded to ${reviewResponseRate}% of your reviews. Prospects see an owner who cares.`,
+          value: reviewResponseRate,
+          impact: 0,
+        });
+      }
     }
 
     // Finding 5: Profile completeness
