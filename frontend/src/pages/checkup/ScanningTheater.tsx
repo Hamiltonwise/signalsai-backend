@@ -24,9 +24,9 @@ import {
 
 const TERRACOTTA = "#D56753";
 const NAVY = "#212D40";
-const MIN_THEATER_MS = 15000; // minimum 15s theater
-const SKIP_VISIBLE_MS = 5000; // show skip button after 5s
-const ITEM_INTERVAL_MS = 2200; // ~2.2s per checklist item
+const MIN_THEATER_MS = 10000; // minimum 10s theater (was 15s, reduced to respect user's time)
+const SKIP_VISIBLE_MS = 4000; // show skip button after 4s (when API is likely done)
+const ITEM_INTERVAL_MS = 1800; // ~1.8s per checklist item (snappier progression)
 
 const CHECKLIST_ITEMS = [
   "Finding your business...",
@@ -206,12 +206,18 @@ function ChecklistItem({
 // ---------------------------------------------------------------------------
 
 interface FeedItem {
-  type: "data" | "competitor";
+  type: "data" | "competitor" | "oz";
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
   competitorIndex?: number; // index into competitors array
 }
+
+const OZ_TEASER_LINES = [
+  "Analyzing review response patterns...",
+  "Scanning competitor posting activity...",
+  "Checking Saturday availability across market...",
+];
 
 function buildBusinessDataItems(place: PlaceDetails): FeedItem[] {
   const items: FeedItem[] = [];
@@ -257,6 +263,7 @@ function DiscoveryFeed({
 }) {
   const [visibleBusinessItems, setVisibleBusinessItems] = useState(0);
   const [visibleCompetitorItems, setVisibleCompetitorItems] = useState(0);
+  const [visibleOzLines, setVisibleOzLines] = useState(0);
   const businessItems = useRef(buildBusinessDataItems(place)).current;
   const competitorItems = useRef<FeedItem[]>([]);
 
@@ -290,6 +297,18 @@ function DiscoveryFeed({
     );
     return () => timers.forEach(clearTimeout);
   }, [apiDone, competitors, businessItems.length, onRevealCompetitor]);
+
+  // Reveal Oz teaser lines after competitors are shown (or after business data if no competitors)
+  useEffect(() => {
+    if (!apiDone) return;
+    // Wait for competitors to finish revealing, or if none, after business data
+    const compCount = competitors.length > 0 ? Math.min(5, competitors.length) : 0;
+    const baseDelay = compCount > 0 ? compCount * 1200 + 800 : businessItems.length * 2000 + 800;
+    const timers = OZ_TEASER_LINES.map((_, i) =>
+      setTimeout(() => setVisibleOzLines(i + 1), baseDelay + i * 2500)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [apiDone, competitors.length, businessItems.length]);
 
   return (
     <div className="space-y-1.5 mt-5 pt-5 border-t border-slate-100 max-h-[220px] overflow-y-auto">
@@ -350,6 +369,29 @@ function DiscoveryFeed({
           <Loader2 className="w-3 h-3 animate-spin" />
           Mapping competitors...
         </div>
+      )}
+
+      {/* Oz teaser findings — build anticipation for the results page */}
+      {visibleOzLines > 0 && (
+        <>
+          <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mt-3 mb-2">
+            Deep Analysis
+          </p>
+          {OZ_TEASER_LINES.slice(0, visibleOzLines).map((line, i) => (
+            <div
+              key={`oz-${i}`}
+              className="flex items-center gap-2.5 text-xs py-1 animate-in fade-in slide-in-from-left-2 duration-500"
+            >
+              <Loader2 className={`w-3.5 h-3.5 shrink-0 ${i < visibleOzLines - 1 ? "text-emerald-500" : "text-[#D56753] animate-spin"}`} />
+              <span className={`${i < visibleOzLines - 1 ? "text-slate-600" : "text-slate-500"}`}>
+                {line}
+              </span>
+              {i < visibleOzLines - 1 && (
+                <Check className="w-3 h-3 text-emerald-500 ml-auto shrink-0" />
+              )}
+            </div>
+          ))}
+        </>
       )}
     </div>
   );
@@ -476,10 +518,11 @@ function RadarPulse({ active }: { active: boolean }) {
 export default function ScanningTheater() {
   const location = useLocation();
   const navigate = useNavigate();
-  const stateData = location.state as { place?: PlaceDetails; refCode?: string; intent?: string } | undefined;
+  const stateData = location.state as { place?: PlaceDetails; refCode?: string; intent?: string; userQuestion?: string } | undefined;
   const place = stateData?.place;
   const refCode = stateData?.refCode;
   const intent = stateData?.intent;
+  const userQuestion = stateData?.userQuestion;
 
   // Checklist progress (index of the currently active item, -1 = not started)
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -525,9 +568,10 @@ export default function ScanningTheater() {
       ozMoments: (result as any).ozMoments || undefined,
       refCode,
       intent,
+      userQuestion,
     };
     navigate("/checkup/results", { state: resultsState, replace: true });
-  }, [place, navigate, refCode, intent]);
+  }, [place, navigate, refCode, intent, userQuestion]);
 
   // --- Fire API call on mount ---
   useEffect(() => {
@@ -795,7 +839,7 @@ export default function ScanningTheater() {
             {skipVisible && apiDone && (
               <button
                 onClick={goToResults}
-                className="w-full mt-3 text-xs font-semibold text-[#D56753] hover:text-[#c45a48] transition-colors"
+                className="w-full mt-4 flex items-center justify-center gap-2 rounded-xl border border-[#D56753]/30 bg-[#D56753]/5 px-4 py-2.5 text-sm font-semibold text-[#D56753] hover:bg-[#D56753]/10 active:scale-[0.98] transition-all"
               >
                 Show my results
               </button>
