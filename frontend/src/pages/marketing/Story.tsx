@@ -39,7 +39,7 @@ export default function Story() {
             problem that had nothing to do with their craft.
           </p>
           <p className="text-base text-[#212D40]/80 leading-relaxed">
-            They were excellent clinicians. The businesses around
+            They were excellent at their craft. The businesses around
             them, the referral relationships, the local visibility,
             the competitive dynamics, the things that determined
             whether they grew or slowly declined, were speaking
@@ -62,7 +62,7 @@ export default function Story() {
             idea what came next.
           </p>
           <p className="text-base text-[#212D40]/80 leading-relaxed">
-            What came next was ten years in the dental specialist
+            What came next was ten years in the local service business
             space, first as an operator, then building the product
             I wish had existed when I was trying to help businesses
             understand what their own data was saying.
