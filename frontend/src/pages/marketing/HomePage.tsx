@@ -199,6 +199,70 @@ export default function HomePage() {
         </p>
       </section>
 
+      {/* ═══ SECTION 2.5 — Product Proof (Real Screenshots) ═══ */}
+      <section className="px-5 py-16 sm:py-20 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <p className="text-center text-xs font-bold uppercase tracking-widest text-[#D56753] mb-3">
+            See it working
+          </p>
+          <h2 className="text-center text-2xl sm:text-3xl font-extrabold text-[#212D40] mb-10">
+            Not a mockup. The actual product.
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-6">
+            <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+              <img src="/product-checkup.png" alt="Alloro Checkup: See where you rank in 60 seconds" className="w-full" loading="lazy" />
+              <div className="p-4">
+                <p className="text-sm font-bold text-[#212D40]">The Checkup</p>
+                <p className="text-xs text-[#212D40]/60 mt-1">Type your name. See your score, your competitors, and your one action. 60 seconds.</p>
+              </div>
+            </div>
+            <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+              <img src="/product-dashboard.png" alt="Alloro Dashboard: Your business clarity at a glance" className="w-full" loading="lazy" />
+              <div className="p-4">
+                <p className="text-sm font-bold text-[#212D40]">Your Dashboard</p>
+                <p className="text-xs text-[#212D40]/60 mt-1">One Action Card. Market position. Website status. All in one view.</p>
+              </div>
+            </div>
+            <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+              <img src="/product-rankings.png" alt="Alloro Rankings: See every competitor in your market" className="w-full" loading="lazy" />
+              <div className="p-4">
+                <p className="text-sm font-bold text-[#212D40]">Your Rankings</p>
+                <p className="text-xs text-[#212D40]/60 mt-1">Every competitor. Every week. The scoreboard that updates while you sleep.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ SECTION 2.75 — Who This Is For (Identity Mirror) ═══ */}
+      <section className="px-5 py-12 sm:py-16" style={{ backgroundColor: "rgba(213, 103, 83, 0.04)" }}>
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-3">
+            Built for every local service business
+          </p>
+          <div className="flex flex-wrap justify-center gap-3 mt-6">
+            {[
+              "Endodontist", "Orthodontist", "General Dentist", "Barber",
+              "Attorney", "Veterinarian", "Landscaper", "Med Spa",
+              "Plumber", "CPA", "Real Estate Agent", "Fitness Studio",
+              "Chiropractor", "Physical Therapist", "Restaurant", "Auto Shop",
+            ].map((v) => (
+              <span
+                key={v}
+                className="px-4 py-2 rounded-full border border-[#212D40]/10 text-sm text-[#212D40]/70 hover:border-[#D56753] hover:text-[#D56753] transition-colors cursor-default"
+              >
+                {v}
+              </span>
+            ))}
+          </div>
+          <p className="mt-8 text-base text-[#212D40]/70 leading-relaxed max-w-lg mx-auto">
+            If you have a body, you're an athlete.
+            If you have a business, you're an entrepreneur.
+            And you're invited.
+          </p>
+        </div>
+      </section>
+
       {/* ═══ SECTION 3 — The Three Things ═══ */}
       <section className="px-5 py-16 sm:py-20 bg-white">
         <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-8">
@@ -397,7 +461,19 @@ export default function HomePage() {
 
       {/* ═══ SECTION 9 — The Founder ═══ */}
       <section className="px-5 py-16 sm:py-20 bg-white">
-        <div className="max-w-xl mx-auto space-y-5 text-[#212D40]/80 text-base leading-relaxed">
+        <div className="max-w-xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-start gap-6 mb-8">
+            <img
+              src="/corey-wise.jpg"
+              alt="Corey Wise, Founder of Alloro"
+              className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl object-cover shrink-0 shadow-lg"
+            />
+            <div>
+              <p className="text-lg font-bold text-[#212D40]">Corey Wise</p>
+              <p className="text-sm text-[#212D40]/50">Founder, Alloro. USAF Veteran. Bend, Oregon.</p>
+            </div>
+          </div>
+          <div className="space-y-5 text-[#212D40]/80 text-base leading-relaxed">
           <p>
             Alloro was built by Corey Wise.
             USAF veteran. 100% service-connected disability.
@@ -423,9 +499,7 @@ export default function HomePage() {
             to protect user data. You build with the companies
             whose values match yours.
           </p>
-          <p className="text-sm text-[#212D40]/40 italic">
-            Corey Wise, Bend, Oregon
-          </p>
+          </div>
         </div>
       </section>
 
