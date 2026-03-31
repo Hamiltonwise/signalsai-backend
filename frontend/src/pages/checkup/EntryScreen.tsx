@@ -153,14 +153,37 @@ export default function EntryScreen() {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Grab user's location for autocomplete biasing (silent, no prompt if denied)
+  // Grab user's location for autocomplete biasing
+  // Priority: browser geolocation > IP-based fallback > no bias (Virginia)
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {}, // Silently ignore denial
-      { timeout: 5000, maximumAge: 300000 }
-    );
+    let resolved = false;
+
+    // Try browser geolocation first
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (!resolved) {
+            resolved = true;
+            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          }
+        },
+        () => {
+          // Browser denied or timed out, fall through to IP fallback
+        },
+        { timeout: 3000, maximumAge: 300000 }
+      );
+    }
+
+    // IP-based fallback (fires in parallel, only used if geolocation doesn't resolve)
+    fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(3000) })
+      .then(r => r.json())
+      .then(data => {
+        if (!resolved && data.latitude && data.longitude) {
+          resolved = true;
+          setUserLocation({ lat: data.latitude, lng: data.longitude });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Auto-select place from URL params (homepage CTA flow)

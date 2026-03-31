@@ -31,14 +31,20 @@ function CheckupInput({ id, dark = false }: CheckupInputProps) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationRef = useRef<{ lat: number; lng: number } | null>(null);
 
-  // Grab user location once for autocomplete biasing
+  // Grab user location for autocomplete biasing (browser + IP fallback)
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { locationRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
-      () => {},
-      { timeout: 5000, maximumAge: 300000 }
-    );
+    let resolved = false;
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { if (!resolved) { resolved = true; locationRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; } },
+        () => {},
+        { timeout: 3000, maximumAge: 300000 }
+      );
+    }
+    fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(3000) })
+      .then(r => r.json())
+      .then(data => { if (!resolved && data.latitude && data.longitude) { resolved = true; locationRef.current = { lat: data.latitude, lng: data.longitude }; } })
+      .catch(() => {});
   }, []);
 
   const searchPlaces = useCallback((input: string) => {
