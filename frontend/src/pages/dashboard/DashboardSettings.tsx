@@ -183,7 +183,7 @@ export default function DashboardSettings() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-sm font-semibold text-[#212D40]">Business Clarity</p>
-            <p className="text-xs text-gray-500">$2,000/month</p>
+            <p className="text-xs text-gray-500">$997/month</p>
           </div>
           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
             isActive ? "bg-emerald-50 text-emerald-700" : isTrial ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500"
@@ -192,13 +192,23 @@ export default function DashboardSettings() {
           </span>
         </div>
         {isTrial && (
-          <p className="text-xs text-amber-600 mb-3">Your trial is active. Subscribe to keep access after it ends.</p>
+          <div className="rounded-xl bg-amber-50 border border-amber-200/50 p-4 mb-4">
+            <p className="text-sm font-semibold text-amber-800 mb-2">Your 7-day trial is active</p>
+            <div className="space-y-1.5 text-xs text-amber-700/80">
+              <p>During your trial, Alloro is:</p>
+              <div className="flex items-start gap-2"><span className="text-amber-600 mt-0.5">1.</span><span>Scanning your competitive landscape every week</span></div>
+              <div className="flex items-start gap-2"><span className="text-amber-600 mt-0.5">2.</span><span>Building your Monday morning intelligence brief</span></div>
+              <div className="flex items-start gap-2"><span className="text-amber-600 mt-0.5">3.</span><span>Tracking competitor review velocity against yours</span></div>
+              <div className="flex items-start gap-2"><span className="text-amber-600 mt-0.5">4.</span><span>Preparing your Business Clarity website</span></div>
+            </div>
+            <p className="text-xs text-amber-700/60 mt-3">Subscribe before your trial ends to keep your intelligence running.</p>
+          </div>
         )}
         <a
           href="/settings/billing"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#D56753] hover:underline"
         >
-          Manage billing
+          {isTrial ? "Subscribe now" : "Manage billing"}
           <ExternalLink className="h-3 w-3" />
         </a>
       </div>

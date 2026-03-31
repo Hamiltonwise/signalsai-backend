@@ -1618,17 +1618,32 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
         const weekStart = new Date();
         weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
+        // Build rich bullets from checkup findings instead of generic placeholders
+        const checkupFindings = parsed.findings || [];
+        const richBullets: string[] = [];
+        for (const f of checkupFindings.slice(0, 3)) {
+          const detail = typeof f === "string" ? f : f.detail || f.title || "";
+          if (detail) richBullets.push(detail);
+        }
+        if (richBullets.length === 0) {
+          richBullets.push(`Your Business Clarity Score: ${checkup_score || "N/A"}/100.`);
+          if (competitorName) richBullets.push(`${competitorName} leads your market with ${competitorReviewCount || "many"} reviews.`);
+          richBullets.push("Your full competitive analysis updates next Monday.");
+        }
+
+        // Use the most impactful finding as headline
+        const firstFinding = checkupFindings[0];
+        const richHeadline = firstFinding
+          ? (typeof firstFinding === "string" ? firstFinding : firstFinding.title || parsed.findingSummary || "Your competitive landscape")
+          : parsed.findingSummary || "Your competitive landscape";
+
         await db("weekly_ranking_snapshots").insert({
           org_id: org.id,
           week_start: weekStart.toISOString().split("T")[0],
           position: marketRank,
           keyword: `${practice_name || "specialist"} in ${marketCity}`,
-          bullets: JSON.stringify([
-            `Your practice scored ${checkup_score || "N/A"} on the Business Health Checkup.`,
-            competitorName ? `${competitorName} leads your market with ${competitorReviewCount || "many"} reviews.` : "Competitor data is being gathered for your market.",
-            "Your full competitive analysis is building now. More insights next Monday.",
-          ]),
-          finding_headline: parsed.findingSummary || "Your competitive landscape is being analyzed",
+          bullets: JSON.stringify(richBullets),
+          finding_headline: richHeadline,
           competitor_name: competitorName,
           competitor_review_count: competitorReviewCount,
           client_review_count: clientReviewCount,

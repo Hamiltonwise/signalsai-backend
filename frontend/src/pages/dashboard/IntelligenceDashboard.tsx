@@ -48,8 +48,14 @@ function SEOTab() {
   if (audits.length === 0) {
     return (
       <EmptyState
-        icon={<Search className="h-8 w-8 text-gray-300" />}
-        text="No SEO audit data yet. Your first audit will run automatically on Sunday evening."
+        icon={<Search className="h-6 w-6 text-[#D56753]" />}
+        text="Your first SEO audit runs this Sunday at 8pm. Alloro checks every signal Google uses to rank your business."
+        features={[
+          "Google Business Profile completeness",
+          "Review response rate and velocity",
+          "Website mobile speed and structured data",
+          "Competitive keyword positioning",
+        ]}
       />
     );
   }
@@ -117,8 +123,14 @@ function AEOTab() {
   if (faqs.length === 0) {
     return (
       <EmptyState
-        icon={<MessageSquare className="h-8 w-8 text-gray-300" />}
-        text="FAQ content for your business is being prepared. This helps search engines answer questions about your business directly."
+        icon={<MessageSquare className="h-6 w-6 text-[#D56753]" />}
+        text="Alloro is writing FAQ content from your actual customer reviews. When someone asks Google or ChatGPT about your specialty, your answers show up."
+        features={[
+          "Questions pulled from real customer searches",
+          "Answers written from your review themes",
+          "Published automatically to your website",
+          "Updated as new reviews come in",
+        ]}
       />
     );
   }
@@ -161,8 +173,14 @@ function CROTab() {
   if (experiments.length === 0) {
     return (
       <EmptyState
-        icon={<BarChart3 className="h-8 w-8 text-gray-300" />}
-        text="Conversion experiments will start automatically as your site gets traffic. We test different calls-to-action to find what works best for your business."
+        icon={<BarChart3 className="h-6 w-6 text-[#D56753]" />}
+        text="Alloro automatically tests what converts visitors into customers. No setup required. Results appear here as your site gets traffic."
+        features={[
+          "Headline variations tested automatically",
+          "Call-to-action button optimization",
+          "Contact form placement testing",
+          "Results measured in actual inquiries, not clicks",
+        ]}
       />
     );
   }
@@ -232,11 +250,25 @@ function LoadingState() {
   );
 }
 
-function EmptyState({ icon, text }: { icon: React.ReactNode; text: string }) {
+function EmptyState({ icon, text, features }: { icon: React.ReactNode; text: string; features?: string[] }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-      {icon}
-      <p className="text-sm text-gray-400 max-w-xs">{text}</p>
+    <div className="py-8">
+      <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-8 text-center">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white border border-gray-100 shadow-sm mb-4">
+          {icon}
+        </div>
+        <p className="text-sm text-[#212D40]/70 max-w-sm mx-auto leading-relaxed">{text}</p>
+        {features && features.length > 0 && (
+          <div className="mt-6 space-y-2 max-w-xs mx-auto text-left">
+            {features.map((f, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <CheckCircle className="w-4 h-4 text-[#D56753] mt-0.5 shrink-0" />
+                <span className="text-xs text-[#212D40]/60">{f}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
