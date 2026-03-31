@@ -640,7 +640,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                             Need help?
                           </h3>
                           <p className="text-sm text-slate-500 mb-4">
-                            We can help you get the right report from your PMS.
+                            Alloro reads any format. Drop a file, paste text, or upload a screenshot of your report.
                           </p>
                           <a
                             href="mailto:support@getalloro.com"

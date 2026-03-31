@@ -108,7 +108,7 @@ const Help = () => {
                 Help Center
               </h1>
               <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
-                Get support from our team
+                Answers and guidance
               </span>
             </div>
           </div>

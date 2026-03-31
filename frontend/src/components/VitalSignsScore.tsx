@@ -246,7 +246,7 @@ export const VitalSignsScore: React.FC<VitalSignsScoreProps> = ({
             <p className="text-xs text-blue-700 mt-1">
               {lastMonthData
                 ? `Based on ${lastMonthData.month} data: Local (${lastMonthData.breakdown.gbpScore}), Clarity (${lastMonthData.breakdown.clarityScore})`
-                : "Our team is optimizing your digital presence to maintain this growth trajectory"}
+                : "Alloro is optimizing your digital presence automatically to maintain this growth trajectory"}
             </p>
           </div>
         </div>

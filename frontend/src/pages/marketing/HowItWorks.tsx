@@ -84,7 +84,7 @@ export default function HowItWorks() {
               {/* Finding 2 */}
               <div className="border-l-2 border-[#212D40]/20 pl-4">
                 <p className="text-sm text-[#212D40]/60 leading-relaxed">
-                  Your top-referring GP hasn't sent a case in 34 days. This
+                  Your top referral source hasn't sent business in 34 days. This
                   is the longest gap in 14 months. Worth a call this week.
                 </p>
               </div>

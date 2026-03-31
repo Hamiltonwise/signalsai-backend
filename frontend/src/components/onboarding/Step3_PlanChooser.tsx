@@ -48,7 +48,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
           Subscribe to Alloro
         </h2>
         <p className="text-slate-500 text-sm">
-          Get full access to your practice intelligence platform.
+          Get full access to your business intelligence platform.
         </p>
       </div>
 
@@ -62,7 +62,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
           Alloro Intelligence
         </h3>
         <p className="text-slate-400 text-xs mb-4">
-          Full-service digital presence managed by AI and our team
+          Full-service digital presence managed entirely by AI
         </p>
 
         {/* Price */}

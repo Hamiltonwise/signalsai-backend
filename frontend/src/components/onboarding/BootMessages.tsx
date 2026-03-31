@@ -8,7 +8,7 @@ interface BootMessagesProps {
 
 const bootMessages = [
   "Welcome to Alloro",
-  "Your Practice, Simplified",
+  "Your Business, Simplified",
   "We're setting things up for you",
   "Hang on a bit while we do the lifting",
 ];

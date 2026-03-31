@@ -130,7 +130,7 @@ export const Step1PracticeInfo: React.FC<Step1PracticeInfoProps> = ({
     const newErrors: typeof errors = {};
 
     if (!practiceName.trim()) {
-      newErrors.practiceName = "Practice name is required";
+      newErrors.practiceName = "Business name is required";
     }
 
     const sanitized = sanitizeDomain(domainName);
@@ -164,10 +164,10 @@ export const Step1PracticeInfo: React.FC<Step1PracticeInfoProps> = ({
       {/* Header */}
       <div className="text-center">
         <h2 className="text-2xl font-bold font-heading text-alloro-navy mb-2 tracking-tight">
-          Your Practice
+          Your Business
         </h2>
         <p className="text-slate-500 text-sm">
-          Tell us about your practice
+          Tell us about your business
         </p>
       </div>
 
@@ -179,7 +179,7 @@ export const Step1PracticeInfo: React.FC<Step1PracticeInfoProps> = ({
             htmlFor="practiceName"
             className="block text-sm font-medium text-alloro-navy mb-2"
           >
-            Practice Name
+            Business Name
           </label>
           <input
             id="practiceName"
