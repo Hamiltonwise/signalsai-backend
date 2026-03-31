@@ -183,6 +183,7 @@ function App() {
       <ScrollToTop />
       <PilotHandler />
       <AuthProvider>
+        <VocabularyProvider>
         <OnboardingWizardProvider>
           <SetupProgressProvider>
             <ConfirmProvider>
