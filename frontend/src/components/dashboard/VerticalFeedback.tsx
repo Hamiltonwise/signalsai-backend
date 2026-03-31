@@ -48,7 +48,7 @@ interface VerticalFeedbackProps {
 }
 
 export default function VerticalFeedback({
-  currentLabel,
+  currentLabel: _currentLabel,
   className = "",
 }: VerticalFeedbackProps) {
   const [state, setState] = useState<"idle" | "asking" | "confirmed" | "correcting">("idle");
