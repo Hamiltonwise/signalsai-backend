@@ -28,30 +28,53 @@ export default function HowItWorks() {
             to="/checkup"
             className="mt-6 inline-flex items-center justify-center rounded-xl bg-[#D56753] text-white text-sm font-semibold px-6 py-3 hover:brightness-110 active:scale-[0.98] transition-all"
           >
-            Try it free
+            See where you rank
           </Link>
           <p className="mt-2 text-xs text-gray-400">60 seconds. No account required.</p>
         </div>
       </section>
 
-      {/* Three Stages */}
+      {/* Three Stages with product screenshots */}
       <section className="px-5 py-16 sm:py-20 bg-white">
-        <div className="max-w-3xl mx-auto space-y-12">
-          <Stage
-            icon={<Search className="w-6 h-6 text-[#D56753]" />}
-            title="The Checkup (60 seconds, free)"
-            body="Enter your business name. Alloro scans your market: competitors, rankings, review velocity, online visibility. You see your score and the one thing most affecting your position. No account required."
-          />
-          <Stage
-            icon={<Mail className="w-6 h-6 text-[#212D40]" />}
-            title="The Monday Brief (automated, every week)"
-            body="Create an account. Every Monday at 7am, your Business Clarity Brief arrives. One score. One finding specific to your business. One action you can take this week. The brief takes 90 seconds to read. The action takes 10 minutes to do."
-          />
-          <Stage
-            icon={<Zap className="w-6 h-6 text-[#D56753]" />}
-            title="The Clarity Layer (ongoing, autonomous)"
-            body="Connect your existing data. When your top referring source goes 30 days without sending a case, you get a note Monday morning, not a surprise three months later. When a competitor opens a second location, you know before your staff hears about it."
-          />
+        <div className="max-w-4xl mx-auto space-y-16">
+          <div className="grid sm:grid-cols-2 gap-8 items-center">
+            <div>
+              <Stage
+                icon={<Search className="w-6 h-6 text-[#D56753]" />}
+                title="The Checkup (60 seconds, free)"
+                body="Enter your business name. Alloro scans your market: competitors, rankings, review velocity, online visibility. You see your score and the one thing most affecting your position. No account required."
+              />
+            </div>
+            <div className="rounded-2xl overflow-hidden shadow-xl border border-gray-200">
+              <img src="/product-checkup.png" alt="Alloro Checkup in action" className="w-full" loading="lazy" />
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-8 items-center">
+            <div className="rounded-2xl overflow-hidden shadow-xl border border-gray-200 order-2 sm:order-1">
+              <img src="/product-dashboard.png" alt="Alloro Dashboard with Business Clarity Score" className="w-full" loading="lazy" />
+            </div>
+            <div className="order-1 sm:order-2">
+              <Stage
+                icon={<Mail className="w-6 h-6 text-[#212D40]" />}
+                title="The Monday Brief (automated, every week)"
+                body="Create an account. Every Monday at 7am, your Business Clarity Brief arrives. One score. One finding specific to your business. One action you can take this week. The brief takes 90 seconds to read. The action takes 10 minutes to do."
+              />
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-8 items-center">
+            <div>
+              <Stage
+                icon={<Zap className="w-6 h-6 text-[#D56753]" />}
+                title="The Clarity Layer (ongoing, autonomous)"
+                body="Connect your existing data. When your top referring source goes 30 days without sending business, you get a note Monday morning, not a surprise three months later. When a competitor opens a second location, you know before your staff hears about it."
+              />
+            </div>
+            <div className="rounded-2xl overflow-hidden shadow-xl border border-gray-200">
+              <img src="/product-rankings.png" alt="Alloro Rankings tracking competitors" className="w-full" loading="lazy" />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -95,7 +118,7 @@ export default function HowItWorks() {
                   This week
                 </p>
                 <p className="text-sm text-[#212D40]/80 leading-relaxed">
-                  Request reviews from 10 patients who came in last month.
+                  Request reviews from 10 customers who visited last month.
                   Takes 8 minutes.
                 </p>
               </div>
@@ -129,7 +152,7 @@ export default function HowItWorks() {
             />
             <FAQ
               q="What specialties does Alloro serve?"
-              a="We built this for specialist service businesses, endodontists, oral surgeons, orthodontists, and have since expanded to attorneys, veterinarians, physical therapists, financial advisors, and chiropractors. If your livelihood depends on local clients finding you and trusting you, Alloro was built for you."
+              a="Alloro serves every local service business: endodontists, orthodontists, general dentists, attorneys, veterinarians, barbers, landscapers, med spas, plumbers, CPAs, real estate agents, fitness studios, chiropractors, physical therapists, restaurants, auto shops, and more. If your livelihood depends on local customers finding you and trusting you, Alloro was built for you."
             />
           </div>
         </div>
