@@ -77,7 +77,7 @@ jobs:
           target: ${{ secrets.SANDBOX_TARGET_DIR }}
           strip_components: 1
 
-      - name: Start/Reload PM2
+      - name: Install, migrate, and reload PM2
         uses: appleboy/ssh-action@v1.2.1
         with:
           host: ${{ secrets.SANDBOX_EC2_HOST }}
@@ -91,4 +91,5 @@ jobs:
             nvm use node
             cd ${{ secrets.SANDBOX_TARGET_DIR }}
             npm install --production
+            npx knex migrate:latest || echo "Migration warning (non-fatal)"
             pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
