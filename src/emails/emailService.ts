@@ -1,13 +1,15 @@
 /**
  * Email Service
  *
- * Central email service that sends emails via n8n webhook.
+ * Central email service. Sends via Mailgun API directly when MAILGUN_API_KEY
+ * is set. Falls back to n8n webhook if not.
  * All email operations are logged to src/logs/email.log
  */
 
 import axios from "axios";
 import fs from "fs";
 import path from "path";
+import FormData from "form-data";
 import dotenv from "dotenv";
 import type { EmailPayload, EmailResult, SendEmailOptions } from "./types";
 
@@ -15,12 +17,14 @@ dotenv.config();
 
 // Configuration
 const WEBHOOK_URL = process.env.ALLORO_EMAIL_SERVICE_WEBHOOK || "";
+const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY || "";
+const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN || "";
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
   .split(",")
   .map((e) => e.trim())
   .filter(Boolean);
-const FROM_EMAIL = "info@getalloro.com";
-const FROM_NAME = "Alloro";
+const FROM_EMAIL = process.env.MAILGUN_FROM_EMAIL || "info@getalloro.com";
+const FROM_NAME = process.env.MAILGUN_FROM_NAME || "Alloro";
 
 // Log file path
 const LOG_DIR = path.join(__dirname, "..", "logs");
@@ -118,41 +122,54 @@ function validatePayload(payload: SendEmailOptions): string[] {
 }
 
 /**
- * Send email via n8n webhook
+ * Send email via Mailgun API directly
  */
-export async function sendEmail(
-  options: SendEmailOptions
-): Promise<EmailResult> {
+async function sendViaMailgun(options: SendEmailOptions): Promise<EmailResult> {
   const timestamp = new Date().toISOString();
+  const form = new FormData();
+  form.append("from", `${FROM_NAME} <${FROM_EMAIL}>`);
+  form.append("to", options.recipients.join(","));
+  if (options.cc?.length) form.append("cc", options.cc.join(","));
+  if (options.bcc?.length) form.append("bcc", options.bcc.join(","));
+  form.append("subject", options.subject);
+  form.append("html", options.body);
 
-  // Check webhook configuration
-  if (!WEBHOOK_URL) {
-    const error = "ALLORO_EMAIL_SERVICE_WEBHOOK not configured";
-    logEmail("ERROR", error, { recipients: options.recipients });
-    return {
-      success: false,
-      error,
-      timestamp,
-    };
-  }
+  try {
+    const response = await axios.post(
+      `https://api.mailgun.net/v3/${MAILGUN_DOMAIN}/messages`,
+      form,
+      {
+        auth: { username: "api", password: MAILGUN_API_KEY },
+        headers: form.getHeaders(),
+        timeout: 15000,
+      }
+    );
 
-  // Validate payload
-  const validationErrors = validatePayload(options);
-  if (validationErrors.length > 0) {
-    const error = `Validation failed: ${validationErrors.join(", ")}`;
-    logEmail("ERROR", error, {
+    const messageId = response.data?.id || `mg_${Date.now()}`;
+    logEmail("INFO", "Email sent via Mailgun", {
+      messageId,
       subject: options.subject,
       recipients: options.recipients,
-      validationErrors,
     });
-    return {
-      success: false,
-      error,
-      timestamp,
-    };
-  }
 
-  // Prepare webhook payload
+    return { success: true, messageId, timestamp };
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || "Mailgun error";
+    logEmail("ERROR", "Mailgun send failed", {
+      error: errorMessage,
+      subject: options.subject,
+      recipients: options.recipients,
+      status: error.response?.status,
+    });
+    return { success: false, error: errorMessage, timestamp };
+  }
+}
+
+/**
+ * Send email via n8n webhook (legacy fallback)
+ */
+async function sendViaWebhook(options: SendEmailOptions): Promise<EmailResult> {
+  const timestamp = new Date().toISOString();
   const payload: EmailPayload & { from: string; fromName: string } = {
     subject: options.subject,
     body: options.body,
@@ -163,54 +180,55 @@ export async function sendEmail(
     fromName: FROM_NAME,
   };
 
-  logEmail("INFO", "Sending email via webhook", {
-    subject: options.subject,
-    recipientCount: options.recipients.length,
-    hasCC: (options.cc?.length || 0) > 0,
-    hasBCC: (options.bcc?.length || 0) > 0,
-  });
-
   try {
     const response = await axios.post(WEBHOOK_URL, payload, {
       timeout: 30000,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     });
-
-    const messageId =
-      response.data?.messageId || response.data?.id || `msg_${Date.now()}`;
-
-    logEmail("INFO", "Email sent successfully", {
-      messageId,
-      subject: options.subject,
-      recipients: options.recipients,
-      status: response.status,
-    });
-
-    return {
-      success: true,
-      messageId,
-      timestamp,
-    };
+    const messageId = response.data?.messageId || response.data?.id || `msg_${Date.now()}`;
+    logEmail("INFO", "Email sent via n8n webhook", { messageId, subject: options.subject, recipients: options.recipients });
+    return { success: true, messageId, timestamp };
   } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message || error.message || "Unknown error";
-
-    logEmail("ERROR", "Failed to send email", {
-      error: errorMessage,
-      subject: options.subject,
-      recipients: options.recipients,
-      status: error.response?.status,
-      responseData: error.response?.data,
-    });
-
-    return {
-      success: false,
-      error: errorMessage,
-      timestamp,
-    };
+    const errorMessage = error.response?.data?.message || error.message || "Unknown error";
+    logEmail("ERROR", "n8n webhook send failed", { error: errorMessage, subject: options.subject, recipients: options.recipients });
+    return { success: false, error: errorMessage, timestamp };
   }
+}
+
+/**
+ * Send email -- Mailgun direct if configured, n8n webhook fallback
+ */
+export async function sendEmail(
+  options: SendEmailOptions
+): Promise<EmailResult> {
+  const timestamp = new Date().toISOString();
+
+  // Validate payload
+  const validationErrors = validatePayload(options);
+  if (validationErrors.length > 0) {
+    const error = `Validation failed: ${validationErrors.join(", ")}`;
+    logEmail("ERROR", error, { subject: options.subject, recipients: options.recipients });
+    return { success: false, error, timestamp };
+  }
+
+  logEmail("INFO", `Sending email via ${MAILGUN_API_KEY ? "Mailgun" : "n8n webhook"}`, {
+    subject: options.subject,
+    recipientCount: options.recipients.length,
+  });
+
+  // Mailgun direct (preferred)
+  if (MAILGUN_API_KEY && MAILGUN_DOMAIN) {
+    return sendViaMailgun(options);
+  }
+
+  // n8n webhook fallback
+  if (WEBHOOK_URL) {
+    return sendViaWebhook(options);
+  }
+
+  const error = "No email transport configured. Set MAILGUN_API_KEY + MAILGUN_DOMAIN or ALLORO_EMAIL_SERVICE_WEBHOOK.";
+  logEmail("ERROR", error);
+  return { success: false, error, timestamp };
 }
 
 /**
