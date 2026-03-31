@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import CEOIntelligenceChat from "@/components/Admin/CEOIntelligenceChat";
 import {
   DollarSign,
   TrendingUp,
@@ -1156,6 +1157,9 @@ export default function VisionaryView() {
           <PortfolioScorePanel healthData={healthData} />
         </div>
       </div>
+
+      {/* The Conversation -- CEO Intelligence Chat */}
+      <CEOIntelligenceChat />
     </>
   );
 }

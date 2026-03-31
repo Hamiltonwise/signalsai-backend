@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useVocab } from "@/contexts/vocabularyContext";
 import { motion } from "framer-motion";
 import { BarChart3, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { PmsKeyDataSource } from "../../api/pms";
@@ -38,6 +39,8 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
   data = DEFAULT_SOURCES,
   subtitle = "Revenue attribution by source",
 }) => {
+  const vocab = useVocab();
+  const referrerLabel = vocab.vertical === "general" ? "Referrer" : "Doctor";
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -92,7 +95,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
 
           {/* Filter Tabs */}
           <div className="flex p-1 bg-slate-100 rounded-lg">
-            {["All", "Doctor", "Marketing"].map((filter) => (
+            {["All", referrerLabel, "Marketing"].map((filter) => (
               <button
                 key={filter}
                 onClick={() => {

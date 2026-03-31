@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useState, useRef } from "react";
+import { useVocab } from "@/contexts/vocabularyContext";
 import {
   Upload,
   Download,
@@ -199,6 +200,9 @@ const CompactTag = ({ status }: { status: string }) => {
 
 export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
   const { signalContentReady } = useLocationContext();
+  const vocab = useVocab();
+  // Vocabulary-aware labels: "Doctor" becomes "Referrer" for universal verticals
+  const referrerLabel = vocab.vertical === "general" ? "Referrer" : vocab.providerTerm === "doctor" ? "Doctor" : "Referrer";
   const [fetchedData, setFetchedData] = useState<ReferralEngineData | null>(
     null
   );
@@ -493,8 +497,8 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
     data?.doctor_referral_matrix?.forEach((doc, idx) => {
       sources.push({
         id: `doc-${idx}`,
-        name: doc.referrer_name || "Unknown Doctor",
-        category: "Doctor",
+        name: doc.referrer_name || `Unknown ${referrerLabel}`,
+        category: referrerLabel,
         count: doc.referred || 0,
         avgPerReferral: doc.avg_production_per_referral ?? null,
         production: doc.net_production || 0,
@@ -520,8 +524,8 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
     });
 
     // Filter based on active filter
-    if (activeFilter === "Doctor") {
-      return sources.filter((s) => s.category === "Doctor");
+    if (activeFilter === referrerLabel) {
+      return sources.filter((s) => s.category === referrerLabel);
     } else if (activeFilter === "Marketing") {
       return sources.filter((s) => s.category === "Marketing");
     }
@@ -757,7 +761,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                 </p>
               </div>
               <div className="flex p-1.5 bg-slate-50 border border-black/5 rounded-2xl overflow-x-auto w-full lg:w-auto">
-                {["All", "Doctor", "Marketing"].map((filter) => (
+                {["All", referrerLabel, "Marketing"].map((filter) => (
                   <button
                     key={filter}
                     onClick={() => setActiveFilter(filter)}

@@ -409,9 +409,9 @@ function CheckupLauncher() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <h3 className="text-base font-bold text-[#212D40] mb-2">Share with a Doctor</h3>
+        <h3 className="text-base font-bold text-[#212D40] mb-2">Share with a Colleague</h3>
         <p className="text-sm text-gray-500 mb-4">
-          Send this link to a doctor. They'll see the full Checkup experience with the blur gate.
+          Send this link to a business owner. They'll see the full Checkup experience.
           When they sign up, the account is attributed to you.
         </p>
         <div className="flex gap-2">

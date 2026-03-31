@@ -96,6 +96,7 @@ const OwnerProfile = React.lazy(() => import("./pages/OwnerProfile"));
 // --- Non-page imports (always loaded) ---
 import { PageWrapper } from "./components/PageWrapper";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
+import { VocabularyProvider } from "./contexts/vocabularyContext.tsx";
 import { GBPProvider } from "./contexts/GBPContext.tsx";
 import { ClarityProvider } from "./contexts/ClarityContext.tsx";
 import { SessionProvider } from "./contexts/SessionProvider.tsx";
@@ -389,6 +390,7 @@ function App() {
             </ConfirmProvider>
           </SetupProgressProvider>
         </OnboardingWizardProvider>
+        </VocabularyProvider>
       </AuthProvider>
     </BrowserRouter>
     </ToastProvider>

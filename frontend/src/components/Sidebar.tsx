@@ -639,7 +639,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-bold text-white truncate">
-                    {userProfile?.practiceName || "Practice"}
+                    {userProfile?.practiceName || "Your Business"}
                   </p>
                   <p className="text-[9px] text-white/20 font-black uppercase tracking-widest mt-0.5">
                     {userRole === "admin"
