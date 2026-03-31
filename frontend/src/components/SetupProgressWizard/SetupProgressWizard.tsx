@@ -55,6 +55,10 @@ export function SetupProgressWizard() {
   // Don't render if context not available or wizard is completed
   if (!context) return null;
 
+  // Hide on dashboard - the inline OnboardingChecklist is already there
+  const isDashboard = location.pathname === "/dashboard" || location.pathname === "/";
+  if (isDashboard) return null;
+
   const { progress } = context;
 
   // Don't show if all steps completed
