@@ -12,7 +12,7 @@ export default function FoundationHome() {
   return (
     <MarketingLayout
       title="Heroes & Founders Foundation"
-      description="Built for people who chose service first. RISE Scholars program for veteran practice owners."
+      description="Built for people who chose service first. RISE Scholars program for veteran business owners."
     >
       {/* Hero */}
       <section className="px-6 py-20 text-center max-w-3xl mx-auto">
@@ -74,7 +74,7 @@ export default function FoundationHome() {
             </div>
             <h3 className="text-base font-bold text-[#212D40]">Community</h3>
             <p className="text-sm text-gray-500 mt-2">
-              A network of veteran practice owners who understand what it means to
+              A network of veteran business owners who understand what it means to
               transition from service to business. Nobody does this alone.
             </p>
           </div>
@@ -85,7 +85,7 @@ export default function FoundationHome() {
       <section className="px-6 py-16 text-center">
         <h2 className="text-2xl font-bold text-[#212D40]">Ready to apply?</h2>
         <p className="mt-3 text-gray-500">
-          If you served in the United States Armed Forces and own a practice,
+          If you served in the United States Armed Forces and own a business,
           you may qualify for the RISE Scholars program.
         </p>
         <Link
@@ -113,7 +113,7 @@ export default function FoundationHome() {
                   "@id": "https://getalloro.com/#org",
                   "name": "Alloro",
                 },
-                "description": "Built for people who chose service first. RISE Scholars program for veteran practice owners.",
+                "description": "Built for people who chose service first. RISE Scholars program for veteran business owners.",
               },
               {
                 "@type": "WebPage",
