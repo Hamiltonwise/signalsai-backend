@@ -269,6 +269,8 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     }
 
     const { competitors: discoveredCompetitors, broadened, broadeningCategory, specialtyMatchCount } = discoveryResult;
+    const isOnlySpecialist = broadened && specialtyMatchCount === 0;
+    const isReferralBased = vocabPreset.intelligenceMode === "referral_based";
 
     // Remove the practice itself from competitors (match by placeId or name)
     const clientNameLower = name.toLowerCase();
@@ -415,10 +417,15 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // Cap rank at the pool size (rank can't exceed total participants)
     const rank = Math.min(rawRank, allWithClient.length) || allWithClient.length;
 
-    // Top competitor: prefer same-specialty. Only use broadened if zero specialty matches.
+    // Top competitor: prefer same-specialty.
+    // For referral-based specialists (endodontist, oral surgeon, etc.) with zero
+    // same-specialty competitors: general dentists are REFERRAL SOURCES, not competitors.
+    // Don't show them as "top competitor."
     const topCompetitor = sameSpecialtyCompetitors.length > 0
       ? sameSpecialtyCompetitors[0]
-      : otherCompetitors[0] || null;
+      : (isOnlySpecialist && isReferralBased)
+        ? null // No competitor -- broadened results are referral sources
+        : otherCompetitors[0] || null;
 
     // --- Extract review signals from enriched data ---
     let reviewResponseRate = 0;
@@ -579,7 +586,6 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // specialist in their market. That's an advantage, not a penalty.
     let competitiveEdge = 10; // Neutral default when no competitors
     let competitiveDataLimited = otherCompetitors.length === 0;
-    const isOnlySpecialist = broadened && specialtyMatchCount === 0;
 
     if (isOnlySpecialist) {
       // Only specialist in market: strong competitive position
@@ -622,12 +628,22 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     }> = [];
 
     // Finding 1: What prospects see first — your review social proof
-    if (isOnlySpecialist && topCompetitor && topCompetitor.reviewsCount > clientReviews) {
-      // Only specialist: compare to general market but frame as context, not competition
+    if (isOnlySpecialist && isReferralBased) {
+      // Referral-based specialist with no local competition: frame as referral market
+      const gpCount = otherCompetitors.length;
+      findings.push({
+        type: "referral_market",
+        title: `Only ${specialty} in ${city}`,
+        detail: `You're the only ${specialty} in ${city}. There are ${gpCount} general ${broadeningCategory || "dental"} practices nearby, each a potential referral source. Your position is strong: when any of them need a ${specialty}, you're the local option. Reviews and visibility determine whether they think of you first.`,
+        value: gpCount,
+        impact: 0,
+      });
+    } else if (isOnlySpecialist) {
+      // Non-referral specialist with no local competition
       findings.push({
         type: "specialist_context",
         title: `Only ${specialty} in ${city}`,
-        detail: `You're the only ${specialty} specialist in ${city}. General ${broadeningCategory || "dental"} practices like ${topCompetitor.name} have more reviews (${topCompetitor.reviewsCount.toLocaleString()}), but prospects searching specifically for a ${specialty} have you as their top local option. Growing your reviews strengthens that position.`,
+        detail: `You're the only ${specialty} specialist in ${city}. Prospects searching specifically for a ${specialty} have you as their top local option. Growing your reviews strengthens that position.`,
         value: clientReviews,
         impact: 0,
       });
@@ -766,17 +782,32 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // Finding 7: Broadened search notice (with honest framing)
     if (broadened && broadeningCategory) {
       const hasSpecialtyMatches = specialtyMatchCount > 0;
-      findings.push({
-        type: "broadened_search",
-        title: hasSpecialtyMatches
-          ? "Expanded Comparison"
-          : `Few ${specialty} ${competitorWord}s Nearby`,
-        detail: hasSpecialtyMatches
-          ? `We found ${specialtyMatchCount} ${specialty} ${competitorWord}s nearby and included ${broadeningCategory} ${competitorWord}s for additional context.`
-          : `You're one of the few ${specialty} specialists in ${city}. The ${competitorWord}s shown are from the broader ${broadeningCategory} market for context, not direct specialty competition. Your real advantage: prospects searching specifically for ${specialty} have limited local options.`,
-        value: 0,
-        impact: 0,
-      });
+      if (isOnlySpecialist && isReferralBased) {
+        // Referral-based specialist: frame broadened results as referral market
+        findings.push({
+          type: "referral_landscape",
+          title: `${otherCompetitors.length} Potential Referral Sources`,
+          detail: `These ${broadeningCategory} practices are your referral market, not your competition. Each one sends patients who need a ${specialty}. Your visibility to these practices determines your referral flow.`,
+          value: otherCompetitors.length,
+          impact: 0,
+        });
+      } else if (hasSpecialtyMatches) {
+        findings.push({
+          type: "broadened_search",
+          title: "Expanded Comparison",
+          detail: `We found ${specialtyMatchCount} ${specialty} ${competitorWord}s nearby and included ${broadeningCategory} ${competitorWord}s for additional context.`,
+          value: 0,
+          impact: 0,
+        });
+      } else {
+        findings.push({
+          type: "broadened_search",
+          title: `Few ${specialty} ${competitorWord}s Nearby`,
+          detail: `You're one of the few ${specialty} specialists in ${city}. The ${competitorWord}s shown are from the broader ${broadeningCategory} market for context, not direct specialty competition.`,
+          value: 0,
+          impact: 0,
+        });
+      }
     }
 
     // Total estimated annual impact
@@ -1112,6 +1143,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         location: c.location,
         driveTimeMinutes: (c as any).driveTimeMinutes ?? null,
       })),
+      competitorLabel: (isOnlySpecialist && isReferralBased) ? "Referral Sources" : "Competitors",
       findings,
       sentimentInsight: sentimentInsight || null,
       ozMoments: ozMoments.length > 0 ? ozMoments : undefined,
