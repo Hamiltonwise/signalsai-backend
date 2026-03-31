@@ -577,22 +577,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <NavItem
                 icon={<Zap size={18} />}
                 label="Command Center"
-                active={location.pathname === "/admin/action-items" || location.pathname === "/admin"}
-                onClick={() => handleNavigate("/admin/action-items")}
+                active={location.pathname.startsWith("/hq/command")}
+                onClick={() => handleNavigate("/hq/command")}
                 minimized={isMinimized}
               />
               <NavItem
                 icon={<Users size={18} />}
                 label="Organizations"
-                active={location.pathname === "/admin/organizations"}
-                onClick={() => handleNavigate("/admin/organizations")}
+                active={location.pathname === "/hq/organizations"}
+                onClick={() => handleNavigate("/hq/organizations")}
                 minimized={isMinimized}
               />
               <NavItem
                 icon={<Brain size={18} />}
                 label="The Board"
-                active={location.pathname === "/admin/chat"}
-                onClick={() => handleNavigate("/admin/chat")}
+                active={location.pathname === "/hq/board"}
+                onClick={() => handleNavigate("/hq/board")}
                 minimized={isMinimized}
               />
             </div>

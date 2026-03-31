@@ -93,6 +93,11 @@ const RisePage = React.lazy(() => import("./pages/marketing/RisePage"));
 const AboutPage = React.lazy(() => import("./pages/marketing/AboutPage"));
 const OwnerProfile = React.lazy(() => import("./pages/OwnerProfile"));
 
+// HQ pages (rendered inside CF layout for unified sidebar experience)
+const HQCommand = React.lazy(() => import("./pages/admin/HQRouter"));
+const HQOrganizations = React.lazy(() => import("./components/Admin/OrganizationManagement"));
+const HQBoard = React.lazy(() => import("./pages/admin/BoardChat"));
+
 // --- Non-page imports (always loaded) ---
 import { PageWrapper } from "./components/PageWrapper";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
@@ -367,6 +372,11 @@ function App() {
                 </Route>
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/help" element={<Help />} />
+                {/* HQ routes inside CF layout -- same sidebar, no jarring layout switch */}
+                <Route path="/hq" element={<Navigate to="/hq/command" replace />} />
+                <Route path="/hq/command" element={<React.Suspense fallback={null}><HQCommand /></React.Suspense>} />
+                <Route path="/hq/organizations" element={<React.Suspense fallback={null}><HQOrganizations /></React.Suspense>} />
+                <Route path="/hq/board" element={<React.Suspense fallback={null}><HQBoard /></React.Suspense>} />
               </Route>
 
               {/* Admin routes with AppProviders but no PageWrapper */}
