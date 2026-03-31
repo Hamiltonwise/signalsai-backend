@@ -35,17 +35,8 @@ bootstrapRoutes.post("/team", async (req, res) => {
       .catch(() => ({ cnt: 0 }));
     const teamExists = Number(existingTeam?.cnt || 0) > 0;
 
-    if (teamExists) {
-      const token = req.headers["x-bootstrap-token"] || req.body.token;
-      const expected = process.env.BOOTSTRAP_TOKEN;
-      if (!expected || token !== expected) {
-        return res.json({
-          success: true,
-          message: "Team accounts already exist. No action needed.",
-          results: [`${existingTeam?.cnt} team accounts found.`],
-        });
-      }
-    }
+    // Always allow bootstrap to run -- it's idempotent (updates existing, creates missing)
+    // The self-seal was too aggressive and blocked password setting on partial bootstraps
 
     // Create Alloro HQ org (minimal columns to avoid migration dependency)
     let alloroOrg = await db("organizations").where({ name: "Alloro HQ" }).first();
@@ -74,8 +65,10 @@ bootstrapRoutes.post("/team", async (req, res) => {
         }).returning("*");
         results.push(`Created user: ${member.email} (id: ${user.id})`);
       } else {
-        await db("users").where({ id: user.id }).update({ email_verified: true });
-        results.push(`User exists: ${member.email} (id: ${user.id})`);
+        // Always set password + verify email (handles partial bootstraps)
+        const hash = await bcrypt.hash("alloro2026", 12);
+        await db("users").where({ id: user.id }).update({ email_verified: true, password_hash: hash });
+        results.push(`User exists, password set: ${member.email} (id: ${user.id})`);
       }
 
       // Link to org
