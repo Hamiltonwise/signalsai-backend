@@ -543,7 +543,7 @@ export default function IntegratorView() {
       {/* Personal greeting */}
       <div className="pb-2">
         <h1 className="text-xl font-black text-[#212D40] tracking-tight">
-          {greeting}, Jo.
+          {greeting}, {firstName}.
         </h1>
         <p className="text-sm text-gray-500 mt-1">
           {activeClients > 0
