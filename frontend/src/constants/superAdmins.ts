@@ -5,8 +5,6 @@
 export const SUPER_ADMIN_EMAILS = [
   "corey@getalloro.com",
   "info@getalloro.com",
-  "demo@getalloro.com",
-  "jo@getalloro.com",
   "jordan@getalloro.com",
   "dave@getalloro.com",
 ];

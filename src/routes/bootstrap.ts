@@ -13,9 +13,8 @@ const bootstrapRoutes = express.Router();
 
 const TEAM = [
   { email: "corey@getalloro.com", firstName: "Corey", lastName: "Wise", role: "admin" },
-  { email: "jo@getalloro.com", firstName: "Jo", lastName: "Wise", role: "admin" },
+  { email: "jordan@getalloro.com", firstName: "Jordan", lastName: "Caballero", role: "admin" },
   { email: "dave@getalloro.com", firstName: "Dave", lastName: "Santos", role: "admin" },
-  { email: "demo@getalloro.com", firstName: "Demo", lastName: "Doctor", role: "admin" },
   { email: "info@getalloro.com", firstName: "Alloro", lastName: "Admin", role: "admin" },
 ];
 

@@ -19,7 +19,6 @@ const ROLE_MAP: Record<string, "visionary" | "integrator" | "build"> = {
   "info@getalloro.com": "visionary",
   "demo@getalloro.com": "visionary",
   "jordan@getalloro.com": "integrator",
-  "jo@getalloro.com": "integrator",
   "dave@getalloro.com": "build",
 };
 
