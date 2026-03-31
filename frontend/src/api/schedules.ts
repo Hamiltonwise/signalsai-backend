@@ -43,7 +43,7 @@ const BASE = "/admin/schedules";
 
 export async function fetchSchedules(): Promise<Schedule[]> {
   const res = await apiGet({ path: BASE });
-  return res.data;
+  return Array.isArray(res?.data) ? res.data : [];
 }
 
 export async function fetchRegistry(): Promise<RegistryAgent[]> {
