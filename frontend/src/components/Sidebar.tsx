@@ -290,7 +290,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       label: "Home",
       icon: <LayoutDashboard size={18} />,
-      path: "/dashboard",
+      path: isSuperAdmin ? "/hq/command" : "/dashboard",
       showDuringOnboarding: true,
     },
     // Referrals Hub: owner + manager only, hidden for direct_acquisition verticals

@@ -36,8 +36,15 @@ export default function SignIn() {
         }
 
         setMessage("Success! Redirecting...");
+
+        // Super admins go to HQ Command Center, everyone else to dashboard
+        const SUPER_ADMIN_EMAILS = ["corey@getalloro.com", "info@getalloro.com", "jo@getalloro.com", "jordan@getalloro.com", "dave@getalloro.com"];
+        const destination = SUPER_ADMIN_EMAILS.includes(email.toLowerCase())
+          ? "/hq/command"
+          : "/dashboard";
+
         setTimeout(() => {
-          window.location.href = "/dashboard";
+          window.location.href = destination;
         }, 800);
       } else if (response.requiresVerification) {
         // Email not verified — redirect to verification page
