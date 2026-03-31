@@ -101,7 +101,7 @@ export default function PricingPage() {
               to="/checkup"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-[#D56753] text-white text-base font-semibold px-8 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
             >
-              See your numbers first
+              See my numbers first
               <ArrowRight className="w-4 h-4" />
             </Link>
             <p className="mt-3 text-xs text-gray-400">
@@ -122,7 +122,7 @@ export default function PricingPage() {
               {
                 "@type": "Product",
                 "name": "Alloro Business Clarity",
-                "description": "Business intelligence platform for local service professionals.",
+                "description": "Business Clarity platform for local service professionals.",
                 "url": "https://getalloro.com/pricing",
                 "brand": { "@id": "https://getalloro.com/#organization" },
                 "offers": {
