@@ -107,6 +107,7 @@ import { ClarityProvider } from "./contexts/ClarityContext.tsx";
 import { SessionProvider } from "./contexts/SessionProvider.tsx";
 import { LocationProvider } from "./contexts/LocationProvider.tsx";
 import { OnboardingWizardProvider } from "./contexts/OnboardingWizardContext.tsx";
+import { TailorProvider } from "./contexts/TailorContext.tsx";
 const WizardController = React.lazy(() => import("./components/onboarding-wizard").then(m => ({ default: m.WizardController })));
 import { SetupProgressProvider } from "./components/SetupProgressWizard";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -189,6 +190,7 @@ function App() {
       <PilotHandler />
       <AuthProvider>
         <VocabularyProvider>
+        <TailorProvider>
         <OnboardingWizardProvider>
           <SetupProgressProvider>
             <ConfirmProvider>
@@ -399,6 +401,7 @@ function App() {
             </ConfirmProvider>
           </SetupProgressProvider>
         </OnboardingWizardProvider>
+        </TailorProvider>
         </VocabularyProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -125,6 +125,7 @@ import publicScoreCardRoutes from "./routes/publicScoreCard";
 import sitemapRoutes from "./routes/sitemap";
 import contentRoutes from "./routes/content";
 import contentPublishRoutes from "./routes/admin/contentPublish";
+import adminTailorRoutes from "./routes/admin/tailor";
 import alloroLabsRoutes from "./routes/alloroLabs";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
@@ -339,6 +340,7 @@ app.use("/api/market", marketRoutes); // Programmatic city pages market data
 app.use("/api/clarity-card", publicScoreCardRoutes); // Public score card for viral sharing
 app.use("/api/content", contentRoutes); // Public content API for dynamic articles
 app.use("/api/admin/content", contentPublishRoutes); // Admin content publishing pipeline
+app.use("/api/admin/tailor", adminTailorRoutes); // Tailor mode: inline text overrides
 app.use("/api/labs", alloroLabsRoutes); // Alloro Labs: anonymized benchmark data
 
 // Sentry error handler — must be after all routes and before other error handlers

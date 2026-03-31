@@ -32,6 +32,7 @@ import { useIsWizardActive } from "../contexts/OnboardingWizardContext";
 import { useLocationContext } from "../contexts/locationContext";
 import { useAuth } from "../hooks/useAuth";
 import { LocationSwitcher } from "./LocationSwitcher";
+import { TailorToggle } from "./TailorToggle";
 import { getPriorityItem } from "../hooks/useLocalStorage";
 
 type UserRole = "admin" | "manager" | "viewer";
@@ -653,6 +654,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Footer / Account */}
         {isMinimized ? (
           <div className="px-2 pt-2 pb-4 mt-auto flex flex-col items-center gap-2">
+            <TailorToggle minimized />
             <button
               onClick={() => handleNavigate("/settings")}
               className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-[10px] font-black border border-white/10 hover:border-alloro-orange transition-colors"
@@ -670,6 +672,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         ) : (
           <div className="px-8 pt-2 pb-8 mt-auto">
+            <div className="px-0 mb-3">
+              <TailorToggle />
+            </div>
             <div
               className="bg-white/5 border border-white/5 rounded-2xl p-5 transition-all hover:bg-alloro-sidehover cursor-pointer group"
               onClick={() => handleNavigate("/settings")}
