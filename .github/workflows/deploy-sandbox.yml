@@ -35,6 +35,7 @@ jobs:
         run: |
           cd frontend
           echo "VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}" > .env
+          rm -rf node_modules package-lock.json
           npm install
           npm run build
           cd ..
