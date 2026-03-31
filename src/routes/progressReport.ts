@@ -212,8 +212,8 @@ function generateNext90Days(
   // Review response
   actions.push({
     title: "Respond to every Google review within 24 hours for the next 90 days",
-    why: "Google tracks response rate as a ranking signal. Businesses that respond to reviews rank higher and convert more searches into appointments.",
-    impact: "Improved rating trajectory and patient trust",
+    why: "Google tracks response rate as a ranking signal. Businesses that respond to reviews rank higher and convert more searches into inquiries.",
+    impact: "Improved rating trajectory and customer trust",
     priority: 3,
   });
 
@@ -222,7 +222,7 @@ function generateNext90Days(
     actions.push({
       title: "Launch a referral program with 3 referring providers",
       why: "You're already in the top 3 for search. The next growth lever is direct referral relationships.",
-      impact: "2-5 new patients per referring provider per month",
+      impact: "2-5 new customers per referring source per month",
       priority: 4,
     });
   }
@@ -230,9 +230,9 @@ function generateNext90Days(
   // Goal-specific action
   if (goals?.sellBy) {
     actions.push({
-      title: "Document all systems and SOPs for practice valuation",
-      why: `With a target exit of ${goals.sellBy}, buyers evaluate systematized practices at 2-3x higher multiples.`,
-      impact: "Directly increases practice valuation",
+      title: "Document all systems and SOPs for business valuation",
+      why: `With a target exit of ${goals.sellBy}, buyers evaluate systematized businesses at 2-3x higher multiples.`,
+      impact: "Directly increases business valuation",
       priority: 5,
     });
   }

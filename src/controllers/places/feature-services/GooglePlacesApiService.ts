@@ -34,7 +34,7 @@ export async function autocomplete(
           latitude: locationBias.lat,
           longitude: locationBias.lng,
         },
-        radius: 80467, // 50 miles
+        radius: 50000, // ~31 miles (Google max is 50,000m)
       },
     };
   }
