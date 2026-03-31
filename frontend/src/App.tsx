@@ -95,7 +95,7 @@ const OwnerProfile = React.lazy(() => import("./pages/OwnerProfile"));
 
 // HQ pages (rendered inside CF layout for unified sidebar experience)
 const HQCommand = React.lazy(() => import("./pages/admin/HQRouter"));
-const HQOrganizations = React.lazy(() => import("./components/Admin/OrganizationManagement"));
+const HQOrganizations = React.lazy(() => import("./pages/admin/OrganizationManagement"));
 const HQBoard = React.lazy(() => import("./pages/admin/BoardChat"));
 
 // --- Non-page imports (always loaded) ---
