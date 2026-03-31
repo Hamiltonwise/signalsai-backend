@@ -408,10 +408,12 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         return b.reviewsCount - a.reviewsCount;
       return b.totalScore - a.totalScore;
     });
-    const rank =
+    const rawRank =
       allWithClient.findIndex(
         (c) => c.name.toLowerCase() === name.toLowerCase()
       ) + 1;
+    // Cap rank at the pool size (rank can't exceed total participants)
+    const rank = Math.min(rawRank, allWithClient.length) || allWithClient.length;
 
     // Top competitor: prefer same-specialty. Only use broadened if zero specialty matches.
     const topCompetitor = sameSpecialtyCompetitors.length > 0

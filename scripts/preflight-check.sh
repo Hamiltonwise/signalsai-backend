@@ -112,11 +112,23 @@ fi
 echo ""
 
 # ─── CHECK 8: TypeScript ─────────────────────────────────────────
-echo "CHECK 8: TypeScript compilation"
+echo "CHECK 8a: Backend TypeScript compilation"
 if npx tsc --noEmit 2>/dev/null; then
-    echo -e "  ${GREEN}PASS${NC}: Zero TypeScript errors"
+    echo -e "  ${GREEN}PASS${NC}: Backend zero TypeScript errors"
 else
-    echo -e "  ${RED}FAIL${NC}: TypeScript errors found"
+    echo -e "  ${RED}FAIL${NC}: Backend TypeScript errors found"
+    npx tsc --noEmit 2>&1 | head -10
+    VIOLATIONS=$((VIOLATIONS + 1))
+fi
+
+echo "CHECK 8b: Frontend TypeScript + Vite build"
+if cd frontend && npx tsc -b --force 2>/dev/null && npm run build 2>/dev/null 1>/dev/null; then
+    echo -e "  ${GREEN}PASS${NC}: Frontend build clean"
+    cd ..
+else
+    echo -e "  ${RED}FAIL${NC}: Frontend build failed"
+    cd frontend && npm run build 2>&1 | grep -i "error" | head -10
+    cd ..
     VIOLATIONS=$((VIOLATIONS + 1))
 fi
 echo ""

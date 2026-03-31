@@ -78,13 +78,13 @@ const CATEGORY_MAP: { patterns: string[]; preset: VocabularyPreset }[] = [
   {
     patterns: ["periodont"],
     preset: {
-      vertical: "endodontics",
+      vertical: "general_dentistry", // Dental specialist; overrides ensure perio-specific terms
       patientTerm: "patient",
       referralTerm: "referring dentist",
       caseType: "periodontal case",
       primaryMetric: "referral volume",
       healthScoreLabel: "Business Clarity Score",
-      competitorTerm: "competitor",
+      competitorTerm: "periodontist",
       providerTerm: "periodontist",
       locationTerm: "practice",
       avgCaseValue: 2000,

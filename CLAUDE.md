@@ -37,6 +37,10 @@ Agents: .claude/agents/
 - Every screen looks like it was built by a company with 10,000 clients
 - Every session ends with verification checks posted to Build State
 - Permission mode: auto (never dangerously-skip-permissions in production workflows)
+- Before every commit: run `cd frontend && npx tsc -b --force && npm run build` (must be zero errors)
+- Before every commit: run `npx tsc --noEmit` from repo root (backend must be zero errors)
+- Before every commit: run `bash scripts/preflight-check.sh` (must pass with zero violations)
+- CI/CD fails if frontend build fails. Never push code that hasn't passed the local build.
 
 ## Global Model Default
 
