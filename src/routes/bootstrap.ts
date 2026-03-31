@@ -3,17 +3,14 @@
  *
  * POST /api/bootstrap/team
  *
- * Creates Corey, Jo, and Dave user accounts + a shared demo org
- * so the team can log into HQ immediately. Gated by BOOTSTRAP_TOKEN
- * env var (set once, use once, then remove).
- *
- * After this runs, each person logs in via OTP (email code).
+ * Creates Corey, Jo, and Dave user accounts + a shared demo org.
+ * Self-sealing: works without token on first run, locks after accounts exist.
  */
 
 import express from "express";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { db } from "../database/connection";
-import { generateReferralCode } from "../utils/referralCode";
 
 const bootstrapRoutes = express.Router();
 
@@ -26,34 +23,31 @@ const TEAM = [
 ];
 
 bootstrapRoutes.post("/team", async (req, res) => {
-  // Self-sealing gate: if ANY team account already exists, require token.
-  // If zero team accounts exist, allow bootstrap without token (first-run).
-  const teamEmails = TEAM.map(t => t.email);
-  const existingTeam = await db("users")
-    .whereIn("email", teamEmails)
-    .count("id as cnt")
-    .first()
-    .catch(() => ({ cnt: 0 }));
-  const teamExists = Number(existingTeam?.cnt || 0) > 0;
-
-  if (teamExists) {
-    // Team already bootstrapped. Require token for re-runs.
-    const token = req.headers["x-bootstrap-token"] || req.body.token;
-    const expected = process.env.BOOTSTRAP_TOKEN;
-    if (!expected || token !== expected) {
-      return res.json({
-        success: true,
-        message: "Team accounts already exist. No action needed.",
-        results: [`${existingTeam?.cnt} team accounts found.`],
-      });
-    }
-  }
-
-  // First run or token-authenticated re-run
   const results: string[] = [];
 
   try {
-    // Create a shared Alloro org if none exists for the team
+    // Self-sealing gate
+    const teamEmails = TEAM.map(t => t.email);
+    const existingTeam = await db("users")
+      .whereIn("email", teamEmails)
+      .count("id as cnt")
+      .first()
+      .catch(() => ({ cnt: 0 }));
+    const teamExists = Number(existingTeam?.cnt || 0) > 0;
+
+    if (teamExists) {
+      const token = req.headers["x-bootstrap-token"] || req.body.token;
+      const expected = process.env.BOOTSTRAP_TOKEN;
+      if (!expected || token !== expected) {
+        return res.json({
+          success: true,
+          message: "Team accounts already exist. No action needed.",
+          results: [`${existingTeam?.cnt} team accounts found.`],
+        });
+      }
+    }
+
+    // Create Alloro HQ org
     let alloroOrg = await db("organizations").where({ name: "Alloro HQ" }).first();
     if (!alloroOrg) {
       [alloroOrg] = await db("organizations").insert({
@@ -63,7 +57,7 @@ bootstrapRoutes.post("/team", async (req, res) => {
         onboarding_completed: true,
         onboarding_wizard_completed: true,
         organization_type: "saas",
-        referral_code: await generateReferralCode(),
+        referral_code: crypto.randomBytes(4).toString("hex").toUpperCase(),
       }).returning("*");
       results.push(`Created org: Alloro HQ (id: ${alloroOrg.id})`);
     } else {
@@ -84,12 +78,11 @@ bootstrapRoutes.post("/team", async (req, res) => {
         }).returning("*");
         results.push(`Created user: ${member.email} (id: ${user.id})`);
       } else {
-        // Ensure email_verified
         await db("users").where({ id: user.id }).update({ email_verified: true });
         results.push(`User exists: ${member.email} (id: ${user.id})`);
       }
 
-      // Link to Alloro HQ org if not already linked
+      // Link to org
       const existing = await db("organization_users")
         .where({ user_id: user.id, organization_id: alloroOrg.id })
         .first();
@@ -103,18 +96,10 @@ bootstrapRoutes.post("/team", async (req, res) => {
       }
     }
 
-    // Also run the demo seed if it hasn't been run
-    const demoOrg = await db("organizations").where({ name: "Valley Endodontics" }).first();
-    if (!demoOrg) {
-      results.push("Demo org (Valley Endodontics) not found. Run: npm run seed:demo");
-    } else {
-      results.push(`Demo org exists: Valley Endodontics (id: ${demoOrg.id})`);
-    }
-
     console.log(`[Bootstrap] Team setup complete:`, results);
     return res.json({ success: true, results });
   } catch (error: any) {
-    console.error("[Bootstrap] Error:", error.message);
+    console.error("[Bootstrap] Error:", error.message, error.stack);
     return res.status(500).json({ success: false, error: error.message, results });
   }
 });
