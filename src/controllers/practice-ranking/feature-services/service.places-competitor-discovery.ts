@@ -283,6 +283,7 @@ export async function discoverCompetitorsWithFallback(
   competitors: DiscoveredCompetitor[];
   broadened: boolean;
   broadeningCategory: string | null;
+  specialtyMatchCount: number;
 }> {
   const MIN_SAME_SPECIALTY = 5;
 
@@ -296,7 +297,7 @@ export async function discoverCompetitorsWithFallback(
 
   // Step 3: If enough same-specialty competitors, return them
   if (specialtyFiltered.length >= MIN_SAME_SPECIALTY) {
-    return { competitors: specialtyFiltered, broadened: false, broadeningCategory: null };
+    return { competitors: specialtyFiltered, broadened: false, broadeningCategory: null, specialtyMatchCount: specialtyFiltered.length };
   }
 
   // Step 4: Check if this specialty has a broadening category
@@ -306,7 +307,7 @@ export async function discoverCompetitorsWithFallback(
   if (!broaderCategory) {
     // No broadening available, return what we have
     log(`Only ${specialtyFiltered.length} same-specialty results, no broadening category for "${specialty}"`);
-    return { competitors: specialtyFiltered, broadened: false, broadeningCategory: null };
+    return { competitors: specialtyFiltered, broadened: false, broadeningCategory: null, specialtyMatchCount: specialtyFiltered.length };
   }
 
   log(`Only ${specialtyFiltered.length} same-specialty results. Broadening to "${broaderCategory}"`);
@@ -320,18 +321,26 @@ export async function discoverCompetitorsWithFallback(
   const seenIds = new Set(specialtyFiltered.map((c) => c.placeId));
   const additionalCompetitors = broaderResults.filter((c) => !seenIds.has(c.placeId));
 
-  const merged = [...specialtyFiltered, ...additionalCompetitors];
+  // Sort each group by reviews, but ALWAYS put specialty matches first.
+  // An endodontist's real competitor is another endodontist, not a general
+  // dentist with more reviews. Trust depends on this.
+  const specialtySet = new Set(specialtyFiltered.map((c) => c.placeId));
 
-  // Re-sort merged results
-  merged.sort((a, b) => {
+  const sortByReviews = (a: any, b: any) => {
     if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
     if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
     return a.placeId.localeCompare(b.placeId);
-  });
+  };
+
+  specialtyFiltered.sort(sortByReviews);
+  additionalCompetitors.sort(sortByReviews);
+
+  // Specialty matches first, then broader matches
+  const merged = [...specialtyFiltered, ...additionalCompetitors];
 
   log(`After broadening: ${specialtyFiltered.length} same-specialty + ${additionalCompetitors.length} broader = ${merged.length} total`);
 
-  return { competitors: merged, broadened: true, broadeningCategory: broaderCategory };
+  return { competitors: merged, broadened: true, broadeningCategory: broaderCategory, specialtyMatchCount: specialtyFiltered.length };
 }
 
 // =====================================================================

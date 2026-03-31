@@ -243,6 +243,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       competitors: Awaited<ReturnType<typeof discoverCompetitorsWithFallback>>["competitors"];
       broadened: boolean;
       broadeningCategory: string | null;
+      specialtyMatchCount: number;
     };
 
     const COMPETITOR_TIMEOUT_MS = 15000; // 15 seconds max for competitor discovery
@@ -264,10 +265,10 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         `[Checkup] Competitor discovery failed for "${name}" (non-fatal):`,
         discoveryErr instanceof Error ? discoveryErr.message : discoveryErr
       );
-      discoveryResult = { competitors: [], broadened: false, broadeningCategory: null };
+      discoveryResult = { competitors: [], broadened: false, broadeningCategory: null, specialtyMatchCount: 0 };
     }
 
-    const { competitors: discoveredCompetitors, broadened, broadeningCategory } = discoveryResult;
+    const { competitors: discoveredCompetitors, broadened, broadeningCategory, specialtyMatchCount } = discoveryResult;
 
     // Remove the practice itself from competitors (match by placeId or name)
     const clientNameLower = name.toLowerCase();
@@ -387,10 +388,21 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const avgReviews =
       otherCompetitors.reduce((s, c) => s + c.reviewsCount, 0) / compCount;
 
-    // Rank (kept for findings/intelligence, not for score)
+    // Rank: when broadened, rank against specialty matches only.
+    // An endodontist ranked #15 because general dentists have more reviews is wrong.
+    // They should rank against other endodontists.
+    // specialtyMatchCount tells us exactly how many same-specialty competitors exist.
+    const sameSpecialtyCompetitors = broadened && specialtyMatchCount > 0
+      ? otherCompetitors.slice(0, specialtyMatchCount)
+      : otherCompetitors;
+
+    const rankingPool = sameSpecialtyCompetitors.length > 0
+      ? sameSpecialtyCompetitors
+      : otherCompetitors; // Fallback to all if zero specialty matches
+
     const allWithClient = [
       { name, reviewsCount: clientReviews, totalScore: clientRating },
-      ...otherCompetitors,
+      ...rankingPool,
     ].sort((a, b) => {
       if (b.reviewsCount !== a.reviewsCount)
         return b.reviewsCount - a.reviewsCount;
@@ -401,8 +413,10 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         (c) => c.name.toLowerCase() === name.toLowerCase()
       ) + 1;
 
-    // Top competitor (for blur gate CTA and findings)
-    const topCompetitor = otherCompetitors[0] || null;
+    // Top competitor: prefer same-specialty. Only use broadened if zero specialty matches.
+    const topCompetitor = sameSpecialtyCompetitors.length > 0
+      ? sameSpecialtyCompetitors[0]
+      : otherCompetitors[0] || null;
 
     // --- Extract review signals from enriched data ---
     let reviewResponseRate = 0;
