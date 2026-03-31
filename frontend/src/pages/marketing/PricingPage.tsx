@@ -13,7 +13,7 @@ export default function PricingPage() {
   return (
     <MarketingLayout
       title="Pricing"
-      description="$2,000/month per location. Your Monday Brief, PatientPath, referral intelligence, and competitive tracking. No contracts."
+      description="$2,000/month per location. Your Monday Brief, professional website, revenue intelligence, and competitive tracking. No contracts."
     >
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">

@@ -205,7 +205,7 @@ export default function HomePage() {
           <ThreeThing
             verb="BUILD"
             lines={[
-              "PatientPath and ClearPath, built for your business by AI agents in under an hour.",
+              "Your professional website and referral pages, built for your business by AI agents in under an hour.",
               "Your site for customers. Your page for referring partners. Professional. Specific. Indexed. Ranking. You never touched them.",
             ]}
           />
@@ -318,7 +318,7 @@ export default function HomePage() {
           <div className="space-y-5">
             {[
               "60 seconds: We analyze your competitive position, your visibility gaps, and your referral signals.",
-              "Simultaneously: PatientPath and ClearPath are built for your business by AI agents.",
+              "Simultaneously: Your professional website and referral pages are built for your business by AI agents.",
               "You receive your Checkup result and two live URLs. Your customer site and your referral page. Already indexed. Already ranking.",
               "Monday morning: Your first intelligence brief. One thing. Specific. Actionable.",
               "Every Monday after: The same. The catch before it costs you. The move before your competitor makes it.",

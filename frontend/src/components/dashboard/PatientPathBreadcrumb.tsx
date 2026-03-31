@@ -48,7 +48,7 @@ export default function PatientPathBreadcrumb({
             {safeStatus === "live"
               ? "Your website is live"
               : safeStatus === "preview_ready"
-                ? "Your PatientPath website is ready"
+                ? "Your website is ready to preview"
                 : "Website preview"}
           </p>
           {hostname && (

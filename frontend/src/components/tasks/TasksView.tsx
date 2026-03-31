@@ -219,7 +219,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-tight">
-                We'll get back to you shortly.
+                Alloro is processing your request.
               </p>
             </div>
           ) : (

@@ -149,7 +149,7 @@ function AEOContent({ orgId }: { orgId: number }) {
 
   const faqs = data?.faqs || [];
   if (faqs.length === 0) {
-    return <EmptyCard message="No AEO content generated yet. FAQ content is created during your PatientPath build." />;
+    return <EmptyCard message="No AEO content generated yet. FAQ content is created automatically when your website is built." />;
   }
 
   return (
@@ -185,7 +185,7 @@ function CROContent({ orgId }: { orgId: number }) {
 
   const experiments = data?.experiments || [];
   if (experiments.length === 0) {
-    return <EmptyCard message="No CRO experiments running yet. Tests begin after your PatientPath site goes live." />;
+    return <EmptyCard message="No CRO experiments running yet. Tests begin automatically after your website goes live." />;
   }
 
   return (

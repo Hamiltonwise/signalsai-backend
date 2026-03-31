@@ -35,7 +35,7 @@ export default function GBPConnectCard({ gbpConnected, orgId }: GBPConnectCardPr
             Connect your Google Business Profile
           </p>
           <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-            Unlock live rankings, review monitoring, and your PatientPath website.
+            Unlock live rankings, review monitoring, and your Alloro website.
           </p>
 
           <a

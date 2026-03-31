@@ -96,7 +96,7 @@ export default function PatientPathWebsite() {
             Your Website Is Being Built
           </h1>
           <p className="text-sm text-gray-500">
-            Our team is researching your business and building your site. This usually takes less than 24 hours.
+            Alloro is researching your business and building your site automatically. This usually takes less than an hour.
           </p>
         </div>
       </div>
@@ -115,7 +115,7 @@ export default function PatientPathWebsite() {
             Your Website Preview Is Ready
           </h1>
           <p className="text-sm text-gray-500 mb-6">
-            Take a look and let us know if you'd like any changes.
+            Built from your Google reviews, market data, and what makes your business stand out.
           </p>
           {previewUrl && (
             <a
