@@ -26,17 +26,30 @@ const TEAM = [
 ];
 
 bootstrapRoutes.post("/team", async (req, res) => {
-  // Gate by bootstrap token
-  const token = req.headers["x-bootstrap-token"] || req.body.token;
-  const expected = process.env.BOOTSTRAP_TOKEN;
+  // Self-sealing gate: if ANY team account already exists, require token.
+  // If zero team accounts exist, allow bootstrap without token (first-run).
+  const teamEmails = TEAM.map(t => t.email);
+  const existingTeam = await db("users")
+    .whereIn("email", teamEmails)
+    .count("id as cnt")
+    .first()
+    .catch(() => ({ cnt: 0 }));
+  const teamExists = Number(existingTeam?.cnt || 0) > 0;
 
-  if (!expected) {
-    return res.status(404).json({ error: "Bootstrap not available. Set BOOTSTRAP_TOKEN env var." });
-  }
-  if (token !== expected) {
-    return res.status(403).json({ error: "Invalid bootstrap token." });
+  if (teamExists) {
+    // Team already bootstrapped. Require token for re-runs.
+    const token = req.headers["x-bootstrap-token"] || req.body.token;
+    const expected = process.env.BOOTSTRAP_TOKEN;
+    if (!expected || token !== expected) {
+      return res.json({
+        success: true,
+        message: "Team accounts already exist. No action needed.",
+        results: [`${existingTeam?.cnt} team accounts found.`],
+      });
+    }
   }
 
+  // First run or token-authenticated re-run
   const results: string[] = [];
 
   try {
