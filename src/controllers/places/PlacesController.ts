@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import axios from "axios";
 import {
   autocomplete as googleAutocomplete,
   getPlaceDetails as googleGetPlaceDetails,
@@ -11,6 +12,25 @@ import {
   transformSearchPlaceResponse,
   transformSearchAlternatives,
 } from "./feature-services/PlaceDataTransformService";
+
+// Cache IP geolocation results (IP -> {lat, lng}) for 1 hour
+const ipGeoCache = new Map<string, { lat: number; lng: number; ts: number }>();
+const IP_GEO_CACHE_MS = 60 * 60 * 1000;
+
+async function getLocationFromIP(ip: string): Promise<{ lat: number; lng: number } | null> {
+  if (!ip || ip === "127.0.0.1" || ip === "::1") return null;
+  const cached = ipGeoCache.get(ip);
+  if (cached && Date.now() - cached.ts < IP_GEO_CACHE_MS) return { lat: cached.lat, lng: cached.lng };
+  try {
+    const res = await axios.get(`https://ipapi.co/${ip}/json/`, { timeout: 2000 });
+    if (res.data?.latitude && res.data?.longitude) {
+      const loc = { lat: res.data.latitude, lng: res.data.longitude };
+      ipGeoCache.set(ip, { ...loc, ts: Date.now() });
+      return loc;
+    }
+  } catch { /* silent */ }
+  return null;
+}
 
 /**
  * POST /api/places/autocomplete
@@ -35,14 +55,21 @@ export async function autocomplete(req: Request, res: Response) {
       });
     }
 
-    // Build location bias from client-provided coordinates
-    const locationBias =
+    // Build location bias: client coordinates > IP geolocation > no bias
+    let locationBias =
       typeof lat === "number" && typeof lng === "number"
         ? { lat, lng }
         : undefined;
 
+    // Server-side IP fallback when client sends no coordinates
+    if (!locationBias) {
+      const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "";
+      const ipLoc = await getLocationFromIP(clientIp);
+      if (ipLoc) locationBias = ipLoc;
+    }
+
     console.log(
-      `[Places] Autocomplete search: "${input}"${locationBias ? ` (biased to ${lat.toFixed(2)},${lng.toFixed(2)})` : " (no location bias)"}`
+      `[Places] Autocomplete search: "${input}"${locationBias ? ` (biased to ${locationBias.lat.toFixed(2)},${locationBias.lng.toFixed(2)})` : " (no location bias)"}`
     );
 
     const rawSuggestions = await googleAutocomplete(input, sessionToken, locationBias);
