@@ -43,10 +43,7 @@ import OneActionCard from "@/components/dashboard/OneActionCard";
 import CardCapture from "@/components/dashboard/CardCapture";
 import AlloroActivityCard from "@/components/dashboard/AlloroActivityCard";
 // ReferralCard defined locally (line ~569) with referralCode prop
-import CSAgentChat from "@/components/dashboard/CSAgentChat";
-import TTFVSensor from "@/components/dashboard/TTFVSensor";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
-import PatientPathBreadcrumb from "@/components/dashboard/PatientPathBreadcrumb";
 import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
 import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
@@ -786,7 +783,7 @@ export default function DoctorDashboard() {
   const checkupCtx = dashCtx?.checkup_context ?? null;
   const week1WinData = dashCtx?.week1_win ?? null;
   const orgCreatedAt = dashCtx?.org_created_at ?? null;
-  const hasReferralData = dashCtx?.has_referral_data ?? false;
+  // hasReferralData available via dashCtx?.has_referral_data if needed
 
   // Tone Evolution: earn informality over time
   const toneProfile = useMemo(() => getToneProfile(orgCreatedAt), [orgCreatedAt]);
@@ -862,17 +859,6 @@ export default function DoctorDashboard() {
     },
     enabled: !!orgId,
     staleTime: 10 * 60_000,
-  });
-
-  // PatientPath build status for breadcrumb
-  const { data: patientpathData } = useQuery({
-    queryKey: ["patientpath-status", orgId],
-    queryFn: async () => {
-      const res = await apiGet({ path: "/user/patientpath" });
-      return res?.success ? res : null;
-    },
-    enabled: !!orgId,
-    staleTime: 60_000,
   });
 
   const { data: profileData, isError: isProfileError } = useQuery({
@@ -1338,17 +1324,6 @@ export default function DoctorDashboard() {
         </div>
       )}
 
-      {/* CS Agent — floating chat */}
-      <CSAgentChat
-        practiceName={practiceName}
-        score={effectiveRanking?.rankScore ?? null}
-        locationId={locationId}
-        hasReferralData={hasReferralData}
-      />
-
-      {/* TTFV Sensor — bottom bar, 90s after first load */}
-      <TTFVSensor orgId={orgId} onYes={() => { /* billing prompt auto-shows via ttfv-status check */ }} />
-
       {/* Competitor Detail Drawer */}
       {drawerCompetitor && (
         <CompetitorDrawer
@@ -1359,18 +1334,7 @@ export default function DoctorDashboard() {
         />
       )}
 
-      {/* PatientPath Breadcrumb — quiet lower-right card */}
-      <PatientPathBreadcrumb
-        status={
-          websiteData ? "live"
-          : (patientpathData?.status === "preview_ready" || patientpathData?.status === "building" || patientpathData?.status === "researching")
-            ? (patientpathData.status === "researching" ? "building" : patientpathData.status)
-            : null
-        }
-        previewUrl={patientpathData?.previewUrl || null}
-        liveUrl={websiteData ? `https://${websiteData.generated_hostname}.sites.getalloro.com` : null}
-        hostname={websiteData?.generated_hostname || null}
-      />
+      {/* PatientPath status integrated into dashboard cards, not floating */}
     </motion.div>
     </>
   );

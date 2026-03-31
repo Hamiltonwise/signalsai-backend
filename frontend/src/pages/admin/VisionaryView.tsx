@@ -13,7 +13,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import CEOIntelligenceChat from "@/components/Admin/CEOIntelligenceChat";
+// CEOIntelligenceChat moved to dedicated nav page
 import {
   DollarSign,
   TrendingUp,
@@ -1158,8 +1158,7 @@ export default function VisionaryView() {
         </div>
       </div>
 
-      {/* The Conversation -- CEO Intelligence Chat */}
-      <CEOIntelligenceChat />
+      {/* CEO Chat moved to dedicated nav page -- no floating widgets */}
     </>
   );
 }

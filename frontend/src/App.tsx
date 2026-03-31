@@ -103,14 +103,13 @@ import { SessionProvider } from "./contexts/SessionProvider.tsx";
 import { LocationProvider } from "./contexts/LocationProvider.tsx";
 import { OnboardingWizardProvider } from "./contexts/OnboardingWizardContext.tsx";
 const WizardController = React.lazy(() => import("./components/onboarding-wizard").then(m => ({ default: m.WizardController })));
-const SetupProgressWizard = React.lazy(() => import("./components/SetupProgressWizard").then(m => ({ default: m.SetupProgressWizard })));
 import { SetupProgressProvider } from "./components/SetupProgressWizard";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PublicRoute } from "./components/PublicRoute";
 import { ConfirmProvider } from "./components/ui/ConfirmModal";
 import { DFYRoute } from "./components/DFYRoute";
 import { PilotHandler } from "./components/PilotHandler";
-import { PilotBanner } from "./components/Admin/PilotBanner";
+// PilotBanner removed -- no floating overlays
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./contexts/ToastContext";
 import ScrollToTop from "./components/ScrollToTop";
@@ -190,7 +189,7 @@ function App() {
             <ConfirmProvider>
             <Toaster position="top-right" />
             <React.Suspense fallback={null}><WizardController /></React.Suspense>
-            <React.Suspense fallback={null}><SetupProgressWizard /></React.Suspense>
+            {/* SetupProgressWizard removed -- Apple rule: if the product needs a floating help button, the design failed */}
             <ErrorBoundaryWithReset>
             <React.Suspense fallback={<LoadingFallback />}>
             <Routes>
@@ -385,7 +384,7 @@ function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
             </React.Suspense>
-            <PilotBanner />
+            {/* PilotBanner removed -- no floating overlays */}
             </ErrorBoundaryWithReset>
             </ConfirmProvider>
           </SetupProgressProvider>
