@@ -26,7 +26,7 @@ jobs:
           echo '${{ secrets.SANDBOX_SIGNALS_GOOGLE_KEY }}' > signals-google-key.json
 
       - name: Install backend dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build backend
         run: npm run build
@@ -35,7 +35,7 @@ jobs:
         run: |
           cd frontend
           echo "VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}" > .env
-          npm ci
+          npm install
           npm run build
           cd ..
 
