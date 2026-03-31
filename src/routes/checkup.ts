@@ -28,14 +28,14 @@ import { getPlaceDetails } from "../controllers/places/feature-services/GooglePl
 // ─── First Impression Scoring Config ────────────────────────────────────────
 // Per-specialty review volume benchmarks: what "strong" looks like for this vertical
 const REVIEW_VOLUME_BENCHMARKS: Record<string, number> = {
-  endodontist: 80,
-  orthodontist: 150,
+  endodontist: 40,
+  orthodontist: 100,
   dentist: 100,
   "general dentist": 100,
-  "pediatric dentist": 100,
-  periodontist: 80,
-  prosthodontist: 60,
-  "oral surgeon": 80,
+  "pediatric dentist": 80,
+  periodontist: 40,
+  prosthodontist: 30,
+  "oral surgeon": 50,
   barber: 150,
   "med spa": 200,
   medspa: 200,
@@ -563,9 +563,9 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     let negativeResponsePts = 0;
 
     if (!responseDataAvailable) {
-      // Data unavailable: neutral score (not a judgment, just unknown)
-      responseRatePts = 6;
-      negativeResponsePts = 4;
+      // Data unavailable: assume reasonable behavior (not a penalty for a data gap)
+      responseRatePts = 9;
+      negativeResponsePts = 5;
     } else {
       // Review response rate (0-12)
       if (reviewResponseRate >= 80) responseRatePts = 12;
