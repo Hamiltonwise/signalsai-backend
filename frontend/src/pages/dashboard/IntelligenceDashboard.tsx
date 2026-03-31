@@ -19,6 +19,7 @@ import {
   Loader2,
   Shield,
 } from "lucide-react";
+import { TailorText } from "../../components/TailorText";
 
 const API_BASE = "/api/intelligence";
 
@@ -339,9 +340,7 @@ export default function IntelligenceDashboard() {
       {/* Header with Intelligence Score */}
       <div className="flex items-center gap-3 mb-6">
         <Shield className="h-5 w-5 text-[#D56753]" />
-        <h1 className="text-xl font-bold text-[#212D40]">
-          Business Clarity
-        </h1>
+        <TailorText editKey="intelligence.heading" defaultText="Business Clarity" as="h1" className="text-xl font-bold text-[#212D40]" />
       </div>
 
       {/* Score summary card */}
@@ -349,9 +348,7 @@ export default function IntelligenceDashboard() {
         <div className="rounded-2xl bg-gradient-to-br from-[#212D40] to-[#2a3a52] p-6 mb-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-gray-300 uppercase tracking-wider">
-                Intelligence Score
-              </p>
+              <TailorText editKey="intelligence.score.label" defaultText="Intelligence Score" as="p" className="text-xs font-medium text-gray-300 uppercase tracking-wider" />
               <p className="text-4xl font-black mt-1">
                 {summary.intelligenceScore ?? "--"}
                 <span className="text-lg font-normal text-gray-400">/100</span>

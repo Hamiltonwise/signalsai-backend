@@ -5,6 +5,7 @@ import { searchPlaces, getPlaceDetails } from "../../api/places";
 import { validateReferralCode } from "../../api/checkup";
 import { withTimeout } from "./conferenceFallback";
 import type { PlaceSuggestion, PlaceDetails } from "../../api/places";
+import { TailorText } from "../../components/TailorText";
 
 /**
  * Specialty types Google Places may return in the types[] array.
@@ -306,12 +307,8 @@ export default function EntryScreen() {
 
       {/* Headline — strong hierarchy, updates with specialty */}
       <div className="text-center mb-10">
-        <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-3">
-          Free. 60 seconds.
-        </p>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight leading-tight">
-          See where you rank.
-        </h1>
+        <TailorText editKey="checkup.entry.badge" defaultText="Free. 60 seconds." as="p" className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-3" />
+        <TailorText editKey="checkup.entry.headline" defaultText="See where you rank." as="h1" className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight leading-tight" />
         <p className="mt-4 text-base text-slate-500 leading-relaxed max-w-sm mx-auto">
           {selectedPlace
             ? `We already know who's ahead of you in ${selectedPlace.city || "your market"}. Type your name to find out.`
@@ -431,7 +428,7 @@ export default function EntryScreen() {
           {/* The One Question — optional, personal */}
           <div className="mt-5 pt-4 border-t border-slate-100">
             <label className="block text-xs font-medium text-slate-400 mb-1.5">
-              What do you wish you knew about your business?
+              <TailorText editKey="checkup.entry.questionLabel" defaultText="What do you wish you knew about your business?" as="span" className="text-xs font-medium text-slate-400" />
               <span className="ml-1 text-slate-300">(optional)</span>
             </label>
             <input
@@ -448,7 +445,7 @@ export default function EntryScreen() {
             onClick={handleContinue}
             className="mt-5 w-full h-[3.25rem] flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all"
           >
-            Run My Checkup
+            <TailorText editKey="checkup.entry.cta" defaultText="Run My Checkup" as="span" />
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

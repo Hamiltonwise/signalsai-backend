@@ -389,7 +389,15 @@ export async function getSetupProgress(
   res: Response
 ): Promise<void> {
   try {
-    const organizationId = extractOrganizationId(req);
+    const organizationId = req.organizationId;
+
+    if (!organizationId) {
+      res.json({
+        success: true,
+        progress: null,
+      });
+      return;
+    }
 
     const progress = await getSetupProgressService(organizationId);
 

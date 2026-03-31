@@ -273,7 +273,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
           </div>
         </div>
         <p className="text-sm text-gray-500 leading-relaxed">
-          We started watching your market the moment you signed up. Your first position report arrives Monday morning.
+          Your market is being scanned right now. Your first position report arrives Monday morning.
         </p>
         <div className="mt-4 space-y-2">
           {["Finding your competitors", "Counting their reviews", "Measuring your visibility"].map((step, i) => (
@@ -462,7 +462,7 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
           </div>
         </div>
         <p className="text-sm text-gray-500">
-          Alloro agents are analyzing your competitors. First findings appear Monday morning after the Sunday scan.
+          Your competitors are being analyzed right now. First detailed findings arrive Monday morning.
         </p>
       </div>
     );
@@ -1028,12 +1028,10 @@ export default function DoctorDashboard() {
             </p>
           )}
           {/* Ambient "someone is watching" signal -- Guidara's returning guest mechanic */}
-          <TailorText
-            editKey="dashboard.ambient.scanned"
-            defaultText="Your market was scanned overnight. Here's what moved."
-            as="p"
-            className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1.5"
-          />
+          <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1.5">
+            <span className="w-1 h-1 rounded-full bg-[#D56753]/40 animate-breathe" />
+            <TailorText editKey="dashboard.ambient.scanned" defaultText="Your market was scanned overnight. Here's what moved." as="span" className="text-[11px] text-gray-300" />
+          </p>
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
       </motion.div>
@@ -1048,9 +1046,7 @@ export default function DoctorDashboard() {
         >
           <div className="flex items-center gap-2 mb-2">
             <span className="w-2 h-2 rounded-full bg-[#D56753] animate-pulse" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-[#D56753]/70">
-              We kept watching
-            </p>
+            <TailorText editKey="dashboard.welcomeBack.label" defaultText="We kept watching" as="p" className="text-[11px] font-bold uppercase tracking-widest text-[#D56753]/70" />
           </div>
           <p className="text-sm font-medium text-[#212D40] leading-relaxed">
             {welcomeMessage}
@@ -1061,9 +1057,7 @@ export default function DoctorDashboard() {
       {/* GBP instant value reveal (WO-42) */}
       {showGbpReveal && (
         <motion.div variants={cardVariants} className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 mb-2">
-            Connected
-          </p>
+          <TailorText editKey="dashboard.gbpReveal.label" defaultText="Connected" as="p" className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 mb-2" />
           <p className="text-sm font-bold text-[#212D40]">
             {effectiveRanking?.clientReviews != null && effectiveRanking.clientReviews > 0
               ? `${effectiveRanking.clientReviews} reviews`
@@ -1125,9 +1119,7 @@ export default function DoctorDashboard() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
           <div className="relative">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-white/60 mb-2">
-              This is a story worth telling
-            </p>
+            <TailorText editKey="dashboard.win.label" defaultText="This is a story worth telling" as="p" className="text-[11px] font-bold uppercase tracking-widest text-white/60 mb-2" />
             <p className="text-base font-bold leading-snug">
               {winData.headline || "Something changed. You acted. It worked."}
             </p>

@@ -2420,7 +2420,7 @@ export default function WebsiteDetail() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <AiCommandTab projectId={id!} pages={website.pages} />
+          <AiCommandTab projectId={id!} pages={website.pages} onExecutionComplete={() => invalidateWebsite(id!)} />
         </motion.div>
       )}
 

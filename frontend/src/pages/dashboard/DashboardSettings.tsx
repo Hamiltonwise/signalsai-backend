@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiGet, apiPatch, apiPost } from "@/api/index";
+import { TailorText } from "@/components/TailorText";
 
 export default function DashboardSettings() {
   const { userProfile, billingStatus } = useAuth();
@@ -85,15 +86,15 @@ export default function DashboardSettings() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-[#212D40]">Settings</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Manage your account and preferences.</p>
+        <TailorText editKey="settings.heading" defaultText="Settings" as="h1" className="text-xl sm:text-2xl font-bold text-[#212D40]" />
+        <TailorText editKey="settings.subheading" defaultText="Manage your account and preferences." as="p" className="text-sm text-gray-500 mt-0.5" />
       </div>
 
       {/* Section 1: Account Info */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <SettingsIcon className="h-5 w-5 text-gray-400" />
-          <h2 className="text-sm font-bold text-[#212D40]">Account info</h2>
+          <TailorText editKey="settings.account.title" defaultText="Account info" as="h2" className="text-sm font-bold text-[#212D40]" />
         </div>
         <div className="space-y-3">
           <div>
@@ -111,7 +112,7 @@ export default function DashboardSettings() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="h-5 w-5 text-blue-500" />
-          <h2 className="text-sm font-bold text-[#212D40]">NPI Verification</h2>
+          <TailorText editKey="settings.npi.title" defaultText="NPI Verification" as="h2" className="text-sm font-bold text-[#212D40]" />
         </div>
         {npiVerified ? (
           <div className="flex items-center gap-2 text-emerald-700">
@@ -149,7 +150,7 @@ export default function DashboardSettings() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <Bell className="h-5 w-5 text-amber-500" />
-          <h2 className="text-sm font-bold text-[#212D40]">Notifications</h2>
+          <TailorText editKey="settings.notifications.title" defaultText="Notifications" as="h2" className="text-sm font-bold text-[#212D40]" />
         </div>
         <div className="space-y-3">
           {[
@@ -178,7 +179,7 @@ export default function DashboardSettings() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <CreditCard className="h-5 w-5 text-emerald-600" />
-          <h2 className="text-sm font-bold text-[#212D40]">Billing</h2>
+          <TailorText editKey="settings.billing.title" defaultText="Billing" as="h2" className="text-sm font-bold text-[#212D40]" />
         </div>
         <div className="flex items-center justify-between mb-3">
           <div>
@@ -217,7 +218,7 @@ export default function DashboardSettings() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <Download className="h-5 w-5 text-[#212D40]/60" />
-          <h2 className="text-sm font-bold text-[#212D40]">Your data</h2>
+          <TailorText editKey="settings.data.title" defaultText="Your data" as="h2" className="text-sm font-bold text-[#212D40]" />
         </div>
         <p className="text-sm text-gray-500 mb-4 leading-relaxed">
           Your data belongs to you. Export everything we have for your account at any time,

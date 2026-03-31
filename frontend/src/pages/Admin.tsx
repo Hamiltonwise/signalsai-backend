@@ -27,6 +27,7 @@ import DreamTeam from "./admin/DreamTeam";
 import YourMarket from "./admin/YourMarket";
 import MindDetail from "./admin/MindDetail";
 import AlloroPostsDocs from "./admin/AlloroPostsDocs";
+<<<<<<< HEAD
 import BatchCheckup from "./admin/BatchCheckup";
 import AccountOverview from "./admin/AccountOverview";
 import CaseStudies from "./admin/CaseStudies";
@@ -36,6 +37,12 @@ import IntelligencePanel from "./admin/IntelligencePanel";
 import RevenueDashboard from "../components/Admin/RevenueDashboard";
 import SessionIntelligence from "../components/Admin/SessionIntelligence";
 const BoardChat = React.lazy(() => import("./admin/BoardChat"));
+=======
+import ProjectsDashboard from "./admin/ProjectsDashboard";
+import ProjectBoard from "./admin/ProjectBoard";
+import BriefHistory from "./admin/BriefHistory";
+import { PmErrorBoundary } from "@/components/pm/PmErrorBoundary";
+>>>>>>> worktree-agent-a2884a3c
 
 function WebDevEngine() {
   return (
@@ -120,6 +127,9 @@ function AdminWithLayout() {
         <Route path="settings" element={<AdminSettings />} />
         <Route path="chat" element={<React.Suspense fallback={null}><BoardChat /></React.Suspense>} />
         <Route path="sentry-test" element={<SentryTest />} />
+        <Route path="pm" element={<PmErrorBoundary><ProjectsDashboard /></PmErrorBoundary>} />
+        <Route path="pm/briefs" element={<PmErrorBoundary><BriefHistory /></PmErrorBoundary>} />
+        <Route path="pm/:projectId" element={<PmErrorBoundary><ProjectBoard /></PmErrorBoundary>} />
       </Routes>
     </AdminLayout>
   );

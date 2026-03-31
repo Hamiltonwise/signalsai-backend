@@ -28,6 +28,7 @@ import {
   useWizardDemoData,
 } from "../../contexts/OnboardingWizardContext";
 import { useLocationContext } from "../../contexts/locationContext";
+import { TailorText } from "../TailorText";
 
 // Type for client GBP data
 interface ClientGbpData {
@@ -426,9 +427,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                 <Target size={20} />
               </div>
               <div className="flex flex-col text-left">
-                <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
-                  Market Intelligence
-                </h1>
+                <TailorText editKey="rankings.header.title" defaultText="Market Intelligence" as="h1" className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
                 <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                   Loading data...
                 </span>
@@ -499,9 +498,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                   <Target size={20} />
                 </div>
                 <div className="flex flex-col text-left">
-                  <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
-                    Market Intelligence
-                  </h1>
+                  <TailorText editKey="rankings.header.title" defaultText="Market Intelligence" as="h1" className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
                   <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                     From your initial checkup
                   </span>
@@ -627,9 +624,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               <Sparkles className="w-4 h-4 text-alloro-orange" />
               <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">Get Started</span>
             </div>
-            <h1 className="text-3xl font-black text-alloro-navy font-heading tracking-tight mb-3">
-              Your Market Intelligence
-            </h1>
+            <TailorText editKey="rankings.empty.heading" defaultText="Your Market Intelligence" as="h1" className="text-3xl font-black text-alloro-navy font-heading tracking-tight mb-3" />
             <p className="text-base text-slate-500 font-medium max-w-md mx-auto">
               Connect your Google Business Profile to see where you rank, who your competitors are, and what to do about it.
             </p>
@@ -791,9 +786,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               <Target size={20} />
             </div>
             <div className="flex flex-col text-left">
-              <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
-                Local Rankings
-              </h1>
+              <TailorText editKey="rankings.header.title" defaultText="Local Rankings" as="h1" className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
               <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 How you compare to others
               </span>
@@ -826,9 +819,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               Local SEO Tracking On
             </div>
           </div>
-          <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
-            Local Reputation.
-          </h1>
+          <TailorText editKey="rankings.hero.heading" defaultText="Local Reputation." as="h1" className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4" />
           <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
             See how your{" "}
             <span className="text-alloro-orange underline underline-offset-8 font-black">
@@ -990,9 +981,7 @@ function PerformanceDashboard({
       >
         <div className="px-10 py-8 border-b border-black/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="text-left">
-            <h2 className="text-xl font-black font-heading text-alloro-navy tracking-tight">
-              Nearby Competitors
-            </h2>
+            <TailorText editKey="rankings.competitors.heading" defaultText="Nearby Competitors" as="h2" className="text-xl font-black font-heading text-alloro-navy tracking-tight" />
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
               How you compare to the neighbors
             </p>

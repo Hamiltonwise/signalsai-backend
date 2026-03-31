@@ -31,6 +31,17 @@ export function getMindsQueue(name: string): Queue {
   return queues[queueName];
 }
 
+export function getPmQueue(name: string): Queue {
+  const queueName = `pm-${name}`;
+  if (!queues[queueName]) {
+    queues[queueName] = new Queue(queueName, {
+      connection: getRedisConnection(),
+      prefix: '{pm}',
+    });
+  }
+  return queues[queueName];
+}
+
 export async function closeQueues(): Promise<void> {
   for (const queue of Object.values(queues)) {
     await queue.close();

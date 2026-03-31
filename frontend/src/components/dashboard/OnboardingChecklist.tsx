@@ -4,10 +4,11 @@
  * Five steps. Two pre-completed as Alloro gifts (endowment + Zeigarnik):
  * 1. "Alloro analyzed your competitive position" -- auto-done if checkup ran
  * 2. "Your competitors were identified" -- auto-done if checkup ran
- * 3. "Connect your Google Business Profile" -- user action
- * 4. "Upload your scheduling data" -- user action
+ * 3. "Upload your scheduling data" -- user action
+ * 4. "Go deeper with live Google data" -- optional enhancement
  * 5. "Share your Checkup with a colleague" -- user action
  *
+ * GBP is an optional enhancement, NOT a gate. Checkup data powers the dashboard.
  * User lands at "2 of 5 complete" before lifting a finger.
  * Dismissable after 3 complete. Disappears after all 5 complete.
  */
@@ -99,15 +100,6 @@ export default function OnboardingChecklist({
       icon: Target,
     },
     {
-      id: "gbp",
-      title: "Connect your Google Business Profile",
-      anxiety: "Unlock live ranking data",
-      complete: gbpConnected,
-      cta: "Connect Google",
-      action: () => navigate("/settings/integrations"),
-      icon: Link2,
-    },
-    {
       id: "pms",
       title: "Upload your scheduling data",
       anxiety: "See which referral sources drive revenue",
@@ -115,6 +107,15 @@ export default function OnboardingChecklist({
       cta: "Upload data",
       action: () => { onStepComplete?.("pms"); navigate("/dashboard/referrals"); },
       icon: Upload,
+    },
+    {
+      id: "gbp",
+      title: "Go deeper with live Google data",
+      anxiety: "Add live ranking tracking and review alerts",
+      complete: gbpConnected,
+      cta: "Connect Google",
+      action: () => navigate("/settings/integrations"),
+      icon: Link2,
     },
     {
       id: "share",

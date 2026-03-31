@@ -376,7 +376,19 @@ function PageEditorInner() {
           return;
         }
 
-        const pageData = pageResponse.data;
+        let pageData = pageResponse.data;
+
+        // If the page is inactive (e.g. superseded by AI analysis auto-publish),
+        // find the current published page at the same path and load that instead.
+        if (pageData.status === "inactive" && pageData.page_type !== "artifact") {
+          const activePage = proj.pages.find(
+            (p: WebsitePage) => p.path === pageData.path && (p.status === "published" || p.status === "draft")
+          );
+          if (activePage) {
+            const freshResponse = await fetchPage(projectId, activePage.id);
+            pageData = freshResponse.data;
+          }
+        }
 
         let workingPage = pageData;
         let workingPageId = pageData.id;

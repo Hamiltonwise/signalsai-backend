@@ -1,28 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { ChevronDown, LogOut, User, RefreshCw, Search } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { ChevronDown, LogOut, User, RefreshCw, Layers, FolderKanban } from "lucide-react";
 import { queryClient } from "../../lib/queryClient";
 import { toast } from "react-hot-toast";
-import HQSearch from "./HQSearch";
+
+export function useIsPmRoute() {
+  const location = useLocation();
+  return location.pathname.startsWith("/admin/pm");
+}
 
 export function AdminTopBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-
-  // Cmd+K to open search
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setShowSearch(true);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
   const menuRef = useRef<HTMLDivElement>(null);
+  const isPm = useIsPmRoute();
 
   const toggleMenu = () => setIsMenuOpen((value) => !value);
 
@@ -91,22 +83,10 @@ export function AdminTopBar() {
                   />
                 </motion.div>
                 <span className="font-bold text-xl text-white">
-                  <span className="text-alloro-orange">Alloro</span> Admin Hub
+                  <span className="text-alloro-orange">Alloro</span> Admin
                 </span>
               </Link>
             </div>
-
-            {/* Search trigger */}
-            <button
-              onClick={() => setShowSearch(true)}
-              className="flex items-center gap-2 rounded-lg border border-gray-600 bg-[#2a3a52] px-3 py-1.5 text-xs text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors"
-            >
-              <Search className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Search</span>
-              <kbd className="hidden sm:inline px-1 py-0.5 rounded bg-gray-700 text-[10px] text-gray-500 font-mono">
-                {navigator.platform?.includes("Mac") ? "\u2318" : "Ctrl"}K
-              </kbd>
-            </button>
 
             {/* User Menu */}
             <div className="relative" ref={menuRef}>
@@ -146,7 +126,7 @@ export function AdminTopBar() {
                         queryClient.invalidateQueries();
                         queryClient.clear();
                         setIsMenuOpen(false);
-                        toast.success("Cache purged, all data will refetch");
+                        toast.success("Cache purged — all data will refetch");
                       }}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-300 transition hover:bg-gray-700/50 hover:text-white"
                     >
@@ -168,6 +148,48 @@ export function AdminTopBar() {
           </div>
         </div>
       </nav>
+
+      {/* Tab Bar: Process / Projects */}
+      <div className="bg-[#1a2535] border-b border-gray-700/50 sticky top-16 z-40">
+        <div className="px-4 sm:px-6 lg:px-8 flex gap-0">
+          <Link
+            to="/admin/action-items"
+            className={`relative flex items-center gap-2 px-5 py-2.5 text-[13px] transition-colors duration-150 ${
+              !isPm ? "text-[#D66853]" : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            <Layers className="h-4 w-4" strokeWidth={1.5} />
+            <span className={!isPm ? "font-semibold" : "font-medium"}>
+              Process
+            </span>
+            {!isPm && (
+              <motion.div
+                layoutId="tab-underline"
+                className="absolute bottom-0 left-2 right-2 h-[2px] bg-[#D66853] rounded-full"
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              />
+            )}
+          </Link>
+          <Link
+            to="/admin/pm"
+            className={`relative flex items-center gap-2 px-5 py-2.5 text-[13px] transition-colors duration-150 ${
+              isPm ? "text-[#D66853]" : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            <FolderKanban className="h-4 w-4" strokeWidth={1.5} />
+            <span className={isPm ? "font-semibold" : "font-medium"}>
+              Projects
+            </span>
+            {isPm && (
+              <motion.div
+                layoutId="tab-underline"
+                className="absolute bottom-0 left-2 right-2 h-[2px] bg-[#D66853] rounded-full"
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              />
+            )}
+          </Link>
+        </div>
+      </div>
 
       {/* Logout Confirmation Modal */}
       <AnimatePresence>
@@ -227,9 +249,6 @@ export function AdminTopBar() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* HQ Search overlay */}
-      {showSearch && <HQSearch onClose={() => setShowSearch(false)} />}
     </>
   );
 }
