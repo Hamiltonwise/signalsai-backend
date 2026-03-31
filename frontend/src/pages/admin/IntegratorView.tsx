@@ -28,6 +28,7 @@ import {
   type DreamTeamTask,
 } from "@/api/dream-team";
 import { apiGet } from "@/api/index";
+import { useAuth } from "@/hooks/useAuth";
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -512,6 +513,9 @@ function BlockersPanel({ tasks }: { tasks: DreamTeamTask[] }) {
 // ---- Main ------------------------------------------------------------------
 
 export default function IntegratorView() {
+  const { userProfile } = useAuth();
+  const firstName = userProfile?.firstName || "there";
+
   const { data: orgData } = useQuery({
     queryKey: ["admin-organizations"],
     queryFn: adminListOrganizations,
@@ -528,8 +532,26 @@ export default function IntegratorView() {
   });
   const tasks: DreamTeamTask[] = taskData?.tasks ?? [];
 
+  // Quick stats for greeting
+  const activeClients = orgs.filter((o: any) => o.subscriptionStatus === "active" || o.subscription_status === "active").length;
+  const openTasks = tasks.filter((t) => t.status !== "done").length;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
     <div className="mx-auto max-w-lg px-4 py-6 space-y-5">
+      {/* Personal greeting */}
+      <div className="pb-2">
+        <h1 className="text-xl font-black text-[#212D40] tracking-tight">
+          {greeting}, Jo.
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">
+          {activeClients > 0
+            ? `${activeClients} active client${activeClients !== 1 ? "s" : ""}${openTasks > 0 ? `, ${openTasks} open task${openTasks !== 1 ? "s" : ""}` : ". All clear."}`
+            : "Your ops console is ready. Clients will appear here as they sign up."}
+        </p>
+      </div>
+
       {/* Panel 1: Client Health Grid */}
       <Panel>
         <PanelHeader

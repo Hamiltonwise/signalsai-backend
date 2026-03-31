@@ -52,6 +52,7 @@ import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
 import AnimatedNumber from "@/components/ui/AnimatedNumber";
 import { fireConfetti } from "@/lib/confetti";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
+import { TailorText } from "@/components/TailorText";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -1027,10 +1028,12 @@ export default function DoctorDashboard() {
             </p>
           )}
           {/* Ambient "someone is watching" signal -- Guidara's returning guest mechanic */}
-          <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1.5">
-            <span className="w-1 h-1 rounded-full bg-[#D56753]/40 animate-breathe" />
-            Your market was scanned overnight. Here's what moved.
-          </p>
+          <TailorText
+            editKey="dashboard.ambient.scanned"
+            defaultText="Your market was scanned overnight. Here's what moved."
+            as="p"
+            className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1.5"
+          />
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
       </motion.div>
@@ -1221,7 +1224,7 @@ export default function DoctorDashboard() {
           {/* ══ YOUR MARKET — section divider ══ */}
           <div className="flex items-center gap-3 pt-2">
             <div className="h-px flex-1 bg-gray-200" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400">Your Market</span>
+            <TailorText editKey="dashboard.section.yourMarket" defaultText="Your Market" as="span" className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400" />
             <div className="h-px flex-1 bg-gray-200" />
           </div>
 
@@ -1253,9 +1256,9 @@ export default function DoctorDashboard() {
             </motion.div>
           )}
 
-          {/* GBP Connect card — only show when a higher-priority OneActionCard rule is active.
-              When OneActionCard itself shows the GBP rule, this would be a duplicate. */}
-          {!hasGoogleConnection && (oneActionData || driftGPData || competitorVelocityData) && (
+          {/* GBP Connect card — optional enhancement, not a gate.
+              Shows below intelligence content as a soft prompt. */}
+          {!hasGoogleConnection && (
             <GBPConnectCard gbpConnected={hasGoogleConnection} orgId={orgId} />
           )}
 

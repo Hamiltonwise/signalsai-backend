@@ -1,7 +1,9 @@
 /**
- * GBPConnectCard -- Stage 2 Unlock
+ * GBPConnectCard -- Optional Enhancement
  *
  * Shows when gbp_access_token is null on the org.
+ * Checkup intelligence is already displayed without GBP.
+ * GBP connection adds live ranking tracking and review alerts.
  * One button: "Connect Google" -- redirects to /api/auth/google.
  * Disappears permanently once connected. Never shows again.
  */
@@ -32,10 +34,10 @@ export default function GBPConnectCard({ gbpConnected, orgId }: GBPConnectCardPr
 
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-[#212D40]">
-            Connect your Google Business Profile
+            Go deeper with live Google data
           </p>
           <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-            Unlock live rankings, review monitoring, and your Alloro website.
+            Your checkup already mapped your market. Connect Google to add live ranking tracking, review alerts, and automatic website updates.
           </p>
 
           <a

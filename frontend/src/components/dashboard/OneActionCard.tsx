@@ -10,8 +10,9 @@
  * 2. GP GONE DARK (Red)
  * 3. RANKING DROP (Amber)
  * 4. REVIEW VELOCITY GAP (Amber)
- * 5. GBP NOT CONNECTED (Default)
- * 6. HEALTHY STATE (Default)
+ * 5. HEALTHY STATE (Default)
+ *
+ * GBP connection is an optional enhancement, not a gate.
  */
 
 import { Link } from "react-router-dom";
@@ -20,7 +21,6 @@ import {
   CreditCard,
   TrendingDown,
   MessageSquare,
-  Link2,
   Star,
   ChevronRight,
 } from "lucide-react";
@@ -72,9 +72,9 @@ interface OneActionCardProps {
     competitorReviewsThisMonth: number;
     clientReviewsThisMonth: number;
   } | null;
-  // Rule 5: GBP connected
-  gbpConnected: boolean;
-  // Rule 6: Healthy state fallback
+  // Rule 5: GBP connected (optional, no longer gates actions)
+  gbpConnected?: boolean;
+  // Rule 5: Healthy state fallback
   topCompetitorName?: string;
 }
 
@@ -170,19 +170,9 @@ function resolveAction(props: OneActionCardProps): OneAction {
     }
   }
 
-  // Rule 5: GBP NOT CONNECTED
-  if (!props.gbpConnected) {
-    const compName = props.topCompetitorName || "your nearest competitor";
-    return {
-      severity: "default",
-      title: `Connect Google to see how ${compName} compares to you in real time.`,
-      detail: "Live ranking data, review alerts, and weekly position tracking activate the moment you connect. Takes 30 seconds.",
-      cta: "Connect Google",
-      ctaLink: "/settings/integrations",
-      icon: Link2,
-      rule: "gbp_not_connected",
-    };
-  }
+  // Rule 5: DEFAULT ACTION (review request)
+  // GBP connection is an optional enhancement, not a gate.
+  // Show the same healthy-state action whether or not GBP is connected.
 
   // Rule 6: HEALTHY STATE
   const compName = props.topCompetitorName || "your nearest competitor";
