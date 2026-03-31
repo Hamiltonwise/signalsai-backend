@@ -742,12 +742,17 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       });
     }
 
-    // Finding 7: Broadened search notice
+    // Finding 7: Broadened search notice (with honest framing)
     if (broadened && broadeningCategory) {
+      const hasSpecialtyMatches = specialtyMatchCount > 0;
       findings.push({
         type: "broadened_search",
-        title: "Expanded Comparison",
-        detail: `We found fewer than 5 ${specialty} ${competitorWord}s nearby, so we included ${broadeningCategory} ${competitorWord}s for a more complete picture.`,
+        title: hasSpecialtyMatches
+          ? "Expanded Comparison"
+          : `Few ${specialty} ${competitorWord}s Nearby`,
+        detail: hasSpecialtyMatches
+          ? `We found ${specialtyMatchCount} ${specialty} ${competitorWord}s nearby and included ${broadeningCategory} ${competitorWord}s for additional context.`
+          : `You're one of the few ${specialty} specialists in ${city}. The ${competitorWord}s shown are from the broader ${broadeningCategory} market for context, not direct specialty competition. Your real advantage: prospects searching specifically for ${specialty} have limited local options.`,
         value: 0,
         impact: 0,
       });
