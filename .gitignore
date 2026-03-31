@@ -58,3 +58,4 @@ public/
 # Screenshot audit output
 screenshots/
 .claude/worktrees/
+.claude/worktrees/
