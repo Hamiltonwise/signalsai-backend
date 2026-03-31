@@ -125,7 +125,7 @@ export default function HowItWorks() {
             />
             <FAQ
               q="Is my business data private?"
-              a="Alloro reads market-level signals, not patient records. No patient data ever enters the system. The intelligence is about your competitive position, not about anyone who's visited your business."
+              a="Alloro reads market-level signals, not personal records. No private data ever enters the system. The intelligence is about your competitive position, not about anyone who visits your business."
             />
             <FAQ
               q="What specialties does Alloro serve?"

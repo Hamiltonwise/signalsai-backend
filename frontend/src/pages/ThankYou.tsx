@@ -110,8 +110,8 @@ export default function ThankYou() {
           style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
         >
           <p className="text-sm text-[#212D40]/70 leading-relaxed">
-            Last month, a specialist discovered their top referring
-            doctor had gone quiet for 6 weeks. That single relationship
+            Last month, a business owner discovered their top referral
+            source had gone quiet for 6 weeks. That single relationship
             was worth $27,000 a year. It was in their Monday briefing.
           </p>
         </div>
@@ -150,7 +150,7 @@ export default function ThankYou() {
 
         {/* P2: Founder touch */}
         <p className="text-center text-xs text-slate-400 leading-relaxed pt-2">
-          Built by Corey, after 5 years watching practice owners
+          Built by Corey, after 5 years watching business owners
           work harder than they should have to.
         </p>
       </div>

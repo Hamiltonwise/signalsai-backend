@@ -285,11 +285,11 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
           <div className="max-w-[1200px] mx-auto px-6 sm:px-12 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
               <h1 className="text-2xl font-black font-heading text-alloro-navy tracking-tight">
-                Patient Journey Insights
+                Client Journey Insights
               </h1>
               <p className="text-slate-400 font-medium text-[11px] uppercase tracking-wider flex items-center gap-2 mt-1">
                 <Activity size={14} className="text-alloro-orange" />
-                AI-powered practice analytics • {STAGES.length} stages
+                AI-powered business analytics • {STAGES.length} stages
               </p>
             </div>
 

@@ -224,7 +224,7 @@ export const VitalSignsScore: React.FC<VitalSignsScoreProps> = ({
               <span className="font-semibold text-green-600">✅ Strong</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Patient Engagement</span>
+              <span className="text-sm text-gray-600">Client Engagement</span>
               <span className="font-semibold text-purple-600">
                 🚀 Excellent
               </span>
@@ -241,7 +241,7 @@ export const VitalSignsScore: React.FC<VitalSignsScoreProps> = ({
             <p className="text-sm font-medium text-blue-900">
               {lastMonthData
                 ? `${lastMonthData.month} vital signs: ${lastMonthData.score}/100 with strong performance across digital channels`
-                : "Your practice is showing positive momentum across multiple channels"}
+                : "Your business is showing positive momentum across multiple channels"}
             </p>
             <p className="text-xs text-blue-700 mt-1">
               {lastMonthData

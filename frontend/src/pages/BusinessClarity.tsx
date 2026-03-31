@@ -131,7 +131,7 @@ export default function BusinessClarity() {
               Nobody said "they have 535 more people vouching for them online."
             </ExampleCard>
             <ExampleCard>
-              The practice owner whose top referring source went quiet three months
+              The business owner whose top referring source went quiet three months
               ago and doesn't know it yet. That source is 40% of their revenue.
               They'll find out when the bank statement looks different.
             </ExampleCard>

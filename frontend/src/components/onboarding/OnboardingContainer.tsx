@@ -204,7 +204,7 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
         {/* Help Text */}
         <div className="text-center mt-6">
           <p className="text-slate-500 text-sm">
-            Need help? Contact us at{" "}
+            Need help? Email{" "}
             <a
               href="mailto:info@getalloro.com"
               className="text-alloro-orange hover:underline font-medium"

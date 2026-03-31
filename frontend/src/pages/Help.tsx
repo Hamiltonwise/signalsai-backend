@@ -128,18 +128,18 @@ const Help = () => {
           <div className="flex items-center gap-4 mb-3">
             <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-[10px] font-black uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-alloro-orange"></span>
-              We are here to help
+              Alloro is here to help
             </div>
           </div>
           <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
-            How can we help?
+            How can Alloro help?
           </h1>
           <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
             Talk to your{" "}
             <span className="text-alloro-orange underline underline-offset-8 font-black">
               Alloro Strategist
             </span>{" "}
-            for help with your practice growth.
+            for help with your business growth.
           </p>
         </section>
 

@@ -37,7 +37,7 @@ const FAQ: { question: string; answer: string }[] = [
   {
     question: "Why is my competitor wrong?",
     answer:
-      "If a competitor showing up isn't one you recognize, let us know via the feedback button below. We'll look into it.",
+      "If a competitor showing up isn't one you recognize, flag it with the feedback button below. Alloro's Intelligence Agent will re-scan your market.",
   },
   {
     question: "How do I upload my referral data?",

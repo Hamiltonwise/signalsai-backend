@@ -354,7 +354,7 @@ export const Step2DomainInfo: React.FC<Step2GbpConnectProps> = ({
             onClick={onNext}
             className="text-sm text-alloro-orange hover:text-alloro-orange/80 transition-colors"
           >
-            Skip for now — I'll connect later
+            Skip for now. I'll connect later.
           </button>
         </div>
       )}

@@ -140,7 +140,7 @@ export default function PrivacyPolicy() {
               Alloro uses automated systems to help us serve you better:
             </p>
             <ul className="mt-2 space-y-1.5 text-sm text-gray-700">
-              <Li><strong>Health scoring:</strong> We track your engagement to detect if you might not be getting value. If we notice you're not logging in, we reach out to help, not to sell.</Li>
+              <Li><strong>Health scoring:</strong> Alloro tracks your engagement to detect if you might not be getting value. If Alloro notices you're not logging in, it sends a check-in, not a sales pitch.</Li>
               <Li><strong>Intelligence prioritization:</strong> Our agents decide which finding is most important for your Monday email. This is based on what changed in your market, not on what we want you to buy.</Li>
             </ul>
             <p className="mt-2">
