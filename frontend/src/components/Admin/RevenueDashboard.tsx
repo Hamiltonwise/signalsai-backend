@@ -36,7 +36,14 @@ const HEALTH_DOT: Record<string, string> = {
   green: "bg-emerald-500",
 };
 
-const MONTHLY_RATE = 2000; // per active org
+const TIER_PRICING: Record<string, number> = {
+  DWY: 997,
+  DFY: 2497,
+};
+
+function orgMonthlyRate(org: { subscription_tier?: string | null }): number {
+  return TIER_PRICING[org.subscription_tier || "DWY"] ?? 997;
+}
 
 function monthsActive(startDate: string | null): number {
   if (!startDate) return 0;
@@ -71,7 +78,7 @@ function MRRTrendChart({ orgs }: { orgs: AdminOrganization[] }) {
       return started && started <= new Date(d.getFullYear(), d.getMonth() + 1, 0);
     });
 
-    months.push({ label, mrr: activeByMonth.length * MONTHLY_RATE });
+    months.push({ label, mrr: activeByMonth.reduce((s, o) => s + orgMonthlyRate(o), 0) });
   }
 
   const maxMRR = Math.max(...months.map((m) => m.mrr), 1);
@@ -125,7 +132,7 @@ export default function RevenueDashboard() {
   const trialOrgs = orgs.filter((o) => o.subscription_status === "trialing" || o.subscription_status === "trial");
   const criticalOrgs = (healthData || []).filter((c) => c.health === "red");
 
-  const mrr = activeOrgs.length * MONTHLY_RATE;
+  const mrr = activeOrgs.reduce((s, o) => s + orgMonthlyRate(o), 0);
 
   // NRR proxy: compare current active count to 30-days-ago active count
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
@@ -133,7 +140,7 @@ export default function RevenueDashboard() {
     if (o.subscription_status !== "active" && !o.subscription_tier) return false;
     return new Date(o.created_at) <= thirtyDaysAgo;
   });
-  const lastMonthMRR = activeLastMonth.length * MONTHLY_RATE;
+  const lastMonthMRR = activeLastMonth.reduce((s, o) => s + orgMonthlyRate(o), 0);
   const nrr = lastMonthMRR > 0 ? Math.round((mrr / lastMonthMRR) * 100) : 100;
 
   // Subscription table: active orgs sorted by health (critical first)
@@ -172,7 +179,7 @@ export default function RevenueDashboard() {
           <p className="text-2xl font-black text-[#212D40]">{trialOrgs.length}</p>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Trial Pipeline</p>
           <p className="text-[10px] text-gray-400 mt-0.5">
-            Est. ${(trialOrgs.length * MONTHLY_RATE).toLocaleString()}/mo if converted
+            Est. ${trialOrgs.reduce((s, o) => s + orgMonthlyRate(o), 0).toLocaleString()}/mo if converted
           </p>
         </div>
 
@@ -183,7 +190,7 @@ export default function RevenueDashboard() {
           </p>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Churn Risk</p>
           <p className="text-[10px] text-gray-400 mt-0.5">
-            ${(criticalOrgs.length * MONTHLY_RATE).toLocaleString()} at risk
+            ${criticalOrgs.reduce((s: number, c) => s + (TIER_PRICING[c.tier || "DWY"] ?? 997), 0).toLocaleString()} at risk
           </p>
         </div>
 
@@ -226,7 +233,7 @@ export default function RevenueDashboard() {
                     <td className="px-5 py-3">
                       <p className="text-sm font-semibold text-[#212D40] truncate">{org.name}</p>
                     </td>
-                    <td className="px-5 py-3 text-sm text-[#212D40] tabular-nums">${MONTHLY_RATE.toLocaleString()}</td>
+                    <td className="px-5 py-3 text-sm text-[#212D40] tabular-nums">${orgMonthlyRate(org).toLocaleString()}</td>
                     <td className="px-5 py-3 text-sm text-gray-500 tabular-nums">{monthsActive(org.created_at)}</td>
                     <td className="px-5 py-3">
                       <span className={`w-3 h-3 rounded-full inline-block ${healthColor}`} />

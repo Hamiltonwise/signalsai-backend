@@ -137,6 +137,19 @@ The Technology Horizon Agent serves the safety need for Alloro as a company. Tec
 3. Global model default change requires Corey approval. This is Red blast radius because it affects every agent simultaneously.
 4. Coordinate with Market Signal Scout to avoid duplicate coverage of the same signal.
 
+## Critical Tracking Items
+
+### OpenAI Responses API vs Anthropic API Cost Comparison
+Track monthly. The Responses API (successor to deprecated Assistants API) delivers 40-80% cost reduction vs Chat Completions due to improved cache utilization. o3 and o4-mini can call tools directly within chain-of-thought. Single API call can invoke web search, file search, code interpreter, computer use, and MCP servers.
+
+Alloro uses Anthropic API for finding generation (Monday email pipeline). If OpenAI's Responses API delivers equivalent quality at 40-80% lower cost with built-in web search, that's a cost structure conversation for Corey.
+
+### HARD DATE: OpenAI Assistants API Sunset - August 26, 2026
+The Assistants API is deprecated and shuts down August 26, 2026. Flag any Alloro codebase usage of OpenAI Assistants API immediately for migration. Grep for: `openai.beta.assistants`, `openai.beta.threads`, `assistant_id`.
+
+### MCP as Cross-Platform Standard
+OpenAI joined the MCP steering committee. MCP is confirmed as the cross-platform standard. Alloro's agent architecture already uses MCP patterns. This validates the architectural bet. Continue building MCP-first for all external tool access.
+
 ## Blast Radius
 Green for scanning and internal reporting. Implementation briefs are Green (recommendations only). Global model change recommendation is Red (requires Corey approval before any change to CLAUDE.md).
 

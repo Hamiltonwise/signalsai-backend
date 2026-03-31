@@ -308,7 +308,7 @@ export default function IntelligenceDashboard() {
       <div className="flex items-center gap-3 mb-6">
         <Shield className="h-5 w-5 text-[#D56753]" />
         <h1 className="text-xl font-bold text-[#212D40]">
-          Practice Intelligence
+          Business Intelligence
         </h1>
       </div>
 

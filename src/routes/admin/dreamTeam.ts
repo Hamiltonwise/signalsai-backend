@@ -26,7 +26,7 @@ dreamTeamRoutes.get(
         .select("*")
         .orderBy("created_at", "asc");
 
-      // Compute health from agent_outputs for nodes with agent_key
+      // Compute health from agent_results for nodes with agent_key
       for (const node of nodes) {
         if (node.agent_key) {
           node.health_status = await computeAgentHealth(node.agent_key);
@@ -80,7 +80,7 @@ dreamTeamRoutes.get(
       // Recent outputs (if agent)
       let recentOutputs: any[] = [];
       if (node.agent_key) {
-        recentOutputs = await db("agent_outputs")
+        recentOutputs = await db("agent_results")
           .where({ agent_type: node.agent_key })
           .whereNot("status", "archived")
           .orderBy("created_at", "desc")
@@ -324,7 +324,7 @@ dreamTeamRoutes.patch(
 
 async function computeAgentHealth(agentId: string): Promise<string> {
   try {
-    const latest = await db("agent_outputs")
+    const latest = await db("agent_results")
       .where({ agent_type: agentId })
       .whereNot("status", "archived")
       .orderBy("created_at", "desc")

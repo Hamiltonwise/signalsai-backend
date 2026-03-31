@@ -138,7 +138,15 @@ function AccountHealthGrid() {
     queryKey: ["admin-client-health-brief"],
     queryFn: async () => {
       const res = await apiGet({ path: "/admin/client-health" });
-      return res?.success ? (res.clients as ClientHealthEntry[]) : [];
+      if (!res?.success) return [];
+      const raw = res.data || res.clients || [];
+      return raw.map((c: any) => ({
+        id: c.org_id || c.id,
+        name: c.name,
+        health: c.status || c.health || "green",
+        risk: c.risk,
+        last_login: c.last_login || c.days_since_login,
+      })) as ClientHealthEntry[];
     },
     staleTime: 60_000,
     retry: false, // Don't retry if endpoint doesn't exist yet

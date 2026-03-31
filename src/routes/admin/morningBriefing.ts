@@ -52,22 +52,18 @@ morningBriefingRoutes.get(
 
       return res.json({
         success: true,
-        data: {
-          id: briefing.id,
-          date: briefing.briefing_date,
-          summary,
-          newSignups: briefing.new_signups,
-          competitorMoves: briefing.competitor_moves,
-          reviewsReceived: briefing.reviews_received,
-          clientHealth: {
-            green: briefing.client_health_green,
-            amber: briefing.client_health_amber,
-            red: briefing.client_health_red,
-          },
-          milestones: briefing.milestones,
-          topEvent: briefing.top_event,
-          createdAt: briefing.created_at,
-        },
+        id: briefing.id,
+        date: briefing.briefing_date,
+        summary,
+        signups: briefing.new_signups,
+        competitor_moves: briefing.competitor_moves,
+        reviews_received: briefing.reviews_received,
+        client_health_green: briefing.client_health_green,
+        client_health_amber: briefing.client_health_amber,
+        client_health_red: briefing.client_health_red,
+        milestones: briefing.milestones,
+        topEvent: briefing.top_event,
+        generated_at: briefing.created_at,
       });
     } catch (error: any) {
       console.error("[MorningBriefing] Fetch error:", error.message);

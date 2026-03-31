@@ -30,6 +30,20 @@ The product standard: "How did they know that?"
 - Dental-specific language in core docs (use universal terms, vertical-specific only in vocabulary configs)
 - Billing before TTFV (time to first value), not at Step 4
 
+## The Execution Gate
+
+For every agent output: does this take an action, or does it suggest one?
+Actions compound. Suggestions decay.
+The target ratio by month 6: 80% actions, 20% suggestions requiring human approval.
+
+Examples:
+- Action: Monday email fires a GP win-back sequence automatically. Compound.
+- Suggestion: Monday email recommends calling Dr. Torres. Decays if ignored.
+- Action: Proofline Agent detects GBP photo gap and queues content request. Compound.
+- Suggestion: Dashboard shows "consider adding photos." Decays in 48 hours.
+
+Every agent that currently produces suggestions must have a roadmap to convert its top 3 suggestions into autonomous actions. The System Conductor flags suggestion-only outputs for conversion review.
+
 ## Intelligence Lattices
 
 Read both before any agent build or doctor-facing output:
@@ -42,6 +56,16 @@ Read both before any agent build or doctor-facing output:
 Corey gives a doctor a link at AAE. Goes home. Tuesday morning: new account,
 PatientPath building, Monday brief queued. He did nothing after handing over the link.
 Every build decision points toward that state.
+
+## Signal Bus: Handoff Failure Modes
+
+Agent-to-agent handoff is where multi-agent systems break. Three failure patterns to guard against:
+
+1. **Signal loss at handoff.** Agent A fires a finding, but Agent B never receives it. The behavioral_events write succeeded but the downstream agent's query window missed it, or the event_type didn't match the listener's filter. Fix: every signal write must be followed by a delivery confirmation read within 60 seconds. If the downstream agent hasn't acknowledged, retry once then escalate to System Conductor.
+
+2. **Duplicate firing.** A signal is written twice (retry logic, race condition, cron overlap), causing the downstream agent to process the same finding twice. A client gets two Monday emails. A GP gets two outreach messages. Fix: every signal carries a unique idempotency key (event_id + org_id + event_type + date). Downstream agents deduplicate on this key before acting.
+
+3. **Context collapse.** The signal arrives but without enough context for the receiving agent to act. Agent A writes "referral_drift_detected" but doesn't include which GP, which org, or the dollar figure. Agent B can't produce the One Action Card without this. Fix: every signal must carry the full Recipe payload (one finding, one dollar figure, one action) or be held by the Conductor until it does.
 
 ## Who This Is Built For
 

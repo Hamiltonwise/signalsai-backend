@@ -27,7 +27,7 @@ interface Step3PlanChooserProps {
 }
 
 const FEATURES = [
-  { icon: BarChart3, label: "Practice rankings & insights" },
+  { icon: BarChart3, label: "Market rankings & insights" },
   { icon: Globe, label: "AI-powered website builder" },
   { icon: Users, label: "Team collaboration tools" },
   { icon: Zap, label: "AI-powered intelligence" },

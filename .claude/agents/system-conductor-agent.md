@@ -62,6 +62,15 @@ Does this output serve at least one North Star?
 
 Fail condition: the output is informational but doesn't move the client closer to any North Star. Information without direction is noise.
 
+### Gate 6: Execution
+Does this output take an autonomous action, or does it only suggest one?
+- If the system could execute this autonomously but chose to suggest instead: hold for conversion review.
+- Actions compound. Suggestions decay. The target ratio by month 6: 80% actions, 20% human-approval suggestions.
+- A Monday email that fires a GP win-back sequence automatically is the product. A Monday email that suggests calling Dr. Torres is a report.
+- When holding for execution conversion: specify exactly what autonomous action could replace the suggestion.
+
+Fail condition: output is a suggestion that the system has the data and capability to execute autonomously, but defaulted to recommending instead of acting.
+
 ## Output
 
 ### CLEARED

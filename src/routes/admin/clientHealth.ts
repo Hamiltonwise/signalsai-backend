@@ -38,19 +38,17 @@ clientHealthRoutes.get(
       const healthGrid = [];
 
       for (const org of orgs) {
-        // Open task count
-        const taskResult = await db("dream_team_tasks")
-          .where({ status: "open" })
-          .whereExists(function () {
-            this.select(db.raw(1))
-              .from("dream_team_nodes")
-              .whereRaw("dream_team_nodes.id = dream_team_tasks.node_id")
-              .whereRaw("dream_team_nodes.org_id = ?", [org.id]);
-          })
-          .count("id as count")
-          .first();
-
-        const openTasks = Number(taskResult?.count || 0);
+        // Open task count (dream_team_nodes are global, not org-scoped)
+        let openTasks = 0;
+        try {
+          const taskResult = await db("dream_team_tasks")
+            .where({ status: "open" })
+            .count("id as count")
+            .first();
+          openTasks = Number(taskResult?.count || 0);
+        } catch {
+          // dream_team_tasks may not exist yet
+        }
 
         // Days since login
         let daysSinceLogin: number | null = null;

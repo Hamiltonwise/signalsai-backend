@@ -7,6 +7,22 @@ Trigger: Weekly Sunday 9pm PT (after all weekly outputs have fired and data has 
 
 When asked to evaluate or modify your own output, apply the Three-Response Safety Protocol in the AI Org Operating Manual before taking any action.
 
+## Eval Protocol
+
+Before declaring any feedback loop "closed" or any heuristic update validated, the Learning Agent must follow this checklist in order. Skipping steps produces false confidence.
+
+1. **Manual trace review first.** Review 20-50 real agent traces before building any automated eval infrastructure. Read the actual outputs. See what the agent did. Automated metrics without manual grounding produce optimized garbage.
+
+2. **Single-task success criteria.** Define unambiguous success criteria for one task before adding complexity. "Monday email is better" is not a criterion. "Monday email reply rate exceeds 8% for 3 consecutive weeks" is.
+
+3. **Separate capability from regression.** Capability evals ask: can the agent do this task at all? Regression evals ask: did this week's change break something that worked last week? Never mix them. Run both.
+
+4. **Simplest eval that gives signal.** Start with a few end-to-end tests on core tasks. Full eval suites come after the simple version proves informative. Over-instrumentation before understanding is waste.
+
+5. **Single domain expert per agent.** Every agent's eval is owned by one person (or one upstream agent). Distributed ownership means no ownership. The Learning Agent owns the cross-agent compound rate. Each individual agent's eval is owned by its department director.
+
+6. **Infrastructure before blame.** When an agent underperforms, rule out infrastructure and data pipeline issues before adjusting the agent's heuristics. A broken data feed looks like a bad agent. Fix the pipe before tuning the model.
+
 ## Five Feedback Loops
 
 ### Loop 1: Monday Email Performance
@@ -38,6 +54,37 @@ When asked to evaluate or modify your own output, apply the Three-Response Safet
 **Analysis:** Are any agent heuristics contradicting each other? Have any heuristics been unchanged for 4+ weeks while their domain data has shifted? Are any Knowledge Lattice entries referenced by 0 agents (orphaned knowledge)?
 **Output:** Flag drifted heuristics for review. Never auto-delete. Archive with timestamp and reason.
 **Propagation:** Post drift report to #alloro-brief for Corey's awareness.
+
+## Behavior Catalog (Priority Evals)
+
+Every eval is a vector that shifts system behavior. More evals does not equal better agents. Start with the five production behaviors that matter most, each with one targeted eval.
+
+### Behavior 1: Monday Email Finding Verified (hallucination_risk)
+**What it measures:** Every named entity and number in the Monday email traces to a database row.
+**Eval:** Pull last 10 Monday emails. For each finding, query the source table cited. If the named competitor, rank position, or review count cannot be confirmed: FAIL.
+**Why it matters:** One hallucinated finding destroys trust. Trust destruction is nearly impossible to recover from.
+
+### Behavior 2: GP Drift Detection and Action (tool_use)
+**What it measures:** When a GP referral source goes quiet, the system detects it and fires an action within 24 hours.
+**Eval:** Inject a simulated GP drift event (referral count drops to 0 for 30+ days). Verify the Intelligence Agent detects it in the next daily run and the One Action Card surfaces the call-to-action within 24 hours.
+**Why it matters:** This is the $18,000/year sentence. The one that makes the product worth $2,000/month.
+
+### Behavior 3: Human Authenticity Gate (voice_compliance)
+**What it measures:** All external content passes through the Human Authenticity Gate. No em-dashes, no AI fingerprints, no corporate hedging.
+**Eval:** Run the last 20 client-facing outputs through a compliance scan. Flag: em-dashes, "I'd be happy to", "certainly", passive voice in action items, hedging language ("consider", "you may want to").
+**Why it matters:** The product must sound like Corey, not like software.
+
+### Behavior 4: Execution Gate Fires on Automatable Suggestions (action_vs_suggestion)
+**What it measures:** When an agent produces a suggestion that the system could execute autonomously, the Execution Gate flags it for conversion.
+**Eval:** Review last 50 agent outputs. Count suggestions vs actions. Flag any suggestion where the system has the data and API access to execute autonomously. Target: flagging rate > 80% of automatable suggestions.
+**Why it matters:** Actions compound. Suggestions decay. The ratio determines whether Alloro is a tool or an advisor.
+
+### Behavior 5: CS Pulse RED Triggers Task (client_safety)
+**What it measures:** When a client is classified RED, a task is created for Jordan within 1 hour.
+**Eval:** Inject a simulated RED classification (days_since_login > 14, no behavioral events in 30 days). Verify dream_team_tasks row created with owner=jordan, status=open, within 60 minutes.
+**Why it matters:** A RED client who churns silently is $24,000/year in lost revenue. The system must catch it before Jordan has to look.
+
+No broad coverage evals until these five pass consistently. Every eval has a docstring. Every eval is tagged with a category. Every eval run is traced.
 
 ## Compound Rate KPI
 

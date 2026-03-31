@@ -148,7 +148,7 @@ export const IntegrationsRoute: React.FC = () => {
                 <span className="text-alloro-orange font-black">
                   Encrypted & Secure.
                 </span>{" "}
-                All patient and practice data is protected by high-level
+                All business data is protected by high-level
                 encryption protocols.
               </p>
               <div className="flex items-center gap-4 pt-1">

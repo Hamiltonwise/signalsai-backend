@@ -113,6 +113,7 @@ import mailgunInboundRoutes from "./routes/webhooks/mailgunInbound";
 import adminKnowledgeLatticeRoutes from "./routes/admin/knowledgeLattice";
 import morningBriefingRoutes from "./routes/admin/morningBriefing";
 import adminRoadmapRoutes from "./routes/admin/roadmap";
+import snapshotRoutes from "./routes/snapshot";
 import seoRoutes from "./routes/seo";
 import foundationRoutes from "./routes/foundation";
 import intelligenceRoutes from "./routes/intelligence";
@@ -227,6 +228,11 @@ app.get("/api/sentry-test", () => {
 app.use(billingGateMiddleware);
 
 app.use(router);
+
+// Snapshot bridge — temp token-protected, read-only endpoints for Claude Web
+// Enable: set SNAPSHOT_TOKEN env var. Disable: remove it.
+app.use("/api/snapshot", snapshotRoutes);
+
 app.use("/api/gbp", gbpRoutes);
 app.use("/api/clarity", clarityRoutes);
 app.use("/api/tasks", taskRoutes);

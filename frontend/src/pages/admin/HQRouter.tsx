@@ -17,6 +17,7 @@ import MorningBrief from "./MorningBrief";
 const ROLE_MAP: Record<string, "visionary" | "integrator" | "build"> = {
   "corey@getalloro.com": "visionary",
   "info@getalloro.com": "visionary",
+  "demo@getalloro.com": "visionary",
   "jordan@getalloro.com": "integrator",
   "jo@getalloro.com": "integrator",
   "dave@getalloro.com": "build",

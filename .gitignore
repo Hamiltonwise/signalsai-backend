@@ -54,3 +54,6 @@ signals-google-key.json
 test-results/
 playwright-report/
 public/
+
+# Screenshot audit output
+screenshots/

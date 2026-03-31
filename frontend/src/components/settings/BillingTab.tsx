@@ -45,7 +45,7 @@ import { showWarningToast } from "../../lib/toast";
 const PLAN = {
   name: "Alloro Intelligence",
   features: [
-    { icon: BarChart3, label: "Practice rankings tracking" },
+    { icon: BarChart3, label: "Market rankings tracking" },
     { icon: FileText, label: "Task management" },
     { icon: Users, label: "Team collaboration" },
     { icon: Zap, label: "AI-powered insights" },

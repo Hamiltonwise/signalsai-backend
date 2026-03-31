@@ -1092,7 +1092,7 @@ export default function VisionaryView() {
     queryFn: async () => {
       const res = await apiGet({ path: "/admin/client-health" });
       return res?.success !== false
-        ? ((res?.clients || res?.entries || []) as ClientHealthEntry[])
+        ? ((res?.data || res?.clients || res?.entries || []) as ClientHealthEntry[])
         : [];
     },
     retry: false,

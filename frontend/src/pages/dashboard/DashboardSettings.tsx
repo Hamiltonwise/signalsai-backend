@@ -182,7 +182,7 @@ export default function DashboardSettings() {
         </div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-[#212D40]">Practice Intelligence</p>
+            <p className="text-sm font-semibold text-[#212D40]">Business Intelligence</p>
             <p className="text-xs text-gray-500">$2,000/month</p>
           </div>
           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${

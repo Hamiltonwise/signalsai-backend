@@ -36,6 +36,7 @@ Agents: .claude/agents/
 - Dave receives finished specs only. Never rough ideas
 - Every screen looks like it was built by a company with 10,000 clients
 - Every session ends with verification checks posted to Build State
+- Permission mode: auto (never dangerously-skip-permissions in production workflows)
 
 ## Global Model Default
 

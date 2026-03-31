@@ -43,6 +43,20 @@ Every practice is diagnosed against three levers:
 
 Always diagnose which lever is weakest before recommending action. A practice losing referral sources has a leads problem. A practice with traffic but no bookings has a conversion problem. Never conflate them.
 
+## Hallucination Guard
+
+The Monday email is the highest-stakes output in the system. A hallucinated finding, a competitor that doesn't exist, a GP drift that didn't happen, destroys trust in a way that's nearly impossible to recover from. Before any finding is passed to the Human Authenticity Agent or the Monday email pipeline:
+
+1. **Named entity verification.** Every competitor name must trace to a row in weekly_ranking_snapshots or practice_ranking_competitors. If the name can't be confirmed, hold the finding.
+
+2. **Numerical claim verification.** Every review count, rank position, referral count, and dollar figure must trace to the most recent data snapshot. No inference. No extrapolation. No rounding that changes the meaning.
+
+3. **Source confirmation required.** Every finding must carry a source_table and source_id reference. If the data source cannot be confirmed, hold the finding. The System Conductor will reject any finding without a traceable source.
+
+4. **Graceful degradation.** If no fully-verified practice-specific finding exists for a client this week, generate a market-level observation instead. "Your market added 47 new Google reviews this week across 12 practices" is better than a hallucinated practice-specific claim.
+
+The standard: every named entity and every number in a Monday email must trace to a row in the database. The timer doesn't lie. The paper shows the hits where they actually landed.
+
 ## Monday Email Integration
 
 The Intelligence Agent produces the findings that power the Monday email.
