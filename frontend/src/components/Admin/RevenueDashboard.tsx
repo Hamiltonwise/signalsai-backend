@@ -28,6 +28,7 @@ interface ClientHealthEntry {
   health: "green" | "amber" | "red";
   risk?: string;
   last_login?: string;
+  tier?: string;
 }
 
 const HEALTH_DOT: Record<string, string> = {

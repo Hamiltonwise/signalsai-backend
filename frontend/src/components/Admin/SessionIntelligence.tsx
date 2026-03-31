@@ -128,6 +128,7 @@ interface BehavioralEvent {
   properties: any;
   org_name: string | null;
   created_at: string;
+  occurred_at?: string;
 }
 
 type FilterType = "all" | "green" | "amber" | "red";
