@@ -574,11 +574,21 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const responsiveness = Math.min(20, responseRatePts + negativeResponsePts);
 
     // ─── COMPETITIVE EDGE (0-20) ────────────────────────────────────────
-    // Only calculated if same-specialty competitors were found
+    // Only calculated if same-specialty competitors were found.
+    // When broadened with zero specialty matches, the business is the ONLY
+    // specialist in their market. That's an advantage, not a penalty.
     let competitiveEdge = 10; // Neutral default when no competitors
     let competitiveDataLimited = otherCompetitors.length === 0;
+    const isOnlySpecialist = broadened && specialtyMatchCount === 0;
 
-    if (otherCompetitors.length > 0) {
+    if (isOnlySpecialist) {
+      // Only specialist in market: strong competitive position
+      // Rating still matters (clients compare to general practices)
+      const ratingAdvantage = clientRating - avgRating;
+      const ratingPts = Math.round(Math.min(8, Math.max(4, (ratingAdvantage + 0.5) * 8)));
+      competitiveEdge = Math.min(20, ratingPts + 8); // Base 8 for specialty scarcity
+      competitiveDataLimited = false;
+    } else if (otherCompetitors.length > 0) {
       // Rating advantage (0-8)
       const ratingAdvantage = clientRating - avgRating;
       // Scale: +0.5 above avg = 8pts, at avg = 4pts, -0.5 below = 0pts
@@ -612,7 +622,16 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     }> = [];
 
     // Finding 1: What prospects see first — your review social proof
-    if (topCompetitor && topCompetitor.reviewsCount > clientReviews) {
+    if (isOnlySpecialist && topCompetitor && topCompetitor.reviewsCount > clientReviews) {
+      // Only specialist: compare to general market but frame as context, not competition
+      findings.push({
+        type: "specialist_context",
+        title: `Only ${specialty} in ${city}`,
+        detail: `You're the only ${specialty} specialist in ${city}. General ${broadeningCategory || "dental"} practices like ${topCompetitor.name} have more reviews (${topCompetitor.reviewsCount.toLocaleString()}), but prospects searching specifically for a ${specialty} have you as their top local option. Growing your reviews strengthens that position.`,
+        value: clientReviews,
+        impact: 0,
+      });
+    } else if (topCompetitor && topCompetitor.reviewsCount > clientReviews) {
       const gap = topCompetitor.reviewsCount - clientReviews;
       const annualImpact = Math.round(gap * perReviewImpact / 12);
       findings.push({
@@ -1101,12 +1120,13 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       impactLabel: compositeScore >= 80 ? "revenue_protected" : "revenue_at_risk",
       market: {
         city,
-        totalCompetitors: otherCompetitors.length,
+        totalCompetitors: isOnlySpecialist ? 0 : otherCompetitors.length,
         avgRating: Math.round(avgRating * 10) / 10,
         avgReviews: Math.round(avgReviews),
-        rank,
+        rank: isOnlySpecialist ? 1 : rank,
         broadened: broadened || false,
         broadeningCategory: broadeningCategory || null,
+        onlySpecialist: isOnlySpecialist || undefined,
       },
       multiLocation: multiLocationCount > 0 ? {
         totalLocations: multiLocationCount + 1,
