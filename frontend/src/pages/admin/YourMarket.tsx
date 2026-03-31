@@ -263,7 +263,7 @@ export default function YourMarket() {
           Your Market
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Where every practice stands against their competition.
+          Where every business stands against their competition.
         </p>
       </div>
 
