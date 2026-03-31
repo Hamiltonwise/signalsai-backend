@@ -48,7 +48,7 @@ jobs:
         run: npm ci
 
       - name: Install frontend dependencies
-        run: cd frontend && npm ci
+        run: cd frontend && npm install
 
       - name: Run migrations
         run: npx knex migrate:latest
