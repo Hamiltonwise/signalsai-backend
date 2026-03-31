@@ -399,7 +399,7 @@ export default function EntryScreen() {
               </p>
               {selectedPlace.category && (
                 <span className="inline-block mt-2 text-xs font-semibold text-[#D56753] bg-[#D56753]/8 rounded-full px-2.5 py-0.5">
-                  {selectedPlace.category}
+                  {competitorTerm(selectedPlace.category, selectedPlace.types || [], selectedPlace.name)}
                 </span>
               )}
             </div>
