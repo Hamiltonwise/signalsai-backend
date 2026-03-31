@@ -47,17 +47,13 @@ bootstrapRoutes.post("/team", async (req, res) => {
       }
     }
 
-    // Create Alloro HQ org
+    // Create Alloro HQ org (minimal columns to avoid migration dependency)
     let alloroOrg = await db("organizations").where({ name: "Alloro HQ" }).first();
     if (!alloroOrg) {
       [alloroOrg] = await db("organizations").insert({
         name: "Alloro HQ",
-        subscription_tier: "DFY",
         subscription_status: "active",
         onboarding_completed: true,
-        onboarding_wizard_completed: true,
-        organization_type: "saas",
-        referral_code: crypto.randomBytes(4).toString("hex").toUpperCase(),
       }).returning("*");
       results.push(`Created org: Alloro HQ (id: ${alloroOrg.id})`);
     } else {
