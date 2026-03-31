@@ -1,3 +1,4 @@
+import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import {
   AdminLayout,
@@ -34,6 +35,7 @@ import PitchRepTracker from "./admin/PitchRepTracker";
 import IntelligencePanel from "./admin/IntelligencePanel";
 import RevenueDashboard from "../components/Admin/RevenueDashboard";
 import SessionIntelligence from "../components/Admin/SessionIntelligence";
+const BoardChat = React.lazy(() => import("./admin/BoardChat"));
 
 function WebDevEngine() {
   return (
@@ -116,6 +118,7 @@ function AdminWithLayout() {
         <Route path="revenue" element={<RevenueDashboard />} />
         <Route path="live-feed" element={<SessionIntelligence />} />
         <Route path="settings" element={<AdminSettings />} />
+        <Route path="chat" element={<React.Suspense fallback={null}><BoardChat /></React.Suspense>} />
         <Route path="sentry-test" element={<SentryTest />} />
       </Routes>
     </AdminLayout>

@@ -19,6 +19,10 @@ import {
   PanelLeftOpen,
   MapPin,
   Shield,
+  Brain,
+  Users,
+  Zap,
+  Settings,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSidebar } from "./Admin/SidebarContext";
@@ -275,6 +279,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const canSeeNotifications = userRole !== "viewer";
   const isManagerOrAbove = userRole === "admin" || userRole === "manager";
+
+  // HQ access: super admin users see admin navigation in the same sidebar
+  const SUPER_ADMIN_EMAILS = ["corey@getalloro.com", "info@getalloro.com", "demo@getalloro.com", "jo@getalloro.com", "jordan@getalloro.com", "dave@getalloro.com"];
+  const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(userProfile?.email?.toLowerCase() || "");
 
   // Main navigation items — role-gated
   const mainNavItems = [
@@ -599,6 +607,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 active={location.pathname === "/help"}
                 onClick={() => handleNavigate("/help")}
                 isLocked={isWizardActive}
+                minimized={isMinimized}
+              />
+            </div>
+          )}
+
+          {/* HQ Section -- super admins only */}
+          {!isLockedOut && isSuperAdmin && onboardingCompleted && (
+            <div className="space-y-1.5">
+              {!isMinimized && (
+                <div className="text-[10px] font-black text-alloro-orange/60 uppercase tracking-[0.3em] px-4 mb-4 mt-2 pt-4 border-t border-white/5">
+                  HQ
+                </div>
+              )}
+              <NavItem
+                icon={<Zap size={18} />}
+                label="Command Center"
+                active={location.pathname === "/admin/action-items" || location.pathname === "/admin"}
+                onClick={() => handleNavigate("/admin/action-items")}
+                minimized={isMinimized}
+              />
+              <NavItem
+                icon={<Users size={18} />}
+                label="Organizations"
+                active={location.pathname === "/admin/organizations"}
+                onClick={() => handleNavigate("/admin/organizations")}
+                minimized={isMinimized}
+              />
+              <NavItem
+                icon={<Brain size={18} />}
+                label="The Board"
+                active={location.pathname === "/admin/chat"}
+                onClick={() => handleNavigate("/admin/chat")}
+                minimized={isMinimized}
+              />
+              <NavItem
+                icon={<Settings size={18} />}
+                label="HQ Settings"
+                active={location.pathname === "/admin/settings"}
+                onClick={() => handleNavigate("/admin/settings")}
                 minimized={isMinimized}
               />
             </div>
