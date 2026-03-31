@@ -58,6 +58,7 @@ import rankingsSnapshotRoutes from "./routes/admin/rankingsSnapshot";
 import patientpathBuildRoutes from "./routes/admin/patientpathBuild";
 import demoLoginRoutes from "./routes/demoLogin";
 import bootstrapRoutes from "./routes/bootstrap";
+import messagesRoutes from "./routes/messages";
 import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
@@ -275,6 +276,7 @@ app.use("/api/admin", rankingsSnapshotRoutes); // WO31/33: rankings snapshot + M
 app.use("/api/admin/patientpath", patientpathBuildRoutes); // WO19: PatientPath build pipeline
 app.use("/api/demo", demoLoginRoutes); // WO-DEMO: auto-login for AAE demo
 app.use("/api/bootstrap", bootstrapRoutes); // One-time team setup
+app.use("/api/messages", messagesRoutes); // Internal team messaging
 app.use("/api/admin/practice-ranking", practiceRankingRoutes);
 app.use("/api/practice-ranking", practiceRankingRoutes); // Client-facing endpoint for /latest
 app.use("/api/admin", adminAuthRoutes);
