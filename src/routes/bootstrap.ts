@@ -1,10 +1,7 @@
 /**
  * Bootstrap -- one-time team account setup
- *
  * POST /api/bootstrap/team
- *
- * Creates Corey, Jo, and Dave user accounts + a shared demo org.
- * Self-sealing: works without token on first run, locks after accounts exist.
+ * Idempotent: creates missing accounts, sets passwords on existing ones.
  */
 
 import express from "express";
@@ -24,21 +21,7 @@ const TEAM = [
 
 bootstrapRoutes.post("/team", async (req, res) => {
   const results: string[] = [];
-
   try {
-    // Self-sealing gate
-    const teamEmails = TEAM.map(t => t.email);
-    const existingTeam = await db("users")
-      .whereIn("email", teamEmails)
-      .count("id as cnt")
-      .first()
-      .catch(() => ({ cnt: 0 }));
-    const teamExists = Number(existingTeam?.cnt || 0) > 0;
-
-    // Always allow bootstrap to run -- it's idempotent (updates existing, creates missing)
-    // The self-seal was too aggressive and blocked password setting on partial bootstraps
-
-    // Create Alloro HQ org (minimal columns to avoid migration dependency)
     let alloroOrg = await db("organizations").where({ name: "Alloro HQ" }).first();
     if (!alloroOrg) {
       [alloroOrg] = await db("organizations").insert({
@@ -51,7 +34,6 @@ bootstrapRoutes.post("/team", async (req, res) => {
       results.push(`Org exists: Alloro HQ (id: ${alloroOrg.id})`);
     }
 
-    // Create each team member
     for (const member of TEAM) {
       let user = await db("users").where({ email: member.email }).first();
       if (!user) {
@@ -65,13 +47,11 @@ bootstrapRoutes.post("/team", async (req, res) => {
         }).returning("*");
         results.push(`Created user: ${member.email} (id: ${user.id})`);
       } else {
-        // Always set password + verify email (handles partial bootstraps)
         const hash = await bcrypt.hash("alloro2026", 12);
         await db("users").where({ id: user.id }).update({ email_verified: true, password_hash: hash });
         results.push(`User exists, password set: ${member.email} (id: ${user.id})`);
       }
 
-      // Link to org
       const existing = await db("organization_users")
         .where({ user_id: user.id, organization_id: alloroOrg.id })
         .first();
@@ -85,10 +65,10 @@ bootstrapRoutes.post("/team", async (req, res) => {
       }
     }
 
-    console.log(`[Bootstrap] Team setup complete:`, results);
+    console.log(`[Bootstrap] Complete:`, results);
     return res.json({ success: true, results });
   } catch (error: any) {
-    console.error("[Bootstrap] Error:", error.message, error.stack);
+    console.error("[Bootstrap] Error:", error.message);
     return res.status(500).json({ success: false, error: error.message, results });
   }
 });
