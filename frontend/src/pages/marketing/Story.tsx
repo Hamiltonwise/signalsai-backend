@@ -121,10 +121,11 @@ export default function Story() {
       {/* Corey */}
       <section className="px-5 py-12 sm:py-16">
         <div className="max-w-xl mx-auto text-center">
-          {/* Photo placeholder: replace with real image */}
-          <div className="w-32 h-32 rounded-full bg-[#212D40]/10 mx-auto mb-4 flex items-center justify-center">
-            <span className="text-xs text-[#212D40]/40">Photo</span>
-          </div>
+          <img
+            src="/corey-wise.jpg"
+            alt="Corey Wise, Founder of Alloro"
+            className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"
+          />
           <p className="text-sm font-bold text-[#212D40]">
             Corey Wise
           </p>
