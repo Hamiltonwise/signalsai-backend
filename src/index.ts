@@ -115,6 +115,7 @@ import morningBriefingRoutes from "./routes/admin/morningBriefing";
 import adminRoadmapRoutes from "./routes/admin/roadmap";
 import snapshotRoutes from "./routes/snapshot";
 import ceoChatRoutes from "./routes/admin/ceoChat";
+import clarityMetricsRoutes from "./routes/admin/clarityMetrics";
 import seoRoutes from "./routes/seo";
 import foundationRoutes from "./routes/foundation";
 import intelligenceRoutes from "./routes/intelligence";
@@ -257,6 +258,7 @@ app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/admin/schedules", adminSchedulesRoutes);
 app.use("/api/admin/signal", adminSignalRoutes);
 app.use("/api/admin/ceo-chat", ceoChatRoutes);
+app.use("/api/admin/clarity-metrics", clarityMetricsRoutes);
 app.use("/api/admin/checkup-funnel", checkupFunnelRoutes);
 app.use("/api/admin/agent", agentRunnerRoutes); // Dream Team agent runner (invoke any agent from HQ)
 app.use("/api/admin/dream-team", adminDreamTeamRoutes);
