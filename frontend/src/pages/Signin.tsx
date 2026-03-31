@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import authPassword from "../api/auth-password";
+import { isSuperAdminEmail } from "../constants/superAdmins";
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -38,8 +39,7 @@ export default function SignIn() {
         setMessage("Success! Redirecting...");
 
         // Super admins go to HQ Command Center, everyone else to dashboard
-        const SUPER_ADMIN_EMAILS = ["corey@getalloro.com", "info@getalloro.com", "jo@getalloro.com", "jordan@getalloro.com", "dave@getalloro.com"];
-        const destination = SUPER_ADMIN_EMAILS.includes(email.toLowerCase())
+        const destination = isSuperAdminEmail(email)
           ? "/hq/command"
           : "/dashboard";
 

@@ -34,6 +34,7 @@ import { useAuth } from "../hooks/useAuth";
 import { LocationSwitcher } from "./LocationSwitcher";
 import { TailorToggle } from "./TailorToggle";
 import { getPriorityItem } from "../hooks/useLocalStorage";
+import { isSuperAdminEmail } from "../constants/superAdmins";
 
 type UserRole = "admin" | "manager" | "viewer";
 
@@ -281,9 +282,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isManagerOrAbove = userRole === "admin" || userRole === "manager";
 
   // HQ access: super admin users see admin navigation in the same sidebar
-  const SUPER_ADMIN_EMAILS = ["corey@getalloro.com", "info@getalloro.com", "demo@getalloro.com", "jo@getalloro.com", "jordan@getalloro.com", "dave@getalloro.com"];
-  const userEmail = userProfile?.email?.toLowerCase() || getPriorityItem("user_email")?.toLowerCase() || "";
-  const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(userEmail);
+  const isSuperAdmin = isSuperAdminEmail(userProfile?.email);
 
   // Main navigation items — role-gated
   const mainNavItems = [
