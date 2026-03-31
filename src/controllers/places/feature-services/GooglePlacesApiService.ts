@@ -15,16 +15,33 @@ const PLACES_API_BASE = "https://places.googleapis.com/v1";
  */
 export async function autocomplete(
   input: string,
-  sessionToken?: string
+  sessionToken?: string,
+  locationBias?: { lat: number; lng: number }
 ): Promise<any[]> {
+  const body: Record<string, unknown> = {
+    input,
+    includedPrimaryTypes: ["establishment"],
+    includePureServiceAreaBusinesses: true,
+    ...(sessionToken ? { sessionToken } : {}),
+  };
+
+  // Bias results toward the user's location (browser geolocation)
+  // Without this, Google defaults to the server IP (Virginia EC2)
+  if (locationBias) {
+    body.locationBias = {
+      circle: {
+        center: {
+          latitude: locationBias.lat,
+          longitude: locationBias.lng,
+        },
+        radius: 80467, // 50 miles
+      },
+    };
+  }
+
   const response = await axios.post(
     `${PLACES_API_BASE}/places:autocomplete`,
-    {
-      input,
-      includedPrimaryTypes: ["establishment"],
-      includePureServiceAreaBusinesses: true,
-      ...(sessionToken ? { sessionToken } : {}),
-    },
+    body,
     {
       headers: {
         "Content-Type": "application/json",

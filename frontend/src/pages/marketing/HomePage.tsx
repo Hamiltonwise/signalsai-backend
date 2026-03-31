@@ -9,7 +9,7 @@
  * Exception: inside quoted testimonial speech.
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Navigate, useNavigate, Link } from "react-router-dom";
 import { ArrowRight, Search, MapPin, Loader2 } from "lucide-react";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
@@ -29,16 +29,28 @@ function CheckupInput({ id, dark = false }: CheckupInputProps) {
   const [suggestions, setSuggestions] = useState<{ placeId: string; mainText: string; secondaryText: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const locationRef = useRef<{ lat: number; lng: number } | null>(null);
+
+  // Grab user location once for autocomplete biasing
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { locationRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
+      () => {},
+      { timeout: 5000, maximumAge: 300000 }
+    );
+  }, []);
 
   const searchPlaces = useCallback((input: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (input.length < 3) { setSuggestions([]); return; }
     debounceRef.current = setTimeout(async () => {
       try {
+        const loc = locationRef.current;
         const res = await fetch("/api/places/autocomplete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ input }),
+          body: JSON.stringify({ input, ...(loc ? { lat: loc.lat, lng: loc.lng } : {}) }),
         });
         const data = await res.json();
         if (data.success && data.suggestions) setSuggestions(data.suggestions.slice(0, 5));

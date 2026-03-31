@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { User, Lock, LogOut, Save, X } from "lucide-react";
+import { User, Lock, LogOut, Save, X, Check, Loader2 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useSession } from "../contexts/sessionContext";
 import { useNavigate } from "react-router-dom";
+import { getPriorityItem } from "../hooks/useLocalStorage";
 
 const Profile = () => {
   const { userProfile } = useAuth();
@@ -21,8 +22,32 @@ const Profile = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    // TODO: Implement save logic
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveSuccess(false);
+    try {
+      const token = getPriorityItem("token");
+      const res = await fetch("/api/settings/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          practiceName: formData.practiceName,
+        }),
+      });
+      if (res.ok) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      }
+    } catch { /* silent */ }
+    setSaving(false);
     setIsEditing(false);
   };
 
@@ -167,9 +192,11 @@ const Profile = () => {
                   </button>
                   <button
                     onClick={handleSave}
-                    className="px-6 py-3 bg-alloro-orange text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:shadow-lg transition-all flex items-center gap-2"
+                    disabled={saving}
+                    className="px-6 py-3 bg-alloro-orange text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-60"
                   >
-                    <Save size={16} /> Save Changes
+                    {saving ? <Loader2 size={16} className="animate-spin" /> : saveSuccess ? <Check size={16} /> : <Save size={16} />}
+                    {saving ? "Saving..." : saveSuccess ? "Saved" : "Save Changes"}
                   </button>
                 </div>
               </>

@@ -272,6 +272,18 @@ const KPICard = ({
   </div>
 );
 
+// Checkup-derived competitive snapshot (shown before first weekly ranking)
+interface CheckupSnapshot {
+  score: number;
+  rank: number;
+  totalCompetitors: number;
+  city: string;
+  topCompetitor: { name: string; rating: number; reviewCount: number } | null;
+  findings: Array<{ title: string; detail: string }>;
+  reviewCount: number;
+  rating: number;
+}
+
 export function RankingsDashboard({ organizationId, locationId }: RankingsDashboardProps) {
   const navigate = useNavigate();
   const isWizardActive = useIsWizardActive();
@@ -283,6 +295,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
   const [rankingTasks, setRankingTasks] = useState<
     Record<number, RankingTask[]>
   >({});
+  const [checkupSnapshot, setCheckupSnapshot] = useState<CheckupSnapshot | null>(null);
 
   // Skip fetching during wizard mode - use demo data instead
   useEffect(() => {
@@ -296,6 +309,34 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
       setLoading(false);
     }
   }, [organizationId, locationId, isWizardActive]);
+
+  // When rankings are empty, try to load checkup data as a fallback
+  useEffect(() => {
+    if (loading || rankings.length > 0 || isWizardActive || checkupSnapshot) return;
+    const token = getPriorityItem("token");
+    if (!token) return;
+    fetch("/api/user/dashboard-context", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (!data?.success || !data.checkup_context?.data) return;
+        const ctx = data.checkup_context;
+        const d = ctx.data;
+        setCheckupSnapshot({
+          score: ctx.score || d.score?.composite || 0,
+          rank: d.market?.rank || 0,
+          totalCompetitors: d.market?.totalCompetitors || 0,
+          city: d.market?.city || "",
+          topCompetitor: d.topCompetitor || null,
+          findings: Array.isArray(d.findings) ? d.findings.map((f: any) => ({
+            title: f.title || f.label || "Finding",
+            detail: f.detail || f.description || f.body || "",
+          })) : [],
+          reviewCount: d.reviewCount || d.place?.reviewCount || 0,
+          rating: d.place?.rating || 0,
+        });
+      })
+      .catch(() => {});
+  }, [loading, rankings.length, isWizardActive, checkupSnapshot]);
 
   const fetchLatestRankings = async () => {
     try {
@@ -447,24 +488,153 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
   }
 
   if (rankings.length === 0 && !isWizardActive) {
+    // If we have checkup data, show it as a preview instead of "Coming Soon"
+    if (checkupSnapshot && checkupSnapshot.score > 0) {
+      return (
+        <div className="min-h-screen bg-alloro-bg font-body text-alloro-textDark pb-32">
+          <header className="glass-header border-b border-black/5 lg:sticky lg:top-0 z-40">
+            <div className="max-w-[1100px] mx-auto px-6 lg:px-10 py-6 flex items-center justify-between">
+              <div className="flex items-center gap-5">
+                <div className="w-10 h-10 bg-alloro-navy text-white rounded-xl flex items-center justify-center shadow-lg">
+                  <Target size={20} />
+                </div>
+                <div className="flex flex-col text-left">
+                  <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
+                    Market Intelligence
+                  </h1>
+                  <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+                    From your initial checkup
+                  </span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <main className="w-full max-w-[1100px] mx-auto px-6 lg:px-10 py-10 lg:py-16 space-y-8">
+            {/* Score + Position KPIs */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <KPICard
+                label="Business Clarity Score"
+                value={`${Math.round(checkupSnapshot.score)}`}
+                sub="out of 100"
+              />
+              {checkupSnapshot.rank > 0 && (
+                <KPICard
+                  label="Market Position"
+                  value={`#${checkupSnapshot.rank}`}
+                  sub={`of ${checkupSnapshot.totalCompetitors} in ${checkupSnapshot.city}`}
+                />
+              )}
+              <KPICard
+                label="Your Reviews"
+                value={`${checkupSnapshot.reviewCount}`}
+                sub={checkupSnapshot.rating ? `${checkupSnapshot.rating} avg rating` : "total reviews"}
+                rating={!!checkupSnapshot.rating}
+              />
+              {checkupSnapshot.topCompetitor && (
+                <KPICard
+                  label="Top Competitor Reviews"
+                  value={`${checkupSnapshot.topCompetitor.reviewCount}`}
+                  sub={checkupSnapshot.topCompetitor.name}
+                  rating={!!checkupSnapshot.topCompetitor.rating}
+                />
+              )}
+            </div>
+
+            {/* Top Competitor Card */}
+            {checkupSnapshot.topCompetitor && (
+              <div className="bg-white rounded-3xl border border-black/5 shadow-premium p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-alloro-orange/10 flex items-center justify-center">
+                    <Trophy size={20} className="text-alloro-orange" />
+                  </div>
+                  <h3 className="text-lg font-black text-alloro-navy tracking-tight">
+                    Your Top Competitor
+                  </h3>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xl font-black text-alloro-navy">{checkupSnapshot.topCompetitor.name}</p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {checkupSnapshot.topCompetitor.reviewCount} reviews, {checkupSnapshot.topCompetitor.rating} stars
+                    </p>
+                  </div>
+                  {checkupSnapshot.topCompetitor.reviewCount > checkupSnapshot.reviewCount && (
+                    <div className="text-right">
+                      <p className="text-2xl font-black text-alloro-orange">
+                        {checkupSnapshot.topCompetitor.reviewCount - checkupSnapshot.reviewCount}
+                      </p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">review gap</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Findings */}
+            {checkupSnapshot.findings.length > 0 && (
+              <div className="bg-white rounded-3xl border border-black/5 shadow-premium p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-alloro-bg flex items-center justify-center">
+                    <Lightbulb size={20} className="text-alloro-orange" />
+                  </div>
+                  <h3 className="text-lg font-black text-alloro-navy tracking-tight">
+                    Key Findings
+                  </h3>
+                </div>
+                <div className="space-y-4">
+                  {checkupSnapshot.findings.slice(0, 4).map((f, i) => (
+                    <div key={i} className="border-l-2 border-alloro-orange/30 pl-4">
+                      <p className="text-sm font-bold text-alloro-navy">{f.title}</p>
+                      <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">{f.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upgrade prompt */}
+            <div
+              onClick={() => navigate("/settings/integrations")}
+              className="group bg-gradient-to-r from-alloro-navy to-slate-800 rounded-3xl p-8 cursor-pointer hover:shadow-2xl transition-all duration-300"
+            >
+              <div className="flex items-center gap-6">
+                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Zap className="w-7 h-7 text-alloro-orange" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="text-xl font-black text-white tracking-tight mb-1">
+                    Unlock Weekly Tracking
+                  </h3>
+                  <p className="text-white/60 font-medium leading-relaxed">
+                    Connect your Google Business Profile to get weekly competitive snapshots, trend analysis, and automatic alerts when competitors gain ground.
+                  </p>
+                </div>
+                <ChevronRight className="w-6 h-6 text-white/40 group-hover:text-white transition-colors shrink-0" />
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    // No checkup data either - show connect prompt
     return (
       <div className="min-h-screen bg-alloro-bg font-body flex items-center justify-center py-16 px-6">
         <div className="max-w-xl w-full">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 rounded-full mb-4">
               <Sparkles className="w-4 h-4 text-alloro-orange" />
-              <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">Almost There</span>
+              <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">Get Started</span>
             </div>
             <h1 className="text-3xl font-black text-alloro-navy font-heading tracking-tight mb-3">
-              Local Rankings Coming Soon
+              Your Market Intelligence
             </h1>
             <p className="text-base text-slate-500 font-medium max-w-md mx-auto">
-              We're preparing your competitive analysis. Make sure your Google Business Profile is connected to get started.
+              Connect your Google Business Profile to see where you rank, who your competitors are, and what to do about it.
             </p>
           </div>
 
-          {/* Action Card */}
           <div
             onClick={() => navigate("/settings/integrations")}
             className="group bg-white rounded-3xl border-2 border-alloro-orange shadow-xl shadow-alloro-orange/10 p-8 cursor-pointer hover:shadow-2xl hover:shadow-alloro-orange/20 transition-all duration-300 hover:-translate-y-1"
@@ -480,7 +650,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                   Connect Your Google Business Profile
                 </h3>
                 <p className="text-slate-500 font-medium leading-relaxed mb-4">
-                  Link your GBP to unlock local ranking insights, competitor analysis, and visibility tracking.
+                  Link your GBP to unlock weekly ranking snapshots, competitor tracking, and visibility alerts.
                 </p>
                 <div className="flex items-center gap-2 text-alloro-orange font-bold text-sm group-hover:gap-3 transition-all">
                   <Settings className="w-4 h-4" />
@@ -491,7 +661,6 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
             </div>
           </div>
 
-          {/* Help text */}
           <p className="text-center text-sm text-slate-400 mt-6">
             Already connected? Rankings typically appear within 24 hours.
           </p>

@@ -24,6 +24,9 @@ settingsRoutes.post("/users/invite/:invitationId/resend", authenticateToken, rba
 settingsRoutes.delete("/users/:userId", authenticateToken, rbacMiddleware, requireRole("admin"), controller.removeUser);
 settingsRoutes.put("/users/:userId/role", authenticateToken, rbacMiddleware, requireRole("admin"), controller.changeUserRole);
 
+// Profile Update (user self-service)
+settingsRoutes.put("/profile", authenticateToken, rbacMiddleware, controller.updateUserProfile);
+
 // Password Management (user self-service)
 settingsRoutes.get("/password-status", authenticateToken, rbacMiddleware, controller.getPasswordStatus);
 settingsRoutes.put("/password", authenticateToken, rbacMiddleware, controller.changePassword);

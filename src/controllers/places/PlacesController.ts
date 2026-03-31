@@ -19,7 +19,7 @@ import {
  */
 export async function autocomplete(req: Request, res: Response) {
   try {
-    const { input, sessionToken } = req.body;
+    const { input, sessionToken, lat, lng } = req.body;
 
     if (!input || typeof input !== "string") {
       return res.status(400).json({
@@ -35,9 +35,17 @@ export async function autocomplete(req: Request, res: Response) {
       });
     }
 
-    console.log(`[Places] Autocomplete search: "${input}"`);
+    // Build location bias from client-provided coordinates
+    const locationBias =
+      typeof lat === "number" && typeof lng === "number"
+        ? { lat, lng }
+        : undefined;
 
-    const rawSuggestions = await googleAutocomplete(input, sessionToken);
+    console.log(
+      `[Places] Autocomplete search: "${input}"${locationBias ? ` (biased to ${lat.toFixed(2)},${lng.toFixed(2)})` : " (no location bias)"}`
+    );
+
+    const rawSuggestions = await googleAutocomplete(input, sessionToken, locationBias);
     const suggestions = transformAutocompleteSuggestions(rawSuggestions);
 
     console.log(`[Places] Found ${suggestions.length} suggestions`);

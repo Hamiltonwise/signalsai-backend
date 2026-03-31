@@ -151,6 +151,17 @@ export default function EntryScreen() {
   const [referrerName, setReferrerName] = useState<string | null>(null);
   const [userQuestion, setUserQuestion] = useState("");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Grab user's location for autocomplete biasing (silent, no prompt if denied)
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {}, // Silently ignore denial
+      { timeout: 5000, maximumAge: 300000 }
+    );
+  }, []);
 
   // Auto-select place from URL params (homepage CTA flow)
   useEffect(() => {
@@ -211,7 +222,7 @@ export default function EntryScreen() {
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await withTimeout(
-          searchPlaces(value, sessionTokenRef.current),
+          searchPlaces(value, sessionTokenRef.current, userLocation ?? undefined),
           5000
         );
         if (res && res.success) {

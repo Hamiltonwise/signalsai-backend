@@ -18,6 +18,7 @@ import {
   updateUserRole,
 } from "./feature-services/service.user-management";
 import { UserModel } from "../../models/UserModel";
+import { db } from "../../database/connection";
 
 const BCRYPT_SALT_ROUNDS = 12;
 const PASSWORD_MIN_LENGTH = 8;
@@ -289,6 +290,38 @@ export async function changePassword(req: RBACRequest, res: Response) {
     });
   } catch (error: any) {
     return handleSettingsError(res, error, "Change password");
+  }
+}
+
+/**
+ * PUT /api/settings/profile
+ * Update the current user's name and organization name
+ */
+export async function updateUserProfile(req: RBACRequest, res: Response) {
+  try {
+    const userId = req.userId!;
+    const orgId = req.organizationId!;
+    const { firstName, lastName, practiceName } = req.body;
+
+    // Update user name fields
+    if (firstName !== undefined || lastName !== undefined) {
+      const userUpdates: Record<string, string> = {};
+      if (typeof firstName === "string") userUpdates.first_name = firstName.trim();
+      if (typeof lastName === "string") userUpdates.last_name = lastName.trim();
+      if (Object.keys(userUpdates).length > 0) {
+        await db("users").where({ id: userId }).update(userUpdates);
+      }
+    }
+
+    // Update organization name
+    if (typeof practiceName === "string" && practiceName.trim()) {
+      await db("organizations").where({ id: orgId }).update({ name: practiceName.trim() });
+    }
+
+    console.log(`[Settings] Profile updated for user ${userId}`);
+    return res.json({ success: true, message: "Profile updated" });
+  } catch (error: any) {
+    return handleSettingsError(res, error, "Update profile");
   }
 }
 

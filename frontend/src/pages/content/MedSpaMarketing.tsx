@@ -85,13 +85,12 @@ export default function MedSpaMarketing() {
             style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
           >
             <p className="text-sm font-semibold text-[#D56753] uppercase tracking-wider mb-2">
-              Full guide coming soon
+              See where you stand
             </p>
             <p className="text-base text-[#212D40] font-medium leading-relaxed">
-              We are building the definitive guide to med spa growth --
-              competitive intelligence, review gap analysis, and market
-              positioning. In the meantime, run a free checkup to see where your
-              med spa stands right now.
+              Run your free Business Clarity Checkup to see your competitive
+              position, review gaps, and the one thing most affecting your
+              visibility right now.
             </p>
           </div>
 

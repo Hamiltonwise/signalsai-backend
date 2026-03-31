@@ -63,18 +63,25 @@ export interface PlaceDetailsResponse {
 const API_BASE = "/api/places";
 
 /**
- * Search for businesses using autocomplete
+ * Search for businesses using autocomplete.
+ * Accepts optional lat/lng to bias results toward the user's location
+ * (prevents Virginia EC2 default).
  */
 export const searchPlaces = async (
   input: string,
-  sessionToken?: string
+  sessionToken?: string,
+  location?: { lat: number; lng: number }
 ): Promise<AutocompleteResponse> => {
   const response = await fetch(`${API_BASE}/autocomplete`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ input, sessionToken }),
+    body: JSON.stringify({
+      input,
+      sessionToken,
+      ...(location ? { lat: location.lat, lng: location.lng } : {}),
+    }),
   });
 
   if (!response.ok) {
