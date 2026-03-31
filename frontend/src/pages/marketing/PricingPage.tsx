@@ -143,7 +143,7 @@ export default function PricingPage() {
                 "mainEntity": [
                   { "@type": "Question", "name": "How much does Alloro cost?", "acceptedAnswer": { "@type": "Answer", "text": "Alloro costs $2,000 per location per month. No contracts, cancel anytime." } },
                   { "@type": "Question", "name": "Is there a free trial?", "acceptedAnswer": { "@type": "Answer", "text": "The free market scan takes in 60 seconds with no account required. Subscription starts when you want weekly Monday briefings." } },
-                  { "@type": "Question", "name": "What is included in the subscription?", "acceptedAnswer": { "@type": "Answer", "text": "Your weekly Monday Brief with one finding and one action, PatientPath web presence, GP referral intelligence with drift alerts, competitive position tracking, and the Business Clarity Layer that gets more specific as you connect more data." } },
+                  { "@type": "Question", "name": "What is included in the subscription?", "acceptedAnswer": { "@type": "Answer", "text": "Your weekly Monday Brief with one finding and one action, a professional website built by AI, revenue source intelligence with drift alerts, competitive position tracking, and the Business Clarity layer that gets more specific as you connect more data." } },
                   { "@type": "Question", "name": "Can I cancel anytime?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. No contracts, no cancellation fees. Your data stays yours." } },
                 ],
               },

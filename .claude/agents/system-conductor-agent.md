@@ -75,7 +75,7 @@ Fail condition: output is a suggestion that the system has the data and capabili
 
 ### CLEARED
 ```
-Conductor: Cleared. 5/5 gates passed.
+Conductor: Cleared. 6/6 gates passed.
 ```
 Output proceeds to Safety Agent (if Yellow/Red) or ships directly (if Green).
 
@@ -93,7 +93,7 @@ Before acting on any output:
 1. Read behavioral_events: last 48 hours
 2. Read relevant Knowledge Lattice entries for this domain
 3. Check if any other agent has acted on this client/topic in the last 7 days
-4. Evaluate through all five gates
+4. Evaluate through all six gates
 5. Write clearance/hold decision to behavioral_events
 6. If a pattern emerges (same gate failing repeatedly): flag for Learning Agent review
 

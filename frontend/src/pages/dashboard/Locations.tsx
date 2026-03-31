@@ -334,7 +334,7 @@ export default function Locations() {
           Locations
         </h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          Manage all practice locations. Each location gets its own rankings, reviews, and PatientPath site.
+          Manage all business locations. Each location gets its own rankings, reviews, and website.
         </p>
       </div>
 

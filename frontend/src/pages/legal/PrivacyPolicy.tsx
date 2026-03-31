@@ -70,7 +70,7 @@ export default function PrivacyPolicy() {
               <Li>Generate your Business Clarity Score and competitive analysis</Li>
               <Li>Build your Monday morning intelligence briefing</Li>
               <Li>Monitor your market position and alert you to changes</Li>
-              <Li>Build and optimize your website (PatientPath)</Li>
+              <Li>Build and optimize your Alloro website</Li>
               <Li>Improve the product based on usage patterns (never using individual business data for this)</Li>
             </ul>
             <p className="mt-3 font-medium text-[#212D40]">

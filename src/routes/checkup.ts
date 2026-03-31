@@ -17,6 +17,7 @@ import { BehavioralEventModel } from "../models/BehavioralEventModel";
 import { analyzeReviewSentiment } from "../services/reviewSentiment";
 import { generateOzMoments, type OzMoment } from "../services/ozMoment";
 import { generateSurpriseFindings, type SurpriseFinding } from "../services/surpriseFindings";
+import { extractReviewThemes, type ThemeExtractionResult } from "../services/reviewThemeExtractor";
 import { db } from "../database/connection";
 import { getMindsQueue } from "../workers/queues";
 import { detectPreset } from "../services/vocabularyAutoMapper";
@@ -897,13 +898,14 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // Review response gap (we can detect this from review data)
     // This one really feels like mind-reading: "you haven't responded to your reviews"
 
-    // ─── AI Analysis: Sentiment + Oz Moments (parallel, non-blocking) ───
+    // ─── AI Analysis: Sentiment + Oz Moments + Review Themes (parallel, non-blocking) ───
     let sentimentInsight = null;
     let ozMoments: OzMoment[] = [];
+    let reviewThemes: ThemeExtractionResult | null = null;
 
     if (placeId) {
-      // Run sentiment and Oz moments in parallel
-      const [sentimentResult, ozResult] = await Promise.allSettled([
+      // Run sentiment, Oz moments, and theme extraction in parallel (zero added latency)
+      const [sentimentResult, ozResult, themeResult] = await Promise.allSettled([
         analyzeReviewSentiment(
           placeId,
           name,
@@ -940,6 +942,17 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
           editorialSummary: enrichedEditorialSummary || null,
           businessStatus: enrichedBusinessStatus || null,
         }),
+        // Review theme extraction for website generation (runs in parallel, zero added latency)
+        extractReviewThemes(
+          googleReviews.map((r: any) => ({
+            text: r.text?.text || r.originalText?.text || r.text || "",
+            rating: r.rating || 5,
+            authorName: r.authorAttribution?.displayName || r.author_name || "A customer",
+            relativeTime: r.relativePublishTimeDescription || "",
+          })),
+          name,
+          specialty,
+        ),
       ]);
 
       if (sentimentResult.status === "fulfilled" && sentimentResult.value) {
@@ -955,6 +968,10 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
 
       if (ozResult.status === "fulfilled" && ozResult.value.length > 0) {
         ozMoments = ozResult.value;
+      }
+
+      if (themeResult.status === "fulfilled" && themeResult.value) {
+        reviewThemes = themeResult.value;
       }
     }
 
@@ -1088,6 +1105,15 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         intelligenceMode: vocabPreset.intelligenceMode,
         healthScoreLabel: vocabPreset.healthScoreLabel,
       },
+      // Website generation data: review themes extracted in parallel during scan
+      websiteIntelligence: reviewThemes ? {
+        heroQuote: reviewThemes.heroQuote,
+        heroReviewerName: reviewThemes.heroReviewerName,
+        suggestedHeadline: reviewThemes.suggestedHeadline,
+        uniqueStrength: reviewThemes.uniqueStrength,
+        customerVoiceSummary: reviewThemes.customerVoiceSummary,
+        topThemes: reviewThemes.topThemes,
+      } : null,
     });
   } catch (error: any) {
     console.error("[Checkup] Analysis error:", error.message);

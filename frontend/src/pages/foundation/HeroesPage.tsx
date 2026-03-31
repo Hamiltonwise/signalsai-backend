@@ -48,7 +48,7 @@ export default function HeroesPage() {
               <p className="text-sm text-gray-500 mt-1">
                 Full access to Alloro's business clarity platform. Market position
                 tracking, competitor monitoring, weekly intelligence briefs, and a
-                PatientPath website built for your practice. No cost. No time limit.
+                professional website built for your business. No cost. No time limit.
               </p>
             </div>
           </div>

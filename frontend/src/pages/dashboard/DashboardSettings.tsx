@@ -1,7 +1,7 @@
 /**
  * Dashboard Settings — /dashboard/settings
  *
- * Practice info, NPI verification, notifications, billing.
+ * Business info, NPI verification, notifications, billing.
  */
 
 import { useState, useEffect } from "react";
@@ -116,7 +116,7 @@ export default function DashboardSettings() {
         {npiVerified ? (
           <div className="flex items-center gap-2 text-emerald-700">
             <CheckCircle2 className="h-5 w-5" />
-            <p className="text-sm font-medium">NPI verified. Your PatientPath website will include medical schema markup.</p>
+            <p className="text-sm font-medium">NPI verified. Your Alloro website will include medical schema markup.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -182,7 +182,7 @@ export default function DashboardSettings() {
         </div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-[#212D40]">Business Intelligence</p>
+            <p className="text-sm font-semibold text-[#212D40]">Business Clarity</p>
             <p className="text-xs text-gray-500">$2,000/month</p>
           </div>
           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${

@@ -80,13 +80,13 @@ export default function ProductPage() {
         </div>
       </section>
 
-      {/* Section 3: PatientPath */}
+      {/* Section 3: Your Website */}
       <section className="px-5 py-16 sm:py-20" style={{ backgroundColor: "rgba(213, 103, 83, 0.04)" }}>
         <div className="max-w-xl mx-auto space-y-5">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]">PatientPath</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Your Website</p>
           <p className="text-base text-[#212D40]/80 leading-relaxed">
             The intelligence layer makes you findable.
-            PatientPath makes sure the person who finds you
+            Your Alloro website makes sure the person who finds you
             knows exactly why they should choose you.
           </p>
           <p className="text-base text-[#212D40]/80 leading-relaxed">
