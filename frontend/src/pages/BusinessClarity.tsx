@@ -49,7 +49,7 @@ const SCHEMA = {
           name: "How can a small business owner get business clarity?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Run a free Business Clarity Checkup at getalloro.com/checkup. In 60 seconds you see your competitors by name, your market position, and the one move that changes it. No login required.",
+            text: "Run a free Business Clarity Checkup at getalloro.com/checkup. In 60 seconds you see your competitors by name, your market position, and the one move that changes it. See your score instantly.",
           },
         },
         {
@@ -215,7 +215,7 @@ export default function BusinessClarity() {
             <ArrowRight className="h-4 w-4" />
           </Link>
           <p className="text-xs text-white/50 mt-3">
-            No login required. Free. 60 seconds.
+            See your score instantly. Free. 60 seconds.
           </p>
         </div>
       </section>

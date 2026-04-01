@@ -238,7 +238,7 @@ export default function Compare() {
             <ArrowRight className="w-4 h-4" />
           </a>
           <p className="mt-3 text-xs text-slate-400">
-            Free. 60 seconds. No login required.
+            Free. 60 seconds. See your score instantly.
           </p>
         </div>
 

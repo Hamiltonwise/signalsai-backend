@@ -168,7 +168,7 @@ export default function OrthodontistMarketing() {
               <ArrowRight className="h-5 w-5" />
             </button>
             <p className="text-xs text-gray-400 mt-3">
-              Free referral checkup. No login required. 60 seconds.
+              Free referral checkup. See your score instantly. 60 seconds.
             </p>
           </div>
         </main>

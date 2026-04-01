@@ -95,7 +95,7 @@ export default function DermatologistMarketing() {
               <ArrowRight className="h-5 w-5" />
             </button>
             <p className="text-xs text-gray-400 mt-3">
-              Works for any specialty. No login required. 60 seconds.
+              Works for any specialty. See your score instantly. 60 seconds.
             </p>
           </div>
         </main>
