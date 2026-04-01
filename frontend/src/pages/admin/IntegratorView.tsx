@@ -2,13 +2,19 @@
  * Integrator View -- Jo's Ops Console
  *
  * Studio McGee-style makeover. Every element answers: "What needs my attention today?"
+ * Mobile-first (max-w-lg). Jo checks on her phone.
  *
  * 1. Personal greeting with agent brief summary
- * 2. Client Health Grid (hero section, above the fold)
- * 3. Today's Actions (from personal agent brief)
- * 4. Trial Pipeline
- * 5. Revenue Snapshot (compact)
- * 6. This Week's Numbers (compact row)
+ * 2. Weekly Pulse (are we growing?)
+ * 3. Client Health Grid (hero section)
+ * 4. Agent Pipeline Status (factory floor view)
+ * 5. Blocker Panel (overdue tasks, open circuits, email alerts)
+ * 6. Today's Actions (from personal agent brief)
+ * 7. Trial Pipeline
+ * 8. Revenue Snapshot (compact)
+ * 9. This Week's Numbers (compact row)
+ * 10. My Flags
+ * 11. Dream Team Activity
  */
 
 import { useState } from "react";
@@ -34,11 +40,19 @@ import {
   Loader2,
   ClipboardList,
   Bot,
+  AlertTriangle,
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
 } from "lucide-react";
 import {
   adminListOrganizations,
   type AdminOrganization,
 } from "@/api/admin-organizations";
+import {
+  fetchDreamTeamTasks,
+} from "@/api/dream-team";
 import { apiGet, apiPost, apiPatch } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -68,6 +82,56 @@ interface PersonalBrief {
   sections: BriefSection[];
   signoff: string;
   urgentCount: number;
+}
+
+interface AgentStatusEntry {
+  name: string;
+  displayName: string;
+  tier: "fast" | "standard" | "judgment";
+  status: "nominal" | "degraded" | "failed" | "idle";
+  lastRun: string | null;
+  lastRunDuration?: number;
+  lastResult: "success" | "failure" | "skipped" | null;
+  nextScheduledRun: string | null;
+  circuitState: "closed" | "open" | "half-open";
+  weeklyRuns: number;
+  weeklyFailures: number;
+  tokensUsedThisWeek: number;
+  costThisWeek: number;
+  team: string;
+}
+
+interface MissionControlData {
+  agents: AgentStatusEntry[];
+  byTeam: Record<string, AgentStatusEntry[]>;
+  summary: {
+    total: number;
+    nominal: number;
+    degraded: number;
+    failed: number;
+    idle: number;
+    totalWeeklyCost: number;
+    totalWeeklyTokens: number;
+  };
+}
+
+interface EmailHealthData {
+  deliveryRate: number;
+  openRate: number;
+  bounceRate: number;
+  complaintRate: number;
+  totalEmails: number;
+}
+
+interface EmailMetricsData {
+  totals: {
+    sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    bounced: number;
+    complained: number;
+  };
 }
 
 // ---- Helpers -----------------------------------------------------------------
@@ -143,6 +207,16 @@ function SectionLabel({
   );
 }
 
+function PipelineDot({ status }: { status: "green" | "amber" | "red" | "gray" }) {
+  const colors: Record<string, string> = {
+    green: "bg-emerald-500",
+    amber: "bg-amber-400",
+    red: "bg-red-500",
+    gray: "bg-gray-300",
+  };
+  return <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${colors[status]}`} />;
+}
+
 // ---- Section 1: Greeting -----------------------------------------------------
 
 function Greeting({
@@ -177,6 +251,356 @@ function Greeting({
           {brief.headline}
         </p>
       )}
+    </div>
+  );
+}
+
+// ---- NEW: Weekly Pulse -------------------------------------------------------
+
+function WeeklyPulse({ orgs }: { orgs: AdminOrganization[] }) {
+  const filtered = filterTestOrgs(orgs);
+
+  // Fetch behavioral events for checkups and referrals this week
+  const { data: eventsData } = useQuery({
+    queryKey: ["integrator-weekly-pulse-events"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/behavioral-events?limit=500" });
+      return res?.success !== false ? ((res?.events || []) as Array<{ event_type: string; created_at: string; properties?: any }>) : [];
+    },
+    retry: false,
+    staleTime: 60_000,
+  });
+
+  const events = eventsData ?? [];
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+
+  // Current week signups
+  const newSignupsThisWeek = filtered.filter(
+    (o) => new Date(o.created_at).getTime() > weekAgo
+  ).length;
+  const newSignupsLastWeek = filtered.filter(
+    (o) => {
+      const t = new Date(o.created_at).getTime();
+      return t > twoWeeksAgo && t <= weekAgo;
+    }
+  ).length;
+
+  // MRR calculation
+  const tierPricing: Record<string, number> = { DWY: 1500, DFY: 3000 };
+  const activeOrgs = filtered.filter((o) => o.subscription_status === "active");
+  const mrr = activeOrgs.reduce(
+    (sum, org) => sum + (tierPricing[org.subscription_tier ?? ""] ?? 0),
+    0
+  );
+
+  // Checkups and referrals from events
+  const thisWeekEvents = events.filter((e) => new Date(e.created_at).getTime() > weekAgo);
+  const checkupsThisWeek = thisWeekEvents.filter(
+    (e) => e.event_type === "checkup.completed" || e.event_type === "checkup.generated"
+  ).length;
+  const referralsThisWeek = thisWeekEvents.filter(
+    (e) => e.event_type === "referral.generated" || e.event_type === "referral.sent"
+  ).length;
+
+  // Growth indicator
+  const isGrowing = newSignupsThisWeek >= newSignupsLastWeek && newSignupsThisWeek > 0;
+  const growthRate = newSignupsLastWeek > 0
+    ? Math.round(((newSignupsThisWeek - newSignupsLastWeek) / newSignupsLastWeek) * 100)
+    : newSignupsThisWeek > 0
+      ? 100
+      : 0;
+
+  const formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Hero: Are we growing? */}
+      <div className={`flex items-center gap-3 rounded-xl px-4 py-3 border ${
+        isGrowing ? "bg-emerald-50/50 border-emerald-100" : "bg-amber-50/50 border-amber-100"
+      }`}>
+        {isGrowing ? (
+          <ArrowUpRight className="w-5 h-5 text-emerald-600" />
+        ) : growthRate < 0 ? (
+          <ArrowDownRight className="w-5 h-5 text-red-500" />
+        ) : (
+          <Minus className="w-5 h-5 text-amber-500" />
+        )}
+        <div>
+          <p className={`text-sm font-bold ${isGrowing ? "text-emerald-700" : "text-amber-700"}`}>
+            {isGrowing ? "YES" : "NOT YET"}
+            {growthRate !== 0 && (
+              <span className="text-xs font-medium ml-1.5">
+                ({growthRate > 0 ? "+" : ""}{growthRate}% signups vs last week)
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-gray-500">Are we growing?</p>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
+          <p className="text-lg font-bold text-[#212D40]">{formatter.format(mrr)}</p>
+          <p className="text-[10px] text-gray-400 uppercase font-medium tracking-wider mt-0.5">MRR</p>
+        </div>
+        <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
+          <p className="text-lg font-bold text-[#212D40]">{newSignupsThisWeek}</p>
+          <p className="text-[10px] text-gray-400 uppercase font-medium tracking-wider mt-0.5">New Signups</p>
+        </div>
+        <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
+          <p className="text-lg font-bold text-[#212D40]">{checkupsThisWeek}</p>
+          <p className="text-[10px] text-gray-400 uppercase font-medium tracking-wider mt-0.5">Checkups</p>
+        </div>
+        <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
+          <p className="text-lg font-bold text-[#212D40]">{referralsThisWeek}</p>
+          <p className="text-[10px] text-gray-400 uppercase font-medium tracking-wider mt-0.5">Referrals</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- NEW: Agent Pipeline Status (factory floor view) -------------------------
+
+function AgentPipelineStatus() {
+  const { data: mcData, isLoading } = useQuery<MissionControlData>({
+    queryKey: ["mission-control-integrator"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/mission-control" });
+      return res?.success ? res : null;
+    },
+    refetchInterval: 60_000,
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const { data: emailHealth } = useQuery<EmailHealthData>({
+    queryKey: ["email-health-integrator"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/webhooks/mailgun/health" });
+      return res?.success ? res : null;
+    },
+    retry: false,
+    staleTime: 120_000,
+  });
+
+  const { data: emailMetrics } = useQuery<EmailMetricsData>({
+    queryKey: ["email-metrics-integrator"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/webhooks/mailgun/metrics" });
+      return res?.success ? res : null;
+    },
+    retry: false,
+    staleTime: 120_000,
+  });
+
+  const { data: healthRaw } = useQuery({
+    queryKey: ["admin-client-health-pipeline"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/client-health" });
+      return res?.success !== false
+        ? ((res?.clients || res?.entries || []) as ClientHealthEntry[])
+        : [];
+    },
+    retry: false,
+    staleTime: 60_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-12 animate-pulse rounded-xl border border-gray-200 bg-gray-50" />
+        ))}
+      </div>
+    );
+  }
+
+  const agents = mcData?.agents ?? [];
+  const summary = mcData?.summary;
+
+  // Client health this week
+  const clients = healthRaw ?? [];
+  const greenClients = clients.filter((c) => c.health === "green").length;
+  const amberClients = clients.filter((c) => c.health === "amber").length;
+  const redClients = clients.filter((c) => c.health === "red").length;
+
+  const clientStatus: "green" | "amber" | "red" = redClients > 0 ? "red" : amberClients > 0 ? "amber" : "green";
+
+  // Email pipeline
+  const emailsSent = emailMetrics?.totals?.delivered ?? 0;
+  const openRate = emailHealth?.openRate ?? 0;
+  const bounceRate = emailHealth?.bounceRate ?? 0;
+  const emailStatus: "green" | "amber" | "red" = bounceRate > 5 ? "red" : bounceRate > 2 ? "amber" : "green";
+
+  // Agent pipeline status
+  const failedAgents = summary?.failed ?? 0;
+  const degradedAgents = summary?.degraded ?? 0;
+  const agentStatus: "green" | "amber" | "red" = failedAgents > 0 ? "red" : degradedAgents > 0 ? "amber" : "green";
+
+  // Content pipeline: agents in Growth Engine team
+  const growthTeam = mcData?.byTeam?.["Growth Engine"] ?? [];
+  const growthFailed = growthTeam.filter((a) => a.status === "failed").length;
+  const growthActive = growthTeam.filter((a) => a.weeklyRuns > 0).length;
+  const contentStatus: "green" | "amber" | "red" = growthFailed > 0 ? "red" : growthActive === 0 ? "gray" as "amber" : "green";
+
+  const pipelines = [
+    {
+      label: `Client health: ${greenClients} green, ${amberClients} amber, ${redClients} red`,
+      status: clientStatus,
+    },
+    {
+      label: emailsSent > 0
+        ? `Email delivery: ${emailsSent} sent, ${openRate}% opened${bounceRate > 2 ? `, ${bounceRate}% bounced` : ""}`
+        : "Email delivery: no events yet",
+      status: emailsSent > 0 ? emailStatus : "gray" as "green",
+    },
+    {
+      label: `Agent fleet: ${summary?.nominal ?? 0} nominal, ${degradedAgents} degraded, ${failedAgents} failed`,
+      status: agentStatus,
+    },
+    {
+      label: `Growth engine: ${growthActive} active, ${growthFailed} failed this week`,
+      status: contentStatus,
+    },
+  ];
+
+  return (
+    <div className="space-y-2">
+      {pipelines.map((p, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50"
+        >
+          <PipelineDot status={p.status} />
+          <p className="text-sm text-[#212D40]">{p.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---- NEW: Blocker Panel ------------------------------------------------------
+
+function BlockerPanel() {
+  const { data: mcData } = useQuery<MissionControlData>({
+    queryKey: ["mission-control-integrator"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/mission-control" });
+      return res?.success ? res : null;
+    },
+    refetchInterval: 60_000,
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const { data: taskData } = useQuery({
+    queryKey: ["dream-team-tasks-integrator"],
+    queryFn: () => fetchDreamTeamTasks(),
+    retry: false,
+    staleTime: 60_000,
+  });
+
+  const { data: emailHealth } = useQuery<EmailHealthData>({
+    queryKey: ["email-health-integrator"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/webhooks/mailgun/health" });
+      return res?.success ? res : null;
+    },
+    retry: false,
+    staleTime: 120_000,
+  });
+
+  const blockers: Array<{ text: string; severity: "red" | "amber" }> = [];
+
+  // Overdue/stuck tasks
+  const tasks = taskData?.tasks ?? [];
+  const overdueTasks = tasks.filter(
+    (t) => t.status !== "done" && t.due_date && new Date(t.due_date) < new Date()
+  );
+  if (overdueTasks.length > 0) {
+    blockers.push({
+      text: `${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? "s" : ""}: ${overdueTasks.slice(0, 2).map((t) => t.title).join(", ")}${overdueTasks.length > 2 ? "..." : ""}`,
+      severity: "red",
+    });
+  }
+
+  // Stuck tasks (open > 7 days, no progress)
+  const stuckTasks = tasks.filter(
+    (t) =>
+      t.status === "open" &&
+      daysBetween(t.created_at, new Date()) > 7
+  );
+  if (stuckTasks.length > 0) {
+    blockers.push({
+      text: `${stuckTasks.length} task${stuckTasks.length !== 1 ? "s" : ""} open for 7+ days`,
+      severity: "amber",
+    });
+  }
+
+  // Open circuits
+  const agents = mcData?.agents ?? [];
+  const openCircuits = agents.filter((a) => a.circuitState === "open");
+  if (openCircuits.length > 0) {
+    blockers.push({
+      text: `${openCircuits.length} agent circuit${openCircuits.length !== 1 ? "s" : ""} tripped: ${openCircuits.slice(0, 3).map((a) => a.displayName).join(", ")}`,
+      severity: "red",
+    });
+  }
+
+  // Email deliverability
+  const bounceRate = emailHealth?.bounceRate ?? 0;
+  if (bounceRate > 2) {
+    blockers.push({
+      text: `Email bounce rate at ${bounceRate}% (threshold: 2%)`,
+      severity: bounceRate > 5 ? "red" : "amber",
+    });
+  }
+
+  const complaintRate = emailHealth?.complaintRate ?? 0;
+  if (complaintRate > 0.1) {
+    blockers.push({
+      text: `Email complaint rate at ${complaintRate}%`,
+      severity: "red",
+    });
+  }
+
+  if (blockers.length === 0) {
+    return (
+      <div className="flex items-center gap-3 px-4 py-4">
+        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+        <p className="text-sm text-gray-500">No blockers. Everything is flowing.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {blockers.map((b, i) => (
+        <div
+          key={i}
+          className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${
+            b.severity === "red"
+              ? "border-red-200 bg-red-50/50"
+              : "border-amber-200 bg-amber-50/50"
+          }`}
+        >
+          <AlertTriangle className={`w-4 h-4 mt-0.5 shrink-0 ${
+            b.severity === "red" ? "text-red-500" : "text-amber-500"
+          }`} />
+          <p className={`text-sm ${
+            b.severity === "red" ? "text-red-700" : "text-amber-700"
+          }`}>
+            {b.text}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -471,6 +895,7 @@ function TrialPipeline({ orgs }: { orgs: AdminOrganization[] }) {
               <p className="text-sm font-semibold text-[#212D40] truncate">{org.name}</p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {daysRemaining} day{daysRemaining !== 1 ? "s" : ""} remaining
+                {hasConnection ? " . Connected" : " . Not connected"}
               </p>
             </div>
             <span className={`shrink-0 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${lc.bg} ${lc.color}`}>
@@ -998,9 +1423,19 @@ export default function IntegratorView() {
     : null;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
+    <div className="mx-auto max-w-lg px-4 py-8 space-y-6">
       {/* Greeting */}
       <Greeting firstName={firstName} brief={brief} isLoading={briefLoading} />
+
+      {/* Weekly Pulse: Are we growing? */}
+      <Card>
+        <SectionLabel
+          icon={TrendingUp}
+          label="Weekly Pulse"
+          iconColor="text-emerald-500"
+        />
+        <WeeklyPulse orgs={orgs} />
+      </Card>
 
       {/* Client Health Grid (hero section) */}
       <Card>
@@ -1012,6 +1447,26 @@ export default function IntegratorView() {
         <ClientHealthGrid />
       </Card>
 
+      {/* Agent Pipeline Status */}
+      <Card>
+        <SectionLabel
+          icon={Activity}
+          label="Agent Pipeline"
+          iconColor="text-blue-500"
+        />
+        <AgentPipelineStatus />
+      </Card>
+
+      {/* Blockers */}
+      <Card>
+        <SectionLabel
+          icon={AlertTriangle}
+          label="Blockers"
+          iconColor="text-red-500"
+        />
+        <BlockerPanel />
+      </Card>
+
       {/* Today's Actions */}
       <Card>
         <SectionLabel
@@ -1021,6 +1476,16 @@ export default function IntegratorView() {
           iconColor="text-amber-500"
         />
         <TodaysActions brief={brief} />
+      </Card>
+
+      {/* Trial Pipeline */}
+      <Card>
+        <SectionLabel
+          icon={Clock}
+          label="Trial Pipeline"
+          iconColor="text-blue-500"
+        />
+        <TrialPipeline orgs={orgs} />
       </Card>
 
       {/* Dream Team Activity */}
@@ -1043,20 +1508,10 @@ export default function IntegratorView() {
         <MyFlags />
       </Card>
 
-      {/* Trial Pipeline */}
-      <Card>
-        <SectionLabel
-          icon={Clock}
-          label="Trial Pipeline"
-          iconColor="text-blue-500"
-        />
-        <TrialPipeline orgs={orgs} />
-      </Card>
-
       {/* Revenue Snapshot (compact) */}
       <Card>
         <SectionLabel
-          icon={TrendingUp}
+          icon={BarChart3}
           label="Revenue"
           iconColor="text-emerald-500"
         />

@@ -36,6 +36,7 @@ import IntelligencePanel from "./admin/IntelligencePanel";
 import RevenueDashboard from "../components/Admin/RevenueDashboard";
 import SessionIntelligence from "../components/Admin/SessionIntelligence";
 const BoardChat = React.lazy(() => import("./admin/BoardChat"));
+const ReadinessTracker = React.lazy(() => import("./admin/ReadinessTracker"));
 
 function WebDevEngine() {
   return (
@@ -84,6 +85,7 @@ function AdminWithLayout() {
         />
         <Route path="webdev-engine" element={<WebDevEngine />} />
         <Route path="app-logs" element={<AppLogs />} />
+        <Route path="readiness" element={<ReadinessTracker />} />
         <Route
           path="organization-management"
           element={<OrganizationManagement />}
