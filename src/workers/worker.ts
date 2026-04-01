@@ -270,6 +270,7 @@ async function shutdown(): Promise<void> {
   await wbBackupWorker.close();
   await wbRestoreWorker.close();
   await pmDailyBriefWorker.close();
+  await dreamweaverWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
