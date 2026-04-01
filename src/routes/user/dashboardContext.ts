@@ -50,6 +50,10 @@ dashboardContextRoutes.get(
           "trial_end_at",
           "trial_status",
           "stripe_customer_id",
+          "current_clarity_score",
+          "previous_clarity_score",
+          "score_history",
+          "score_updated_at",
         )
         .first();
 
@@ -149,6 +153,16 @@ dashboardContextRoutes.get(
         };
       }
 
+      // Parse score_history from JSONB
+      let scoreHistory = null;
+      if (org.score_history) {
+        try {
+          scoreHistory = typeof org.score_history === "string"
+            ? JSON.parse(org.score_history)
+            : org.score_history;
+        } catch { /* ignore parse errors */ }
+      }
+
       return res.json({
         success: true,
         checkup_context: checkupContext,
@@ -160,6 +174,10 @@ dashboardContextRoutes.get(
         has_referral_data: hasReferralData,
         intelligence_mode: intelligenceMode,
         referral_stats: referralStats,
+        current_clarity_score: org.current_clarity_score ?? null,
+        previous_clarity_score: org.previous_clarity_score ?? null,
+        score_history: scoreHistory,
+        score_updated_at: org.score_updated_at ?? null,
         trial: org.trial_end_at ? {
           ends_at: org.trial_end_at,
           status: org.trial_status || "active",

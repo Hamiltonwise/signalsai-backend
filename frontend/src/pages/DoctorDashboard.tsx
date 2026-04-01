@@ -48,6 +48,8 @@ import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import { isConferenceMode } from "./checkup/conferenceFallback";
 import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
 import ScoreImprovementPlan from "@/components/dashboard/ScoreImprovementPlan";
+import ScoreSimulator from "@/components/dashboard/ScoreSimulator";
+import ScoreHistory from "@/components/dashboard/ScoreHistory";
 import CompetitorComparison from "@/components/dashboard/CompetitorComparison";
 import AddCompetitor from "@/components/dashboard/AddCompetitor";
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
@@ -1230,6 +1232,11 @@ export default function DoctorDashboard() {
             <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { localVisibility: checkupCtx.data.score.localVisibility, onlinePresence: checkupCtx.data.score.onlinePresence, reviewHealth: checkupCtx.data.score.reviewHealth } : null} />
           </motion.div>
 
+          {/* Score History sparkline — shows the score is alive */}
+          <motion.div variants={cardVariants}>
+            <ScoreHistory />
+          </motion.div>
+
           {/* Benchmark social proof — belonging signal */}
           {effectiveRanking?.location && (
             <p className="text-xs text-gray-400 text-center -mt-2">
@@ -1254,8 +1261,13 @@ export default function DoctorDashboard() {
           )}
 
           {/* Score Improvement Plan — actionable steps to raise the score */}
-          <motion.div variants={cardVariants}>
+          <motion.div variants={cardVariants} id="improvement-plan">
             <ScoreImprovementPlan />
+          </motion.div>
+
+          {/* What If Score Simulator — interactive projections */}
+          <motion.div variants={cardVariants}>
+            <ScoreSimulator />
           </motion.div>
 
           {/* Tracked Competitor Comparisons */}

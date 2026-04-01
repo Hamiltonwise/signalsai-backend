@@ -19,6 +19,7 @@ import { processPmDailyBrief } from "./processors/pmDailyBrief.processor";
 import { runDreamweaver } from "../services/dreamweaverAgent";
 import { runCollectiveIntelligence } from "../services/collectiveIntelligence";
 import { runProductEvolution } from "../jobs/productEvolution";
+import { processWeeklyScoreRecalc } from "./processors/weeklyScoreRecalc.processor";
 import { getMindsQueue, getPmQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 import { getSharedRedis, closeSharedRedis } from "../services/redis";
@@ -254,8 +255,16 @@ const productEvolutionWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// Weekly Score Recalculation (Sunday 10 PM ET = Monday 3 AM UTC)
+// Makes the Business Clarity Score alive. Runs before Monday email.
+const weeklyScoreRecalcWorker = new Worker(
+  "minds-weekly-score-recalc",
+  async (job) => { await processWeeklyScoreRecalc(job); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker, weeklyScoreRecalcWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -286,6 +295,7 @@ async function shutdown(): Promise<void> {
   await dreamweaverWorker.close();
   await collectiveIntelligenceWorker.close();
   await productEvolutionWorker.close();
+  await weeklyScoreRecalcWorker.close();
   await closeWbQueues();
   await closeSharedRedis();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -421,6 +431,27 @@ async function setupProductEvolutionSchedule(): Promise<void> {
   }
 }
 
+// Set up Weekly Score Recalculation (Sunday 10 PM ET = Monday 3 AM UTC)
+async function setupWeeklyScoreRecalcSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("weekly-score-recalc");
+    await queue.add(
+      "weekly-score-recalc",
+      {},
+      {
+        repeat: {
+          pattern: "0 3 * * 1", // Monday 3 AM UTC = Sunday 10 PM ET
+          tz: "UTC",
+        },
+        jobId: "weekly-score-recalc",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly score recalc scheduled (Sunday 10 PM ET / Monday 3 AM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up weekly score recalc:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
@@ -429,5 +460,6 @@ setupSchedulerTick();
 setupPmDailyBriefSchedule();
 setupCollectiveIntelligenceSchedule();
 setupProductEvolutionSchedule();
+setupWeeklyScoreRecalcSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");

@@ -48,6 +48,23 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   const customerTerm = vocabConfig?.config?.patientTerm || "customer";
   const competitorFallback = vocabConfig?.config?.competitorTerm || "the #1 competitor";
 
+  // 0. Score delta opener -- the score is alive
+  let scoreDeltaLine = "";
+  const currentScore = org.current_clarity_score ?? org.checkup_score ?? null;
+  const previousScoreVal = org.previous_clarity_score ?? null;
+  if (currentScore != null) {
+    if (previousScoreVal != null && previousScoreVal !== currentScore) {
+      const scoreDelta = currentScore - previousScoreVal;
+      if (scoreDelta > 0) {
+        scoreDeltaLine = `Your Business Clarity Score: ${previousScoreVal} -> ${currentScore} (+${scoreDelta} this week)`;
+      } else {
+        scoreDeltaLine = `Your Business Clarity Score: ${previousScoreVal} -> ${currentScore} (${scoreDelta})`;
+      }
+    } else {
+      scoreDeltaLine = `Your Business Clarity Score: ${currentScore} (holding steady)`;
+    }
+  }
+
   // 1. Fetch most recent snapshot
   const snapshot = await db("weekly_ranking_snapshots")
     .where({ org_id: orgId })
@@ -154,8 +171,8 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   // Subject line: ALWAYS specific
   const subjectLine = `${ownerLastName}, ${findingHeadline.toLowerCase()}`;
 
-  // Finding body: bullets + autonomous action line
-  let findingBody = bullets.join("\n\n");
+  // Finding body: score delta opener + bullets + autonomous action line
+  let findingBody = scoreDeltaLine ? `${scoreDeltaLine}\n\n${bullets.join("\n\n")}` : bullets.join("\n\n");
 
   // Add autonomous action line
   if (snapshot.position && snapshot.competitor_name) {
