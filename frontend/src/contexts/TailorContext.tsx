@@ -16,6 +16,7 @@ import {
 import { apiGet, apiPut } from "../api/index";
 import { getPriorityItem } from "../hooks/useLocalStorage";
 import { isSuperAdminEmail } from "../constants/superAdmins";
+import { isPartnerEmail } from "../constants/partners";
 
 interface TailorContextType {
   isTailorMode: boolean;
@@ -36,7 +37,7 @@ export function TailorProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const email =
       getPriorityItem("user_email")?.toLowerCase() || "";
-    setIsSuperAdmin(isSuperAdminEmail(email));
+    setIsSuperAdmin(isSuperAdminEmail(email) || isPartnerEmail(email));
   }, []);
 
   // Load overrides from backend on mount (only for super admins)

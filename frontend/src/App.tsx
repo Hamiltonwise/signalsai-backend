@@ -383,6 +383,7 @@ function App() {
                 <Route path="/hq/command" element={<React.Suspense fallback={null}><HQCommand /></React.Suspense>} />
                 <Route path="/hq/organizations" element={<React.Suspense fallback={null}><HQOrganizations /></React.Suspense>} />
                 <Route path="/hq/board" element={<React.Suspense fallback={null}><HQBoard /></React.Suspense>} />
+                <Route path="/board" element={<React.Suspense fallback={null}><HQBoard /></React.Suspense>} />
               </Route>
 
               {/* Admin routes with AppProviders but no PageWrapper */}

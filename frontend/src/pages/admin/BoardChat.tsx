@@ -48,10 +48,53 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
       "What's queued for the next deploy?",
     ],
   },
+  // DentalEMR partner roles
+  dentalemr_ceo: {
+    subtitle: "Your business intelligence partner",
+    greeting: "What do you need help with?",
+    description: "Revenue trends, marketing performance, competitor moves. Ask anything about your business.",
+    starters: [
+      "Why are our demos and conversions down?",
+      "Draft me an email for AAE follow-up",
+      "What is TDO doing this week?",
+      "Show me our marketing performance",
+    ],
+  },
+  dentalemr_sales: {
+    subtitle: "Your sales intelligence partner",
+    greeting: "Ready for your next demo?",
+    description: "Demo prep, lead scoring, follow-up drafts, objection handling. Your sales co-pilot.",
+    starters: [
+      "Prep me for my next demo",
+      "Which leads are hottest right now?",
+      "Draft a follow-up email for a prospect",
+      "What objections should I expect?",
+    ],
+  },
+  dentalemr_support: {
+    subtitle: "Your support intelligence partner",
+    greeting: "How can I help today?",
+    description: "Client issues, onboarding status, follow-up queues. Everything you need in one place.",
+    starters: [
+      "Show me clients with open issues",
+      "Draft a response to a support request",
+      "What onboarding steps are pending?",
+      "Which clients need follow-up?",
+    ],
+  },
 };
 
 function getUserRole(email: string): string {
   const lower = (email || "").toLowerCase();
+  // DentalEMR partner roles
+  if (lower.endsWith("@dentalemr.com")) {
+    const prefix = lower.split("@")[0];
+    if (prefix === "merideth") return "dentalemr_ceo";
+    if (prefix === "jay") return "dentalemr_sales";
+    if (prefix === "rosanna") return "dentalemr_support";
+    return "dentalemr_ceo"; // fallback for other DentalEMR emails
+  }
+  // Internal Alloro roles
   if (lower.includes("jordan") || lower.includes("jo@")) return "integrator";
   if (lower.includes("dave") || lower.includes("rustine")) return "build";
   return "visionary";

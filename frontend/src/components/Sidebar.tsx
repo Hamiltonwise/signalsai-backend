@@ -37,6 +37,7 @@ import { LocationSwitcher } from "./LocationSwitcher";
 import { TailorToggle } from "./TailorToggle";
 import { getPriorityItem } from "../hooks/useLocalStorage";
 import { isSuperAdminEmail } from "../constants/superAdmins";
+import { isPartnerEmail } from "../constants/partners";
 
 type UserRole = "admin" | "manager" | "viewer";
 type ViewMode = "admin" | "customer";
@@ -296,6 +297,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const canSeeNotifications = userRole !== "viewer";
   const isManagerOrAbove = userRole === "admin" || userRole === "manager";
   const isSuperAdmin = isSuperAdminEmail(userProfile?.email);
+  const isPartner = isPartnerEmail(userProfile?.email);
 
   // Super admins default to admin view; non-super-admins always see customer view
   const effectiveViewMode: ViewMode = isSuperAdmin ? viewMode : "customer";
@@ -575,6 +577,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           </div>
         )}
+
+        {/* Partner extras: The Board */}
+        {isPartner && onboardingCompleted && (
+          <>
+            <div className="py-3">
+              <div className="border-t border-white/5" />
+            </div>
+            <div className="space-y-1.5">
+              <NavItem
+                icon={<Brain size={18} />}
+                label="The Board"
+                active={isActive("/board")}
+                onClick={() => handleNavigate("/board")}
+                minimized={isMinimized}
+                glow={!isActive("/board")}
+              />
+            </div>
+          </>
+        )}
       </>
     );
   };
@@ -772,6 +793,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <p className="text-[9px] text-white/20 font-black uppercase tracking-widest mt-0.5">
                     {isSuperAdmin
                       ? "Super Admin"
+                      : isPartner
+                      ? "Partner"
                       : userRole === "admin"
                       ? "Administrator"
                       : userRole === "manager"
