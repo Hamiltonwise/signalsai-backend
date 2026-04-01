@@ -2,7 +2,6 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import { Worker } from "bullmq";
-import IORedis from "ioredis";
 import { processScrapeCompare } from "./processors/scrapeCompare.processor";
 import { processCompilePublish } from "./processors/compilePublish.processor";
 import { processDiscovery } from "./processors/discovery.processor";
@@ -22,19 +21,13 @@ import { runCollectiveIntelligence } from "../services/collectiveIntelligence";
 import { runProductEvolution } from "../jobs/productEvolution";
 import { getMindsQueue, getPmQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
-
-const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
-const REDIS_PORT = parseInt(process.env.REDIS_PORT || "6379", 10);
+import { getSharedRedis, closeSharedRedis } from "../services/redis";
 
 console.log("[MINDS-WORKER] Starting Minds worker process...");
-console.log(`[MINDS-WORKER] Connecting to Redis at ${REDIS_HOST}:${REDIS_PORT}`);
 
-const connection = new IORedis({
-  host: REDIS_HOST,
-  port: REDIS_PORT,
-  maxRetriesPerRequest: null,
-  ...(process.env.REDIS_TLS === "true" && { tls: {} }),
-});
+// Shared self-healing Redis connection with exponential backoff.
+// Workers survive Redis restarts and reconnect automatically.
+const connection = getSharedRedis();
 
 // Scrape & Compare worker
 const scrapeCompareWorker = new Worker(
@@ -294,7 +287,7 @@ async function shutdown(): Promise<void> {
   await collectiveIntelligenceWorker.close();
   await productEvolutionWorker.close();
   await closeWbQueues();
-  await connection.quit();
+  await closeSharedRedis();
   console.log("[MINDS-WORKER] Workers shut down");
   process.exit(0);
 }

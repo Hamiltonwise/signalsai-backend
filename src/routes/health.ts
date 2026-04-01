@@ -7,6 +7,7 @@
 
 import express from "express";
 import { db } from "../database/connection";
+import { isRedisHealthy, getSharedRedis } from "../services/redis";
 
 const healthRoutes = express.Router();
 
@@ -14,10 +15,15 @@ const healthRoutes = express.Router();
 
 /**
  * GET /api/health
- * Fast response for load balancer. No DB call.
+ * Fast response for load balancer. Includes Redis ping.
  */
-healthRoutes.get("/", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+healthRoutes.get("/", async (_req, res) => {
+  const redisUp = await isRedisHealthy();
+  res.json({
+    status: "ok",
+    redis: redisUp ? "connected" : "disconnected",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ─── Detailed Health Check ───
@@ -47,21 +53,11 @@ healthRoutes.get("/detailed", async (_req, res) => {
     checks.database = { status: "error", error: err.message };
   }
 
-  // 2. Redis / BullMQ
+  // 2. Redis / BullMQ (uses shared self-healing connection)
   try {
-    const IORedis = require("ioredis");
-    const redisHost = process.env.REDIS_HOST || "127.0.0.1";
-    const redisPort = parseInt(process.env.REDIS_PORT || "6379", 10);
-    const redis = new IORedis({
-      host: redisHost,
-      port: redisPort,
-      connectTimeout: 3000,
-      lazyConnect: true,
-      ...(process.env.REDIS_TLS === "true" && { tls: {} }),
-    });
+    const redis = getSharedRedis();
 
     const start = Date.now();
-    await redis.connect();
     await redis.ping();
     const latency = Date.now() - start;
 
@@ -83,7 +79,6 @@ healthRoutes.get("/detailed", async (_req, res) => {
       // BullMQ stats are best-effort
     }
 
-    await redis.disconnect();
     checks.redis = { status: "ok", latency_ms: latency, queued_jobs: queuedJobs, failed_jobs: failedJobs };
   } catch (err: any) {
     checks.redis = { status: "error", error: err.message };
