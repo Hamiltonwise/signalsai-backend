@@ -33,17 +33,10 @@ function CheckupInput({ id, dark = false }: CheckupInputProps) {
   const locationRef = useRef<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-    let resolved = false;
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => { if (!resolved) { resolved = true; locationRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; } },
-        () => {},
-        { timeout: 3000, maximumAge: 300000 }
-      );
-    }
-    fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(3000) })
+    // IP-based location via backend. No browser permission popup.
+    fetch("/api/checkup/geo", { signal: AbortSignal.timeout(3000) })
       .then(r => r.json())
-      .then(data => { if (!resolved && data.latitude && data.longitude) { resolved = true; locationRef.current = { lat: data.latitude, lng: data.longitude }; } })
+      .then(data => { if (data.lat && data.lng) { locationRef.current = { lat: data.lat, lng: data.lng }; } })
       .catch(() => {});
   }, []);
 

@@ -153,6 +153,40 @@ const emailLimiter = rateLimit({
 });
 
 /**
+ * GET /api/checkup/geo
+ *
+ * Returns approximate lat/lng from the request IP address.
+ * Used for autocomplete location biasing without triggering a browser
+ * geolocation permission popup. Silent, private, no user interaction.
+ */
+checkupRoutes.get("/geo", async (req, res) => {
+  try {
+    // Express trust proxy gives us the real IP via x-forwarded-for
+    const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+      || req.socket.remoteAddress
+      || "";
+
+    // Skip private/localhost IPs
+    if (!ip || ip === "127.0.0.1" || ip === "::1" || ip.startsWith("192.168.") || ip.startsWith("10.")) {
+      return res.json({ lat: null, lng: null });
+    }
+
+    const geoRes = await fetch(`https://ipapi.co/${ip}/json/`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    const data = await geoRes.json();
+
+    if (data.latitude && data.longitude) {
+      return res.json({ lat: data.latitude, lng: data.longitude });
+    }
+
+    return res.json({ lat: null, lng: null });
+  } catch {
+    return res.json({ lat: null, lng: null });
+  }
+});
+
+/**
  * POST /api/checkup/analyze
  *
  * Runs a competitor analysis for the Free Referral Base Checkup.
