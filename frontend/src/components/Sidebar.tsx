@@ -12,7 +12,6 @@ import {
   ChevronRight,
   AlertTriangle,
   X,
-  HelpCircle,
   Lock,
   Globe,
   PanelLeftClose,
@@ -21,8 +20,10 @@ import {
   Shield,
   Brain,
   Users,
-  Zap,
   MessageSquare,
+  Radio,
+  Eye,
+  ArrowLeft,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSidebar } from "./Admin/SidebarContext";
@@ -38,6 +39,7 @@ import { getPriorityItem } from "../hooks/useLocalStorage";
 import { isSuperAdminEmail } from "../constants/superAdmins";
 
 type UserRole = "admin" | "manager" | "viewer";
+type ViewMode = "admin" | "customer";
 
 interface SidebarProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,6 +61,7 @@ interface NavItemProps {
   hasNotification?: boolean;
   isLocked?: boolean;
   minimized?: boolean;
+  glow?: boolean;
 }
 
 const NavItem = ({
@@ -70,6 +73,7 @@ const NavItem = ({
   hasNotification = false,
   isLocked = false,
   minimized = false,
+  glow = false,
 }: NavItemProps) => (
   <button
     onClick={onClick}
@@ -83,6 +87,8 @@ const NavItem = ({
         ? "opacity-40 cursor-not-allowed"
         : active
         ? "bg-alloro-sidehover text-white shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] border border-white/5"
+        : glow
+        ? "text-white/60 hover:text-white hover:bg-alloro-sidehover/60 ring-1 ring-alloro-orange/20 shadow-[0_0_12px_rgba(214,104,83,0.08)]"
         : "text-white/40 hover:text-white/80 hover:bg-alloro-sidehover/60"
     }`}
   >
@@ -91,6 +97,8 @@ const NavItem = ({
         className={`transition-all duration-300 ${
           active
             ? "scale-110 text-alloro-orange drop-shadow-[0_0_6px_rgba(214,104,83,0.4)]"
+            : glow
+            ? "text-alloro-orange/70 opacity-80 group-hover:opacity-100"
             : "opacity-40 group-hover:opacity-80"
         }`}
       >
@@ -99,7 +107,7 @@ const NavItem = ({
       {!minimized && (
         <span
           className={`text-[13px] font-semibold tracking-tight ${
-            active ? "text-white" : "group-hover:text-white/80"
+            active ? "text-white" : glow ? "text-white/70 group-hover:text-white" : "group-hover:text-white/80"
           }`}
         >
           {label}
@@ -136,6 +144,17 @@ const NavItem = ({
   </button>
 );
 
+/** Returns true if AAE Live should be visible (within 30 days of April 15). */
+function isAAEWindow(): boolean {
+  const now = new Date();
+  const year = now.getFullYear();
+  const aaeDate = new Date(year, 3, 15); // April 15
+  const diffMs = aaeDate.getTime() - now.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  // Show if within 30 days before OR 5 days after (for follow-up)
+  return diffDays >= -5 && diffDays <= 30;
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({
   userProfile,
   onboardingCompleted,
@@ -154,6 +173,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [hasWebsite, setHasWebsite] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("admin");
 
   // Intelligence mode determines which nav items to show
   const { data: dashCtx } = useQuery({
@@ -184,7 +204,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     try {
       const response = await fetchClientTasks(organizationId, locationId);
       if (response?.success && response.tasks) {
-        // Count only pending USER tasks
         const pendingUserTasks =
           response.tasks.USER?.filter(
             (task) => task.status !== "complete" && task.status !== "archived"
@@ -196,12 +215,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [userProfile?.organizationId, onboardingCompleted, locationId]);
 
-  // Initial load of task count
   useEffect(() => {
     loadTaskCount();
   }, [loadTaskCount]);
 
-  // Listen for task updates from TasksView
   useEffect(() => {
     const handleTasksUpdated = () => {
       loadTaskCount();
@@ -228,16 +245,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [userProfile?.organizationId, onboardingCompleted, locationId]);
 
-  // Initial load and periodic refresh of notification count
   useEffect(() => {
     loadNotificationCount();
 
-    // Poll every 3 seconds for real-time notification updates
     const interval = setInterval(loadNotificationCount, 3000);
     return () => clearInterval(interval);
   }, [loadNotificationCount]);
 
-  // Check if org has a website project (determines whether Websites nav shows).
+  // Check if org has a website project
   useEffect(() => {
     const checkWebsite = async () => {
       const organizationId = userProfile?.organizationId;
@@ -249,14 +264,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           setHasWebsite(true);
         }
       } catch {
-        // Silent fail — no website project, or 401/403 for viewer role
+        // Silent fail
       }
     };
 
     checkWebsite();
   }, [userProfile?.organizationId]);
 
-  // Listen for notification updates (when user marks all as read or deletes)
   useEffect(() => {
     const handleNotificationsUpdated = () => {
       loadNotificationCount();
@@ -281,61 +295,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const canSeeNotifications = userRole !== "viewer";
   const isManagerOrAbove = userRole === "admin" || userRole === "manager";
-
-  // HQ access: super admin users see admin navigation in the same sidebar
   const isSuperAdmin = isSuperAdminEmail(userProfile?.email);
 
-  // Main navigation items — role-gated
-  const mainNavItems = [
-    {
-      label: "Home",
-      icon: <LayoutDashboard size={18} />,
-      path: isSuperAdmin ? "/hq/command" : "/dashboard",
-      showDuringOnboarding: true,
-    },
-    // Referrals Hub: owner + manager only, hidden for direct_acquisition verticals
-    ...(isManagerOrAbove && showReferralHub
-      ? [
-          {
-            label: intelligenceMode === "hybrid" ? "Revenue Sources" : "Referrals Hub",
-            icon: <Activity size={18} />,
-            path: "/pmsStatistics",
-            showDuringOnboarding: false,
-          },
-        ]
-      : []),
-    {
-      label: "Local Rankings",
-      icon: <Trophy size={18} />,
-      path: "/rankings",
-      showDuringOnboarding: false,
-    },
-    {
-      label: "Progress Report",
-      icon: <BarChart3 size={18} />,
-      path: "/dashboard/progress",
-      showDuringOnboarding: false,
-    },
-    {
-      label: "Intelligence",
-      icon: <Shield size={18} />,
-      path: "/dashboard/intelligence",
-      showDuringOnboarding: false,
-    },
-    // Locations: owner + manager only (multi-location management)
-    ...(isManagerOrAbove
-      ? [
-          {
-            label: "Locations",
-            icon: <MapPin size={18} />,
-            path: "/dashboard/locations",
-            showDuringOnboarding: false,
-          },
-        ]
-      : []),
-  ];
+  // Super admins default to admin view; non-super-admins always see customer view
+  const effectiveViewMode: ViewMode = isSuperAdmin ? viewMode : "customer";
 
-  // Execution & Alerts items - dynamic badges and notifications
+  // Execution items with badges (shared between both views)
   const executionNavItems = useMemo(
     () => [
       {
@@ -356,32 +321,263 @@ export const Sidebar: React.FC<SidebarProps> = ({
     [userTaskCount, unreadNotificationCount]
   );
 
-  // Filter nav items based on onboarding status
-  const filteredMainNav = onboardingCompleted
-    ? mainNavItems
-    : mainNavItems.filter((item) => item.showDuringOnboarding);
-
-  const filteredExecutionNav = onboardingCompleted
-    ? executionNavItems
-    : executionNavItems.filter((item) => item.showDuringOnboarding);
-
   const isActive = (path: string) => {
     if (path === "/dashboard" && location.pathname === "/dashboard")
       return true;
-    return location.pathname.startsWith(path) && path !== "/dashboard";
+    if (path === "/hq/command" && location.pathname === "/hq/command")
+      return true;
+    return location.pathname.startsWith(path) && path !== "/dashboard" && path !== "/hq/command";
   };
 
   const handleNavigate = (path: string) => {
-    // Block navigation during wizard - the wizard controls navigation
-    if (isWizardActive) {
-      return;
-    }
+    if (isWizardActive) return;
     navigate(path);
     onClose?.();
   };
 
-  // Minimized = collapsed on desktop, but never when mobile drawer is open
   const isMinimized = collapsed && !isOpen;
+
+  // ---- Admin nav (super admins only) ----
+  const renderAdminNav = () => (
+    <div className="space-y-1.5">
+      <NavItem
+        icon={<LayoutDashboard size={18} />}
+        label="Home"
+        active={isActive("/hq/command")}
+        onClick={() => handleNavigate("/hq/command")}
+        minimized={isMinimized}
+      />
+      <NavItem
+        icon={<Brain size={18} />}
+        label="The Board"
+        active={isActive("/hq/board")}
+        onClick={() => handleNavigate("/hq/board")}
+        minimized={isMinimized}
+        glow={!isActive("/hq/board")}
+      />
+      <NavItem
+        icon={<Users size={18} />}
+        label="Organizations"
+        active={location.pathname === "/hq/organizations"}
+        onClick={() => handleNavigate("/hq/organizations")}
+        minimized={isMinimized}
+      />
+      <NavItem
+        icon={<Users size={18} />}
+        label="Dream Team"
+        active={isActive("/admin/minds")}
+        onClick={() => handleNavigate("/admin/minds")}
+        minimized={isMinimized}
+      />
+      <NavItem
+        icon={<MessageSquare size={18} />}
+        label="Messages"
+        active={location.pathname === "/messages"}
+        onClick={() => handleNavigate("/messages")}
+        minimized={isMinimized}
+      />
+
+      {/* Subtle divider */}
+      <div className="py-3">
+        <div className="border-t border-white/5" />
+      </div>
+
+      {/* Customer View toggle */}
+      {!isMinimized ? (
+        <button
+          onClick={() => setViewMode("customer")}
+          className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-300 text-white/40 hover:text-white/80 border border-white/10 hover:border-white/20 hover:bg-alloro-sidehover/40"
+        >
+          <Eye size={18} className="opacity-60" />
+          <span className="text-[13px] font-semibold tracking-tight">Customer View</span>
+        </button>
+      ) : (
+        <button
+          onClick={() => setViewMode("customer")}
+          title="Customer View"
+          className="w-full flex items-center justify-center py-3 rounded-xl transition-all duration-300 text-white/40 hover:text-white/80 border border-white/10 hover:border-white/20"
+        >
+          <Eye size={18} className="opacity-60" />
+        </button>
+      )}
+
+      {/* AAE Live - conditional, within 30 days of April 15 */}
+      {isAAEWindow() && (
+        <NavItem
+          icon={<Radio size={18} />}
+          label="AAE Live"
+          active={isActive("/admin/aae")}
+          onClick={() => handleNavigate("/admin/aae")}
+          minimized={isMinimized}
+        />
+      )}
+    </div>
+  );
+
+  // ---- Customer nav ----
+  const renderCustomerNav = () => {
+    const mainItems = [
+      {
+        label: "Home",
+        icon: <LayoutDashboard size={18} />,
+        path: "/dashboard",
+        showDuringOnboarding: true,
+      },
+      // Referrals Hub: owner + manager only, hidden for direct_acquisition verticals
+      ...(isManagerOrAbove && showReferralHub
+        ? [
+            {
+              label: intelligenceMode === "hybrid" ? "Revenue Sources" : "Referrals Hub",
+              icon: <Activity size={18} />,
+              path: "/pmsStatistics",
+              showDuringOnboarding: false,
+            },
+          ]
+        : []),
+      {
+        label: "Local Rankings",
+        icon: <Trophy size={18} />,
+        path: "/rankings",
+        showDuringOnboarding: false,
+      },
+      {
+        label: "Progress Report",
+        icon: <BarChart3 size={18} />,
+        path: "/dashboard/progress",
+        showDuringOnboarding: false,
+      },
+      {
+        label: "Intelligence",
+        icon: <Shield size={18} />,
+        path: "/dashboard/intelligence",
+        showDuringOnboarding: false,
+      },
+      // Locations: owner + manager only
+      ...(isManagerOrAbove
+        ? [
+            {
+              label: "Locations",
+              icon: <MapPin size={18} />,
+              path: "/dashboard/locations",
+              showDuringOnboarding: false,
+            },
+          ]
+        : []),
+    ];
+
+    const filteredMain = onboardingCompleted
+      ? mainItems
+      : mainItems.filter((item) => item.showDuringOnboarding);
+
+    const filteredExecution = onboardingCompleted
+      ? executionNavItems
+      : executionNavItems.filter((item) => item.showDuringOnboarding);
+
+    return (
+      <>
+        {/* Customer View banner for super admins */}
+        {isSuperAdmin && !isMinimized && (
+          <div className="bg-alloro-orange/10 border border-alloro-orange/20 rounded-xl p-3 mb-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black text-alloro-orange/80 uppercase tracking-wider">
+                Viewing as customer
+              </span>
+              <button
+                onClick={() => setViewMode("admin")}
+                className="flex items-center gap-1.5 text-[11px] font-bold text-white/60 hover:text-white transition-colors"
+              >
+                <ArrowLeft size={12} />
+                Exit
+              </button>
+            </div>
+          </div>
+        )}
+        {isSuperAdmin && isMinimized && (
+          <button
+            onClick={() => setViewMode("admin")}
+            title="Exit customer view"
+            className="w-full flex items-center justify-center py-2 mb-2 rounded-lg bg-alloro-orange/10 text-alloro-orange/80 hover:text-alloro-orange transition-colors"
+          >
+            <ArrowLeft size={14} />
+          </button>
+        )}
+
+        {/* Main nav items */}
+        <div className="space-y-1.5">
+          {!isMinimized && (
+            <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-4 mb-4">
+              Operations
+              {isWizardActive && (
+                <span className="ml-2 text-alloro-orange">(Tour Active)</span>
+              )}
+            </div>
+          )}
+          {filteredMain.map(({ label, icon, path }) => (
+            <NavItem
+              key={label}
+              icon={icon}
+              label={label}
+              active={isActive(path)}
+              onClick={() => handleNavigate(path)}
+              isLocked={isWizardActive}
+              minimized={isMinimized}
+            />
+          ))}
+        </div>
+
+        {/* Websites */}
+        {onboardingCompleted && hasWebsite && isManagerOrAbove && (
+          <div className="space-y-1.5 mt-1.5">
+            <NavItem
+              icon={<Globe size={18} />}
+              label="Websites"
+              active={isActive("/dfy/website")}
+              onClick={() => handleNavigate("/dfy/website")}
+              isLocked={isWizardActive}
+              minimized={isMinimized}
+            />
+          </div>
+        )}
+
+        {/* Subtle divider */}
+        {onboardingCompleted && (
+          <div className="py-3">
+            <div className="border-t border-white/5" />
+          </div>
+        )}
+
+        {/* Execution & Alerts */}
+        {onboardingCompleted && (
+          <div className="space-y-1.5">
+            {filteredExecution.map(
+              ({ label, icon, path, badge, hasNotification }) =>
+                canSeeNotifications || path !== "/notifications" ? (
+                  <NavItem
+                    key={label}
+                    icon={icon}
+                    label={label}
+                    active={isActive(path)}
+                    onClick={() => handleNavigate(path)}
+                    badge={badge}
+                    hasNotification={hasNotification}
+                    isLocked={isWizardActive}
+                    minimized={isMinimized}
+                  />
+                ) : null
+            )}
+            <NavItem
+              icon={<MessageSquare size={18} />}
+              label="Messages"
+              active={location.pathname === "/messages"}
+              onClick={() => handleNavigate("/messages")}
+              isLocked={isWizardActive}
+              minimized={isMinimized}
+            />
+          </div>
+        )}
+      </>
+    );
+  };
 
   return (
     <>
@@ -459,7 +655,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               src="/logo.png"
               alt="Alloro"
               className="w-8 h-8 rounded-xl shadow-soft-glow cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => handleNavigate("/dashboard")}
+              onClick={() => handleNavigate(isSuperAdmin && effectiveViewMode === "admin" ? "/hq/command" : "/dashboard")}
             />
             <button
               onClick={toggleCollapsed}
@@ -473,7 +669,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="p-10 pb-12 flex items-center justify-between">
             <div
               className="flex items-center gap-4 group cursor-pointer"
-              onClick={() => handleNavigate("/dashboard")}
+              onClick={() => handleNavigate(isSuperAdmin && effectiveViewMode === "admin" ? "/hq/command" : "/dashboard")}
             >
               <img
                 src="/logo.png"
@@ -506,7 +702,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         {/* Navigation */}
-        <nav className={`flex-1 overflow-y-auto ${isMinimized ? "px-2 space-y-2" : "px-6 space-y-10"} scrollbar-thin`}>
+        <nav className={`flex-1 overflow-y-auto ${isMinimized ? "px-2 space-y-2" : "px-6 space-y-4"} scrollbar-thin`}>
           {/* Lockout Banner */}
           {isLockedOut && (
             isMinimized ? (
@@ -528,136 +724,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )
           )}
 
-          {/* Main Operating View */}
-          {!isLockedOut && (
-            <div className="space-y-1.5">
-              {!isMinimized && (
-                <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-4 mb-4">
-                  Operations
-                  {isWizardActive && (
-                    <span className="ml-2 text-alloro-orange">(Tour Active)</span>
-                  )}
-                </div>
-              )}
-              {filteredMainNav.map(({ label, icon, path }) => (
-                <NavItem
-                  key={label}
-                  icon={icon}
-                  label={label}
-                  active={isActive(path)}
-                  onClick={() => handleNavigate(path)}
-                  isLocked={isWizardActive}
-                  minimized={isMinimized}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Websites — owner + manager only */}
-          {!isLockedOut && onboardingCompleted && hasWebsite && isManagerOrAbove && (
-            <div className="space-y-1.5">
-              <NavItem
-                icon={<Globe size={18} />}
-                label="Websites"
-                active={isActive("/dfy/website")}
-                onClick={() => handleNavigate("/dfy/website")}
-                isLocked={isWizardActive}
-                minimized={isMinimized}
-              />
-            </div>
-          )}
-
-          {/* HQ Section -- super admins only, above Execution for visibility */}
-          {!isLockedOut && isSuperAdmin && onboardingCompleted && (
-            <div className="space-y-1.5">
-              {!isMinimized && (
-                <div className="text-[10px] font-black text-alloro-orange/60 uppercase tracking-[0.3em] px-4 mb-4">
-                  HQ
-                </div>
-              )}
-              <NavItem
-                icon={<Zap size={18} />}
-                label="Command Center"
-                active={location.pathname.startsWith("/hq/command")}
-                onClick={() => handleNavigate("/hq/command")}
-                minimized={isMinimized}
-              />
-              <NavItem
-                icon={<Users size={18} />}
-                label="Organizations"
-                active={location.pathname === "/hq/organizations"}
-                onClick={() => handleNavigate("/hq/organizations")}
-                minimized={isMinimized}
-              />
-              <NavItem
-                icon={<Brain size={18} />}
-                label="The Board"
-                active={location.pathname === "/hq/board"}
-                onClick={() => handleNavigate("/hq/board")}
-                minimized={isMinimized}
-              />
-            </div>
-          )}
-
-          {/* Execution & Alerts */}
-          {!isLockedOut && onboardingCompleted && (
-            <div className="space-y-1.5">
-              {!isMinimized && (
-                <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-4 mb-4">
-                  Execution
-                </div>
-              )}
-              {filteredExecutionNav.map(
-                ({ label, icon, path, badge, hasNotification }) =>
-                  canSeeNotifications || path !== "/notifications" ? (
-                    <NavItem
-                      key={label}
-                      icon={icon}
-                      label={label}
-                      active={isActive(path)}
-                      onClick={() => handleNavigate(path)}
-                      badge={badge}
-                      hasNotification={hasNotification}
-                      isLocked={isWizardActive}
-                      minimized={isMinimized}
-                    />
-                  ) : null
-              )}
-              <NavItem
-                icon={<MessageSquare size={18} />}
-                label="Messages"
-                active={location.pathname === "/messages"}
-                onClick={() => handleNavigate("/messages")}
-                isLocked={isWizardActive}
-                minimized={isMinimized}
-              />
-            </div>
-          )}
-
-          {/* Support Section */}
-          {!isLockedOut && onboardingCompleted && (
-            <div className="space-y-1.5">
-              {!isMinimized && (
-                <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-4 mb-4">
-                  Support
-                </div>
-              )}
-              <NavItem
-                icon={<HelpCircle size={18} />}
-                label="Help Center"
-                active={location.pathname === "/help"}
-                onClick={() => handleNavigate("/help")}
-                isLocked={isWizardActive}
-                minimized={isMinimized}
-              />
-            </div>
-          )}
-
-          {/* HQ section removed from here -- moved above Execution */}
+          {/* Role-aware nav rendering */}
+          {!isLockedOut && effectiveViewMode === "admin" && isSuperAdmin && renderAdminNav()}
+          {!isLockedOut && effectiveViewMode === "customer" && renderCustomerNav()}
         </nav>
 
-        {/* Location Switcher — hidden when minimized */}
-        {!isMinimized && <LocationSwitcher />}
+        {/* Location Switcher (customer view only, hidden when minimized) */}
+        {!isMinimized && effectiveViewMode === "customer" && <LocationSwitcher />}
 
         {/* Footer / Account */}
         {isMinimized ? (
@@ -697,7 +770,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {userProfile?.practiceName || "Your Business"}
                   </p>
                   <p className="text-[9px] text-white/20 font-black uppercase tracking-widest mt-0.5">
-                    {userRole === "admin"
+                    {isSuperAdmin
+                      ? "Super Admin"
+                      : userRole === "admin"
                       ? "Administrator"
                       : userRole === "manager"
                       ? "Manager"
