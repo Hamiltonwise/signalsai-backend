@@ -5,15 +5,63 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Loader2, Brain, Sparkles } from "lucide-react";
 import { sendCEOChatMessage, type ChatMessage } from "@/api/ceoChat";
+import { useAuth } from "@/hooks/useAuth";
 
-const STARTERS = [
-  "What should I focus on this week?",
-  "What would Hormozi change about our pricing?",
-  "We have 0 paying customers and 3 days until our first sales call. What do I do?",
-  "What's the fastest path to 3 paying customers?",
-];
+interface RoleConfig {
+  subtitle: string;
+  greeting: string;
+  description: string;
+  starters: string[];
+}
+
+const ROLE_CONFIGS: Record<string, RoleConfig> = {
+  visionary: {
+    subtitle: "Your advisory board, trained on the best",
+    greeting: "Ask your board anything.",
+    description: "Hormozi on pricing. Bezos on strategy. Musk on simplification. All of them see your live data.",
+    starters: [
+      "What should I focus on this week?",
+      "What would Hormozi change about our pricing?",
+      "What's the fastest path to 3 paying customers?",
+      "Show me revenue risks right now",
+    ],
+  },
+  integrator: {
+    subtitle: "Your operations concierge",
+    greeting: "What needs attention?",
+    description: "Flag issues, check on clients, manage tasks. I'll route everything to the right person.",
+    starters: [
+      "Show me all clients at risk",
+      "Flag a bug: the rankings page looks off",
+      "What happened with Garrison this week?",
+      "What action items came from the last call?",
+    ],
+  },
+  build: {
+    subtitle: "Your technical concierge",
+    greeting: "What needs fixing?",
+    description: "Report issues, check system status, review deploy queue. I'll create tasks and route them.",
+    starters: [
+      "What's the system health right now?",
+      "Show me recent deploy errors",
+      "Flag a bug: Redis keeps disconnecting",
+      "What's queued for the next deploy?",
+    ],
+  },
+};
+
+function getUserRole(email: string): string {
+  const lower = (email || "").toLowerCase();
+  if (lower.includes("jordan") || lower.includes("jo@")) return "integrator";
+  if (lower.includes("dave") || lower.includes("rustine")) return "build";
+  return "visionary";
+}
 
 export default function BoardChat() {
+  const { userProfile } = useAuth();
+  const role = getUserRole(userProfile?.email || "");
+  const config = ROLE_CONFIGS[role] || ROLE_CONFIGS.visionary;
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -52,7 +100,7 @@ export default function BoardChat() {
           </div>
           <div className="flex flex-col text-left">
             <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">The Board</h1>
-            <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5">Your advisory board, trained on the best</span>
+            <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5">{config.subtitle}</span>
           </div>
         </div>
       </header>
@@ -61,10 +109,10 @@ export default function BoardChat() {
           {messages.length === 0 && (
             <div className="text-center py-16">
               <div className="w-16 h-16 bg-alloro-orange/10 rounded-2xl flex items-center justify-center mx-auto mb-6"><Sparkles className="w-8 h-8 text-alloro-orange" /></div>
-              <h2 className="text-xl font-black text-alloro-textDark tracking-tight mb-2">Ask your board anything.</h2>
-              <p className="text-sm text-slate-500 max-w-md mx-auto mb-8">Hormozi on pricing. Bezos on strategy. Musk on simplification. All of them see your live data.</p>
+              <h2 className="text-xl font-black text-alloro-textDark tracking-tight mb-2">{config.greeting}</h2>
+              <p className="text-sm text-slate-500 max-w-md mx-auto mb-8">{config.description}</p>
               <div className="flex flex-wrap gap-2 justify-center max-w-lg mx-auto">
-                {STARTERS.map(p => (
+                {config.starters.map(p => (
                   <button key={p} onClick={() => handleSend(p)} className="text-xs px-4 py-2.5 rounded-xl border border-slate-200 text-alloro-textDark/70 hover:border-alloro-orange/40 hover:text-alloro-orange hover:bg-alloro-orange/5 transition-all">{p}</button>
                 ))}
               </div>
