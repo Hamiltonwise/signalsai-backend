@@ -18,6 +18,8 @@ import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
 import { processPmDailyBrief } from "./processors/pmDailyBrief.processor";
 import { runDreamweaver } from "../services/dreamweaverAgent";
+import { runCollectiveIntelligence } from "../services/collectiveIntelligence";
+import { runProductEvolution } from "../jobs/productEvolution";
 import { getMindsQueue, getPmQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -241,8 +243,26 @@ const dreamweaverWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// Collective Intelligence Engine (weekly Sunday 8 PM PT)
+// Layer 5: analyzes patterns across ALL accounts. Discovers heuristics
+// no individual business could find alone. Feeds into Oz moments.
+const collectiveIntelligenceWorker = new Worker(
+  "minds-collective-intelligence",
+  async () => { await runCollectiveIntelligence(); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
+// Product Evolution Engine (weekly Sunday 11 PM PT)
+// Layer 4: reads its own usage data, identifies friction,
+// reads source code, drafts improvement proposals for Dave.
+const productEvolutionWorker = new Worker(
+  "minds-product-evolution",
+  async () => { await runProductEvolution(); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -271,6 +291,8 @@ async function shutdown(): Promise<void> {
   await wbRestoreWorker.close();
   await pmDailyBriefWorker.close();
   await dreamweaverWorker.close();
+  await collectiveIntelligenceWorker.close();
+  await productEvolutionWorker.close();
   await closeWbQueues();
   await connection.quit();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -364,11 +386,55 @@ async function setupPmDailyBriefSchedule(): Promise<void> {
   }
 }
 
+// Set up Collective Intelligence schedule (Sunday 8 PM PT = Monday 4 AM UTC)
+async function setupCollectiveIntelligenceSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("collective-intelligence");
+    await queue.add(
+      "collective-intelligence",
+      {},
+      {
+        repeat: {
+          pattern: "0 4 * * 1", // Monday 4 AM UTC = Sunday 8 PM PT
+          tz: "UTC",
+        },
+        jobId: "collective-intelligence-weekly",
+      }
+    );
+    console.log("[MINDS-WORKER] Collective Intelligence scheduled (Sunday 8 PM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Collective Intelligence:", err);
+  }
+}
+
+// Set up Product Evolution schedule (Sunday 11 PM PT = Monday 7 AM UTC)
+async function setupProductEvolutionSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("product-evolution");
+    await queue.add(
+      "product-evolution",
+      {},
+      {
+        repeat: {
+          pattern: "0 7 * * 1", // Monday 7 AM UTC = Sunday 11 PM PT
+          tz: "UTC",
+        },
+        jobId: "product-evolution-weekly",
+      }
+    );
+    console.log("[MINDS-WORKER] Product Evolution scheduled (Sunday 11 PM PT)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Product Evolution:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
 setupReviewSyncSchedule();
 setupSchedulerTick();
 setupPmDailyBriefSchedule();
+setupCollectiveIntelligenceSchedule();
+setupProductEvolutionSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
