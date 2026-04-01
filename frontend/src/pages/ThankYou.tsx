@@ -82,7 +82,7 @@ export default function ThankYou() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight font-heading">
             You're set.
           </h1>
-          <p className="text-sm text-[#212D40]/40 mt-2">Someone's watching your market now.</p>
+          <p className="text-sm text-[#212D40]/40 mt-2">Alloro is watching your market now.</p>
         </div>
 
         {/* P0: Monday time anchor, the most important line on the page */}

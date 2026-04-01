@@ -264,7 +264,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
           </div>
         </div>
         <p className="text-sm text-gray-600 leading-relaxed">
-          <TailorText editKey="dashboard.position.scanning.body" defaultText="We're reading your market right now. Your first position report arrives Monday morning." as="span" className="" />
+          <TailorText editKey="dashboard.position.scanning.body" defaultText="Alloro is reading your market right now. Your first position report arrives Monday morning." as="span" className="" />
         </p>
         <div className="mt-5 space-y-2.5">
           {["Finding your competitors", "Counting their reviews", "Measuring your visibility"].map((step, i) => (
@@ -453,7 +453,7 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
           </div>
         </div>
         <p className="text-sm text-gray-600 leading-relaxed">
-          <TailorText editKey="dashboard.findings.body" defaultText="We're analyzing your competitors right now. Named findings with dollar figures arrive in your first Monday email." as="span" className="" />
+          <TailorText editKey="dashboard.findings.body" defaultText="Your competitors are being analyzed right now. Named findings with dollar figures arrive in your first Monday email." as="span" className="" />
         </p>
       </div>
     );
@@ -519,7 +519,7 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
           </div>
         </div>
         <p className="text-sm text-gray-600 leading-relaxed">
-          <TailorText editKey="dashboard.website.body" defaultText="We studied your competitors' websites and your reviews. Your site is being built from what we learned. You'll get a notification when it's live." as="span" className="" />
+          <TailorText editKey="dashboard.website.body" defaultText="Alloro studied your competitors' websites and your reviews. Your site is being built from what it found. You'll get a notification when it's live." as="span" className="" />
         </p>
       </div>
     );
@@ -988,7 +988,7 @@ export default function DoctorDashboard() {
           <div>
             <h2 className="text-2xl font-extrabold text-[#212D40]">Your trial has ended</h2>
             <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-              We're still watching your market. Subscribe to see what changed while you were away.
+              Alloro kept watching your market. Subscribe to see what changed while you were away.
             </p>
           </div>
           <a

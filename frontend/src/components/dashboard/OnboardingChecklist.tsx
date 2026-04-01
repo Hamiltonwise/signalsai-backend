@@ -155,7 +155,7 @@ export default function OnboardingChecklist({
     return (
       <div className="card-featured px-5 py-4 text-center">
         <p className="text-sm font-semibold text-emerald-700">
-          You're all set. We're watching your market now. See you Monday.
+          You're all set. Alloro is watching your market. See you Monday.
         </p>
       </div>
     );
