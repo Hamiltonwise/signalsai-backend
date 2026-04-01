@@ -69,6 +69,7 @@ import vocabularyRoutes from "./routes/vocabulary";
 import partnerRoutes from "./routes/partner";
 import focusKeywordsRoutes from "./routes/focusKeywords";
 import hubspotRoutes from "./routes/integrations/hubspot";
+import complianceRoutes from "./routes/compliance";
 import rankingsIntelligenceRoutes from "./routes/rankingsIntelligence";
 import reviewRequestRoutes from "./routes/reviewRequests";
 import csAgentRoutes from "./routes/csAgent";
@@ -303,6 +304,7 @@ app.use("/api/vocabulary", vocabularyRoutes); // Vocabulary defaults (public)
 app.use("/api/partner", partnerRoutes); // Partner Portal API
 app.use("/api/focus-keywords", focusKeywordsRoutes); // Focus keyword tracking + suggestions
 app.use("/api/integrations/hubspot", hubspotRoutes); // HubSpot CRM read-only pipeline sync
+app.use("/api/compliance", complianceRoutes); // Website marketing compliance scanner
 app.use("/api/rankings-intelligence", rankingsIntelligenceRoutes); // Weekly ranking snapshots + drift
 app.use("/api/review-requests", reviewRequestRoutes); // Post-appointment review generation
 app.use("/api/cs-agent", csAgentRoutes); // Account-aware Claude chat for doctors
