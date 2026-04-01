@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, MapPin, Loader2, ArrowRight, UserCheck } from "lucide-react";
 import { searchPlaces, getPlaceDetails } from "../../api/places";
 import { validateReferralCode } from "../../api/checkup";
-import { withTimeout } from "./conferenceFallback";
+import { withTimeout, isConferenceMode } from "./conferenceFallback";
 import type { PlaceSuggestion, PlaceDetails } from "../../api/places";
 import { TailorText } from "../../components/TailorText";
 
@@ -171,6 +171,10 @@ export default function EntryScreen() {
   const [userQuestion, setUserQuestion] = useState("");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Persist conference mode from URL param to localStorage immediately on mount.
+  // This ensures billing suppression works even if the user navigates away and back.
+  useEffect(() => { isConferenceMode(); }, []);
 
   // Grab user's approximate location for autocomplete biasing via backend.
   // No browser geolocation prompt. IP-based only. Silent, private, no permission popup.
