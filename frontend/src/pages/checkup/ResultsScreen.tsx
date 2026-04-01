@@ -720,6 +720,7 @@ export default function ResultsScreen() {
     setEmailSending(true);
 
     // Step 1: Create account via Checkup gate endpoint (no email verification)
+    let referralCode: string | null = null;
     try {
       const createRes = await withTimeout(
         fetch("/api/checkup/create-account", {
@@ -772,6 +773,7 @@ export default function ResultsScreen() {
         localStorage.setItem("auth_token", createData.token);
         localStorage.setItem("token", createData.token);
       }
+      referralCode = createData.referralCode || null;
     } catch {
       setEmailError("Something went wrong. Please try again.");
       setEmailSending(false);
@@ -822,13 +824,15 @@ export default function ResultsScreen() {
       5000
     ).catch(() => {});
 
-    // Step 5: Route through BuildingScreen (brand moment), then auto-nav to dashboard
+    // Step 5: Route through BuildingScreen (brand moment), then auto-nav to share screen
     setTimeout(() => navigate("/checkup/building", {
       replace: true,
       state: {
         practiceName: place.name,
         specialty: place.category || "",
         email: email.trim(),
+        referralCode,
+        checkupScore: score.composite,
       },
     }), 500);
   };

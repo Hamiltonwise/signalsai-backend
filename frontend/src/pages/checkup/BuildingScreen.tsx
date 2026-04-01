@@ -12,6 +12,8 @@ interface BuildingState {
   practiceName: string;
   specialty: string;
   email: string;
+  referralCode?: string | null;
+  checkupScore?: number | null;
 }
 
 export default function BuildingScreen() {
@@ -40,19 +42,26 @@ export default function BuildingScreen() {
   }, [navigate]);
 
   // Once auth is confirmed, navigate after brand moment
-  // Conference mode: route through /thank-you (booth info + one action card)
-  // Normal mode: go straight to dashboard
+  // Route to colleague share screen (moment of maximum excitement)
+  // Conference mode fallback: /thank-you if no share screen needed
   useEffect(() => {
     if (!ready) return;
     const conference = isConferenceMode();
-    const destination = conference ? "/thank-you" : "/owner-profile";
+    const destination = conference ? "/checkup/share" : "/checkup/share";
     const timer = setTimeout(() => {
       // Clear all flow params so they don't persist beyond the checkup
       clearFlowParams();
-      navigate(destination, { replace: true });
+      navigate(destination, {
+        replace: true,
+        state: {
+          referralCode: state?.referralCode || null,
+          checkupScore: state?.checkupScore || null,
+          practiceName: state?.practiceName || null,
+        },
+      });
     }, 3500);
     return () => clearTimeout(timer);
-  }, [ready, navigate]);
+  }, [ready, navigate, state]);
 
   if (!state?.practiceName) {
     return <Navigate to="/checkup" replace />;

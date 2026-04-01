@@ -21,6 +21,7 @@ import EntryScreen from "./pages/checkup/EntryScreen";
 import ScanningTheater from "./pages/checkup/ScanningTheater";
 import ResultsScreen from "./pages/checkup/ResultsScreen";
 import BuildingScreen from "./pages/checkup/BuildingScreen";
+import ColleagueShare from "./pages/checkup/ColleagueShare";
 
 // --- Lazy-loaded page imports ---
 const NewAccountOnboarding = React.lazy(() => import("./pages/NewAccountOnboarding"));
@@ -208,6 +209,7 @@ function App() {
                 <Route path="building" element={<BuildingScreen />} />
               </Route>
               <Route path="/checkup/shared/:shareId" element={<SharedResults />} />
+              <Route path="/checkup/share" element={<ColleagueShare />} />
               <Route path="/clarity/:id" element={<ClarityCard />} />
 
               {/* Public demo — no auth required */}
