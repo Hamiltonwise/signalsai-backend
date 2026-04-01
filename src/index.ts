@@ -135,6 +135,8 @@ import alloroLabsRoutes from "./routes/alloroLabs";
 import personalAgentRoutes from "./routes/personalAgent";
 import improvementPlanRoutes from "./routes/user/improvementPlan";
 import competitorRoutes from "./routes/user/competitors";
+import missionControlRoutes from "./routes/admin/missionControl";
+import mailgunEventsRoutes from "./routes/webhooks/mailgunEvents";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -358,6 +360,8 @@ app.use("/api/labs", alloroLabsRoutes); // Alloro Labs: anonymized benchmark dat
 app.use("/api/personal-agent", personalAgentRoutes); // Personal team agent daily briefs
 app.use("/api/user", improvementPlanRoutes); // Score Improvement Plan: actionable checkup improvements
 app.use("/api/user/competitors", competitorRoutes); // Tracked Competitors: side-by-side comparison
+app.use("/api/admin/mission-control", missionControlRoutes); // Mission Control: real-time agent status grid
+app.use("/api/webhooks/mailgun", mailgunEventsRoutes); // Mailgun event webhooks: deliverability tracking
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);

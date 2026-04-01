@@ -43,7 +43,7 @@ import {
   adminListOrganizations,
   type AdminOrganization,
 } from "@/api/admin-organizations";
-import { fetchSchedules, type Schedule } from "@/api/schedules";
+// Schedule type no longer needed -- Mission Control fetches its own data
 import {
   fetchDreamTeamTasks,
   type DreamTeamTask,
@@ -1221,100 +1221,457 @@ function PortfolioScorePanel({
   );
 }
 
-// ---- Panel 8: Agent Health (compact footer indicator) ----------------------
+// ---- Panel 8: Agent Mission Control (replaces simple footer) ---------------
 
-function AgentHealthFooter({ schedules }: { schedules: Schedule[] }) {
-  const total = schedules.length;
-  const running = schedules.filter(
-    (s) => s.latest_run?.status === "running"
-  ).length;
-  const failed = schedules.filter(
-    (s) => s.latest_run?.status === "failed"
-  );
-  const neverRun = schedules.filter((s) => !s.latest_run);
-  const nominal = total - failed.length - neverRun.length;
+interface AgentStatusEntry {
+  name: string;
+  displayName: string;
+  tier: "fast" | "standard" | "judgment";
+  status: "nominal" | "degraded" | "failed" | "idle";
+  lastRun: string | null;
+  lastRunDuration?: number;
+  lastResult: "success" | "failure" | "skipped" | null;
+  nextScheduledRun: string | null;
+  circuitState: "closed" | "open" | "half-open";
+  weeklyRuns: number;
+  weeklyFailures: number;
+  tokensUsedThisWeek: number;
+  costThisWeek: number;
+  team: string;
+}
 
-  const { data: sysHealth } = useQuery({
-    queryKey: ["backend-health-visionary"],
+interface MissionControlData {
+  agents: AgentStatusEntry[];
+  byTeam: Record<string, AgentStatusEntry[]>;
+  summary: {
+    total: number;
+    nominal: number;
+    degraded: number;
+    failed: number;
+    idle: number;
+    totalWeeklyCost: number;
+    totalWeeklyTokens: number;
+  };
+}
+
+const STATUS_DOT: Record<string, string> = {
+  nominal: "bg-emerald-500",
+  degraded: "bg-amber-400",
+  failed: "bg-red-500",
+  idle: "bg-gray-300",
+};
+
+const CIRCUIT_LABEL: Record<string, { text: string; color: string }> = {
+  closed: { text: "Healthy", color: "text-emerald-600" },
+  "half-open": { text: "Recovering", color: "text-amber-600" },
+  open: { text: "Tripped", color: "text-red-600" },
+};
+
+function AgentMissionControl() {
+  const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
+  const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+
+  const { data: mcData, isLoading } = useQuery<MissionControlData>({
+    queryKey: ["mission-control"],
     queryFn: async () => {
-      const res = await apiGet({ path: "/health" });
-      return res as { redis?: string } | undefined;
+      const res = await apiGet({ path: "/admin/mission-control" });
+      return res?.success ? res : null;
     },
     refetchInterval: 30_000,
     retry: false,
+    staleTime: 15_000,
   });
-  const redisKnown = sysHealth?.redis !== undefined;
-  const redisUp = sysHealth?.redis === "connected" || sysHealth?.redis === "ok";
 
-  const allGreen = failed.length === 0 && neverRun.length === 0;
+  if (isLoading) {
+    return (
+      <Panel>
+        <PanelHeader icon={Activity} label="Agent Mission Control" />
+        <div className="h-16 flex items-center justify-center text-xs text-gray-400">Loading agents...</div>
+      </Panel>
+    );
+  }
+
+  if (!mcData) {
+    return (
+      <Panel>
+        <PanelHeader icon={Activity} label="Agent Mission Control" />
+        <p className="text-xs text-gray-400">Mission control unavailable.</p>
+      </Panel>
+    );
+  }
+
+  const { byTeam, summary } = mcData;
+  const teamNames = Object.keys(byTeam).sort();
 
   return (
-    <div className="rounded-xl border border-gray-100 bg-gray-50/50 px-5 py-3">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2">
-          <Activity className="h-3.5 w-3.5 text-gray-400" />
-          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            System Status
-          </span>
+    <Panel>
+      <PanelHeader icon={Activity} label="Agent Mission Control" />
+
+      {/* Summary bar */}
+      <div className="flex items-center gap-4 mb-4 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="text-xs font-semibold text-[#212D40]">{summary.nominal}</span>
+          <span className="text-[10px] text-gray-400">nominal</span>
+        </div>
+        {summary.degraded > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <span className="text-xs font-semibold text-[#212D40]">{summary.degraded}</span>
+            <span className="text-[10px] text-gray-400">degraded</span>
+          </div>
+        )}
+        {summary.failed > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <span className="text-xs font-semibold text-[#212D40]">{summary.failed}</span>
+            <span className="text-[10px] text-gray-400">failed</span>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-gray-300" />
+          <span className="text-xs font-semibold text-[#212D40]">{summary.idle}</span>
+          <span className="text-[10px] text-gray-400">idle</span>
+        </div>
+        <span className="text-[10px] text-gray-400 ml-auto">
+          {summary.total} total agents
+        </span>
+      </div>
+
+      {/* Team groups */}
+      <div className="space-y-3">
+        {teamNames.map((team) => {
+          const agents = byTeam[team];
+          const isExpanded = expandedTeam === team;
+          const teamFailed = agents.filter((a) => a.status === "failed").length;
+          const teamDegraded = agents.filter((a) => a.status === "degraded").length;
+
+          return (
+            <div key={team} className="rounded-xl border border-gray-100 overflow-hidden">
+              <button
+                onClick={() => setExpandedTeam(isExpanded ? null : team)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+              >
+                {/* Status dots grid */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {agents.map((a) => (
+                    <span
+                      key={a.name}
+                      className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[a.status] || STATUS_DOT.idle}`}
+                      title={`${a.displayName}: ${a.status}`}
+                    />
+                  ))}
+                </div>
+
+                <span className="text-xs font-semibold text-[#212D40] flex-1 text-left">{team}</span>
+
+                {teamFailed > 0 && (
+                  <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{teamFailed} failed</span>
+                )}
+                {teamDegraded > 0 && (
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{teamDegraded} degraded</span>
+                )}
+
+                <span className="text-[10px] text-gray-400">{agents.length} agents</span>
+
+                {isExpanded ? (
+                  <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                )}
+              </button>
+
+              {isExpanded && (
+                <div className="border-t border-gray-100 divide-y divide-gray-50">
+                  {agents.map((agent) => {
+                    const isAgentExpanded = expandedAgent === agent.name;
+                    const circuit = CIRCUIT_LABEL[agent.circuitState] || CIRCUIT_LABEL.closed;
+
+                    return (
+                      <div key={agent.name}>
+                        <button
+                          onClick={() => setExpandedAgent(isAgentExpanded ? null : agent.name)}
+                          className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50/50 transition-colors text-left"
+                        >
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[agent.status]}`} />
+                          <span className="text-xs font-medium text-[#212D40] flex-1 truncate">
+                            {agent.displayName}
+                          </span>
+                          <span className="text-[10px] text-gray-400 shrink-0">
+                            {agent.lastRun ? timeAgo(agent.lastRun) : "never"}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${
+                            agent.tier === "fast" ? "bg-blue-50 text-blue-600" :
+                            agent.tier === "judgment" ? "bg-purple-50 text-purple-600" :
+                            "bg-gray-50 text-gray-500"
+                          }`}>
+                            {agent.tier}
+                          </span>
+                        </button>
+
+                        {isAgentExpanded && (
+                          <div className="px-4 pb-3 pt-1 bg-gray-50/30 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div>
+                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Last Run</p>
+                              <p className="text-xs font-medium text-[#212D40]">
+                                {agent.lastRun ? timeAgo(agent.lastRun) : "Never"}
+                              </p>
+                              {agent.lastRunDuration !== undefined && (
+                                <p className="text-[10px] text-gray-400">{(agent.lastRunDuration / 1000).toFixed(1)}s</p>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Next Run</p>
+                              <p className="text-xs font-medium text-[#212D40]">
+                                {agent.nextScheduledRun ? timeAgo(agent.nextScheduledRun) : "Unscheduled"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Circuit</p>
+                              <p className={`text-xs font-medium ${circuit.color}`}>
+                                {circuit.text}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Weekly Cost</p>
+                              <p className="text-xs font-medium text-[#212D40]">
+                                ${agent.costThisWeek.toFixed(3)}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                {agent.weeklyRuns} runs, {agent.weeklyFailures} failures
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
+// ---- Panel 9: Email Health --------------------------------------------------
+
+interface EmailHealthData {
+  deliveryRate: number;
+  openRate: number;
+  clickRate: number;
+  bounceRate: number;
+  complaintRate: number;
+  totalEmails: number;
+}
+
+function EmailHealthPanel() {
+  const { data: health, isLoading } = useQuery<EmailHealthData>({
+    queryKey: ["email-health"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/webhooks/mailgun/health" });
+      return res?.success ? res : null;
+    },
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+
+  if (isLoading) {
+    return (
+      <Panel>
+        <PanelHeader icon={Activity} label="Email Health" />
+        <div className="h-12 flex items-center justify-center text-xs text-gray-400">Loading...</div>
+      </Panel>
+    );
+  }
+
+  if (!health || health.totalEmails === 0) {
+    return (
+      <Panel>
+        <PanelHeader icon={Activity} label="Email Health" />
+        <p className="text-xs text-gray-400">No email data yet. Mailgun webhooks will populate this.</p>
+      </Panel>
+    );
+  }
+
+  const metrics = [
+    {
+      label: "Delivery Rate",
+      value: health.deliveryRate,
+      target: 95,
+      suffix: "%",
+      alert: health.deliveryRate < 95,
+    },
+    {
+      label: "Open Rate",
+      value: health.openRate,
+      target: 40,
+      suffix: "%",
+      alert: health.openRate < 20,
+    },
+    {
+      label: "Click Rate",
+      value: health.clickRate,
+      target: null,
+      suffix: "%",
+      alert: false,
+    },
+    {
+      label: "Bounce Rate",
+      value: health.bounceRate,
+      target: 2,
+      suffix: "%",
+      alert: health.bounceRate > 2,
+    },
+    {
+      label: "Complaints",
+      value: health.complaintRate,
+      target: 0.1,
+      suffix: "%",
+      alert: health.complaintRate > 0.1,
+    },
+  ];
+
+  return (
+    <Panel>
+      <PanelHeader icon={Activity} label="Email Health" />
+
+      <div className="space-y-3">
+        {metrics.map((m) => (
+          <div key={m.label}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-600">{m.label}</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-bold ${m.alert ? "text-red-600" : "text-[#212D40]"}`}>
+                  {m.value}{m.suffix}
+                </span>
+                {m.target !== null && (
+                  <span className="text-[10px] text-gray-400">
+                    target: {m.label.includes("Bounce") || m.label.includes("Complaint") ? "<" : ">"}{m.target}{m.suffix}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-gray-100">
+              <div
+                className={`h-1.5 rounded-full transition-all ${m.alert ? "bg-red-500" : "bg-emerald-500"}`}
+                style={{ width: `${Math.min(100, m.value)}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[10px] text-gray-400 mt-3">
+        {health.totalEmails.toLocaleString()} emails tracked (last 30 days)
+      </p>
+    </Panel>
+  );
+}
+
+// ---- Panel 10: AI Cost This Month -------------------------------------------
+
+interface CostTrendData {
+  thisMonth: { byAgent: Record<string, number>; byTier: Record<string, number>; total: number; perClient: number };
+  lastMonth: { total: number };
+  changePercent: number;
+}
+
+function AICostPanel() {
+  const { data: costData, isLoading } = useQuery<CostTrendData>({
+    queryKey: ["ai-cost-trend"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/mission-control/costs?period=trend" });
+      return res?.success ? res : null;
+    },
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+
+  if (isLoading) {
+    return (
+      <Panel>
+        <PanelHeader icon={DollarSign} label="AI Cost This Month" iconColor="text-purple-500" />
+        <div className="h-12 flex items-center justify-center text-xs text-gray-400">Loading...</div>
+      </Panel>
+    );
+  }
+
+  if (!costData) {
+    return (
+      <Panel>
+        <PanelHeader icon={DollarSign} label="AI Cost This Month" iconColor="text-purple-500" />
+        <p className="text-xs text-gray-400">No cost data recorded yet. Costs are tracked per agent run.</p>
+      </Panel>
+    );
+  }
+
+  const { thisMonth, changePercent } = costData;
+  const tierEntries = Object.entries(thisMonth.byTier).sort((a, b) => b[1] - a[1]);
+  const totalTierCost = tierEntries.reduce((sum, [, v]) => sum + v, 0) || 1;
+
+  const TIER_COLORS: Record<string, string> = {
+    haiku: "bg-blue-400",
+    sonnet: "bg-[#D56753]",
+    opus: "bg-purple-500",
+  };
+
+  return (
+    <Panel>
+      <PanelHeader icon={DollarSign} label="AI Cost This Month" iconColor="text-purple-500" />
+
+      <div className="space-y-4">
+        {/* Total spend */}
+        <div>
+          <p className="text-3xl font-black text-[#212D40]">${thisMonth.total.toFixed(2)}</p>
+          <div className="flex items-center gap-2 mt-1">
+            {changePercent !== 0 && (
+              <>
+                {changePercent > 0 ? (
+                  <TrendingUp className="h-3.5 w-3.5 text-red-500" />
+                ) : (
+                  <TrendingDown className="h-3.5 w-3.5 text-emerald-500" />
+                )}
+                <span className={`text-xs font-semibold ${changePercent > 0 ? "text-red-600" : "text-emerald-600"}`}>
+                  {changePercent > 0 ? "+" : ""}{changePercent}% vs last month
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* Agent count */}
-          <span className="text-xs text-gray-500">
-            <span className={`font-semibold ${allGreen ? "text-emerald-600" : "text-[#212D40]"}`}>
-              {nominal}/{total}
-            </span>
-            {" agents nominal"}
-          </span>
+        {/* Per-client */}
+        <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Per-Client Average</p>
+          <p className="text-lg font-bold text-[#212D40]">${thisMonth.perClient.toFixed(2)}/mo</p>
+        </div>
 
-          {/* Failed agents */}
-          {failed.length > 0 && (
-            <span className="text-xs text-red-600 font-semibold">
-              {failed.length} failed
-            </span>
-          )}
-
-          {/* Running now */}
-          {running > 0 && (
-            <span className="text-xs text-blue-600">
-              {running} running
-            </span>
-          )}
-
-          {/* Redis */}
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`inline-block w-1.5 h-1.5 rounded-full ${
-                redisKnown
-                  ? redisUp
-                    ? "bg-emerald-500"
-                    : "bg-red-500 animate-pulse"
-                  : "bg-gray-400"
-              }`}
-            />
-            <span className="text-[10px] text-gray-400">
-              Redis: {redisKnown ? (redisUp ? "OK" : "Down") : "?"}
-            </span>
+        {/* Tier breakdown as stacked bar */}
+        <div>
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">By Tier</p>
+          <div className="h-3 w-full rounded-full bg-gray-100 flex overflow-hidden">
+            {tierEntries.map(([tier, cost]) => (
+              <div
+                key={tier}
+                className={`h-3 ${TIER_COLORS[tier] || "bg-gray-400"} transition-all`}
+                style={{ width: `${Math.max(2, (cost / totalTierCost) * 100)}%` }}
+                title={`${tier}: $${cost.toFixed(2)}`}
+              />
+            ))}
+          </div>
+          <div className="flex items-center gap-4 mt-2">
+            {tierEntries.map(([tier, cost]) => (
+              <div key={tier} className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${TIER_COLORS[tier] || "bg-gray-400"}`} />
+                <span className="text-[10px] text-gray-500">{tier}: ${cost.toFixed(2)}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-
-      {/* Failed agent list, compact */}
-      {failed.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-2">
-          {failed.map((s) => (
-            <span
-              key={s.id}
-              className="inline-flex items-center gap-1 text-[10px] text-red-600 bg-red-50 border border-red-100 rounded-md px-2 py-0.5"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-              {s.display_name}
-              <span className="text-red-400 ml-0.5">{timeAgo(s.last_run_at)}</span>
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
+    </Panel>
   );
 }
 
@@ -1357,15 +1714,6 @@ export default function VisionaryView() {
     staleTime: 60_000,
   });
   const healthData: ClientHealthEntry[] = healthRaw ?? [];
-
-  // Fetch schedules
-  const { data: scheduleData } = useQuery({
-    queryKey: ["admin-schedules"],
-    queryFn: fetchSchedules,
-  });
-  const schedules: Schedule[] = Array.isArray(scheduleData)
-    ? scheduleData
-    : [];
 
   // Fetch tasks
   const { data: taskData } = useQuery({
@@ -1414,8 +1762,14 @@ export default function VisionaryView() {
           <PortfolioScorePanel healthData={healthData} />
         </div>
 
-        {/* 9. Agent Health: compact footer */}
-        <AgentHealthFooter schedules={schedules} />
+        {/* 9. Agent Mission Control */}
+        <AgentMissionControl />
+
+        {/* 10 + 11: Email Health + AI Cost side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <EmailHealthPanel />
+          <AICostPanel />
+        </div>
       </div>
 
       {/* CEO Chat moved to dedicated nav page -- no floating widgets */}
