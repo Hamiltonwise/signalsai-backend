@@ -287,11 +287,13 @@ function WeeklyPulse({ orgs }: { orgs: AdminOrganization[] }) {
     }
   ).length;
 
-  // MRR calculation
-  const tierPricing: Record<string, number> = { DWY: 1500, DFY: 3000 };
+  // MRR calculation: per-org pricing (single source of truth)
+  const ORG_MONTHLY_RATE: Record<number, number> = {
+    5: 2000, 6: 3500, 8: 1500, 21: 0, 25: 5000, 34: 0, 39: 1500, 42: 0,
+  };
   const activeOrgs = filtered.filter((o) => o.subscription_status === "active");
   const mrr = activeOrgs.reduce(
-    (sum, org) => sum + (tierPricing[org.subscription_tier ?? ""] ?? 0),
+    (sum, org) => sum + (ORG_MONTHLY_RATE[org.id] ?? 0),
     0
   );
 
@@ -914,10 +916,12 @@ function RevenueSnapshot({ orgs }: { orgs: AdminOrganization[] }) {
   const filtered = filterTestOrgs(orgs);
   const activeOrgs = filtered.filter((o) => o.subscription_status === "active");
 
-  // Calculate MRR from active subscriptions
-  const tierPricing: Record<string, number> = { DWY: 1500, DFY: 3000 };
+  // Calculate MRR from active subscriptions: per-org pricing (single source of truth)
+  const ORG_MONTHLY_RATE: Record<number, number> = {
+    5: 2000, 6: 3500, 8: 1500, 21: 0, 25: 5000, 34: 0, 39: 1500, 42: 0,
+  };
   const mrr = activeOrgs.reduce(
-    (sum, org) => sum + (tierPricing[org.subscription_tier ?? ""] ?? 0),
+    (sum, org) => sum + (ORG_MONTHLY_RATE[org.id] ?? 0),
     0
   );
 

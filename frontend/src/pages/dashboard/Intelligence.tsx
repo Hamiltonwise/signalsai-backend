@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, MessageSquare, BarChart3, Loader2 } from "lucide-react";
 import FocusKeywords from "@/components/dashboard/FocusKeywords";
+import ComplianceScanner from "@/components/dashboard/ComplianceScanner";
 
 function getToken(): string {
   return localStorage.getItem("auth_token") || "";
@@ -138,6 +139,7 @@ function SEOContent({ orgId }: { orgId: number }) {
         </div>
       </div>
       <FocusKeywords />
+      <ComplianceScanner />
     </div>
   );
 }
