@@ -85,7 +85,7 @@ export async function getUserWebsite(
         generated_hostname: data.project.hostname,
         status: data.project.status,
         liveUrl: data.project.custom_domain
-          ? `https://${data.project.custom_domain}`
+          ? `https://${process.env.NODE_ENV === "development" ? "sandbox." : ""}${data.project.custom_domain}`
           : undefined,
       },
       project: data.project,
