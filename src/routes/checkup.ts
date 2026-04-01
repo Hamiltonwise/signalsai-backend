@@ -422,7 +422,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
             enrichedReviewCount = placeDetails.userRatingCount;
           }
           console.log(
-            `[Checkup] Enriched from Places API: photos=${enrichedPhotosCount}, hours=${!!enrichedHours}, phone=${!!enrichedPhone}, website=${!!enrichedWebsite}, editorial=${!!enrichedEditorialSummary}, reviews=${enrichedReviews?.length || 0}`
+            `[Checkup] Enriched from Places API: photos=${enrichedPhotosCount}, hours=${!!enrichedHours}, phone=${!!enrichedPhone}, website=${!!enrichedWebsite}, editorial=${!!enrichedEditorialSummary}, reviews=${enrichedReviews?.length || 0}, reviewSummary=${!!placeDetails.reviewSummary}, openingDate=${!!enrichedOpeningDate}, goodForChildren=${!!placeDetails.goodForChildren}`
           );
         }
       } catch (enrichErr) {
@@ -431,8 +431,9 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       }
     }
 
-    // --- First Impression Score Calculation ---
-    // Question: "When a qualified prospect sees your Google profile, do they choose you or swipe past?"
+    // --- Trust Score Calculation ---
+    // Question: "Would an anxious person searching for this service trust this business enough to call?"
+    // Not a leaderboard. A trust assessment from the perspective of the person searching.
     const clientRating = enrichedRating ?? 0;
     const clientReviews = enrichedReviewCount ?? 0;
 
@@ -606,11 +607,25 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const hasDescription = !!enrichedEditorialSummary;
     const editorialPts = hasDescription ? 3 : 0;
 
-    // Business status operational (0-5)
+    // Business status operational (0-3)
     const businessStatus = enrichedBusinessStatus;
-    const statusPts = (businessStatus === "OPERATIONAL" || businessStatus === "OPEN") ? 5 : 0;
+    const statusPts = (businessStatus === "OPERATIONAL" || businessStatus === "OPEN") ? 3 : 0;
 
-    const firstImpression = Math.min(30, photoPts + completenessPts + editorialPts + statusPts);
+    // Years in business (0-5) -- established businesses are more trustworthy.
+    // openingDate from Google Places API v1: { year, month, day } object.
+    let yearsInBusinessPts = 0;
+    if (enrichedOpeningDate) {
+      const openYear = typeof enrichedOpeningDate === "object" ? enrichedOpeningDate.year : parseInt(String(enrichedOpeningDate));
+      if (openYear && !isNaN(openYear)) {
+        const yearsOpen = new Date().getFullYear() - openYear;
+        if (yearsOpen >= 10) yearsInBusinessPts = 5;
+        else if (yearsOpen >= 5) yearsInBusinessPts = 4;
+        else if (yearsOpen >= 2) yearsInBusinessPts = 3;
+        else if (yearsOpen >= 1) yearsInBusinessPts = 2;
+      }
+    }
+
+    const firstImpression = Math.min(30, photoPts + completenessPts + editorialPts + statusPts + yearsInBusinessPts);
 
     // ─── RESPONSIVENESS (0-20) ──────────────────────────────────────────
     // Google Places API v1 limitation: ownerResponse is not returned in review
@@ -700,7 +715,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings.push({
         type: "specialist_context",
         title: `Only ${specialty} in ${city}`,
-        detail: `You're the only ${specialty} specialist in ${city}. Prospects searching specifically for a ${specialty} have you as their top local option. Growing your reviews strengthens that position.`,
+        detail: `You're the only ${specialty} specialist in ${city}. People searching specifically for a ${specialty} have you as their top local option. Growing your reviews strengthens that position.`,
         value: clientReviews,
         impact: 0,
       });
@@ -709,7 +724,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       const annualImpact = Math.round(gap * perReviewImpact / 12);
       findings.push({
         type: "review_gap",
-        title: "Prospects See Fewer Reviews",
+        title: "People See Fewer Reviews",
         detail: `When a prospect compares you to ${topCompetitor.name}, they see ${gap} fewer reviews on your profile. Improving this gap could generate an estimated $${annualImpact.toLocaleString()} in additional inquiries per year.`,
         value: gap,
         impact: annualImpact,
@@ -718,7 +733,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings.push({
         type: "review_lead",
         title: "Strongest Social Proof in Your Market",
-        detail: `Prospects see you have the most reviews among nearby ${competitorWord}s. That credibility drives clicks.`,
+        detail: `People searching for you see the most reviews among nearby ${competitorWord}s. That credibility drives clicks.`,
         value: clientReviews,
         impact: 0,
       });
@@ -729,8 +744,8 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       const starImpact = Math.round((avgRating - clientRating) * perStarImpact);
       findings.push({
         type: "rating_gap",
-        title: "Rating Below What Prospects Expect",
-        detail: `Prospects see a ${clientRating}★ rating while nearby alternatives average ${avgRating.toFixed(1)}★. Improving your rating could generate an estimated $${starImpact.toLocaleString()} in additional inquiries per year.`,
+        title: "Rating Below What People Expect",
+        detail: `People see a ${clientRating}★ rating while nearby alternatives average ${avgRating.toFixed(1)}★. Improving your rating could generate an estimated $${starImpact.toLocaleString()} in additional inquiries per year.`,
         value: avgRating - clientRating,
         impact: starImpact,
       });
@@ -739,8 +754,8 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         type: "rating_strong",
         title: "Rating Makes a Strong First Impression",
         detail: avgRating > 0
-          ? `Your ${clientRating}★ rating ${clientRating > avgRating ? "stands out above" : "matches"} the market average of ${avgRating.toFixed(1)}★. Prospects trust what they see.`
-          : `Your ${clientRating}★ rating makes a strong first impression. Prospects trust what they see.`,
+          ? `Your ${clientRating}★ rating ${clientRating > avgRating ? "stands out above" : "matches"} the market average of ${avgRating.toFixed(1)}★. That builds trust at first glance.`
+          : `Your ${clientRating}★ rating makes a strong first impression. That builds trust at first glance.`,
         value: clientRating - avgRating,
         impact: 0,
       });
@@ -751,7 +766,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings.push({
         type: "recency_strong",
         title: "Recent Reviews Signal Active Business",
-        detail: `Your most recent review is from the last ${lastReviewDaysAgo <= 7 ? "week" : "two weeks"}. Prospects see an active, current business.`,
+        detail: `Your most recent review is from the last ${lastReviewDaysAgo <= 7 ? "week" : "two weeks"}. People see an active, current business.`,
         value: lastReviewDaysAgo,
         impact: 0,
       });
@@ -762,7 +777,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings.push({
         type: "recency_stale",
         title: "Review Activity Has Slowed",
-        detail: `Based on your most recent Google reviews, activity has slowed. Fresh reviews signal to prospects that your business is active and could generate an estimated $${recencyImpact.toLocaleString()} in additional inquiries per year.`,
+        detail: `Based on your most recent Google reviews, activity has slowed. Fresh reviews signal to people searching that your business is active and could generate an estimated $${recencyImpact.toLocaleString()} in additional inquiries per year.`,
         value: lastReviewDaysAgo,
         impact: recencyImpact,
       });
@@ -777,8 +792,8 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         const responseImpact = Math.round(econ.avgCaseValue * econ.conversionRate * 6);
         findings.push({
           type: "response_gap",
-          title: "Prospects See Unanswered Reviews",
-          detail: `You've responded to ${reviewResponseRate}% of your reviews. Prospects notice when owners engage. Improving response rate could generate an estimated $${responseImpact.toLocaleString()} in additional inquiries per year.`,
+          title: "People See Unanswered Reviews",
+          detail: `You've responded to ${reviewResponseRate}% of your reviews. People notice when the owner engages. Improving response rate could generate an estimated $${responseImpact.toLocaleString()} in additional inquiries per year.`,
           value: reviewResponseRate,
           impact: responseImpact,
         });
@@ -786,7 +801,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         findings.push({
           type: "response_strong",
           title: "Strong Owner Engagement Visible",
-          detail: `You've responded to ${reviewResponseRate}% of your reviews. Prospects see an owner who cares.`,
+          detail: `You've responded to ${reviewResponseRate}% of your reviews. People see an owner who cares.`,
           value: reviewResponseRate,
           impact: 0,
         });
@@ -808,19 +823,19 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         findings.push({
           type: "profile_incomplete",
           title: "Incomplete Profile Reduces Trust",
-          detail: `Prospects see a profile missing ${missingItems.join(", ")}. Complete profiles get more clicks. This takes minutes to fix.`,
+          detail: `People see a profile missing ${missingItems.join(", ")}. Complete profiles get more clicks. This takes minutes to fix.`,
           value: missingItems.length,
           impact: Math.round(econ.avgCaseValue * missingItems.length * 0.5),
         });
       }
     }
 
-    // Finding 6: Zero competitors guidance
+    // Finding 6: Zero competitors -- reframe as visibility opportunity, not absence
     if (competitiveDataLimited) {
       findings.push({
         type: "no_competitors",
-        title: "Competitive Data Limited",
-        detail: "We could not find same-specialty competitors in your immediate area. Your score reflects your profile strength as a prospect would see it. Connect Google Business Profile for deeper intelligence.",
+        title: `You Own This Market`,
+        detail: `There are no other ${specialty}s competing for visibility in ${city}. That means every person searching for your service in this area should find you first. Your score reflects how trustworthy your profile looks to the person who just searched. The question isn't who's ahead of you. It's how many people in ${city} need what you do and can't find you yet.`,
         value: 0,
         impact: 0,
       });
@@ -1015,7 +1030,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       const photoImpact = Math.round((topCompPhotos - clientPhotos) * econ.avgCaseValue * 0.002);
       findings.push({
         type: "photo_gap",
-        title: "Prospects See More Photos on Alternatives",
+        title: "People See More Photos on Alternatives",
         detail: `${topCompetitor.name} has ${topCompPhotos} photos. You have ${clientPhotos || "none"}. Improving your photo count could generate an estimated $${photoImpact.toLocaleString()} in additional inquiries per year.`,
         value: topCompPhotos - clientPhotos,
         impact: photoImpact,
@@ -1026,8 +1041,8 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     if (!hasHours && topCompetitor?.hasHours) {
       findings.push({
         type: "hours_missing",
-        title: "Prospects Can't See Your Hours",
-        detail: `${topCompetitor.name}'s hours are listed. Yours aren't. Prospects skip profiles without hours. This takes 2 minutes to fix.`,
+        title: "People Can't See Your Hours",
+        detail: `${topCompetitor.name}'s hours are listed. Yours aren't. People skip profiles without hours. This takes 2 minutes to fix.`,
         value: 0,
         impact: Math.round(econ.avgCaseValue * 0.5),
       });

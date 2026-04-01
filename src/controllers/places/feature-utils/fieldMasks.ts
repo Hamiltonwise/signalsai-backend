@@ -27,6 +27,14 @@ export const PLACE_DETAILS_FIELD_MASK = [
   "priceLevel",            // Price tier
   "openingDate",           // When the business opened (years in business)
   "reviews.publishTime",   // Review timestamps (for recency analysis)
+  // Trust scoring signals (verified Google Places API v1, April 2026)
+  "reviewSummary",         // Google's Gemini-generated review summary
+  "generativeSummary",     // Google's AI description of the place
+  "googleMapsLinks",       // Direct links: writeAReviewUri, reviewsUri, photosUri
+  "pureServiceAreaBusiness", // true for mobile/service-area businesses (plumbers, groomers)
+  "goodForChildren",       // Relevant for pediatric dentists, orthodontists, family practices
+  "accessibilityOptions",  // Wheelchair accessible, etc.
+  "paymentOptions",        // Accepts cards, NFC, etc.
 ].join(",");
 
 /**
