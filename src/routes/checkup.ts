@@ -1596,7 +1596,29 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       console.warn("[Checkup] Vocabulary auto-config failed, will use universal defaults:", (e as Error).message);
     }
 
+    // ── Instant Website Generation ──
+    // Creates a website_builder.projects record + homepage immediately using
+    // checkup data (reviews, rating, hours, photos). Ready before the user
+    // finishes onboarding questions. Never blocks account creation.
+    try {
+      const { generateInstantWebsite } = await import("../services/instantWebsiteGenerator");
+      const parsedCheckup = typeof checkup_data === "string"
+        ? JSON.parse(checkup_data)
+        : checkup_data;
+      await generateInstantWebsite({
+        orgId: org.id,
+        orgName: practice_name || org.name,
+        placeId: place_id || null,
+        checkupData: parsedCheckup || {},
+        category: req.body.category || parsedCheckup?.market?.specialty || null,
+      });
+      console.log(`[Checkup] Instant website generated for org ${org.id}`);
+    } catch (iwErr: any) {
+      console.error(`[Checkup] Instant website generation failed (non-blocking):`, iwErr.message);
+    }
+
     // Enqueue PatientPath build pipeline (Phase 1: research)
+    // This enriches the website later with Claude-analyzed research brief
     try {
       const ppQueue = getMindsQueue("patientpath-build");
       await ppQueue.add(
