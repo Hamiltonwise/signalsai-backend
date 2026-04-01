@@ -1,7 +1,7 @@
 /**
  * Agent Registry
  *
- * Code-defined map of agent_key → handler.
+ * Code-defined map of agent_key -> handler.
  * The scheduler worker looks up handlers here.
  * The admin API exposes available keys for the "create schedule" dropdown.
  */
@@ -13,6 +13,35 @@ import { sendAllMondayEmails } from "../jobs/mondayEmail";
 import { runDreamweaver } from "./agents/dreamweaver";
 import { measurePendingOutcomes, aggregateHeuristicStats } from "./feedbackLoop";
 
+// Dream team agent services
+import { runClientMonitor } from "./agents/clientMonitor";
+import { runCSAgentDaily } from "./agents/csAgent";
+import { runCSCoach } from "./agents/csCoach";
+import { runCSExpander } from "./agents/csExpander";
+import { runMorningBriefing } from "./agents/morningBriefing";
+import { runAEOMonitor } from "./agents/aeoMonitor";
+import { runContentPerformance } from "./agents/contentPerformance";
+import { runCompetitiveScoutForAll } from "./agents/competitiveScout";
+import { runLearningCalibration } from "./agents/learningAgent";
+import { runDailyScan as runNothingGetsLostScan } from "./agents/nothingGetsLost";
+import { runBugTriage } from "./agents/bugTriageAgent";
+import { runCMOAgent } from "./agents/cmoAgent";
+import { runConversionAnalysis } from "./agents/conversionOptimizer";
+import { runWeeklyDigest } from "./agents/weeklyDigest";
+import { runIntelligenceForAll } from "./agents/intelligenceAgent";
+import { runCFOMonthlyReport } from "./agents/cfoAgent";
+import { runStrategicIntelligence } from "./agents/strategicIntelligence";
+import { runTechnologyHorizon } from "./agents/technologyHorizon";
+import { runTrendScout } from "./agents/trendScout";
+import { runMarketSignalScout } from "./agents/marketSignalScout";
+import { runWeeklyReport as runFoundationOpsWeekly } from "./agents/foundationOperations";
+import { runVerticalReadinessScan } from "./agents/verticalReadiness";
+import { runHumanDeploymentScan } from "./agents/humanDeploymentScout";
+import { runPodcastScout } from "./agents/podcastScout";
+import { runPropertyScan } from "./agents/realEstateAgent";
+import { db } from "../database/connection";
+import { processWeek1Win } from "../workers/processors/week1Win.processor";
+
 export interface AgentHandler {
   displayName: string;
   description: string;
@@ -20,9 +49,10 @@ export interface AgentHandler {
 }
 
 const registry: Record<string, AgentHandler> = {
+  // ─── Existing agents ───────────────────────────────────────────
   proofline: {
     displayName: "Proofline Agent",
-    description: "Daily proofline analysis — generates Win/Risk data points from GBP and website analytics for all onboarded locations.",
+    description: "Daily proofline analysis. Generates Win/Risk data points from GBP and website analytics for all onboarded locations.",
     handler: async () => {
       const result = await executeProoflineAgent();
       return { summary: result.summary as unknown as Record<string, unknown> };
@@ -30,7 +60,7 @@ const registry: Record<string, AgentHandler> = {
   },
   ranking: {
     displayName: "Practice Ranking",
-    description: "Competitive ranking analysis — discovers competitors, scores, and generates LLM analysis for all onboarded locations.",
+    description: "Competitive ranking analysis. Discovers competitors, scores, and generates LLM analysis for all onboarded locations.",
     handler: async () => {
       const result = await executeRankingAgent();
       return { summary: result.summary as unknown as Record<string, unknown> };
@@ -38,7 +68,7 @@ const registry: Record<string, AgentHandler> = {
   },
   rankings_intelligence: {
     displayName: "Rankings Intelligence",
-    description: "Weekly snapshot — queries current ranking for each org, generates 3 plain-English bullets, stores to weekly_ranking_snapshots. Runs Sunday 11PM UTC.",
+    description: "Weekly snapshot. Queries current ranking for each org, generates 3 plain-English bullets, stores to weekly_ranking_snapshots. Runs Sunday 11PM UTC.",
     handler: async () => {
       const result = await generateAllSnapshots();
       return { summary: result as unknown as Record<string, unknown> };
@@ -73,6 +103,232 @@ const registry: Record<string, AgentHandler> = {
           heuristic_stats: stats,
         } as unknown as Record<string, unknown>,
       };
+    },
+  },
+
+  // ─── Daily agents ──────────────────────────────────────────────
+  client_monitor: {
+    displayName: "Client Monitor",
+    description: "Daily client health scoring. Classifies each org as GREEN/AMBER/RED based on behavioral_events from the last 7 days.",
+    handler: async () => {
+      const result = await runClientMonitor();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  cs_agent: {
+    displayName: "CS Agent",
+    description: "Daily proactive CS interventions. Detects behavioral triggers across all active orgs and generates response suggestions.",
+    handler: async () => {
+      const result = await runCSAgentDaily();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  cs_coach: {
+    displayName: "CS Coach",
+    description: "Daily CS coaching suggestions. Analyzes support interactions and recommends improvements.",
+    handler: async () => {
+      const result = await runCSCoach();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  cs_expander: {
+    displayName: "CS Expander",
+    description: "Daily expansion opportunity detection. Identifies upsell and cross-sell signals from client behavior.",
+    handler: async () => {
+      const result = await runCSExpander();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  morning_briefing: {
+    displayName: "Morning Briefing",
+    description: "Daily synthesis of overnight events, agent outputs, and priority actions. 6am PT before Monday email.",
+    handler: async () => {
+      const result = await runMorningBriefing();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  aeo_monitor: {
+    displayName: "AEO Monitor",
+    description: "Daily AI search citation monitoring. Tracks how AI engines reference client businesses.",
+    handler: async () => {
+      const result = await runAEOMonitor();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  content_performance: {
+    displayName: "Content Performance",
+    description: "Daily content ROI tracking. Measures performance of published content across platforms.",
+    handler: async () => {
+      const result = await runContentPerformance();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  competitive_scout: {
+    displayName: "Competitive Scout",
+    description: "Daily competitor activity scan. Detects competitor moves across all client markets.",
+    handler: async () => {
+      const result = await runCompetitiveScoutForAll();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  learning_agent: {
+    displayName: "Learning Agent",
+    description: "Daily heuristic calibration. End-of-day analysis of which agent outputs drove real improvement.",
+    handler: async () => {
+      const result = await runLearningCalibration();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  nothing_gets_lost: {
+    displayName: "Nothing Gets Lost",
+    description: "Daily orphan document scan. Finds unreferenced knowledge docs, stale Canon pages, and broken links.",
+    handler: async () => {
+      const result = await runNothingGetsLostScan();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  bug_triage: {
+    displayName: "Bug Triage",
+    description: "Daily auto-triage of open bugs. Classifies severity, assigns to queues, escalates P0s.",
+    handler: async () => {
+      const result = await runBugTriage();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  week1_win: {
+    displayName: "Week 1 Win",
+    description: "Daily check for new accounts in their first week. Generates the single most valuable quick win from GBP completeness, NAP consistency, or site speed.",
+    handler: async () => {
+      // Find orgs created in the last 7 days without a week1 win yet
+      const newOrgs = await db("organizations")
+        .whereNull("week1_win_headline")
+        .where("created_at", ">=", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+        .select("id");
+
+      let processed = 0;
+      for (const org of newOrgs) {
+        try {
+          await processWeek1Win({ data: { orgId: org.id } } as any);
+          processed++;
+        } catch (err: any) {
+          console.error(`[Week1Win] Failed for org ${org.id}:`, err.message);
+        }
+      }
+      return { summary: { processed, total: newOrgs.length } };
+    },
+  },
+
+  // ─── Weekly agents ─────────────────────────────────────────────
+  cmo_agent: {
+    displayName: "CMO Agent",
+    description: "Weekly content strategy. Generates content briefs, topic recommendations, and messaging guidance.",
+    handler: async () => {
+      const result = await runCMOAgent();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  conversion_optimizer: {
+    displayName: "Conversion Optimizer",
+    description: "Weekly funnel analysis. Identifies drop-off points, A/B test proposals, and conversion improvements.",
+    handler: async () => {
+      const result = await runConversionAnalysis();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  weekly_digest: {
+    displayName: "Weekly Digest",
+    description: "Friday summary of the week's behavioral_events, agent outputs, client health, and competitive moves.",
+    handler: async () => {
+      const result = await runWeeklyDigest();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  intelligence_agent: {
+    displayName: "Intelligence Agent",
+    description: "Weekly market intelligence. Deep analysis of market data, ranking trends, and competitive positioning.",
+    handler: async () => {
+      const result = await runIntelligenceForAll();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  cfo_agent: {
+    displayName: "CFO Agent",
+    description: "Weekly financial review. Revenue projections, cost analysis, and financial health scoring.",
+    handler: async () => {
+      const result = await runCFOMonthlyReport();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  strategic_intelligence: {
+    displayName: "Strategic Intelligence",
+    description: "Weekly strategic signals. Identifies macro trends, partnership opportunities, and market shifts.",
+    handler: async () => {
+      const result = await runStrategicIntelligence();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  technology_horizon: {
+    displayName: "Technology Horizon",
+    description: "Weekly tech landscape scan. Evaluates new models, tools, and capabilities relevant to the platform.",
+    handler: async () => {
+      const result = await runTechnologyHorizon();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  trend_scout: {
+    displayName: "Trend Scout",
+    description: "Weekly trend detection. Identifies emerging patterns in client industries and adjacent markets.",
+    handler: async () => {
+      const result = await runTrendScout();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  market_signal_scout: {
+    displayName: "Market Signal Scout",
+    description: "Weekly market signal aggregation. Collects and scores signals from news, social, and industry sources.",
+    handler: async () => {
+      const result = await runMarketSignalScout();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  foundation_operations: {
+    displayName: "Foundation Operations",
+    description: "Weekly Heroes & Founders Foundation ops check. RISE Program status, grant pipeline, sponsor outreach.",
+    handler: async () => {
+      const result = await runFoundationOpsWeekly();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  vertical_readiness: {
+    displayName: "Vertical Readiness",
+    description: "Weekly vertical expansion readiness assessment. Scores new verticals on TAM, fit, and effort.",
+    handler: async () => {
+      const result = await runVerticalReadinessScan();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  human_deployment_scout: {
+    displayName: "Human Deployment Scout",
+    description: "Weekly hiring and scaling signal detection. Identifies when to hire, what roles, and cost impact.",
+    handler: async () => {
+      const result = await runHumanDeploymentScan();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  podcast_scout: {
+    displayName: "Podcast Scout",
+    description: "Weekly podcast opportunity detection. Identifies relevant shows, pitch angles, and booking windows.",
+    handler: async () => {
+      const result = await runPodcastScout();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  real_estate_agent: {
+    displayName: "Real Estate Agent",
+    description: "Weekly real estate market signal scan. Tracks commercial real estate trends relevant to client expansion.",
+    handler: async () => {
+      const result = await runPropertyScan();
+      return { summary: result as unknown as Record<string, unknown> };
     },
   },
 };
