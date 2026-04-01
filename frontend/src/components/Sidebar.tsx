@@ -22,6 +22,7 @@ import {
   Brain,
   Users,
   Zap,
+  MessageSquare,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSidebar } from "./Admin/SidebarContext";
@@ -622,6 +623,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     />
                   ) : null
               )}
+              <NavItem
+                icon={<MessageSquare size={18} />}
+                label="Messages"
+                active={location.pathname === "/messages"}
+                onClick={() => handleNavigate("/messages")}
+                isLocked={isWizardActive}
+                minimized={isMinimized}
+              />
             </div>
           )}
 

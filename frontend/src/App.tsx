@@ -56,6 +56,7 @@ const GPDiscoveryPage = React.lazy(() => import("./pages/partner/GPDiscoveryPage
 const CampaignIntelligence = React.lazy(() => import("./pages/partner/CampaignIntelligence"));
 const Changelog = React.lazy(() => import("./pages/Changelog"));
 const ReferralProgram = React.lazy(() => import("./pages/ReferralProgram"));
+const MessagesPage = React.lazy(() => import("./pages/Messages").then(m => ({ default: m.Messages })));
 
 // --- Marketing site rebuild (WO-13) ---
 const MarketingHome = React.lazy(() => import("./pages/marketing/HomePage"));
@@ -376,7 +377,7 @@ function App() {
                 </Route>
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/help" element={<Help />} />
-                {/* Messages route -- page needs to be rebuilt next session */}
+                <Route path="/messages" element={<React.Suspense fallback={null}><MessagesPage /></React.Suspense>} />
                 {/* HQ routes inside CF layout -- same sidebar, no jarring layout switch */}
                 <Route path="/hq" element={<Navigate to="/hq/command" replace />} />
                 <Route path="/hq/command" element={<React.Suspense fallback={null}><HQCommand /></React.Suspense>} />

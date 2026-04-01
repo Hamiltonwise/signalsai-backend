@@ -32,6 +32,17 @@ export interface SurpriseFinding {
   surpriseScore: number; // 0-100: how unlikely they already know this
   actionability: number; // 0-100: how actionable it is
   source: string; // internal tracking, never shown to user
+  /**
+   * Confidence level based on data verifiability:
+   * - high: finding is derived from data we can verify (exact ratings, counts, review text)
+   * - medium: finding uses data that may be incomplete (5-review sample, hours data)
+   * - low: finding relies on data we cannot verify (profile fields the API may not return)
+   *
+   * Only HIGH confidence findings appear in checkup results.
+   * MEDIUM findings can appear in Monday email after trust is established.
+   * LOW findings are suppressed entirely.
+   */
+  confidence: "high" | "medium" | "low";
 }
 
 interface PlaceReview {
@@ -103,85 +114,90 @@ export async function generateSurpriseFindings(data: {
   const clientPhotoCount = place.photos?.length || 0;
 
   // ── 1. Review Response Gap ──────────────────────────────────────
-  const unansweredCount = clientReviews.filter(
-    (r) => !r.ownerResponse
-  ).length;
-  const totalClientReviews = clientReviews.length;
+  // REMOVED: Google Places API v1 does NOT return ownerResponse data.
+  // We cannot verify whether reviews have been answered, so showing
+  // "X reviews waiting for your response" is a false positive for
+  // every business. A burned owner will forgive a missing insight
+  // but will NOT forgive a wrong one.
+  //
+  // Replaced with: Negative sentiment detection from actual review text,
+  // which IS verifiable because we are reading the words customers wrote.
+  const negativeReviews = clientReviews.filter((r) => {
+    const text = (r.text?.text || r.originalText?.text || "").toLowerCase();
+    const rating = r.rating || 5;
+    // A review is concerning if it has a low rating OR contains negative signal words
+    if (rating <= 3) return true;
+    const negativeSignals = ["disappointed", "rude", "wait", "waited", "overcharged", "unprofessional", "never again", "worst", "terrible", "horrible", "avoid"];
+    return negativeSignals.some((w) => text.includes(w));
+  });
 
-  if (unansweredCount > 0 && totalClientReviews > 0) {
-    // Check competitor response rate for comparison
-    const topComp = competitors[0];
-    const compReviews = topComp?.reviews || [];
-    const compAnswered = compReviews.filter((r) => !!r.ownerResponse).length;
-    const compResponseRate = compReviews.length > 0
-      ? Math.round((compAnswered / compReviews.length) * 100)
-      : 0;
+  if (negativeReviews.length >= 2 && clientReviews.length > 0) {
+    // Extract the common complaint theme from negative reviews
+    const negativeText = negativeReviews
+      .map((r) => (r.text?.text || r.originalText?.text || "").toLowerCase())
+      .join(" ");
+    const complaintWords = ["wait", "rude", "price", "cost", "expensive", "staff", "communication", "billing", "insurance", "pain", "uncomfortable"];
+    const complaintCounts = complaintWords
+      .map((w) => ({ word: w, count: (negativeText.match(new RegExp(`\\b${w}`, "gi")) || []).length }))
+      .filter((c) => c.count >= 2)
+      .sort((a, b) => b.count - a.count);
 
-    const clientResponseRate = totalClientReviews > 0
-      ? Math.round(((totalClientReviews - unansweredCount) / totalClientReviews) * 100)
-      : 0;
-
-    let detail = `You have ${unansweredCount} unanswered review${unansweredCount !== 1 ? "s" : ""} on Google.`;
-    if (topComp && compResponseRate > clientResponseRate) {
-      detail += ` ${topComp.name} responds to ${compResponseRate}% of theirs.`;
-    }
-    detail += " Every unanswered review tells Google (and potential customers) you're not paying attention.";
+    const topComplaint = complaintCounts[0];
+    const detail = topComplaint
+      ? `${negativeReviews.length} of your recent reviews mention concerns${topComplaint ? ` around "${topComplaint.word}"` : ""}. Prospects read negative reviews closely. Addressing this pattern publicly (in your responses) shows you listen and improve.`
+      : `${negativeReviews.length} of your recent reviews contain negative signals. Prospects weigh negative reviews heavily. Responding thoughtfully to concerns shows future customers you care.`;
 
     findings.push({
       type: "hidden_money",
-      headline: `${unansweredCount} reviews waiting for your response`,
+      headline: `${negativeReviews.length} reviews with concerns prospects will notice`,
       detail,
-      surpriseScore: 75, // Most owners don't track response rates
-      actionability: 95, // Takes 10 minutes to respond
-      source: "review_response_gap",
+      surpriseScore: 75,
+      actionability: 90,
+      source: "negative_sentiment_pattern",
+      confidence: "high", // We are reading actual review text
     });
   }
 
   // ── 2. Review Recency Gap ──────────────────────────────────────
-  const clientReviewDates = clientReviews
-    .map((r) => r.publishTime ? new Date(r.publishTime).getTime() : 0)
-    .filter((t) => t > 0)
-    .sort((a, b) => b - a);
+  // TRUST FIX: Google Places v1 returns only 5 reviews. The actual most recent
+  // review could be from yesterday. We only flag recency if ALL reviews in our
+  // sample are older than 30 days, which is a much stronger signal.
+  //
+  // We also check relativePublishTimeDescription for recent activity indicators.
+  // If ANY review says "a week ago" or similar, recency is fine.
+  const hasRecentByDescription = clientReviews.some((r) => {
+    const desc = (r.relativePublishTimeDescription || "").toLowerCase();
+    return desc.includes("a week ago") || desc.includes("days ago")
+      || desc.includes("yesterday") || desc.includes("an hour ago")
+      || desc.includes("2 weeks ago") || desc.includes("3 weeks ago");
+  });
 
-  if (clientReviewDates.length > 0) {
-    const lastClientReviewMs = clientReviewDates[0];
-    const daysSinceLastReview = Math.floor(
-      (Date.now() - lastClientReviewMs) / (1000 * 60 * 60 * 24)
-    );
-
-    // Check competitor recency
-    const topComp = competitors[0];
-    const compReviewDates = (topComp?.reviews || [])
+  if (!hasRecentByDescription) {
+    const clientReviewDates = clientReviews
       .map((r) => r.publishTime ? new Date(r.publishTime).getTime() : 0)
       .filter((t) => t > 0)
       .sort((a, b) => b - a);
 
-    if (daysSinceLastReview > 14 && compReviewDates.length > 0) {
-      const compLastReviewMs = compReviewDates[0];
-      const compDaysSince = Math.floor(
-        (Date.now() - compLastReviewMs) / (1000 * 60 * 60 * 24)
+    // Only flag if we have dates AND every single review is older than 30 days
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const allReviewsOld = clientReviewDates.length > 0
+      && clientReviewDates.every((t) => t < thirtyDaysAgo);
+
+    if (allReviewsOld) {
+      const oldestRecentMs = clientReviewDates[0];
+      const daysSinceLastReview = Math.floor(
+        (Date.now() - oldestRecentMs) / (1000 * 60 * 60 * 24)
       );
 
-      // Count competitor's recent reviews (last 30 days)
-      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-      const compRecentCount = compReviewDates.filter((t) => t > thirtyDaysAgo).length;
-
-      if (compDaysSince < daysSinceLastReview) {
-        let detail = `Your last review was ${daysSinceLastReview} days ago.`;
-        if (topComp && compRecentCount > 0) {
-          detail += ` ${topComp.name} got ${compRecentCount} review${compRecentCount !== 1 ? "s" : ""} in the last 30 days.`;
-        }
-        detail += " Google favors businesses with recent activity. Review recency impacts your local ranking.";
-
-        findings.push({
-          type: "competitive_gap",
-          headline: `${daysSinceLastReview} days since your last review`,
-          detail,
-          surpriseScore: 70,
-          actionability: 80,
-          source: "review_recency_gap",
-        });
-      }
+      findings.push({
+        type: "competitive_gap",
+        headline: "Review activity has slowed across your recent Google reviews",
+        detail: `Based on your most recent Google reviews, activity has slowed. All ${clientReviewDates.length} reviews in your sample are over 30 days old. Fresh reviews signal to prospects that your business is active. Google also favors businesses with recent review activity in local rankings.`,
+        surpriseScore: 70,
+        actionability: 80,
+        source: "review_recency_gap",
+        confidence: "medium", // Based on a 5-review sample, not the full picture
+      });
     }
   }
 
@@ -201,54 +217,71 @@ export async function generateSurpriseFindings(data: {
       surpriseScore: 60,
       actionability: 85, // Easy to add photos
       source: "photo_count_gap",
+      confidence: "high", // Photo counts are exact from the API
     });
   }
 
   // ── 4. Hours Gap ───────────────────────────────────────────────
+  // TRUST FIX: Google Places hours data can be stale or incomplete.
+  // Only show Saturday findings when we have STRONG evidence: the business's
+  // weekdayDescriptions explicitly lists Saturday as "Closed" (not just missing data).
+  // If hours data is missing entirely, we don't know enough to comment.
   const clientHours = place.regularOpeningHours;
   const clientHasHours = !!clientHours && (clientHours.periods?.length || 0) > 0;
+  const clientHourDescriptions = (clientHours?.weekdayDescriptions || [])
+    .map((d) => d.toLowerCase());
 
-  // Check how many competitors are open Saturday
-  const saturdayComps = competitors.filter((c) => {
-    if (!c.hasHours || !c.hoursComplete) return false;
-    // If we have detailed hours, check Saturday specifically
-    return c.hoursComplete; // hoursComplete means 5+ days listed, likely includes Saturday
-  });
+  // Strong evidence: Saturday is explicitly listed as "Closed" in weekdayDescriptions
+  const saturdayExplicitlyClosed = clientHourDescriptions.some(
+    (d) => d.includes("saturday") && d.includes("closed")
+  );
+  // Weak evidence: Saturday not mentioned at all (could be data gap)
+  const saturdayMentioned = clientHourDescriptions.some(
+    (d) => d.includes("saturday")
+  );
 
-  if (saturdayComps.length >= 2 && clientHasHours) {
-    // Check if client's hours mention Saturday
-    const clientHourDescriptions = (clientHours?.weekdayDescriptions || [])
-      .map((d) => d.toLowerCase());
-    const clientOpenSaturday = clientHourDescriptions.some(
-      (d) => d.includes("saturday") && !d.includes("closed")
-    );
-
-    if (!clientOpenSaturday && saturdayComps.length > 0) {
+  if (saturdayExplicitlyClosed) {
+    // We have strong evidence: they explicitly show Saturday as Closed
+    const saturdayComps = competitors.filter((c) => c.hasHours && c.hoursComplete);
+    if (saturdayComps.length >= 2) {
       const satCount = saturdayComps.length;
       findings.push({
         type: "competitive_gap",
-        headline: `${satCount} of ${competitors.length} competitors are open Saturday. You aren't listed as open.`,
-        detail: `${satCount} competitor${satCount !== 1 ? "s" : ""} in ${market.city} show Saturday hours on Google. If you are open Saturday, update your Google Business Profile. If you aren't, that's ${satCount} businesses capturing weekend demand you're missing.`,
+        headline: `Your Google profile lists Saturday as closed. ${satCount} competitors show Saturday hours.`,
+        detail: `${satCount} competitor${satCount !== 1 ? "s" : ""} in ${market.city} show Saturday hours on Google. If you have added Saturday availability, make sure your Google Business Profile reflects it. Weekend access is a common deciding factor for prospects.`,
         surpriseScore: 65,
-        actionability: 70, // Requires a business decision, not just a click
+        actionability: 70,
         source: "hours_gap_saturday",
+        confidence: "medium", // Hours data can be stale, but explicit "Closed" is a decent signal
       });
     }
   } else if (!clientHasHours) {
+    // No hours data at all. This IS something the business controls.
     const compsWithHours = competitors.filter((c) => c.hasHours).length;
     if (compsWithHours > 0) {
       findings.push({
         type: "safety",
         headline: `Your Google profile is missing business hours`,
-        detail: `${compsWithHours} of ${competitors.length} competitors have complete hours listed. Google prioritizes profiles with complete information. This takes 2 minutes to fix and it signals to both Google and customers that you're a real, active business.`,
+        detail: `${compsWithHours} of ${competitors.length} competitors have hours listed. Google prioritizes profiles with complete information. This takes 2 minutes to fix and signals to both Google and customers that you're a real, active business.`,
         surpriseScore: 55,
         actionability: 95,
         source: "hours_missing",
+        confidence: "high", // Missing hours is verifiable: the API returns no hours data at all
       });
     }
   }
+  // If Saturday is simply not mentioned in the data, we say nothing.
+  // The business may be open Saturday but the data is incomplete.
 
   // ── 5. Editorial Summary ───────────────────────────────────────
+  // TRUST FIX: editorialSummary is Google-generated, NOT business-controlled.
+  // We cannot verify whether a business has added their own description.
+  // The API field we check is Google's AI summary, not the owner's profile text.
+  //
+  // If they HAVE an editorial summary, that's a verifiable surprise asset.
+  // If they DON'T, we say nothing. The owner may have a full description
+  // that Google simply hasn't summarized. Showing "missing description"
+  // when they can see their description IS there destroys trust instantly.
   const editorialText = place.editorialSummary?.text;
   if (editorialText) {
     findings.push({
@@ -258,21 +291,14 @@ export async function generateSurpriseFindings(data: {
       surpriseScore: 90, // Almost nobody knows Google writes these
       actionability: 60, // Can influence it through GBP description, but indirect
       source: "editorial_summary_client",
+      confidence: "high", // We have the exact text Google shows
     });
   }
-
-  // Check competitor editorial summaries for contrast
-  const compWithEditorial = competitors.find((c) => c.editorialSummary?.text);
-  if (compWithEditorial?.editorialSummary?.text && !editorialText) {
-    findings.push({
-      type: "competitive_gap",
-      headline: `Google wrote a summary for ${compWithEditorial.name} but not for you`,
-      detail: `Google's AI describes ${compWithEditorial.name} as: "${compWithEditorial.editorialSummary.text}" Your business doesn't have an editorial summary yet. A complete, well-written Google Business Profile description increases the chance Google generates one for you.`,
-      surpriseScore: 85,
-      actionability: 55,
-      source: "editorial_summary_competitor",
-    });
-  }
+  // REMOVED: "Google wrote a summary for [competitor] but not for you"
+  // We cannot verify the business doesn't have a description. The API
+  // simply may not return it as editorialSummary. Showing this finding
+  // would cause the owner to check their profile, see their description
+  // IS there, and lose trust in everything else we show them.
 
   // ── 6. Review Sentiment Cross-Reference ────────────────────────
   // Find words that appear in client reviews but not competitor reviews
@@ -286,6 +312,7 @@ export async function generateSurpriseFindings(data: {
       surpriseScore: 85,
       actionability: 75,
       source: "review_sentiment_moat",
+      confidence: "medium",
     });
   }
 
