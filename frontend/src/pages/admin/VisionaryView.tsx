@@ -457,6 +457,19 @@ function AgentHealthPanel({ schedules }: { schedules: Schedule[] }) {
   const neverRun = schedules.filter((s) => !s.latest_run);
   const nominal = total - failed.length - neverRun.length;
 
+  // Redis health from /api/health
+  const { data: sysHealth } = useQuery({
+    queryKey: ["backend-health-visionary"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/health" });
+      return res as { redis?: string } | undefined;
+    },
+    refetchInterval: 30_000,
+    retry: false,
+  });
+  const redisKnown = sysHealth?.redis !== undefined;
+  const redisUp = sysHealth?.redis === "connected" || sysHealth?.redis === "ok";
+
   return (
     <Panel>
       <PanelHeader icon={Activity} label="Agent Health" iconColor="text-[#D56753]" />
@@ -471,6 +484,30 @@ function AgentHealthPanel({ schedules }: { schedules: Schedule[] }) {
           : ""}
         {running > 0 ? ` ${running} running now.` : ""}
       </p>
+
+      {/* Redis status indicator */}
+      <div className="flex items-center gap-2 mb-3">
+        <span
+          className={`inline-block w-2 h-2 rounded-full ${
+            redisKnown
+              ? redisUp
+                ? "bg-emerald-500"
+                : "bg-red-500 animate-pulse"
+              : "bg-gray-400"
+          }`}
+        />
+        <span
+          className={`text-xs font-medium ${
+            redisKnown
+              ? redisUp
+                ? "text-emerald-600"
+                : "text-red-600"
+              : "text-gray-400"
+          }`}
+        >
+          Redis: {redisKnown ? (redisUp ? "Connected" : "Disconnected") : "Unknown"}
+        </span>
+      </div>
 
       {failed.length > 0 && (
         <div className="space-y-1.5">

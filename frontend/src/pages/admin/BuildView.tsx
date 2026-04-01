@@ -64,6 +64,7 @@ function daysOpen(dateStr: string): number {
 interface HealthCheckResponse {
   status?: string;
   database?: string;
+  redis?: string;
   timestamp?: string;
   uptime?: number;
 }
@@ -144,6 +145,9 @@ function SystemStatusPanel() {
     health.status === "ok" || health.status === "healthy";
   const dbUp =
     health.database === "connected" || health.database === "ok";
+  const redisUp =
+    health.redis === "connected" || health.redis === "ok";
+  const redisKnown = health.redis !== undefined;
 
   return (
     <TermPanel>
@@ -175,10 +179,12 @@ function SystemStatusPanel() {
             </div>
 
             <div className="flex items-center gap-2">
-              <StatusDot status="unknown" />
+              <StatusDot status={redisKnown ? (redisUp ? "ok" : "fail") : "unknown"} />
               <div>
                 <p className="text-sm text-green-400 font-medium">Redis</p>
-                <p className="text-[10px] text-gray-500">Verify on EC2</p>
+                <p className="text-[10px] text-gray-500">
+                  {redisKnown ? (redisUp ? "Connected" : "Disconnected") : "Verify on EC2"}
+                </p>
               </div>
             </div>
 
