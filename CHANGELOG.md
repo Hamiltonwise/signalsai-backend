@@ -2,6 +2,24 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.10] - April 2026
+
+### Session Expired Crash Fix (ALLORO-FRONTEND-Q)
+
+Users with expired JWT tokens hitting `/settings/billing` saw a white screen — "Something went wrong." — because the billing page crashed trying to render a 403 error response as billing data. The app now detects expired tokens globally and shows a "Session Expired" modal prompting re-login.
+
+**Key Changes:**
+- Global 403 axios interceptor in `api/index.ts` — detects `"Invalid or expired token"` responses, dispatches `session:expired` event with dedup flag to prevent multiple modals
+- `SessionExpiredModal` component — non-dismissible dark glassmorphic modal, clears all auth state (localStorage, sessionStorage, query cache, cookies), broadcasts logout to other tabs, redirects to `/signin`
+- Mounted in `App.tsx` at top level alongside `<Toaster />`
+- `BillingTab.tsx` defensive guard — changed `success !== false` to `success === true` so malformed API responses never set state
+
+**Commits:**
+- `frontend/src/api/index.ts` — 403 interceptor with `sessionExpiredFired` dedup flag
+- `frontend/src/components/SessionExpiredModal.tsx` — new modal component
+- `frontend/src/App.tsx` — mount SessionExpiredModal
+- `frontend/src/components/settings/BillingTab.tsx` — tighten response guards
+
 ## [0.0.9] - March 2026
 
 ### Billing Quantity Override for Flat-Rate Legacy Clients
