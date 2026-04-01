@@ -323,7 +323,7 @@ function DiscoveryFeed({
         >
           <item.icon className="w-3.5 h-3.5 text-[#D56753] shrink-0" />
           <span className="text-slate-500">{item.label}</span>
-          <span className="ml-auto font-semibold text-[#212D40] truncate max-w-[120px]">{item.value}</span>
+          <span className="ml-auto font-semibold text-[#212D40] text-right break-words max-w-[160px]">{item.value}</span>
         </div>
       ))}
       {visibleBusinessItems === 0 && (
@@ -353,10 +353,10 @@ function DiscoveryFeed({
                 }`}>
                   <span className="text-[8px] font-bold text-white">{i + 1}</span>
                 </div>
-                <span className={`font-semibold truncate max-w-[110px] ${isHighlighted ? "text-[#212D40]" : "text-slate-600"}`}>
+                <span className={`font-semibold break-words max-w-[140px] ${isHighlighted ? "text-[#212D40]" : "text-slate-600"}`}>
                   {item.label}
                 </span>
-                <span className="ml-auto text-slate-400 truncate max-w-[100px]">{item.value}</span>
+                <span className="ml-auto text-slate-400 text-right break-words max-w-[120px]">{item.value}</span>
               </div>
             );
           })}

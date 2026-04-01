@@ -97,25 +97,29 @@ const NAME_SPECIALTY_PATTERNS: [RegExp, string][] = [
  * Derive a competitor term from PlaceDetails.
  *
  * Priority:
- * 1. Granular specialty in types[] (orthodontist, endodontist, etc.)
- * 2. Specialty keyword in business name ("Orthodontics" → orthodontist)
+ * 1. Specialty keyword in business name ("Orthodontics" -> orthodontist)
+ * 2. Granular specialty in types[] (orthodontist, endodontist, etc.)
  * 3. primaryTypeDisplayName if non-generic (e.g., "Hair Salon", "Chiropractor")
  * 4. Fallback: "competitor"
+ *
+ * Name-based detection runs first because Google Places types[] often returns
+ * a generic parent type (e.g. "dentist") even for specialists whose name
+ * clearly indicates a more specific specialty.
  */
 export function competitorTerm(
   category: string,
   types: string[],
   name: string
 ): string {
-  // 1. Check types[] for a granular specialty
+  // 1. Parse business name for specialty keywords (most specific signal)
+  for (const [pattern, label] of NAME_SPECIALTY_PATTERNS) {
+    if (pattern.test(name)) return label;
+  }
+
+  // 2. Check types[] for a granular specialty
   for (const t of types) {
     const match = SPECIALTY_TYPE_MAP[t];
     if (match) return match;
-  }
-
-  // 2. Parse business name for specialty keywords
-  for (const [pattern, label] of NAME_SPECIALTY_PATTERNS) {
-    if (pattern.test(name)) return label;
   }
 
   // 3. Use primaryTypeDisplayName if it's not the generic "Dentist"
@@ -356,10 +360,10 @@ export default function EntryScreen() {
                 >
                   <MapPin className="w-4 h-4 text-[#D56753] mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#212D40] truncate">
+                    <p className="text-sm font-semibold text-[#212D40] break-words">
                       {s.mainText}
                     </p>
-                    <p className="text-xs text-slate-500 truncate">
+                    <p className="text-xs text-slate-500 break-words">
                       {s.secondaryText}
                     </p>
                   </div>
