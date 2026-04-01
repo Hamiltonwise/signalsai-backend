@@ -73,12 +73,21 @@ export async function getUserWebsite(
     // PREPARING state — project not yet created
     if (data.preparing) {
       return res.json({
+        success: true,
         status: data.status,
         message: data.message,
       });
     }
 
     return res.json({
+      success: true,
+      website: {
+        generated_hostname: data.project.hostname,
+        status: data.project.status,
+        liveUrl: data.project.custom_domain
+          ? `https://${data.project.custom_domain}`
+          : undefined,
+      },
       project: data.project,
       pages: data.pages,
       media: data.media,
