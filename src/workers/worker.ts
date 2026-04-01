@@ -17,6 +17,7 @@ import { processSchedulerTick } from "./processors/scheduler.processor";
 import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
 import { processPmDailyBrief } from "./processors/pmDailyBrief.processor";
+import { runDreamweaver } from "../services/dreamweaverAgent";
 import { getMindsQueue, getPmQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 
@@ -233,8 +234,15 @@ const pmDailyBriefWorker = new Worker(
   }
 );
 
+// Dreamweaver Agent: scans for hospitality legends (daily 6 AM, before morning briefing)
+const dreamweaverWorker = new Worker(
+  "minds-dreamweaver",
+  async () => { await runDreamweaver(); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });

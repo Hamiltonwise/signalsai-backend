@@ -7,11 +7,17 @@
 
 import { db } from "../database/connection";
 
-// ---- Tier pricing (matches VisionaryView constants) -------------------------
+// ---- Per-org pricing (actual contracted rates) ------------------------------
 
-const TIER_PRICING: Record<string, number> = {
-  DWY: 997,
-  DFY: 2497,
+const ORG_MONTHLY_RATE: Record<number, number> = {
+  5: 2000,   // Garrison Orthodontics
+  6: 3500,   // DentalEMR
+  8: 1500,   // Artful Orthodontics
+  21: 0,     // McPherson Endodontics (beta)
+  25: 5000,  // Caswell Orthodontics (3 locations)
+  34: 0,     // Alloro (team org)
+  39: 1500,  // One Endodontics
+  42: 0,     // Valley Endodontics (demo)
 };
 
 // ---- Phase definitions ------------------------------------------------------
@@ -94,10 +100,9 @@ export async function calculateRoadmapState(): Promise<RoadmapState> {
 
   const currentClients = payingOrgs.length;
 
-  // 2. Calculate actual MRR from tier pricing
+  // 2. Calculate actual MRR from per-org contracted rates
   const currentMRR = payingOrgs.reduce((sum: number, o: any) => {
-    const tier = o.subscription_tier || "DWY";
-    return sum + (TIER_PRICING[tier] ?? 0);
+    return sum + (ORG_MONTHLY_RATE[o.id] ?? 0);
   }, 0);
 
   // 3. Query behavioral_events for checkup completions
