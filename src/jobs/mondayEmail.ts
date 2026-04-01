@@ -164,6 +164,12 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   // Shareability > priority for the email headline.
   const topFinding = await getMostShareableFinding(orgId, 7);
 
+  // Fetch recent snapshots for position comparison and steady-state detection
+  const recentSnapshots = await db("weekly_ranking_snapshots")
+    .where({ org_id: orgId })
+    .orderBy("week_start", "desc")
+    .limit(4);
+
   // --- Clean Week Detection ---
   // When nothing significant moved: no high-priority finding, no ranking change,
   // no competitor velocity spike, no referral drift. Send a warm "clean week"
@@ -221,11 +227,6 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   }
 
   // 6. Steady-state override: after 3 consecutive steady weeks
-  const recentSnapshots = await db("weekly_ranking_snapshots")
-    .where({ org_id: orgId })
-    .orderBy("week_start", "desc")
-    .limit(4);
-
   const steadyWeeks = recentSnapshots.filter(
     (s: any, i: number) => i > 0 && s.position === recentSnapshots[0].position
   ).length;
