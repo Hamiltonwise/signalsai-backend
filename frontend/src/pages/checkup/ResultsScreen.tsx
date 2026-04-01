@@ -568,7 +568,7 @@ function CompetitorInviteSection({
         {competitors.slice(0, 4).map((c) => (
           <div key={c.placeId} className="flex items-center justify-between">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-[#212D40] truncate">{c.name}</p>
+              <p className="text-sm font-medium text-[#212D40] break-words">{c.name}</p>
               <p className="text-xs text-gray-400">{c.reviewCount} reviews, {c.rating} stars</p>
             </div>
             <button
@@ -1124,7 +1124,7 @@ export default function ResultsScreen() {
               <Lock className="w-4 h-4 text-[#D56753]" />
             </div>
             <span className="text-base font-bold text-[#212D40]">
-              {topCompetitor ? `Your ${topCompetitor.name} Comparison` : `Your ${cityLabel} Competitive Report`}
+              {`Your ${place.name} Comparison`}
             </span>
           </div>
           <p className="text-sm text-[#212D40]/70 mb-5 leading-relaxed">{blurGateCta}</p>
@@ -1142,7 +1142,7 @@ export default function ResultsScreen() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setEmailError(""); setEmailSuggestion(suggestEmailFix(e.target.value)); }}
                 onBlur={() => setEmailSuggestion(suggestEmailFix(email))}
-                placeholder="Your work email"
+                placeholder="Your email"
                 autoComplete="email"
                 required
                 className={`w-full h-10 sm:h-12 px-3 sm:px-4 rounded-xl border text-sm sm:text-base text-[#212D40] placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 ${
