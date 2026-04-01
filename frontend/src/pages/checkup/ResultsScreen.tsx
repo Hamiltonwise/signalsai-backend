@@ -845,9 +845,14 @@ export default function ResultsScreen() {
             vs. {market.totalCompetitors} competitors in {market.city}
           </p>
         )}
-        {market && market.totalCompetitors === 0 && (
+        {market && market.totalCompetitors === 0 && state.competitors && state.competitors.length > 0 && (
+          <p className="text-sm text-emerald-600 mt-1.5 font-medium">
+            Only {place.category || "specialist"} in {market.city}. {state.competitors.length} nearby businesses are your referral market.
+          </p>
+        )}
+        {market && market.totalCompetitors === 0 && (!state.competitors || state.competitors.length === 0) && (
           <p className="text-sm text-slate-400 mt-1.5">
-            Your market data is limited. Connect Google for complete competitive intelligence.
+            Scanning your market. Connect Google for deeper competitive intelligence.
           </p>
         )}
       </div>
