@@ -12,6 +12,10 @@ import { v4 as uuid } from "uuid";
 export async function up(knex: Knex): Promise<void> {
   const ORG_ID = 34;
 
+  // Only run if org 34 exists in this database (skips test environments)
+  const org = await knex("organizations").where({ id: ORG_ID }).first();
+  if (!org) return;
+
   // Check if project already exists for this org
   const existing = await knex("website_builder.projects")
     .where({ organization_id: ORG_ID })
