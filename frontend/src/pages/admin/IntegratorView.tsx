@@ -1,37 +1,69 @@
 /**
  * Integrator View -- Jo's Ops Console
  *
- * 4-minute check-in from phone. Every client accounted for. Mobile-first.
- * 1. Client Health Grid (RED first, then AMBER, then GREEN)
- * 2. Trial Pipeline
- * 3. Task Queue
- * 4. Blockers
+ * Studio McGee-style makeover. Every element answers: "What needs my attention today?"
+ *
+ * 1. Personal greeting with agent brief summary
+ * 2. Client Health Grid (hero section, above the fold)
+ * 3. Today's Actions (from personal agent brief)
+ * 4. Trial Pipeline
+ * 5. Revenue Snapshot (compact)
+ * 6. This Week's Numbers (compact row)
  */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { TailorText } from "@/components/TailorText";
 import {
   Heart,
   Clock,
-  ListTodo,
-  AlertOctagon,
-  ChevronDown,
-  ChevronRight,
+  TrendingUp,
+  BarChart3,
+  CheckCircle2,
+  Circle,
+  ExternalLink,
+  Users,
+  Zap,
+  FileCheck,
+  Send,
 } from "lucide-react";
 import {
   adminListOrganizations,
   type AdminOrganization,
 } from "@/api/admin-organizations";
-import {
-  fetchDreamTeamTasks,
-  type DreamTeamTask,
-} from "@/api/dream-team";
-import { apiGet } from "@/api/index";
+import { apiGet, apiPost } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 
-// ---- Helpers ---------------------------------------------------------------
+// ---- Constants ---------------------------------------------------------------
+
+const TEST_ORG_PATTERNS = /test|preflight|pre-mortem|smoke/i;
+
+// ---- Types -------------------------------------------------------------------
+
+interface ClientHealthEntry {
+  id: number;
+  name: string;
+  health: "green" | "amber" | "red";
+  score?: number;
+  risk?: string;
+  last_login?: string;
+  recommended_action?: string;
+}
+
+interface BriefSection {
+  title: string;
+  items: string[];
+}
+
+interface PersonalBrief {
+  headline: string;
+  sections: BriefSection[];
+  signoff: string;
+  urgentCount: number;
+}
+
+// ---- Helpers -----------------------------------------------------------------
 
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return "never";
@@ -45,33 +77,26 @@ function timeAgo(dateStr: string | null): string {
   return `${days}d ago`;
 }
 
-function daysOpen(dateStr: string): number {
-  return Math.floor(
-    (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24)
-  );
-}
-
 function daysBetween(from: string, to: Date): number {
   return Math.floor(
     (to.getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24)
   );
 }
 
-// ---- Interfaces ------------------------------------------------------------
-
-interface ClientHealthEntry {
-  id: number;
-  name: string;
-  health: "green" | "amber" | "red";
-  score?: number;
-  risk?: string;
-  last_login?: string;
-  recommended_action?: string;
+function filterTestOrgs<T extends { name: string }>(items: T[]): T[] {
+  return items.filter((item) => !TEST_ORG_PATTERNS.test(item.name));
 }
 
-// ---- Shared UI -------------------------------------------------------------
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
-function Panel({
+// ---- Shared UI ---------------------------------------------------------------
+
+function Card({
   children,
   className = "",
 }: {
@@ -79,19 +104,17 @@ function Panel({
   className?: string;
 }) {
   return (
-    <div
-      className={`card-supporting ${className}`}
-    >
+    <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm ${className}`}>
       {children}
     </div>
   );
 }
 
-function PanelHeader({
+function SectionLabel({
   icon: Icon,
   label,
   count,
-  iconColor = "text-[#D56753]/50",
+  iconColor = "text-gray-400",
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -99,13 +122,13 @@ function PanelHeader({
   iconColor?: string;
 }) {
   return (
-    <div className="flex items-center gap-2.5 mb-4">
+    <div className="flex items-center gap-2 mb-4">
       <Icon className={`h-4 w-4 ${iconColor}`} />
-      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40">
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
         {label}
       </p>
       {count !== undefined && count > 0 && (
-        <span className="ml-auto text-xs font-bold text-[#D56753] bg-[#D56753]/8 px-2 py-0.5 rounded-full">
+        <span className="ml-auto text-xs font-bold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">
           {count}
         </span>
       )}
@@ -113,111 +136,79 @@ function PanelHeader({
   );
 }
 
-function PriorityBadge({ priority }: { priority: string }) {
+// ---- Section 1: Greeting -----------------------------------------------------
+
+function Greeting({
+  firstName,
+  brief,
+  isLoading,
+}: {
+  firstName: string;
+  brief: PersonalBrief | null;
+  isLoading: boolean;
+}) {
+  const greeting = getGreeting();
+  const urgentCount = brief?.urgentCount ?? 0;
+
+  let subtitle: string;
+  if (isLoading) {
+    subtitle = "Checking in with your agents...";
+  } else if (urgentCount > 0) {
+    subtitle = `${urgentCount} thing${urgentCount !== 1 ? "s" : ""} need${urgentCount === 1 ? "s" : ""} you today.`;
+  } else {
+    subtitle = "All clear. Your agents are handling it.";
+  }
+
+  return (
+    <div className="pb-1">
+      <h1 className="text-2xl font-bold text-[#212D40] tracking-tight">
+        {greeting}, {firstName}.
+      </h1>
+      <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+      {brief?.headline && !isLoading && (
+        <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+          {brief.headline}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---- Section 2: Client Health Grid -------------------------------------------
+
+function HealthDot({ health }: { health: string }) {
   const colors: Record<string, string> = {
-    urgent: "bg-red-100 text-red-700",
-    high: "bg-amber-100 text-amber-700",
-    normal: "bg-blue-100 text-blue-700",
-    low: "bg-gray-100 text-gray-500",
+    red: "bg-red-500",
+    amber: "bg-amber-400",
+    green: "bg-emerald-500",
   };
-
   return (
-    <span
-      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-        colors[priority] ?? colors.normal
-      }`}
-    >
-      {priority}
-    </span>
+    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${colors[health] ?? colors.green}`} />
   );
 }
 
-function HealthBadge({ health }: { health: string }) {
-  const config: Record<string, { bg: string; text: string; label: string }> = {
-    red: { bg: "bg-red-100", text: "text-red-700", label: "RED" },
-    amber: { bg: "bg-amber-100", text: "text-amber-700", label: "AMBER" },
-    green: { bg: "bg-emerald-100", text: "text-emerald-700", label: "GREEN" },
-  };
-  const c = config[health] ?? config.green;
-
-  return (
-    <span
-      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}
-    >
-      {c.label}
-    </span>
-  );
-}
-
-// ---- Panel 1: Client Health Grid -------------------------------------------
-
-function ClientHealthRow({ entry }: { entry: ClientHealthEntry }) {
+function ClientHealthCard({ entry }: { entry: ClientHealthEntry }) {
   const navigate = useNavigate();
-  const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="border border-gray-100 rounded-xl overflow-hidden">
+    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+      <HealthDot health={entry.health} />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-[#212D40] truncate">{entry.name}</p>
+        <p className="text-xs text-gray-400 mt-0.5">
+          {entry.risk || (entry.last_login ? `Last login ${timeAgo(entry.last_login)}` : "No login yet")}
+        </p>
+      </div>
       <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+        onClick={() => navigate(`/admin/organizations/${entry.id}`)}
+        className="shrink-0 text-xs font-medium text-[#D56753] hover:text-[#c05545] bg-[#D56753]/8 hover:bg-[#D56753]/15 px-3 py-1.5 rounded-lg transition-colors"
       >
-        <span
-          className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-            entry.health === "red"
-              ? "bg-red-500"
-              : entry.health === "amber"
-                ? "bg-amber-400"
-                : "bg-emerald-500"
-          }`}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-[#212D40] truncate">
-            {entry.name}
-          </p>
-        </div>
-        <HealthBadge health={entry.health} />
-        <span className="text-[10px] text-gray-400 shrink-0">
-          {entry.last_login ? timeAgo(entry.last_login) : "no login"}
-        </span>
-        {expanded ? (
-          <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+        {entry.recommended_action === "Send check-in" ? (
+          <span className="flex items-center gap-1"><Send className="w-3 h-3" /> <TailorText editKey="hq.integrator.health.checkIn" defaultText="Check in" /></span>
         ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+          <span className="flex items-center gap-1"><ExternalLink className="w-3 h-3" /> <TailorText editKey="hq.integrator.health.view" defaultText="View" /></span>
         )}
       </button>
-
-      {expanded && (
-        <div className="px-4 pb-3 pt-0 border-t border-gray-50">
-          <div className="flex flex-col gap-1.5 pt-2">
-            {entry.risk && (
-              <p className="text-xs text-gray-500">
-                <TailorText editKey="hq.integrator.health.riskLabel" defaultText="Risk:" as="span" className="font-medium text-gray-600" /> {entry.risk}
-              </p>
-            )}
-            {entry.recommended_action && (
-              <p className="text-xs text-gray-500">
-                <TailorText editKey="hq.integrator.health.actionLabel" defaultText="Action:" as="span" className="font-medium text-gray-600" />{" "}
-                {entry.recommended_action}
-              </p>
-            )}
-            {entry.score !== undefined && (
-              <p className="text-xs text-gray-500">
-                <TailorText editKey="hq.integrator.health.scoreLabel" defaultText="Score:" as="span" className="font-medium text-gray-600" />{" "}
-                {entry.score}/100
-              </p>
-            )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/admin/organizations/${entry.id}`);
-              }}
-              className="text-xs text-[#D56753] font-medium hover:underline self-start mt-1"
-            >
-              View details
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -247,7 +238,7 @@ function ClientHealthGrid() {
   const healthMap = new Map<number, ClientHealthEntry>();
   (healthRaw ?? []).forEach((c) => healthMap.set(c.id, c));
 
-  const entries: ClientHealthEntry[] = orgs.map((org) => {
+  const allEntries: ClientHealthEntry[] = filterTestOrgs(orgs).map((org) => {
     const existing = healthMap.get(org.id);
     if (existing) return existing;
     return {
@@ -255,73 +246,180 @@ function ClientHealthGrid() {
       name: org.name,
       health: org.connections?.gbp ? ("green" as const) : ("amber" as const),
       risk: org.connections?.gbp ? undefined : "No data connection",
-      recommended_action: org.connections?.gbp
-        ? undefined
-        : "Push onboarding",
+      recommended_action: org.connections?.gbp ? undefined : "Push onboarding",
     };
   });
 
-  // Sort: RED first, then AMBER, then GREEN
-  const order: Record<string, number> = { red: 0, amber: 1, green: 2 };
-  entries.sort(
-    (a, b) => (order[a.health] ?? 2) - (order[b.health] ?? 2)
-  );
+  const redEntries = allEntries.filter((e) => e.health === "red");
+  const amberEntries = allEntries.filter((e) => e.health === "amber");
+  const greenEntries = allEntries.filter((e) => e.health === "green");
 
   if (isLoading) {
     return (
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-14 animate-pulse rounded-xl border border-gray-200 bg-gray-50"
-          />
+          <div key={i} className="h-14 animate-pulse rounded-xl border border-gray-200 bg-gray-50" />
         ))}
       </div>
     );
   }
 
-  if (entries.length === 0) {
+  if (allEntries.length === 0) {
     return (
-      <TailorText editKey="hq.integrator.health.noClients" defaultText="No clients yet." as="p" className="text-sm text-gray-400 text-center py-6" />
+      <TailorText
+        editKey="hq.integrator.health.noClients"
+        defaultText="No clients yet. When someone signs up, their health will appear here."
+        as="p"
+        className="text-sm text-gray-400 text-center py-6"
+      />
     );
   }
-
-  const redCount = entries.filter((e) => e.health === "red").length;
-  const amberCount = entries.filter((e) => e.health === "amber").length;
-  const greenCount = entries.filter((e) => e.health === "green").length;
 
   return (
     <div>
       {/* Summary bar */}
-      <div className="flex items-center gap-4 mb-3 text-xs font-medium">
+      <div className="flex items-center gap-5 mb-4 text-sm font-medium">
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-red-500" />
-          {redCount} red
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+          <span className="text-gray-600">{redEntries.length}</span>
+          <TailorText editKey="hq.integrator.health.red" defaultText="red" className="text-gray-400" />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-amber-400" />
-          {amberCount} amber
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+          <span className="text-gray-600">{amberEntries.length}</span>
+          <TailorText editKey="hq.integrator.health.amber" defaultText="amber" className="text-gray-400" />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          {greenCount} green
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+          <span className="text-gray-600">{greenEntries.length}</span>
+          <TailorText editKey="hq.integrator.health.green" defaultText="green" className="text-gray-400" />
         </span>
       </div>
 
+      {/* Red and amber clients expanded */}
       <div className="space-y-2">
-        {entries.map((entry) => (
-          <ClientHealthRow key={entry.id} entry={entry} />
+        {[...redEntries, ...amberEntries].map((entry) => (
+          <ClientHealthCard key={entry.id} entry={entry} />
         ))}
       </div>
+
+      {/* Green clients collapsed */}
+      {greenEntries.length > 0 && (
+        <div className="mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50/50 border border-emerald-100">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <p className="text-sm text-emerald-700 font-medium">
+            {greenEntries.length} healthy client{greenEntries.length !== 1 ? "s" : ""}
+          </p>
+          <TailorText
+            editKey="hq.integrator.health.greenNote"
+            defaultText="on track"
+            as="span"
+            className="text-xs text-emerald-500"
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-// ---- Panel 2: Trial Pipeline -----------------------------------------------
+// ---- Section 3: Today's Actions ----------------------------------------------
+
+function ActionItem({
+  text,
+  onComplete,
+}: {
+  text: string;
+  onComplete: (text: string) => void;
+}) {
+  const [checked, setChecked] = useState(false);
+
+  const handleCheck = () => {
+    if (!checked) {
+      setChecked(true);
+      onComplete(text);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCheck}
+      className={`flex items-start gap-3 w-full text-left px-4 py-3 rounded-xl border transition-all ${
+        checked
+          ? "border-emerald-100 bg-emerald-50/30 opacity-60"
+          : "border-gray-100 bg-gray-50/50 hover:bg-gray-50"
+      }`}
+    >
+      {checked ? (
+        <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+      ) : (
+        <Circle className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
+      )}
+      <span className={`text-sm leading-relaxed ${checked ? "text-gray-400 line-through" : "text-[#212D40]"}`}>
+        {text}
+      </span>
+    </button>
+  );
+}
+
+function TodaysActions({ brief }: { brief: PersonalBrief | null }) {
+  const logAction = useMutation({
+    mutationFn: async (actionText: string) => {
+      try {
+        await apiPost({
+          path: "/behavioral-events",
+          passedData: {
+            event_type: "integrator.action_completed",
+            properties: { action: actionText, completed_at: new Date().toISOString() },
+          },
+        });
+      } catch {
+        // Non-critical, don't block UI
+      }
+    },
+  });
+
+  // Collect all items from all brief sections
+  const allItems: string[] = [];
+  if (brief?.sections) {
+    for (const section of brief.sections) {
+      for (const item of section.items) {
+        allItems.push(item);
+      }
+    }
+  }
+
+  if (allItems.length === 0) {
+    return (
+      <div className="flex items-center gap-3 px-4 py-4">
+        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+        <TailorText
+          editKey="hq.integrator.actions.empty"
+          defaultText="Nothing pending. Your agents handled everything overnight."
+          as="p"
+          className="text-sm text-gray-500"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {allItems.map((item, i) => (
+        <ActionItem
+          key={`${i}-${item.slice(0, 20)}`}
+          text={item}
+          onComplete={(text) => logAction.mutate(text)}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---- Section 4: Trial Pipeline -----------------------------------------------
 
 function TrialPipeline({ orgs }: { orgs: AdminOrganization[] }) {
-  // Orgs in trial: subscription_status = trial or no tier but have account
-  const trialOrgs = orgs.filter(
+  const filtered = filterTestOrgs(orgs);
+  const trialOrgs = filtered.filter(
     (o) =>
       o.subscription_status === "trial" ||
       (!o.subscription_tier && o.subscription_status !== "active")
@@ -329,7 +427,15 @@ function TrialPipeline({ orgs }: { orgs: AdminOrganization[] }) {
 
   if (trialOrgs.length === 0) {
     return (
-      <TailorText editKey="hq.integrator.trials.noTrials" defaultText="No active trials." as="p" className="text-sm text-gray-400 text-center py-4" />
+      <div className="flex items-center gap-3 px-4 py-4">
+        <Clock className="w-5 h-5 text-gray-300" />
+        <TailorText
+          editKey="hq.integrator.trials.empty"
+          defaultText="No active trials. When someone starts one, you will see their progress here."
+          as="p"
+          className="text-sm text-gray-400"
+        />
+      </div>
     );
   }
 
@@ -337,39 +443,31 @@ function TrialPipeline({ orgs }: { orgs: AdminOrganization[] }) {
     <div className="space-y-2">
       {trialOrgs.map((org) => {
         const daysIn = daysBetween(org.created_at, new Date());
+        const trialLength = 14;
+        const daysRemaining = Math.max(0, trialLength - daysIn);
         const hasConnection = org.connections?.gbp;
-        const engagement = hasConnection ? "high" : daysIn < 3 ? "medium" : "low";
-        const likelihood = hasConnection
-          ? "high"
-          : daysIn < 7
-            ? "medium"
-            : "low";
+        const likelihood = hasConnection ? "high" : daysIn < 7 ? "medium" : "low";
 
-        const likelihoodColors: Record<string, string> = {
-          high: "text-emerald-600 bg-emerald-50",
-          medium: "text-amber-600 bg-amber-50",
-          low: "text-red-600 bg-red-50",
+        const likelihoodConfig: Record<string, { color: string; bg: string; label: string }> = {
+          high: { color: "text-emerald-700", bg: "bg-emerald-50", label: "Likely" },
+          medium: { color: "text-amber-700", bg: "bg-amber-50", label: "Possible" },
+          low: { color: "text-red-700", bg: "bg-red-50", label: "At risk" },
         };
+        const lc = likelihoodConfig[likelihood] ?? likelihoodConfig.medium;
 
         return (
           <div
             key={org.id}
-            className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+            className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-3"
           >
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#212D40] truncate">
-                {org.name}
-              </p>
-              <p className="text-[11px] text-gray-400">
-                Day {daysIn} . {engagement} engagement
+              <p className="text-sm font-semibold text-[#212D40] truncate">{org.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {daysRemaining} day{daysRemaining !== 1 ? "s" : ""} remaining
               </p>
             </div>
-            <span
-              className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                likelihoodColors[likelihood]
-              }`}
-            >
-              {likelihood}
+            <span className={`shrink-0 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${lc.bg} ${lc.color}`}>
+              {lc.label}
             </span>
           </div>
         );
@@ -378,207 +476,167 @@ function TrialPipeline({ orgs }: { orgs: AdminOrganization[] }) {
   );
 }
 
-// ---- Panel 3: Task Queue ---------------------------------------------------
+// ---- Section 5: Revenue Snapshot ---------------------------------------------
 
-function TaskQueue({ tasks }: { tasks: DreamTeamTask[] }) {
-  const sorted = [...tasks]
-    .filter((t) => t.status !== "done")
-    .sort((a, b) => {
-      const pOrder: Record<string, number> = {
-        urgent: 0,
-        high: 1,
-        normal: 2,
-        low: 3,
-      };
-      const pDiff =
-        (pOrder[a.priority] ?? 2) - (pOrder[b.priority] ?? 2);
-      if (pDiff !== 0) return pDiff;
-      return (
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      );
-    });
+function RevenueSnapshot({ orgs }: { orgs: AdminOrganization[] }) {
+  const filtered = filterTestOrgs(orgs);
+  const activeOrgs = filtered.filter((o) => o.subscription_status === "active");
 
-  if (sorted.length === 0) {
-    return (
-      <TailorText editKey="hq.integrator.tasks.allComplete" defaultText="All tasks complete." as="p" className="text-sm text-gray-400 text-center py-4" />
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {sorted.map((t) => {
-        const isOverdue =
-          t.due_date && new Date(t.due_date) < new Date();
-        const age = daysOpen(t.created_at);
-
-        return (
-          <div
-            key={t.id}
-            className={`flex items-center justify-between rounded-xl px-4 py-3 border ${
-              isOverdue
-                ? "border-red-200 bg-red-50/50"
-                : "border-gray-100 bg-gray-50"
-            }`}
-          >
-            <div className="min-w-0 flex-1">
-              <p
-                className={`text-sm font-semibold truncate ${
-                  isOverdue ? "text-red-700" : "text-[#212D40]"
-                }`}
-              >
-                {t.title}
-              </p>
-              <p className="text-[11px] text-gray-400">
-                {t.owner_name} . {age}d open
-                {isOverdue && " . OVERDUE"}
-              </p>
-            </div>
-            <PriorityBadge priority={t.priority} />
-          </div>
-        );
-      })}
-    </div>
+  // Calculate MRR from active subscriptions
+  const tierPricing: Record<string, number> = { DWY: 1500, DFY: 3000 };
+  const mrr = activeOrgs.reduce(
+    (sum, org) => sum + (tierPricing[org.subscription_tier ?? ""] ?? 0),
+    0
   );
-}
 
-// ---- Panel 4: Blockers -----------------------------------------------------
-
-function BlockersPanel({ tasks }: { tasks: DreamTeamTask[] }) {
-  const now = new Date();
-  const blockers = tasks.filter((t) => {
-    if (t.status === "done") return false;
-    const isOverdue = t.due_date && new Date(t.due_date) < now;
-    const isStale = daysOpen(t.created_at) > 7;
-    return isOverdue || isStale;
+  const formatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
   });
 
-  const oldest =
-    blockers.length > 0
-      ? Math.max(...blockers.map((t) => daysOpen(t.created_at)))
-      : 0;
-
   return (
-    <div
-      className={`rounded-2xl border p-5 shadow-sm ${
-        blockers.length > 0
-          ? "border-red-200 bg-red-50/30"
-          : "border-gray-200 bg-white"
-      }`}
-    >
-      <PanelHeader
-        icon={AlertOctagon}
-        label="Blockers"
-        iconColor={blockers.length > 0 ? "text-red-500" : "text-gray-400"}
-      />
-
-      {blockers.length === 0 ? (
-        <TailorText editKey="hq.integrator.blockers.noBlockers" defaultText="No blockers. Everything is moving." as="p" className="text-sm text-emerald-600 font-medium" />
-      ) : (
-        <>
-          <p className="text-sm font-semibold text-red-700 mb-3">
-            {blockers.length} blocker{blockers.length !== 1 ? "s" : ""}. Oldest:{" "}
-            {oldest} days.
-          </p>
-          <div className="space-y-2">
-            {blockers.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center justify-between rounded-lg bg-white border border-red-100 px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-[#212D40] truncate">
-                    {t.title}
-                  </p>
-                  <p className="text-[10px] text-gray-400">
-                    {t.owner_name} . {daysOpen(t.created_at)}d
-                  </p>
-                </div>
-                <PriorityBadge priority={t.priority} />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">
+          <TailorText editKey="hq.integrator.revenue.label" defaultText="Monthly recurring" />
+        </p>
+        <p className="text-2xl font-bold text-[#212D40] mt-1">{formatter.format(mrr)}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-xs text-gray-400">
+          <TailorText editKey="hq.integrator.revenue.activeLabel" defaultText="Active clients" />
+        </p>
+        <p className="text-lg font-bold text-[#212D40] mt-1">{activeOrgs.length}</p>
+      </div>
     </div>
   );
 }
 
-// ---- Main ------------------------------------------------------------------
+// ---- Section 6: This Week's Numbers ------------------------------------------
+
+function WeeklyNumbers({ orgs }: { orgs: AdminOrganization[] }) {
+  const filtered = filterTestOrgs(orgs);
+
+  // Count recent signups (last 7 days)
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const newSignups = filtered.filter(
+    (o) => new Date(o.created_at).getTime() > weekAgo
+  ).length;
+
+  const stats = [
+    { label: "New signups", value: newSignups, icon: Users },
+    { label: "Active clients", value: filtered.filter((o) => o.subscription_status === "active").length, icon: FileCheck },
+    { label: "Connected", value: filtered.filter((o) => o.connections?.gbp).length, icon: Zap },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      {stats.map((stat) => (
+        <div key={stat.label} className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
+          <stat.icon className="w-4 h-4 text-gray-400 mx-auto mb-1.5" />
+          <p className="text-lg font-bold text-[#212D40]">{stat.value}</p>
+          <p className="text-[10px] text-gray-400 uppercase font-medium tracking-wider mt-0.5">
+            <TailorText editKey={`hq.integrator.weekly.${stat.label.toLowerCase().replace(/\s/g, "_")}`} defaultText={stat.label} />
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---- Main --------------------------------------------------------------------
 
 export default function IntegratorView() {
   const { userProfile } = useAuth();
   const firstName = userProfile?.firstName || "there";
 
+  // Fetch organizations
   const { data: orgData } = useQuery({
     queryKey: ["admin-organizations"],
     queryFn: adminListOrganizations,
   });
-
   const orgs: AdminOrganization[] =
     (orgData as any)?.organizations ?? (Array.isArray(orgData) ? orgData : []);
 
-  const { data: taskData } = useQuery({
-    queryKey: ["dream-team-tasks-integrator"],
-    queryFn: () => fetchDreamTeamTasks(),
+  // Fetch personal agent brief
+  const { data: briefData, isLoading: briefLoading } = useQuery({
+    queryKey: ["personal-agent-brief-integrator"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/personal-agent/brief?role=integrator" });
+      if (res?.success && res?.data) {
+        return res.data as { role: string; generatedAt: string } & PersonalBrief;
+      }
+      return null;
+    },
     retry: false,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
-  const tasks: DreamTeamTask[] = taskData?.tasks ?? [];
 
-  // Quick stats for greeting
-  const activeClients = orgs.filter((o: any) => o.subscriptionStatus === "active" || o.subscription_status === "active").length;
-  const openTasks = tasks.filter((t) => t.status !== "done").length;
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const brief: PersonalBrief | null = briefData
+    ? {
+        headline: briefData.headline,
+        sections: briefData.sections,
+        signoff: briefData.signoff,
+        urgentCount: briefData.urgentCount,
+      }
+    : null;
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-6 space-y-5">
-      {/* Personal greeting */}
-      <div className="pb-2">
-        <h1 className="text-xl font-black text-[#212D40] tracking-tight">
-          {greeting}, {firstName}.
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {activeClients > 0
-            ? `${activeClients} active client${activeClients !== 1 ? "s" : ""}${openTasks > 0 ? `, ${openTasks} open task${openTasks !== 1 ? "s" : ""}` : ". All clear."}`
-            : "Your ops console is ready. Clients will appear here as they sign up."}
-        </p>
-      </div>
+    <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
+      {/* Greeting */}
+      <Greeting firstName={firstName} brief={brief} isLoading={briefLoading} />
 
-      {/* Panel 1: Client Health Grid */}
-      <Panel>
-        <PanelHeader
+      {/* Client Health Grid (hero section) */}
+      <Card>
+        <SectionLabel
           icon={Heart}
           label="Client Health"
-          count={orgs.length}
           iconColor="text-[#D56753]"
         />
         <ClientHealthGrid />
-      </Panel>
+      </Card>
 
-      {/* Panel 2: Trial Pipeline */}
-      <Panel>
-        <PanelHeader
+      {/* Today's Actions */}
+      <Card>
+        <SectionLabel
+          icon={CheckCircle2}
+          label="Today's Actions"
+          count={brief?.sections?.reduce((sum, s) => sum + s.items.length, 0) ?? 0}
+          iconColor="text-amber-500"
+        />
+        <TodaysActions brief={brief} />
+      </Card>
+
+      {/* Trial Pipeline */}
+      <Card>
+        <SectionLabel
           icon={Clock}
           label="Trial Pipeline"
           iconColor="text-blue-500"
         />
         <TrialPipeline orgs={orgs} />
-      </Panel>
+      </Card>
 
-      {/* Panel 3: Task Queue */}
-      <Panel>
-        <PanelHeader
-          icon={ListTodo}
-          label="Task Queue"
-          count={tasks.filter((t) => t.status !== "done").length}
-          iconColor="text-amber-500"
+      {/* Revenue Snapshot (compact) */}
+      <Card>
+        <SectionLabel
+          icon={TrendingUp}
+          label="Revenue"
+          iconColor="text-emerald-500"
         />
-        <TaskQueue tasks={tasks} />
-      </Panel>
+        <RevenueSnapshot orgs={orgs} />
+      </Card>
 
-      {/* Panel 4: Blockers */}
-      <BlockersPanel tasks={tasks} />
+      {/* This Week's Numbers */}
+      <Card>
+        <SectionLabel
+          icon={BarChart3}
+          label="This Week"
+          iconColor="text-gray-400"
+        />
+        <WeeklyNumbers orgs={orgs} />
+      </Card>
     </div>
   );
 }
