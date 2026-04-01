@@ -172,34 +172,14 @@ export default function EntryScreen() {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Grab user's location for autocomplete biasing
-  // Priority: browser geolocation > IP-based fallback > no bias (Virginia)
+  // Grab user's approximate location for autocomplete biasing via backend.
+  // No browser geolocation prompt. IP-based only. Silent, private, no permission popup.
   useEffect(() => {
-    let resolved = false;
-
-    // Try browser geolocation first
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (!resolved) {
-            resolved = true;
-            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          }
-        },
-        () => {
-          // Browser denied or timed out, fall through to IP fallback
-        },
-        { timeout: 3000, maximumAge: 300000 }
-      );
-    }
-
-    // IP-based fallback (fires in parallel, only used if geolocation doesn't resolve)
-    fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(3000) })
+    fetch("/api/checkup/geo", { signal: AbortSignal.timeout(3000) })
       .then(r => r.json())
       .then(data => {
-        if (!resolved && data.latitude && data.longitude) {
-          resolved = true;
-          setUserLocation({ lat: data.latitude, lng: data.longitude });
+        if (data.lat && data.lng) {
+          setUserLocation({ lat: data.lat, lng: data.lng });
         }
       })
       .catch(() => {});
@@ -323,14 +303,14 @@ export default function EntryScreen() {
         </div>
       )}
 
-      {/* Headline — strong hierarchy, updates with specialty */}
+      {/* Headline — warm, continues the homepage identity */}
       <div className="text-center mb-10">
-        <TailorText editKey="checkup.entry.badge" defaultText="Free. 60 seconds." as="p" className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-3" />
-        <TailorText editKey="checkup.entry.headline" defaultText="See where you rank." as="h1" className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight leading-tight" />
-        <p className="mt-4 text-base text-slate-500 leading-relaxed max-w-sm mx-auto">
+        <TailorText editKey="checkup.entry.badge" defaultText="Free. 60 seconds." as="p" className="text-[11px] font-semibold tracking-[0.2em] text-[#D56753]/60 uppercase mb-4" />
+        <TailorText editKey="checkup.entry.headline" defaultText="Let's see what your business has been saying." as="h1" className="text-2xl sm:text-[34px] font-extrabold text-[#212D40] tracking-tight leading-tight font-heading" />
+        <p className="mt-4 text-base text-[#212D40]/50 leading-relaxed max-w-sm mx-auto">
           {selectedPlace
-            ? `We already know who's ahead of you in ${selectedPlace.city || "your market"}. Type your name to find out.`
-            : "We already know who's ahead of you. Type your name to find out."}
+            ? `We'll read your market in ${selectedPlace.city || "your area"} and tell you what we find. Honest.`
+            : "Type your name. We'll tell you something specific and true about your business."}
         </p>
       </div>
 

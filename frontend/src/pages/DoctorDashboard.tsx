@@ -570,8 +570,8 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
           <Share2 className="w-5 h-5 text-[#212D40]/60" />
         </div>
         <div>
-          <TailorText editKey="dashboard.referral.title" defaultText="Rise Together" as="p" className="text-sm font-bold text-[#212D40]" />
-          <TailorText editKey="dashboard.referral.subtitle" defaultText="Share this with a colleague. When they join, you both split month one." as="p" className="text-xs text-gray-500" />
+          <TailorText editKey="dashboard.referral.title" defaultText="Know someone who should see this?" as="p" className="text-sm font-bold text-[#212D40]" />
+          <TailorText editKey="dashboard.referral.subtitle" defaultText="Send them the checkup. When they join, you both save on month one." as="p" className="text-xs text-gray-500" />
         </div>
       </div>
       <div className="flex gap-2">
@@ -1237,12 +1237,12 @@ export default function DoctorDashboard() {
             <ScoreHistory />
           </motion.div>
 
-          {/* Benchmark social proof — belonging signal */}
+          {/* Belonging signal -- the blue dot. "There are others like me." */}
           {effectiveRanking?.location && (
-            <p className="text-xs text-gray-400 text-center -mt-2">
+            <p className="text-xs text-[#D56753]/30 text-center -mt-2 font-heading italic">
               {(effectiveRanking.totalCompetitors ?? 0) < 10
-                ? `Among the first business owners using Business Clarity in ${effectiveRanking.location}.`
-                : `One of ${effectiveRanking.totalCompetitors} business owners using Business Clarity in ${effectiveRanking.location}.`}
+                ? `Among the first business owners watching their market in ${effectiveRanking.location}.`
+                : `One of ${effectiveRanking.totalCompetitors} business owners watching their market in ${effectiveRanking.location}.`}
             </p>
           )}
 

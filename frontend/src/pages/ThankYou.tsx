@@ -79,20 +79,21 @@ export default function ThankYou() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-50 mb-4">
             <CheckCircle2 className="w-7 h-7 text-emerald-600" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight font-heading">
             You're set.
           </h1>
+          <p className="text-sm text-[#212D40]/40 mt-2">Someone's watching your market now.</p>
         </div>
 
         {/* P0: Monday time anchor, the most important line on the page */}
-        <div className="rounded-2xl bg-gradient-to-br from-white to-[#FFF9F7] border border-[#D56753]/10 shadow-warm p-6 text-center">
-          <p className="text-lg font-bold text-[#212D40] leading-snug">
-            Monday at 7:15 AM, your first intelligence
-            briefing lands in your inbox.
+        <div className="card-primary text-center">
+          <p className="text-lg font-bold text-[#212D40] leading-snug font-heading">
+            Monday at 7:15 AM, your first briefing
+            lands in your inbox.
           </p>
-          <p className="mt-3 text-sm text-slate-500 leading-relaxed">
-            Three findings about your market that most business
-            owners never see. Before your day starts.
+          <p className="mt-3 text-sm text-[#212D40]/50 leading-relaxed">
+            Something specific about your market that you didn't know.
+            A name, a number, and one clear action. Before your day starts.
           </p>
         </div>
 
@@ -147,17 +148,16 @@ export default function ThankYou() {
         <div className="text-center">
           <Link
             to="/dashboard"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#D56753] text-white text-base font-semibold px-8 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
+            className="btn-primary btn-press inline-flex items-center gap-2 text-base px-8 py-4"
           >
-            See your dashboard now
+            See your dashboard
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
-        {/* P2: Founder touch */}
-        <p className="text-center text-xs text-slate-400 leading-relaxed pt-2">
-          Built by Corey, after 5 years watching business owners
-          work harder than they should have to.
+        {/* P2: Founder touch -- quiet, personal */}
+        <p className="text-center text-xs text-[#D56753]/25 leading-relaxed pt-4 font-heading italic">
+          See you Monday.
         </p>
       </div>
     </div>
