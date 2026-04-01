@@ -168,8 +168,10 @@ export default function EntryScreen() {
   const [noResults, setNoResults] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [referrerName, setReferrerName] = useState<string | null>(null);
-  const [userQuestion, setUserQuestion] = useState("");
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [userQuestion, _setUserQuestion] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_placeholderIndex, setPlaceholderIndex] = useState(0);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // Persist conference mode from URL param to localStorage immediately on mount.
@@ -425,21 +427,6 @@ export default function EntryScreen() {
                 </span>
               )}
             </div>
-          </div>
-
-          {/* The One Question — optional, personal */}
-          <div className="mt-5 pt-4 border-t border-[#D56753]/6">
-            <label className="block text-xs font-medium text-[#212D40]/40 mb-1.5">
-              <TailorText editKey="checkup.entry.questionLabel" defaultText="What do you wish you knew about your business?" as="span" className="text-xs font-medium text-[#212D40]/40" />
-              <span className="ml-1 text-[#212D40]/20">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={userQuestion}
-              onChange={(e) => setUserQuestion(e.target.value)}
-              placeholder={USER_QUESTION_PLACEHOLDERS[placeholderIndex]}
-              className="input-warm w-full"
-            />
           </div>
 
           <button

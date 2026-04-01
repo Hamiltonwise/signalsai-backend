@@ -3,6 +3,7 @@ import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";
 import * as controller from "../../controllers/admin-organizations/AdminOrganizationsController";
 import * as BillingController from "../../controllers/billing/BillingController";
+import * as OrgUserController from "../../controllers/admin-organizations/OrgUserController";
 
 const organizationsRoutes = express.Router();
 
@@ -143,6 +144,48 @@ organizationsRoutes.post(
   authenticateToken,
   superAdminMiddleware,
   controller.refreshBusinessData
+);
+
+// ── Org-scoped User Management ───────────────────────────────────
+
+// POST /api/admin/organizations/:id/users - Create user and link to org
+organizationsRoutes.post(
+  "/:id/users",
+  authenticateToken,
+  superAdminMiddleware,
+  OrgUserController.createOrgUser
+);
+
+// POST /api/admin/organizations/:id/invite - Invite user to org
+organizationsRoutes.post(
+  "/:id/invite",
+  authenticateToken,
+  superAdminMiddleware,
+  OrgUserController.inviteOrgUser
+);
+
+// PATCH /api/admin/organizations/:id/users/:userId/password - Reset password
+organizationsRoutes.patch(
+  "/:id/users/:userId/password",
+  authenticateToken,
+  superAdminMiddleware,
+  OrgUserController.resetOrgUserPassword
+);
+
+// PATCH /api/admin/organizations/:id/users/:userId/role - Change role
+organizationsRoutes.patch(
+  "/:id/users/:userId/role",
+  authenticateToken,
+  superAdminMiddleware,
+  OrgUserController.changeOrgUserRole
+);
+
+// DELETE /api/admin/organizations/:id/users/:userId - Remove user from org
+organizationsRoutes.delete(
+  "/:id/users/:userId",
+  authenticateToken,
+  superAdminMiddleware,
+  OrgUserController.removeOrgUser
 );
 
 export default organizationsRoutes;

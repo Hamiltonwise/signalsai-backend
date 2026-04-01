@@ -352,11 +352,6 @@ function FindingCard({
             {finding.title}
           </p>
           <p className={`text-sm mt-1 leading-relaxed ${isSentiment ? "text-white/70" : "text-slate-500"}`}>{finding.detail}</p>
-          {finding.impact > 0 && (
-            <p className="text-xs font-semibold text-[#D56753] mt-2">
-              Est. ${finding.impact.toLocaleString()}/yr at risk
-            </p>
-          )}
         </div>
       </div>
     </div>
@@ -696,7 +691,7 @@ export default function ResultsScreen() {
     return <Navigate to="/checkup" replace />;
   }
 
-  const { place, score, topCompetitor, findings, totalImpact, market } = state;
+  const { place, score, topCompetitor, findings, totalImpact: _totalImpact, market } = state;
 
   // Non-local business detection: software companies, online-only, no meaningful GBP
   const NON_LOCAL_TYPES = ["software_company", "corporate_office", "headquarters"];
@@ -895,15 +890,6 @@ export default function ResultsScreen() {
 
   // Blur gate CTA -- named competitor, named city (40-60% higher conversion per Unbounce/Optimizely)
   const cityLabel = place.city || "your market";
-  const blurGateCta = market?.rank === 1
-    ? `You're #1 in ${cityLabel}. See exactly what's protecting your position and what could change it.`
-    : topCompetitor
-      ? score.composite >= 80
-        ? `You're ahead in ${cityLabel}, but ${topCompetitor.name} is closing the gap. See the full picture.`
-        : `See why ${topCompetitor.name} ranks above you in ${cityLabel}.`
-      : market && market.totalCompetitors > 0
-        ? `${market.totalCompetitors} competitors in ${market.city} are fighting for your referrals. See where you stand.`
-        : `See what's keeping you from position 1 in ${cityLabel}.`;
 
   return (
     <div className="w-full max-w-md mt-2 sm:mt-6 space-y-7 pb-6">
@@ -1147,47 +1133,32 @@ export default function ResultsScreen() {
             You asked: &ldquo;{state.userQuestion}&rdquo;. Here&apos;s what we found.
           </div>
         )}
+        {/* Show first 2 findings + 1 Oz moment free (the "That's Right" value).
+            Remaining findings blurred until email. No dollar impact shown --
+            facts are more honest than estimates. */}
         {findings.map((f, i) => (
           <FindingCard
             key={f.type}
-            finding={f}
-            blurred={i > 0 && !emailSubmitted}
+            finding={{...f, impact: 0}}
+            blurred={i > 1 && !emailSubmitted}
           />
         ))}
       </div>
 
-      {/* Dollar figure — blurred until email captured */}
-      {totalImpact > 0 && (
-        <div
-          className={`relative text-center bg-red-50 border border-red-100 rounded-2xl p-5 ${!emailSubmitted ? "select-none" : ""}`}
-        >
-          {!emailSubmitted && (
-            <div className="absolute inset-0 backdrop-blur-[6px] bg-white/60 rounded-2xl z-10" />
-          )}
-          <p className="text-sm font-medium text-red-600">
-            Estimated Annual Risk
-          </p>
-          <p className="text-3xl font-bold text-red-700 mt-1">
-            ${totalImpact.toLocaleString()}
-          </p>
-          <p className="text-xs text-red-500 mt-1">
-            in potential revenue you may be leaving on the table
-          </p>
-        </div>
-      )}
-
-      {/* Blur Gate — Email Capture */}
+      {/* Blur Gate — Voss-style: they're receiving something, not being extracted from.
+          Frame as delivery, not transaction. "Your full checkup is ready." */}
       {!emailSubmitted ? (
         <div className="bg-gradient-to-br from-white to-[#FFF9F7] border-2 border-[#D56753]/20 rounded-2xl p-7 shadow-warm-lg">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 flex items-center justify-center">
-              <Lock className="w-4 h-4 text-[#D56753]" />
-            </div>
-            <span className="text-base font-bold text-[#212D40]">
-              {`Your ${place.name} Comparison`}
-            </span>
+          <div className="mb-4">
+            <p className="text-base font-bold text-[#212D40] font-heading">
+              Your full checkup is ready.
+            </p>
+            <p className="text-sm text-[#212D40]/50 mt-1">
+              {topCompetitor
+                ? `See the complete ${place.name} vs ${topCompetitor.name} breakdown with your action plan.`
+                : `See your complete ${cityLabel || "market"} analysis with your action plan.`}
+            </p>
           </div>
-          <p className="text-sm text-[#212D40]/70 mb-5 leading-relaxed">{blurGateCta}</p>
           {market && market.totalCompetitors > 3 && (
             <p className="text-[11px] text-slate-400 mb-4 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -1388,14 +1359,8 @@ export default function ResultsScreen() {
                   style={{ background: 'linear-gradient(135deg, #D66853 0%, #C45A46 100%)' }}
                 >
                   {emailSending
-                    ? "Creating your account..."
-                    : market?.rank === 1
-                      ? `You're #1. See what keeps you there.`
-                      : topCompetitor
-                        ? `See why ${topCompetitor.name} ranks above you`
-                        : market?.city
-                          ? `See what's keeping you from #1 in ${market.city}`
-                          : "Unlock my full report"}
+                    ? "Setting up your checkup..."
+                    : "See my full checkup results"}
                   {!emailSending && <ArrowRight className="w-4 h-4" />}
                 </button>
               </>

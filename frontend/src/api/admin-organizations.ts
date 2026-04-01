@@ -390,3 +390,92 @@ export async function adminSyncOrgBusinessData(
     passedData: {},
   });
 }
+
+// ── Org-scoped User Management ───────────────────────────────────
+
+/**
+ * Create a user and link to organization
+ */
+export interface AdminCreateOrgUserInput {
+  email: string;
+  password: string;
+  role: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface AdminCreateOrgUserResponse {
+  success: boolean;
+  user: { id: number; email: string; name: string; role: string };
+  message: string;
+}
+
+export async function adminCreateOrgUser(
+  orgId: number,
+  data: AdminCreateOrgUserInput
+): Promise<AdminCreateOrgUserResponse> {
+  return apiPost({
+    path: `/admin/organizations/${orgId}/users`,
+    passedData: data,
+  });
+}
+
+/**
+ * Invite a user to organization (generates temp password)
+ */
+export interface AdminInviteOrgUserResponse {
+  success: boolean;
+  user: { id: number; email: string; name: string; role: string };
+  temporaryPassword: string;
+  message: string;
+}
+
+export async function adminInviteOrgUser(
+  orgId: number,
+  data: { email: string; role: string }
+): Promise<AdminInviteOrgUserResponse> {
+  return apiPost({
+    path: `/admin/organizations/${orgId}/invite`,
+    passedData: data,
+  });
+}
+
+/**
+ * Reset a user's password within an organization
+ */
+export async function adminResetOrgUserPassword(
+  orgId: number,
+  userId: number,
+  newPassword: string
+): Promise<{ success: boolean; message: string }> {
+  return apiPatch({
+    path: `/admin/organizations/${orgId}/users/${userId}/password`,
+    passedData: { newPassword },
+  });
+}
+
+/**
+ * Change a user's role within an organization
+ */
+export async function adminChangeOrgUserRole(
+  orgId: number,
+  userId: number,
+  role: string
+): Promise<{ success: boolean; message: string; role: string }> {
+  return apiPatch({
+    path: `/admin/organizations/${orgId}/users/${userId}/role`,
+    passedData: { role },
+  });
+}
+
+/**
+ * Remove a user from an organization (does not delete the user)
+ */
+export async function adminRemoveOrgUser(
+  orgId: number,
+  userId: number
+): Promise<{ success: boolean; message: string }> {
+  return apiDelete({
+    path: `/admin/organizations/${orgId}/users/${userId}`,
+  });
+}
