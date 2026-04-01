@@ -43,7 +43,13 @@ interface FocusKeyword {
 
 function PositionBadge({ position, delta }: { position: number | null; delta: number | null }) {
   if (position === null) {
-    return <span className="text-xs text-gray-400">Checking...</span>;
+    // Next Monday at 2am PT
+    const now = new Date();
+    const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
+    const nextMonday = new Date(now);
+    nextMonday.setDate(now.getDate() + daysUntilMonday);
+    const monthDay = nextMonday.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return <span className="text-[11px] text-gray-400">First check {monthDay}</span>;
   }
 
   return (

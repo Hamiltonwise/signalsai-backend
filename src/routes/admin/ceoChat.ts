@@ -19,6 +19,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";
 import { db } from "../../database/connection";
+import { isPartnerEmail } from "../../utils/partnerEmails";
 import { BehavioralEventModel } from "../../models/BehavioralEventModel";
 
 const ceoChatRoutes = express.Router();
@@ -527,10 +528,122 @@ RULES:
   }
 }
 
+/**
+ * Build partner-specific system context with org-level data.
+ * Partners see their own data, not the HQ view.
+ */
+async function buildPartnerContext(userEmail: string): Promise<string> {
+  try {
+    const user = await db("users").where({ email: userEmail }).first();
+    if (!user) return "No user data available.";
+
+    const orgUser = await db("organization_users").where({ user_id: user.id }).first();
+    if (!orgUser) return "No organization linked.";
+
+    const orgId = orgUser.organization_id;
+    const org = await db("organizations").where({ id: orgId }).first();
+    if (!org) return "Organization not found.";
+
+    // Gather partner-specific data in parallel
+    const [focusKeywords, complianceScans, latestRanking, locations, website] =
+      await Promise.all([
+        db("focus_keywords")
+          .where({ organization_id: orgId, is_active: true })
+          .select("keyword", "source", "latest_position", "position_delta")
+          .catch(() => []),
+        db("compliance_scans")
+          .where({ organization_id: orgId })
+          .orderBy("scanned_at", "desc")
+          .first()
+          .catch(() => null),
+        db("practice_rankings")
+          .where({ organization_id: orgId, status: "completed" })
+          .orderBy("created_at", "desc")
+          .first()
+          .catch(() => null),
+        db("locations")
+          .where({ organization_id: orgId })
+          .select("name", "city", "state", "specialty")
+          .catch(() => []),
+        db("website_builder.projects")
+          .where({ organization_id: orgId })
+          .first()
+          .catch(() => null),
+      ]);
+
+    // Parse compliance findings
+    let complianceFindings: any[] = [];
+    if (complianceScans?.findings) {
+      complianceFindings = typeof complianceScans.findings === "string"
+        ? JSON.parse(complianceScans.findings)
+        : complianceScans.findings;
+    }
+
+    // Determine partner role
+    const emailPrefix = userEmail.split("@")[0].toLowerCase();
+    let roleContext = "";
+    if (emailPrefix === "merideth") {
+      roleContext = `You are speaking with Merideth, the CEO/operator. She runs marketing, product, support, and developer management. She is technically deep (React, Python, SQL, HIPAA) but stretched thin across too many roles. She values honesty, hates em-dashes, and manually reviews every SEO keyword for FTC accuracy. Give her intelligence, not tasks. Reduce her plate, don't add to it.`;
+    } else if (emailPrefix === "jay") {
+      roleContext = `You are speaking with Jay, the sales lead. He runs demos, closes deals, and manages the HubSpot pipeline. He needs prospect research before demos, competitive objection handling (especially TDO switching), and follow-up drafts. He's not deeply technical but is a natural salesperson.`;
+    } else if (emailPrefix === "rosanna") {
+      roleContext = `You are speaking with Rosanna, the support lead. She handles client onboarding, chat support, and follow-up. She catches product inaccuracies faster than anyone. She needs clarity on what's native vs. partner-powered, client health status, and draft responses for complex support requests.`;
+    }
+
+    const keywordList = focusKeywords.length > 0
+      ? focusKeywords.map((k: any) =>
+          `${k.keyword}${k.latest_position ? ` (#${k.latest_position}${k.position_delta ? `, ${k.position_delta > 0 ? "+" : ""}${k.position_delta}` : ""})` : " (first check pending)"}`
+        ).join("\n  ")
+      : "No keywords tracked yet";
+
+    return `You are a business intelligence partner for ${org.name}.
+${roleContext}
+
+ORGANIZATION: ${org.name}
+Domain: ${org.domain || "not set"}
+Website: ${website ? `${website.custom_domain || website.generated_hostname + ".getalloro.com"} (${website.status})` : "Not connected"}
+Locations: ${locations.map((l: any) => `${l.name} (${l.city}, ${l.state})`).join(", ") || "None"}
+
+FOCUS KEYWORDS (${focusKeywords.length} tracked):
+  ${keywordList}
+
+COMPLIANCE STATUS: ${complianceFindings.length > 0
+  ? `${complianceFindings.length} findings (${complianceFindings.filter((f: any) => f.severity === "high").length} high, ${complianceFindings.filter((f: any) => f.severity === "medium").length} medium). Last scan: ${complianceScans?.scanned_at ? new Date(complianceScans.scanned_at).toLocaleDateString() : "never"}`
+  : complianceScans ? "All clear (last scan: " + new Date(complianceScans.scanned_at).toLocaleDateString() + ")" : "No scan run yet"
+}
+${complianceFindings.length > 0 ? `Top findings:\n${complianceFindings.slice(0, 3).map((f: any) => `  - [${f.severity.toUpperCase()}] "${f.claim}" on ${f.page}: ${f.concern}`).join("\n")}` : ""}
+
+COMPETITIVE POSITION: ${latestRanking
+  ? `Score: ${latestRanking.rank_score}/100, Position: #${latestRanking.rank_position}`
+  : "No ranking data yet. First scan pending."
+}
+
+RULES:
+- Never use em-dashes. Use commas or periods.
+- Be specific. Name the keyword, name the page, name the number.
+- When asked about traffic or analytics, reference what Alloro is actively monitoring.
+- If data isn't available yet, say when it will be (Monday keyword checks, weekly scans).
+- Follow the Alloro Recipe: one finding, one dollar figure, one action.
+- If you don't know, say so. Never hallucinate data.`;
+  } catch (err: any) {
+    console.error("[Board] Partner context error:", err.message);
+    return `You are a business intelligence partner. Data context failed to load. Answer based on general knowledge. Never use em-dashes.`;
+  }
+}
+
+/**
+ * Middleware: allow super admins OR partner emails to access The Board.
+ */
+function superAdminOrPartner(req: any, res: any, next: any) {
+  const email = req.user?.email || "";
+  if (isPartnerEmail(email)) return next();
+  return superAdminMiddleware(req, res, next);
+}
+
 ceoChatRoutes.post(
   "/",
   authenticateToken,
-  superAdminMiddleware,
+  superAdminOrPartner,
   async (req: any, res) => {
     try {
       const { message, history = [] } = req.body;
@@ -566,7 +679,10 @@ ceoChatRoutes.post(
       }
 
       const anthropic = new Anthropic({ apiKey });
-      const systemPrompt = await buildSystemContext(userEmail);
+      // Partners get org-specific context; super admins get HQ context
+      const systemPrompt = isPartnerEmail(userEmail)
+        ? await buildPartnerContext(userEmail)
+        : await buildSystemContext(userEmail);
 
       const messages = [
         ...history.map((m: any) => ({

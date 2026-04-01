@@ -5,7 +5,7 @@
  * severity and fix suggestions. Scan on demand, results persist.
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck, AlertTriangle, Info, Loader2, RefreshCw } from "lucide-react";
 
@@ -56,6 +56,15 @@ export default function ComplianceScanner() {
   const findings: Finding[] = data?.findings || [];
   const lastScan = data?.lastScan;
   const pagesScanned = data?.pagesScanned || 0;
+  const autoScanTriggered = useRef(false);
+
+  // Auto-scan on first visit if no scan exists. The product comes to you.
+  useEffect(() => {
+    if (!isLoading && !lastScan && !autoScanTriggered.current && !scanMutation.isPending) {
+      autoScanTriggered.current = true;
+      scanMutation.mutate();
+    }
+  }, [isLoading, lastScan]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const highCount = findings.filter(f => f.severity === "high").length;
   const mediumCount = findings.filter(f => f.severity === "medium").length;
@@ -97,20 +106,23 @@ export default function ComplianceScanner() {
         </p>
       )}
 
-      {/* No scan yet */}
+      {/* No scan yet -- auto-scan is running */}
       {!lastScan && !isLoading && (
         <div className="text-center py-6">
-          <ShieldCheck className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-          <p className="text-sm text-gray-500 mb-3">
-            Scan your website for marketing claims that may need review.
-          </p>
-          <button
-            onClick={() => scanMutation.mutate()}
-            disabled={scanMutation.isPending}
-            className="px-4 py-2 bg-[#D56753] text-white text-sm rounded-lg hover:bg-[#c45a48] disabled:opacity-50 transition-colors"
-          >
-            {scanMutation.isPending ? "Scanning..." : "Run first scan"}
-          </button>
+          {scanMutation.isPending ? (
+            <>
+              <Loader2 className="w-6 h-6 animate-spin text-[#D56753] mx-auto mb-2" />
+              <p className="text-sm text-gray-600">Scanning your website for compliance concerns...</p>
+              <p className="text-xs text-gray-400 mt-1">This takes about 15 seconds</p>
+            </>
+          ) : (
+            <>
+              <ShieldCheck className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-500 mb-3">
+                No website pages found to scan yet.
+              </p>
+            </>
+          )}
         </div>
       )}
 
