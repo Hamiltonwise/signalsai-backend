@@ -68,6 +68,7 @@ import progressReportRoutes from "./routes/progressReport";
 import vocabularyRoutes from "./routes/vocabulary";
 import partnerRoutes from "./routes/partner";
 import focusKeywordsRoutes from "./routes/focusKeywords";
+import hubspotRoutes from "./routes/integrations/hubspot";
 import rankingsIntelligenceRoutes from "./routes/rankingsIntelligence";
 import reviewRequestRoutes from "./routes/reviewRequests";
 import csAgentRoutes from "./routes/csAgent";
@@ -137,6 +138,8 @@ import personalAgentRoutes from "./routes/personalAgent";
 import improvementPlanRoutes from "./routes/user/improvementPlan";
 import competitorRoutes from "./routes/user/competitors";
 import missionControlRoutes from "./routes/admin/missionControl";
+import killSwitchRoutes from "./routes/admin/killSwitch";
+import dataExportRoutes from "./routes/user/dataExport";
 import mailgunEventsRoutes from "./routes/webhooks/mailgunEvents";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
@@ -299,6 +302,7 @@ app.use("/api/org", vocabularyRoutes); // Vocabulary config per org
 app.use("/api/vocabulary", vocabularyRoutes); // Vocabulary defaults (public)
 app.use("/api/partner", partnerRoutes); // Partner Portal API
 app.use("/api/focus-keywords", focusKeywordsRoutes); // Focus keyword tracking + suggestions
+app.use("/api/integrations/hubspot", hubspotRoutes); // HubSpot CRM read-only pipeline sync
 app.use("/api/rankings-intelligence", rankingsIntelligenceRoutes); // Weekly ranking snapshots + drift
 app.use("/api/review-requests", reviewRequestRoutes); // Post-appointment review generation
 app.use("/api/cs-agent", csAgentRoutes); // Account-aware Claude chat for doctors
@@ -363,6 +367,8 @@ app.use("/api/personal-agent", personalAgentRoutes); // Personal team agent dail
 app.use("/api/user", improvementPlanRoutes); // Score Improvement Plan: actionable checkup improvements
 app.use("/api/user/competitors", competitorRoutes); // Tracked Competitors: side-by-side comparison
 app.use("/api/admin/mission-control", missionControlRoutes); // Mission Control: real-time agent status grid
+app.use("/api/admin/kill-switch", killSwitchRoutes); // Emergency kill switch for all agents
+app.use("/api/user/data-export", dataExportRoutes); // Full client data export (GDPR/compliance)
 app.use("/api/webhooks/mailgun", mailgunEventsRoutes); // Mailgun event webhooks: deliverability tracking
 
 // Sentry error handler — must be after all routes and before other error handlers
