@@ -9,6 +9,8 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { trackEvent } from "../../api/tracking";
+import { getPriorityItem } from "../../hooks/useLocalStorage";
+import { isSuperAdminEmail } from "../../constants/superAdmins";
 
 const NAV_LINKS = [
   { label: "How It Works", to: "/how-it-works" },
@@ -20,6 +22,9 @@ const NAV_LINKS = [
 export default function MarketingHeader() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const isAuthenticated = !!getPriorityItem("auth_token") || !!getPriorityItem("token");
+  const userEmail = getPriorityItem("user_email") || "";
+  const dashboardPath = isSuperAdminEmail(userEmail) ? "/hq/command" : "/dashboard";
 
   return (
     <>
@@ -55,13 +60,22 @@ export default function MarketingHeader() {
           </nav>
 
           {/* Desktop CTA */}
-          <Link
-            to="/checkup"
-            onClick={() => trackEvent("marketing.cta_click", { source: "header_desktop", page: location.pathname })}
-            className="hidden md:inline-flex items-center justify-center rounded-lg bg-[#D56753] text-white text-sm font-semibold px-5 py-2.5 hover:brightness-110 active:scale-[0.98] transition-all"
-          >
-            Free Checkup
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              to={dashboardPath}
+              className="hidden md:inline-flex items-center justify-center rounded-lg bg-[#212D40] text-white text-sm font-semibold px-5 py-2.5 hover:brightness-110 active:scale-[0.98] transition-all"
+            >
+              Go to Dashboard
+            </Link>
+          ) : (
+            <Link
+              to="/checkup"
+              onClick={() => trackEvent("marketing.cta_click", { source: "header_desktop", page: location.pathname })}
+              className="hidden md:inline-flex items-center justify-center rounded-lg bg-[#D56753] text-white text-sm font-semibold px-5 py-2.5 hover:brightness-110 active:scale-[0.98] transition-all"
+            >
+              Free Checkup
+            </Link>
+          )}
 
           {/* Mobile hamburger */}
           <button
@@ -98,13 +112,22 @@ export default function MarketingHeader() {
 
       {/* Mobile sticky CTA */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 px-5 py-3">
-        <Link
-          to="/checkup"
-          onClick={() => trackEvent("marketing.cta_click", { source: "header_mobile", page: location.pathname })}
-          className="flex items-center justify-center rounded-lg bg-[#D56753] text-white text-sm font-semibold px-5 py-3 w-full hover:brightness-110 active:scale-[0.98] transition-all"
-        >
-          Free Checkup
-        </Link>
+        {isAuthenticated ? (
+          <Link
+            to={dashboardPath}
+            className="flex items-center justify-center rounded-lg bg-[#212D40] text-white text-sm font-semibold px-5 py-3 w-full hover:brightness-110 active:scale-[0.98] transition-all"
+          >
+            Go to Dashboard
+          </Link>
+        ) : (
+          <Link
+            to="/checkup"
+            onClick={() => trackEvent("marketing.cta_click", { source: "header_mobile", page: location.pathname })}
+            className="flex items-center justify-center rounded-lg bg-[#D56753] text-white text-sm font-semibold px-5 py-3 w-full hover:brightness-110 active:scale-[0.98] transition-all"
+          >
+            Free Checkup
+          </Link>
+        )}
       </div>
     </>
   );

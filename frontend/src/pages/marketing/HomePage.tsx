@@ -11,10 +11,8 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Navigate, useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { ArrowRight, Search, MapPin, Loader2, Heart, Shield, Users, Star } from "lucide-react";
-import { getPriorityItem } from "../../hooks/useLocalStorage";
-import { isSuperAdminEmail } from "../../constants/superAdmins";
 import { trackEvent } from "../../api/tracking";
 import MarketingLayout from "../../components/marketing/MarketingLayout";
 
@@ -121,12 +119,9 @@ function CheckupInput({ id, dark = false }: CheckupInputProps) {
 // ── Main Page ───────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const isAuthenticated = !!getPriorityItem("auth_token") || !!getPriorityItem("token");
-  if (isAuthenticated) {
-    const userEmail = getPriorityItem("user_email");
-    const destination = isSuperAdminEmail(userEmail) ? "/hq/command" : "/dashboard";
-    return <Navigate to={destination} replace />;
-  }
+  // Authenticated users can still view the marketing site.
+  // The nav shows "Go to Dashboard" instead of "Sign In" (handled in MarketingLayout).
+  // No forced redirect. The product comes to you, but it doesn't hide the front door.
 
   return (
     <MarketingLayout
