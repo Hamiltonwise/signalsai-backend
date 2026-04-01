@@ -22,6 +22,7 @@ import {
   GitBranch,
 } from "lucide-react";
 import { apiGet } from "@/api/index";
+import ChangelogCard from "./ChangelogCard";
 
 interface DreamTeamTask {
   id: number;
@@ -119,6 +120,9 @@ export default function BuildView() {
           <InfraRow label="Google Places" ok={null} detail="Rotate key (exposed Mar 23)" />
         </div>
       </div>
+
+      {/* Deploy Status: Changelog */}
+      <ChangelogCard />
 
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">

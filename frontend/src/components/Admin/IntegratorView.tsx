@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { adminListOrganizations, type AdminOrganization } from "@/api/admin-organizations";
 import { apiGet } from "@/api/index";
+import ChangelogCard from "./ChangelogCard";
 
 interface ClientHealth {
   id: number;
@@ -175,6 +176,9 @@ export default function IntegratorView() {
           </div>
         )}
       </div>
+
+      {/* Zone 3.5: Changelog -- what changed in sandbox, pending production */}
+      <ChangelogCard />
 
       {/* Zone 4: Blockers */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
