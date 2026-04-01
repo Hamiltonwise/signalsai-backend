@@ -1807,6 +1807,7 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       token,
       userId: user.id,
       organizationId: org.id,
+      referralCode: org.referral_code || null,
       existingAccount: false,
     });
   } catch (error: any) {

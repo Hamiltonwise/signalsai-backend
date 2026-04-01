@@ -12,6 +12,7 @@
 
 import { db } from "../database/connection";
 import { sendMondayBriefEmail } from "../emails/templates/MondayBriefEmail";
+import { sendCleanWeekEmail } from "../emails/templates/CleanWeekEmail";
 import { getMostShareableFinding } from "../services/behavioralIntelligence";
 import {
   generateSurpriseFindings,
