@@ -21,6 +21,7 @@ import {
   listReviewRequests,
   type ReviewRequest,
 } from "../../api/reviewRequests";
+import { TailorText } from "../TailorText";
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -128,10 +129,10 @@ export default function ReviewRequestCard({
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-2">
           <Star className="w-5 h-5 text-[#D56753]" />
-          <h3 className="text-base font-bold text-[#212D40]">Get More Reviews</h3>
+          <TailorText editKey="dashboard.reviews.title" defaultText="Get More Reviews" as="h3" className="text-base font-bold text-[#212D40]" />
         </div>
         <p className="text-sm text-gray-500">
-          Connect your Google Business Profile to start sending review requests.
+          <TailorText editKey="dashboard.reviews.connect" defaultText="Connect your Google Business Profile to start sending review requests." as="span" className="" />
         </p>
       </div>
     );
@@ -143,7 +144,7 @@ export default function ReviewRequestCard({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Star className="w-5 h-5 text-[#D56753]" />
-          <h3 className="text-base font-bold text-[#212D40]">Request a Review</h3>
+          <TailorText editKey="dashboard.reviews.request" defaultText="Request a Review" as="h3" className="text-base font-bold text-[#212D40]" />
         </div>
         {stats && stats.total > 0 && (
           <div className="flex items-center gap-3 text-xs text-gray-400">

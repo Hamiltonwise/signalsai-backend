@@ -268,12 +268,12 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
             <MapPin className="w-5 h-5 text-[#D56753]" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#212D40]">Scanning your market</p>
-            <p className="text-xs text-[#D56753]">In progress</p>
+            <TailorText editKey="dashboard.position.scanning.title" defaultText="Scanning your market" as="p" className="text-sm font-bold text-[#212D40]" />
+            <TailorText editKey="dashboard.position.scanning.status" defaultText="In progress" as="p" className="text-xs text-[#D56753]" />
           </div>
         </div>
         <p className="text-sm text-gray-500 leading-relaxed">
-          Your market is being scanned right now. Your first position report arrives Monday morning.
+          <TailorText editKey="dashboard.position.scanning.body" defaultText="Your market is being scanned right now. Your first position report arrives Monday morning." as="span" className="" />
         </p>
         <div className="mt-4 space-y-2">
           {["Finding your competitors", "Counting their reviews", "Measuring your visibility"].map((step, i) => (
@@ -296,7 +296,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
     <div className="rounded-2xl border border-gray-200 bg-white p-6 card-lift">
       <div className="flex items-start justify-between mb-1">
         <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-          Market Position
+          <TailorText editKey="dashboard.position.label" defaultText="Market Position" as="span" className="" />
         </p>
         {delta !== null && delta !== 0 && (
           <span
@@ -387,7 +387,7 @@ function CompetitorGap({ ranking, onCompetitorClick }: { ranking: RankingData | 
       style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
     >
       <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-2">
-        Your Top Competitor
+        <TailorText editKey="dashboard.competitor.label" defaultText="Your Top Competitor" as="span" className="" />
       </p>
       <p className="text-base font-semibold text-[#212D40] leading-relaxed">
         <span className="font-bold">{comp.name || "your top competitor"}</span>{" "}
@@ -457,12 +457,12 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
             <Star className="w-5 h-5 text-gray-400" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#212D40]">Agent Findings</p>
-            <p className="text-xs text-gray-400">Scan scheduled</p>
+            <TailorText editKey="dashboard.findings.title" defaultText="Agent Findings" as="p" className="text-sm font-bold text-[#212D40]" />
+            <TailorText editKey="dashboard.findings.status" defaultText="Scan scheduled" as="p" className="text-xs text-gray-400" />
           </div>
         </div>
         <p className="text-sm text-gray-500">
-          Your competitors are being analyzed right now. First detailed findings arrive Monday morning.
+          <TailorText editKey="dashboard.findings.body" defaultText="Your competitors are being analyzed right now. First detailed findings arrive Monday morning." as="span" className="" />
         </p>
       </div>
     );
@@ -472,7 +472,7 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-4">
-          What We Found
+          <TailorText editKey="dashboard.findings.found" defaultText="What We Found" as="span" className="" />
         </p>
         <div className="space-y-3">
           {checkupInsights.map((insight, i) => (
@@ -523,12 +523,12 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
             <Globe className="w-5 h-5 text-gray-400" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#212D40]">Your Website</p>
-            <p className="text-xs text-gray-400">In progress</p>
+            <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-bold text-[#212D40]" />
+            <TailorText editKey="dashboard.website.status" defaultText="In progress" as="p" className="text-xs text-gray-400" />
           </div>
         </div>
         <p className="text-sm text-gray-500">
-          Your website is being built. You'll get a notification when it's live.
+          <TailorText editKey="dashboard.website.body" defaultText="Your website is being built. You'll get a notification when it's live." as="span" className="" />
         </p>
       </div>
     );
@@ -544,7 +544,7 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
             <Globe className="w-5 h-5 text-emerald-600" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#212D40]">Your Website</p>
+            <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-bold text-[#212D40]" />
             <p className="text-xs text-gray-500">{website.generated_hostname}</p>
           </div>
         </div>
@@ -579,8 +579,8 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
           <Share2 className="w-5 h-5 text-[#212D40]" />
         </div>
         <div>
-          <p className="text-sm font-bold text-[#212D40]">Rise Together</p>
-          <p className="text-xs text-gray-500">Share this with a colleague. When they join, you both split month one.</p>
+          <TailorText editKey="dashboard.referral.title" defaultText="Rise Together" as="p" className="text-sm font-bold text-[#212D40]" />
+          <TailorText editKey="dashboard.referral.subtitle" defaultText="Share this with a colleague. When they join, you both split month one." as="p" className="text-xs text-gray-500" />
         </div>
       </div>
       <div className="flex gap-2">

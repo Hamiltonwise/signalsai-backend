@@ -27,6 +27,7 @@ import {
   Share2,
   Copy,
 } from "lucide-react";
+import { TailorText } from "../TailorText";
 
 interface OnboardingStep {
   id: string;
@@ -166,7 +167,7 @@ export default function OnboardingChecklist({
       {/* Header -- IKEA effect: "building", not "completing" */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <p className="text-sm font-bold text-[#212D40]">Building your intelligence</p>
+          <TailorText editKey="dashboard.checklist.title" defaultText="Building your intelligence" as="p" className="text-sm font-bold text-[#212D40]" />
           <p className="text-xs text-gray-400 mt-0.5">
             {completed} of {steps.length} complete
           </p>

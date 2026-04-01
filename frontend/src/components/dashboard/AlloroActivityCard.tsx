@@ -10,6 +10,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "../../api/index";
+import { TailorText } from "../TailorText";
 
 // Map event types to human-readable descriptions
 function describeEvent(type: string, meta: Record<string, any>): string | null {
@@ -85,7 +86,7 @@ export default function AlloroActivityCard() {
       <div className="flex items-center gap-2 mb-3">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-          What your agents did this week
+          <TailorText editKey="dashboard.activity.title" defaultText="What your agents did this week" as="span" className="" />
         </p>
       </div>
       <div className="space-y-2">
