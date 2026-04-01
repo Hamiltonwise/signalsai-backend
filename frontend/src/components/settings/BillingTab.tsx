@@ -105,10 +105,10 @@ export const BillingTab: React.FC = () => {
         getBillingDetails(),
       ]);
 
-      if (statusResult.status === "fulfilled" && statusResult.value.success !== false) {
+      if (statusResult.status === "fulfilled" && statusResult.value?.success === true) {
         setBilling(statusResult.value);
       }
-      if (detailsResult.status === "fulfilled" && detailsResult.value.success !== false) {
+      if (detailsResult.status === "fulfilled" && detailsResult.value?.success === true) {
         setDetails(detailsResult.value);
       }
     } catch (err) {
