@@ -238,7 +238,7 @@ function GoalProgressSection({
         </div>
         <div className="border-2 border-dashed border-[#D56753]/20 rounded-2xl p-6 text-center">
           <p className="text-base font-bold text-[#212D40]">
-            When do you want to be able to sell this business?
+            Where do you want this business to be?
           </p>
           <p className="text-sm text-gray-500 mt-2 max-w-sm mx-auto">
             Setting a timeline shapes every recommendation Alloro makes. Your answer stays private.
@@ -266,7 +266,7 @@ function GoalProgressSection({
         </div>
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
           <p className="text-sm font-bold text-[#212D40] mb-3">
-            When would you like to be in a position to sell?
+            What's your timeline for your biggest goal?
           </p>
           <div className="grid grid-cols-2 sm:flex gap-2">
             {["3 years", "5 years", "7 years", "10 years"].map((opt) => (

@@ -84,7 +84,8 @@ export class OrganizationModel extends BaseModel {
 
   static async listAll(trx?: QueryContext): Promise<IOrganization[]> {
     return this.table(trx)
-      .select("id", "name", "domain", "subscription_tier", "created_at")
+      .select("id", "name", "domain", "subscription_tier", "subscription_status", "created_at")
+      .where("subscription_status", "active")
       .orderBy("created_at", "desc");
   }
 

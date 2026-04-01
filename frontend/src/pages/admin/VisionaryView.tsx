@@ -45,10 +45,17 @@ import { apiGet } from "@/api/index";
 
 // ---- Helpers ---------------------------------------------------------------
 
-const TIER_PRICING: Record<string, number> = {
-  DWY: 997,
-  DFY: 2497,
+// Real customer pricing (per-org, not per-tier, until billing is standardized)
+const ORG_MONTHLY_RATE: Record<number, number> = {
+  5: 2000,   // Garrison Orthodontics
+  6: 3500,   // DentalEMR
+  8: 1500,   // Artful Orthodontics
+  21: 0,     // McPherson Endodontics (beta)
+  25: 5000,  // Caswell Orthodontics (3 locations)
+  39: 1500,  // One Endodontics
 };
+// Fallback for any org not in the map
+const DEFAULT_TIER_PRICING: Record<string, number> = { DWY: 997, DFY: 2497 };
 
 const MONTHLY_BURN = 9500;
 
@@ -214,8 +221,10 @@ function RevenuePanel({ orgs }: { orgs: AdminOrganization[] }) {
   );
 
   const mrr = activeOrgs.reduce((sum, o) => {
+    // Use real per-org rate if known, otherwise fall back to tier pricing
+    if (ORG_MONTHLY_RATE[o.id] !== undefined) return sum + ORG_MONTHLY_RATE[o.id];
     const tier = o.subscription_tier || "DWY";
-    return sum + (TIER_PRICING[tier] ?? 0);
+    return sum + (DEFAULT_TIER_PRICING[tier] ?? 0);
   }, 0);
 
   // Simple month-over-month proxy: compare created_at this month vs last month
