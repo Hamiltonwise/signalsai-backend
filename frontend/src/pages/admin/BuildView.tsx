@@ -99,8 +99,7 @@ function timeAgo(dateStr: string | null): string {
   return `${days}d`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function formatNextRun(dateStr: string | null): string {
+export function formatNextRun(dateStr: string | null): string {
   if (!dateStr) return "unscheduled";
   const d = new Date(dateStr);
   const now = new Date();
@@ -1157,9 +1156,10 @@ export default function BuildView() {
     queryFn: fetchSchedules,
   });
 
-  const _schedules: Schedule[] = Array.isArray(scheduleData)
+  const schedules: Schedule[] = Array.isArray(scheduleData)
     ? scheduleData
     : [];
+  void schedules;
 
   const { data: taskData } = useQuery({
     queryKey: ["dream-team-tasks-build"],

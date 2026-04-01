@@ -422,7 +422,6 @@ function AgentPipelineStatus() {
     );
   }
 
-  const agents = mcData?.agents ?? [];
   const summary = mcData?.summary;
 
   // Client health this week
@@ -545,11 +544,11 @@ function BlockerPanel() {
   }
 
   // Open circuits
-  const agents = mcData?.agents ?? [];
+  const agents = (mcData?.agents ?? []) as Array<{ circuitState: string; displayName: string }>;
   const openCircuits = agents.filter((a) => a.circuitState === "open");
   if (openCircuits.length > 0) {
     blockers.push({
-      text: `${openCircuits.length} agent circuit${openCircuits.length !== 1 ? "s" : ""} tripped: ${openCircuits.slice(0, 3).map((a) => a.displayName).join(", ")}`,
+      text: `${openCircuits.length} agent circuit${openCircuits.length !== 1 ? "s" : ""} tripped: ${openCircuits.slice(0, 3).map((a: { displayName: string }) => a.displayName).join(", ")}`,
       severity: "red",
     });
   }
