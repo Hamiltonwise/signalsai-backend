@@ -171,7 +171,7 @@ export default function RevenueDashboard() {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 space-y-6">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-32 animate-pulse rounded-2xl border border-gray-200 bg-white" />
+          <div key={i} className="h-32 skeleton-shimmer rounded-2xl border border-[#D56753]/6" />
         ))}
       </div>
     );

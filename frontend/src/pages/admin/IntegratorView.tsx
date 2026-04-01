@@ -80,7 +80,7 @@ function Panel({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-gray-200 bg-white p-5 shadow-sm ${className}`}
+      className={`card-supporting ${className}`}
     >
       {children}
     </div>
@@ -91,7 +91,7 @@ function PanelHeader({
   icon: Icon,
   label,
   count,
-  iconColor = "text-gray-400",
+  iconColor = "text-[#D56753]/50",
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -99,13 +99,13 @@ function PanelHeader({
   iconColor?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 mb-4">
+    <div className="flex items-center gap-2.5 mb-4">
       <Icon className={`h-4 w-4 ${iconColor}`} />
-      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40">
         {label}
       </p>
       {count !== undefined && count > 0 && (
-        <span className="ml-auto text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+        <span className="ml-auto text-xs font-bold text-[#D56753] bg-[#D56753]/8 px-2 py-0.5 rounded-full">
           {count}
         </span>
       )}
