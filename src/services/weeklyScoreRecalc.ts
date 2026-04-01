@@ -12,8 +12,7 @@
 import { db } from "../database/connection";
 import { getPlaceDetails } from "../controllers/places/feature-services/GooglePlacesApiService";
 import {
-  discoverCompetitorsViaPlaces,
-  filterBySpecialty,
+  discoverCompetitorsWithFallback,
 } from "../controllers/practice-ranking/feature-services/service.places-competitor-discovery";
 import { calculateClarityScore, type SubScores } from "./clarityScoring";
 
@@ -119,14 +118,13 @@ export async function recalculateScore(orgId: number): Promise<RecalcResult | nu
       changes.push(`added ${freshPhotos - oldPhotos} photo${freshPhotos - oldPhotos !== 1 ? "s" : ""}`);
     }
 
-    // 2. Refresh competitor data
+    // 2. Refresh competitor data (with fallback broadening)
     let competitors: any[] = [];
     try {
       if (city) {
-        const discovered = await discoverCompetitorsViaPlaces(specialty, city, 10);
-        const filtered = filterBySpecialty(discovered, specialty);
+        const result = await discoverCompetitorsWithFallback(specialty, city, 10);
         // Exclude self from competitor list
-        competitors = filtered.filter(
+        competitors = result.competitors.filter(
           (c) => c.placeId !== placeId && c.name?.toLowerCase() !== org.name?.toLowerCase()
         );
       }

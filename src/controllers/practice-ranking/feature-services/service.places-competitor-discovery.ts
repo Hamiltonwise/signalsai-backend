@@ -380,15 +380,28 @@ export function filterBySpecialty(
     const displayCat = comp.category.toLowerCase();
 
     if (isDentalVertical) {
-      // Dental verticals: strict type filtering (existing behavior)
+      // Dental verticals: type filtering with name/category fallback.
+      // Google often lists specialists under generic "dentist" primaryType,
+      // so we also check display category and business name for the specialty term.
       const isDental =
         DENTAL_TYPES.includes(pt) ||
         comp.types?.some((t) => DENTAL_TYPES.includes(t.toLowerCase()));
       if (!isDental) return false;
       if (isGeneral) return true;
+      // Exact type match (e.g. primaryType === "orthodontist")
       if (specialtyTypes.includes(pt)) return true;
       if (comp.types?.some((t) => specialtyTypes.includes(t.toLowerCase()))) return true;
+      // Display category match (e.g. "Orthodontist" in category text)
       if (targetDisplayNames.some((name) => displayCat.includes(name))) return true;
+      // Name-based match: if business name contains the specialty term,
+      // trust it. Google's text search already scoped to this specialty.
+      const specTerms = specialtyTypes.map((t) => t.replace(/_/g, " "));
+      const nameLower = comp.name.toLowerCase();
+      if (specTerms.some((term) => nameLower.includes(term))) return true;
+      // Display category keyword fallback for specialists listed as "dentist":
+      // check if the original specialty word appears in the category or name
+      const specWord = specialty.toLowerCase().replace(/s$/, "");
+      if (displayCat.includes(specWord) || nameLower.includes(specWord)) return true;
       return false;
     }
 

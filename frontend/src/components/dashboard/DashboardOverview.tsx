@@ -1173,90 +1173,8 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           </section>
         ) : null}
 
-        {/* SECTION 5: CRITICAL PRIORITY / URGENT INTERVENTION - Show skeleton while loading, hide if no data after load */}
-        {(() => {
-          // Show skeleton while loading
-          if (tasksLoading) {
-            return (
-              <section className="animate-pulse">
-                <div className="bg-white border border-slate-100 rounded-2xl p-6 lg:px-10 lg:py-8 shadow-premium">
-                  <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div className="flex-1 space-y-4 w-full">
-                      <div className="h-6 w-40 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded skeleton-shimmer"></div>
-                      <div className="h-10 w-3/4 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded skeleton-shimmer"></div>
-                      <div className="h-6 w-full max-w-xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded skeleton-shimmer"></div>
-                    </div>
-                    <div className="h-14 w-40 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-2xl skeleton-shimmer shrink-0"></div>
-                  </div>
-                </div>
-              </section>
-            );
-          }
-
-          const immediateTask = tasks.find((task) => {
-            try {
-              // Must be approved, not completed, and USER category to show in ACTION NEEDED
-              if (!task.is_approved || task.status === "complete" || task.category !== "USER") {
-                return false;
-              }
-              const metadata =
-                typeof task.metadata === "string"
-                  ? JSON.parse(task.metadata)
-                  : task.metadata;
-              return (
-                metadata?.urgency === "Immediate" ||
-                metadata?.urgency === "IMMEDIATE"
-              );
-            } catch {
-              return false;
-            }
-          });
-
-          // Hide section if no immediate task found after loading
-          if (!immediateTask) {
-            return null;
-          }
-
-          return (
-            <section className="bg-white border border-slate-100 rounded-2xl p-6 lg:px-10 lg:py-8 shadow-premium relative flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="flex-1 text-left space-y-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="px-2.5 py-1 bg-red-50 text-red-600 text-[9px] font-black uppercase tracking-widest rounded-lg border border-red-100 leading-none">
-                    ACTION NEEDED
-                  </span>
-                </div>
-                <h2 className="text-3xl lg:text-4xl font-black font-heading text-alloro-navy tracking-tight leading-none">
-                  {parseHighlightTags(
-                    (immediateTask.title || "").replace(/<[^>]*>/g, ""),
-                    "highlight-red",
-                  )}
-                </h2>
-                <p className="text-base lg:text-lg text-[#636E72] font-medium leading-relaxed tracking-tight max-w-2xl">
-                  {parseHighlightTags(
-                    (immediateTask.description || "").replace(/<[^>]*>/g, ""),
-                    "highlight-red",
-                  )}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  // Navigate to tasks with the task ID for scrolling
-                  const taskId = immediateTask.id;
-                  navigate("/tasks", { state: { scrollToTaskId: taskId } });
-                }}
-                className="w-full sm:w-auto px-8 py-4 bg-[#11151C] text-white rounded-[1rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3 shrink-0 active:scale-95 group"
-              >
-                See in Tasks{" "}
-                <ChevronRight
-                  size={16}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
-              </button>
-            </section>
-          );
-        })()}
-
-        {/* SECTION 6: WHAT'S WORKING VS WHAT'S NOT */}
+        {/* SECTION 5: WHAT'S WORKING VS WHAT'S NOT -- wins lead, risks follow.
+            Feel understood before feeling informed. */}
         {(effectiveWins || effectiveRisks || isWizardActive) && (
           <section
             data-wizard-target="dashboard-wins-risks"
@@ -1330,6 +1248,85 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             </div>
           </section>
         )}
+
+        {/* SECTION 6: CRITICAL PRIORITY / URGENT INTERVENTION - after wins, not before */}
+        {(() => {
+          if (tasksLoading) {
+            return (
+              <section className="animate-pulse">
+                <div className="bg-white border border-slate-100 rounded-2xl p-6 lg:px-10 lg:py-8 shadow-premium">
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex-1 space-y-4 w-full">
+                      <div className="h-6 w-40 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded skeleton-shimmer"></div>
+                      <div className="h-10 w-3/4 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded skeleton-shimmer"></div>
+                      <div className="h-6 w-full max-w-xl bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded skeleton-shimmer"></div>
+                    </div>
+                    <div className="h-14 w-40 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded-2xl skeleton-shimmer shrink-0"></div>
+                  </div>
+                </div>
+              </section>
+            );
+          }
+
+          const immediateTask = tasks.find((task) => {
+            try {
+              if (!task.is_approved || task.status === "complete" || task.category !== "USER") {
+                return false;
+              }
+              const metadata =
+                typeof task.metadata === "string"
+                  ? JSON.parse(task.metadata)
+                  : task.metadata;
+              return (
+                metadata?.urgency === "Immediate" ||
+                metadata?.urgency === "IMMEDIATE"
+              );
+            } catch {
+              return false;
+            }
+          });
+
+          if (!immediateTask) {
+            return null;
+          }
+
+          return (
+            <section className="bg-white border border-slate-100 rounded-2xl p-6 lg:px-10 lg:py-8 shadow-premium relative flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="flex-1 text-left space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="px-2.5 py-1 bg-red-50 text-red-600 text-[9px] font-black uppercase tracking-widest rounded-lg border border-red-100 leading-none">
+                    ACTION NEEDED
+                  </span>
+                </div>
+                <h2 className="text-3xl lg:text-4xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                  {parseHighlightTags(
+                    (immediateTask.title || "").replace(/<[^>]*>/g, ""),
+                    "highlight-red",
+                  )}
+                </h2>
+                <p className="text-base lg:text-lg text-[#636E72] font-medium leading-relaxed tracking-tight max-w-2xl">
+                  {parseHighlightTags(
+                    (immediateTask.description || "").replace(/<[^>]*>/g, ""),
+                    "highlight-red",
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const taskId = immediateTask.id;
+                  navigate("/tasks", { state: { scrollToTaskId: taskId } });
+                }}
+                className="w-full sm:w-auto px-8 py-4 bg-[#11151C] text-white rounded-[1rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3 shrink-0 active:scale-95 group"
+              >
+                See in Tasks{" "}
+                <ChevronRight
+                  size={16}
+                  className="group-hover:translate-x-1 transition-transform"
+                />
+              </button>
+            </section>
+          );
+        })()}
 
         {/* SECTION: PREMIUM TOP 3 STRATEGIC FIXES - matches newdesign (visible, not in hub) */}
         {((effectiveTopFixes && effectiveEstimatedRevenue) ||
