@@ -31,6 +31,9 @@ const SPECIALTY_TYPE_MAP: Record<string, string> = {
   animal_hospital: "veterinarian",
   dermatologist: "dermatologist",
   plastic_surgeon: "plastic surgeon",
+  // Med spa / aesthetics
+  med_spa: "med spa",
+  medical_spa: "med spa",
   // Professional services
   lawyer: "attorney",
   law_firm: "attorney",
@@ -76,21 +79,32 @@ const NAME_SPECIALTY_PATTERNS: [RegExp, string][] = [
   [/prosthodontic/i, "prosthodontist"],
   [/oral\s*surg/i, "oral surgeon"],
   [/pediatric\s*dent/i, "pediatric dentist"],
+  // Surgical sub-specialties (must be before generic matches)
+  [/oculofacial|oculoplastic/i, "oculofacial surgeon"],
+  [/plastic\s*surg/i, "plastic surgeon"],
+  [/dermatolog/i, "dermatologist"],
+  [/med\s*spa|medspa|medical\s*spa|aestheti/i, "med spa"],
   // Non-dental
   [/barber/i, "barber"],
   [/salon|beauty|hair/i, "salon"],
   [/chiropractic/i, "chiropractor"],
   [/physical\s*therap/i, "physical therapist"],
   [/veterinar|animal\s*hosp/i, "veterinarian"],
+  [/optometr|optic/i, "optometrist"],
   [/law\s*(firm|office)|attorney/i, "attorney"],
   [/\bcpa\b|account/i, "accountant"],
   [/financial\s*(advis|plan)/i, "financial advisor"],
   [/real\s*estate/i, "real estate agent"],
+  // Home + outdoor
+  [/garden\s*design|landscape\s*design/i, "garden designer"],
+  [/landscap/i, "landscaper"],
   [/plumb/i, "plumber"],
   [/electric/i, "electrician"],
   [/\bhvac\b/i, "HVAC contractor"],
   [/auto\s*(repair|body|shop)|mechanic/i, "auto shop"],
   [/fitness|gym|crossfit/i, "gym"],
+  [/photograph/i, "photographer"],
+  [/dog\s*groom|pet\s*groom/i, "pet groomer"],
 ];
 
 /**
@@ -457,7 +471,7 @@ export default function EntryScreen() {
 
       {/* Trust signals — refined */}
       <div className="mt-12 flex items-center justify-center gap-4">
-        {["No login required", "Free", "60 seconds"].map((text, i) => (
+        {["Free", "60 seconds", "See your score instantly"].map((text, i) => (
           <span key={text} className="flex items-center gap-1.5 text-xs text-slate-400">
             {i > 0 && <span className="w-1 h-1 rounded-full bg-slate-300" />}
             {text}

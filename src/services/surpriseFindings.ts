@@ -312,7 +312,7 @@ export async function generateSurpriseFindings(data: {
       surpriseScore: 85,
       actionability: 75,
       source: "review_sentiment_moat",
-      confidence: "medium",
+      confidence: "high", // We are reading actual review text, fully verifiable
     });
   }
 
@@ -390,24 +390,30 @@ function extractSentimentKeywords(
 /**
  * Pick findings that were NOT included in the checkup.
  * Used by Welcome Intelligence to create a SECOND Oz moment.
+ * Includes HIGH and MEDIUM confidence findings (trust is building by this point).
  */
 export function pickWelcomeFindings(
   allFindings: SurpriseFinding[],
   checkupFindingCount: number
 ): SurpriseFinding[] {
+  // Filter out LOW confidence (unverifiable) findings entirely
+  const usable = allFindings.filter((f) => f.confidence !== "low");
   // Skip the first N findings (shown in checkup), take the next 1-2
-  return allFindings.slice(checkupFindingCount, checkupFindingCount + 2);
+  return usable.slice(checkupFindingCount, checkupFindingCount + 2);
 }
 
 /**
  * Pick the single best finding for the Monday email steady-state override.
  * Prefer findings with high surprise score that feel fresh.
+ * Monday email can include MEDIUM confidence findings (trust is established).
  */
 export function pickMondayFinding(
   findings: SurpriseFinding[]
 ): SurpriseFinding | null {
-  if (findings.length === 0) return null;
+  // Filter out LOW confidence findings entirely
+  const usable = findings.filter((f) => f.confidence !== "low");
+  if (usable.length === 0) return null;
   // Return the highest-surprise finding
-  const sorted = [...findings].sort((a, b) => b.surpriseScore - a.surpriseScore);
+  const sorted = [...usable].sort((a, b) => b.surpriseScore - a.surpriseScore);
   return sorted[0];
 }

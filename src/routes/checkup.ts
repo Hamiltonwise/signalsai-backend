@@ -55,6 +55,8 @@ const REVIEW_VOLUME_BENCHMARKS: Record<string, number> = {
   hvac: 50,
   roofer: 30,
   landscaper: 40,
+  "garden designer": 20,
+  "landscape designer": 20,
   "auto repair": 60,
   "financial advisor": 20,
   "real estate agent": 40,
@@ -77,6 +79,8 @@ const COMPETITIVE_RADII_MILES: Record<string, number> = {
   endodontist: 25,
   periodontist: 25,
   "oral surgeon": 25,
+  "garden designer": 25,
+  "landscape designer": 25,
   "plastic surgeon": 40,
   "oculofacial surgeon": 75,
   prosthodontist: 75,
@@ -107,7 +111,8 @@ function deriveSpecialtyFromName(name: string, category: string): string {
     { keywords: ["pediatric dent", "children"],              specialty: "pediatric dentist" },
     { keywords: ["oral surg"],                               specialty: "oral surgeon" },
     // Medical
-    { keywords: ["oculofacial", "oculoplastic", "facial plastic"], specialty: "plastic surgeon" },
+    { keywords: ["oculofacial", "oculoplastic"],                specialty: "oculofacial surgeon" },
+    { keywords: ["facial plastic"],                             specialty: "plastic surgeon" },
     { keywords: ["med spa", "medspa", "medical spa", "aesthetics"], specialty: "medspa" },
     { keywords: ["chiropractic", "chiropractor"],            specialty: "chiropractor" },
     { keywords: ["optometr", "eye care", "vision"],          specialty: "optometrist" },
@@ -204,6 +209,9 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       "hvac": { avgCaseValue: 400, conversionRate: 0.035 },
       roofer: { avgCaseValue: 5000, conversionRate: 0.015 },
       landscaper: { avgCaseValue: 200, conversionRate: 0.04 },
+      "garden designer": { avgCaseValue: 3000, conversionRate: 0.02 },
+      "landscape designer": { avgCaseValue: 3000, conversionRate: 0.02 },
+      "oculofacial surgeon": { avgCaseValue: 6000, conversionRate: 0.01 },
       // Personal services
       barber: { avgCaseValue: 35, conversionRate: 0.08 },
       "hair salon": { avgCaseValue: 60, conversionRate: 0.06 },
@@ -702,11 +710,13 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         impact: 0,
       });
     } else if (lastReviewDaysAgo > 30) {
+      // TRUST FIX: Google returns only ~5 reviews. The actual most recent review
+      // could be from yesterday. Use honest language about what we're measuring.
       const recencyImpact = Math.round(econ.avgCaseValue * econ.conversionRate * 12);
       findings.push({
         type: "recency_stale",
-        title: "Reviews Look Stale to Prospects",
-        detail: `Your most recent review is over ${lastReviewDaysAgo > 60 ? "60" : "30"} days old. Prospects may wonder if you're still active. Fresh reviews could generate an estimated $${recencyImpact.toLocaleString()} in additional inquiries per year.`,
+        title: "Review Activity Has Slowed",
+        detail: `Based on your most recent Google reviews, activity has slowed. Fresh reviews signal to prospects that your business is active and could generate an estimated $${recencyImpact.toLocaleString()} in additional inquiries per year.`,
         value: lastReviewDaysAgo,
         impact: recencyImpact,
       });
@@ -738,19 +748,25 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     }
 
     // Finding 5: Profile completeness
-    if (completenessCount < 4) {
+    // TRUST FIX: Only check fields we can verify the business controls.
+    // editorialSummary is Google-generated, NOT business-controlled. The business
+    // may have a full description that the API doesn't return in this field.
+    // Showing "missing business description" when the owner can see their
+    // description IS there destroys trust in everything else we show.
+    if (completenessCount < 3) {
       const missingItems: string[] = [];
       if (!hasHours) missingItems.push("business hours");
       if (!hasPhone) missingItems.push("phone number");
       if (!hasWebsite) missingItems.push("website");
-      if (!hasDescription) missingItems.push("business description");
-      findings.push({
-        type: "profile_incomplete",
-        title: "Incomplete Profile Reduces Trust",
-        detail: `Prospects see a profile missing ${missingItems.join(", ")}. Complete profiles get more clicks. This takes minutes to fix.`,
-        value: missingItems.length,
-        impact: Math.round(econ.avgCaseValue * missingItems.length * 0.5),
-      });
+      if (missingItems.length > 0) {
+        findings.push({
+          type: "profile_incomplete",
+          title: "Incomplete Profile Reduces Trust",
+          detail: `Prospects see a profile missing ${missingItems.join(", ")}. Complete profiles get more clicks. This takes minutes to fix.`,
+          value: missingItems.length,
+          impact: Math.round(econ.avgCaseValue * missingItems.length * 0.5),
+        });
+      }
     }
 
     // Finding 6: Zero competitors guidance
@@ -1101,13 +1117,22 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       console.error("[Checkup] Surprise findings failed (non-blocking):", sfErr instanceof Error ? sfErr.message : sfErr);
     }
 
+    // ─── Confidence Filter: only show HIGH confidence findings in checkup ───
+    // MEDIUM findings are saved for Monday email after trust is established.
+    // LOW findings are suppressed entirely (unverifiable = untrustworthy).
+    const highConfidenceFindings = surpriseFindings.filter((f) => f.confidence === "high");
+    const mediumConfidenceFindings = surpriseFindings.filter((f) => f.confidence === "medium");
+
     // Log scan completed (funnel measurement)
     BehavioralEventModel.create({
       event_type: "checkup.scan_completed",
       properties: {
         name, city, score: compositeScore, rank, competitors: otherCompetitors.length,
         topCompetitor: topCompetitor?.name || null,
-        ozMoments: ozMoments.length, surpriseFindings: surpriseFindings.length,
+        ozMoments: ozMoments.length,
+        surpriseFindings: surpriseFindings.length,
+        surpriseFindingsHigh: highConfidenceFindings.length,
+        surpriseFindingsMedium: mediumConfidenceFindings.length,
       },
     }).catch(() => {});
 
@@ -1152,7 +1177,11 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings,
       sentimentInsight: sentimentInsight || null,
       ozMoments: ozMoments.length > 0 ? ozMoments : undefined,
-      surpriseFindings: surpriseFindings.length > 0 ? surpriseFindings.slice(0, 5) : undefined,
+      // Only HIGH confidence surprise findings in checkup (zero false positives).
+      // MEDIUM confidence findings saved for Monday email after trust is built.
+      surpriseFindings: highConfidenceFindings.length > 0 ? highConfidenceFindings.slice(0, 5) : undefined,
+      // Include medium-confidence findings separately for downstream email use
+      surpriseFindingsMedium: mediumConfidenceFindings.length > 0 ? mediumConfidenceFindings.slice(0, 3) : undefined,
       totalImpact,
       impactLabel: compositeScore >= 80 ? "revenue_protected" : "revenue_at_risk",
       market: {

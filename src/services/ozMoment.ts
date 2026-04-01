@@ -274,7 +274,73 @@ Respond in exactly this JSON format, nothing else:
       }));
     return moments;
   } catch (err) {
-    console.error("[OzMoment] Generation failed:", err instanceof Error ? err.message : err);
-    return [];
+    console.error("[OzMoment] Claude generation failed, using template fallback:", err instanceof Error ? err.message : err);
+    return buildTemplateFallback(data);
   }
+}
+
+/**
+ * Template-based Oz moments when Claude API is unavailable.
+ * Uses the data we already have to generate specific, named insights.
+ * Not as magical as Claude-generated, but infinitely better than nothing.
+ */
+function buildTemplateFallback(data: OzMomentData): OzMoment[] {
+  const moments: OzMoment[] = [];
+  const comp = data.competitorName;
+
+  // Review gap insight
+  if (data.clientReviewCount > 0 && data.competitorReviewCount != null && data.competitorReviewCount > 0) {
+    const gap = data.competitorReviewCount - data.clientReviewCount;
+    if (gap > 0) {
+      moments.push({
+        hook: `${comp} has ${gap} more reviews than you.`,
+        implication: `In local search, review count is one of the strongest ranking signals. At current pace, this gap widens every month.`,
+        action: `Close the gap: ${Math.min(gap, 5)} reviews in the next 2 weeks puts you back in contention.`,
+        shareability: 7,
+      });
+    } else if (gap < 0) {
+      moments.push({
+        hook: `You have ${Math.abs(gap)} more reviews than ${comp}.`,
+        implication: `That's a competitive advantage most business owners don't realize they have. Every new review compounds it.`,
+        action: `Protect your lead: maintain your review velocity to stay ahead.`,
+        shareability: 6,
+      });
+    }
+  }
+
+  // Photo gap insight
+  if (data.clientPhotoCount != null && data.competitorPhotoCount != null) {
+    const photoGap = data.competitorPhotoCount - data.clientPhotoCount;
+    if (photoGap > 5) {
+      moments.push({
+        hook: `${comp} has ${data.competitorPhotoCount} photos on Google. You have ${data.clientPhotoCount}.`,
+        implication: `Google profiles with 100+ photos get 520% more calls than those with fewer than 10. Photos are the easiest ranking lever most businesses ignore.`,
+        action: `Take 5 new photos this week with your phone. Front desk, team, treatment room. Upload to Google Business Profile.`,
+        shareability: 8,
+      });
+    }
+  }
+
+  // Rating comparison
+  if (data.clientRating > 0 && data.competitorRating != null && data.competitorRating > 0 && data.clientRating < data.competitorRating) {
+    const ratingDiff = (data.competitorRating - data.clientRating).toFixed(1);
+    moments.push({
+      hook: `${comp} has a ${data.competitorRating}-star average. You're at ${data.clientRating}.`,
+      implication: `A ${ratingDiff}-star difference changes which business a customer clicks first. 72% of consumers choose the higher-rated option.`,
+      action: `Every 5-star review moves your average. Request reviews from your happiest customers this week.`,
+      shareability: 6,
+    });
+  }
+
+  // Market position
+  if (data.marketRank && data.totalCompetitors && data.marketRank > 1) {
+    moments.push({
+      hook: `You're #${data.marketRank} of ${data.totalCompetitors} in your market. ${comp} holds #1.`,
+      implication: `Position #1 gets 3x more clicks than position #3. The businesses above you aren't necessarily better. They're more visible.`,
+      action: `Visibility is closable. Reviews, photos, and profile completeness are the three levers.`,
+      shareability: 7,
+    });
+  }
+
+  return moments.slice(0, 3);
 }

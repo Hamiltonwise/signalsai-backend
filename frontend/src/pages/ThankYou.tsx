@@ -8,7 +8,8 @@
  */
 
 import { CheckCircle2, ArrowRight, Calendar } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { isConferenceMode } from "./checkup/conferenceFallback";
 
 /**
  * Generate an .ics calendar event for Monday 7:15 AM local time.
@@ -53,6 +54,9 @@ function handleAddToCalendar() {
 }
 
 export default function ThankYou() {
+  const [searchParams] = useSearchParams();
+  const showBooth = isConferenceMode() || searchParams.get("source") === "aae2026";
+
   return (
     <div className="min-h-dvh bg-[#FAFAF8]">
       {/* Header */}
@@ -127,15 +131,17 @@ export default function ThankYou() {
           </button>
         </div>
 
-        {/* Booth card */}
-        <div className="rounded-2xl bg-[#212D40] p-5 text-center">
-          <p className="text-base font-bold text-white">
-            Come find us at booth #835.
-          </p>
-          <p className="text-sm text-white/60 mt-1.5 leading-relaxed">
-            We'll show you what Monday looks like.
-          </p>
-        </div>
+        {/* Booth card -- only shown at AAE conference */}
+        {showBooth && (
+          <div className="rounded-2xl bg-[#212D40] p-5 text-center">
+            <p className="text-base font-bold text-white">
+              Come find us at booth #835.
+            </p>
+            <p className="text-sm text-white/60 mt-1.5 leading-relaxed">
+              We'll show you what Monday looks like.
+            </p>
+          </div>
+        )}
 
         {/* Dashboard CTA */}
         <div className="text-center">

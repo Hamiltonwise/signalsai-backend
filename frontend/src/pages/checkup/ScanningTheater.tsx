@@ -28,15 +28,35 @@ const MIN_THEATER_MS = 10000; // minimum 10s theater (was 15s, reduced to respec
 const SKIP_VISIBLE_MS = 4000; // show skip button after 4s (when API is likely done)
 const ITEM_INTERVAL_MS = 1800; // ~1.8s per checklist item (snappier progression)
 
-const CHECKLIST_ITEMS = [
-  "Finding your business...",
-  "Scanning Google Business Profile",
-  "Locating nearby competitors",
-  "Analyzing review velocity",
-  "Checking local search rankings",
-  "Measuring online presence",
-  "Calculating your score...",
-];
+function getChecklistItems(category?: string | null): string[] {
+  // Use the detected specialty to personalize the scanning language
+  const term = category?.toLowerCase() || "";
+  const plural =
+    term.includes("barber") ? "barber shops"
+    : term.includes("salon") ? "salons"
+    : term.includes("spa") ? "med spas"
+    : term.includes("ortho") ? "orthodontists"
+    : term.includes("endo") ? "endodontists"
+    : term.includes("dentist") ? "dental practices"
+    : term.includes("chiro") ? "chiropractors"
+    : term.includes("vet") ? "veterinary clinics"
+    : term.includes("attorney") || term.includes("law") ? "law firms"
+    : term.includes("plumb") ? "plumbing companies"
+    : term.includes("garden") || term.includes("landscape") ? "landscape designers"
+    : term.includes("oculofacial") || term.includes("oculoplastic") ? "oculofacial surgeons"
+    : term.includes("photo") ? "photographers"
+    : "competitors";
+
+  return [
+    "Finding your business...",
+    "Scanning Google Business Profile",
+    `Finding ${plural} near you`,
+    "Counting their reviews",
+    "Checking local search rankings",
+    "Measuring online presence",
+    "Calculating your score...",
+  ];
+}
 
 // ---------------------------------------------------------------------------
 // Custom map markers — SVG-based, no external images
@@ -426,7 +446,7 @@ function ReviewTicker({ reviews }: { reviews: PlaceReview[] }) {
         <Quote className="w-3 h-3 text-[#D56753] shrink-0 mt-0.5 rotate-180" />
         <div className="min-w-0">
           <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-2">
-            {review.text || "Great experience!"}
+            {review.text || `${review.rating}-star review`}
           </p>
           <div className="flex items-center gap-1.5 mt-1.5">
             <div className="flex">
@@ -523,6 +543,9 @@ export default function ScanningTheater() {
   const refCode = stateData?.refCode;
   const intent = stateData?.intent;
   const userQuestion = stateData?.userQuestion;
+
+  // Build specialty-aware checklist items
+  const CHECKLIST_ITEMS = getChecklistItems(place?.category);
 
   // Checklist progress (index of the currently active item, -1 = not started)
   const [activeIndex, setActiveIndex] = useState(-1);
