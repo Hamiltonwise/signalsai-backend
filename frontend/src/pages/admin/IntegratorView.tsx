@@ -33,6 +33,7 @@ import {
   ChevronUp,
   Loader2,
   ClipboardList,
+  Bot,
 } from "lucide-react";
 import {
   adminListOrganizations,
@@ -868,6 +869,97 @@ function MyFlags() {
   );
 }
 
+// ---- Feature 3: Dream Team Activity Feed ------------------------------------
+
+interface AgentActivityEntry {
+  id: number;
+  agent_type: string;
+  organization_id: number | null;
+  org_name: string | null;
+  status: string;
+  error_message: string | null;
+  created_at: string;
+}
+
+function agentLabel(agentType: string): string {
+  return agentType
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function AgentStatusBadge({ status }: { status: string }) {
+  const config: Record<string, { bg: string; text: string }> = {
+    success: { bg: "bg-emerald-50", text: "text-emerald-700" },
+    pending: { bg: "bg-amber-50", text: "text-amber-700" },
+    error: { bg: "bg-red-50", text: "text-red-700" },
+  };
+  const c = config[status] || { bg: "bg-gray-50", text: "text-gray-600" };
+  return (
+    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
+      {status}
+    </span>
+  );
+}
+
+function DreamTeamActivity() {
+  const { data: activityData, isLoading } = useQuery({
+    queryKey: ["admin-agent-activity"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/agent-activity" });
+      return res?.success !== false
+        ? ((res?.results || []) as AgentActivityEntry[])
+        : [];
+    },
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const entries = activityData ?? [];
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-14 animate-pulse rounded-xl border border-gray-200 bg-gray-50" />
+        ))}
+      </div>
+    );
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="flex items-center gap-3 px-4 py-4">
+        <Bot className="w-5 h-5 text-gray-300" />
+        <p className="text-sm text-gray-400">
+          Your agents are standing by. When they run, their work appears here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {entries.slice(0, 10).map((entry) => (
+        <div
+          key={entry.id}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50"
+        >
+          <Bot className="w-4 h-4 text-[#D56753] shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-[#212D40] truncate">
+              {agentLabel(entry.agent_type)}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {entry.org_name || "System"} . {timeAgo(entry.created_at)}
+            </p>
+          </div>
+          <AgentStatusBadge status={entry.status} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ---- Main --------------------------------------------------------------------
 
 export default function IntegratorView() {
@@ -929,6 +1021,16 @@ export default function IntegratorView() {
           iconColor="text-amber-500"
         />
         <TodaysActions brief={brief} />
+      </Card>
+
+      {/* Dream Team Activity */}
+      <Card>
+        <SectionLabel
+          icon={Bot}
+          label="Dream Team Activity"
+          iconColor="text-[#D56753]"
+        />
+        <DreamTeamActivity />
       </Card>
 
       {/* My Flags */}

@@ -378,6 +378,15 @@ function AgentExecutionLog({ schedules }: { schedules: Schedule[] }) {
 
 // ---- Panel 3: Recent Errors ------------------------------------------------
 
+interface AgentErrorEntry {
+  id: number;
+  agent_type: string;
+  org_name: string | null;
+  error_message: string | null;
+  status: string;
+  created_at: string;
+}
+
 function RecentErrorsPanel() {
   const { data: errorData } = useQuery({
     queryKey: ["recent-errors-build"],
@@ -394,9 +403,25 @@ function RecentErrorsPanel() {
     staleTime: 60_000,
   });
 
-  const events = errorData ?? [];
+  // Also fetch agent_results with error status
+  const { data: agentErrorData } = useQuery({
+    queryKey: ["agent-errors-build"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/agent-activity" });
+      if (res?.success === false) return [];
+      const all = (res?.results || []) as AgentErrorEntry[];
+      return all.filter(
+        (r) => r.status === "error" || r.status === "failed"
+      );
+    },
+    retry: false,
+    staleTime: 60_000,
+  });
 
-  // Group by event_type
+  const events = errorData ?? [];
+  const agentErrors = agentErrorData ?? [];
+
+  // Group behavioral events by event_type
   const grouped = events.reduce<Record<string, { count: number; latest: string; orgName?: string }>>(
     (acc, e) => {
       const key = e.event_type;
@@ -416,34 +441,75 @@ function RecentErrorsPanel() {
     (a, b) => b[1].count - a[1].count
   );
 
+  const hasContent = entries.length > 0 || agentErrors.length > 0;
+
   return (
     <TermPanel>
       <TermHeader icon={AlertTriangle} label="Recent Errors (24h)" />
 
-      {entries.length === 0 ? (
+      {!hasContent ? (
         <TailorText editKey="hq.build.errors.noErrors" defaultText="$ tail -f /var/log/errors ... No errors in the last 24h." as="p" className="text-sm text-green-500" />
       ) : (
-        <div className="space-y-1">
-          <div className="grid grid-cols-[1fr_80px_80px] gap-2 text-[10px] text-gray-600 uppercase font-bold pb-1 border-b border-gray-800">
-            <span>Event Type</span>
-            <span>Count</span>
-            <span>Last Seen</span>
-          </div>
-
-          {entries.map(([type, info]) => (
-            <div
-              key={type}
-              className="grid grid-cols-[1fr_80px_80px] gap-2 items-center py-1.5 border-b border-gray-800/50 last:border-0"
-            >
-              <span className="text-sm text-red-400 truncate">{type}</span>
-              <span className="text-xs text-gray-400 font-mono">
-                x{info.count}
-              </span>
-              <span className="text-xs text-gray-500">
-                {timeAgo(info.latest)}
-              </span>
+        <div className="space-y-4">
+          {/* Agent execution errors */}
+          {agentErrors.length > 0 && (
+            <div>
+              <p className="text-[10px] text-red-500 uppercase font-bold mb-2">Agent Execution Errors</p>
+              <div className="space-y-1">
+                {agentErrors.map((err) => (
+                  <div
+                    key={err.id}
+                    className="flex items-start gap-3 rounded-lg px-3 py-2 border border-red-800/50 bg-red-900/10"
+                  >
+                    <StatusDot status="fail" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-red-400 font-medium truncate">
+                        {err.agent_type.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {err.error_message || "Unknown error"}
+                        {err.org_name ? ` . ${err.org_name}` : ""}
+                      </p>
+                    </div>
+                    <span className="text-xs text-gray-600 shrink-0">
+                      {timeAgo(err.created_at)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
+
+          {/* Behavioral event errors */}
+          {entries.length > 0 && (
+            <div>
+              {agentErrors.length > 0 && (
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-2">Behavioral Events</p>
+              )}
+              <div className="space-y-1">
+                <div className="grid grid-cols-[1fr_80px_80px] gap-2 text-[10px] text-gray-600 uppercase font-bold pb-1 border-b border-gray-800">
+                  <span>Event Type</span>
+                  <span>Count</span>
+                  <span>Last Seen</span>
+                </div>
+
+                {entries.map(([type, info]) => (
+                  <div
+                    key={type}
+                    className="grid grid-cols-[1fr_80px_80px] gap-2 items-center py-1.5 border-b border-gray-800/50 last:border-0"
+                  >
+                    <span className="text-sm text-red-400 truncate">{type}</span>
+                    <span className="text-xs text-gray-400 font-mono">
+                      x{info.count}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {timeAgo(info.latest)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </TermPanel>

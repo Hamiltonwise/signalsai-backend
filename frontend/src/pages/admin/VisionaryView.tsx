@@ -17,7 +17,7 @@
  */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { TailorText } from "@/components/TailorText";
 import {
   DollarSign,
@@ -48,7 +48,7 @@ import {
   fetchDreamTeamTasks,
   type DreamTeamTask,
 } from "@/api/dream-team";
-import { apiGet } from "@/api/index";
+import { apiGet, apiPatch } from "@/api/index";
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -388,6 +388,17 @@ function RevenuePanel({ orgs }: { orgs: AdminOrganization[] }) {
 
 // ---- Panel 3: Decisions Needing You ----------------------------------------
 
+interface RedDecisionTask {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  blast_radius?: string;
+  owner_name: string;
+  created_at: string;
+}
+
 function DecisionPanel({
   tasks,
   agentBrief,
@@ -395,11 +406,31 @@ function DecisionPanel({
   tasks: DreamTeamTask[];
   agentBrief: PersonalAgentBrief | null | undefined;
 }) {
-  const urgent = tasks.filter(
+  const queryClient = useQueryClient();
+
+  // Fetch red blast_radius tasks that are open
+  const { data: redTasksRaw } = useQuery({
+    queryKey: ["admin-tasks-red"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/tasks?blast_radius=red&status=open" });
+      return res?.success !== false
+        ? ((res?.tasks || []) as RedDecisionTask[])
+        : [];
+    },
+    retry: false,
+    staleTime: 30_000,
+  });
+  const redTasks = redTasksRaw ?? [];
+
+  // Also show urgent/high tasks without blast_radius as fallback
+  const urgentFallback = tasks.filter(
     (t) =>
       (t.priority === "urgent" || t.priority === "high") &&
       t.status === "open"
   );
+  // Exclude any that are already in redTasks
+  const redTaskIds = new Set(redTasks.map((t) => t.id));
+  const extraUrgent = urgentFallback.filter((t) => !redTaskIds.has(t.id));
 
   // Pull urgent items from agent brief sections
   const urgentSection = agentBrief?.sections?.find(
@@ -407,7 +438,20 @@ function DecisionPanel({
   );
   const agentUrgentItems = urgentSection?.items ?? [];
 
-  const hasItems = urgent.length > 0 || agentUrgentItems.length > 0;
+  const hasItems = redTasks.length > 0 || extraUrgent.length > 0 || agentUrgentItems.length > 0;
+
+  const approveMutation = useMutation({
+    mutationFn: async ({ taskId, action }: { taskId: string; action: "approved" | "rejected" }) => {
+      return apiPatch({
+        path: `/admin/tasks/${taskId}`,
+        passedData: { status: action },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-tasks-red"] });
+      queryClient.invalidateQueries({ queryKey: ["dream-team-tasks-visionary"] });
+    },
+  });
 
   return (
     <div
@@ -429,7 +473,7 @@ function DecisionPanel({
           Decisions Needing You
           {hasItems && (
             <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold">
-              {urgent.length + agentUrgentItems.length}
+              {redTasks.length + extraUrgent.length + agentUrgentItems.length}
             </span>
           )}
         </p>
@@ -439,6 +483,47 @@ function DecisionPanel({
         <TailorText editKey="hq.visionary.decisions.empty" defaultText="No decisions pending. The system is running." as="p" className="text-sm text-gray-400" />
       ) : (
         <div className="space-y-2">
+          {/* Red blast radius tasks with Approve/Deny */}
+          {redTasks.map((t) => (
+            <div
+              key={t.id}
+              className="rounded-xl bg-white border border-red-200 px-4 py-3"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#212D40] truncate">
+                    {t.title}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {t.owner_name} . {timeAgo(t.created_at)}
+                  </p>
+                </div>
+                <span className="shrink-0 ml-3 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                  red
+                </span>
+              </div>
+              {t.description && (
+                <p className="text-xs text-gray-500 mb-3 leading-relaxed">{t.description}</p>
+              )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => approveMutation.mutate({ taskId: t.id, action: "approved" })}
+                  disabled={approveMutation.isPending}
+                  className="flex-1 text-xs font-semibold py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => approveMutation.mutate({ taskId: t.id, action: "rejected" })}
+                  disabled={approveMutation.isPending}
+                  className="flex-1 text-xs font-semibold py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                >
+                  Deny
+                </button>
+              </div>
+            </div>
+          ))}
+
           {/* Agent brief urgent items */}
           {agentUrgentItems.map((item, idx) => (
             <div
@@ -457,8 +542,8 @@ function DecisionPanel({
             </div>
           ))}
 
-          {/* Dream team task urgent items */}
-          {urgent.map((t) => (
+          {/* Other urgent tasks (not red blast radius) */}
+          {extraUrgent.map((t) => (
             <div
               key={t.id}
               className="flex items-center justify-between rounded-xl bg-white border border-red-200 px-4 py-3"

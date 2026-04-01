@@ -20,7 +20,7 @@ adminTasksRoutes.get(
   superAdminMiddleware,
   async (req, res) => {
     try {
-      const { status, source_type } = req.query;
+      const { status, source_type, blast_radius } = req.query;
 
       let query = db("dream_team_tasks")
         .select(
@@ -58,6 +58,11 @@ adminTasksRoutes.get(
         query = query.where("source_type", source_type);
       }
 
+      // Filter by blast_radius (requires column to exist)
+      if (blast_radius && typeof blast_radius === "string" && hasTypeCol) {
+        query = query.where("blast_radius", blast_radius);
+      }
+
       const tasks = await query;
 
       return res.json({ success: true, tasks });
@@ -79,7 +84,7 @@ adminTasksRoutes.patch(
       const { id } = req.params;
       const { status, priority } = req.body;
 
-      const allowedStatuses = ["open", "in_progress", "resolved"];
+      const allowedStatuses = ["open", "in_progress", "resolved", "approved", "rejected"];
       const allowedPriorities = ["low", "normal", "high", "urgent"];
 
       const updates: Record<string, unknown> = {
@@ -120,6 +125,23 @@ adminTasksRoutes.patch(
 
       if (!updated || updated.length === 0) {
         return res.status(404).json({ success: false, error: "Task not found" });
+      }
+
+      // Log approval/rejection to behavioral_events
+      if (status === "approved" || status === "rejected") {
+        try {
+          await db("behavioral_events").insert({
+            event_type: `task.${status}`,
+            properties: JSON.stringify({
+              task_id: id,
+              task_title: updated[0].title,
+              decided_by: req.user?.email || "admin",
+            }),
+            created_at: new Date(),
+          });
+        } catch {
+          // Non-critical, don't fail the request
+        }
       }
 
       return res.json({ success: true, task: updated[0] });
