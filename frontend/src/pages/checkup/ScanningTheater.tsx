@@ -25,7 +25,7 @@ import {
 const TERRACOTTA = "#D56753";
 const NAVY = "#212D40";
 const MIN_THEATER_MS = 10000; // minimum 10s theater (was 15s, reduced to respect user's time)
-const SKIP_VISIBLE_MS = 4000; // show skip button after 4s (when API is likely done)
+const SKIP_VISIBLE_MS = 15000; // show skip button after 15s regardless of API status
 const ITEM_INTERVAL_MS = 1800; // ~1.8s per checklist item (snappier progression)
 
 function getChecklistItems(category?: string | null): string[] {
@@ -568,15 +568,19 @@ export default function ScanningTheater() {
   const theaterStartRef = useRef(Date.now());
   const hasNavigated = useRef(false);
 
-  // Navigate to results when both API and theater are ready
+  // Navigate to results when both API and theater are ready (or user skips)
   const goToResults = useCallback(() => {
-    if (hasNavigated.current || !place || !analysisRef.current) return;
+    if (hasNavigated.current || !place) return;
     hasNavigated.current = true;
 
     const result = analysisRef.current;
+
+    // If API hasn't finished yet, navigate with partial/empty data.
+    // The results page will handle missing data gracefully (loading state).
+    const emptyScore = { composite: 0, trustSignal: 0, firstImpression: 0, responsiveness: 0, competitiveEdge: 0, localVisibility: 0, onlinePresence: 0, reviewHealth: 0 };
     const resultsState: CheckupResults = {
       place,
-      score: {
+      score: result ? {
         composite: result.score.composite,
         // New First Impression sub-scores
         trustSignal: result.score.trustSignal ?? result.score.visibility,
@@ -587,19 +591,20 @@ export default function ScanningTheater() {
         localVisibility: result.score.visibility ?? result.score.trustSignal,
         onlinePresence: result.score.reputation ?? result.score.firstImpression,
         reviewHealth: result.score.competitive ?? result.score.responsiveness,
-      },
-      scoreLabel: (result as any).scoreLabel || undefined,
-      competitiveDataLimited: (result as any).competitiveDataLimited || false,
-      topCompetitor: result.topCompetitor,
-      competitors: result.competitors,
-      findings: result.findings,
-      totalImpact: result.totalImpact,
-      market: result.market,
-      gaps: (result as any).gaps || [],
-      ozMoments: (result as any).ozMoments || undefined,
+      } : emptyScore,
+      scoreLabel: result ? ((result as any).scoreLabel || undefined) : undefined,
+      competitiveDataLimited: result ? ((result as any).competitiveDataLimited || false) : true,
+      topCompetitor: result?.topCompetitor || null,
+      competitors: result?.competitors || [],
+      findings: result?.findings || [],
+      totalImpact: result?.totalImpact || 0,
+      market: result?.market || { city: place.city || "", totalCompetitors: 0, avgRating: 0, avgReviews: 0, rank: 0 },
+      gaps: result ? ((result as any).gaps || []) : [],
+      ozMoments: result ? ((result as any).ozMoments || undefined) : undefined,
       refCode,
       intent,
       userQuestion,
+      partial: !result, // flag so results page knows data may be incomplete
     };
     navigate("/checkup/results", { state: resultsState, replace: true });
   }, [place, navigate, refCode, intent, userQuestion]);
@@ -814,10 +819,10 @@ export default function ScanningTheater() {
         </p>
       </div>
 
-      {/* Two-panel layout */}
+      {/* Two-panel layout — map first on mobile, checklist first on desktop */}
       <div className="flex flex-col lg:flex-row gap-5">
-        {/* Left panel — Animated Checklist */}
-        <div className="lg:w-[340px] shrink-0 bg-white border border-slate-200 rounded-2xl p-7 shadow-[0_4px_20px_rgba(0,0,0,0.06)] lg:max-h-[520px] lg:overflow-y-auto">
+        {/* Left panel — Animated Checklist (second on mobile, first on desktop) */}
+        <div className="order-last lg:order-first lg:w-[340px] shrink-0 bg-white border border-slate-200 rounded-2xl p-7 shadow-[0_4px_20px_rgba(0,0,0,0.06)] lg:max-h-[520px] lg:overflow-y-auto">
           <div className="space-y-4">
             {CHECKLIST_ITEMS.map((text, i) => (
               <ChecklistItem
@@ -868,19 +873,19 @@ export default function ScanningTheater() {
                 ? `Step ${Math.max(1, activeIndex + 1)} of ${CHECKLIST_ITEMS.length}`
                 : "Analysis complete"}
             </p>
-            {skipVisible && apiDone && (
+            {skipVisible && (
               <button
                 onClick={goToResults}
                 className="w-full mt-4 flex items-center justify-center gap-2 rounded-xl border border-[#D56753]/30 bg-[#D56753]/5 px-4 py-2.5 text-sm font-semibold text-[#D56753] hover:bg-[#D56753]/10 active:scale-[0.98] transition-all"
               >
-                Show my results
+                {apiDone ? "Show my results" : "Skip to results"}
               </button>
             )}
           </div>
         </div>
 
-        {/* Right panel — Live Map with radar */}
-        <div className="relative flex-1 min-h-[300px] lg:min-h-0 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
+        {/* Right panel — Live Map with radar (first on mobile, second on desktop) */}
+        <div className="order-first lg:order-last relative flex-1 min-h-[300px] lg:min-h-0 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
           <RadarPulse active={activeIndex < CHECKLIST_ITEMS.length} />
           <MapContainer
             center={center}

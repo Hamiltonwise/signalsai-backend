@@ -101,6 +101,7 @@ export interface CheckupResults {
   refCode?: string;
   intent?: string;
   userQuestion?: string;
+  partial?: boolean; // true when user skipped before API finished
 }
 
 // ---------------------------------------------------------------------------

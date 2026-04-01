@@ -250,7 +250,7 @@ function narrativeSubhead(
 // POSITION CARD — One job: show where you rank
 // ═══════════════════════════════════════════════════════════════════
 
-function PositionCard({ ranking, subScores }: { ranking: RankingData | null; subScores?: { localVisibility: number; onlinePresence: number; reviewHealth: number } | null }) {
+function PositionCard({ ranking, subScores }: { ranking: RankingData | null; subScores?: { trustSignal: number; firstImpression: number; responsiveness: number; competitiveEdge: number } | null }) {
   if (!ranking || !ranking.rankPosition) {
     return (
       <div className="card-preparing">
@@ -331,9 +331,10 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
       {subScores && (
         <div className="mt-5 pt-5 border-t border-[#D56753]/8 space-y-3">
           {[
-            { label: "Local Visibility", score: subScores.localVisibility, max: 40 },
-            { label: "Online Presence", score: subScores.onlinePresence, max: 40 },
-            { label: "Review Health", score: subScores.reviewHealth, max: 20 },
+            { label: "Trust Signal", score: subScores.trustSignal, max: 30 },
+            { label: "First Impression", score: subScores.firstImpression, max: 30 },
+            { label: "Responsiveness", score: subScores.responsiveness, max: 20 },
+            { label: "Competitive Edge", score: subScores.competitiveEdge, max: 20 },
           ].map((s) => {
             const pct = Math.round((s.score / s.max) * 100);
             return (
@@ -1229,7 +1230,7 @@ export default function DoctorDashboard() {
 
           {/* 1. Business Clarity Score ring */}
           <motion.div variants={cardVariants}>
-            <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { localVisibility: checkupCtx.data.score.localVisibility, onlinePresence: checkupCtx.data.score.onlinePresence, reviewHealth: checkupCtx.data.score.reviewHealth } : null} />
+            <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { trustSignal: checkupCtx.data.score.trustSignal ?? checkupCtx.data.score.localVisibility ?? 0, firstImpression: checkupCtx.data.score.firstImpression ?? checkupCtx.data.score.onlinePresence ?? 0, responsiveness: checkupCtx.data.score.responsiveness ?? checkupCtx.data.score.reviewHealth ?? 0, competitiveEdge: checkupCtx.data.score.competitiveEdge ?? 10 } : null} />
           </motion.div>
 
           {/* Score History sparkline — shows the score is alive */}
