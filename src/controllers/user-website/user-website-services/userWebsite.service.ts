@@ -81,8 +81,8 @@ async function getProjectForOrg(orgId: number) {
 // =====================================================================
 
 export async function fetchUserWebsiteData(orgId: number) {
-  await getOrgAndValidateTier(orgId);
-
+  // No tier gate: website page should show for all orgs that have a project.
+  // DFY tier check removed per Design Philosophy: "connections enhance, never enable."
   const project = await getProjectForOrg(orgId);
 
   if (!project) {
