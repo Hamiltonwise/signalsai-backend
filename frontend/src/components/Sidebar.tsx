@@ -703,7 +703,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className="flex items-center gap-2 text-white/20 hover:text-red-400 transition-all w-full text-[9px] font-black uppercase tracking-widest"
               >
-                <LogOut size={14} /> Disconnect
+                <LogOut size={14} /> Log out
               </button>
             </div>
           </div>

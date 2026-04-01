@@ -374,6 +374,7 @@ function App() {
                 </Route>
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/help" element={<Help />} />
+                {/* Messages route -- page needs to be rebuilt next session */}
                 {/* HQ routes inside CF layout -- same sidebar, no jarring layout switch */}
                 <Route path="/hq" element={<Navigate to="/hq/command" replace />} />
                 <Route path="/hq/command" element={<React.Suspense fallback={null}><HQCommand /></React.Suspense>} />

@@ -119,7 +119,15 @@ router.get("/google/callback", async (req: Request, res: Response) => {
       console.log(`[GBP-AUTH] Enqueued patientpath:build:${orgId}`);
     } catch (err: any) {
       console.warn("[GBP-AUTH] Failed to enqueue PatientPath build:", err.message);
-      // Non-fatal -- GBP is still connected
+    }
+
+    // Trigger first ranking snapshot immediately -- don't make them wait until Sunday
+    try {
+      const { generateSnapshotForOrg } = await import("../../services/rankingsIntelligence");
+      await generateSnapshotForOrg(orgId);
+      console.log(`[GBP-AUTH] First ranking snapshot generated for org ${orgId}`);
+    } catch (err: any) {
+      console.warn("[GBP-AUTH] Failed to generate ranking snapshot:", err.message);
     }
 
     return res.redirect("/dashboard?gbp=connected");
