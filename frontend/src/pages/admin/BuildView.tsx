@@ -2,6 +2,7 @@
  * Build View -- Dave's Terminal
  *
  * System health at a glance. Dark theme, monospace, feels like a real terminal.
+ * 0. Greeting + Health Score (prominent)
  * 1. System Status (top, full width)
  * 2. Agent Execution Log (main area)
  * 3. Recent Errors (below)
@@ -18,6 +19,7 @@ import {
   AlertTriangle,
   GitBranch,
   ListTodo,
+  Gauge,
 } from "lucide-react";
 import { fetchSchedules, type Schedule } from "@/api/schedules";
 import {
@@ -25,6 +27,7 @@ import {
   type DreamTeamTask,
 } from "@/api/dream-team";
 import { apiGet } from "@/api/index";
+import { useAuth } from "@/hooks/useAuth";
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -68,6 +71,44 @@ interface HealthCheckResponse {
   redis?: string;
   timestamp?: string;
   uptime?: number;
+}
+
+interface DetailedCheckResult {
+  status: "ok" | "error";
+  latency_ms?: number;
+  queued_jobs?: number;
+  failed_jobs?: number;
+  error?: string;
+}
+
+interface DetailedHealthResponse {
+  status?: string;
+  timestamp?: string;
+  checks?: {
+    database?: DetailedCheckResult;
+    redis?: DetailedCheckResult;
+    bullmq?: DetailedCheckResult;
+    places_api?: DetailedCheckResult;
+    claude_api?: DetailedCheckResult;
+  };
+  uptime_seconds?: number;
+}
+
+interface BriefSection {
+  title: string;
+  items: string[];
+}
+
+interface PersonalBriefResponse {
+  success: boolean;
+  data?: {
+    role: string;
+    generatedAt: string;
+    headline: string;
+    sections: BriefSection[];
+    signoff: string;
+    urgentCount: number;
+  };
 }
 
 interface BehavioralEvent {
@@ -131,6 +172,7 @@ function StatusDot({ status }: { status: "ok" | "fail" | "unknown" }) {
 // ---- Panel 1: System Status ------------------------------------------------
 
 function SystemStatusPanel() {
+  // Basic health for backend status
   const { data: healthRaw, isLoading } = useQuery({
     queryKey: ["backend-health-build"],
     queryFn: async () => {
@@ -141,14 +183,38 @@ function SystemStatusPanel() {
     retry: false,
   });
 
+  // Detailed health for Redis latency, BullMQ queue stats
+  const { data: detailedRaw } = useQuery({
+    queryKey: ["backend-health-detailed"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/health/detailed" });
+      return res as DetailedHealthResponse;
+    },
+    refetchInterval: 30_000,
+    retry: false,
+  });
+
   const health = healthRaw ?? {};
+  const detailed = detailedRaw?.checks ?? {};
   const backendUp =
     health.status === "ok" || health.status === "healthy";
   const dbUp =
     health.database === "connected" || health.database === "ok";
-  const redisUp =
-    health.redis === "connected" || health.redis === "ok";
-  const redisKnown = health.redis !== undefined;
+
+  // Redis: prefer detailed endpoint for latency info
+  const redisCheck = detailed.redis;
+  const redisUp = redisCheck
+    ? redisCheck.status === "ok"
+    : health.redis === "connected" || health.redis === "ok";
+  const redisKnown = redisCheck !== undefined || health.redis !== undefined;
+  const redisLatency = redisCheck?.latency_ms;
+
+  // BullMQ: live data from detailed endpoint
+  const bullmqCheck = detailed.bullmq;
+  const bullmqUp = bullmqCheck?.status === "ok";
+  const bullmqKnown = bullmqCheck !== undefined;
+  const queuedJobs = bullmqCheck?.queued_jobs ?? 0;
+  const failedJobs = bullmqCheck?.failed_jobs ?? 0;
 
   return (
     <TermPanel>
@@ -175,6 +241,7 @@ function SystemStatusPanel() {
                 <TailorText editKey="hq.build.status.database" defaultText="Database" as="p" className="text-sm text-green-400 font-medium" />
                 <p className="text-[10px] text-gray-500">
                   {dbUp ? "Connected" : "Error"}
+                  {detailed.database?.latency_ms != null ? ` (${detailed.database.latency_ms}ms)` : ""}
                 </p>
               </div>
             </div>
@@ -184,26 +251,38 @@ function SystemStatusPanel() {
               <div>
                 <TailorText editKey="hq.build.status.redis" defaultText="Redis" as="p" className="text-sm text-green-400 font-medium" />
                 <p className="text-[10px] text-gray-500">
-                  {redisKnown ? (redisUp ? "Connected" : "Disconnected") : "Verify on EC2"}
+                  {redisKnown
+                    ? redisUp
+                      ? `Connected${redisLatency != null ? ` (${redisLatency}ms)` : ""}`
+                      : "Disconnected"
+                    : "Checking..."}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <StatusDot status="unknown" />
+              <StatusDot status={bullmqKnown ? (bullmqUp ? (failedJobs > 0 ? "fail" : "ok") : "fail") : "unknown"} />
               <div>
                 <TailorText editKey="hq.build.status.bullmq" defaultText="BullMQ" as="p" className="text-sm text-green-400 font-medium" />
-                <p className="text-[10px] text-gray-500">Verify on EC2</p>
+                <p className={`text-[10px] ${failedJobs > 0 ? "text-red-400" : "text-gray-500"}`}>
+                  {bullmqKnown
+                    ? bullmqUp
+                      ? `${queuedJobs} queued, ${failedJobs} failed`
+                      : "Unavailable"
+                    : "Checking..."}
+                </p>
               </div>
             </div>
           </div>
 
-          {health.timestamp && (
+          {(health.timestamp || detailedRaw?.timestamp) && (
             <p className="text-[10px] text-gray-600">
-              Last check: {new Date(health.timestamp).toLocaleTimeString()}
-              {health.uptime
-                ? ` . Uptime: ${Math.floor(health.uptime / 3600)}h`
-                : ""}
+              Last check: {new Date(detailedRaw?.timestamp || health.timestamp || "").toLocaleTimeString()}
+              {detailedRaw?.uptime_seconds
+                ? ` . Uptime: ${Math.floor(detailedRaw.uptime_seconds / 3600)}h`
+                : health.uptime
+                  ? ` . Uptime: ${Math.floor(health.uptime / 3600)}h`
+                  : ""}
             </p>
           )}
         </div>
@@ -416,7 +495,13 @@ function DeployStatusPanel() {
 
 // ---- Panel 5: Dave's Tasks -------------------------------------------------
 
-function DaveTasksPanel({ tasks }: { tasks: DreamTeamTask[] }) {
+function DaveTasksPanel({
+  tasks,
+  briefSections,
+}: {
+  tasks: DreamTeamTask[];
+  briefSections: BriefSection[];
+}) {
   const daveTasks = tasks
     .filter(
       (t) =>
@@ -434,14 +519,47 @@ function DaveTasksPanel({ tasks }: { tasks: DreamTeamTask[] }) {
       );
     });
 
+  // Extract task-like items from personal agent brief sections
+  const briefTaskItems = briefSections
+    .filter(
+      (s) =>
+        s.title.toLowerCase().includes("task") ||
+        s.title.toLowerCase().includes("queue") ||
+        s.title.toLowerCase().includes("action") ||
+        s.title.toLowerCase().includes("deploy") ||
+        s.title.toLowerCase().includes("migration")
+    )
+    .flatMap((s) => s.items);
+
+  const hasContent = daveTasks.length > 0 || briefTaskItems.length > 0;
+
   return (
     <TermPanel>
       <TermHeader icon={ListTodo} label="Dave's Tasks" />
 
-      {daveTasks.length === 0 ? (
+      {!hasContent ? (
         <TailorText editKey="hq.build.daveTasks.empty" defaultText="Queue empty. Standing by." as="p" className="text-sm text-green-500" />
       ) : (
         <div className="space-y-2">
+          {/* Brief-sourced task items */}
+          {briefTaskItems.map((item, i) => (
+            <div
+              key={`brief-${i}`}
+              className="flex items-center justify-between rounded-lg px-3 py-2.5 border border-blue-800/50 bg-blue-900/10"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-blue-400 truncate">
+                  {item}
+                </p>
+                <p className="text-[10px] text-gray-600">from agent brief</p>
+              </div>
+              <span className="shrink-0 ml-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-900/50 text-blue-400">
+                brief
+              </span>
+            </div>
+          ))}
+
+          {/* dream_team_tasks items */}
           {daveTasks.map((t) => {
             const age = daysOpen(t.created_at);
             const isOverdue =
@@ -495,9 +613,69 @@ function DaveTasksPanel({ tasks }: { tasks: DreamTeamTask[] }) {
   );
 }
 
+// ---- Health Score Gauge -----------------------------------------------------
+
+function parseHealthScore(signoff: string): number | null {
+  // Signoff format: "System health score: 87/100 ..."
+  const match = signoff.match(/health score:\s*(\d+)\/100/i);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+function HealthScoreGauge({ score }: { score: number | null }) {
+  if (score === null) {
+    return (
+      <div className="flex items-center gap-2">
+        <Gauge className="h-5 w-5 text-gray-600" />
+        <span className="text-sm text-gray-600">Loading...</span>
+      </div>
+    );
+  }
+
+  const color =
+    score >= 80
+      ? "text-green-400"
+      : score >= 50
+        ? "text-amber-400"
+        : "text-red-400";
+
+  const borderColor =
+    score >= 80
+      ? "border-green-500/30"
+      : score >= 50
+        ? "border-amber-500/30"
+        : "border-red-500/30";
+
+  const bgColor =
+    score >= 80
+      ? "bg-green-500/10"
+      : score >= 50
+        ? "bg-amber-500/10"
+        : "bg-red-500/10";
+
+  return (
+    <div className={`flex items-center gap-3 rounded-lg border ${borderColor} ${bgColor} px-4 py-2`}>
+      <Gauge className={`h-5 w-5 ${color}`} />
+      <div className="flex items-baseline gap-1.5">
+        <span className={`text-2xl font-bold tabular-nums ${color}`}>
+          {score}
+        </span>
+        <span className="text-sm text-gray-500">/100</span>
+      </div>
+      <TailorText
+        editKey="hq.build.healthScore.label"
+        defaultText="System Health"
+        as="span"
+        className="text-xs text-gray-500 ml-1"
+      />
+    </div>
+  );
+}
+
 // ---- Main ------------------------------------------------------------------
 
 export default function BuildView() {
+  const { userProfile } = useAuth();
+
   const { data: scheduleData } = useQuery({
     queryKey: ["admin-schedules"],
     queryFn: fetchSchedules,
@@ -515,15 +693,53 @@ export default function BuildView() {
   });
   const tasks: DreamTeamTask[] = taskData?.tasks ?? [];
 
+  // Personal agent brief for build role
+  const { data: briefRaw } = useQuery({
+    queryKey: ["personal-agent-brief-build"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/personal-agent/brief?role=build" });
+      return res as PersonalBriefResponse;
+    },
+    refetchInterval: 60_000,
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const briefData = briefRaw?.success ? briefRaw.data : null;
+  const healthScore = briefData?.signoff
+    ? parseHealthScore(briefData.signoff)
+    : null;
+  const briefSections = briefData?.sections ?? [];
+
+  // Greeting: use first name from auth profile
+  const firstName = userProfile?.firstName || "Dave";
+
   return (
     <div className="min-h-screen bg-[#0d1117] text-green-400 font-mono">
       <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        {/* Terminal header */}
-        <div className="flex items-center gap-3 mb-2">
-          <Terminal className="h-5 w-5 text-green-500" />
-          <TailorText editKey="hq.build.header.prompt" defaultText="alloro@prod:~$" as="h1" className="text-lg font-bold text-green-400" />
-          <TailorText editKey="hq.build.header.subtitle" defaultText="Build Console" as="span" className="text-xs text-gray-600" />
+        {/* Terminal header with greeting and health score */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-gray-500">
+              Hey {firstName}.
+            </p>
+            <div className="flex items-center gap-3">
+              <Terminal className="h-5 w-5 text-green-500" />
+              <TailorText editKey="hq.build.header.prompt" defaultText="alloro@prod:~$" as="h1" className="text-lg font-bold text-green-400" />
+              <TailorText editKey="hq.build.header.subtitle" defaultText="Build Console" as="span" className="text-xs text-gray-600" />
+            </div>
+          </div>
+
+          {/* Health score gauge, the ONE prominent element */}
+          <HealthScoreGauge score={healthScore} />
         </div>
+
+        {/* Agent headline from brief */}
+        {briefData?.headline && (
+          <div className="rounded-lg border border-gray-800 bg-[#161b22] px-5 py-3">
+            <p className="text-sm text-green-300">{briefData.headline}</p>
+          </div>
+        )}
 
         {/* Panel 1: System Status */}
         <SystemStatusPanel />
@@ -537,7 +753,7 @@ export default function BuildView() {
         {/* Panels 4 + 5: Deploy Status | Dave's Tasks */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <DeployStatusPanel />
-          <DaveTasksPanel tasks={tasks} />
+          <DaveTasksPanel tasks={tasks} briefSections={briefSections} />
         </div>
       </div>
     </div>

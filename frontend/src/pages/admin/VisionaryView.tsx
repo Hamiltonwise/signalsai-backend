@@ -1,20 +1,24 @@
 /**
  * Visionary View -- Corey's CEO War Room
  *
- * Open it, see everything in 60 seconds, close it. Seven panels:
- * 1. Morning Briefing (top, full width)
- * 2. The Scoreboard (CEO north star tracking, full width)
- * 3. Revenue (left column)
- * 4. Pipeline Funnel (right column)
- * 5. Needs Your Decision (full width, red accent)
- * 6. Agent Health (bottom left)
- * 7. Portfolio Score (bottom right)
+ * Studio McGee makeover. One thing at the top. Everything else in its place.
+ * Precision, leverage, speed.
+ *
+ * Layout (top to bottom):
+ * 1. Personal Agent Headline (the ONE thing, warm terracotta card)
+ * 2. Morning Briefing Stats (only non-zero values, hidden when all zero)
+ * 3. Revenue Panel (MRR, burn, profitability)
+ * 4. Decisions Needing You (Red blast radius only)
+ * 5. Route to Unicorn (collapsed, current phase + next milestone only)
+ * 6. The Scoreboard (Records to Beat + Confidence, collapsible)
+ * 7. Pipeline Funnel
+ * 8. Portfolio Score
+ * 9. Agent Health (footer-level indicator)
  */
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TailorText } from "@/components/TailorText";
-// CEOIntelligenceChat moved to dedicated nav page
 import {
   DollarSign,
   TrendingUp,
@@ -23,13 +27,15 @@ import {
   AlertTriangle,
   Activity,
   Shield,
-  Sun,
   Trophy,
   Map,
   Navigation,
   CheckCircle2,
   Circle,
   Target,
+  ChevronDown,
+  ChevronRight,
+  Zap,
 } from "lucide-react";
 import FounderMode from "./FounderMode";
 import {} from "react-router-dom";
@@ -96,6 +102,20 @@ interface MorningBriefing {
   generated_at?: string;
 }
 
+interface BriefSection {
+  title: string;
+  items: string[];
+}
+
+interface PersonalAgentBrief {
+  role: string;
+  generatedAt: string;
+  headline: string;
+  sections: BriefSection[];
+  signoff: string;
+  urgentCount: number;
+}
+
 // ---- Panel Components ------------------------------------------------------
 
 function Panel({
@@ -133,13 +153,84 @@ function PanelHeader({
   );
 }
 
-// Panel 1: Morning Briefing
-function MorningBriefingPanel({
+/** Collapsible wrapper */
+function CollapsibleSection({
+  title,
+  icon: Icon,
+  iconColor = "text-gray-400",
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2.5 w-full text-left mb-2 group"
+      >
+        <Icon className={`h-4 w-4 ${iconColor}`} />
+        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40 flex-1">
+          {title}
+        </p>
+        {open ? (
+          <ChevronDown className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+        )}
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
+// ---- Panel 0: Personal Agent Headline (THE one thing) ----------------------
+
+function PersonalAgentHeadline({ brief }: { brief: PersonalAgentBrief | null | undefined; }) {
+  const hasHeadline = brief?.headline;
+
+  return (
+    <div className="rounded-2xl border-2 border-[#D56753]/20 bg-gradient-to-br from-[#FFF9F7] via-white to-[#FFF5F2] p-8 shadow-sm">
+      <div className="flex items-center gap-2.5 mb-4">
+        <Zap className="h-4 w-4 text-[#D56753]" />
+        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60">
+          Right Now
+        </p>
+      </div>
+
+      {hasHeadline ? (
+        <p className="text-2xl sm:text-3xl font-semibold text-[#212D40] leading-snug">
+          {brief.headline}
+        </p>
+      ) : (
+        <TailorText
+          editKey="hq.visionary.agent.placeholder"
+          defaultText="All quiet. Your agents are running. No decisions need you."
+          as="p"
+          className="text-2xl sm:text-3xl font-semibold text-gray-400 leading-snug"
+        />
+      )}
+
+      {brief?.signoff && (
+        <p className="text-xs text-gray-400 mt-4">{brief.signoff}</p>
+      )}
+    </div>
+  );
+}
+
+// ---- Panel 1: Morning Briefing Stats (only non-zero) -----------------------
+
+function MorningBriefingStats({
   healthData,
 }: {
   healthData: ClientHealthEntry[];
 }) {
-  const { data: briefingRaw, isLoading } = useQuery({
+  const { data: briefingRaw } = useQuery({
     queryKey: ["morning-briefing-latest"],
     queryFn: async () => {
       const res = await apiGet({ path: "/admin/morning-briefing/latest" });
@@ -155,72 +246,81 @@ function MorningBriefingPanel({
   const amberCount = healthData.filter((c) => c.health === "amber").length;
   const redCount = healthData.filter((c) => c.health === "red").length;
 
-  const headline =
-    briefing?.topEvent || briefing?.headline || briefing?.summary || null;
+  // Build stat cards, only include non-zero values
+  const stats: { key: string; value: string | React.ReactNode; label: string; editKey: string }[] = [];
+
+  if (briefing?.signups && briefing.signups > 0) {
+    stats.push({
+      key: "signups",
+      value: String(briefing.signups),
+      label: "New Signups",
+      editKey: "hq.visionary.briefing.newSignups",
+    });
+  }
+  if (briefing?.competitor_moves && briefing.competitor_moves > 0) {
+    stats.push({
+      key: "competitor_moves",
+      value: String(briefing.competitor_moves),
+      label: "Competitor Moves",
+      editKey: "hq.visionary.briefing.competitorMoves",
+    });
+  }
+  if (briefing?.reviews_received && briefing.reviews_received > 0) {
+    stats.push({
+      key: "reviews",
+      value: String(briefing.reviews_received),
+      label: "Reviews",
+      editKey: "hq.visionary.briefing.reviews",
+    });
+  }
+  if (greenCount + amberCount + redCount > 0) {
+    stats.push({
+      key: "health",
+      value: "health",
+      label: "Client Health",
+      editKey: "hq.visionary.briefing.clientHealth",
+    });
+  }
+
+  // If everything is zero, don't show the stat bar at all
+  if (stats.length === 0) return null;
 
   return (
-    <div className="card-primary bg-gradient-to-br from-white to-[#FFF9F7] p-8">
-      <PanelHeader icon={Sun} label="Morning Briefing" iconColor="text-amber-500" />
-
-      {isLoading ? (
-        <div className="h-8 w-2/3 skeleton rounded" />
-      ) : headline ? (
-        <p className="text-xl font-semibold text-[#212D40] leading-relaxed mb-6">
-          {headline}
-        </p>
-      ) : (
-        <TailorText editKey="hq.visionary.briefing.placeholder" defaultText="Briefing generates at 6:30am ET" as="p" className="text-lg text-gray-400 mb-6" />
-      )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-xl bg-white border border-[#D56753]/6 p-4 text-center shadow-sm">
-          <p className="text-2xl font-black text-[#212D40]">
-            {briefing?.signups ?? 0}
-          </p>
-          <TailorText editKey="hq.visionary.briefing.newSignups" defaultText="New Signups" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1" />
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {stats.map((stat) => (
+        <div key={stat.key} className="rounded-xl bg-white border border-[#D56753]/6 p-4 text-center shadow-sm">
+          {stat.value === "health" ? (
+            <div className="flex items-center justify-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-sm font-bold text-[#212D40]">{greenCount}</span>
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-sm font-bold text-[#212D40]">{amberCount}</span>
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              <span className="text-sm font-bold text-[#212D40]">{redCount}</span>
+            </div>
+          ) : (
+            <p className="text-2xl font-black text-[#212D40]">{stat.value}</p>
+          )}
+          <TailorText editKey={stat.editKey} defaultText={stat.label} as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1" />
         </div>
-        <div className="rounded-xl bg-white border border-[#D56753]/6 p-4 text-center shadow-sm">
-          <p className="text-2xl font-black text-[#212D40]">
-            {briefing?.competitor_moves ?? 0}
-          </p>
-          <TailorText editKey="hq.visionary.briefing.competitorMoves" defaultText="Competitor Moves" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1" />
-        </div>
-        <div className="rounded-xl bg-white border border-[#D56753]/6 p-4 text-center shadow-sm">
-          <p className="text-2xl font-black text-[#212D40]">
-            {briefing?.reviews_received ?? 0}
-          </p>
-          <TailorText editKey="hq.visionary.briefing.reviews" defaultText="Reviews" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1" />
-        </div>
-        <div className="rounded-xl bg-white border border-[#D56753]/6 p-4 text-center shadow-sm">
-          <div className="flex items-center justify-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-sm font-bold text-[#212D40]">{greenCount}</span>
-            <span className="w-2 h-2 rounded-full bg-amber-400" />
-            <span className="text-sm font-bold text-[#212D40]">{amberCount}</span>
-            <span className="w-2 h-2 rounded-full bg-red-500" />
-            <span className="text-sm font-bold text-[#212D40]">{redCount}</span>
-          </div>
-          <TailorText editKey="hq.visionary.briefing.clientHealth" defaultText="Client Health" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1" />
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
 
-// Panel 2: Revenue
+// ---- Panel 2: Revenue ------------------------------------------------------
+
 function RevenuePanel({ orgs }: { orgs: AdminOrganization[] }) {
   const activeOrgs = orgs.filter(
     (o) => o.subscription_status === "active" || o.subscription_tier
   );
 
   const mrr = activeOrgs.reduce((sum, o) => {
-    // Use real per-org rate if known, otherwise fall back to tier pricing
     if (ORG_MONTHLY_RATE[o.id] !== undefined) return sum + ORG_MONTHLY_RATE[o.id];
     const tier = o.subscription_tier || "DWY";
     return sum + (DEFAULT_TIER_PRICING[tier] ?? 0);
   }, 0);
 
-  // Simple month-over-month proxy: compare created_at this month vs last month
   const now = new Date();
   const thisMonth = now.getMonth();
   const lastMonthOrgs = activeOrgs.filter((o) => {
@@ -286,87 +386,28 @@ function RevenuePanel({ orgs }: { orgs: AdminOrganization[] }) {
   );
 }
 
-// Panel 3: Pipeline Funnel
-function PipelineFunnelPanel({
-  orgs,
-  healthData,
+// ---- Panel 3: Decisions Needing You ----------------------------------------
+
+function DecisionPanel({
+  tasks,
+  agentBrief,
 }: {
-  orgs: AdminOrganization[];
-  healthData: ClientHealthEntry[];
+  tasks: DreamTeamTask[];
+  agentBrief: PersonalAgentBrief | null | undefined;
 }) {
-  // Count orgs at each stage
-  const checkupStarted = orgs.filter(
-    (o) => !o.subscription_tier && !o.connections?.gbp
-  ).length;
-  const accountCreated = orgs.filter(
-    (o) => !o.subscription_tier && o.connections?.gbp
-  ).length;
-  const inTrial = orgs.filter(
-    (o) => o.subscription_status === "trial"
-  ).length;
-  const onboarding = orgs.filter(
-    (o) =>
-      o.subscription_status === "active" &&
-      o.subscription_tier &&
-      !o.connections?.gbp
-  ).length;
-  const active = orgs.filter(
-    (o) =>
-      o.subscription_status === "active" &&
-      o.subscription_tier &&
-      o.connections?.gbp
-  ).length;
-  const atRisk = healthData.filter((c) => c.health === "red").length;
-
-  const stages = [
-    { label: "Checkup Started", count: checkupStarted, color: "bg-gray-300" },
-    { label: "Account Created", count: accountCreated, color: "bg-blue-300" },
-    { label: "In Trial", count: inTrial, color: "bg-blue-400" },
-    { label: "Onboarding", count: onboarding, color: "bg-amber-400" },
-    { label: "Active", count: active, color: "bg-emerald-500" },
-    { label: "At Risk", count: atRisk, color: "bg-red-500" },
-  ];
-
-  const maxCount = Math.max(1, ...stages.map((s) => s.count));
-
-  return (
-    <Panel>
-      <PanelHeader icon={Users} label="Pipeline Funnel" iconColor="text-blue-500" />
-      <div className="space-y-3">
-        {stages.map((stage) => (
-          <div key={stage.label}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-gray-600">
-                {stage.label}
-              </span>
-              <span className="text-sm font-bold text-[#212D40]">
-                {stage.count}
-              </span>
-            </div>
-            <div className="h-2 w-full rounded-full bg-gray-100">
-              <div
-                className={`h-2 rounded-full ${stage.color} transition-all`}
-                style={{
-                  width: `${Math.max(2, (stage.count / maxCount) * 100)}%`,
-                }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
-// Panel 4: Needs Your Decision
-function DecisionPanel({ tasks }: { tasks: DreamTeamTask[] }) {
   const urgent = tasks.filter(
     (t) =>
       (t.priority === "urgent" || t.priority === "high") &&
       t.status === "open"
   );
 
-  const hasItems = urgent.length > 0;
+  // Pull urgent items from agent brief sections
+  const urgentSection = agentBrief?.sections?.find(
+    (s) => s.title.toLowerCase().includes("urgent") || s.title.toLowerCase().includes("decision")
+  );
+  const agentUrgentItems = urgentSection?.items ?? [];
+
+  const hasItems = urgent.length > 0 || agentUrgentItems.length > 0;
 
   return (
     <div
@@ -385,19 +426,38 @@ function DecisionPanel({ tasks }: { tasks: DreamTeamTask[] }) {
             hasItems ? "text-red-500" : "text-gray-400"
           }`}
         >
-          Needs Your Decision
+          Decisions Needing You
           {hasItems && (
             <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold">
-              {urgent.length}
+              {urgent.length + agentUrgentItems.length}
             </span>
           )}
         </p>
       </div>
 
       {!hasItems ? (
-        <TailorText editKey="hq.visionary.decisions.empty" defaultText="Nothing needs your decision right now. Focus time." as="p" className="text-sm text-gray-400" />
+        <TailorText editKey="hq.visionary.decisions.empty" defaultText="No decisions pending. The system is running." as="p" className="text-sm text-gray-400" />
       ) : (
         <div className="space-y-2">
+          {/* Agent brief urgent items */}
+          {agentUrgentItems.map((item, idx) => (
+            <div
+              key={`agent-${idx}`}
+              className="flex items-center justify-between rounded-xl bg-white border border-red-200 px-4 py-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#212D40]">
+                  {item}
+                </p>
+                <p className="text-xs text-gray-400">Personal Agent</p>
+              </div>
+              <span className="shrink-0 ml-3 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                red
+              </span>
+            </div>
+          ))}
+
+          {/* Dream team task urgent items */}
           {urgent.map((t) => (
             <div
               key={t.id}
@@ -428,185 +488,260 @@ function DecisionPanel({ tasks }: { tasks: DreamTeamTask[] }) {
   );
 }
 
-// Panel 5: Agent Health
-function AgentHealthPanel({ schedules }: { schedules: Schedule[] }) {
-  const total = schedules.length;
-  const running = schedules.filter(
-    (s) => s.latest_run?.status === "running"
-  ).length;
-  const failed = schedules.filter(
-    (s) => s.latest_run?.status === "failed"
-  );
-  const neverRun = schedules.filter((s) => !s.latest_run);
-  const nominal = total - failed.length - neverRun.length;
+// ---- Panel 4: Route to Unicorn (compact, collapsible) ----------------------
 
-  // Redis health from /api/health
-  const { data: sysHealth } = useQuery({
-    queryKey: ["backend-health-visionary"],
-    queryFn: async () => {
-      const res = await apiGet({ path: "/health" });
-      return res as { redis?: string } | undefined;
-    },
-    refetchInterval: 30_000,
-    retry: false,
-  });
-  const redisKnown = sysHealth?.redis !== undefined;
-  const redisUp = sysHealth?.redis === "connected" || sysHealth?.redis === "ok";
-
-  return (
-    <Panel>
-      <PanelHeader icon={Activity} label="Agent Health" iconColor="text-[#D56753]" />
-
-      <p className="text-sm text-[#212D40] font-medium mb-3">
-        {nominal}/{total} agents nominal.{" "}
-        {failed.length > 0
-          ? `${failed.length} failed.`
-          : ""}{" "}
-        {neverRun.length > 0
-          ? `${neverRun.length} never run.`
-          : ""}
-        {running > 0 ? ` ${running} running now.` : ""}
-      </p>
-
-      {/* Redis status indicator */}
-      <div className="flex items-center gap-2 mb-3">
-        <span
-          className={`inline-block w-2 h-2 rounded-full ${
-            redisKnown
-              ? redisUp
-                ? "bg-emerald-500"
-                : "bg-red-500 animate-pulse"
-              : "bg-gray-400"
-          }`}
-        />
-        <span
-          className={`text-xs font-medium ${
-            redisKnown
-              ? redisUp
-                ? "text-emerald-600"
-                : "text-red-600"
-              : "text-gray-400"
-          }`}
-        >
-          Redis: {redisKnown ? (redisUp ? "Connected" : "Disconnected") : "Unknown"}
-        </span>
-      </div>
-
-      {failed.length > 0 && (
-        <div className="space-y-1.5">
-          {failed.map((s) => (
-            <div
-              key={s.id}
-              className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2"
-            >
-              <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-              <span className="text-xs font-medium text-red-700 truncate">
-                {s.display_name}
-              </span>
-              <span className="text-[10px] text-red-400 ml-auto shrink-0">
-                {timeAgo(s.last_run_at)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {failed.length === 0 && neverRun.length === 0 && (
-        <TailorText editKey="hq.visionary.agents.allGreen" defaultText="All systems green." as="p" className="text-xs text-emerald-600 font-medium" />
-      )}
-    </Panel>
-  );
+interface RoadmapPhaseEntry {
+  id: number;
+  name: string;
+  label: string;
+  description: string;
+  mrrTarget: string;
+  clientTarget: string;
+  status: "complete" | "current" | "upcoming";
 }
 
-// Panel 6: Portfolio Score
-function PortfolioScorePanel({
-  healthData,
-}: {
-  healthData: ClientHealthEntry[];
-}) {
-  // Average score from client health data, or derive from green/amber/red
-  let avgScore = 0;
-  if (healthData.length > 0) {
-    const hasScores = healthData.some((c) => c.score !== undefined);
-    if (hasScores) {
-      const total = healthData.reduce((sum, c) => sum + (c.score ?? 50), 0);
-      avgScore = Math.round(total / healthData.length);
-    } else {
-      // Derive from health status: green=90, amber=60, red=25
-      const total = healthData.reduce((sum, c) => {
-        if (c.health === "green") return sum + 90;
-        if (c.health === "amber") return sum + 60;
-        return sum + 25;
-      }, 0);
-      avgScore = Math.round(total / healthData.length);
-    }
+interface RoadmapMilestone {
+  name: string;
+  target: number;
+  current: number;
+  estimatedDate: string;
+}
+
+interface RoadmapState {
+  currentMRR: number;
+  currentClients: number;
+  checkupsCompleted: number;
+  trialConversionRate: number;
+  referralRate: number;
+  monthlyGrowthRate: number;
+  currentPhase: string;
+  phaseIndex: number;
+  phaseDescription: string;
+  nextMilestone: RoadmapMilestone;
+  courseCorrection: string | null;
+  etaToUnicorn: string;
+  phases: RoadmapPhaseEntry[];
+}
+
+function RoadmapPanel() {
+  const [timelineOpen, setTimelineOpen] = useState(false);
+
+  const { data: roadmap, isLoading } = useQuery<RoadmapState>({
+    queryKey: ["admin-roadmap"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/roadmap" });
+      return res;
+    },
+    retry: false,
+    staleTime: 60_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/40 via-white to-indigo-50/30 p-6 shadow-sm">
+        <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
+        <div className="h-6 w-2/3 skeleton rounded" />
+      </div>
+    );
   }
 
-  const scoreColor =
-    avgScore >= 80
-      ? "text-emerald-600"
-      : avgScore >= 60
-        ? "text-amber-600"
-        : avgScore >= 40
-          ? "text-orange-600"
-          : "text-red-600";
+  if (!roadmap) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
+        <TailorText editKey="hq.visionary.roadmap.unavailable" defaultText="Roadmap data unavailable. Check backend connection." as="p" className="text-sm text-gray-400" />
+      </div>
+    );
+  }
 
-  const ringColor =
-    avgScore >= 80
-      ? "stroke-emerald-500"
-      : avgScore >= 60
-        ? "stroke-amber-500"
-        : avgScore >= 40
-          ? "stroke-orange-500"
-          : "stroke-red-500";
+  const milestoneProgress =
+    roadmap.nextMilestone.target > 0
+      ? Math.min(100, Math.round((roadmap.nextMilestone.current / roadmap.nextMilestone.target) * 100))
+      : 0;
 
-  const circumference = 2 * Math.PI * 45;
-  const offset = circumference - (avgScore / 100) * circumference;
+  const currentPhaseEntry = roadmap.phases.find((p) => p.status === "current");
 
   return (
-    <Panel className="flex flex-col items-center justify-center">
-      <PanelHeader icon={Shield} label="Portfolio Score" iconColor="text-[#212D40]" />
+    <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/40 via-white to-indigo-50/30 p-6 shadow-sm">
+      <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
 
-      <div className="relative w-32 h-32 mb-3">
-        <svg className="w-32 h-32 -rotate-90" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="#f3f4f6"
-            strokeWidth="6"
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            className={ringColor}
-            strokeWidth="6"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            style={{ transition: "stroke-dashoffset 0.8s ease" }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-3xl font-black ${scoreColor}`}>
-            {healthData.length > 0 ? avgScore : "--"}
-          </span>
+      {/* Current Position + Next Milestone: compact side-by-side */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        {/* Current Phase */}
+        <div className="rounded-xl bg-white border border-blue-100 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Navigation className="h-3.5 w-3.5 text-[#D56753]" />
+            <TailorText editKey="hq.visionary.roadmap.currentPosition" defaultText="Current Position" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400" />
+          </div>
+          <p className="text-sm font-semibold text-[#212D40]">
+            {roadmap.currentPhase}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {currentPhaseEntry?.description || roadmap.phaseDescription}
+          </p>
+        </div>
+
+        {/* Next Milestone */}
+        <div className="rounded-xl bg-white border border-blue-100 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="h-3.5 w-3.5 text-blue-500" />
+            <TailorText editKey="hq.visionary.roadmap.nextTurn" defaultText="Next Milestone" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400" />
+          </div>
+          <p className="text-sm font-medium text-[#212D40] mb-2">
+            {roadmap.nextMilestone.name}
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <div className="h-2 w-full rounded-full bg-gray-100">
+                <div
+                  className="h-2 rounded-full bg-blue-500 transition-all duration-700"
+                  style={{ width: `${Math.max(2, milestoneProgress)}%` }}
+                />
+              </div>
+            </div>
+            <span className="text-xs font-bold text-[#212D40] shrink-0">
+              {milestoneProgress}%
+            </span>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1.5">
+            ETA: {roadmap.nextMilestone.estimatedDate}
+          </p>
         </div>
       </div>
 
-      <p className="text-xs text-gray-400 text-center">
-        {healthData.length > 0
-          ? `Across ${healthData.length} client${healthData.length !== 1 ? "s" : ""}`
-          : "No client data yet"}
-      </p>
-    </Panel>
+      {/* Course Correction (always visible if present) */}
+      {roadmap.courseCorrection && (
+        <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 mb-4">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Course Correction</span>
+          </div>
+          <p className="text-xs text-amber-800 leading-relaxed">
+            {roadmap.courseCorrection}
+          </p>
+        </div>
+      )}
+
+      {/* Collapsible Full Phase Timeline */}
+      <button
+        onClick={() => setTimelineOpen(!timelineOpen)}
+        className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        {timelineOpen ? (
+          <ChevronDown className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5" />
+        )}
+        <span className="text-[10px] font-bold uppercase tracking-wider">
+          Full Route Timeline ({roadmap.phases.length} phases)
+        </span>
+      </button>
+
+      {timelineOpen && (
+        <div className="mt-3">
+          {/* ETA to Unicorn */}
+          <div className="mb-4 rounded-xl bg-gradient-to-r from-[#212D40] to-[#2d3d54] p-3">
+            <TailorText editKey="hq.visionary.roadmap.etaToUnicorn" defaultText="ETA to Unicorn" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1" />
+            <p className="text-sm text-white leading-relaxed">
+              {roadmap.etaToUnicorn}
+            </p>
+          </div>
+
+          {/* Phase Timeline */}
+          <div className="relative">
+            <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-200" />
+            <div className="space-y-1">
+              {roadmap.phases.map((phase) => (
+                <div key={phase.id} className="flex items-start gap-3 relative">
+                  <div className="shrink-0 mt-0.5 z-10">
+                    {phase.status === "complete" ? (
+                      <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                    ) : phase.status === "current" ? (
+                      <div className="h-6 w-6 rounded-full border-[3px] border-[#D56753] bg-white flex items-center justify-center">
+                        <div className="h-2 w-2 rounded-full bg-[#D56753]" />
+                      </div>
+                    ) : (
+                      <Circle className="h-6 w-6 text-gray-300" />
+                    )}
+                  </div>
+                  <div
+                    className={`flex-1 rounded-lg px-3 py-2 ${
+                      phase.status === "current"
+                        ? "bg-white border border-[#D56753]/30 shadow-sm"
+                        : phase.status === "complete"
+                          ? "bg-emerald-50/50"
+                          : ""
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p
+                        className={`text-sm font-semibold ${
+                          phase.status === "current"
+                            ? "text-[#D56753]"
+                            : phase.status === "complete"
+                              ? "text-emerald-700"
+                              : "text-gray-400"
+                        }`}
+                      >
+                        {phase.name}: {phase.label}
+                      </p>
+                      <span className="text-[10px] text-gray-400">
+                        {phase.mrrTarget} MRR / {phase.clientTarget} clients
+                      </span>
+                    </div>
+                    <p
+                      className={`text-xs mt-0.5 ${
+                        phase.status === "current" ? "text-gray-600" : "text-gray-400"
+                      }`}
+                    >
+                      {phase.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Key Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
+            <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
+              <p className="text-lg font-black text-[#212D40]">
+                ${roadmap.currentMRR.toLocaleString()}
+              </p>
+              <TailorText editKey="hq.visionary.roadmap.metrics.mrr" defaultText="MRR" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
+            </div>
+            <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
+              <p className="text-lg font-black text-[#212D40]">
+                {roadmap.currentClients}
+              </p>
+              <TailorText editKey="hq.visionary.roadmap.metrics.clients" defaultText="Clients" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
+            </div>
+            <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
+              <p className="text-lg font-black text-[#212D40]">
+                {roadmap.checkupsCompleted}
+              </p>
+              <TailorText editKey="hq.visionary.roadmap.metrics.checkups" defaultText="Checkups" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
+            </div>
+            <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
+              <p className="text-lg font-black text-[#212D40]">
+                {roadmap.trialConversionRate > 0 ? `${roadmap.trialConversionRate}%` : "--"}
+              </p>
+              <TailorText editKey="hq.visionary.roadmap.metrics.trialConv" defaultText="Trial Conv." as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
+            </div>
+            <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
+              <p className="text-lg font-black text-[#212D40]">
+                {roadmap.referralRate > 0 ? `${roadmap.referralRate}%` : "--"}
+              </p>
+              <TailorText editKey="hq.visionary.roadmap.metrics.referralRate" defaultText="Referral Rate" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
-// Panel 7: The Scoreboard (CEO North Star Tracking)
+// ---- Panel 5: The Scoreboard (collapsible) ---------------------------------
 
 const RECORDS_TO_BEAT = [
   {
@@ -712,81 +847,83 @@ function buildMilestones(orgCount: number): Milestone[] {
 
 function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
   const milestones = buildMilestones(orgs.length);
+  // Show only next 3 milestones (first non-done ones)
+  const upcomingMilestones = milestones.filter((m) => m.status !== "done").slice(0, 3);
 
   return (
-    <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/60 via-white to-orange-50/40 p-8 shadow-sm">
-      <PanelHeader icon={Trophy} label="The Scoreboard" iconColor="text-amber-600" />
-
-      {/* Records to Beat */}
-      <div className="mb-8">
-        <TailorText editKey="hq.visionary.scoreboard.recordsToBeat" defaultText="Records to Beat" as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3" />
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                  Record
-                </th>
-                <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                  Who
-                </th>
-                <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                  Their Time
-                </th>
-                <th className="pb-2 text-[10px] font-bold uppercase tracking-wider text-[#D56753]">
-                  Alloro Target
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {RECORDS_TO_BEAT.map((r) => (
-                <tr key={r.record} className="border-b border-gray-100 last:border-0">
-                  <td className="py-2.5 pr-4 text-xs font-medium text-[#212D40]">
-                    {r.record}
-                  </td>
-                  <td className="py-2.5 pr-4 text-xs text-gray-500">{r.who}</td>
-                  <td className="py-2.5 pr-4 text-xs text-gray-500">{r.theirTime}</td>
-                  <td className="py-2.5 text-xs font-semibold text-[#D56753]">
-                    {r.alloroTarget}
-                  </td>
+    <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/60 via-white to-orange-50/40 p-6 shadow-sm">
+      {/* Records to Beat: collapsible */}
+      <CollapsibleSection title="Records to Beat" icon={Trophy} iconColor="text-amber-600">
+        <div className="mb-6">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    Record
+                  </th>
+                  <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    Who
+                  </th>
+                  <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    Their Time
+                  </th>
+                  <th className="pb-2 text-[10px] font-bold uppercase tracking-wider text-[#D56753]">
+                    Alloro Target
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {RECORDS_TO_BEAT.map((r) => (
+                  <tr key={r.record} className="border-b border-gray-100 last:border-0">
+                    <td className="py-2.5 pr-4 text-xs font-medium text-[#212D40]">
+                      {r.record}
+                    </td>
+                    <td className="py-2.5 pr-4 text-xs text-gray-500">{r.who}</td>
+                    <td className="py-2.5 pr-4 text-xs text-gray-500">{r.theirTime}</td>
+                    <td className="py-2.5 text-xs font-semibold text-[#D56753]">
+                      {r.alloroTarget}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* Live Confidence Scores */}
-      <div className="mb-8">
-        <TailorText editKey="hq.visionary.scoreboard.confidenceScores" defaultText="Live Confidence Scores" as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3" />
-        <div className="space-y-3">
-          {CONFIDENCE_SCORES.map((score) => (
-            <div key={score.label}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-gray-600">
-                  {score.label}
-                </span>
-                <span className="text-sm font-bold text-[#212D40]">
-                  {score.value}%
-                </span>
+      {/* Live Confidence Scores: collapsible */}
+      <CollapsibleSection title="Live Confidence Scores" icon={Target} iconColor="text-[#D56753]">
+        <div className="mb-6">
+          <div className="space-y-3">
+            {CONFIDENCE_SCORES.map((score) => (
+              <div key={score.label}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-gray-600">
+                    {score.label}
+                  </span>
+                  <span className="text-sm font-bold text-[#212D40]">
+                    {score.value}%
+                  </span>
+                </div>
+                <div className="h-2.5 w-full rounded-full bg-gray-100">
+                  <div
+                    className={`h-2.5 rounded-full ${score.color} transition-all duration-700`}
+                    style={{ width: `${score.value}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-2.5 w-full rounded-full bg-gray-100">
-                <div
-                  className={`h-2.5 rounded-full ${score.color} transition-all duration-700`}
-                  style={{ width: `${score.value}%` }}
-                />
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <TailorText editKey="hq.visionary.scoreboard.calibrationNote" defaultText="Scores from internal calibration. Updated quarterly." as="p" className="text-[10px] text-gray-400 mt-2 italic" />
         </div>
-        <TailorText editKey="hq.visionary.scoreboard.calibrationNote" defaultText="Scores from internal calibration. Updated quarterly." as="p" className="text-[10px] text-gray-400 mt-2 italic" />
-      </div>
+      </CollapsibleSection>
 
-      {/* Milestone Timeline */}
+      {/* Milestone Timeline: compact, next 3 only */}
       <div>
-        <TailorText editKey="hq.visionary.scoreboard.milestoneTimeline" defaultText="Milestone Timeline" as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3" />
+        <TailorText editKey="hq.visionary.scoreboard.milestoneTimeline" defaultText="Next Milestones" as="p" className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40 mb-3" />
         <div className="space-y-2">
-          {milestones.map((m) => (
+          {upcomingMilestones.map((m) => (
             <div
               key={m.name}
               className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
@@ -840,238 +977,258 @@ function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
   );
 }
 
-// Panel 8: Live Roadmap (Google Maps for Alloro)
+// ---- Panel 6: Pipeline Funnel ----------------------------------------------
 
-interface RoadmapPhaseEntry {
-  id: number;
-  name: string;
-  label: string;
-  description: string;
-  mrrTarget: string;
-  clientTarget: string;
-  status: "complete" | "current" | "upcoming";
-}
+function PipelineFunnelPanel({
+  orgs,
+  healthData,
+}: {
+  orgs: AdminOrganization[];
+  healthData: ClientHealthEntry[];
+}) {
+  const checkupStarted = orgs.filter(
+    (o) => !o.subscription_tier && !o.connections?.gbp
+  ).length;
+  const accountCreated = orgs.filter(
+    (o) => !o.subscription_tier && o.connections?.gbp
+  ).length;
+  const inTrial = orgs.filter(
+    (o) => o.subscription_status === "trial"
+  ).length;
+  const onboarding = orgs.filter(
+    (o) =>
+      o.subscription_status === "active" &&
+      o.subscription_tier &&
+      !o.connections?.gbp
+  ).length;
+  const active = orgs.filter(
+    (o) =>
+      o.subscription_status === "active" &&
+      o.subscription_tier &&
+      o.connections?.gbp
+  ).length;
+  const atRisk = healthData.filter((c) => c.health === "red").length;
 
-interface RoadmapMilestone {
-  name: string;
-  target: number;
-  current: number;
-  estimatedDate: string;
-}
+  const stages = [
+    { label: "Checkup Started", count: checkupStarted, color: "bg-gray-300" },
+    { label: "Account Created", count: accountCreated, color: "bg-blue-300" },
+    { label: "In Trial", count: inTrial, color: "bg-blue-400" },
+    { label: "Onboarding", count: onboarding, color: "bg-amber-400" },
+    { label: "Active", count: active, color: "bg-emerald-500" },
+    { label: "At Risk", count: atRisk, color: "bg-red-500" },
+  ];
 
-interface RoadmapState {
-  currentMRR: number;
-  currentClients: number;
-  checkupsCompleted: number;
-  trialConversionRate: number;
-  referralRate: number;
-  monthlyGrowthRate: number;
-  currentPhase: string;
-  phaseIndex: number;
-  phaseDescription: string;
-  nextMilestone: RoadmapMilestone;
-  courseCorrection: string | null;
-  etaToUnicorn: string;
-  phases: RoadmapPhaseEntry[];
-}
-
-function RoadmapPanel() {
-  const { data: roadmap, isLoading } = useQuery<RoadmapState>({
-    queryKey: ["admin-roadmap"],
-    queryFn: async () => {
-      const res = await apiGet({ path: "/admin/roadmap" });
-      return res;
-    },
-    retry: false,
-    staleTime: 60_000,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/40 via-white to-indigo-50/30 p-8 shadow-sm">
-        <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
-        <div className="space-y-4">
-          <div className="h-6 w-2/3 skeleton rounded" />
-          <div className="h-4 w-1/2 skeleton rounded" />
-          <div className="h-32 w-full animate-pulse rounded bg-gray-100" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!roadmap) {
-    return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-        <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
-        <TailorText editKey="hq.visionary.roadmap.unavailable" defaultText="Roadmap data unavailable. Check backend connection." as="p" className="text-sm text-gray-400" />
-      </div>
-    );
-  }
-
-  const milestoneProgress =
-    roadmap.nextMilestone.target > 0
-      ? Math.min(100, Math.round((roadmap.nextMilestone.current / roadmap.nextMilestone.target) * 100))
-      : 0;
+  const maxCount = Math.max(1, ...stages.map((s) => s.count));
 
   return (
-    <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/40 via-white to-indigo-50/30 p-8 shadow-sm">
-      <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
-
-      {/* Current Position */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <Navigation className="h-4 w-4 text-[#D56753]" />
-          <TailorText editKey="hq.visionary.roadmap.currentPosition" defaultText="Current Position" as="p" className="text-[11px] font-bold uppercase tracking-wider text-gray-400" />
-        </div>
-        <p className="text-xl font-semibold text-[#212D40]">
-          {roadmap.currentPhase}. ${roadmap.currentMRR.toLocaleString()} MRR. {roadmap.currentClients} client{roadmap.currentClients !== 1 ? "s" : ""}.
-        </p>
-        <p className="text-sm text-gray-500 mt-1">
-          {roadmap.phaseDescription}
-        </p>
-      </div>
-
-      {/* Next Turn */}
-      <div className="mb-6 rounded-xl bg-white border border-blue-100 p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Target className="h-4 w-4 text-blue-500" />
-          <TailorText editKey="hq.visionary.roadmap.nextTurn" defaultText="Next Turn" as="p" className="text-[11px] font-bold uppercase tracking-wider text-gray-400" />
-        </div>
-        <p className="text-sm font-medium text-[#212D40] mb-2">
-          {roadmap.nextMilestone.name}
-        </p>
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <div className="h-2.5 w-full rounded-full bg-gray-100">
+    <Panel>
+      <PanelHeader icon={Users} label="Pipeline Funnel" iconColor="text-blue-500" />
+      <div className="space-y-3">
+        {stages.map((stage) => (
+          <div key={stage.label}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-600">
+                {stage.label}
+              </span>
+              <span className="text-sm font-bold text-[#212D40]">
+                {stage.count}
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-gray-100">
               <div
-                className="h-2.5 rounded-full bg-blue-500 transition-all duration-700"
-                style={{ width: `${Math.max(2, milestoneProgress)}%` }}
+                className={`h-2 rounded-full ${stage.color} transition-all`}
+                style={{
+                  width: `${Math.max(2, (stage.count / maxCount) * 100)}%`,
+                }}
               />
             </div>
           </div>
-          <span className="text-xs font-bold text-[#212D40] shrink-0">
-            {milestoneProgress}%
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+// ---- Panel 7: Portfolio Score ----------------------------------------------
+
+function PortfolioScorePanel({
+  healthData,
+}: {
+  healthData: ClientHealthEntry[];
+}) {
+  let avgScore = 0;
+  if (healthData.length > 0) {
+    const hasScores = healthData.some((c) => c.score !== undefined);
+    if (hasScores) {
+      const total = healthData.reduce((sum, c) => sum + (c.score ?? 50), 0);
+      avgScore = Math.round(total / healthData.length);
+    } else {
+      const total = healthData.reduce((sum, c) => {
+        if (c.health === "green") return sum + 90;
+        if (c.health === "amber") return sum + 60;
+        return sum + 25;
+      }, 0);
+      avgScore = Math.round(total / healthData.length);
+    }
+  }
+
+  const scoreColor =
+    avgScore >= 80
+      ? "text-emerald-600"
+      : avgScore >= 60
+        ? "text-amber-600"
+        : avgScore >= 40
+          ? "text-orange-600"
+          : "text-red-600";
+
+  const ringColor =
+    avgScore >= 80
+      ? "stroke-emerald-500"
+      : avgScore >= 60
+        ? "stroke-amber-500"
+        : avgScore >= 40
+          ? "stroke-orange-500"
+          : "stroke-red-500";
+
+  const circumference = 2 * Math.PI * 45;
+  const offset = circumference - (avgScore / 100) * circumference;
+
+  return (
+    <Panel className="flex flex-col items-center justify-center">
+      <PanelHeader icon={Shield} label="Portfolio Score" iconColor="text-[#212D40]" />
+
+      <div className="relative w-32 h-32 mb-3">
+        <svg className="w-32 h-32 -rotate-90" viewBox="0 0 100 100">
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            stroke="#f3f4f6"
+            strokeWidth="6"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            className={ringColor}
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            style={{ transition: "stroke-dashoffset 0.8s ease" }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`text-3xl font-black ${scoreColor}`}>
+            {healthData.length > 0 ? avgScore : "--"}
           </span>
         </div>
-        <p className="text-xs text-gray-400 mt-2">
-          ETA: {roadmap.nextMilestone.estimatedDate}
-        </p>
       </div>
 
-      {/* Phase Timeline */}
-      <div className="mb-6">
-        <TailorText editKey="hq.visionary.roadmap.routeTimeline" defaultText="Route Timeline" as="p" className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3" />
-        <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-200" />
+      <p className="text-xs text-gray-400 text-center">
+        {healthData.length > 0
+          ? `Across ${healthData.length} client${healthData.length !== 1 ? "s" : ""}`
+          : "No client data yet"}
+      </p>
+    </Panel>
+  );
+}
 
-          <div className="space-y-1">
-            {roadmap.phases.map((phase) => (
-              <div key={phase.id} className="flex items-start gap-3 relative">
-                <div className="shrink-0 mt-0.5 z-10">
-                  {phase.status === "complete" ? (
-                    <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-                  ) : phase.status === "current" ? (
-                    <div className="h-6 w-6 rounded-full border-[3px] border-[#D56753] bg-white flex items-center justify-center">
-                      <div className="h-2 w-2 rounded-full bg-[#D56753]" />
-                    </div>
-                  ) : (
-                    <Circle className="h-6 w-6 text-gray-300" />
-                  )}
-                </div>
-                <div
-                  className={`flex-1 rounded-lg px-3 py-2 ${
-                    phase.status === "current"
-                      ? "bg-white border border-[#D56753]/30 shadow-sm"
-                      : phase.status === "complete"
-                        ? "bg-emerald-50/50"
-                        : ""
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <p
-                      className={`text-sm font-semibold ${
-                        phase.status === "current"
-                          ? "text-[#D56753]"
-                          : phase.status === "complete"
-                            ? "text-emerald-700"
-                            : "text-gray-400"
-                      }`}
-                    >
-                      {phase.name}: {phase.label}
-                    </p>
-                    <span className="text-[10px] text-gray-400">
-                      {phase.mrrTarget} MRR / {phase.clientTarget} clients
-                    </span>
-                  </div>
-                  <p
-                    className={`text-xs mt-0.5 ${
-                      phase.status === "current" ? "text-gray-600" : "text-gray-400"
-                    }`}
-                  >
-                    {phase.description}
-                  </p>
-                </div>
-              </div>
-            ))}
+// ---- Panel 8: Agent Health (compact footer indicator) ----------------------
+
+function AgentHealthFooter({ schedules }: { schedules: Schedule[] }) {
+  const total = schedules.length;
+  const running = schedules.filter(
+    (s) => s.latest_run?.status === "running"
+  ).length;
+  const failed = schedules.filter(
+    (s) => s.latest_run?.status === "failed"
+  );
+  const neverRun = schedules.filter((s) => !s.latest_run);
+  const nominal = total - failed.length - neverRun.length;
+
+  const { data: sysHealth } = useQuery({
+    queryKey: ["backend-health-visionary"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/health" });
+      return res as { redis?: string } | undefined;
+    },
+    refetchInterval: 30_000,
+    retry: false,
+  });
+  const redisKnown = sysHealth?.redis !== undefined;
+  const redisUp = sysHealth?.redis === "connected" || sysHealth?.redis === "ok";
+
+  const allGreen = failed.length === 0 && neverRun.length === 0;
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-gray-50/50 px-5 py-3">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <Activity className="h-3.5 w-3.5 text-gray-400" />
+          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+            System Status
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* Agent count */}
+          <span className="text-xs text-gray-500">
+            <span className={`font-semibold ${allGreen ? "text-emerald-600" : "text-[#212D40]"}`}>
+              {nominal}/{total}
+            </span>
+            {" agents nominal"}
+          </span>
+
+          {/* Failed agents */}
+          {failed.length > 0 && (
+            <span className="text-xs text-red-600 font-semibold">
+              {failed.length} failed
+            </span>
+          )}
+
+          {/* Running now */}
+          {running > 0 && (
+            <span className="text-xs text-blue-600">
+              {running} running
+            </span>
+          )}
+
+          {/* Redis */}
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`inline-block w-1.5 h-1.5 rounded-full ${
+                redisKnown
+                  ? redisUp
+                    ? "bg-emerald-500"
+                    : "bg-red-500 animate-pulse"
+                  : "bg-gray-400"
+              }`}
+            />
+            <span className="text-[10px] text-gray-400">
+              Redis: {redisKnown ? (redisUp ? "OK" : "Down") : "?"}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* ETA to Unicorn */}
-      <div className="mb-6 rounded-xl bg-gradient-to-r from-[#212D40] to-[#2d3d54] p-4">
-        <TailorText editKey="hq.visionary.roadmap.etaToUnicorn" defaultText="ETA to Unicorn" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1" />
-        <p className="text-sm text-white leading-relaxed">
-          {roadmap.etaToUnicorn}
-        </p>
-      </div>
-
-      {/* Course Correction */}
-      {roadmap.courseCorrection && (
-        <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <TailorText editKey="hq.visionary.roadmap.courseCorrection" defaultText="Course Correction" as="p" className="text-[11px] font-bold uppercase tracking-wider text-amber-600" />
-          </div>
-          <p className="text-sm text-amber-800 leading-relaxed">
-            {roadmap.courseCorrection}
-          </p>
+      {/* Failed agent list, compact */}
+      {failed.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {failed.map((s) => (
+            <span
+              key={s.id}
+              className="inline-flex items-center gap-1 text-[10px] text-red-600 bg-red-50 border border-red-100 rounded-md px-2 py-0.5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+              {s.display_name}
+              <span className="text-red-400 ml-0.5">{timeAgo(s.last_run_at)}</span>
+            </span>
+          ))}
         </div>
       )}
-
-      {/* Key Metrics Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6">
-        <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
-          <p className="text-lg font-black text-[#212D40]">
-            ${roadmap.currentMRR.toLocaleString()}
-          </p>
-          <TailorText editKey="hq.visionary.roadmap.metrics.mrr" defaultText="MRR" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
-        </div>
-        <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
-          <p className="text-lg font-black text-[#212D40]">
-            {roadmap.currentClients}
-          </p>
-          <TailorText editKey="hq.visionary.roadmap.metrics.clients" defaultText="Clients" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
-        </div>
-        <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
-          <p className="text-lg font-black text-[#212D40]">
-            {roadmap.checkupsCompleted}
-          </p>
-          <TailorText editKey="hq.visionary.roadmap.metrics.checkups" defaultText="Checkups" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
-        </div>
-        <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
-          <p className="text-lg font-black text-[#212D40]">
-            {roadmap.trialConversionRate > 0 ? `${roadmap.trialConversionRate}%` : "--"}
-          </p>
-          <TailorText editKey="hq.visionary.roadmap.metrics.trialConv" defaultText="Trial Conv." as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
-        </div>
-        <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
-          <p className="text-lg font-black text-[#212D40]">
-            {roadmap.referralRate > 0 ? `${roadmap.referralRate}%` : "--"}
-          </p>
-          <TailorText editKey="hq.visionary.roadmap.metrics.referralRate" defaultText="Referral Rate" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
-        </div>
-      </div>
     </div>
   );
 }
@@ -1080,6 +1237,18 @@ function RoadmapPanel() {
 
 export default function VisionaryView() {
   const [founderOpen, setFounderOpen] = useState(false);
+
+  // Fetch personal agent brief (the ONE thing)
+  const { data: agentBriefRaw } = useQuery({
+    queryKey: ["personal-agent-brief"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/personal-agent/brief" });
+      return res?.success ? (res.data as PersonalAgentBrief) : null;
+    },
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+  const agentBrief: PersonalAgentBrief | null = agentBriefRaw ?? null;
 
   // Fetch organizations
   const { data: orgData } = useQuery({
@@ -1136,29 +1305,32 @@ export default function VisionaryView() {
       </button>
 
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-        {/* Panel 1: Morning Briefing -- full width */}
-        <MorningBriefingPanel healthData={healthData} />
+        {/* 1. The ONE thing: Personal Agent Headline */}
+        <PersonalAgentHeadline brief={agentBrief} />
 
-        {/* Panel 2: Live Roadmap -- full width */}
+        {/* 2. Morning Briefing Stats (only non-zero) */}
+        <MorningBriefingStats healthData={healthData} />
+
+        {/* 3. Revenue (prominent but not the hero) */}
+        <RevenuePanel orgs={orgs} />
+
+        {/* 4. Decisions Needing You */}
+        <DecisionPanel tasks={tasks} agentBrief={agentBrief} />
+
+        {/* 5. Route to Unicorn (compact, collapsible timeline) */}
         <RoadmapPanel />
 
-        {/* Panel 3: The Scoreboard -- full width */}
+        {/* 6. The Scoreboard (Records + Confidence, collapsible) */}
         <ScoreboardPanel orgs={orgs} />
 
-        {/* Panels 4 + 5: Revenue | Pipeline -- side by side */}
+        {/* 7 + 8: Pipeline + Portfolio Score side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RevenuePanel orgs={orgs} />
           <PipelineFunnelPanel orgs={orgs} healthData={healthData} />
-        </div>
-
-        {/* Panel 4: Needs Your Decision -- full width */}
-        <DecisionPanel tasks={tasks} />
-
-        {/* Panels 5 + 6: Agent Health | Portfolio Score -- side by side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AgentHealthPanel schedules={schedules} />
           <PortfolioScorePanel healthData={healthData} />
         </div>
+
+        {/* 9. Agent Health: compact footer */}
+        <AgentHealthFooter schedules={schedules} />
       </div>
 
       {/* CEO Chat moved to dedicated nav page -- no floating widgets */}
