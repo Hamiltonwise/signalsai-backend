@@ -164,6 +164,44 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   // Shareability > priority for the email headline.
   const topFinding = await getMostShareableFinding(orgId, 7);
 
+  // --- Clean Week Detection ---
+  // When nothing significant moved: no high-priority finding, no ranking change,
+  // no competitor velocity spike, no referral drift. Send a warm "clean week"
+  // email instead of forcing a bland update.
+  const noSignificantFinding = !topFinding || (topFinding.shareability < 6 && topFinding.priority < 5);
+  const positionUnchanged = recentSnapshots.length >= 2 && recentSnapshots[0].position === recentSnapshots[1]?.position;
+  const noBullets = !bullets || bullets.length === 0;
+  const isCleanWeek = noSignificantFinding && positionUnchanged && (noBullets || (bullets.length <= 1 && !snapshot.finding_headline));
+
+  if (isCleanWeek) {
+    // Extract city from snapshot keyword or checkup data
+    const orgData = await db("organizations").where({ id: orgId }).select("checkup_data").first();
+    const parsed = orgData?.checkup_data ? (typeof orgData.checkup_data === "string" ? JSON.parse(orgData.checkup_data) : orgData.checkup_data) : null;
+    const city = parsed?.market?.city || snapshot.keyword?.split(" in ")?.[1] || null;
+
+    // Count total competitors from most recent data
+    const totalCompetitors = parsed?.market?.totalCompetitors || null;
+
+    try {
+      const success = await sendCleanWeekEmail({
+        recipientEmail: user.email,
+        practiceName: org.name,
+        firstName: user.first_name || ownerName,
+        position: snapshot.position || null,
+        totalCompetitors,
+        city,
+      });
+
+      if (success) {
+        console.log(`[MondayEmail] Sent clean week email to ${user.email} for ${org.name}`);
+      }
+      return success;
+    } catch (err: any) {
+      console.error(`[MondayEmail] Clean week email failed for ${org.name}:`, err.message);
+      return false;
+    }
+  }
+
   // Finding headline: prefer shareable agent finding over snapshot
   const findingHeadline = (topFinding && (topFinding.shareability >= 6 || topFinding.priority >= 5))
     ? topFinding.headline
