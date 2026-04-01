@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Globe,
@@ -5,6 +6,11 @@ import {
   Shield,
   Lock,
   Activity,
+  Link2,
+  Unlink,
+  ExternalLink,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useSettingsScopes, usePmsStatus } from "../../hooks/queries/useSettingsQueries";
@@ -217,6 +223,9 @@ export const IntegrationsRoute: React.FC = () => {
           </motion.div>
         )}
 
+        {/* HubSpot CRM Integration */}
+        <HubSpotCard />
+
         {/* PMS Upload Banner — only show when at least one location is configured */}
         {hasPmsData === false && hasProperties && <PMSUploadBanner />}
 
@@ -226,3 +235,117 @@ export const IntegrationsRoute: React.FC = () => {
     </div>
   );
 };
+
+/**
+ * HubSpot CRM integration card.
+ * Shows connection status, connect/disconnect button.
+ */
+function HubSpotCard() {
+  const [status, setStatus] = useState<{ connected: boolean; hubDomain?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState(false);
+
+  // Check URL params for success redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("hubspot") === "connected") {
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/integrations/hubspot/status")
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) setStatus({ connected: data.connected, hubDomain: data.hubDomain });
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const handleConnect = async () => {
+    setActing(true);
+    try {
+      const res = await fetch("/api/integrations/hubspot/connect");
+      const data = await res.json();
+      if (data.success && data.authUrl) {
+        window.location.href = data.authUrl;
+      }
+    } catch {
+      setActing(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setActing(true);
+    try {
+      await fetch("/api/integrations/hubspot/disconnect", { method: "DELETE" });
+      setStatus({ connected: false });
+    } catch {
+      // ignore
+    }
+    setActing(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.15 }}
+      className="bg-white rounded-2xl border border-black/5 p-6 shadow-premium"
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#FF7A59]/10 rounded-xl flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M17.5 8.5V5.5C17.5 4.4 16.6 3.5 15.5 3.5H15V2C15 1.45 14.55 1 14 1S13 1.45 13 2V3.5H11V2C11 1.45 10.55 1 10 1S9 1.45 9 2V3.5H8.5C7.4 3.5 6.5 4.4 6.5 5.5V8.5C5.4 8.5 4.5 9.4 4.5 10.5V13.5C4.5 14.6 5.4 15.5 6.5 15.5V18.5C6.5 19.6 7.4 20.5 8.5 20.5H15.5C16.6 20.5 17.5 19.6 17.5 18.5V15.5C18.6 15.5 19.5 14.6 19.5 13.5V10.5C19.5 9.4 18.6 8.5 17.5 8.5ZM15.5 18.5H8.5V15.5H15.5V18.5ZM17.5 13.5H6.5V10.5H17.5V13.5ZM15.5 8.5H8.5V5.5H15.5V8.5Z" fill="#FF7A59"/>
+            </svg>
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-sm">HubSpot CRM</h3>
+            <p className="text-xs text-gray-400">
+              {loading ? "Checking..." : status?.connected ? `Connected to ${status.hubDomain || "HubSpot"}` : "Read-only pipeline sync"}
+            </p>
+          </div>
+        </div>
+
+        {!loading && (
+          status?.connected ? (
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Connected
+              </span>
+              <button
+                onClick={handleDisconnect}
+                disabled={acting}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-500 hover:text-red-500 border border-gray-200 rounded-lg hover:border-red-200 transition-colors"
+              >
+                {acting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlink className="w-3 h-3" />}
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleConnect}
+              disabled={acting}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-[#FF7A59] hover:bg-[#e96b4a] rounded-lg transition-colors disabled:opacity-50"
+            >
+              {acting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+              Connect HubSpot
+              <ExternalLink className="w-3 h-3 ml-0.5 opacity-50" />
+            </button>
+          )
+        )}
+      </div>
+
+      <p className="text-xs text-gray-400 leading-relaxed">
+        {status?.connected
+          ? "Your sales pipeline is synced. Ask The Board to prep you for your next demo."
+          : "Connect your HubSpot account to sync your sales pipeline. Read-only access, your CRM data stays in HubSpot."
+        }
+      </p>
+    </motion.div>
+  );
+}
