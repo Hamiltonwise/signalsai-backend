@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { TailorText } from "@/components/TailorText";
 // CEOIntelligenceChat moved to dedicated nav page
 import {
   DollarSign,
@@ -106,7 +107,7 @@ function Panel({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-gray-200 bg-white p-6 shadow-sm ${className}`}
+      className={`card-supporting ${className}`}
     >
       {children}
     </div>
@@ -116,16 +117,16 @@ function Panel({
 function PanelHeader({
   icon: Icon,
   label,
-  iconColor = "text-gray-400",
+  iconColor = "text-[#D56753]/50",
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   iconColor?: string;
 }) {
   return (
-    <div className="flex items-center gap-2 mb-4">
+    <div className="flex items-center gap-2.5 mb-4">
       <Icon className={`h-4 w-4 ${iconColor}`} />
-      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40">
         {label}
       </p>
     </div>
@@ -158,47 +159,39 @@ function MorningBriefingPanel({
     briefing?.topEvent || briefing?.headline || briefing?.summary || null;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-8 shadow-sm">
+    <div className="card-primary bg-gradient-to-br from-white to-[#FFF9F7] p-8">
       <PanelHeader icon={Sun} label="Morning Briefing" iconColor="text-amber-500" />
 
       {isLoading ? (
-        <div className="h-8 w-2/3 animate-pulse rounded bg-gray-200" />
+        <div className="h-8 w-2/3 skeleton rounded" />
       ) : headline ? (
         <p className="text-xl font-semibold text-[#212D40] leading-relaxed mb-6">
           {headline}
         </p>
       ) : (
-        <p className="text-lg text-gray-400 mb-6">
-          Briefing generates at 6:30am ET
-        </p>
+        <TailorText editKey="hq.visionary.briefing.placeholder" defaultText="Briefing generates at 6:30am ET" as="p" className="text-lg text-gray-400 mb-6" />
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-xl bg-white border border-gray-100 p-4 text-center">
+        <div className="rounded-xl bg-white border border-[#D56753]/6 p-4 text-center shadow-sm">
           <p className="text-2xl font-black text-[#212D40]">
             {briefing?.signups ?? 0}
           </p>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
-            New Signups
-          </p>
+          <TailorText editKey="hq.visionary.briefing.newSignups" defaultText="New Signups" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1" />
         </div>
-        <div className="rounded-xl bg-white border border-gray-100 p-4 text-center">
+        <div className="rounded-xl bg-white border border-[#D56753]/6 p-4 text-center shadow-sm">
           <p className="text-2xl font-black text-[#212D40]">
             {briefing?.competitor_moves ?? 0}
           </p>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
-            Competitor Moves
-          </p>
+          <TailorText editKey="hq.visionary.briefing.competitorMoves" defaultText="Competitor Moves" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1" />
         </div>
-        <div className="rounded-xl bg-white border border-gray-100 p-4 text-center">
+        <div className="rounded-xl bg-white border border-[#D56753]/6 p-4 text-center shadow-sm">
           <p className="text-2xl font-black text-[#212D40]">
             {briefing?.reviews_received ?? 0}
           </p>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
-            Reviews
-          </p>
+          <TailorText editKey="hq.visionary.briefing.reviews" defaultText="Reviews" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1" />
         </div>
-        <div className="rounded-xl bg-white border border-gray-100 p-4 text-center">
+        <div className="rounded-xl bg-white border border-[#D56753]/6 p-4 text-center shadow-sm">
           <div className="flex items-center justify-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span className="text-sm font-bold text-[#212D40]">{greenCount}</span>
@@ -207,9 +200,7 @@ function MorningBriefingPanel({
             <span className="w-2 h-2 rounded-full bg-red-500" />
             <span className="text-sm font-bold text-[#212D40]">{redCount}</span>
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
-            Client Health
-          </p>
+          <TailorText editKey="hq.visionary.briefing.clientHealth" defaultText="Client Health" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1" />
         </div>
       </div>
     </div>
@@ -257,9 +248,7 @@ function RevenuePanel({ orgs }: { orgs: AdminOrganization[] }) {
           <p className="text-4xl font-black text-[#212D40]">
             ${mrr.toLocaleString()}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            Monthly Recurring Revenue
-          </p>
+          <TailorText editKey="hq.visionary.revenue.mrrLabel" defaultText="Monthly Recurring Revenue" as="p" className="text-xs text-gray-400 mt-1" />
         </div>
 
         <div className="flex items-center gap-2">
@@ -279,17 +268,13 @@ function RevenuePanel({ orgs }: { orgs: AdminOrganization[] }) {
         </div>
 
         <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
-          <p className="text-xs text-gray-400 mb-1">
-            Runway (${MONTHLY_BURN.toLocaleString()} burn)
-          </p>
+          <TailorText editKey="hq.visionary.revenue.runwayLabel" defaultText={`Runway ($${MONTHLY_BURN.toLocaleString()} burn)`} as="p" className="text-xs text-gray-400 mb-1" />
           {isProfitable ? (
             <p className="text-lg font-bold text-emerald-600">
               Profitable. +${monthlyDelta.toLocaleString()}/mo
             </p>
           ) : mrr === 0 ? (
-            <p className="text-lg font-bold text-gray-400">
-              Pre-revenue
-            </p>
+            <TailorText editKey="hq.visionary.revenue.preRevenue" defaultText="Pre-revenue" as="p" className="text-lg font-bold text-gray-400" />
           ) : (
             <p className="text-lg font-bold text-amber-600">
               {runwayMonths} months runway at current burn
@@ -385,10 +370,10 @@ function DecisionPanel({ tasks }: { tasks: DreamTeamTask[] }) {
 
   return (
     <div
-      className={`rounded-2xl border p-6 shadow-sm ${
+      className={`rounded-2xl border p-6 transition-all ${
         hasItems
-          ? "border-red-300 bg-red-50/50"
-          : "border-gray-200 bg-white"
+          ? "border-red-300 bg-red-50/50 shadow-[0_4px_16px_rgba(239,68,68,0.06)]"
+          : "card-supporting"
       }`}
     >
       <div className="flex items-center gap-2 mb-4">
@@ -410,9 +395,7 @@ function DecisionPanel({ tasks }: { tasks: DreamTeamTask[] }) {
       </div>
 
       {!hasItems ? (
-        <p className="text-sm text-gray-400">
-          Nothing needs your decision right now. Focus time.
-        </p>
+        <TailorText editKey="hq.visionary.decisions.empty" defaultText="Nothing needs your decision right now. Focus time." as="p" className="text-sm text-gray-400" />
       ) : (
         <div className="space-y-2">
           {urgent.map((t) => (
@@ -529,7 +512,7 @@ function AgentHealthPanel({ schedules }: { schedules: Schedule[] }) {
       )}
 
       {failed.length === 0 && neverRun.length === 0 && (
-        <p className="text-xs text-emerald-600 font-medium">All systems green.</p>
+        <TailorText editKey="hq.visionary.agents.allGreen" defaultText="All systems green." as="p" className="text-xs text-emerald-600 font-medium" />
       )}
     </Panel>
   );
@@ -736,9 +719,7 @@ function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
 
       {/* Records to Beat */}
       <div className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-          Records to Beat
-        </p>
+        <TailorText editKey="hq.visionary.scoreboard.recordsToBeat" defaultText="Records to Beat" as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3" />
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -777,9 +758,7 @@ function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
 
       {/* Live Confidence Scores */}
       <div className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-          Live Confidence Scores
-        </p>
+        <TailorText editKey="hq.visionary.scoreboard.confidenceScores" defaultText="Live Confidence Scores" as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3" />
         <div className="space-y-3">
           {CONFIDENCE_SCORES.map((score) => (
             <div key={score.label}>
@@ -800,16 +779,12 @@ function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-gray-400 mt-2 italic">
-          Scores from internal calibration. Updated quarterly.
-        </p>
+        <TailorText editKey="hq.visionary.scoreboard.calibrationNote" defaultText="Scores from internal calibration. Updated quarterly." as="p" className="text-[10px] text-gray-400 mt-2 italic" />
       </div>
 
       {/* Milestone Timeline */}
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-          Milestone Timeline
-        </p>
+        <TailorText editKey="hq.visionary.scoreboard.milestoneTimeline" defaultText="Milestone Timeline" as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3" />
         <div className="space-y-2">
           {milestones.map((m) => (
             <div
@@ -916,8 +891,8 @@ function RoadmapPanel() {
       <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/40 via-white to-indigo-50/30 p-8 shadow-sm">
         <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
         <div className="space-y-4">
-          <div className="h-6 w-2/3 animate-pulse rounded bg-gray-200" />
-          <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
+          <div className="h-6 w-2/3 skeleton rounded" />
+          <div className="h-4 w-1/2 skeleton rounded" />
           <div className="h-32 w-full animate-pulse rounded bg-gray-100" />
         </div>
       </div>
@@ -928,7 +903,7 @@ function RoadmapPanel() {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
         <PanelHeader icon={Map} label="Route to Unicorn" iconColor="text-blue-600" />
-        <p className="text-sm text-gray-400">Roadmap data unavailable. Check backend connection.</p>
+        <TailorText editKey="hq.visionary.roadmap.unavailable" defaultText="Roadmap data unavailable. Check backend connection." as="p" className="text-sm text-gray-400" />
       </div>
     );
   }
@@ -946,9 +921,7 @@ function RoadmapPanel() {
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <Navigation className="h-4 w-4 text-[#D56753]" />
-          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-            Current Position
-          </p>
+          <TailorText editKey="hq.visionary.roadmap.currentPosition" defaultText="Current Position" as="p" className="text-[11px] font-bold uppercase tracking-wider text-gray-400" />
         </div>
         <p className="text-xl font-semibold text-[#212D40]">
           {roadmap.currentPhase}. ${roadmap.currentMRR.toLocaleString()} MRR. {roadmap.currentClients} client{roadmap.currentClients !== 1 ? "s" : ""}.
@@ -962,9 +935,7 @@ function RoadmapPanel() {
       <div className="mb-6 rounded-xl bg-white border border-blue-100 p-4">
         <div className="flex items-center gap-2 mb-2">
           <Target className="h-4 w-4 text-blue-500" />
-          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-            Next Turn
-          </p>
+          <TailorText editKey="hq.visionary.roadmap.nextTurn" defaultText="Next Turn" as="p" className="text-[11px] font-bold uppercase tracking-wider text-gray-400" />
         </div>
         <p className="text-sm font-medium text-[#212D40] mb-2">
           {roadmap.nextMilestone.name}
@@ -989,9 +960,7 @@ function RoadmapPanel() {
 
       {/* Phase Timeline */}
       <div className="mb-6">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3">
-          Route Timeline
-        </p>
+        <TailorText editKey="hq.visionary.roadmap.routeTimeline" defaultText="Route Timeline" as="p" className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-3" />
         <div className="relative">
           {/* Vertical line */}
           <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-200" />
@@ -1051,9 +1020,7 @@ function RoadmapPanel() {
 
       {/* ETA to Unicorn */}
       <div className="mb-6 rounded-xl bg-gradient-to-r from-[#212D40] to-[#2d3d54] p-4">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
-          ETA to Unicorn
-        </p>
+        <TailorText editKey="hq.visionary.roadmap.etaToUnicorn" defaultText="ETA to Unicorn" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1" />
         <p className="text-sm text-white leading-relaxed">
           {roadmap.etaToUnicorn}
         </p>
@@ -1064,9 +1031,7 @@ function RoadmapPanel() {
         <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <p className="text-[11px] font-bold uppercase tracking-wider text-amber-600">
-              Course Correction
-            </p>
+            <TailorText editKey="hq.visionary.roadmap.courseCorrection" defaultText="Course Correction" as="p" className="text-[11px] font-bold uppercase tracking-wider text-amber-600" />
           </div>
           <p className="text-sm text-amber-800 leading-relaxed">
             {roadmap.courseCorrection}
@@ -1076,45 +1041,35 @@ function RoadmapPanel() {
 
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6">
-        <div className="rounded-xl bg-white border border-gray-100 p-3 text-center">
+        <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
           <p className="text-lg font-black text-[#212D40]">
             ${roadmap.currentMRR.toLocaleString()}
           </p>
-          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5">
-            MRR
-          </p>
+          <TailorText editKey="hq.visionary.roadmap.metrics.mrr" defaultText="MRR" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
         </div>
-        <div className="rounded-xl bg-white border border-gray-100 p-3 text-center">
+        <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
           <p className="text-lg font-black text-[#212D40]">
             {roadmap.currentClients}
           </p>
-          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5">
-            Clients
-          </p>
+          <TailorText editKey="hq.visionary.roadmap.metrics.clients" defaultText="Clients" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
         </div>
-        <div className="rounded-xl bg-white border border-gray-100 p-3 text-center">
+        <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
           <p className="text-lg font-black text-[#212D40]">
             {roadmap.checkupsCompleted}
           </p>
-          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5">
-            Checkups
-          </p>
+          <TailorText editKey="hq.visionary.roadmap.metrics.checkups" defaultText="Checkups" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
         </div>
-        <div className="rounded-xl bg-white border border-gray-100 p-3 text-center">
+        <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
           <p className="text-lg font-black text-[#212D40]">
             {roadmap.trialConversionRate > 0 ? `${roadmap.trialConversionRate}%` : "--"}
           </p>
-          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5">
-            Trial Conv.
-          </p>
+          <TailorText editKey="hq.visionary.roadmap.metrics.trialConv" defaultText="Trial Conv." as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
         </div>
-        <div className="rounded-xl bg-white border border-gray-100 p-3 text-center">
+        <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
           <p className="text-lg font-black text-[#212D40]">
             {roadmap.referralRate > 0 ? `${roadmap.referralRate}%` : "--"}
           </p>
-          <p className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5">
-            Referral Rate
-          </p>
+          <TailorText editKey="hq.visionary.roadmap.metrics.referralRate" defaultText="Referral Rate" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
         </div>
       </div>
     </div>

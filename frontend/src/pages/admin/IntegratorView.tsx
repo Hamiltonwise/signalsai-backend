@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { TailorText } from "@/components/TailorText";
 import {
   Heart,
   Clock,
@@ -190,18 +191,18 @@ function ClientHealthRow({ entry }: { entry: ClientHealthEntry }) {
           <div className="flex flex-col gap-1.5 pt-2">
             {entry.risk && (
               <p className="text-xs text-gray-500">
-                <span className="font-medium text-gray-600">Risk:</span> {entry.risk}
+                <TailorText editKey="hq.integrator.health.riskLabel" defaultText="Risk:" as="span" className="font-medium text-gray-600" /> {entry.risk}
               </p>
             )}
             {entry.recommended_action && (
               <p className="text-xs text-gray-500">
-                <span className="font-medium text-gray-600">Action:</span>{" "}
+                <TailorText editKey="hq.integrator.health.actionLabel" defaultText="Action:" as="span" className="font-medium text-gray-600" />{" "}
                 {entry.recommended_action}
               </p>
             )}
             {entry.score !== undefined && (
               <p className="text-xs text-gray-500">
-                <span className="font-medium text-gray-600">Score:</span>{" "}
+                <TailorText editKey="hq.integrator.health.scoreLabel" defaultText="Score:" as="span" className="font-medium text-gray-600" />{" "}
                 {entry.score}/100
               </p>
             )}
@@ -281,9 +282,7 @@ function ClientHealthGrid() {
 
   if (entries.length === 0) {
     return (
-      <p className="text-sm text-gray-400 text-center py-6">
-        No clients yet.
-      </p>
+      <TailorText editKey="hq.integrator.health.noClients" defaultText="No clients yet." as="p" className="text-sm text-gray-400 text-center py-6" />
     );
   }
 
@@ -330,9 +329,7 @@ function TrialPipeline({ orgs }: { orgs: AdminOrganization[] }) {
 
   if (trialOrgs.length === 0) {
     return (
-      <p className="text-sm text-gray-400 text-center py-4">
-        No active trials.
-      </p>
+      <TailorText editKey="hq.integrator.trials.noTrials" defaultText="No active trials." as="p" className="text-sm text-gray-400 text-center py-4" />
     );
   }
 
@@ -403,9 +400,7 @@ function TaskQueue({ tasks }: { tasks: DreamTeamTask[] }) {
 
   if (sorted.length === 0) {
     return (
-      <p className="text-sm text-gray-400 text-center py-4">
-        All tasks complete.
-      </p>
+      <TailorText editKey="hq.integrator.tasks.allComplete" defaultText="All tasks complete." as="p" className="text-sm text-gray-400 text-center py-4" />
     );
   }
 
@@ -477,9 +472,7 @@ function BlockersPanel({ tasks }: { tasks: DreamTeamTask[] }) {
       />
 
       {blockers.length === 0 ? (
-        <p className="text-sm text-emerald-600 font-medium">
-          No blockers. Everything is moving.
-        </p>
+        <TailorText editKey="hq.integrator.blockers.noBlockers" defaultText="No blockers. Everything is moving." as="p" className="text-sm text-emerald-600 font-medium" />
       ) : (
         <>
           <p className="text-sm font-semibold text-red-700 mb-3">

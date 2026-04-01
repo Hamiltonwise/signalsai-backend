@@ -10,6 +10,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { TailorText } from "@/components/TailorText";
 import {
   Terminal,
   Server,
@@ -161,7 +162,7 @@ function SystemStatusPanel() {
             <div className="flex items-center gap-2">
               <StatusDot status={backendUp ? "ok" : "fail"} />
               <div>
-                <p className="text-sm text-green-400 font-medium">Backend</p>
+                <TailorText editKey="hq.build.status.backend" defaultText="Backend" as="p" className="text-sm text-green-400 font-medium" />
                 <p className="text-[10px] text-gray-500">
                   {backendUp ? "Healthy" : "Down"}
                 </p>
@@ -171,7 +172,7 @@ function SystemStatusPanel() {
             <div className="flex items-center gap-2">
               <StatusDot status={dbUp ? "ok" : "fail"} />
               <div>
-                <p className="text-sm text-green-400 font-medium">Database</p>
+                <TailorText editKey="hq.build.status.database" defaultText="Database" as="p" className="text-sm text-green-400 font-medium" />
                 <p className="text-[10px] text-gray-500">
                   {dbUp ? "Connected" : "Error"}
                 </p>
@@ -181,7 +182,7 @@ function SystemStatusPanel() {
             <div className="flex items-center gap-2">
               <StatusDot status={redisKnown ? (redisUp ? "ok" : "fail") : "unknown"} />
               <div>
-                <p className="text-sm text-green-400 font-medium">Redis</p>
+                <TailorText editKey="hq.build.status.redis" defaultText="Redis" as="p" className="text-sm text-green-400 font-medium" />
                 <p className="text-[10px] text-gray-500">
                   {redisKnown ? (redisUp ? "Connected" : "Disconnected") : "Verify on EC2"}
                 </p>
@@ -191,7 +192,7 @@ function SystemStatusPanel() {
             <div className="flex items-center gap-2">
               <StatusDot status="unknown" />
               <div>
-                <p className="text-sm text-green-400 font-medium">BullMQ</p>
+                <TailorText editKey="hq.build.status.bullmq" defaultText="BullMQ" as="p" className="text-sm text-green-400 font-medium" />
                 <p className="text-[10px] text-gray-500">Verify on EC2</p>
               </div>
             </div>
@@ -230,7 +231,7 @@ function AgentExecutionLog({ schedules }: { schedules: Schedule[] }) {
       <TermHeader icon={Activity} label="Agent Execution Log" />
 
       {sorted.length === 0 ? (
-        <p className="text-sm text-gray-500">No agents scheduled.</p>
+        <TailorText editKey="hq.build.agents.noAgents" defaultText="No agents scheduled." as="p" className="text-sm text-gray-500" />
       ) : (
         <div className="space-y-1">
           {/* Header row */}
@@ -341,9 +342,7 @@ function RecentErrorsPanel() {
       <TermHeader icon={AlertTriangle} label="Recent Errors (24h)" />
 
       {entries.length === 0 ? (
-        <p className="text-sm text-green-500">
-          $ tail -f /var/log/errors ... No errors in the last 24h.
-        </p>
+        <TailorText editKey="hq.build.errors.noErrors" defaultText="$ tail -f /var/log/errors ... No errors in the last 24h." as="p" className="text-sm text-green-500" />
       ) : (
         <div className="space-y-1">
           <div className="grid grid-cols-[1fr_80px_80px] gap-2 text-[10px] text-gray-600 uppercase font-bold pb-1 border-b border-gray-800">
@@ -385,7 +384,7 @@ function DeployStatusPanel() {
             <span className="w-2 h-2 rounded-full bg-green-500" />
             <span className="text-sm text-green-400 font-medium">sandbox</span>
           </div>
-          <span className="text-xs text-gray-600">Active development</span>
+          <TailorText editKey="hq.build.deploy.sandboxLabel" defaultText="Active development" as="span" className="text-xs text-gray-600" />
         </div>
 
         <div className="flex items-center gap-3">
@@ -393,28 +392,22 @@ function DeployStatusPanel() {
             <span className="w-2 h-2 rounded-full bg-blue-500" />
             <span className="text-sm text-blue-400 font-medium">main</span>
           </div>
-          <span className="text-xs text-gray-600">Production</span>
+          <TailorText editKey="hq.build.deploy.mainLabel" defaultText="Production" as="span" className="text-xs text-gray-600" />
         </div>
 
         <div className="rounded-lg bg-[#0d1117] border border-gray-800 p-3">
           <p className="text-xs text-gray-500 font-mono">
             $ git log --oneline -1
           </p>
-          <p className="text-xs text-green-400 font-mono mt-1">
-            sandbox is ahead of production. Merge requires Dave review.
-          </p>
+          <TailorText editKey="hq.build.deploy.mergeNote" defaultText="sandbox is ahead of production. Merge requires Dave review." as="p" className="text-xs text-green-400 font-mono mt-1" />
         </div>
 
         <div>
-          <p className="text-[10px] text-gray-600 uppercase font-bold mb-2">
-            Pending Migrations
-          </p>
+          <TailorText editKey="hq.build.deploy.pendingMigrations" defaultText="Pending Migrations" as="p" className="text-[10px] text-gray-600 uppercase font-bold mb-2" />
           <p className="text-xs text-gray-500 font-mono">
             $ npx knex migrate:status
           </p>
-          <p className="text-xs text-green-500 font-mono mt-1">
-            All migrations applied. Run `npx knex migrate:latest` to verify.
-          </p>
+          <TailorText editKey="hq.build.deploy.migrationsStatus" defaultText="All migrations applied. Run `npx knex migrate:latest` to verify." as="p" className="text-xs text-green-500 font-mono mt-1" />
         </div>
       </div>
     </TermPanel>
@@ -446,7 +439,7 @@ function DaveTasksPanel({ tasks }: { tasks: DreamTeamTask[] }) {
       <TermHeader icon={ListTodo} label="Dave's Tasks" />
 
       {daveTasks.length === 0 ? (
-        <p className="text-sm text-green-500">Queue empty. Standing by.</p>
+        <TailorText editKey="hq.build.daveTasks.empty" defaultText="Queue empty. Standing by." as="p" className="text-sm text-green-500" />
       ) : (
         <div className="space-y-2">
           {daveTasks.map((t) => {
@@ -528,10 +521,8 @@ export default function BuildView() {
         {/* Terminal header */}
         <div className="flex items-center gap-3 mb-2">
           <Terminal className="h-5 w-5 text-green-500" />
-          <h1 className="text-lg font-bold text-green-400">
-            alloro@prod:~$
-          </h1>
-          <span className="text-xs text-gray-600">Build Console</span>
+          <TailorText editKey="hq.build.header.prompt" defaultText="alloro@prod:~$" as="h1" className="text-lg font-bold text-green-400" />
+          <TailorText editKey="hq.build.header.subtitle" defaultText="Build Console" as="span" className="text-xs text-gray-600" />
         </div>
 
         {/* Panel 1: System Status */}
