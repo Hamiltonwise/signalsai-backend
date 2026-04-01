@@ -67,6 +67,7 @@ import checkupRoutes from "./routes/checkup";
 import progressReportRoutes from "./routes/progressReport";
 import vocabularyRoutes from "./routes/vocabulary";
 import partnerRoutes from "./routes/partner";
+import focusKeywordsRoutes from "./routes/focusKeywords";
 import rankingsIntelligenceRoutes from "./routes/rankingsIntelligence";
 import reviewRequestRoutes from "./routes/reviewRequests";
 import csAgentRoutes from "./routes/csAgent";
@@ -297,6 +298,7 @@ app.use("/api/progress-report", progressReportRoutes); // 365-day progress repor
 app.use("/api/org", vocabularyRoutes); // Vocabulary config per org
 app.use("/api/vocabulary", vocabularyRoutes); // Vocabulary defaults (public)
 app.use("/api/partner", partnerRoutes); // Partner Portal API
+app.use("/api/focus-keywords", focusKeywordsRoutes); // Focus keyword tracking + suggestions
 app.use("/api/rankings-intelligence", rankingsIntelligenceRoutes); // Weekly ranking snapshots + drift
 app.use("/api/review-requests", reviewRequestRoutes); // Post-appointment review generation
 app.use("/api/cs-agent", csAgentRoutes); // Account-aware Claude chat for doctors

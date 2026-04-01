@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, MessageSquare, BarChart3, Loader2 } from "lucide-react";
+import FocusKeywords from "@/components/dashboard/FocusKeywords";
 
 function getToken(): string {
   return localStorage.getItem("auth_token") || "";
@@ -117,23 +118,26 @@ function SEOContent({ orgId }: { orgId: number }) {
   const factors = typeof audit.factors === "string" ? JSON.parse(audit.factors) : audit.factors || [];
 
   return (
-    <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">SEO Score: {audit.seo_score}/100</h2>
-        {audit.score_delta !== 0 && (
-          <span className={audit.score_delta > 0 ? "text-green-600" : "text-red-600"}>
-            {audit.score_delta > 0 ? "+" : ""}{audit.score_delta} pts
-          </span>
-        )}
+    <div className="space-y-4">
+      <div className="rounded-lg border border-gray-200 bg-white p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">SEO Score: {audit.seo_score}/100</h2>
+          {audit.score_delta !== 0 && (
+            <span className={audit.score_delta > 0 ? "text-green-600" : "text-red-600"}>
+              {audit.score_delta > 0 ? "+" : ""}{audit.score_delta} pts
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {Array.isArray(factors) && factors.map((f: any, i: number) => (
+            <div key={i} className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
+              <span className={`h-2 w-2 rounded-full ${f.passed ? "bg-green-500" : "bg-red-500"}`} />
+              <span className="text-gray-700">{f.name?.replace(/_/g, " ")}</span>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {Array.isArray(factors) && factors.map((f: any, i: number) => (
-          <div key={i} className="flex items-center gap-2 rounded border px-3 py-2 text-sm">
-            <span className={`h-2 w-2 rounded-full ${f.passed ? "bg-green-500" : "bg-red-500"}`} />
-            <span className="text-gray-700">{f.name?.replace(/_/g, " ")}</span>
-          </div>
-        ))}
-      </div>
+      <FocusKeywords />
     </div>
   );
 }
