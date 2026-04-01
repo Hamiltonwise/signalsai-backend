@@ -216,6 +216,73 @@ async function handleMondayEmailFailure(
   };
 }
 
+async function handleClientMonitorFailure(
+  orgId: number,
+  error: string,
+): Promise<AbortResult> {
+  // Fallback: treat all orgs as GREEN (no interventions, safe default)
+  await logAbort("client_monitor", orgId, error, "fallback");
+
+  return {
+    action: "fallback",
+    fallbackData: {
+      classification: "green",
+      reason: "Client Monitor unavailable, defaulting to GREEN",
+      stale: true,
+    },
+    message: `Client Monitor failed (${error}). All orgs treated as GREEN. No interventions triggered.`,
+  };
+}
+
+async function handleLearningAgentFailure(
+  orgId: number,
+  error: string,
+): Promise<AbortResult> {
+  // Fallback: all agents use previous heuristics (stale but functional)
+  await logAbort("learning_agent", orgId, error, "fallback");
+
+  return {
+    action: "fallback",
+    fallbackData: {
+      heuristics: "previous",
+      reason: "Learning Agent unavailable, using previous heuristics",
+      stale: true,
+    },
+    message: `Learning Agent failed (${error}). All agents using previous heuristics. Stale but functional.`,
+  };
+}
+
+async function handleCmoAgentFailure(
+  orgId: number,
+  error: string,
+): Promise<AbortResult> {
+  // Skip: content agent has no briefs, skip content generation this week
+  await logAbort("cmo_agent", orgId, error, "skip");
+
+  return {
+    action: "skip",
+    message: `CMO Agent failed (${error}). No content briefs generated. Skipping content generation this week.`,
+  };
+}
+
+async function handleContentPerformanceFailure(
+  orgId: number,
+  error: string,
+): Promise<AbortResult> {
+  // Fallback: CMO uses template briefs instead of data-driven
+  await logAbort("content_performance", orgId, error, "fallback");
+
+  return {
+    action: "fallback",
+    fallbackData: {
+      briefType: "template",
+      reason: "Content Performance unavailable, CMO using template briefs",
+      stale: true,
+    },
+    message: `Content Performance failed (${error}). CMO Agent will use template briefs instead of data-driven.`,
+  };
+}
+
 // ── Main export ─────────────────────────────────────────────────────
 
 /**
@@ -253,6 +320,22 @@ export async function handleAgentFailure(
     case "monday_email":
     case "mondayEmail":
       return handleMondayEmailFailure(orgId, error);
+
+    case "client_monitor":
+    case "clientMonitor":
+      return handleClientMonitorFailure(orgId, error);
+
+    case "learning_agent":
+    case "learningAgent":
+      return handleLearningAgentFailure(orgId, error);
+
+    case "cmo_agent":
+    case "cmoAgent":
+      return handleCmoAgentFailure(orgId, error);
+
+    case "content_performance":
+    case "contentPerformance":
+      return handleContentPerformanceFailure(orgId, error);
 
     default: {
       // Unknown agent: log and skip

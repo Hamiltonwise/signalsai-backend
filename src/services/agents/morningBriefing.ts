@@ -16,6 +16,13 @@ import { db } from "../../database/connection";
 
 // ── Types ───────────────────────────────────────────────────────────
 
+interface AgentActivitySection {
+  eventType: string;
+  label: string;
+  count: number;
+  details: Array<{ orgId: number | null; summary: string; timestamp: string }>;
+}
+
 interface MorningBriefingSummary {
   date: string;
   newSignups: number;
@@ -28,6 +35,23 @@ interface MorningBriefingSummary {
   };
   milestones: number;
   topEvent: string | null;
+  intelligenceFindings: number;
+  dreamweaverMoments: number;
+  csInterventions: number;
+  funnelAnalyses: number;
+  marketSignals: number;
+  techHorizonSignals: number;
+  bugsDetected: number;
+  orphansDetected: number;
+  contentBriefs: number;
+  performanceBriefs: number;
+  trendsDetected: number;
+  csCoachUpdates: number;
+  learningCalibrations: number;
+  seoAnalyses: number;
+  aeoPresence: number;
+  ghostWriterExtracts: number;
+  agentActivity: AgentActivitySection[];
 }
 
 // ── Event type mappings ─────────────────────────────────────────────
@@ -49,6 +73,30 @@ const MILESTONE_EVENTS = [
   "milestone.achieved",
   "milestone.detected",
   "week1_win.generated",
+];
+
+// Agent activity event types (16 additional coverage areas)
+const AGENT_EVENT_TYPES: Array<{
+  eventType: string;
+  label: string;
+  key: string;
+}> = [
+  { eventType: "intelligence.finding", label: "Intelligence Findings", key: "intelligenceFindings" },
+  { eventType: "dreamweaver.moment_created", label: "Dreamweaver Moments", key: "dreamweaverMoments" },
+  { eventType: "cs.proactive_intervention", label: "CS Interventions", key: "csInterventions" },
+  { eventType: "conversion.funnel_analysis", label: "Funnel Analyses", key: "funnelAnalyses" },
+  { eventType: "market.signal_detected", label: "Market Signals", key: "marketSignals" },
+  { eventType: "tech.horizon_signal", label: "Tech Horizon Signals", key: "techHorizonSignals" },
+  { eventType: "ops.bug_detected", label: "Bugs Detected", key: "bugsDetected" },
+  { eventType: "ops.orphan_detected", label: "Orphans Detected", key: "orphansDetected" },
+  { eventType: "cmo.content_brief", label: "Content Briefs", key: "contentBriefs" },
+  { eventType: "content.performance_brief", label: "Performance Briefs", key: "performanceBriefs" },
+  { eventType: "content.trend_detected", label: "Trends Detected", key: "trendsDetected" },
+  { eventType: "cs_coach.pattern_update", label: "CS Coach Updates", key: "csCoachUpdates" },
+  { eventType: "learning.weekly_calibration", label: "Learning Calibrations", key: "learningCalibrations" },
+  { eventType: "seo.page_analysis", label: "SEO Analyses", key: "seoAnalyses" },
+  { eventType: "aeo.search_presence", label: "AEO Presence", key: "aeoPresence" },
+  { eventType: "content.ghost_writer_extract", label: "Ghost Writer Extracts", key: "ghostWriterExtracts" },
 ];
 
 // ── Core ────────────────────────────────────────────────────────────
@@ -103,6 +151,34 @@ export async function runMorningBriefing(): Promise<MorningBriefingSummary> {
     }
   }
 
+  // Aggregate all 16 agent activity event types
+  const agentActivity: AgentActivitySection[] = [];
+  const agentCounts: Record<string, number> = {};
+
+  for (const mapping of AGENT_EVENT_TYPES) {
+    const matched = events.filter((e) => e.event_type === mapping.eventType);
+    agentCounts[mapping.key] = matched.length;
+
+    if (matched.length > 0) {
+      agentActivity.push({
+        eventType: mapping.eventType,
+        label: mapping.label,
+        count: matched.length,
+        details: matched.map((e) => {
+          const props =
+            typeof e.properties === "string"
+              ? JSON.parse(e.properties)
+              : e.properties || {};
+          return {
+            orgId: e.org_id,
+            summary: props.summary ?? props.message ?? props.title ?? mapping.label,
+            timestamp: e.created_at?.toISOString?.() ?? String(e.created_at),
+          };
+        }),
+      });
+    }
+  }
+
   // Determine the top event (most impactful signal)
   const topEvent = determineTopEvent(events);
 
@@ -116,6 +192,23 @@ export async function runMorningBriefing(): Promise<MorningBriefingSummary> {
     clientHealth,
     milestones,
     topEvent,
+    intelligenceFindings: agentCounts["intelligenceFindings"] ?? 0,
+    dreamweaverMoments: agentCounts["dreamweaverMoments"] ?? 0,
+    csInterventions: agentCounts["csInterventions"] ?? 0,
+    funnelAnalyses: agentCounts["funnelAnalyses"] ?? 0,
+    marketSignals: agentCounts["marketSignals"] ?? 0,
+    techHorizonSignals: agentCounts["techHorizonSignals"] ?? 0,
+    bugsDetected: agentCounts["bugsDetected"] ?? 0,
+    orphansDetected: agentCounts["orphansDetected"] ?? 0,
+    contentBriefs: agentCounts["contentBriefs"] ?? 0,
+    performanceBriefs: agentCounts["performanceBriefs"] ?? 0,
+    trendsDetected: agentCounts["trendsDetected"] ?? 0,
+    csCoachUpdates: agentCounts["csCoachUpdates"] ?? 0,
+    learningCalibrations: agentCounts["learningCalibrations"] ?? 0,
+    seoAnalyses: agentCounts["seoAnalyses"] ?? 0,
+    aeoPresence: agentCounts["aeoPresence"] ?? 0,
+    ghostWriterExtracts: agentCounts["ghostWriterExtracts"] ?? 0,
+    agentActivity,
   };
 
   // Store in morning_briefings table
@@ -147,6 +240,11 @@ export async function runMorningBriefing(): Promise<MorningBriefingSummary> {
   }
 
   // Log the briefing event
+  const agentActivityTotals: Record<string, number> = {};
+  for (const section of agentActivity) {
+    agentActivityTotals[section.eventType] = section.count;
+  }
+
   await db("behavioral_events")
     .insert({
       id: db.raw("gen_random_uuid()"),
@@ -158,15 +256,21 @@ export async function runMorningBriefing(): Promise<MorningBriefingSummary> {
         competitor_moves: competitorMoves,
         reviews_received: reviewsReceived,
         milestones,
+        agent_activity: agentActivityTotals,
       }),
       created_at: new Date(),
     })
     .catch(() => {});
 
+  const activeAgentSections = agentActivity
+    .map((s) => `${s.count} ${s.label.toLowerCase()}`)
+    .join(", ");
+
   console.log(
     `[MorningBriefing] Assembled for ${today}: ${events.length} events, ` +
       `${newSignups} signups, ${competitorMoves} competitor moves, ` +
-      `${reviewsReceived} reviews, ${milestones} milestones`,
+      `${reviewsReceived} reviews, ${milestones} milestones` +
+      (activeAgentSections ? `, ${activeAgentSections}` : ""),
   );
 
   return summary;
@@ -212,12 +316,42 @@ function determineTopEvent(
     return `${signups.length} new signup(s) overnight.`;
   }
 
+  // Check for bugs detected (ops issue, high priority)
+  const bugs = events.filter((e) => e.event_type === "ops.bug_detected");
+  if (bugs.length > 0) {
+    return `${bugs.length} bug(s) detected overnight. Review needed.`;
+  }
+
+  // Check for CS proactive interventions
+  const csInterventions = events.filter(
+    (e) => e.event_type === "cs.proactive_intervention",
+  );
+  if (csInterventions.length > 0) {
+    return `${csInterventions.length} proactive CS intervention(s) triggered.`;
+  }
+
+  // Check for intelligence findings
+  const findings = events.filter(
+    (e) => e.event_type === "intelligence.finding",
+  );
+  if (findings.length > 0) {
+    return `${findings.length} intelligence finding(s) surfaced overnight.`;
+  }
+
   // Check for milestones
   const mileEvents = events.filter((e) =>
     MILESTONE_EVENTS.includes(e.event_type),
   );
   if (mileEvents.length > 0) {
     return `${mileEvents.length} milestone(s) achieved.`;
+  }
+
+  // Check for market signals
+  const marketSignals = events.filter(
+    (e) => e.event_type === "market.signal_detected",
+  );
+  if (marketSignals.length > 0) {
+    return `${marketSignals.length} market signal(s) detected.`;
   }
 
   if (events.length === 0) {

@@ -58,6 +58,9 @@ const AGENT_MODEL_MAP: Record<string, ModelTier> = {
   marketSignalScout: "fast",
   technologyHorizon: "fast",
   weeklyDigest: "fast",
+  trendScout: "fast",
+  weeklyScoreRecalc: "fast",
+  programmaticSEOAgent: "fast",
 
   // Tier 2: Standard (sonnet) -- analysis, reasoning, drafting
   intelligenceAgent: "standard",
@@ -68,6 +71,10 @@ const AGENT_MODEL_MAP: Record<string, ModelTier> = {
   learningAgent: "standard",
   dreamweaver: "standard",
   clientMonitor: "standard",
+  csCoach: "standard",
+  mondayChain: "standard",
+  ghostWriter: "standard",
+  contentAgent: "standard",
 
   // Tier 3: Judgment (opus) -- gates, legal, financial, conflicts
   systemConductor: "judgment",
