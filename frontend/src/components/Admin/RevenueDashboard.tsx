@@ -42,8 +42,23 @@ const TIER_PRICING: Record<string, number> = {
   DFY: 2497,
 };
 
-function orgMonthlyRate(org: { subscription_tier?: string | null }): number {
-  return TIER_PRICING[org.subscription_tier || "DWY"] ?? 997;
+// Actual contracted rates per org (until Stripe billing is wired)
+const ORG_MONTHLY_RATE: Record<number, number> = {
+  5: 2000,   // Garrison Orthodontics
+  6: 3500,   // DentalEMR
+  8: 1500,   // Artful Orthodontics
+  21: 0,     // McPherson Endodontics (beta)
+  25: 5000,  // Caswell Orthodontics (3 locations)
+  34: 0,     // Alloro (team org)
+  39: 1500,  // One Endodontics
+  42: 0,     // Valley Endodontics (demo)
+};
+
+function orgMonthlyRate(org: { id?: number; subscription_tier?: string | null }): number {
+  if (org.id !== undefined && ORG_MONTHLY_RATE[org.id] !== undefined) {
+    return ORG_MONTHLY_RATE[org.id];
+  }
+  return TIER_PRICING[org.subscription_tier || "DWY"] ?? 0;
 }
 
 function monthsActive(startDate: string | null): number {

@@ -171,13 +171,22 @@ async function buildSystemContext(userEmail: string): Promise<string> {
           .catch(() => []),
       ]);
 
-    // Calculate revenue
-    const tierPricing: Record<string, number> = { DWY: 997, DFY: 2497 };
+    // Calculate revenue using actual contracted rates
+    const orgMonthlyRate: Record<number, number> = {
+      5: 2000,   // Garrison Orthodontics
+      6: 3500,   // DentalEMR
+      8: 1500,   // Artful Orthodontics
+      21: 0,     // McPherson Endodontics (beta)
+      25: 5000,  // Caswell Orthodontics (3 locations)
+      34: 0,     // Alloro (team org)
+      39: 1500,  // One Endodontics
+      42: 0,     // Valley Endodontics (demo)
+    };
     const activeOrgs = orgs.filter(
       (o: any) => o.subscription_status === "active" || o.subscription_tier
     );
     const mrr = activeOrgs.reduce(
-      (sum: number, o: any) => sum + (tierPricing[o.subscription_tier || "DWY"] ?? 0),
+      (sum: number, o: any) => sum + (orgMonthlyRate[o.id] ?? 0),
       0
     );
 

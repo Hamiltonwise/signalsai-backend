@@ -52,7 +52,9 @@ const ORG_MONTHLY_RATE: Record<number, number> = {
   8: 1500,   // Artful Orthodontics
   21: 0,     // McPherson Endodontics (beta)
   25: 5000,  // Caswell Orthodontics (3 locations)
+  34: 0,     // Alloro (team org)
   39: 1500,  // One Endodontics
+  42: 0,     // Valley Endodontics (demo)
 };
 // Fallback for any org not in the map
 const DEFAULT_TIER_PRICING: Record<string, number> = { DWY: 997, DFY: 2497 };
