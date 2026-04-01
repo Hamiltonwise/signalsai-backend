@@ -86,7 +86,7 @@ export default function AlloroActivityCard() {
       <div className="flex items-center gap-2.5 mb-4">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" style={{ animationDuration: '3s' }} />
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/40">
-          <TailorText editKey="dashboard.activity.title" defaultText="What your agents did this week" as="span" className="" />
+          <TailorText editKey="dashboard.activity.title" defaultText="What happened this week" as="span" className="" />
         </p>
       </div>
       <div className="space-y-2.5">

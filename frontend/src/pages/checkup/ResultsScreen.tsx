@@ -697,6 +697,61 @@ export default function ResultsScreen() {
 
   const { place, score, topCompetitor, findings, totalImpact, market } = state;
 
+  // Non-local business detection: software companies, online-only, no meaningful GBP
+  const NON_LOCAL_TYPES = ["software_company", "corporate_office", "headquarters"];
+  const NON_LOCAL_CATEGORIES = ["software", "technology", "saas", "emr", "erp", "crm", "app"];
+  const isNonLocal = (() => {
+    const cat = (place.category || "").toLowerCase();
+    const types = (place.types || []).map((t: string) => t.toLowerCase());
+    if (NON_LOCAL_TYPES.some(t => types.includes(t))) return true;
+    if (NON_LOCAL_CATEGORIES.some(c => cat.includes(c))) return true;
+    // If no competitors found AND no reviews AND no rating, likely not a local service business
+    if (market && market.totalCompetitors === 0 && !place.reviewCount && !place.rating) return true;
+    return false;
+  })();
+
+  // Honest gate for non-local businesses
+  if (isNonLocal) {
+    return (
+      <div className="w-full max-w-md mt-2 sm:mt-6 space-y-6 pb-6 text-center">
+        <div className="card-primary p-8">
+          <div className="w-14 h-14 rounded-2xl bg-[#D56753]/8 flex items-center justify-center mx-auto mb-5">
+            <Globe className="w-6 h-6 text-[#D56753]" />
+          </div>
+          <h2 className="text-xl font-bold text-[#212D40] font-heading">
+            We built this for local service businesses.
+          </h2>
+          <p className="text-sm text-[#212D40]/60 mt-4 leading-relaxed">
+            Alloro reads local markets: competitors, reviews, visibility, referral patterns.
+            {place.name} looks like it operates differently, and we don't want to give you
+            data that isn't useful.
+          </p>
+          <p className="text-sm text-[#212D40]/60 mt-3 leading-relaxed">
+            If we're wrong about this, or if you'd like to know when Alloro
+            supports your type of business, we'd genuinely like to hear from you.
+          </p>
+          <a
+            href={`mailto:corey@getalloro.com?subject=${encodeURIComponent(place.name + " - Alloro Checkup")}&body=${encodeURIComponent("Hi Corey,\n\nI tried the checkup for " + place.name + " and got the non-local business message. Here's what I was hoping to learn:\n\n")}`}
+            className="btn-primary btn-press inline-flex items-center gap-2 mt-6"
+          >
+            Tell us what you were looking for
+            <ArrowRight className="w-4 h-4" />
+          </a>
+          <p className="text-xs text-[#212D40]/30 mt-4">
+            Corey reads every one of these personally.
+          </p>
+        </div>
+
+        <Link
+          to="/checkup"
+          className="text-sm text-[#D56753] font-medium hover:underline"
+        >
+          Try a different business
+        </Link>
+      </div>
+    );
+  }
+
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (emailSending) return;

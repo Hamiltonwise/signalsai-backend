@@ -104,25 +104,30 @@ function deriveSpecialtyFromName(name: string, category: string): string {
 
   const rules: Array<{ keywords: string[]; specialty: string }> = [
     // Dental specialties (Google calls them all "Dentist")
-    { keywords: ["endodontic", "endo ", "root canal"],       specialty: "endodontist" },
-    { keywords: ["orthodontic", "ortho ", "braces"],         specialty: "orthodontist" },
-    { keywords: ["periodontic", "perio ", "gum"],            specialty: "periodontist" },
+    // Note: "endo" without trailing space catches "Surf City Endo" at end of name
+    { keywords: ["endodontic", "endo"],                      specialty: "endodontist" },
+    { keywords: ["orthodontic", "ortho "],                   specialty: "orthodontist" },
+    { keywords: ["periodontic", "perio "],                   specialty: "periodontist" },
     { keywords: ["prosthodontic"],                           specialty: "prosthodontist" },
     { keywords: ["pediatric dent", "children"],              specialty: "pediatric dentist" },
     { keywords: ["oral surg"],                               specialty: "oral surgeon" },
     // Medical
-    { keywords: ["oculofacial", "oculoplastic"],                specialty: "oculofacial surgeon" },
-    { keywords: ["facial plastic"],                             specialty: "plastic surgeon" },
-    { keywords: ["med spa", "medspa", "medical spa", "aesthetics"], specialty: "medspa" },
+    { keywords: ["oculofacial", "oculoplastic"],             specialty: "oculofacial surgeon" },
+    { keywords: ["facial plastic"],                          specialty: "plastic surgeon" },
+    { keywords: ["med spa", "medspa", "medical spa", "aesthetics"], specialty: "med spa" },
     { keywords: ["chiropractic", "chiropractor"],            specialty: "chiropractor" },
     { keywords: ["optometr", "eye care", "vision"],          specialty: "optometrist" },
     { keywords: ["veterinar", "animal", "pet"],              specialty: "veterinarian" },
     // Personal services
     { keywords: ["barber"],                                  specialty: "barber" },
     { keywords: ["physical therap", "pt "],                  specialty: "physical therapist" },
+    // Landscape / outdoor
+    { keywords: ["garden design", "landscape design"],       specialty: "garden designer" },
+    { keywords: ["landscap"],                                specialty: "landscaper" },
     // Professional services
     { keywords: ["law ", "attorney", "legal"],               specialty: "attorney" },
     { keywords: ["cpa", "accounting", "tax"],                specialty: "accountant" },
+    { keywords: ["photograph"],                              specialty: "photographer" },
   ];
 
   for (const rule of rules) {
@@ -228,6 +233,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       optometrist: { avgCaseValue: 300, conversionRate: 0.02 },
       veterinarian: { avgCaseValue: 250, conversionRate: 0.03 },
       "med spa": { avgCaseValue: 600, conversionRate: 0.025 },
+      medspa: { avgCaseValue: 600, conversionRate: 0.025 },
       dermatologist: { avgCaseValue: 400, conversionRate: 0.02 },
       "plastic surgeon": { avgCaseValue: 8000, conversionRate: 0.01 },
       // Professional services

@@ -323,7 +323,7 @@ function getRetentionResponse(reason: CancelReason, orgName: string): {
     case "not_using":
       return {
         headline: "That's on us, not you.",
-        body: `If ${orgName}'s intelligence hasn't been useful, we want to fix that. Would a quick walkthrough of what your agents found this month help? Or you can pause and come back when you're ready.`,
+        body: `If ${orgName}'s intelligence hasn't been useful, we want to fix that. Would a quick walkthrough of what we found this month help? Or you can pause and come back when you're ready.`,
         offerPause: true,
         offerHelp: true,
       };
