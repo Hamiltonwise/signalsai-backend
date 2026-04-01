@@ -34,12 +34,11 @@ activityRoutes.get(
         .where("created_at", ">=", sevenDaysAgo)
         .orderBy("created_at", "desc")
         .limit(20)
-        .select("event_type as type", "properties", "metadata", "created_at");
+        .select("event_type as type", "properties", "created_at");
 
-      // Normalize: some events use properties, others use metadata
       const normalized = events.map((e: any) => ({
         type: e.type,
-        properties: e.properties || e.metadata || {},
+        properties: e.properties || {},
         created_at: e.created_at,
       }));
 

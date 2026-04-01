@@ -224,7 +224,7 @@ exportRoutes.get(
             .where({ organization_id: orgId })
             .orderBy("created_at", "desc")
             .limit(500)
-            .select("event_type", "created_at", "metadata")
+            .select("event_type", "created_at", "properties")
         : [];
 
       // Checkup data
