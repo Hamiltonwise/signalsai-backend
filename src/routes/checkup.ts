@@ -13,6 +13,7 @@ import { OrganizationUserModel } from "../models/OrganizationUserModel";
 import { generateReferralCode } from "../utils/referralCode";
 import { generateToken } from "../controllers/auth-otp/feature-services/service.jwt-management";
 import { sendCheckupResultEmail } from "../emails/templates/CheckupResultEmail";
+import { sendWelcomeCheckupEmail } from "../emails/templates/WelcomeCheckupEmail";
 import { BehavioralEventModel } from "../models/BehavioralEventModel";
 import { analyzeReviewSentiment } from "../services/reviewSentiment";
 import { generateOzMoments, type OzMoment } from "../services/ozMoment";
@@ -1744,6 +1745,39 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       console.log(`[Checkup] Week 1 Win enqueued for org ${org.id} (fires in 24h)`);
     } catch (w1Err: any) {
       console.error(`[Checkup] Failed to enqueue Week 1 Win:`, w1Err.message);
+    }
+
+    // Send instant welcome email (synchronous, no Redis needed)
+    try {
+      const parsed = typeof checkup_data === "string" ? JSON.parse(checkup_data) : checkup_data;
+      const topCompetitor = parsed?.topCompetitor;
+      const competitorName = typeof topCompetitor === "string"
+        ? topCompetitor
+        : topCompetitor?.name || null;
+
+      // Extract the top finding from checkup data
+      const findings = parsed?.findings || [];
+      const firstFinding = findings[0];
+      const topFinding = firstFinding
+        ? (typeof firstFinding === "string" ? firstFinding : firstFinding.detail || firstFinding.title || null)
+        : parsed?.findingSummary || null;
+
+      // Derive first name from email (before the @, capitalize first letter)
+      const emailPrefix = normalizedEmail.split("@")[0].replace(/[._-]/g, " ");
+      const firstName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1).split(" ")[0];
+
+      await sendWelcomeCheckupEmail({
+        recipientEmail: normalizedEmail,
+        firstName,
+        practiceName: practice_name || "",
+        checkupScore: checkup_score || null,
+        topFinding,
+        topCompetitorName: competitorName,
+      });
+      console.log(`[Checkup] Welcome email sent to ${normalizedEmail}`);
+    } catch (welcomeErr: any) {
+      // Email failure must never block account creation
+      console.error(`[Checkup] Welcome email failed (non-blocking):`, welcomeErr.message);
     }
 
     return res.json({
