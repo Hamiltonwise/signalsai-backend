@@ -734,7 +734,9 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings.push({
         type: "rating_strong",
         title: "Rating Makes a Strong First Impression",
-        detail: `Your ${clientRating}★ rating ${clientRating > avgRating ? "stands out above" : "matches"} the market average of ${avgRating.toFixed(1)}★. Prospects trust what they see.`,
+        detail: avgRating > 0
+          ? `Your ${clientRating}★ rating ${clientRating > avgRating ? "stands out above" : "matches"} the market average of ${avgRating.toFixed(1)}★. Prospects trust what they see.`
+          : `Your ${clientRating}★ rating makes a strong first impression. Prospects trust what they see.`,
         value: clientRating - avgRating,
         impact: 0,
       });
