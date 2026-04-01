@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import authPassword from "../api/auth-password";
@@ -7,6 +7,7 @@ import { isSuperAdminEmail } from "../constants/superAdmins";
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,10 +40,17 @@ export default function SignIn() {
 
         setMessage("Success! Redirecting...");
 
-        // Super admins go to HQ Command Center, everyone else to dashboard
-        const destination = isSuperAdminEmail(email)
-          ? "/hq/command"
-          : "/dashboard";
+        // Deep link support: honor ?redirect= if present
+        const redirectParam = searchParams.get("redirect");
+        let destination: string;
+        if (redirectParam && redirectParam.startsWith("/")) {
+          destination = redirectParam;
+        } else {
+          // Super admins go to HQ Command Center, everyone else to dashboard
+          destination = isSuperAdminEmail(email)
+            ? "/hq/command"
+            : "/dashboard";
+        }
 
         setTimeout(() => {
           window.location.href = destination;

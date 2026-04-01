@@ -14,6 +14,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Navigate, useNavigate, Link } from "react-router-dom";
 import { ArrowRight, Search, MapPin, Loader2, Heart, Shield, Users, Star } from "lucide-react";
 import { getPriorityItem } from "../../hooks/useLocalStorage";
+import { isSuperAdminEmail } from "../../constants/superAdmins";
 import { trackEvent } from "../../api/tracking";
 import MarketingLayout from "../../components/marketing/MarketingLayout";
 
@@ -121,7 +122,11 @@ function CheckupInput({ id, dark = false }: CheckupInputProps) {
 
 export default function HomePage() {
   const isAuthenticated = !!getPriorityItem("auth_token") || !!getPriorityItem("token");
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  if (isAuthenticated) {
+    const userEmail = getPriorityItem("user_email");
+    const destination = isSuperAdminEmail(userEmail) ? "/hq/command" : "/dashboard";
+    return <Navigate to={destination} replace />;
+  }
 
   return (
     <MarketingLayout

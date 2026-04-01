@@ -1,13 +1,14 @@
 import { Navigate } from "react-router-dom";
 import { getPriorityItem } from "../hooks/useLocalStorage";
+import { isSuperAdminEmail } from "../constants/superAdmins";
 
 interface PublicRouteProps {
   children: React.ReactNode;
 }
 
 /**
- * PublicRoute component that redirects authenticated users to dashboard.
- * Used for signin/signup pages to prevent logged-in users from accessing them.
+ * PublicRoute component that redirects authenticated users based on role.
+ * Super admins land on /hq/command, customers land on /dashboard.
  * Checks for JWT token in storage (context-free for route-level protection).
  */
 export const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
@@ -17,7 +18,9 @@ export const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
   const isAuthenticated = !!authToken || !!token;
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    const userEmail = getPriorityItem("user_email");
+    const destination = isSuperAdminEmail(userEmail) ? "/hq/command" : "/dashboard";
+    return <Navigate to={destination} replace />;
   }
 
   return <>{children}</>;
