@@ -91,7 +91,13 @@ export function getSharedRedis(): IORedis {
 export async function isRedisHealthy(): Promise<boolean> {
   try {
     const redis = getSharedRedis();
-    const result = await redis.ping();
+    // 2-second timeout so health endpoint never blocks
+    const result = await Promise.race([
+      redis.ping(),
+      new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error("Redis ping timeout")), 2000)
+      ),
+    ]);
     return result === "PONG";
   } catch {
     return false;
