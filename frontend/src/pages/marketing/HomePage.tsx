@@ -227,21 +227,21 @@ export default function HomePage() {
             Not a mockup. The actual product.
           </h2>
           <div className="grid sm:grid-cols-3 gap-6">
-            <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+            <div className="rounded-2xl overflow-hidden shadow-warm border border-[#D56753]/8">
               <img src="/product-checkup.png" alt="Alloro Checkup: See where you rank in 60 seconds" className="w-full" loading="lazy" />
               <div className="p-4">
                 <p className="text-sm font-bold text-[#212D40]">The Checkup</p>
                 <p className="text-xs text-[#212D40]/60 mt-1">Type your name. See your score, your competitors, and your one action. 60 seconds.</p>
               </div>
             </div>
-            <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+            <div className="rounded-2xl overflow-hidden shadow-warm border border-[#D56753]/8">
               <img src="/product-dashboard.png" alt="Alloro Dashboard: Your business clarity at a glance" className="w-full" loading="lazy" />
               <div className="p-4">
                 <p className="text-sm font-bold text-[#212D40]">Your Dashboard</p>
                 <p className="text-xs text-[#212D40]/60 mt-1">One Action Card. Market position. Website status. All in one view.</p>
               </div>
             </div>
-            <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+            <div className="rounded-2xl overflow-hidden shadow-warm border border-[#D56753]/8">
               <img src="/product-rankings.png" alt="Alloro Rankings: See every competitor in your market" className="w-full" loading="lazy" />
               <div className="p-4">
                 <p className="text-sm font-bold text-[#212D40]">Your Rankings</p>

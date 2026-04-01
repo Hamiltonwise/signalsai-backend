@@ -82,23 +82,23 @@ export default function AlloroActivityCard() {
   if (described.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+    <div className="card-supporting">
+      <div className="flex items-center gap-2.5 mb-4">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" style={{ animationDuration: '3s' }} />
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/40">
           <TailorText editKey="dashboard.activity.title" defaultText="What your agents did this week" as="span" className="" />
         </p>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {described.map((item, i) => (
-          <div key={i} className="flex items-start gap-2.5">
-            <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-[#D56753]/40 mt-1.5" />
-            <p className="text-xs text-[#212D40]/70 leading-snug">{item.text}</p>
+          <div key={i} className="flex items-start gap-2.5" style={{ animation: `fade-in-up 0.3s ease-out ${i * 0.06}s both` }}>
+            <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-[#D56753]/30 mt-1.5" />
+            <p className="text-xs text-[#212D40]/60 leading-relaxed">{item.text}</p>
           </div>
         ))}
       </div>
       {events.length > 5 && (
-        <p className="text-[10px] text-gray-400 mt-3">
+        <p className="text-[10px] text-[#D56753]/30 mt-4 font-heading italic">
           +{events.length - 5} more this week. You didn't do any of this. They did.
         </p>
       )}

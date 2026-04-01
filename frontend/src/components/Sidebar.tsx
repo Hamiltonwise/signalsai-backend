@@ -81,16 +81,16 @@ const NavItem = ({
       isLocked
         ? "opacity-40 cursor-not-allowed"
         : active
-        ? "bg-alloro-sidehover text-white shadow-sm border border-white/5"
-        : "text-white/40 hover:text-white hover:bg-alloro-sidehover"
+        ? "bg-alloro-sidehover text-white shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] border border-white/5"
+        : "text-white/40 hover:text-white/80 hover:bg-alloro-sidehover/60"
     }`}
   >
     <div className={minimized ? "" : "flex items-center gap-3.5"}>
       <div
-        className={`transition-transform duration-300 ${
+        className={`transition-all duration-300 ${
           active
-            ? "scale-110 text-alloro-orange"
-            : "opacity-40 group-hover:opacity-100"
+            ? "scale-110 text-alloro-orange drop-shadow-[0_0_6px_rgba(214,104,83,0.4)]"
+            : "opacity-40 group-hover:opacity-80"
         }`}
       >
         {icon}

@@ -17,7 +17,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2,
-  Circle,
   ChevronRight,
   X,
   BarChart3,
@@ -154,28 +153,28 @@ export default function OnboardingChecklist({
   // All complete: show quiet success card
   if (allComplete) {
     return (
-      <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-5 py-4 text-center">
-        <p className="text-sm font-semibold text-emerald-800">
-          You're set up. See you Monday.
+      <div className="card-featured px-5 py-4 text-center">
+        <p className="text-sm font-semibold text-emerald-700">
+          You're set up. Your agents are working. See you Monday.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="card-primary">
       {/* Header -- IKEA effect: "building", not "completing" */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-5">
         <div>
           <TailorText editKey="dashboard.checklist.title" defaultText="Building your intelligence" as="p" className="text-sm font-bold text-[#212D40]" />
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-[#D56753]/50 mt-1 font-medium">
             {completed} of {steps.length} complete
           </p>
         </div>
         {canDismiss && (
           <button
             onClick={() => { setDismissed(true); onDismiss(); }}
-            className="p-1 text-gray-300 hover:text-gray-500 transition-colors"
+            className="p-1.5 text-gray-300 hover:text-gray-500 transition-colors rounded-lg hover:bg-gray-50"
             aria-label="Dismiss"
           >
             <X className="h-4 w-4" />
@@ -184,32 +183,36 @@ export default function OnboardingChecklist({
       </div>
 
       {/* Progress bar */}
-      <div className="h-1.5 bg-gray-100 rounded-full mb-4 overflow-hidden">
+      <div className="h-2 bg-[#D56753]/[0.06] rounded-full mb-5 overflow-hidden">
         <div
-          className="h-full bg-[#D56753] rounded-full transition-all duration-500"
-          style={{ width: `${(completed / steps.length) * 100}%` }}
+          className="h-full rounded-full transition-all duration-700 ease-out"
+          style={{
+            width: `${(completed / steps.length) * 100}%`,
+            background: 'linear-gradient(90deg, #D56753, #E07A66)',
+          }}
         />
       </div>
 
       {/* Steps */}
       <div className="space-y-2">
-        {steps.map((step) => (
+        {steps.map((step, i) => (
           <button
             key={step.id}
             onClick={step.complete ? undefined : step.action}
             disabled={step.complete}
-            className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-all ${
+            className={`w-full flex items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-all duration-200 ${
               step.complete
                 ? step.autoCompleted
-                  ? "bg-emerald-50/50 border border-emerald-100"
-                  : "bg-gray-50 opacity-60"
-                : "bg-white hover:bg-[#D56753]/[0.02] hover:border-[#D56753]/20 border border-gray-100"
+                  ? "bg-gradient-to-r from-emerald-50/60 to-emerald-50/30 border border-emerald-200/40"
+                  : "bg-gray-50/50 opacity-60"
+                : "bg-white hover:bg-[#FFF9F7] border border-[#D56753]/8 hover:border-[#D56753]/20 shadow-sm hover:shadow-warm"
             }`}
+            style={!step.complete ? { animation: `fade-in-up 0.3s ease-out ${i * 0.05}s both` } : undefined}
           >
             {step.complete ? (
               <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
             ) : (
-              <Circle className="h-5 w-5 text-gray-300 shrink-0" />
+              <div className="w-5 h-5 rounded-full border-2 border-[#D56753]/25 shrink-0" />
             )}
             <div className="flex-1 min-w-0">
               <p className={`text-sm font-medium ${
@@ -222,10 +225,10 @@ export default function OnboardingChecklist({
                 {step.title}
               </p>
               {!step.complete && (
-                <p className="text-[10px] text-gray-400 mt-0.5 italic">{step.anxiety}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{step.anxiety}</p>
               )}
               {step.complete && step.autoCompleted && (
-                <p className="text-[10px] text-emerald-500 mt-0.5">Done for you</p>
+                <p className="text-[10px] text-emerald-500 mt-0.5 font-medium">Done for you</p>
               )}
             </div>
             {!step.complete && (

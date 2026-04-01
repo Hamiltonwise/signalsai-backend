@@ -358,6 +358,102 @@ export const pageTransition: Variants = {
   },
 };
 
+// ─── Warm / Emotional Variants ──────────────────────────────────────
+
+// Celebration entrance (for achievements, wins, milestones)
+export const celebrateVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.8,
+    y: 20,
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 200,
+      damping: 15,
+      mass: 0.8,
+    },
+  },
+};
+
+// Warm card entrance (gentler, more personal than generic fade)
+export const warmCardVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 12,
+    scale: 0.99,
+  },
+  visible: (i: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      delay: i * 0.06,
+      duration: 0.5,
+      ease: [0.25, 0.46, 0.45, 0.94],
+    },
+  }),
+};
+
+// Gentle float for "working for you" indicators
+export const gentleFloat: Variants = {
+  initial: { y: 0 },
+  animate: {
+    y: [-2, 2, -2],
+    transition: {
+      duration: 4,
+      repeat: Infinity,
+      ease: "easeInOut",
+    },
+  },
+};
+
+// Score reveal (the moment a number appears)
+export const scoreReveal: Variants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.85,
+  },
+  visible: {
+    opacity: 1,
+    scale: [0.85, 1.06, 1],
+    transition: {
+      duration: 0.6,
+      times: [0, 0.6, 1],
+      ease: "easeOut",
+    },
+  },
+};
+
+// Warm stagger (slower, more deliberate than default)
+export const warmStagger: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.15,
+    },
+  },
+};
+
+// Success pulse (for achievements)
+export const successPulse: Variants = {
+  initial: { scale: 1 },
+  pulse: {
+    scale: [1, 1.02, 1],
+    transition: {
+      duration: 2,
+      repeat: 2,
+      ease: "easeInOut",
+    },
+  },
+};
+
 // Helper function to get score-based color
 export const getScoreColor = (score: number): "green" | "yellow" | "red" => {
   if (score >= 80) return "green";
@@ -365,27 +461,30 @@ export const getScoreColor = (score: number): "green" | "yellow" | "red" => {
   return "red";
 };
 
-// Color class mappings
+// Warm color class mappings (tinted, not flat)
 export const scoreColorClasses = {
   green: {
-    text: "text-green-600",
-    bg: "bg-green-500",
-    bgLight: "bg-green-100",
-    border: "border-green-200",
-    ring: "ring-green-500/20",
+    text: "text-emerald-600",
+    bg: "bg-emerald-500",
+    bgLight: "bg-emerald-50",
+    border: "border-emerald-200/60",
+    ring: "ring-emerald-500/15",
+    gradient: "from-emerald-50 to-white",
   },
   yellow: {
-    text: "text-yellow-600",
-    bg: "bg-yellow-500",
-    bgLight: "bg-yellow-100",
-    border: "border-yellow-200",
-    ring: "ring-yellow-500/20",
+    text: "text-amber-600",
+    bg: "bg-amber-500",
+    bgLight: "bg-amber-50",
+    border: "border-amber-200/60",
+    ring: "ring-amber-500/15",
+    gradient: "from-amber-50 to-white",
   },
   red: {
-    text: "text-red-600",
-    bg: "bg-red-500",
-    bgLight: "bg-red-100",
-    border: "border-red-200",
-    ring: "ring-red-500/20",
+    text: "text-[#D66853]",
+    bg: "bg-[#D66853]",
+    bgLight: "bg-[#D66853]/5",
+    border: "border-[#D66853]/20",
+    ring: "ring-[#D66853]/15",
+    gradient: "from-[#D66853]/5 to-white",
   },
 };

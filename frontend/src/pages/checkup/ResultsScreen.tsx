@@ -169,16 +169,23 @@ function ScoreRing({
 
   return (
     <div
-      className={`relative ${score >= 75 ? "animate-score-celebrate" : ""}`}
-      style={{ width: size, height: size }}
+      className="relative"
+      style={{ width: size, height: size, animation: 'score-reveal 0.8s ease-out' }}
     >
+      {/* Warm glow behind the ring for high scores */}
+      {score >= 75 && (
+        <div
+          className="absolute inset-0 rounded-full glow-success"
+          style={{ margin: -8 }}
+        />
+      )}
       <svg width={size} height={size} className="-rotate-90">
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#f1f5f9"
+          stroke="rgba(214, 104, 83, 0.06)"
           strokeWidth={strokeWidth}
         />
         <circle
@@ -191,10 +198,11 @@ function ScoreRing({
           strokeDasharray={circumference}
           strokeDashoffset={circumference - progress}
           strokeLinecap="round"
+          style={{ filter: score >= 75 ? 'drop-shadow(0 0 6px rgba(34, 197, 94, 0.3))' : undefined }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-4xl font-bold text-slate-900">{displayScore}</span>
+        <span className="text-4xl font-bold text-[#212D40]">{displayScore}</span>
         <span className={`text-sm font-semibold ${getScoreLabelColor(score)}`}>
           {getScoreLabel(score)}
         </span>
@@ -248,17 +256,21 @@ function SubScoreBar({
 
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-        <Icon className="w-4 h-4 text-slate-600" />
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+        pct >= 80 ? "bg-emerald-50" : pct >= 60 ? "bg-amber-50" : "bg-[#D56753]/8"
+      }`}>
+        <Icon className={`w-4 h-4 ${
+          pct >= 80 ? "text-emerald-600" : pct >= 60 ? "text-amber-600" : "text-[#D56753]"
+        }`} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-sm font-medium text-slate-700">{label}</span>
-          <span className="text-sm font-semibold text-slate-900">
+          <span className="text-sm font-medium text-[#212D40]/70">{label}</span>
+          <span className="text-sm font-semibold text-[#212D40]">
             {score}/{maxScore}
           </span>
         </div>
-        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-2 bg-[#D56753]/[0.06] rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-1000 ease-out ${
               pct >= 80
@@ -309,7 +321,13 @@ function FindingCard({
 
   return (
     <div
-      className={`relative ${isSentiment ? "bg-[#212D40] border-[#212D40]" : "bg-white border-slate-200"} border rounded-xl p-4 ${blurred ? "select-none" : ""}`}
+      className={`relative rounded-xl p-4 transition-all duration-300 ${
+        isSentiment
+          ? "bg-[#212D40] border border-[#212D40] shadow-lg"
+          : isPositive
+            ? "bg-gradient-to-r from-emerald-50/60 to-white border border-emerald-200/40"
+            : "bg-white border border-[#D56753]/10 hover:border-[#D56753]/20"
+      } ${blurred ? "select-none" : ""}`}
     >
       {blurred && (
         <div className="absolute inset-0 backdrop-blur-[6px] bg-white/60 rounded-xl z-10" />
@@ -317,20 +335,24 @@ function FindingCard({
       <div className="flex items-start gap-3">
         <div
           className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-            isSentiment ? "bg-[#D56753]/20" : isPositive ? "bg-emerald-50" : "bg-red-50"
+            isSentiment
+              ? "bg-[#D56753]/20"
+              : isPositive
+                ? "bg-emerald-100/80"
+                : "bg-[#D56753]/8"
           }`}
         >
           <Icon
-            className={`w-4 h-4 ${isSentiment ? "text-[#D56753]" : isPositive ? "text-emerald-600" : "text-red-500"}`}
+            className={`w-4 h-4 ${isSentiment ? "text-[#D56753]" : isPositive ? "text-emerald-600" : "text-[#D56753]"}`}
           />
         </div>
         <div className="min-w-0">
-          <p className={`text-sm font-semibold ${isSentiment ? "text-white" : "text-slate-900"}`}>
+          <p className={`text-sm font-semibold ${isSentiment ? "text-white" : "text-[#212D40]"}`}>
             {finding.title}
           </p>
-          <p className={`text-sm mt-0.5 ${isSentiment ? "text-white/70" : "text-slate-500"}`}>{finding.detail}</p>
+          <p className={`text-sm mt-1 leading-relaxed ${isSentiment ? "text-white/70" : "text-slate-500"}`}>{finding.detail}</p>
           {finding.impact > 0 && (
-            <p className="text-xs font-medium text-red-500 mt-1.5">
+            <p className="text-xs font-semibold text-[#D56753] mt-2">
               Est. ${finding.impact.toLocaleString()}/yr at risk
             </p>
           )}
@@ -966,15 +988,16 @@ export default function ResultsScreen() {
       {/* Oz Pearlman moments: the "how did they know that?" reveal */}
       {revealStage >= 1 && state.ozMoments && state.ozMoments.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/70">
             The pattern we spotted
           </p>
           {state.ozMoments.map((moment, i) => (
             <div
               key={i}
-              className={`rounded-2xl bg-[#212D40] p-5 space-y-2.5 transition-all duration-700 ${
+              className={`rounded-2xl bg-[#212D40] p-5 space-y-2.5 transition-all duration-700 shadow-lg ${
                 revealStage >= 2 ? "opacity-100 translate-y-0" : i === 0 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
+              style={{ animation: `fade-in-up 0.5s ease-out ${i * 0.15}s both` }}
             >
               <p className="text-[15px] font-bold text-white leading-snug">
                 {moment.hook}
@@ -982,8 +1005,8 @@ export default function ResultsScreen() {
               <p className="text-sm text-white/60 leading-relaxed">
                 {moment.implication}
               </p>
-              <div className="pt-1.5 border-t border-white/10">
-                <p className="text-xs text-[#D56753] font-medium">
+              <div className="pt-2 border-t border-white/8">
+                <p className="text-xs text-[#D56753] font-semibold">
                   {moment.action}
                 </p>
               </div>
@@ -1095,16 +1118,16 @@ export default function ResultsScreen() {
 
       {/* Blur Gate — Email Capture */}
       {!emailSubmitted ? (
-        <div className="bg-white border-2 border-[#D56753]/25 rounded-2xl p-7 shadow-[0_8px_30px_rgba(213,103,83,0.1)]">
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-[#D56753]/8 flex items-center justify-center">
+        <div className="bg-gradient-to-br from-white to-[#FFF9F7] border-2 border-[#D56753]/20 rounded-2xl p-7 shadow-warm-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 flex items-center justify-center">
               <Lock className="w-4 h-4 text-[#D56753]" />
             </div>
             <span className="text-base font-bold text-[#212D40]">
               {topCompetitor ? `Your ${topCompetitor.name} Comparison` : `Your ${cityLabel} Competitive Report`}
             </span>
           </div>
-          <p className="text-sm text-slate-600 mb-4 leading-relaxed">{blurGateCta}</p>
+          <p className="text-sm text-[#212D40]/70 mb-5 leading-relaxed">{blurGateCta}</p>
           {market && market.totalCompetitors > 3 && (
             <p className="text-[11px] text-slate-400 mb-4 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -1122,10 +1145,10 @@ export default function ResultsScreen() {
                 placeholder="Your work email"
                 autoComplete="email"
                 required
-                className={`w-full h-10 sm:h-12 px-3 sm:px-4 rounded-xl bg-slate-50 border text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-colors ${
+                className={`w-full h-10 sm:h-12 px-3 sm:px-4 rounded-xl border text-sm sm:text-base text-[#212D40] placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 ${
                   emailError
-                    ? "border-red-400 focus:border-red-400 focus:ring-red-400/10"
-                    : "border-slate-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
+                    ? "border-red-400 focus:border-red-400 focus:ring-red-400/10 bg-red-50/30"
+                    : "border-[#D56753]/15 bg-white focus:border-[#D56753] focus:ring-[#D56753]/10"
                 }`}
               />
               {emailSuggestion && (
@@ -1301,7 +1324,8 @@ export default function ResultsScreen() {
                 <button
                   type="submit"
                   disabled={emailSending}
-                  className="w-full h-[3.25rem] flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all disabled:opacity-70"
+                  className="w-full h-[3.25rem] flex items-center justify-center gap-2 rounded-xl text-white text-[15px] font-semibold shadow-[0_4px_16px_rgba(214,104,83,0.3),0_2px_4px_rgba(214,104,83,0.15)] hover:shadow-[0_8px_24px_rgba(214,104,83,0.35),0_2px_8px_rgba(214,104,83,0.2)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 disabled:opacity-70"
+                  style={{ background: 'linear-gradient(135deg, #D66853 0%, #C45A46 100%)' }}
                 >
                   {emailSending
                     ? "Creating your account..."

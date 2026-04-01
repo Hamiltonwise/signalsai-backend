@@ -81,7 +81,7 @@ export default function ThankYou() {
         </div>
 
         {/* P0: Monday time anchor, the most important line on the page */}
-        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 text-center">
+        <div className="rounded-2xl bg-gradient-to-br from-white to-[#FFF9F7] border border-[#D56753]/10 shadow-warm p-6 text-center">
           <p className="text-lg font-bold text-[#212D40] leading-snug">
             Monday at 7:15 AM, your first intelligence
             briefing lands in your inbox.

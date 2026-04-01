@@ -327,7 +327,7 @@ export default function EntryScreen() {
             onChange={(e) => handleInputChange(e.target.value)}
             placeholder="Search your business name..."
             autoComplete="off"
-            className="w-full h-[56px] pl-12 pr-12 rounded-2xl bg-white border border-slate-200 text-base text-[#212D40] placeholder:text-slate-400 shadow-[0_2px_12px_rgba(0,0,0,0.06)] transition-all focus:outline-none focus:border-[#D56753] focus:ring-4 focus:ring-[#D56753]/8 focus:shadow-[0_2px_20px_rgba(213,103,83,0.12)]"
+            className="w-full h-[56px] pl-12 pr-12 rounded-2xl bg-white border border-[#D56753]/10 text-base text-[#212D40] placeholder:text-slate-400 shadow-[0_2px_12px_rgba(214,104,83,0.04)] transition-all duration-200 focus:outline-none focus:border-[#D56753]/40 focus:ring-4 focus:ring-[#D56753]/8 focus:shadow-[0_2px_20px_rgba(214,104,83,0.1)]"
           />
           {isSearching && (
             <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#D56753] animate-spin" />
@@ -346,7 +346,7 @@ export default function EntryScreen() {
 
         {/* Autocomplete dropdown */}
         {suggestions.length > 0 && !selectedPlace && (
-          <ul className="absolute z-30 top-full mt-2 w-full bg-white border border-slate-200 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] overflow-hidden max-h-[60vh] overflow-y-auto">
+          <ul className="absolute z-30 top-full mt-2 w-full bg-white border border-[#D56753]/10 rounded-2xl shadow-warm-lg overflow-hidden max-h-[60vh] overflow-y-auto">
             {suggestions.map((s) => (
               <li key={s.placeId}>
                 <button
@@ -405,9 +405,9 @@ export default function EntryScreen() {
       )}
 
       {selectedPlace && !isSelecting && (
-        <div className="mt-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="mt-8 bg-gradient-to-br from-white to-[#FFF9F7] border border-[#D56753]/12 rounded-2xl p-6 shadow-warm-lg animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="flex items-start gap-4">
-            <div className="w-11 h-11 rounded-xl bg-[#D56753]/8 flex items-center justify-center shrink-0">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 flex items-center justify-center shrink-0">
               <MapPin className="w-5 h-5 text-[#D56753]" />
             </div>
             <div className="min-w-0">
@@ -426,24 +426,24 @@ export default function EntryScreen() {
           </div>
 
           {/* The One Question — optional, personal */}
-          <div className="mt-5 pt-4 border-t border-slate-100">
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">
-              <TailorText editKey="checkup.entry.questionLabel" defaultText="What do you wish you knew about your business?" as="span" className="text-xs font-medium text-slate-400" />
-              <span className="ml-1 text-slate-300">(optional)</span>
+          <div className="mt-5 pt-4 border-t border-[#D56753]/6">
+            <label className="block text-xs font-medium text-[#212D40]/40 mb-1.5">
+              <TailorText editKey="checkup.entry.questionLabel" defaultText="What do you wish you knew about your business?" as="span" className="text-xs font-medium text-[#212D40]/40" />
+              <span className="ml-1 text-[#212D40]/20">(optional)</span>
             </label>
             <input
               type="text"
               value={userQuestion}
               onChange={(e) => setUserQuestion(e.target.value)}
               placeholder={USER_QUESTION_PLACEHOLDERS[placeholderIndex]}
-              className="w-full h-10 px-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-[#212D40] placeholder:text-slate-300 transition-all focus:outline-none focus:border-[#D56753]/40 focus:ring-2 focus:ring-[#D56753]/8"
+              className="input-warm w-full"
             />
           </div>
 
           <button
             type="button"
             onClick={handleContinue}
-            className="mt-5 w-full h-[3.25rem] flex items-center justify-center gap-2 rounded-xl bg-[#D56753] text-white text-[15px] font-semibold shadow-[0_4px_14px_rgba(213,103,83,0.35)] hover:shadow-[0_6px_20px_rgba(213,103,83,0.45)] hover:brightness-105 active:scale-[0.98] transition-all"
+            className="btn-primary btn-press mt-5 w-full h-[3.25rem] flex items-center justify-center gap-2 text-[15px]"
           >
             <TailorText editKey="checkup.entry.cta" defaultText="Run My Checkup" as="span" />
             <ArrowRight className="w-4 h-4" />

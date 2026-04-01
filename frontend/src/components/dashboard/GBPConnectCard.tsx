@@ -21,7 +21,7 @@ export default function GBPConnectCard({ gbpConnected, orgId }: GBPConnectCardPr
   if (gbpConnected || !orgId) return null;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6">
+    <div className="card-supporting">
       <div className="flex items-start gap-4">
         {/* Google icon */}
         <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">

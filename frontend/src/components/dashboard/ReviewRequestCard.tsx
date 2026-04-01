@@ -126,7 +126,7 @@ export default function ReviewRequestCard({
 
   if (!placeId) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="card-supporting">
         <div className="flex items-center gap-2 mb-2">
           <Star className="w-5 h-5 text-[#D56753]" />
           <TailorText editKey="dashboard.reviews.title" defaultText="Get More Reviews" as="h3" className="text-base font-bold text-[#212D40]" />
@@ -139,7 +139,7 @@ export default function ReviewRequestCard({
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="card-supporting">
       {/* Header + stats */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

@@ -25,7 +25,7 @@ export default function LoadingSkeleton({
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="animate-pulse bg-gray-200 rounded"
+          className="skeleton"
           style={{
             width: i === count - 1 && count > 1 ? "75%" : width,
             height,
@@ -41,9 +41,11 @@ export default function LoadingSkeleton({
 export function CardSkeleton({ height = "7rem" }: { height?: string }) {
   return (
     <div
-      className="animate-pulse rounded-2xl border border-gray-200 bg-white"
+      className="rounded-2xl border border-[#D56753]/6 bg-gradient-to-br from-white to-[#FFF9F7]"
       style={{ height }}
-    />
+    >
+      <div className="h-full w-full skeleton-shimmer rounded-2xl" />
+    </div>
   );
 }
 
@@ -51,7 +53,7 @@ export function CardSkeleton({ height = "7rem" }: { height?: string }) {
 export function ScoreRingSkeleton() {
   return (
     <div className="flex justify-center py-4">
-      <div className="w-[180px] h-[180px] rounded-full border-[12px] border-gray-100 animate-pulse" />
+      <div className="w-[180px] h-[180px] rounded-full border-[12px] border-[#D56753]/[0.06] skeleton-shimmer" />
     </div>
   );
 }

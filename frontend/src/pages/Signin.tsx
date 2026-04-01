@@ -75,13 +75,13 @@ export default function SignIn() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-alloro-bg font-body">
       <div className="max-w-md w-full">
         {/* Main Card */}
-        <div className="relative p-8 rounded-2xl bg-white border border-slate-200 shadow-[0_4px_24px_rgba(0,0,0,0.08)]">
+        <div className="relative p-8 rounded-2xl bg-gradient-to-br from-white to-[#FFF9F7] border border-[#D56753]/10 shadow-warm-lg">
           {/* Logo/Brand */}
           <div className="flex justify-center mb-6">
             <img
               src="/logo.png"
               alt="Alloro"
-              className="w-14 h-14 rounded-xl shadow-lg shadow-blue-900/20"
+              className="w-14 h-14 rounded-xl shadow-warm"
             />
           </div>
 
@@ -136,7 +136,7 @@ export default function SignIn() {
                   onChange={(e) => setEmail(e.target.value)}
                   onKeyDown={handleKeyPress}
                   placeholder="Enter your work email"
-                  className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange outline-none transition-all placeholder:text-slate-400"
+                  className="w-full pl-10 pr-4 py-3 bg-white border border-[#D56753]/12 rounded-xl focus:ring-4 focus:ring-[#D56753]/10 focus:border-[#D56753] outline-none transition-all duration-200 placeholder:text-slate-400"
                   disabled={isLoading}
                   autoFocus
                 />
@@ -160,7 +160,7 @@ export default function SignIn() {
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={handleKeyPress}
                   placeholder="Enter your password"
-                  className="w-full pl-10 pr-12 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange outline-none transition-all placeholder:text-slate-400"
+                  className="w-full pl-10 pr-12 py-3 bg-white border border-[#D56753]/12 rounded-xl focus:ring-4 focus:ring-[#D56753]/10 focus:border-[#D56753] outline-none transition-all duration-200 placeholder:text-slate-400"
                   disabled={isLoading}
                 />
                 <button
@@ -195,7 +195,7 @@ export default function SignIn() {
             <button
               onClick={handleLogin}
               disabled={isLoading || !isFormValid}
-              className="w-full py-3 px-4 bg-alloro-orange hover:bg-blue-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg shadow-blue-900/20"
+              className="btn-primary btn-press w-full py-3 px-4 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
             >
               {isLoading ? (
                 <>

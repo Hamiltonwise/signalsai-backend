@@ -37,7 +37,7 @@ import {
 } from "@/lib/animations";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
-import { apiGet, apiPatch } from "@/api/index";
+import { apiGet, apiPatch, apiDelete } from "@/api/index";
 import agents from "@/api/agents";
 import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
 import OneActionCard from "@/components/dashboard/OneActionCard";
@@ -47,6 +47,9 @@ import AlloroActivityCard from "@/components/dashboard/AlloroActivityCard";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import { isConferenceMode } from "./checkup/conferenceFallback";
 import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
+import ScoreImprovementPlan from "@/components/dashboard/ScoreImprovementPlan";
+import CompetitorComparison from "@/components/dashboard/CompetitorComparison";
+import AddCompetitor from "@/components/dashboard/AddCompetitor";
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
 import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
 import StreakBadge from "@/components/dashboard/StreakBadge";
@@ -923,6 +926,22 @@ export default function DoctorDashboard() {
   const driftGPData = oneActionResponse?.driftGP ?? null;
   const competitorVelocityData = oneActionResponse?.competitorVelocity ?? null;
 
+  // Tracked competitors (side-by-side comparison)
+  const { data: trackedCompetitors, refetch: refetchCompetitors } = useQuery({
+    queryKey: ["tracked-competitors", orgId],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/competitors" });
+      return res?.success ? (res.competitors ?? []) : [];
+    },
+    enabled: !!orgId,
+    staleTime: 10 * 60_000,
+  });
+
+  const removeCompetitor = useCallback(async (placeId: string) => {
+    await apiDelete({ path: `/user/competitors/${encodeURIComponent(placeId)}` });
+    refetchCompetitors();
+  }, [refetchCompetitors]);
+
   // Merge: use checkup context as fallback when live ranking hasn't run yet
   const effectiveRanking: RankingData | null = rankingData ?? (checkupCtx?.data ? {
     rankPosition: checkupCtx.data.market?.rank ?? null,
@@ -1233,6 +1252,38 @@ export default function DoctorDashboard() {
               <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
             </motion.div>
           )}
+
+          {/* Score Improvement Plan — actionable steps to raise the score */}
+          <motion.div variants={cardVariants}>
+            <ScoreImprovementPlan />
+          </motion.div>
+
+          {/* Tracked Competitor Comparisons */}
+          {trackedCompetitors && trackedCompetitors.length > 0 && (
+            <>
+              {trackedCompetitors.map((comp: any) => (
+                <motion.div key={comp.placeId} variants={cardVariants}>
+                  <CompetitorComparison
+                    competitor={comp}
+                    clientRating={checkupCtx?.data?.place?.rating ?? effectiveRanking?.topCompetitor?.rating ?? 0}
+                    clientReviews={effectiveRanking?.clientReviews ?? checkupCtx?.data?.place?.reviewCount ?? 0}
+                    clientPhotos={checkupCtx?.data?.place?.photoCount ?? checkupCtx?.data?.place?.photos ?? 0}
+                    clientLastReviewDays={null}
+                    onRemove={removeCompetitor}
+                  />
+                </motion.div>
+              ))}
+            </>
+          )}
+
+          {/* Add/Track Competitor */}
+          <motion.div variants={cardVariants}>
+            <AddCompetitor
+              currentCount={trackedCompetitors?.length ?? 0}
+              maxCount={3}
+              onAdded={() => refetchCompetitors()}
+            />
+          </motion.div>
 
           {/* GBP Connect card — optional enhancement, not a gate.
               Shows below intelligence content as a soft prompt. */}

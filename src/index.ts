@@ -128,6 +128,8 @@ import contentRoutes from "./routes/content";
 import contentPublishRoutes from "./routes/admin/contentPublish";
 import adminTailorRoutes from "./routes/admin/tailor";
 import alloroLabsRoutes from "./routes/alloroLabs";
+import improvementPlanRoutes from "./routes/user/improvementPlan";
+import competitorRoutes from "./routes/user/competitors";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -344,6 +346,8 @@ app.use("/api/content", contentRoutes); // Public content API for dynamic articl
 app.use("/api/admin/content", contentPublishRoutes); // Admin content publishing pipeline
 app.use("/api/admin/tailor", adminTailorRoutes); // Tailor mode: inline text overrides
 app.use("/api/labs", alloroLabsRoutes); // Alloro Labs: anonymized benchmark data
+app.use("/api/user", improvementPlanRoutes); // Score Improvement Plan: actionable checkup improvements
+app.use("/api/user/competitors", competitorRoutes); // Tracked Competitors: side-by-side comparison
 
 // Sentry error handler — must be after all routes and before other error handlers
 Sentry.setupExpressErrorHandler(app);

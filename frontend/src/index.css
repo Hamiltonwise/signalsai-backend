@@ -15,59 +15,275 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: 'Literata', serif;
 }
 
-/* Alloro Utility Classes */
+/* ═══════════════════════════════════════════════════════════════
+   ALLORO WARM DESIGN SYSTEM
+   "Does it make a human feel understood before it makes them feel informed?"
+   Every utility class here should make the product feel like
+   someone who cares built it. Warm, not corporate. Personal, not data-driven.
+   ═══════════════════════════════════════════════════════════════ */
+
 @layer components {
+  /* ── Base Card System ───────────────────────────────────────── */
+
   .glass {
-    @apply bg-white border border-slate-200 shadow-sm;
+    @apply bg-white border border-slate-200/80 shadow-sm;
   }
   .glass-card {
-    @apply rounded-xl p-4;
+    @apply rounded-2xl p-5;
   }
   .glass-hover {
-    @apply transition-colors hover:bg-slate-50;
+    @apply transition-all duration-300 hover:bg-slate-50/50;
   }
-  
-  /* NEW: Premium Shadow */
+
+  /* ── Card Hierarchy ─────────────────────────────────────────── */
+
+  /* Primary card: the thing that matters most on the page */
+  .card-primary {
+    @apply bg-white rounded-2xl p-6;
+    border: 1px solid rgba(214, 104, 83, 0.15);
+    box-shadow:
+      0 1px 3px rgba(214, 104, 83, 0.06),
+      0 8px 24px rgba(214, 104, 83, 0.04);
+  }
+  .card-primary:hover {
+    border-color: rgba(214, 104, 83, 0.25);
+    box-shadow:
+      0 1px 3px rgba(214, 104, 83, 0.08),
+      0 12px 32px rgba(214, 104, 83, 0.07);
+    transform: translateY(-1px);
+  }
+
+  /* Supporting card: important but secondary */
+  .card-supporting {
+    @apply bg-white rounded-2xl p-6;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
+  }
+  .card-supporting:hover {
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.04);
+    transform: translateY(-1px);
+  }
+
+  /* Featured card: celebration, achievement, win */
+  .card-featured {
+    @apply bg-white rounded-2xl p-6 relative overflow-hidden;
+    border: 1.5px solid rgba(34, 197, 94, 0.2);
+    box-shadow:
+      0 1px 3px rgba(34, 197, 94, 0.06),
+      0 8px 24px rgba(34, 197, 94, 0.04);
+  }
+  .card-featured::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #22c55e, #34d399);
+    border-radius: 2px 2px 0 0;
+  }
+
+  /* Warm empty state: forward-looking, not broken */
+  .card-preparing {
+    @apply bg-white rounded-2xl p-6 relative overflow-hidden;
+    border: 1px solid rgba(214, 104, 83, 0.1);
+    background: linear-gradient(135deg, #FFFFFF 0%, #FFF9F7 100%);
+  }
+  .card-preparing::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(214, 104, 83, 0.3), transparent);
+    animation: preparing-pulse 3s ease-in-out infinite;
+  }
+
+  /* ── Shadow System (warm-tinted) ────────────────────────────── */
+
   .shadow-premium {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 20px rgba(33, 45, 64, 0.06), 0 1px 3px rgba(33, 45, 64, 0.04);
   }
-  
-  /* NEW: Soft Glow (for orange accent elements) */
+  .shadow-warm {
+    box-shadow: 0 4px 16px rgba(214, 104, 83, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+  .shadow-warm-lg {
+    box-shadow: 0 8px 32px rgba(214, 104, 83, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
   .shadow-soft-glow {
-    box-shadow: 0 0 20px rgba(214, 104, 83, 0.2);
+    box-shadow: 0 0 20px rgba(214, 104, 83, 0.15), 0 0 60px rgba(214, 104, 83, 0.05);
   }
-  
-  /* NEW: Inner Soft shadow */
   .shadow-inner-soft {
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
   }
-  
-  /* Glass Header (sticky headers) - matching newdesign exactly */
+  .shadow-success {
+    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.1), 0 1px 3px rgba(34, 197, 94, 0.06);
+  }
+
+  /* ── Glass Header ───────────────────────────────────────────── */
   .glass-header {
-    background: rgba(250, 250, 248, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(250, 250, 248, 0.88);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   }
-  
-  /* NEW: Skeleton loader base */
+
+  /* ── Loading States (content-aware, not broken) ─────────────── */
+
   .skeleton {
-    @apply animate-pulse bg-slate-200 rounded;
+    @apply rounded;
+    background: linear-gradient(90deg, #f1eeeb 25%, #f8f6f3 50%, #f1eeeb 75%);
+    background-size: 200% 100%;
+    animation: skeleton-warm 1.8s ease-in-out infinite;
   }
-  
-  /* NEW: Input focus ring (orange) */
+  .skeleton-text {
+    @apply rounded h-3;
+    background: linear-gradient(90deg, #f1eeeb 25%, #f8f6f3 50%, #f1eeeb 75%);
+    background-size: 200% 100%;
+    animation: skeleton-warm 1.8s ease-in-out infinite;
+  }
+  .skeleton-heading {
+    @apply rounded h-5 w-48;
+    background: linear-gradient(90deg, #ebe7e3 25%, #f5f2ef 50%, #ebe7e3 75%);
+    background-size: 200% 100%;
+    animation: skeleton-warm 1.8s ease-in-out infinite;
+  }
+
+  /* ── Form Inputs ────────────────────────────────────────────── */
+
   .input-focus-orange:focus {
-    @apply outline-none border-alloro-orange ring-4 ring-alloro-orange/10;
+    @apply outline-none ring-4;
+    border-color: #D66853;
+    --tw-ring-color: rgba(214, 104, 83, 0.12);
+  }
+  .input-warm {
+    @apply rounded-xl border px-4 py-3 text-sm transition-all duration-200;
+    border-color: rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.8);
+  }
+  .input-warm:hover {
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+  .input-warm:focus {
+    @apply outline-none ring-4;
+    border-color: #D66853;
+    --tw-ring-color: rgba(214, 104, 83, 0.1);
+    background: #FFFFFF;
   }
 
-  /* Button press: subtle scale on click for premium tactile feel */
+  /* ── Buttons ────────────────────────────────────────────────── */
+
   .btn-press {
-    @apply transition-all duration-150 active:scale-[0.97] active:brightness-[0.97];
+    @apply transition-all duration-200 active:scale-[0.97];
+  }
+  .btn-primary {
+    @apply rounded-xl px-5 py-3 text-sm font-semibold text-white transition-all duration-200;
+    background: linear-gradient(135deg, #D66853 0%, #C45A46 100%);
+    box-shadow: 0 2px 8px rgba(214, 104, 83, 0.25), 0 1px 2px rgba(214, 104, 83, 0.15);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 4px 16px rgba(214, 104, 83, 0.3), 0 2px 4px rgba(214, 104, 83, 0.2);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 1px 4px rgba(214, 104, 83, 0.2);
+  }
+  .btn-secondary {
+    @apply rounded-xl px-5 py-3 text-sm font-semibold transition-all duration-200;
+    background: rgba(250, 250, 248, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    color: #212D40;
+  }
+  .btn-secondary:hover {
+    background: #FFFFFF;
+    border-color: rgba(214, 104, 83, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }
 
-  /* Card hover lift: gentle elevation on hover (Linear-style) */
+  /* ── Card hover lift (enhanced) ─────────────────────────────── */
   .card-lift {
-    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)];
+    @apply transition-all duration-300;
   }
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(33, 45, 64, 0.08), 0 2px 8px rgba(33, 45, 64, 0.04);
+  }
+
+  /* ── Achievement / Celebration ──────────────────────────────── */
+  .glow-success {
+    animation: glow-green 2s ease-in-out infinite;
+  }
+  .glow-orange {
+    animation: glow-terracotta 2s ease-in-out infinite;
+  }
+  .badge-warm {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+    background: linear-gradient(135deg, rgba(214, 104, 83, 0.08) 0%, rgba(214, 104, 83, 0.04) 100%);
+    color: #D66853;
+    border: 1px solid rgba(214, 104, 83, 0.12);
+  }
+  .badge-success {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.04) 100%);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.15);
+  }
+
+  /* ── Section Divider (warm) ─────────────────────────────────── */
+  .divider-warm {
+    border: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(214, 104, 83, 0.12), transparent);
+  }
+
+  /* ── Warm Gradient Backgrounds ──────────────────────────────── */
+  .bg-warm-gradient {
+    background: linear-gradient(180deg, #FAFAF8 0%, #FFF9F7 50%, #FAFAF8 100%);
+  }
+  .bg-warm-subtle {
+    background: linear-gradient(135deg, #FFFFFF 0%, #FFF9F7 100%);
+  }
+}
+
+/* ── Warm Keyframe Animations ─────────────────────────────────── */
+
+@keyframes preparing-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes skeleton-warm {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes glow-green {
+  0%, 100% { box-shadow: 0 0 8px rgba(34, 197, 94, 0.1), 0 0 24px rgba(34, 197, 94, 0.05); }
+  50% { box-shadow: 0 0 16px rgba(34, 197, 94, 0.2), 0 0 40px rgba(34, 197, 94, 0.1); }
+}
+
+@keyframes glow-terracotta {
+  0%, 100% { box-shadow: 0 0 8px rgba(214, 104, 83, 0.1), 0 0 24px rgba(214, 104, 83, 0.05); }
+  50% { box-shadow: 0 0 16px rgba(214, 104, 83, 0.2), 0 0 40px rgba(214, 104, 83, 0.1); }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes score-reveal {
+  0% { opacity: 0; transform: scale(0.8); }
+  50% { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 @keyframes pms-shimmer {
@@ -126,9 +342,9 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 }
 
 .skeleton-shimmer {
-  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background: linear-gradient(90deg, #f1eeeb 25%, #f8f6f3 50%, #f1eeeb 75%);
   background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
 }
 
 /* OrbitViz animations */
