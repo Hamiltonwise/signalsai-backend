@@ -29,10 +29,11 @@ import {
   Users,
 } from "lucide-react";
 import {
-  staggerContainer,
   cardVariants,
   fadeInUp,
   scaleInFade,
+  warmCardVariants,
+  warmStagger,
 } from "@/lib/animations";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
@@ -44,6 +45,7 @@ import CardCapture from "@/components/dashboard/CardCapture";
 import AlloroActivityCard from "@/components/dashboard/AlloroActivityCard";
 // ReferralCard defined locally (line ~569) with referralCode prop
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
+import { isConferenceMode } from "./checkup/conferenceFallback";
 import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
 import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
@@ -239,22 +241,6 @@ function narrativeSubhead(
   return "Here's what changed in your market.";
 }
 
-// ─── Score Helpers ──────────────────────────────────────────────────
-
-function scoreColor(score: number | null): string {
-  if (!score) return "text-gray-400";
-  if (score >= 80) return "text-emerald-600";
-  if (score >= 60) return "text-amber-600";
-  return "text-[#D56753]";
-}
-
-function scoreBg(score: number | null): string {
-  if (!score) return "bg-gray-100";
-  if (score >= 80) return "bg-emerald-50";
-  if (score >= 60) return "bg-amber-50";
-  return "bg-[#D56753]/5";
-}
-
 // ═══════════════════════════════════════════════════════════════════
 // POSITION CARD — One job: show where you rank
 // ═══════════════════════════════════════════════════════════════════
@@ -262,23 +248,23 @@ function scoreBg(score: number | null): string {
 function PositionCard({ ranking, subScores }: { ranking: RankingData | null; subScores?: { localVisibility: number; onlinePresence: number; reviewHealth: number } | null }) {
   if (!ranking || !ranking.rankPosition) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-[#D56753]/10 flex items-center justify-center">
+      <div className="card-preparing">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 flex items-center justify-center">
             <MapPin className="w-5 h-5 text-[#D56753]" />
           </div>
           <div>
             <TailorText editKey="dashboard.position.scanning.title" defaultText="Scanning your market" as="p" className="text-sm font-bold text-[#212D40]" />
-            <TailorText editKey="dashboard.position.scanning.status" defaultText="In progress" as="p" className="text-xs text-[#D56753]" />
+            <TailorText editKey="dashboard.position.scanning.status" defaultText="Working on it now" as="p" className="text-xs text-[#D56753] font-medium" />
           </div>
         </div>
-        <p className="text-sm text-gray-500 leading-relaxed">
-          <TailorText editKey="dashboard.position.scanning.body" defaultText="Your market is being scanned right now. Your first position report arrives Monday morning." as="span" className="" />
+        <p className="text-sm text-gray-600 leading-relaxed">
+          <TailorText editKey="dashboard.position.scanning.body" defaultText="We're reading your market right now. Your first position report arrives Monday morning." as="span" className="" />
         </p>
-        <div className="mt-4 space-y-2">
+        <div className="mt-5 space-y-2.5">
           {["Finding your competitors", "Counting their reviews", "Measuring your visibility"].map((step, i) => (
-            <div key={i} className="flex items-center gap-2.5 text-xs text-gray-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#D56753]/40 animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />
+            <div key={i} className="flex items-center gap-2.5 text-xs text-gray-500" style={{ animation: `fade-in-up 0.4s ease-out ${i * 0.15}s both` }}>
+              <span className="w-2 h-2 rounded-full bg-[#D56753]/30 animate-pulse" style={{ animationDelay: `${i * 0.4}s` }} />
               {step}
             </div>
           ))}
@@ -293,19 +279,19 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
       : null;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 card-lift">
+    <div className="card-primary card-lift">
       <div className="flex items-start justify-between mb-1">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60">
           <TailorText editKey="dashboard.position.label" defaultText="Market Position" as="span" className="" />
         </p>
         {delta !== null && delta !== 0 && (
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
               delta > 0
-                ? "bg-emerald-50 text-emerald-700"
+                ? "badge-success"
                 : delta <= -2
-                  ? "bg-amber-50 text-amber-700"
-                  : "bg-gray-100 text-gray-600"
+                  ? "bg-amber-50 text-amber-700 border border-amber-200/40"
+                  : "bg-gray-50 text-gray-600"
             }`}
           >
             {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -314,11 +300,11 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
         )}
       </div>
 
-      <div className="mt-2">
-        <span className="text-5xl font-black text-[#212D40]">
+      <div className="mt-3">
+        <span className="text-5xl font-black text-[#212D40]" style={{ animation: 'score-reveal 0.6s ease-out' }}>
           #<AnimatedNumber value={ranking.rankPosition} duration={600} />
         </span>
-        <span className="text-lg text-gray-400 ml-2">
+        <span className="text-lg text-[#212D40]/30 ml-2 font-medium">
           of <AnimatedNumber value={ranking.totalCompetitors || 0} duration={800} />
         </span>
       </div>
@@ -329,8 +315,8 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
 
       {ranking.rankScore != null && (
         <div className="mt-4 flex items-center gap-2">
-          <span className={`inline-flex px-3 py-1.5 rounded-full text-xs font-bold ${scoreBg(ranking.rankScore)} ${scoreColor(ranking.rankScore)} transition-all duration-700`}>
-            <span className="inline-block w-2 h-2 rounded-full bg-current opacity-60 animate-pulse mr-1.5" />
+          <span className={`badge-warm transition-all duration-700`}>
+            <span className="inline-block w-2 h-2 rounded-full bg-current opacity-50 animate-pulse" />
             Business Clarity Score: {ranking.rankScore}/100
           </span>
         </div>
@@ -338,7 +324,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
 
       {/* Sub-score breakdown from checkup data */}
       {subScores && (
-        <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
+        <div className="mt-5 pt-5 border-t border-[#D56753]/8 space-y-3">
           {[
             { label: "Local Visibility", score: subScores.localVisibility, max: 40 },
             { label: "Online Presence", score: subScores.onlinePresence, max: 40 },
@@ -347,13 +333,13 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
             const pct = Math.round((s.score / s.max) * 100);
             return (
               <div key={s.label}>
-                <div className="flex items-center justify-between mb-0.5">
+                <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] font-medium text-gray-500">{s.label}</span>
-                  <span className="text-[11px] font-semibold text-gray-700">{s.score}/{s.max}</span>
+                  <span className="text-[11px] font-semibold text-[#212D40]">{s.score}/{s.max}</span>
                 </div>
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-1.5 bg-[#D56753]/[0.06] rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ${pct >= 80 ? "bg-emerald-500" : pct >= 60 ? "bg-amber-500" : "bg-[#D56753]"}`}
+                    className={`h-full rounded-full transition-all duration-1000 ease-out ${pct >= 80 ? "bg-emerald-500" : pct >= 60 ? "bg-amber-500" : "bg-[#D56753]"}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -451,18 +437,18 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
 
   if (findings.length === 0 && checkupInsights.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-            <Star className="w-5 h-5 text-gray-400" />
+      <div className="card-preparing">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 flex items-center justify-center">
+            <Star className="w-5 h-5 text-[#D56753]" />
           </div>
           <div>
-            <TailorText editKey="dashboard.findings.title" defaultText="Agent Findings" as="p" className="text-sm font-bold text-[#212D40]" />
-            <TailorText editKey="dashboard.findings.status" defaultText="Scan scheduled" as="p" className="text-xs text-gray-400" />
+            <TailorText editKey="dashboard.findings.title" defaultText="Your agents are working" as="p" className="text-sm font-bold text-[#212D40]" />
+            <TailorText editKey="dashboard.findings.status" defaultText="First report: Monday morning" as="p" className="text-xs text-[#D56753] font-medium" />
           </div>
         </div>
-        <p className="text-sm text-gray-500">
-          <TailorText editKey="dashboard.findings.body" defaultText="Your competitors are being analyzed right now. First detailed findings arrive Monday morning." as="span" className="" />
+        <p className="text-sm text-gray-600 leading-relaxed">
+          <TailorText editKey="dashboard.findings.body" defaultText="We're analyzing your competitors right now. Named findings with dollar figures arrive in your first Monday email." as="span" className="" />
         </p>
       </div>
     );
@@ -470,21 +456,21 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
 
   if (findings.length === 0 && checkupInsights.length > 0) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-6">
-        <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-4">
+      <div className="card-supporting">
+        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
           <TailorText editKey="dashboard.findings.found" defaultText="What We Found" as="span" className="" />
         </p>
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           {checkupInsights.map((insight, i) => (
-            <div key={i} className="flex gap-3">
-              <span className="shrink-0 w-6 h-6 rounded-lg bg-[#D56753]/10 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
+            <div key={i} className="flex gap-3" style={{ animation: `fade-in-up 0.4s ease-out ${i * 0.1}s both` }}>
+              <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
                 {i + 1}
               </span>
-              <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
+              <p className="text-sm text-[#212D40]/80 leading-relaxed">{insight}</p>
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-gray-400 mt-4">
+        <p className="text-[10px] text-gray-400 mt-5">
           From your checkup scan. Live agent findings replace this after the first scheduled analysis.
         </p>
       </div>
@@ -492,17 +478,17 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+    <div className="card-supporting">
+      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
         This Week's Findings
       </p>
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {findings.slice(0, 3).map((f, i) => (
-          <div key={i} className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-lg bg-[#D56753]/10 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
+          <div key={i} className="flex gap-3" style={{ animation: `fade-in-up 0.4s ease-out ${i * 0.1}s both` }}>
+            <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
               {i + 1}
             </span>
-            <p className="text-sm text-gray-700 leading-relaxed">{f.detail || f.title}</p>
+            <p className="text-sm text-[#212D40]/80 leading-relaxed">{f.detail || f.title}</p>
           </div>
         ))}
       </div>
@@ -517,18 +503,18 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
 function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
   if (!website) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-            <Globe className="w-5 h-5 text-gray-400" />
+      <div className="card-preparing">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#212D40]/10 to-[#212D40]/5 flex items-center justify-center">
+            <Globe className="w-5 h-5 text-[#212D40]/60" />
           </div>
           <div>
             <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-bold text-[#212D40]" />
-            <TailorText editKey="dashboard.website.status" defaultText="In progress" as="p" className="text-xs text-gray-400" />
+            <TailorText editKey="dashboard.website.status" defaultText="Being built for you" as="p" className="text-xs text-[#D56753] font-medium" />
           </div>
         </div>
-        <p className="text-sm text-gray-500">
-          <TailorText editKey="dashboard.website.body" defaultText="Your website is being built. You'll get a notification when it's live." as="span" className="" />
+        <p className="text-sm text-gray-600 leading-relaxed">
+          <TailorText editKey="dashboard.website.body" defaultText="We studied your competitors' websites and your reviews. Your site is being built from what we learned. You'll get a notification when it's live." as="span" className="" />
         </p>
       </div>
     );
@@ -537,10 +523,10 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
   const siteUrl = `https://${website.generated_hostname}.sites.getalloro.com`;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6">
+    <div className="card-featured">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center">
             <Globe className="w-5 h-5 text-emerald-600" />
           </div>
           <div>
@@ -573,10 +559,10 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
   const link = `${window.location.origin}/checkup?ref=${referralCode}`;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-xl bg-[#212D40]/5 flex items-center justify-center">
-          <Share2 className="w-5 h-5 text-[#212D40]" />
+    <div className="card-supporting">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#212D40]/8 to-[#212D40]/3 flex items-center justify-center">
+          <Share2 className="w-5 h-5 text-[#212D40]/60" />
         </div>
         <div>
           <TailorText editKey="dashboard.referral.title" defaultText="Rise Together" as="p" className="text-sm font-bold text-[#212D40]" />
@@ -587,7 +573,7 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
         <input
           readOnly
           value={link}
-          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-500 truncate"
+          className="flex-1 rounded-xl border border-[#212D40]/8 bg-[#FAFAF8] px-3 py-2.5 text-xs text-gray-500 truncate"
         />
         <button
           onClick={() => {
@@ -655,14 +641,14 @@ function GapToNext({ ranking }: { ranking: RankingData | null }) {
 function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
   if (!ranking?.topCompetitor) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6">
+      <div className="card-preparing">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-            <Users className="w-5 h-5 text-gray-400" />
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#212D40]/10 to-[#212D40]/5 flex items-center justify-center">
+            <Users className="w-5 h-5 text-[#212D40]/50" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#212D40]">Competitor Activity</p>
-            <p className="text-xs text-gray-400">Market data appears after your first scan.</p>
+            <p className="text-sm font-bold text-[#212D40]">Watching your competitors</p>
+            <p className="text-xs text-[#D56753] font-medium">Named activity appears after your first scan.</p>
           </div>
         </div>
       </div>
@@ -678,8 +664,8 @@ function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
   if (activities.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Competitor Activity</p>
+    <div className="card-supporting">
+      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">Competitor Activity</p>
       <div className="space-y-3">
         {activities.map((a, i) => (
           <div key={i} className="flex items-start gap-3 text-sm">
@@ -699,8 +685,8 @@ function GrowthPositionTrack({ ranking }: { ranking: RankingData | null }) {
   const positions = Array.from({ length: maxPos }, (_, i) => i + 1);
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Your Position</p>
+    <div className="card-supporting">
+      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">Your Position</p>
       <div className="flex items-center gap-1">
         {positions.map((pos) => (
           <div key={pos} className="flex-1 flex flex-col items-center gap-1.5">
@@ -723,17 +709,17 @@ function GrowthPositionTrack({ ranking }: { ranking: RankingData | null }) {
 
 function ModeToggle({ mode, onChange }: { mode: "standard" | "growth"; onChange: (m: "standard" | "growth") => void }) {
   return (
-    <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1 shrink-0">
+    <div className="flex items-center gap-1 rounded-xl bg-[#212D40]/[0.04] p-1 shrink-0">
       <button
         onClick={() => onChange("standard")}
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${mode === "standard" ? "bg-white text-[#212D40] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+        className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 ${mode === "standard" ? "bg-white text-[#212D40] shadow-warm" : "text-gray-400 hover:text-gray-600"}`}
       >
         <Shield className="h-3.5 w-3.5" />
         Overview
       </button>
       <button
         onClick={() => onChange("growth")}
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${mode === "growth" ? "bg-[#D56753] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+        className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 btn-press ${mode === "growth" ? "bg-[#D56753] text-white shadow-warm" : "text-gray-400 hover:text-gray-600"}`}
       >
         <Flame className="h-3.5 w-3.5" />
         Growth
@@ -963,16 +949,16 @@ export default function DoctorDashboard() {
 
   return (
     <>
-    {/* Trial countdown banner — shows when trial is ending soon */}
-    {dashCtx?.trial && !dashCtx?.trial.is_subscribed && dashCtx?.trial.days_remaining <= 3 && dashCtx?.trial.days_remaining > 0 && (
+    {/* Trial countdown banner — shows when trial is ending soon. Hidden in conference mode. */}
+    {!isConferenceMode() && dashCtx?.trial && !dashCtx?.trial.is_subscribed && dashCtx?.trial.days_remaining <= 3 && dashCtx?.trial.days_remaining > 0 && (
       <div className="bg-[#D56753] text-white text-center py-2.5 px-4 text-sm font-medium">
         Your trial ends in {dashCtx?.trial.days_remaining} day{dashCtx?.trial.days_remaining !== 1 ? "s" : ""}. Your intelligence goes dark after that.{" "}
         <a href="/settings/billing" className="underline font-bold hover:text-white/90">Subscribe now</a>
       </div>
     )}
 
-    {/* Trial expired overlay — full lockout after trial ends */}
-    {dashCtx?.trial && !dashCtx?.trial.is_subscribed && dashCtx?.trial.days_remaining <= 0 && (
+    {/* Trial expired overlay — full lockout after trial ends. Hidden in conference mode. */}
+    {!isConferenceMode() && dashCtx?.trial && !dashCtx?.trial.is_subscribed && dashCtx?.trial.days_remaining <= 0 && (
       <div className="fixed inset-0 z-50 bg-white/95 flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-6">
           <div className="w-16 h-16 rounded-2xl bg-[#D56753]/10 flex items-center justify-center mx-auto">
@@ -1004,33 +990,33 @@ export default function DoctorDashboard() {
 
     <motion.div
       className="mx-auto max-w-2xl space-y-8 px-4 py-8 sm:py-12"
-      variants={staggerContainer}
+      variants={warmStagger}
       initial="hidden"
       animate="visible"
     >
       {/* Header */}
-      <motion.div variants={fadeInUp} className="flex items-start justify-between gap-3">
+      <motion.div variants={warmCardVariants} className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-xl sm:text-2xl font-bold text-[#212D40] truncate">
+          <h1 className="font-heading text-xl sm:text-2xl font-bold text-[#212D40] truncate leading-tight">
             {mode === "growth"
               ? "Close the gap."
               : narrativeGreeting(streakData, winData, !!effectiveRanking, effectiveRanking?.rankPosition, effectiveRanking?.location, userProfile?.firstName, toneProfile)}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
             {mode === "growth"
               ? `What stands between ${practiceName} and the next position.`
               : narrativeSubhead(streakData, winData, practiceName, effectiveRanking?.topCompetitor?.name)}
           </p>
           {locationName && (
-            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-breathe" />
+            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" style={{ animationDuration: '3s' }} />
               {locationName}
             </p>
           )}
           {/* Ambient "someone is watching" signal -- Guidara's returning guest mechanic */}
-          <p className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1.5">
-            <span className="w-1 h-1 rounded-full bg-[#D56753]/40 animate-breathe" />
-            <TailorText editKey="dashboard.ambient.scanned" defaultText="Your market was scanned overnight. Here's what moved." as="span" className="text-[11px] text-gray-300" />
+          <p className="text-[11px] text-[#D56753]/30 mt-2 flex items-center gap-2">
+            <span className="w-1 h-1 rounded-full bg-[#D56753]/30 animate-pulse" style={{ animationDuration: '4s' }} />
+            <TailorText editKey="dashboard.ambient.scanned" defaultText="Your market was scanned overnight. Here's what moved." as="span" className="text-[11px] text-[#D56753]/30" />
           </p>
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
@@ -1214,10 +1200,10 @@ export default function DoctorDashboard() {
       {mode === "standard" ? (
         <>
           {/* ══ YOUR MARKET — section divider ══ */}
-          <div className="flex items-center gap-3 pt-2">
-            <div className="h-px flex-1 bg-gray-200" />
-            <TailorText editKey="dashboard.section.yourMarket" defaultText="Your Market" as="span" className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400" />
-            <div className="h-px flex-1 bg-gray-200" />
+          <div className="flex items-center gap-4 pt-2">
+            <div className="h-px flex-1 divider-warm" />
+            <TailorText editKey="dashboard.section.yourMarket" defaultText="Your Market" as="span" className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/40" />
+            <div className="h-px flex-1 divider-warm" />
           </div>
 
           {/* 1. Business Clarity Score ring */}
@@ -1256,8 +1242,8 @@ export default function DoctorDashboard() {
 
           {/* PatientPath Research Brief reveal (WO-43) */}
           {checkupCtx?.research_findings && checkupCtx.research_findings.length > 0 && (
-            <motion.div variants={cardVariants} className="rounded-2xl border border-gray-200 bg-white p-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-3">
+            <motion.div variants={warmCardVariants} className="card-supporting">
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-3">
                 Before we built your site, we studied your business.
               </p>
               <div className="space-y-2.5">
@@ -1301,8 +1287,8 @@ export default function DoctorDashboard() {
       {/* Exit emotion -- Peak-End Rule: the LAST thing seen determines memory.
           Context-aware. Never generic. Make them leave feeling better than when they arrived. */}
       {mode === "standard" && !isLoading && (
-        <div className="text-center py-6">
-          <p className="text-xs text-gray-400">
+        <div className="text-center py-8">
+          <p className="text-sm text-[#212D40]/30 italic font-heading">
             {winData && winData.daysAgo <= 3
               ? "Something moved this week. Because you acted."
               : streakData && streakData.count >= 8
@@ -1315,7 +1301,7 @@ export default function DoctorDashboard() {
                       ? `${effectiveRanking.topCompetitor.name} didn't check theirs today. You did.`
                       : "You checked in. That puts you ahead of everyone who didn't."}
           </p>
-          <div className="h-px bg-gray-100 mt-6 mx-auto max-w-[12rem]" />
+          <div className="h-px divider-warm mt-8 mx-auto max-w-[10rem]" />
         </div>
       )}
 

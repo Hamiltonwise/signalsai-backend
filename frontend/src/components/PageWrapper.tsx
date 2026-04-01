@@ -7,6 +7,7 @@ import { NotificationPopover } from "./NotificationPopover";
 import { SidebarProvider, useSidebar } from "./Admin/SidebarContext";
 import { useAuth } from "../hooks/useAuth";
 import { useSession } from "../contexts/sessionContext";
+import { isConferenceMode } from "../pages/checkup/conferenceFallback";
 
 interface PageWrapperProps {
   children: React.ReactNode;
@@ -118,8 +119,8 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
           </div>
         )}
 
-        {/* Subscribe Banner — persistent for admin-granted users without Stripe */}
-        {!isLockedOut && billingStatus?.isAdminGranted && !isOnSettingsPage && (
+        {/* Subscribe Banner — persistent for admin-granted users without Stripe. Hidden in conference mode. */}
+        {!isLockedOut && billingStatus?.isAdminGranted && !isOnSettingsPage && !isConferenceMode() && (
           <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
             <div className="flex items-center gap-3">
               <CreditCard size={16} className="text-amber-600 shrink-0" />
