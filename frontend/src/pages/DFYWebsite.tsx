@@ -907,13 +907,17 @@ export function DFYWebsite() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center max-w-md">
-          <div className="animate-spin w-12 h-12 border-4 border-alloro-orange border-t-transparent rounded-full mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">
-            Your Website is Being Prepared
+          <div className="w-16 h-16 bg-alloro-orange/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-alloro-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+          </div>
+          <h2 className="text-xl font-semibold mb-2 text-[#212D40]">
+            Your Website
           </h2>
-          <p className="text-gray-600">
-            We're setting up your website. You'll receive an email when it's
-            ready!
+          <p className="text-gray-500 mb-6">
+            Alloro is building your website from your business data and customer reviews. This typically takes a few hours after signup.
+          </p>
+          <p className="text-xs text-gray-400">
+            You'll receive an email when it's ready to preview.
           </p>
         </div>
       </div>
