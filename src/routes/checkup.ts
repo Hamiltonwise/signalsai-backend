@@ -1508,7 +1508,12 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       relationship,
       checkup_score,
       checkup_data,
+      agreedToTerms,
     } = req.body;
+
+    if (!agreedToTerms) {
+      return res.status(400).json({ success: false, error: "You must agree to the Terms of Service to create an account" });
+    }
 
     if (!email || !password) {
       return res.status(400).json({ success: false, error: "Email and password are required" });
@@ -1570,6 +1575,7 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
         trial_start_at: new Date(),
         trial_end_at: trialEnd,
         trial_status: "active",
+        terms_accepted_at: new Date(),
       });
 
       // Set source_channel from referral or source query param

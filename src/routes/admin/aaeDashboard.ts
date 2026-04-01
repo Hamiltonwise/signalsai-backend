@@ -198,21 +198,33 @@ aaeDashboardRoutes.get(
         }
       }
 
-      // MRR calculation: count active subscriptions * price
+      // MRR calculation: per-org pricing (single source of truth)
+      const orgMonthlyRate: Record<number, number> = {
+        5: 2000,   // Garrison Orthodontics
+        6: 3500,   // DentalEMR
+        8: 1500,   // Artful Orthodontics
+        21: 0,     // McPherson Endodontics (beta)
+        25: 5000,  // Caswell Orthodontics (3 locations)
+        34: 0,     // Alloro (team org)
+        39: 1500,  // One Endodontics
+        42: 0,     // Valley Endodontics (demo)
+      };
       let currentMrr = 0;
       let projectedMrr = 0;
       try {
         const hasOrgs = await db.schema.hasTable("organizations");
         if (hasOrgs) {
           const activeOrgs = await db("organizations")
-            .where("subscription_status", "active")
-            .count("id as count")
-            .first();
-          // Each active org pays $450/mo (Alloro standard pricing)
-          currentMrr = Number(activeOrgs?.count || 0) * 450;
-
-          // Projected: current + today's new accounts * $450
-          projectedMrr = currentMrr + counts.accounts * 450;
+            .where(function(this: any) {
+              this.where("subscription_status", "active")
+                .orWhereNotNull("subscription_tier");
+            })
+            .select("id");
+          currentMrr = activeOrgs.reduce(
+            (sum: number, o: any) => sum + (orgMonthlyRate[o.id] ?? 0),
+            0
+          );
+          projectedMrr = currentMrr;
         }
       } catch {
         // If orgs table doesn't exist or query fails, use 0

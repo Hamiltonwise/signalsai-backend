@@ -30,6 +30,43 @@ import {
 } from "../services/feedbackLoop";
 
 /**
+ * Fallback: When Monday email fails to send, create an in-app notification
+ * so the client still receives their weekly brief when they next open the dashboard.
+ */
+async function createMondayBriefFallbackNotification(
+  orgId: number,
+  orgName: string,
+  subject: string,
+  body: string,
+): Promise<void> {
+  try {
+    const hasTable = await db.schema.hasTable("notifications");
+    if (!hasTable) {
+      console.warn("[MondayEmail] Notifications table does not exist, cannot create fallback");
+      return;
+    }
+    await db("notifications").insert({
+      organization_id: orgId,
+      title: subject || "Your Monday Brief",
+      message: body,
+      type: "monday_brief_fallback",
+      read: false,
+      metadata: JSON.stringify({
+        fallback_reason: "email_delivery_failed",
+        original_subject: subject,
+        org_name: orgName,
+        created_via: "monday_email_fallback",
+      }),
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    console.log(`[MondayEmail] Fallback notification created for ${orgName} (org ${orgId})`);
+  } catch (notifErr: any) {
+    console.error(`[MondayEmail] Failed to create fallback notification for ${orgName}:`, notifErr.message);
+  }
+}
+
+/**
  * Send Monday email for a single org.
  */
 export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
@@ -166,6 +203,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       return success;
     } catch (err: any) {
       console.error(`[MondayEmail] First-week email failed for ${org.name}:`, err.message);
+      await createMondayBriefFallbackNotification(orgId, org.name, firstWeekSubject, firstWeekBody);
       return false;
     }
   }
@@ -223,6 +261,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       return success;
     } catch (err: any) {
       console.error(`[MondayEmail] Clean week email failed for ${org.name}:`, err.message);
+      await createMondayBriefFallbackNotification(orgId, org.name, "Your weekly update", "Your market position is steady this week. No urgent changes detected.");
       return false;
     }
   }
@@ -442,10 +481,14 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       });
     } else {
       console.error(`[MondayEmail] Email service returned failure for ${org.name}`);
+      // Fallback: create in-app notification so the client still gets the brief
+      await createMondayBriefFallbackNotification(orgId, org.name, subjectLine, findingBody);
     }
     return success;
   } catch (err: any) {
     console.error(`[MondayEmail] Failed for ${org.name}:`, err.message);
+    // Fallback: create in-app notification so the client still gets the brief
+    await createMondayBriefFallbackNotification(orgId, org.name, subjectLine, findingBody);
     return false;
   }
 }

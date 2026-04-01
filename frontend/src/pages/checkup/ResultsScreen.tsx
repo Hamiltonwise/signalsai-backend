@@ -651,6 +651,7 @@ export default function ResultsScreen() {
   const [vendorWantsMore, setVendorWantsMore] = useState(true);
   const [vendorSubmitted, setVendorSubmitted] = useState(false);
   const [vendorShareCopied, setVendorShareCopied] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const isValidEmail = (v: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
@@ -783,6 +784,7 @@ export default function ResultsScreen() {
             practice_name: place.name,
             place_id: place.placeId,
             relationship,
+            agreedToTerms,
             checkup_score: score.composite,
             source_channel: getSourceChannel() || new URLSearchParams(window.location.search).get("ref") || undefined,
             checkup_data: {
@@ -1352,11 +1354,30 @@ export default function ResultsScreen() {
                       ` and ${findings.length - 1} more finding${findings.length > 2 ? "s" : ""}`}
                   </p>
                 )}
+                {/* Terms of Service agreement */}
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded text-[#D56753] border-slate-300 focus:ring-[#D56753]/20"
+                  />
+                  <span className="text-xs text-slate-600">
+                    I agree to the{" "}
+                    <a href="https://getalloro.com/terms" target="_blank" rel="noopener noreferrer" className="text-[#D56753] underline hover:text-[#C45A46]">
+                      Terms of Service
+                    </a>{" "}
+                    and{" "}
+                    <a href="https://getalloro.com/privacy" target="_blank" rel="noopener noreferrer" className="text-[#D56753] underline hover:text-[#C45A46]">
+                      Privacy Policy
+                    </a>
+                  </span>
+                </label>
                 <button
                   type="submit"
-                  disabled={emailSending}
+                  disabled={emailSending || !agreedToTerms}
                   className="w-full h-[3.25rem] flex items-center justify-center gap-2 rounded-xl text-white text-[15px] font-semibold shadow-[0_4px_16px_rgba(214,104,83,0.3),0_2px_4px_rgba(214,104,83,0.15)] hover:shadow-[0_8px_24px_rgba(214,104,83,0.35),0_2px_8px_rgba(214,104,83,0.2)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 disabled:opacity-70"
-                  style={{ background: 'linear-gradient(135deg, #D66853 0%, #C45A46 100%)' }}
+                  style={{ background: agreedToTerms ? 'linear-gradient(135deg, #D66853 0%, #C45A46 100%)' : '#94a3b8' }}
                 >
                   {emailSending
                     ? "Setting up your checkup..."

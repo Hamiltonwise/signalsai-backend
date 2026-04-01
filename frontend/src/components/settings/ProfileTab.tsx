@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Key, Eye, EyeOff, Check, AlertCircle, Loader2 } from "lucide-react";
+import { Key, Eye, EyeOff, Check, AlertCircle, Loader2, Download } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
   getPasswordStatus,
@@ -263,6 +263,57 @@ export const ProfileTab: React.FC = () => {
               {hasPassword ? "Update Password" : "Set Password"}
             </button>
           </form>
+        </div>
+      </motion.div>
+
+      {/* Data Export */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-[2rem] border border-black/5 p-6 lg:p-8 shadow-premium relative overflow-hidden mt-6"
+      >
+        <div className="relative z-10">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 rounded-xl bg-alloro-navy/5 text-alloro-navy">
+              <Download className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-alloro-navy tracking-tight">
+                Export My Data
+              </h3>
+              <p className="text-sm text-slate-500">
+                Download all of your data as a JSON file. Includes your organization details, scores, competitors, and activity history.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+              if (!token) return;
+              try {
+                const res = await fetch("/api/user/data-export", {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!res.ok) throw new Error("Export failed");
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = res.headers.get("Content-Disposition")?.split("filename=")[1]?.replace(/"/g, "") || "alloro-data-export.json";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              } catch {
+                // Silent fail, user can retry
+              }
+            }}
+            className="px-6 py-3 bg-alloro-navy text-white text-sm font-black uppercase tracking-widest rounded-xl hover:bg-alloro-navy/90 transition-colors flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export my data
+          </button>
         </div>
       </motion.div>
     </div>

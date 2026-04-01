@@ -38,6 +38,7 @@ import {
   Zap,
 } from "lucide-react";
 import FounderMode from "./FounderMode";
+import { KillSwitchBanner } from "@/components/admin/KillSwitchBanner";
 import {} from "react-router-dom";
 import {
   adminListOrganizations,
@@ -63,8 +64,7 @@ const ORG_MONTHLY_RATE: Record<number, number> = {
   39: 1500,  // One Endodontics
   42: 0,     // Valley Endodontics (demo)
 };
-// Fallback for any org not in the map
-const DEFAULT_TIER_PRICING: Record<string, number> = { DWY: 997, DFY: 2497 };
+// Fallback removed: ORG_MONTHLY_RATE is the single source of truth for pricing
 
 const MONTHLY_BURN = 9500;
 
@@ -316,9 +316,7 @@ function RevenuePanel({ orgs }: { orgs: AdminOrganization[] }) {
   );
 
   const mrr = activeOrgs.reduce((sum, o) => {
-    if (ORG_MONTHLY_RATE[o.id] !== undefined) return sum + ORG_MONTHLY_RATE[o.id];
-    const tier = o.subscription_tier || "DWY";
-    return sum + (DEFAULT_TIER_PRICING[tier] ?? 0);
+    return sum + (ORG_MONTHLY_RATE[o.id] ?? 0);
   }, 0);
 
   const now = new Date();
@@ -1727,6 +1725,9 @@ export default function VisionaryView() {
   return (
     <>
       {founderOpen && <FounderMode onClose={() => setFounderOpen(false)} />}
+
+      {/* Kill Switch -- emergency agent stop */}
+      <KillSwitchBanner />
 
       {/* F badge */}
       <button

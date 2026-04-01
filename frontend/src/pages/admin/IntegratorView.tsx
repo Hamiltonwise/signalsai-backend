@@ -55,6 +55,7 @@ import {
 } from "@/api/dream-team";
 import { apiGet, apiPost, apiPatch } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
+import { KillSwitchBanner } from "@/components/admin/KillSwitchBanner";
 
 // ---- Constants ---------------------------------------------------------------
 
@@ -1422,6 +1423,8 @@ export default function IntegratorView() {
     : null;
 
   return (
+    <>
+    <KillSwitchBanner />
     <div className="mx-auto max-w-lg px-4 py-8 space-y-6">
       {/* Greeting */}
       <Greeting firstName={firstName} brief={brief} isLoading={briefLoading} />
@@ -1530,5 +1533,6 @@ export default function IntegratorView() {
       {/* Blue Tape FAB */}
       <BlueTapeButton />
     </div>
+    </>
   );
 }

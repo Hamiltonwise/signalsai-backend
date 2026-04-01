@@ -39,12 +39,14 @@ export function getStripe(): Stripe {
 
 /**
  * Get the webhook secret for signature verification.
+ * Logs a warning if missing (does not crash the server).
  */
 export function getWebhookSecret(): string {
   if (!STRIPE_WEBHOOK_SECRET) {
-    throw new Error(
-      "Stripe webhook secret is not configured. Set STRIPE_WEBHOOK_SECRET in environment variables."
+    console.warn(
+      "[Stripe] STRIPE_WEBHOOK_SECRET is not set. Webhook signature verification will fail for incoming events."
     );
+    return "";
   }
   return STRIPE_WEBHOOK_SECRET;
 }

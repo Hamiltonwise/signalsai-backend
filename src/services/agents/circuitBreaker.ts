@@ -16,6 +16,7 @@
  */
 
 import { db } from "../../database/connection";
+import { isKillSwitchActiveSync } from "./killSwitch";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -98,6 +99,11 @@ async function logStateChange(
  * is open or the iteration limit has been hit.
  */
 export function checkCircuit(agentName: string): CircuitCheckResult {
+  // Kill switch check: if active, block all agents immediately
+  if (isKillSwitchActiveSync()) {
+    return { allowed: false, reason: "kill_switch_active" };
+  }
+
   const circuit = getOrCreate(agentName);
 
   // Check iteration limit regardless of circuit state

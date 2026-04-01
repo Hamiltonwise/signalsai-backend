@@ -35,6 +35,7 @@ import {
 } from "@/api/dream-team";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
+import { KillSwitchBanner } from "@/components/admin/KillSwitchBanner";
 
 // ---- Types -------------------------------------------------------------------
 
@@ -1192,6 +1193,7 @@ export default function BuildView() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-green-400 font-mono">
+      <KillSwitchBanner />
       <div className="mx-auto max-w-5xl px-4 py-8 space-y-6">
         {/* Terminal header with greeting and health score */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
