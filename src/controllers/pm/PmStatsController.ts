@@ -85,6 +85,7 @@ export async function getVelocity(req: AuthRequest, res: Response): Promise<any>
         SELECT w.week_start::date as period_start, COUNT(t.id)::int as overdue
         FROM generate_series(DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '3 weeks', DATE_TRUNC('week', CURRENT_DATE), '1 week') as w(week_start)
         LEFT JOIN pm_tasks t ON t.deadline IS NOT NULL
+          AND t.deadline >= w.week_start
           AND t.deadline < w.week_start + INTERVAL '7 days'
           AND (t.completed_at IS NULL OR t.completed_at > t.deadline)
         GROUP BY w.week_start ORDER BY w.week_start ASC
@@ -100,6 +101,7 @@ export async function getVelocity(req: AuthRequest, res: Response): Promise<any>
         SELECT m.month_start::date as period_start, COUNT(t.id)::int as overdue
         FROM generate_series(DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '2 months', DATE_TRUNC('month', CURRENT_DATE), '1 month') as m(month_start)
         LEFT JOIN pm_tasks t ON t.deadline IS NOT NULL
+          AND t.deadline >= m.month_start
           AND t.deadline < m.month_start + INTERVAL '1 month'
           AND (t.completed_at IS NULL OR t.completed_at > t.deadline)
         GROUP BY m.month_start ORDER BY m.month_start ASC
@@ -115,6 +117,7 @@ export async function getVelocity(req: AuthRequest, res: Response): Promise<any>
         SELECT d.date::date as period_start, COUNT(t.id)::int as overdue
         FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day') as d(date)
         LEFT JOIN pm_tasks t ON t.deadline IS NOT NULL
+          AND t.deadline >= d.date
           AND t.deadline < d.date + INTERVAL '1 day'
           AND (t.completed_at IS NULL OR t.completed_at > t.deadline)
         GROUP BY d.date ORDER BY d.date ASC

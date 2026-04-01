@@ -39,6 +39,7 @@ import { ConfirmProvider } from "./components/ui/ConfirmModal";
 import { DFYRoute } from "./components/DFYRoute";
 import { PilotHandler } from "./components/PilotHandler";
 import { PilotBanner } from "./components/Admin/PilotBanner";
+import { SessionExpiredModal } from "./components/SessionExpiredModal";
 
 // AppProviders wrapper - now used as a layout route to avoid remounting on navigation
 function AppProviders({ children }: { children: ReactNode }) {
@@ -89,6 +90,7 @@ function App() {
           <SetupProgressProvider>
             <ConfirmProvider>
             <Toaster position="top-right" />
+            <SessionExpiredModal />
             <WizardController />
             <SetupProgressWizard />
             <Routes>

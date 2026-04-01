@@ -230,18 +230,33 @@ export async function apiDelete({ path }: { path: string }) {
   }
 }
 
-// ─── Global 402 Interceptor ───
-// Emits a custom event when the billingGateMiddleware returns ACCOUNT_LOCKED.
-// AuthContext listens for this and updates billingStatus so the UI reacts immediately.
+// ─── Global Response Interceptors ───
+
+// Track whether we've already fired the session-expired event this page session.
+// Prevents multiple modals when several API calls 403 simultaneously.
+let sessionExpiredFired = false;
+
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (
-      error?.response?.status === 402 &&
-      error?.response?.data?.errorCode === "ACCOUNT_LOCKED"
-    ) {
+    const status = error?.response?.status;
+    const data = error?.response?.data;
+
+    // 402 — billing lockout (existing)
+    if (status === 402 && data?.errorCode === "ACCOUNT_LOCKED") {
       window.dispatchEvent(new CustomEvent("billing:locked-out"));
     }
+
+    // 403 — expired/invalid JWT → prompt re-login
+    if (
+      status === 403 &&
+      data?.error === "Invalid or expired token" &&
+      !sessionExpiredFired
+    ) {
+      sessionExpiredFired = true;
+      window.dispatchEvent(new CustomEvent("session:expired"));
+    }
+
     return Promise.reject(error);
   }
 );
