@@ -32,6 +32,7 @@ export default function SignIn() {
         localStorage.removeItem("hasProperties");
 
         localStorage.setItem("auth_token", response.token);
+        localStorage.setItem("user_email", email.toLowerCase());
         if (response.user?.role) {
           localStorage.setItem("user_role", response.user.role);
         }
