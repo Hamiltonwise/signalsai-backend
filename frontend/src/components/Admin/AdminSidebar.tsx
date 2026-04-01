@@ -24,6 +24,7 @@ import {
   Activity,
   DollarSign,
   BookOpen,
+  Radio,
 } from "lucide-react";
 import { useSidebar } from "./SidebarContext";
 
@@ -43,6 +44,7 @@ export type AdminNavKey =
   | "batch-checkup"
   | "revenue"
   | "case-studies"
+  | "aae"
   | "settings";
 
 interface NavItem {
@@ -68,6 +70,7 @@ const DONE_FOR_YOU_ITEMS: NavItem[] = [
 const TOP_ITEMS: NavItem[] = [
   { key: "action-items", label: "Morning Brief", icon: CheckSquare },
   { key: "live-feed", label: "Live Feed", icon: Activity },
+  { key: "aae", label: "AAE Live", icon: Radio },
   { key: "revenue", label: "Revenue", icon: DollarSign },
 ];
 

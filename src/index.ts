@@ -99,6 +99,7 @@ import gpDiscoveryUserRoutes from "./routes/user/gpDiscovery";
 import userPreferencesRoutes from "./routes/user/preferences";
 import anniversaryReportRoutes from "./routes/user/anniversaryReport";
 import adminBehavioralEventsRoutes from "./routes/admin/behavioralEvents";
+import aaeDashboardRoutes from "./routes/admin/aaeDashboard";
 import adminCaseStudiesRoutes from "./routes/admin/caseStudies";
 import gpDiscoveryRoutes from "./routes/partner/gpDiscovery";
 import billingAdminRoutes from "./routes/admin/billingAdmin";
@@ -322,7 +323,8 @@ app.use("/api/partner/campaigns", campaignRoutes); // WO-55: Partner Campaign In
 app.use("/api/user", userPreferencesRoutes); // WO-NOTIFICATION-PREFS + WO-STRIPE-PORTAL
 app.use("/api/user", anniversaryReportRoutes); // U-NEW-5: Anniversary Report (shareable journey page)
 app.use("/api/user", championRoutes); // Heroes & Founders Foundation: Champion Client opt-in
-app.use("/api/admin/behavioral-events", adminBehavioralEventsRoutes); // WO-ADMIN-BEHAVIORAL-EVENTS: T4 SessionIntelligence + MorningBrief
+app.use("/api/admin/behavioral-events", adminBehavioralEventsRoutes);
+app.use("/api/admin/aae-dashboard", aaeDashboardRoutes); // AAE 2026 conference war room // WO-ADMIN-BEHAVIORAL-EVENTS: T4 SessionIntelligence + MorningBrief
 app.use("/api/admin/case-studies", adminCaseStudiesRoutes); // T6: Case study CRUD + publish
 app.use("/api/partner", gpDiscoveryRoutes); // T5: GP Discovery + referral form
 app.use("/api/admin/billing", billingAdminRoutes); // WO-BILLING-RECOVERY: at-risk accounts
