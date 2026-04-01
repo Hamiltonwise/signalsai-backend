@@ -21,6 +21,13 @@ import {
 } from "../services/surpriseFindings";
 import { discoverCompetitorsViaPlaces, filterBySpecialty } from "../controllers/practice-ranking/feature-services/service.places-competitor-discovery";
 import { getPlaceDetails } from "../controllers/places/feature-services/GooglePlacesApiService";
+import {
+  recordEmailOutcome,
+  getBaselineMetric,
+  detectActionType,
+  getMetricNameForAction,
+  type ActionType,
+} from "../services/feedbackLoop";
 
 /**
  * Send Monday email for a single org.
@@ -143,6 +150,18 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
       if (success) {
         console.log(`[MondayEmail] Sent first-week email to ${user.email} for ${org.name}`);
+
+        // Record feedback loop outcome for first-week email (GBP optimize is the default first action)
+        const firstWeekActionType: ActionType = "gbp_optimize";
+        const baseline = await getBaselineMetric(orgId, firstWeekActionType);
+        await recordEmailOutcome({
+          org_id: orgId,
+          email_sent_at: new Date(),
+          action_type: firstWeekActionType,
+          recommended_action: firstWeekFix,
+          metric_name: getMetricNameForAction(firstWeekActionType),
+          metric_baseline: baseline,
+        });
       }
       return success;
     } catch (err: any) {
@@ -396,6 +415,31 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
     if (success) {
       console.log(`[MondayEmail] Sent to ${user.email} for ${org.name}`);
+
+      // Record feedback loop outcome: detect action type from email content
+      const hasDriftGP = !!(await (async () => {
+        try {
+          const hasTable = await db.schema.hasTable("referral_sources");
+          if (!hasTable) return false;
+          const drift = await db("referral_sources")
+            .where({ organization_id: orgId })
+            .whereNull("surprise_catch_dismissed_at")
+            .first();
+          return !!drift;
+        } catch { return false; }
+      })());
+      const hasRankingDrop = recentSnapshots.length >= 2 &&
+        recentSnapshots[0].position > (recentSnapshots[1]?.position ?? recentSnapshots[0].position);
+      const emailActionType = detectActionType(reviewGap, hasDriftGP, hasRankingDrop);
+      const baseline = await getBaselineMetric(orgId, emailActionType);
+      await recordEmailOutcome({
+        org_id: orgId,
+        email_sent_at: new Date(),
+        action_type: emailActionType,
+        recommended_action: fiveMinuteFix,
+        metric_name: getMetricNameForAction(emailActionType),
+        metric_baseline: baseline,
+      });
     } else {
       console.error(`[MondayEmail] Email service returned failure for ${org.name}`);
     }

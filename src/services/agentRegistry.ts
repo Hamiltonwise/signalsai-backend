@@ -11,6 +11,7 @@ import { executeRankingAgent } from "../controllers/agents/feature-services/serv
 import { generateAllSnapshots } from "./rankingsIntelligence";
 import { sendAllMondayEmails } from "../jobs/mondayEmail";
 import { runDreamweaver } from "./agents/dreamweaver";
+import { measurePendingOutcomes, aggregateHeuristicStats } from "./feedbackLoop";
 
 export interface AgentHandler {
   displayName: string;
@@ -57,6 +58,21 @@ const registry: Record<string, AgentHandler> = {
     handler: async () => {
       const result = await runDreamweaver();
       return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  feedback_loop: {
+    displayName: "Feedback Loop",
+    description: "Self-improving heuristics engine. Measures Monday email outcomes after 7 days, aggregates which action types drive the most improvement. Tuesday 3PM UTC (8AM PT), 24h after Monday email.",
+    handler: async () => {
+      const outcomes = await measurePendingOutcomes();
+      const stats = await aggregateHeuristicStats();
+      return {
+        summary: {
+          measured: outcomes.measured,
+          errors: outcomes.errors,
+          heuristic_stats: stats,
+        } as unknown as Record<string, unknown>,
+      };
     },
   },
 };
