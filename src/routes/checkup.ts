@@ -523,11 +523,13 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const clientPhotos = enrichedPhotosCount;
 
     // Photo count (0-10)
+    // Google Places API v1 returns max ~10 photos regardless of actual count.
+    // Calibrate benchmarks to API reality: 8+ = full, 5-7 = high, 2-4 = mid.
     let photoPts = 0;
-    if (clientPhotos >= 20) photoPts = 10;
-    else if (clientPhotos >= 10) photoPts = 7;
-    else if (clientPhotos >= 5) photoPts = 4;
-    else if (clientPhotos >= 1) photoPts = 2;
+    if (clientPhotos >= 8) photoPts = 10;
+    else if (clientPhotos >= 5) photoPts = 8;
+    else if (clientPhotos >= 2) photoPts = 5;
+    else if (clientPhotos >= 1) photoPts = 3;
 
     // Profile completeness (0-10): hours + phone + website + description
     // Google Places API v1 returns regularOpeningHours with either periods[]
@@ -538,16 +540,18 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       : !!enrichedHasHours;
     const hasPhone = !!enrichedPhone;
     const hasWebsite = !!enrichedWebsite;
-    const hasDescription = !!enrichedEditorialSummary;
-    const completenessCount = [hasHours, hasPhone, hasWebsite, hasDescription].filter(Boolean).length;
+    // Profile completeness (0-12): hours + phone + website (things the business controls)
+    // Editorial summary is Google-generated, not business-controlled. Don't penalize for it.
+    const completenessCount = [hasHours, hasPhone, hasWebsite].filter(Boolean).length;
     let completenessPts = 0;
-    if (completenessCount === 4) completenessPts = 10;
-    else if (completenessCount === 3) completenessPts = 7;
-    else if (completenessCount === 2) completenessPts = 4;
-    else if (completenessCount === 1) completenessPts = 2;
+    if (completenessCount === 3) completenessPts = 12;
+    else if (completenessCount === 2) completenessPts = 8;
+    else if (completenessCount === 1) completenessPts = 4;
 
-    // Editorial summary exists (0-5)
-    const editorialPts = hasDescription ? 5 : 0;
+    // Editorial summary exists (0-3 bonus, not penalty)
+    // Google generates this for some businesses. Having it is a bonus, not having it is neutral.
+    const hasDescription = !!enrichedEditorialSummary;
+    const editorialPts = hasDescription ? 3 : 0;
 
     // Business status operational (0-5)
     const businessStatus = enrichedBusinessStatus;
