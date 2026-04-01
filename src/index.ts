@@ -128,6 +128,7 @@ import sitemapRoutes from "./routes/sitemap";
 import contentRoutes from "./routes/content";
 import contentPublishRoutes from "./routes/admin/contentPublish";
 import adminTailorRoutes from "./routes/admin/tailor";
+import adminTasksRoutes from "./routes/admin/tasks";
 import alloroLabsRoutes from "./routes/alloroLabs";
 import personalAgentRoutes from "./routes/personalAgent";
 import improvementPlanRoutes from "./routes/user/improvementPlan";
@@ -348,6 +349,7 @@ app.use("/api/clarity-card", publicScoreCardRoutes); // Public score card for vi
 app.use("/api/content", contentRoutes); // Public content API for dynamic articles
 app.use("/api/admin/content", contentPublishRoutes); // Admin content publishing pipeline
 app.use("/api/admin/tailor", adminTailorRoutes); // Tailor mode: inline text overrides
+app.use("/api/admin/tasks", adminTasksRoutes); // Jo's My Flags task board
 app.use("/api/labs", alloroLabsRoutes); // Alloro Labs: anonymized benchmark data
 app.use("/api/personal-agent", personalAgentRoutes); // Personal team agent daily briefs
 app.use("/api/user", improvementPlanRoutes); // Score Improvement Plan: actionable checkup improvements

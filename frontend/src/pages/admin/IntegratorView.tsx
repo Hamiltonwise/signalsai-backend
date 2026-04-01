@@ -12,7 +12,7 @@
  */
 
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { TailorText } from "@/components/TailorText";
 import {
@@ -27,12 +27,18 @@ import {
   Zap,
   FileCheck,
   Send,
+  Flag,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  ClipboardList,
 } from "lucide-react";
 import {
   adminListOrganizations,
   type AdminOrganization,
 } from "@/api/admin-organizations";
-import { apiGet, apiPost } from "@/api/index";
+import { apiGet, apiPost, apiPatch } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 
 // ---- Constants ---------------------------------------------------------------
@@ -545,6 +551,323 @@ function WeeklyNumbers({ orgs }: { orgs: AdminOrganization[] }) {
   );
 }
 
+// ---- Feature 1: Blue Tape Button (Flag This) --------------------------------
+
+function BlueTapeButton() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [response, setResponse] = useState<string | null>(null);
+
+  const flagMutation = useMutation({
+    mutationFn: async (msg: string) => {
+      const res = await apiPost({
+        path: "/admin/ceo-chat",
+        passedData: { message: msg },
+      });
+      return res;
+    },
+    onSuccess: (data: any) => {
+      setResponse(data?.response || "Flagged. The team will see this.");
+    },
+    onError: () => {
+      setResponse("Something went wrong. Try again in a moment.");
+    },
+  });
+
+  const queryClient = useQueryClient();
+
+  const handleSubmit = () => {
+    if (!message.trim()) return;
+    flagMutation.mutate(message.trim());
+  };
+
+  const handleDismiss = () => {
+    setIsOpen(false);
+    setMessage("");
+    setResponse(null);
+    flagMutation.reset();
+    // Refresh the task list after flagging
+    queryClient.invalidateQueries({ queryKey: ["admin-tasks"] });
+  };
+
+  return (
+    <>
+      {/* Floating action button */}
+      <button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#D56753] text-white shadow-lg hover:bg-[#c05545] transition-colors flex items-center justify-center"
+        aria-label="Flag this"
+      >
+        <Flag className="w-6 h-6" />
+      </button>
+
+      {/* Slide-up panel */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/30"
+            onClick={handleDismiss}
+          />
+
+          {/* Panel */}
+          <div className="relative w-full max-w-lg bg-white rounded-t-2xl shadow-xl p-6 animate-in slide-in-from-bottom duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Flag className="w-4 h-4 text-[#D56753]" />
+                <h3 className="text-sm font-semibold text-[#212D40] uppercase tracking-wider">
+                  Flag something
+                </h3>
+              </div>
+              <button
+                onClick={handleDismiss}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Input area */}
+            {!response && (
+              <>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="What needs attention? Bug, idea, client concern..."
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm text-[#212D40] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#D56753]/30 focus:border-[#D56753] resize-none"
+                  rows={3}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      handleSubmit();
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleSubmit}
+                  disabled={!message.trim() || flagMutation.isPending}
+                  className="mt-3 w-full bg-[#D56753] text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-[#c05545] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {flagMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Routing...
+                    </>
+                  ) : (
+                    <>
+                      <Flag className="w-4 h-4" />
+                      Flag it
+                    </>
+                  )}
+                </button>
+              </>
+            )}
+
+            {/* Response area */}
+            {response && (
+              <div className="space-y-3">
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <p className="text-sm text-[#212D40] leading-relaxed">{response}</p>
+                </div>
+                <button
+                  onClick={handleDismiss}
+                  className="w-full text-sm font-medium text-gray-500 hover:text-gray-700 py-2 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ---- Feature 2: My Flags / Task Board ----------------------------------------
+
+interface TaskEntry {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  task_type?: string;
+  blast_radius?: string;
+  source_type: string;
+  owner_name: string;
+  created_at: string;
+}
+
+function BlastRadiusBadge({ radius }: { radius?: string }) {
+  if (!radius) return null;
+  const config: Record<string, { bg: string; text: string; label: string }> = {
+    green: { bg: "bg-emerald-50", text: "text-emerald-700", label: "Green" },
+    yellow: { bg: "bg-amber-50", text: "text-amber-700", label: "Yellow" },
+    red: { bg: "bg-red-50", text: "text-red-700", label: "Red" },
+  };
+  const c = config[radius] || config.green;
+  return (
+    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
+      {c.label}
+    </span>
+  );
+}
+
+function PriorityDot({ priority }: { priority: string }) {
+  const colors: Record<string, string> = {
+    urgent: "bg-red-500",
+    high: "bg-amber-500",
+    normal: "bg-gray-300",
+    low: "bg-gray-200",
+  };
+  return (
+    <span
+      className={`w-2 h-2 rounded-full shrink-0 ${colors[priority] ?? colors.normal}`}
+      title={`Priority: ${priority}`}
+    />
+  );
+}
+
+function StatusSelect({
+  taskId,
+  currentStatus,
+}: {
+  taskId: string;
+  currentStatus: string;
+}) {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      return apiPatch({
+        path: `/admin/tasks/${taskId}`,
+        passedData: { status: newStatus },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-tasks"] });
+    },
+  });
+
+  const statusOptions = [
+    { value: "open", label: "Open" },
+    { value: "in_progress", label: "In Progress" },
+    { value: "resolved", label: "Resolved" },
+  ];
+
+  return (
+    <select
+      value={currentStatus}
+      onChange={(e) => mutation.mutate(e.target.value)}
+      disabled={mutation.isPending}
+      className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-[#212D40] focus:outline-none focus:ring-1 focus:ring-[#D56753]/30 cursor-pointer"
+    >
+      {statusOptions.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function TaskCard({ task }: { task: TaskEntry }) {
+  return (
+    <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50">
+      <PriorityDot priority={task.priority} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-semibold text-[#212D40]">{task.title}</p>
+          <BlastRadiusBadge radius={task.blast_radius} />
+        </div>
+        <p className="text-xs text-gray-400 mt-1">
+          {task.owner_name} &middot; {timeAgo(task.created_at)}
+        </p>
+      </div>
+      <StatusSelect taskId={task.id} currentStatus={task.status} />
+    </div>
+  );
+}
+
+function MyFlags() {
+  const [showResolved, setShowResolved] = useState(false);
+
+  const { data: taskData, isLoading } = useQuery({
+    queryKey: ["admin-tasks"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/tasks" });
+      return res?.success !== false ? ((res?.tasks || []) as TaskEntry[]) : [];
+    },
+    retry: false,
+    staleTime: 30_000,
+  });
+
+  const tasks = taskData ?? [];
+  const activeTasks = tasks.filter(
+    (t) => t.status === "open" || t.status === "in_progress"
+  );
+  const resolvedTasks = tasks.filter((t) => t.status === "resolved");
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2].map((i) => (
+          <div key={i} className="h-14 animate-pulse rounded-xl border border-gray-200 bg-gray-50" />
+        ))}
+      </div>
+    );
+  }
+
+  if (tasks.length === 0) {
+    return (
+      <div className="flex items-center gap-3 px-4 py-4">
+        <ClipboardList className="w-5 h-5 text-gray-300" />
+        <p className="text-sm text-gray-400">
+          No flags. When you or your team flag something through The Board, it appears here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {activeTasks.map((task) => (
+        <TaskCard key={task.id} task={task} />
+      ))}
+
+      {activeTasks.length === 0 && resolvedTasks.length > 0 && (
+        <div className="flex items-center gap-3 px-4 py-3">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          <p className="text-sm text-gray-500">All flags resolved.</p>
+        </div>
+      )}
+
+      {resolvedTasks.length > 0 && (
+        <button
+          onClick={() => setShowResolved(!showResolved)}
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors px-4 pt-2"
+        >
+          {showResolved ? (
+            <ChevronUp className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronDown className="w-3.5 h-3.5" />
+          )}
+          {resolvedTasks.length} resolved
+        </button>
+      )}
+
+      {showResolved &&
+        resolvedTasks.map((task) => (
+          <div key={task.id} className="opacity-50">
+            <TaskCard task={task} />
+          </div>
+        ))}
+    </div>
+  );
+}
+
 // ---- Main --------------------------------------------------------------------
 
 export default function IntegratorView() {
@@ -608,6 +931,16 @@ export default function IntegratorView() {
         <TodaysActions brief={brief} />
       </Card>
 
+      {/* My Flags */}
+      <Card>
+        <SectionLabel
+          icon={Flag}
+          label="My Flags"
+          iconColor="text-[#D56753]"
+        />
+        <MyFlags />
+      </Card>
+
       {/* Trial Pipeline */}
       <Card>
         <SectionLabel
@@ -637,6 +970,9 @@ export default function IntegratorView() {
         />
         <WeeklyNumbers orgs={orgs} />
       </Card>
+
+      {/* Blue Tape FAB */}
+      <BlueTapeButton />
     </div>
   );
 }
