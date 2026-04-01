@@ -19,8 +19,297 @@ import Anthropic from "@anthropic-ai/sdk";
 import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";
 import { db } from "../../database/connection";
+import { BehavioralEventModel } from "../../models/BehavioralEventModel";
 
 const ceoChatRoutes = express.Router();
+
+/* ------------------------------------------------------------------ */
+/*  Concierge: Intent Classification + Routing                        */
+/* ------------------------------------------------------------------ */
+
+interface IntentClassification {
+  type: "bug" | "feature" | "client_concern" | "red_escalation" | "strategic";
+  orgName?: string;
+  blastRadius: "green" | "yellow" | "red";
+  symptom?: string;
+  summary?: string;
+}
+
+const RED_KEYWORDS = [
+  "pricing", "billing", "delete", "remove user", "cancel",
+  "refund", "subscription", "charge", "payment",
+];
+
+const BUG_KEYWORDS = [
+  "broken", "not working", "error", "wrong", "issue", "fix",
+  "bug", "crash", "failing", "fails", "doesn't work", "won't load",
+  "500", "404", "blank page", "stuck",
+];
+
+const FEATURE_KEYWORDS = [
+  "can we add", "it would be nice", "i wish", "what if we",
+  "feature request", "could we", "would be great if",
+  "how about adding", "we should add", "we need a",
+];
+
+const CONCERN_KEYWORDS = [
+  "hasn't logged in", "churning", "unhappy", "quiet",
+  "haven't heard from", "going dark", "at risk", "cancelling",
+  "no activity", "inactive", "worried about", "concerned about",
+];
+
+function classifyIntent(message: string): IntentClassification {
+  const lower = message.toLowerCase();
+
+  // Red blast radius takes priority (safety first)
+  if (RED_KEYWORDS.some((kw) => lower.includes(kw))) {
+    return {
+      type: "red_escalation",
+      blastRadius: "red",
+      summary: message.slice(0, 200),
+    };
+  }
+
+  // Bug report detection
+  if (BUG_KEYWORDS.some((kw) => lower.includes(kw))) {
+    return {
+      type: "bug",
+      blastRadius: lower.includes("auth") || lower.includes("login") || lower.includes("data")
+        ? "yellow"
+        : "green",
+      symptom: message.slice(0, 200),
+    };
+  }
+
+  // Feature request detection
+  if (FEATURE_KEYWORDS.some((kw) => lower.includes(kw))) {
+    return {
+      type: "feature",
+      blastRadius: "yellow",
+      summary: message.slice(0, 200),
+    };
+  }
+
+  // Client concern detection: look for an org name alongside concern language
+  const hasConcernLanguage = CONCERN_KEYWORDS.some((kw) => lower.includes(kw));
+  if (hasConcernLanguage) {
+    // Try to extract a potential org name (capitalized words that aren't common English)
+    const orgNameMatch = message.match(
+      /(?:about|for|from|with|at)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)/
+    );
+    const orgName = orgNameMatch ? orgNameMatch[1] : undefined;
+    return {
+      type: "client_concern",
+      blastRadius: "yellow",
+      orgName,
+      summary: message.slice(0, 200),
+    };
+  }
+
+  // Default: strategic question (pass through to The Board)
+  return { type: "strategic", blastRadius: "green" };
+}
+
+/**
+ * Create a task in dream_team_tasks with safe fallback if the table
+ * or required columns don't exist yet.
+ */
+async function createConciergeTask(params: {
+  title: string;
+  description: string;
+  taskType: string;
+  blastRadius: string;
+  priority?: string;
+  assignedTo?: string;
+  ownerName?: string;
+}): Promise<boolean> {
+  try {
+    const hasTable = await db.schema.hasTable("dream_team_tasks");
+    if (!hasTable) return false;
+
+    const insertData: Record<string, unknown> = {
+      owner_name: params.ownerName || "Concierge",
+      title: params.title,
+      description: params.description,
+      status: "open",
+      priority: params.priority || "normal",
+      source_type: "concierge",
+    };
+
+    // Only include new columns if they exist (migration may not have run)
+    const hasTypeCol = await db.schema.hasColumn("dream_team_tasks", "task_type");
+    if (hasTypeCol) {
+      insertData.task_type = params.taskType;
+      insertData.blast_radius = params.blastRadius;
+      insertData.assigned_to = params.assignedTo || null;
+    }
+
+    await db("dream_team_tasks").insert(insertData);
+    return true;
+  } catch (err: any) {
+    console.error("[Concierge] Failed to create task:", err.message);
+    return false;
+  }
+}
+
+/**
+ * Handle a routed intent. Returns a response string if the intent was
+ * handled locally, or null if it should fall through to The Board.
+ */
+async function handleRoutedIntent(
+  intent: IntentClassification,
+  message: string,
+  userEmail: string
+): Promise<string | null> {
+  switch (intent.type) {
+    case "bug": {
+      const symptom = intent.symptom || message.slice(0, 200);
+      const created = await createConciergeTask({
+        title: `Bug: ${symptom.slice(0, 80)}`,
+        description: symptom,
+        taskType: "bug",
+        blastRadius: intent.blastRadius,
+        priority: intent.blastRadius === "yellow" ? "high" : "normal",
+        ownerName: userEmail,
+      });
+
+      await BehavioralEventModel.create({
+        event_type: "concierge.bug_routed",
+        properties: {
+          symptom,
+          blast_radius: intent.blastRadius,
+          reporter: userEmail,
+          task_created: created,
+        },
+      });
+
+      const routeNote =
+        intent.blastRadius === "green"
+          ? "The QA agent will look at this."
+          : "Dave will see this on his next check.";
+
+      return created
+        ? `Got it. I've created a task for the team: "${symptom.slice(0, 100)}". Blast radius: ${intent.blastRadius}. ${routeNote}`
+        : `I noted the issue: "${symptom.slice(0, 100)}". I couldn't write it to the task board right now, but I'll make sure the team knows. ${routeNote}`;
+    }
+
+    case "feature": {
+      const summary = intent.summary || message.slice(0, 200);
+      const created = await createConciergeTask({
+        title: `Feature: ${summary.slice(0, 80)}`,
+        description: summary,
+        taskType: "feature_request",
+        blastRadius: "yellow",
+        ownerName: userEmail,
+      });
+
+      await BehavioralEventModel.create({
+        event_type: "concierge.feature_requested",
+        properties: {
+          summary,
+          reporter: userEmail,
+          task_created: created,
+        },
+      });
+
+      return created
+        ? `Noted. I've logged this as a feature request: "${summary.slice(0, 100)}". It'll be reviewed in the next build cycle.`
+        : `Good idea. I couldn't write to the task board right now, but I've noted it: "${summary.slice(0, 100)}". It'll be reviewed in the next build cycle.`;
+    }
+
+    case "client_concern": {
+      let contextLines: string[] = [];
+      let orgId: number | null = null;
+
+      if (intent.orgName) {
+        try {
+          const org = await db("organizations")
+            .where("name", "ilike", `%${intent.orgName}%`)
+            .first();
+
+          if (org) {
+            orgId = org.id;
+            contextLines.push(`${org.name}: health status is ${org.client_health_status || "unknown"}.`);
+
+            // Check last login from behavioral_events
+            const lastLogin = await db("behavioral_events")
+              .where({ org_id: org.id, event_type: "session.start" })
+              .orderBy("created_at", "desc")
+              .first();
+
+            if (lastLogin) {
+              const daysAgo = Math.floor(
+                (Date.now() - new Date(lastLogin.created_at).getTime()) / (1000 * 60 * 60 * 24)
+              );
+              contextLines.push(`Last login: ${daysAgo} day${daysAgo === 1 ? "" : "s"} ago.`);
+            } else {
+              contextLines.push("No login activity found on record.");
+            }
+          } else {
+            contextLines.push(`I couldn't find "${intent.orgName}" in our system. Could you double-check the name?`);
+          }
+        } catch (err: any) {
+          contextLines.push("I had trouble looking up their data right now.");
+        }
+      } else {
+        contextLines.push(
+          "I picked up a client concern, but I'm not sure which organization you mean. Could you name them?"
+        );
+      }
+
+      await BehavioralEventModel.create({
+        event_type: "concierge.client_concern",
+        org_id: orgId,
+        properties: {
+          org_name: intent.orgName || "unknown",
+          reporter: userEmail,
+          message_snippet: message.slice(0, 200),
+        },
+      });
+
+      await createConciergeTask({
+        title: `Client concern: ${intent.orgName || "unknown org"}`,
+        description: message.slice(0, 500),
+        taskType: "client_concern",
+        blastRadius: "yellow",
+        priority: "high",
+        ownerName: userEmail,
+      });
+
+      const response = contextLines.join(" ");
+      return orgId
+        ? `${response} Would you like me to draft a check-in message?`
+        : response;
+    }
+
+    case "red_escalation": {
+      await createConciergeTask({
+        title: `[RED] ${(intent.summary || message).slice(0, 80)}`,
+        description: message.slice(0, 500),
+        taskType: "red_escalation",
+        blastRadius: "red",
+        priority: "urgent",
+        assignedTo: "corey",
+        ownerName: userEmail,
+      });
+
+      await BehavioralEventModel.create({
+        event_type: "concierge.red_escalated",
+        properties: {
+          summary: message.slice(0, 200),
+          reporter: userEmail,
+        },
+      });
+
+      return "This touches billing or data. I need Corey's approval before acting on it. I'll flag it for his next review.";
+    }
+
+    case "strategic":
+    default:
+      // Fall through to The Board (Claude API call)
+      return null;
+  }
+}
 
 /**
  * Role-specific mentor frameworks.
@@ -250,6 +539,24 @@ ceoChatRoutes.post(
         return res.status(400).json({ success: false, error: "Message is required" });
       }
 
+      const userEmail = req.user?.email || "unknown";
+
+      // --- Concierge: classify intent before hitting Claude ---
+      const intent = classifyIntent(message);
+      const routedResponse = await handleRoutedIntent(intent, message, userEmail);
+
+      if (routedResponse !== null) {
+        // Intent was handled by the Concierge, no need for Claude
+        return res.json({
+          success: true,
+          response: routedResponse,
+          routed: true,
+          intentType: intent.type,
+          blastRadius: intent.blastRadius,
+        });
+      }
+
+      // --- Strategic question: pass through to The Board ---
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) {
         return res.status(500).json({
@@ -259,7 +566,6 @@ ceoChatRoutes.post(
       }
 
       const anthropic = new Anthropic({ apiKey });
-      const userEmail = req.user?.email || "unknown";
       const systemPrompt = await buildSystemContext(userEmail);
 
       const messages = [
@@ -280,7 +586,13 @@ ceoChatRoutes.post(
       const text =
         response.content[0].type === "text" ? response.content[0].text : "";
 
-      return res.json({ success: true, response: text });
+      return res.json({
+        success: true,
+        response: text,
+        routed: false,
+        intentType: "strategic",
+        blastRadius: "green",
+      });
     } catch (err: any) {
       console.error("[CEOChat] Error:", err.message);
       return res.status(500).json({
