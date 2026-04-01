@@ -55,7 +55,7 @@ import {
 } from "@/api/dream-team";
 import { apiGet, apiPost, apiPatch } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
-import { KillSwitchBanner } from "@/components/admin/KillSwitchBanner";
+import { KillSwitchBanner } from "@/components/Admin/KillSwitchBanner";
 
 // ---- Constants ---------------------------------------------------------------
 

@@ -28,6 +28,10 @@ const USERS = [
 ];
 
 export async function up(knex: Knex): Promise<void> {
+  // Only run if org exists in this database (skip in test/CI)
+  const org = await knex("organizations").where({ id: ORG_ID }).first();
+  if (!org) return;
+
   for (const userData of USERS) {
     // Check if user already exists
     const existing = await knex("users")

@@ -38,7 +38,7 @@ import {
   Zap,
 } from "lucide-react";
 import FounderMode from "./FounderMode";
-import { KillSwitchBanner } from "@/components/admin/KillSwitchBanner";
+import { KillSwitchBanner } from "@/components/Admin/KillSwitchBanner";
 import {} from "react-router-dom";
 import {
   adminListOrganizations,
