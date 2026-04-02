@@ -1086,3 +1086,221 @@ export const Badge: React.FC<BadgeProps> = ({
     </span>
   );
 };
+
+// ============================================================
+// QUALITY IMMUNE SYSTEM -- Layout & Data-Voice Components
+// ============================================================
+
+/**
+ * PageLayout -- Constrained wrapper for every admin/dashboard page.
+ *
+ * Enforces max-width, consistent padding, and responsive breakpoints.
+ * Prevents the "wide margins on desktop" problem.
+ */
+interface PageLayoutProps {
+  children: ReactNode;
+  maxWidth?: "narrow" | "standard" | "wide";
+  className?: string;
+}
+
+export const PageLayout: React.FC<PageLayoutProps> = ({
+  children,
+  maxWidth = "standard",
+  className = "",
+}) => {
+  const widths = {
+    narrow: "max-w-3xl",
+    standard: "max-w-6xl",
+    wide: "max-w-7xl",
+  };
+
+  return (
+    <div className={`mx-auto ${widths[maxWidth]} px-4 sm:px-6 lg:px-8 py-6 space-y-6 ${className}`}>
+      {children}
+    </div>
+  );
+};
+
+/**
+ * MetricGrid -- Responsive grid for metric cards.
+ *
+ * 1-col mobile, 2-col tablet, 3-4 col desktop.
+ * Consistent gap spacing. No ad-hoc grid classes.
+ */
+interface MetricGridProps {
+  children: ReactNode;
+  columns?: 2 | 3 | 4;
+  className?: string;
+}
+
+export const MetricGrid: React.FC<MetricGridProps> = ({
+  children,
+  columns = 3,
+  className = "",
+}) => {
+  const colClasses = {
+    2: "grid-cols-1 sm:grid-cols-2",
+    3: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+    4: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
+  };
+
+  return (
+    <div className={`grid ${colClasses[columns]} gap-4 ${className}`}>
+      {children}
+    </div>
+  );
+};
+
+/**
+ * DashboardSection -- Consistent section wrapper with header.
+ *
+ * Replaces ad-hoc Panel/CollapsibleSection patterns.
+ */
+interface DashboardSectionProps {
+  icon?: ReactNode;
+  label: string;
+  children: ReactNode;
+  className?: string;
+}
+
+export const DashboardSection: React.FC<DashboardSectionProps> = ({
+  icon,
+  label,
+  children,
+  className = "",
+}) => (
+  <div className={`card-supporting ${className}`}>
+    <div className="flex items-center gap-2.5 mb-4">
+      {icon && <div className="text-[#D56753]/50">{icon}</div>}
+      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40">
+        {label}
+      </p>
+    </div>
+    {children}
+  </div>
+);
+
+/**
+ * StatusBadge -- Color DERIVED from score or status. No manual color prop.
+ *
+ * This component makes it structurally impossible to show a green badge
+ * on a score of 42, or a red badge on a healthy org. The color IS the data.
+ */
+interface StatusBadgeProps {
+  /** Numeric score (0-100) OR explicit health status */
+  score?: number;
+  status?: "green" | "amber" | "red" | "gray";
+  /** Optional label override. Defaults to computed label. */
+  label?: string;
+  size?: "sm" | "md";
+}
+
+export const StatusBadge: React.FC<StatusBadgeProps> = ({
+  score,
+  status,
+  label,
+  size = "sm",
+}) => {
+  // Derive color from score if provided, otherwise use explicit status
+  const derivedStatus: string = status
+    ? status
+    : score !== undefined
+    ? score >= 70
+      ? "green"
+      : score >= 40
+      ? "amber"
+      : "red"
+    : "gray";
+
+  const derivedLabel = label
+    ? label
+    : score !== undefined
+    ? `${score}`
+    : derivedStatus;
+
+  const styles: Record<string, string> = {
+    green: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    amber: "bg-amber-50 text-amber-700 border-amber-200",
+    red: "bg-red-50 text-red-700 border-red-200",
+    gray: "bg-gray-50 text-gray-500 border-gray-200",
+  };
+
+  const sizeStyles = size === "sm"
+    ? "px-2 py-0.5 text-[10px]"
+    : "px-3 py-1 text-xs";
+
+  return (
+    <span className={`inline-flex items-center rounded-full font-bold uppercase tracking-wider border ${styles[derivedStatus]} ${sizeStyles}`}>
+      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+        derivedStatus === "green" ? "bg-emerald-500" :
+        derivedStatus === "amber" ? "bg-amber-500" :
+        derivedStatus === "red" ? "bg-red-500" : "bg-gray-400"
+      }`} />
+      {derivedLabel}
+    </span>
+  );
+};
+
+/**
+ * InsightCard -- Data + context in one component. The Monday email voice.
+ *
+ * Instead of showing a number, it shows what the number means.
+ * "$13,500" becomes "$13,500 MRR, $4,000 above burn."
+ * "3 green" becomes "All clients active. Garrison quiet for 5 days."
+ *
+ * This is the Library Test applied to components: does the information
+ * arrive with meaning, or does the user have to figure it out?
+ */
+interface InsightCardProps {
+  /** The headline number or status */
+  value: string;
+  /** What this metric is (short label) */
+  label: string;
+  /** The insight: what this number MEANS right now (the Monday email voice) */
+  insight?: string;
+  /** Trend direction */
+  trend?: "up" | "down" | "flat";
+  /** Trend label (e.g. "+2 this month") */
+  trendLabel?: string;
+  /** Score for auto-coloring the card accent */
+  score?: number;
+  /** Icon component */
+  icon?: ReactNode;
+  className?: string;
+}
+
+export const InsightCard: React.FC<InsightCardProps> = ({
+  value,
+  label,
+  insight,
+  trend,
+  trendLabel,
+  icon,
+  className = "",
+}) => {
+  const trendColor =
+    trend === "up" ? "text-emerald-600" :
+    trend === "down" ? "text-red-600" : "text-gray-400";
+
+  return (
+    <div className={`card-supporting ${className}`}>
+      {icon && (
+        <div className="mb-3 text-[#D56753]/40">{icon}</div>
+      )}
+      <p className="text-3xl font-black text-[#212D40] leading-none">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40 mt-1">
+        {label}
+      </p>
+      {trendLabel && (
+        <p className={`text-xs font-semibold mt-2 ${trendColor}`}>
+          {trendLabel}
+        </p>
+      )}
+      {insight && (
+        <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+          {insight}
+        </p>
+      )}
+    </div>
+  );
+};

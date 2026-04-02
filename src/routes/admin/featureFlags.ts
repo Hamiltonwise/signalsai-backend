@@ -66,5 +66,41 @@ router.patch(
   },
 );
 
+// ── GET /api/admin/feature-flags/org/:orgId ─────────────────────
+// Client-facing: returns enabled flag names for a specific org.
+// Any authenticated user can call this (not just super-admin).
+
+router.get(
+  "/org/:orgId",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const orgId = parseInt(req.params.orgId, 10);
+      const flags = await db("feature_flags").select("flag_name", "is_enabled", "enabled_for_orgs");
+
+      const enabledFlags: Record<string, boolean> = {};
+      for (const flag of flags) {
+        let orgEnabled = false;
+        if (flag.is_enabled) {
+          orgEnabled = true;
+        } else if (flag.enabled_for_orgs) {
+          const parsed = typeof flag.enabled_for_orgs === "string"
+            ? JSON.parse(flag.enabled_for_orgs)
+            : flag.enabled_for_orgs;
+          if (Array.isArray(parsed) && parsed.includes(orgId)) {
+            orgEnabled = true;
+          }
+        }
+        enabledFlags[flag.flag_name] = orgEnabled;
+      }
+
+      return res.json({ success: true, flags: enabledFlags });
+    } catch (err: any) {
+      console.error("[FEATURE-FLAGS] Org flags error:", err.message);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  },
+);
+
 // T2 registers feature flag routes
 export default router;

@@ -213,7 +213,14 @@ interface OrgContext {
   snapshotSummary: string;
   eventSummary: string;
   referralSummary: string;
+  rankingHistory: string;
+  topCompetitor: string | null;
+  topCompetitorReviews: number;
+  clientReviews: number;
+  coldReferralSources: string[];
+  topReferralSources: string[];
   caseValue: number;
+  specialty: string;
 }
 
 async function buildContext(
@@ -254,13 +261,86 @@ async function buildContext(
     // Fall through to default
   }
 
+  // Pull ranking history with named competitors from practice_rankings
+  const rankings = await db("practice_rankings")
+    .where({ organization_id: org.id, status: "completed" })
+    .orderBy("created_at", "desc")
+    .limit(10);
+
+  const rankingHistoryLines = rankings.map((r: any) => {
+    const date = new Date(r.created_at).toISOString().split("T")[0];
+    return `${date}: #${r.rank_position}/${r.total_competitors} ${r.specialty} (${r.gbp_location_name || org.name})`;
+  });
+
+  // Extract top competitor from ranking raw_data
+  let topCompetitor: string | null = null;
+  let topCompetitorReviews = 0;
+  let clientReviews = 0;
+  if (rankings.length > 0 && rankings[0].raw_data) {
+    const raw = typeof rankings[0].raw_data === "string" ? JSON.parse(rankings[0].raw_data) : rankings[0].raw_data;
+    const competitors = raw?.competitors || raw?.competitorData || [];
+    if (competitors.length > 0) {
+      const top = competitors[0];
+      topCompetitor = top.name || top.displayName || null;
+      topCompetitorReviews = top.reviewsCount || top.userRatingCount || 0;
+    }
+    clientReviews = raw?.clientReviews || raw?.reviewCount || 0;
+  }
+
+  // Pull PMS data for individual referral source names and changes
+  const pmsJob = await db("pms_jobs")
+    .where({ organization_id: org.id })
+    .orderBy("timestamp", "desc")
+    .first();
+
+  const coldSources: string[] = [];
+  const topSources: string[] = [];
+
+  if (pmsJob?.raw_input_data) {
+    const rawPms = typeof pmsJob.raw_input_data === "string" ? JSON.parse(pmsJob.raw_input_data) : pmsJob.raw_input_data;
+    if (Array.isArray(rawPms)) {
+      // Count referrals per source
+      const sourceCounts: Record<string, number> = {};
+      for (const record of rawPms) {
+        const source = record["Referral Source"] || record["Referring source"] || record["referral_source"] || "";
+        if (source) sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+      }
+      // Sort by count
+      const sorted = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]);
+      // Top 5 sources
+      for (const [name, count] of sorted.slice(0, 5)) {
+        topSources.push(`${name} (${count} referrals)`);
+      }
+      // Cold sources: those with only 1 referral (potentially dropping off)
+      for (const [name, count] of sorted) {
+        if (count === 1 && !name.toLowerCase().includes("website") && !name.toLowerCase().includes("self")) {
+          coldSources.push(name);
+        }
+      }
+    }
+  }
+
+  // Get specialty from vocabulary config
+  let specialty = "local business";
+  try {
+    const vocabConfig = await db("vocabulary_configs").where({ org_id: org.id }).first();
+    if (vocabConfig?.vertical) specialty = vocabConfig.vertical;
+  } catch { /* fallback */ }
+
   return {
     orgName: org.name,
     orgId: org.id,
     snapshotSummary: snapshotLines.join("\n") || "No ranking snapshots",
     eventSummary: eventLines.join(", ") || "No recent events",
     referralSummary: referralLines.join("\n") || "No referral sources",
+    rankingHistory: rankingHistoryLines.join("\n") || "No ranking history",
+    topCompetitor,
+    topCompetitorReviews,
+    clientReviews,
+    coldReferralSources: coldSources.slice(0, 5),
+    topReferralSources: topSources.slice(0, 5),
     caseValue,
+    specialty,
   };
 }
 
@@ -283,29 +363,45 @@ ${runtime.heuristics.map((h, i) => `${i + 1}. ${h}`).join("\n")}
 `;
   }
 
-  const prompt = `You are the Intelligence Agent for Alloro, a business clarity platform for local service businesses.
+  const prompt = `You are the Intelligence Agent for Alloro. You produce findings that make business owners say "how did they know that?"
 
-Analyze this data for ${context.orgName} and produce exactly 3 findings. Each finding must pass the biological-economic lens: identify which core human need is threatened (safety, belonging, purpose, or status) and the dollar consequence at 30, 90, and 365 days.
+The difference between a report and intelligence:
+- Report: "You have 71 reviews at 5.0 stars." (they know this)
+- Intelligence: "Sackawitz Orthodontics added 15 reviews this month. You added 2. At this rate, he erases your rating advantage by August." (they didn't know this)
 
-Case value per referral: $${context.caseValue}
+Every finding must:
+1. NAME a specific competitor or referral source (never say "a competitor" or "your top referral source")
+2. Include a specific number or percentage that the owner didn't know
+3. Explain WHY it matters in one sentence (the teaching moment)
+4. Give ONE specific action with enough detail that front desk staff could execute it
+5. Attach the dollar consequence at 30, 90, and 365 days
 
-RANKING DATA:
+Practice: ${context.orgName} (${context.specialty})
+Case value: $${context.caseValue}
+
+COMPETITIVE POSITION HISTORY:
+${context.rankingHistory}
+${context.topCompetitor ? `Top competitor: ${context.topCompetitor} (${context.topCompetitorReviews} reviews vs your ${context.clientReviews})` : ""}
+
+WEEKLY RANKING SNAPSHOTS:
 ${context.snapshotSummary}
 
-RECENT EVENTS (last 7 days):
+TOP REFERRAL SOURCES (from PMS data):
+${context.topReferralSources.length > 0 ? context.topReferralSources.join("\n") : "No PMS data available"}
+
+REFERRAL SOURCES WITH ONLY 1 REFERRAL (potentially going cold):
+${context.coldReferralSources.length > 0 ? context.coldReferralSources.join(", ") : "None detected"}
+
+RECENT BEHAVIORAL EVENTS:
 ${context.eventSummary}
-
-REFERRAL SOURCES:
-${context.referralSummary}
 ${heuristicSection}
-Return a JSON array of exactly 3 findings. Each finding must have:
-- headline: one sentence, specific and data-backed
-- detail: 2-3 sentences with context and recommended action
-- humanNeed: one of "safety", "belonging", "purpose", "status"
-- economicConsequence: object with thirtyDay, ninetyDay, yearDay strings (dollar figures)
+Produce exactly 3 findings as a JSON array. Each finding:
+- headline: one sentence naming a specific entity (competitor or referral source) and a specific number
+- detail: 2-3 sentences. First sentence: what happened (the Oz moment). Second: why it matters (the teaching). Third: exactly what to do about it (the action, specific enough for front desk staff).
+- humanNeed: "safety" | "belonging" | "purpose" | "status"
+- economicConsequence: { thirtyDay, ninetyDay, yearDay } with dollar strings
 
-Important: never use em-dashes. Use commas or periods instead.
-
+Never use em-dashes. Use commas or periods instead.
 Return ONLY the JSON array, no markdown fences.`;
 
   const response = await client.messages.create({
@@ -342,42 +438,86 @@ Return ONLY the JSON array, no markdown fences.`;
 
 function generateTemplateFindings(context: OrgContext): IntelligenceFinding[] {
   const findings: IntelligenceFinding[] = [];
+  const cv = context.caseValue;
 
-  // Finding 1: Ranking position
-  findings.push({
-    headline: `${context.orgName} ranking data available for review`,
-    detail: `Your latest ranking snapshots show activity in your market. Review your position relative to competitors and identify opportunities to improve visibility. Focus on the lever that moves the most revenue.`,
-    humanNeed: "safety",
-    economicConsequence: {
-      thirtyDay: `$${context.caseValue} per missed referral this month`,
-      ninetyDay: `$${context.caseValue * 3} if trend continues over 3 months`,
-      yearDay: `$${context.caseValue * 12} annual revenue at risk from lost position`,
-    },
-  });
+  // Finding 1: Competitive position with named competitor
+  if (context.topCompetitor) {
+    const reviewGap = context.topCompetitorReviews - context.clientReviews;
+    const gapDirection = reviewGap > 0 ? "ahead of you" : "behind you";
+    findings.push({
+      headline: `${context.topCompetitor} has ${context.topCompetitorReviews} reviews, ${Math.abs(reviewGap)} ${gapDirection}`,
+      detail: `${context.topCompetitor} is your closest competitor in the local market with ${context.topCompetitorReviews} reviews compared to your ${context.clientReviews}. ${reviewGap > 0 ? "Closing this gap requires consistent review requests after every appointment. Practices that ask at checkout get 4x the response rate vs follow-up emails." : "Your review lead is a real competitive advantage, but it needs to be maintained. A competitor adding 10+ reviews in a month can shift local rankings in weeks."} Ask your front desk to request a review from every patient at checkout this week.`,
+      humanNeed: "status",
+      economicConsequence: {
+        thirtyDay: `$${cv * 2} if ranking position shifts`,
+        ninetyDay: `$${cv * 6} if the gap widens over a quarter`,
+        yearDay: `$${cv * 18} annual impact from competitive position change`,
+      },
+    });
+  } else {
+    findings.push({
+      headline: `Your local competitive landscape needs monitoring`,
+      detail: `We don't yet have detailed competitor data for your market. Once your ranking analysis completes, you will see exactly who you are competing with, their review counts, and where the opportunities are. This typically updates within your first week.`,
+      humanNeed: "safety",
+      economicConsequence: {
+        thirtyDay: `$${cv} per missed opportunity while unmonitored`,
+        ninetyDay: `$${cv * 4} if a competitor gains ground unnoticed`,
+        yearDay: `$${cv * 12} annual from competitive blind spots`,
+      },
+    });
+  }
 
-  // Finding 2: Engagement
-  findings.push({
-    headline: `Weekly engagement summary for ${context.orgName}`,
-    detail: `Recent activity: ${context.eventSummary}. Consistent engagement with the platform correlates with faster identification of market shifts and referral drift.`,
-    humanNeed: "purpose",
-    economicConsequence: {
-      thirtyDay: `Engaged practices catch revenue threats 2-3 weeks faster`,
-      ninetyDay: `$${context.caseValue * 4} protected through early detection`,
-      yearDay: `$${context.caseValue * 15} in compounded early-detection value`,
-    },
-  });
+  // Finding 2: Top referral source (named) or referral network
+  if (context.topReferralSources.length > 0) {
+    const topSource = context.topReferralSources[0];
+    findings.push({
+      headline: `${topSource.split(" (")[0]} is your top referral source`,
+      detail: `${topSource.split(" (")[0]} leads your referral network with ${topSource.match(/\((\d+)/)?.[1] || "multiple"} referrals. This relationship is worth $${cv * parseInt(topSource.match(/\((\d+)/)?.[1] || "3", 10)} in annual revenue. A thank-you card or lunch visit reinforces the relationship and keeps you top of mind when they have a patient to refer. Schedule a visit or send a note this week.`,
+      humanNeed: "belonging",
+      economicConsequence: {
+        thirtyDay: `$${cv * 2} from this source this month`,
+        ninetyDay: `$${cv * 6} if the relationship strengthens`,
+        yearDay: `$${cv * parseInt(topSource.match(/\((\d+)/)?.[1] || "3", 10)} directly attributable to this source`,
+      },
+    });
+  } else {
+    findings.push({
+      headline: `Your referral network needs visibility`,
+      detail: `Upload your PMS referral data to see exactly which offices are sending patients and which have gone quiet. Practices that track referral sources by name catch drift 60 days faster than those who track by volume alone. The difference is the ability to call a specific office before the relationship goes cold.`,
+      humanNeed: "belonging",
+      economicConsequence: {
+        thirtyDay: `$${cv * 2} if one referral source drifts unnoticed`,
+        ninetyDay: `$${cv * 8} if drift becomes permanent`,
+        yearDay: `$${cv * 24} annual from one lost referral relationship`,
+      },
+    });
+  }
 
-  // Finding 3: Referral network
-  findings.push({
-    headline: `Referral network status for ${context.orgName}`,
-    detail: `${context.referralSummary}. Monitor referral velocity weekly. A GP who stops referring without explanation is a belonging signal, not random variation. The window to act is typically 30 days.`,
-    humanNeed: "belonging",
-    economicConsequence: {
-      thirtyDay: `$${context.caseValue * 2} if one GP drifts this month`,
-      ninetyDay: `$${context.caseValue * 8} if drift becomes permanent`,
-      yearDay: `$${context.caseValue * 24} annual from one lost referral relationship`,
-    },
-  });
+  // Finding 3: Cold referral source (named) or general review velocity
+  if (context.coldReferralSources.length > 0) {
+    const coldSource = context.coldReferralSources[0];
+    findings.push({
+      headline: `${coldSource} sent only 1 referral recently and may be going quiet`,
+      detail: `${coldSource} appears in your referral data with only 1 recent referral. When a previously active source drops to 1, it often means they found another provider or their patient volume shifted. The window to re-engage is typically 30 days. Have your front desk call ${coldSource}'s office this week to check in and reaffirm the relationship.`,
+      humanNeed: "belonging",
+      economicConsequence: {
+        thirtyDay: `$${cv} at risk if this source goes silent`,
+        ninetyDay: `$${cv * 4} if the relationship is lost`,
+        yearDay: `$${cv * 12} annual from a lost referral partner`,
+      },
+    });
+  } else {
+    findings.push({
+      headline: `Your review velocity is a growth lever`,
+      detail: `Consistent review growth signals trust to both patients and search algorithms. Practices that add 3+ reviews per week rank higher and convert more new patients than those with sporadic reviews. Set a team goal of asking every patient at checkout. The compound effect over 90 days is significant.`,
+      humanNeed: "purpose",
+      economicConsequence: {
+        thirtyDay: `$${cv * 2} from improved local visibility`,
+        ninetyDay: `$${cv * 8} from sustained review momentum`,
+        yearDay: `$${cv * 24} from the compounding visibility effect`,
+      },
+    });
+  }
 
   return findings;
 }
