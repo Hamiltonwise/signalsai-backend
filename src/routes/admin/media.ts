@@ -17,8 +17,12 @@
 import express from "express";
 import multer from "multer";
 import * as controller from "../../controllers/admin-media/AdminMediaController";
+import { authenticateToken } from "../../middleware/auth";
+import { superAdminMiddleware } from "../../middleware/superAdmin";
 
 const router = express.Router({ mergeParams: true }); // Preserve :projectId param
+
+router.use(authenticateToken, superAdminMiddleware);
 
 // Multer config: memory storage, 100 MB limit, accept all files
 const upload = multer({

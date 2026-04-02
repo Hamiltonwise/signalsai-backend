@@ -7,8 +7,12 @@
 
 import express from "express";
 import * as controller from "../../controllers/admin-agent-outputs/AdminAgentOutputsController";
+import { authenticateToken } from "../../middleware/auth";
+import { superAdminMiddleware } from "../../middleware/superAdmin";
 
 const router = express.Router();
+
+router.use(authenticateToken, superAdminMiddleware);
 
 // List & Filters
 router.get("/", controller.listOutputs);

@@ -4,8 +4,12 @@
 
 import { Router, Request, Response } from "express";
 import { getConfig, setConfig, deleteConfig, getAllConfig, CONFIG_REGISTRY } from "../../services/configStore";
+import { authenticateToken } from "../../middleware/auth";
+import { superAdminMiddleware } from "../../middleware/superAdmin";
 
 const router = Router();
+
+router.use(authenticateToken, superAdminMiddleware);
 
 router.get("/", async (_req: Request, res: Response) => {
   try {

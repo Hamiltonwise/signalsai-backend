@@ -12,8 +12,12 @@ import multer from "multer";
 import * as controller from "../../controllers/admin-websites/AdminWebsitesController";
 import * as backupController from "../../controllers/admin-websites/BackupController";
 import importsRouter from "./imports";
+import { authenticateToken } from "../../middleware/auth";
+import { superAdminMiddleware } from "../../middleware/superAdmin";
 
 const router = express.Router();
+
+router.use(authenticateToken, superAdminMiddleware);
 
 // Multer for artifact page zip uploads (memory storage, 200 MB limit)
 const artifactUpload = multer({

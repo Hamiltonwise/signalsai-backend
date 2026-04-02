@@ -1,7 +1,11 @@
 import express from "express";
 import * as appLogsController from "../controllers/appLogs/appLogsController";
+import { authenticateToken } from "../middleware/auth";
+import { superAdminMiddleware } from "../middleware/superAdmin";
 
 const router = express.Router();
+
+router.use(authenticateToken, superAdminMiddleware);
 
 /**
  * GET /api/admin/app-logs
