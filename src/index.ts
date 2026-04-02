@@ -143,6 +143,7 @@ import improvementPlanRoutes from "./routes/user/improvementPlan";
 import competitorRoutes from "./routes/user/competitors";
 import missionControlRoutes from "./routes/admin/missionControl";
 import killSwitchRoutes from "./routes/admin/killSwitch";
+import customerReadinessRoutes from "./routes/admin/customerReadiness";
 import dataExportRoutes from "./routes/user/dataExport";
 import mailgunEventsRoutes from "./routes/webhooks/mailgunEvents";
 import { billingGateMiddleware } from "./middleware/billingGate";
@@ -376,6 +377,7 @@ app.use("/api/user", improvementPlanRoutes); // Score Improvement Plan: actionab
 app.use("/api/user/competitors", competitorRoutes); // Tracked Competitors: side-by-side comparison
 app.use("/api/admin/mission-control", missionControlRoutes); // Mission Control: real-time agent status grid
 app.use("/api/admin/kill-switch", killSwitchRoutes); // Emergency kill switch for all agents
+app.use("/api/admin/customer-readiness", customerReadinessRoutes); // Customer experience readiness scores
 app.use("/api/user/data-export", dataExportRoutes); // Full client data export (GDPR/compliance)
 app.use("/api/webhooks/mailgun", mailgunEventsRoutes); // Mailgun event webhooks: deliverability tracking
 

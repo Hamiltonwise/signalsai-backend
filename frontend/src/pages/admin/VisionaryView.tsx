@@ -789,31 +789,31 @@ function RoadmapPanel() {
               <p className="text-lg font-semibold text-[#212D40]">
                 ${roadmap.currentMRR.toLocaleString()}
               </p>
-              <TailorText editKey="hq.visionary.roadmap.metrics.mrr" defaultText="MRR" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
+              <TailorText editKey="hq.visionary.roadmap.metrics.mrr" defaultText="MRR" as="p" className="text-xs font-semibold uppercase tracking-wider text-gray-400 mt-0.5" />
             </div>
             <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
               <p className="text-lg font-semibold text-[#212D40]">
                 {roadmap.currentClients}
               </p>
-              <TailorText editKey="hq.visionary.roadmap.metrics.clients" defaultText="Clients" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
+              <TailorText editKey="hq.visionary.roadmap.metrics.clients" defaultText="Clients" as="p" className="text-xs font-semibold uppercase tracking-wider text-gray-400 mt-0.5" />
             </div>
             <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
               <p className="text-lg font-semibold text-[#212D40]">
                 {roadmap.checkupsCompleted}
               </p>
-              <TailorText editKey="hq.visionary.roadmap.metrics.checkups" defaultText="Checkups" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
+              <TailorText editKey="hq.visionary.roadmap.metrics.checkups" defaultText="Checkups" as="p" className="text-xs font-semibold uppercase tracking-wider text-gray-400 mt-0.5" />
             </div>
             <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
               <p className="text-lg font-semibold text-[#212D40]">
                 {roadmap.trialConversionRate > 0 ? `${roadmap.trialConversionRate}%` : "--"}
               </p>
-              <TailorText editKey="hq.visionary.roadmap.metrics.trialConv" defaultText="Trial Conv." as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
+              <TailorText editKey="hq.visionary.roadmap.metrics.trialConv" defaultText="Trial Conv." as="p" className="text-xs font-semibold uppercase tracking-wider text-gray-400 mt-0.5" />
             </div>
             <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
               <p className="text-lg font-semibold text-[#212D40]">
                 {roadmap.referralRate > 0 ? `${roadmap.referralRate}%` : "--"}
               </p>
-              <TailorText editKey="hq.visionary.roadmap.metrics.referralRate" defaultText="Referral Rate" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
+              <TailorText editKey="hq.visionary.roadmap.metrics.referralRate" defaultText="Referral Rate" as="p" className="text-xs font-semibold uppercase tracking-wider text-gray-400 mt-0.5" />
             </div>
           </div>
         </div>
@@ -1681,6 +1681,102 @@ function AICostPanel() {
   );
 }
 
+// ---- Customer Readiness Panel -----------------------------------------------
+
+interface ReadinessCheck {
+  name: string;
+  pass: boolean;
+  value: string;
+  issue?: string;
+}
+
+interface CustomerResult {
+  orgId: number;
+  name: string;
+  score: number;
+  verdict: "UNDENIABLE" | "CLOSE" | "GAPS" | "BROKEN";
+  checks: ReadinessCheck[];
+}
+
+function CustomerReadinessPanel() {
+  const { data } = useQuery({
+    queryKey: ["customer-readiness"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/admin/customer-readiness" });
+      return res?.success ? res : null;
+    },
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+
+  if (!data?.customers) return null;
+
+  const customers: CustomerResult[] = data.customers;
+  const avg = data.averageScore || 0;
+  const allUndeniable = data.allUndeniable || false;
+
+  const verdictColor = (v: string) => {
+    if (v === "UNDENIABLE") return "text-emerald-600 bg-emerald-50 border-emerald-200";
+    if (v === "CLOSE") return "text-amber-600 bg-amber-50 border-amber-200";
+    return "text-red-600 bg-red-50 border-red-200";
+  };
+
+  const scoreColor = (s: number) => {
+    if (s >= 90) return "text-emerald-600";
+    if (s >= 70) return "text-amber-600";
+    return "text-red-600";
+  };
+
+  return (
+    <Panel>
+      <PanelHeader
+        icon={Shield}
+        label="Customer Readiness"
+        iconColor={allUndeniable ? "text-emerald-600" : "text-amber-600"}
+      />
+      <div className="flex items-center gap-3 mb-4">
+        <span className={`text-3xl font-semibold tracking-tight ${scoreColor(avg)}`}>
+          {avg}/100
+        </span>
+        <span className="text-sm text-gray-500">
+          {allUndeniable
+            ? "All customers undeniable"
+            : `${customers.filter((c) => c.verdict === "UNDENIABLE").length}/${customers.length} undeniable`}
+        </span>
+      </div>
+      <div className="space-y-2">
+        {customers.map((c) => (
+          <div
+            key={c.orgId}
+            className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${verdictColor(c.verdict)}`}>
+                {c.verdict}
+              </span>
+              <span className="text-sm font-medium text-gray-700">{c.name}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-semibold ${scoreColor(c.score)}`}>
+                {c.score}
+              </span>
+              <div className="flex gap-0.5">
+                {c.checks.map((check, i) => (
+                  <div
+                    key={i}
+                    className={`w-1.5 h-4 rounded-sm ${check.pass ? "bg-emerald-400" : "bg-red-300"}`}
+                    title={`${check.name}: ${check.pass ? "PASS" : "FAIL"} - ${check.value}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
 // ---- Main Component --------------------------------------------------------
 
 export default function VisionaryView() {
@@ -1756,7 +1852,10 @@ export default function VisionaryView() {
         {/* 3. Revenue (prominent but not the hero) */}
         <RevenuePanel />
 
-        {/* 4. What I'm Noticing (Claude observations) */}
+        {/* 4. Customer Readiness -- the undeniable bar */}
+        <CustomerReadinessPanel />
+
+        {/* 5. What I'm Noticing (Claude observations) */}
         <ClaudeObservations role="visionary" />
 
         {/* 5. Decisions Needing You */}
