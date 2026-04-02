@@ -291,11 +291,113 @@ claudeObservationsRoutes.get(
   async (req, res) => {
     try {
       const role = (req.query.role as string) || "visionary";
-      const observations = await gatherObservations(role);
-      return res.json({ success: true, observations });
+      const liveObservations = await gatherObservations(role);
+
+      // Merge with persisted observations (unacknowledged, last 30 days)
+      let persisted: Observation[] = [];
+      try {
+        const hasTable = await db.schema.hasTable("claude_observations");
+        if (hasTable) {
+          const rows = await db("claude_observations")
+            .where("acknowledged", false)
+            .where("created_at", ">", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+            .orderBy("created_at", "desc")
+            .limit(10);
+
+          persisted = rows.map((r: any) => ({
+            id: r.id,
+            text: `${r.title}: ${r.body}`,
+            confidence: r.confidence as "green" | "yellow" | "red",
+            type: r.type === "recommendation" ? "action" as const
+              : r.type === "pattern" ? "insight" as const
+              : r.type === "shipped" ? "verified" as const
+              : "insight" as const,
+            source: r.session_context || `${r.category || "observation"}, ${new Date(r.created_at).toLocaleDateString()}`,
+            persistedId: r.id,
+          }));
+        }
+      } catch { /* table doesn't exist yet, that's fine */ }
+
+      // Combine: persisted first (they're session-specific), then live
+      const combined = [...persisted, ...liveObservations];
+
+      // Re-apply the top-3 cap with priority sorting
+      const typePriority: Record<string, number> = { blocker: 0, action: 1, insight: 2, verified: 3 };
+      combined.sort((a, b) => (typePriority[a.type] ?? 9) - (typePriority[b.type] ?? 9));
+
+      const maxItems = 5; // Bump to 5 when persisted observations exist
+      const critical = combined.filter(o => o.type === "blocker" || o.type === "action");
+      const insights = combined.filter(o => o.type === "insight");
+      const verified = combined.filter(o => o.type === "verified");
+
+      const result: Observation[] = [];
+      result.push(...critical.slice(0, maxItems));
+      if (result.length < maxItems) result.push(...insights.slice(0, maxItems - result.length));
+      if (result.length < maxItems) result.push(...verified.slice(0, maxItems - result.length));
+
+      return res.json({ success: true, observations: result });
     } catch (error: any) {
       console.error("[Claude Observations] Error:", error.message);
       return res.status(500).json({ success: false, error: "Failed to load observations" });
+    }
+  }
+);
+
+// POST /api/admin/claude-observations -- persist an observation from a build session
+claudeObservationsRoutes.post(
+  "/",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const hasTable = await db.schema.hasTable("claude_observations");
+      if (!hasTable) {
+        return res.status(503).json({ success: false, error: "Run migrations first" });
+      }
+
+      const { type, confidence, title, body, orgId, orgName, category, sessionContext } = req.body;
+      if (!title || !body) {
+        return res.status(400).json({ success: false, error: "title and body required" });
+      }
+
+      const validTypes = ["noticed", "recommendation", "shipped", "pattern"];
+      const validConf = ["green", "yellow", "red"];
+
+      const [obs] = await db("claude_observations").insert({
+        type: validTypes.includes(type) ? type : "noticed",
+        confidence: validConf.includes(confidence) ? confidence : "yellow",
+        title,
+        body,
+        org_id: orgId || null,
+        org_name: orgName || null,
+        category: category || null,
+        session_context: sessionContext || null,
+      }).returning("*");
+
+      return res.status(201).json({ success: true, observation: obs });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// PATCH /api/admin/claude-observations/:id/acknowledge -- mark as seen
+claudeObservationsRoutes.patch(
+  "/:id/acknowledge",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const hasTable = await db.schema.hasTable("claude_observations");
+      if (!hasTable) return res.json({ success: true });
+
+      await db("claude_observations")
+        .where({ id: req.params.id })
+        .update({ acknowledged: true, acknowledged_by: "Corey", acknowledged_at: new Date() });
+
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
     }
   }
 );
