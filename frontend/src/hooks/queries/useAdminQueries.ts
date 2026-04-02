@@ -44,6 +44,8 @@ export type AdminOrganizationMerged = AdminOrganizationDetail & {
   users: AdminUser[];
   connections: AdminConnection[];
   website: AdminWebsite | null;
+  patientpath_status?: string | null;
+  account_type?: string | null;
 };
 
 // =====================================================================
