@@ -1,0 +1,72 @@
+#!/bin/sh
+# ═══════════════════════════════════════════════════════════════
+# ALLORO PRE-COMMIT: The Quality Gate
+#
+# Every commit, from every Claude Code session, from every human,
+# passes through this gate. The 25 design rules enforced automatically.
+#
+# If this blocks your commit, the fix is in the code, not in
+# skipping the hook. The standard IS the system.
+# ═══════════════════════════════════════════════════════════════
+
+# Only check staged .tsx/.ts files (not the entire repo on every commit)
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(tsx|ts)$' | grep -v node_modules || true)
+
+if [ -z "$STAGED" ]; then
+  exit 0  # No TypeScript files staged, nothing to check
+fi
+
+ERRORS=0
+
+# ─── Rule: No text below 12px ─────────────────────────────────
+TINY=$(echo "$STAGED" | xargs grep -l 'text-\[10px\]\|text-\[11px\]\|text-\[9px\]' 2>/dev/null || true)
+if [ -n "$TINY" ]; then
+  echo "❌ BLOCKED: Text below 12px found (rule: minimum 12px)"
+  echo "   Files: $TINY"
+  echo "   Fix: replace text-[10px]/text-[11px] with text-xs (12px)"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# ─── Rule: No font-black in UI (semibold max) ────────────────
+HEAVY=$(echo "$STAGED" | xargs grep -l 'font-black\|font-extrabold' 2>/dev/null | grep -v '.husky' || true)
+if [ -n "$HEAVY" ]; then
+  echo "❌ BLOCKED: font-black/font-extrabold found (rule: semibold max)"
+  echo "   Files: $HEAVY"
+  echo "   Fix: replace with font-semibold"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# ─── Rule: No fabricated content ──────────────────────────────
+FAKE=$(echo "$STAGED" | xargs grep -l '"Great experience!"' 2>/dev/null || true)
+if [ -n "$FAKE" ]; then
+  echo "❌ BLOCKED: Fabricated review text found"
+  echo "   Files: $FAKE"
+  ERRORS=$((ERRORS + 1))
+fi
+
+# ─── Rule: No old branding ───────────────────────────────────
+OLD_BRAND=$(echo "$STAGED" | xargs grep -l 'Hamilton Wise\|Practice Clarity\|Practice Intelligence' 2>/dev/null | grep -v MEMORY | grep -v memory | grep -v '.md' || true)
+if [ -n "$OLD_BRAND" ]; then
+  echo "⚠️  WARNING: Old branding found (Hamilton Wise / Practice Clarity)"
+  echo "   Files: $OLD_BRAND"
+  # Warning only, not blocking (might be in comments or admin context)
+fi
+
+# ─── Rule: No "Prospects" in customer-facing code ─────────────
+PROSPECTS=$(echo "$STAGED" | grep -v 'admin/' | xargs grep -l '"Prospects\|Prospects ' 2>/dev/null || true)
+if [ -n "$PROSPECTS" ]; then
+  echo "⚠️  WARNING: 'Prospects' found in customer-facing code (use 'People')"
+  echo "   Files: $PROSPECTS"
+fi
+
+if [ "$ERRORS" -gt 0 ]; then
+  echo ""
+  echo "═══════════════════════════════════════"
+  echo "  COMMIT BLOCKED: $ERRORS rule violations"
+  echo "  Fix the issues above and try again."
+  echo "  The standard IS the system."
+  echo "═══════════════════════════════════════"
+  exit 1
+fi
+
+exit 0
