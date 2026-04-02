@@ -78,7 +78,7 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
             : "Enjoy the week."}
     </p>
 
-    ${communityCount && communityCount > 10 ? `<p style="margin: 0 0 24px; color: ${BRAND_COLORS.mediumGray}; font-size: 13px; line-height: 1.6;">Clean week for you and ${communityCount - 1} other business owners this Monday.</p>` : ""}
+    <p style="margin: 0 0 24px; color: ${BRAND_COLORS.mediumGray}; font-size: 13px; line-height: 1.6;">${communityCount && communityCount >= 100 ? `Clean week for you and ${communityCount - 1} other business owners this Monday.` : `Clean week for business owners across the country this Monday.`}</p>
 
     <div style="margin: 24px 0; text-align: center;">
       ${createButton("View your dashboard", `${APP_URL}/dashboard`)}
