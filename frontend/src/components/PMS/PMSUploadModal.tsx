@@ -229,9 +229,9 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                 initial={{ y: -10, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.1 }}
-                className="text-2xl font-bold text-gray-900"
+                className="text-2xl font-semibold text-gray-900"
               >
-                PMS Data Management
+                Share Your Business Data
               </motion.h2>
               <motion.button
                 initial={{ rotate: -90, opacity: 0 }}
@@ -253,10 +253,41 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                   transition={{ delay: 0.2 }}
                   className="space-y-6"
                 >
+                  {/* Why Section */}
+                  <div className="bg-gradient-to-br from-[#D56753]/5 to-orange-50 rounded-xl border border-[#D56753]/10 p-5 mb-2">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      This is how your advisory board gets specific.
+                      Instead of general advice, they see <span className="font-semibold text-[#D56753]">your actual numbers</span> and
+                      tell you exactly where to focus. The more they know, the more specific Monday's email gets.
+                    </p>
+                  </div>
+
+                  {/* What to share */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <p className="text-sm font-semibold text-gray-800 mb-3">What helps most:</p>
+                    <ul className="text-sm text-gray-600 space-y-2">
+                      <li className="flex items-start gap-2">
+                        <span className="text-[#D56753] font-semibold mt-0.5">1.</span>
+                        <span><span className="font-medium text-gray-800">Where your customers come from</span> (referral sources, Google, walk-ins, word of mouth)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-[#D56753] font-semibold mt-0.5">2.</span>
+                        <span><span className="font-medium text-gray-800">How much revenue each source brings</span> (even rough estimates help)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-[#D56753] font-semibold mt-0.5">3.</span>
+                        <span><span className="font-medium text-gray-800">A few months of history</span> (so we can spot trends, not just snapshots)</span>
+                      </li>
+                    </ul>
+                    <p className="text-xs text-gray-400 mt-3">
+                      Any format works. A spreadsheet export, a report from your software, or even numbers you type in manually. We'll figure out the rest.
+                    </p>
+                  </div>
+
                   {/* File Upload Container */}
                   <div className="bg-white rounded-xl border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Upload PMS Export
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4">
+                      Upload a file
                     </h3>
 
                     {uploadStatus === "idle" && (
@@ -264,10 +295,10 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                         <motion.div
                           className={`border-2 border-dashed rounded-xl p-6 text-center transition-all duration-300 ${
                             isDragOver
-                              ? "border-emerald-400 bg-emerald-50"
+                              ? "border-[#D56753] bg-[#D56753]/5"
                               : file
                               ? "border-emerald-300 bg-emerald-50"
-                              : "border-gray-300 hover:border-emerald-400 hover:bg-emerald-50"
+                              : "border-gray-300 hover:border-[#D56753]/40 hover:bg-[#D56753]/5"
                           }`}
                           onDrop={handleDrop}
                           onDragOver={handleDragOver}
@@ -292,52 +323,54 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                             }}
                           >
                             <FileText
-                              className={`w-12 h-12 mx-auto mb-3 ${
+                              className={`w-10 h-10 mx-auto mb-3 ${
                                 file ? "text-emerald-600" : "text-gray-400"
                               }`}
                             />
                           </motion.div>
 
-                          <h4 className="font-semibold text-gray-900 mb-2">
+                          <h4 className="font-semibold text-gray-900 mb-1 text-sm">
                             {file ? file.name : "Drop your file here"}
                           </h4>
-                          <p className="text-gray-600 mb-3 text-sm">
+                          <p className="text-gray-500 mb-3 text-xs">
                             {file
                               ? "File ready to upload"
-                              : "Drag and drop any CSV, Excel, or text file"}
+                              : "CSV, Excel, or text file. Any format from any system."}
                           </p>
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors text-sm"
+                            className="bg-[#D56753] text-white px-4 py-2 rounded-lg hover:bg-[#c45a48] transition-colors text-sm"
                           >
                             {file ? "Choose Different File" : "Browse Files"}
                           </button>
                         </motion.div>
 
-                        {/* PMS Type Dropdown */}
+                        {/* Software system - simplified, universal */}
                         <motion.div
                           initial={{ y: 10, opacity: 0 }}
                           animate={{ y: 0, opacity: 1 }}
                           className="mt-4"
                         >
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            PMS Type
+                          <label className="block text-xs font-medium text-gray-500 mb-2">
+                            What software did this come from? (optional)
                           </label>
                           <select
                             value={pmsType}
                             onChange={(e) => setPmsType(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors bg-white text-gray-900"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D56753]/20 focus:border-[#D56753] transition-colors bg-white text-gray-700 text-sm"
                           >
-                            <option value="auto-detect">Auto-detect</option>
+                            <option value="auto-detect">Not sure / auto-detect</option>
                             <option value="gaidge">Gaidge</option>
                             <option value="tdo">TDO</option>
                             <option value="ortho2">Ortho2</option>
                             <option value="dentrix">Dentrix</option>
+                            <option value="eaglesoft">Eaglesoft</option>
+                            <option value="opendental">Open Dental</option>
+                            <option value="quickbooks">QuickBooks</option>
+                            <option value="square">Square</option>
+                            <option value="spreadsheet">Spreadsheet / manual tracking</option>
+                            <option value="other">Other</option>
                           </select>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Select the PMS system type or use auto-detect to let
-                            the system determine it automatically.
-                          </p>
                         </motion.div>
 
                         {file && (
@@ -423,26 +456,29 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                     )}
                   </div>
 
-                  {/* OR Separator and Manual Entry Button */}
+                  {/* Manual entry - equal option, not fallback */}
                   {uploadStatus === "idle" && (
                     <>
                       <div className="flex items-center gap-4">
-                        <div className="flex-1 h-px bg-gray-300"></div>
-                        <span className="text-gray-500 font-medium text-sm">
-                          OR
+                        <div className="flex-1 h-px bg-gray-200"></div>
+                        <span className="text-gray-400 text-xs">
+                          or
                         </span>
-                        <div className="flex-1 h-px bg-gray-300"></div>
+                        <div className="flex-1 h-px bg-gray-200"></div>
                       </div>
 
                       <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
                         onClick={() => setEntryMode("manual")}
-                        className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition-colors shadow-lg shadow-orange-500/20"
+                        className="w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-white border border-gray-200 hover:border-[#D56753]/30 hover:bg-[#D56753]/5 text-gray-700 rounded-xl text-sm font-medium transition-all"
                       >
-                        <PenLine className="w-5 h-5" />
-                        Manually Enter Referral Data
+                        <PenLine className="w-4 h-4 text-[#D56753]" />
+                        I'll type my numbers in directly
                       </motion.button>
+                      <p className="text-xs text-gray-400 text-center">
+                        No spreadsheet? No problem. You can enter monthly totals by hand.
+                      </p>
                     </>
                   )}
                 </motion.div>
