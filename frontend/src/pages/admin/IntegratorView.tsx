@@ -58,6 +58,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { KillSwitchBanner } from "@/components/Admin/KillSwitchBanner";
 import { useBusinessMetrics } from "@/hooks/useBusinessMetrics";
 import ClaudeObservations from "@/components/Admin/ClaudeObservations";
+import ChangelogCard from "@/components/Admin/ChangelogCard";
 
 // ---- Constants ---------------------------------------------------------------
 
@@ -220,80 +221,8 @@ function PipelineDot({ status }: { status: "green" | "amber" | "red" | "gray" })
   return <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${colors[status]}`} />;
 }
 
-// ---- Section 0: Sandbox Changelog (What's New) + Deploy Status ---------------
-
-function SandboxChangelog() {
-  const { data: buildEvents, isLoading } = useQuery({
-    queryKey: ["integrator-build-events"],
-    queryFn: async () => {
-      const res = await apiGet({ path: "/admin/behavioral-events?limit=200" });
-      if (!res || res.success === false) return [];
-      const events = (res?.events || []) as Array<{
-        event_type: string;
-        created_at: string;
-        properties?: any;
-      }>;
-      const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      return events.filter(
-        (e) =>
-          (e.event_type.startsWith("build.") ||
-            e.event_type.startsWith("deploy.") ||
-            e.event_type.startsWith("commit.")) &&
-          new Date(e.created_at).getTime() > weekAgo
-      );
-    },
-    retry: false,
-    staleTime: 60_000,
-  });
-
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
-  const latestDeploy = buildEvents?.find(
-    (e) => e.event_type.startsWith("deploy.") || e.event_type.startsWith("build.")
-  );
-
-  return (
-    <div className="space-y-3">
-      {/* Deploy status indicator */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50/50 border border-emerald-100">
-        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" style={{ animationDuration: "3s" }} />
-        <span className="text-xs font-semibold text-emerald-700">Pipeline: GREEN</span>
-        <span className="text-xs text-gray-400 ml-auto">
-          {latestDeploy
-            ? `Last push: ${formatDate(latestDeploy.created_at)}`
-            : "No deploys this week"}
-        </span>
-      </div>
-
-      {/* Build log */}
-      {isLoading ? (
-        <div className="h-12 animate-pulse rounded-xl bg-gray-50" />
-      ) : buildEvents && buildEvents.length > 0 ? (
-        <ul className="space-y-1.5">
-          {buildEvents.slice(0, 8).map((evt, i) => {
-            const summary =
-              evt.properties?.message ||
-              evt.properties?.summary ||
-              evt.event_type.replace(/^(build\.|deploy\.|commit\.)/, "");
-            return (
-              <li key={i} className="flex items-start gap-2 text-xs text-[#212D40]">
-                <span className="text-gray-400 shrink-0 w-12">{formatDate(evt.created_at)}</span>
-                <span className="leading-relaxed">{summary}</span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="text-xs text-gray-400 italic">
-          Build log connects when the agent pipeline activates.
-        </p>
-      )}
-    </div>
-  );
-}
+// Section 0 (SandboxChangelog) replaced by ChangelogCard from GitHub API.
+// The old version read from behavioral_events (build.*/deploy.*/commit.*) which had 0 entries.
 
 // ---- Section 1: Greeting -----------------------------------------------------
 
@@ -1514,15 +1443,8 @@ export default function IntegratorView() {
       {/* Greeting */}
       <Greeting firstName={firstName} brief={brief} isLoading={briefLoading} />
 
-      {/* What's New: Sandbox Changelog + Deploy Status */}
-      <Card>
-        <SectionLabel
-          icon={Zap}
-          label="What's New"
-          iconColor="text-[#D56753]"
-        />
-        <SandboxChangelog />
-      </Card>
+      {/* What's New: GitHub commit changelog (what actually changed) */}
+      <ChangelogCard />
 
       {/* Weekly Pulse: Are we growing? */}
       <Card>
