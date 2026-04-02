@@ -98,17 +98,23 @@ const PRIORITY_ICON: Record<number, React.ComponentType<{ className?: string }>>
 
 function resolveAction(props: OneActionCardProps): OneAction {
   // Backend intelligence overrides local rules (except billing)
+  // But when the server signals "nothing to do" (no action_text, priority 5),
+  // let the frontend render the gift: "Nothing needs you right now."
   if (props.billingActive && props.serverCard) {
     const sc = props.serverCard;
-    return {
-      severity: PRIORITY_SEVERITY[sc.priority_level] || "default",
-      title: sc.headline,
-      detail: sc.body,
-      cta: sc.action_text || "",
-      ctaLink: sc.action_url || undefined,
-      icon: PRIORITY_ICON[sc.priority_level] || Star,
-      rule: `server_p${sc.priority_level}`,
-    };
+    if (!sc.action_text && sc.priority_level === 5) {
+      // Server says steady state. Fall through to local healthy state.
+    } else {
+      return {
+        severity: PRIORITY_SEVERITY[sc.priority_level] || "default",
+        title: sc.headline,
+        detail: sc.body,
+        cta: sc.action_text || "",
+        ctaLink: sc.action_url || undefined,
+        icon: PRIORITY_ICON[sc.priority_level] || Star,
+        rule: `server_p${sc.priority_level}`,
+      };
+    }
   }
 
   // Rule 1: BILLING FAILURE

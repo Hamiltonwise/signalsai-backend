@@ -384,6 +384,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         totalCompetitors,
         city,
         archetype,
+        personalGoal,
         communityCount,
       });
 
@@ -511,6 +512,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
               totalCompetitors: totalCompetitorsCW,
               city: cityCW,
               archetype,
+              personalGoal,
               communityCount,
             });
             if (success) {

@@ -41,6 +41,7 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
     totalCompetitors,
     city,
     archetype,
+    personalGoal,
     communityCount,
   } = data;
 
@@ -68,7 +69,13 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
     </p>
 
     <p style="margin: 0 0 24px; color: ${BRAND_COLORS.darkGray}; font-size: 15px; line-height: 1.6;">
-      ${archetype === "survivor" ? "That stability is yours. You earned it." : archetype === "builder" ? "Use the calm. This is when you make moves." : "Enjoy the week."}
+      ${archetype === "survivor"
+        ? "That stability is yours. You earned it."
+        : archetype === "builder"
+          ? "Use the calm. This is when you make moves."
+          : personalGoal && personalGoal.length >= 5 && personalGoal.length <= 80
+            ? `Enjoy the week. You mentioned the extra time would go to ${personalGoal.replace(/[<>"'&]/g, "").toLowerCase().replace(/\.$/, "")}. This week, you have it.`
+            : "Enjoy the week."}
     </p>
 
     ${communityCount && communityCount > 10 ? `<p style="margin: 0 0 24px; color: ${BRAND_COLORS.mediumGray}; font-size: 13px; line-height: 1.6;">Clean week for you and ${communityCount - 1} other business owners this Monday.</p>` : ""}
