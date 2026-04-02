@@ -11,6 +11,7 @@ import { resolveLocationId } from "../../../utils/locationResolver";
 import { OrganizationModel } from "../../../models/OrganizationModel";
 import { detectSelfSufficientOperator } from "../../../services/operatorDetection";
 import { preprocessPmsData, type PreprocessResult } from "./pms-preprocessor.service";
+import { needsVisionParsing, parseWithVision } from "./pms-vision-parser.service";
 
 /**
  * Process a manual PMS data entry.
@@ -223,7 +224,38 @@ export async function processFileUpload(
   authOrganizationId?: number | null,
   passedLocationId?: number | null
 ) {
-  const jsonData = await convertFileToJson(file);
+  // Route to vision parser for images/PDFs, CSV converter for everything else
+  let jsonData: Record<string, unknown>[];
+  let visionConfidence: string | null = null;
+  let visionDescription: string | null = null;
+
+  if (needsVisionParsing(file)) {
+    console.log(`[PMS] Image/PDF detected: ${file.originalname}. Using vision parser.`);
+    const visionResult = await parseWithVision(file);
+
+    if (!visionResult.success || visionResult.rows.length === 0) {
+      // Vision parsing failed, but don't block. Return what we have.
+      return {
+        recordsProcessed: 0,
+        recordsStored: 0,
+        entryType: "csv" as const,
+        jobId: undefined,
+        originalName: file.originalname,
+        instantFinding: { totalRecords: 0 },
+        parserFailed: true,
+        parserMessage: visionResult.error ||
+          "We couldn't read the data from this image clearly enough. Try a photo with better lighting, or use the manual entry option to type your numbers in directly.",
+      };
+    }
+
+    jsonData = visionResult.rows;
+    visionConfidence = visionResult.confidence;
+    visionDescription = visionResult.description;
+    console.log(`[PMS] Vision extracted ${jsonData.length} rows (confidence: ${visionConfidence})`);
+  } else {
+    jsonData = await convertFileToJson(file);
+  }
+
   const recordsProcessed = jsonData.length;
 
   // HIPAA scrub + patient deduplication + referral aggregation
@@ -263,7 +295,7 @@ export async function processFileUpload(
   // Run self-sufficient operator detection (fire-and-forget)
   if (organizationId && jsonData.length > 0) {
     const headers = Object.keys(jsonData[0] || {});
-    detectSelfSufficientOperator(organizationId, headers, jsonData).catch(() => {});
+    detectSelfSufficientOperator(organizationId, headers, jsonData as Record<string, string>[]).catch(() => {});
   }
 
   // Create the job record

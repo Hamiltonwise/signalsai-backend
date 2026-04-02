@@ -19,7 +19,7 @@ export const upload = multer({
     if (hasValidMimeType || hasValidExtension) {
       cb(null, true);
     } else {
-      cb(new Error("Only CSV, XLS, XLSX, and TXT files are allowed"));
+      cb(new Error("We support spreadsheets (CSV, Excel), images (PNG, JPG), and PDFs. Please try a different file format."));
     }
   },
 });

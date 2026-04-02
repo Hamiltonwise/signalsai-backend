@@ -309,7 +309,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                           <input
                             ref={fileInputRef}
                             type="file"
-                            accept=".csv,.txt,.xlsx,.xls"
+                            accept=".csv,.txt,.xlsx,.xls,.png,.jpg,.jpeg,.pdf,.webp,.heic"
                             onChange={handleFileInputChange}
                             className="hidden"
                           />
@@ -337,7 +337,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                           <p className="text-gray-500 mb-3 text-xs">
                             {file
                               ? "File ready to upload"
-                              : "CSV, Excel, or text file. Any format from any system."}
+                              : "Spreadsheet, photo, screenshot, or PDF. Whatever you have."}
                           </p>
                           <button
                             onClick={() => fileInputRef.current?.click()}
