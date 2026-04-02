@@ -85,7 +85,7 @@ export default function BuildingScreen() {
         <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase">
           Setting Up Your Dashboard
         </p>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight leading-tight">
+        <h2 className="text-2xl sm:text-3xl font-semibold text-[#212D40] tracking-tight leading-tight">
           Welcome, {practiceName}.
         </h2>
         <p className="text-sm text-slate-500 leading-relaxed max-w-sm mx-auto">
@@ -108,7 +108,7 @@ export default function BuildingScreen() {
           "Your first weekly intelligence brief is being queued",
         ].map((step, i) => (
           <div key={i} className="flex items-start gap-3">
-            <span className="shrink-0 w-5 h-5 rounded-full bg-[#D56753]/8 text-[#D56753] flex items-center justify-center text-[10px] font-bold mt-0.5">
+            <span className="shrink-0 w-5 h-5 rounded-full bg-[#D56753]/8 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
               {i + 1}
             </span>
             <p className="text-sm text-slate-600 leading-relaxed">{step}</p>

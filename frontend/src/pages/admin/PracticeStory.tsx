@@ -152,7 +152,7 @@ function PositionCard({ rankings }: { rankings: RankingJob[] }) {
             Market Position
           </p>
           <div className="mt-2 flex items-baseline gap-3">
-            <span className="text-5xl font-black text-[#212D40]">
+            <span className="text-5xl font-semibold text-[#212D40]">
               #{latest.rank_position ?? "–"}
             </span>
             <span className="text-sm text-gray-500">

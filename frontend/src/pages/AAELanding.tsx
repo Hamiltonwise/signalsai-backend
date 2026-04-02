@@ -33,12 +33,12 @@ export default function AAELanding() {
         </Link>
 
         {/* Badge */}
-        <span className="inline-block text-[11px] font-bold uppercase tracking-[0.2em] text-[#D56753] bg-[#D56753]/10 rounded-full px-4 py-1.5 mb-8">
+        <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-[#D56753] bg-[#D56753]/10 rounded-full px-4 py-1.5 mb-8">
           AAE 2026 -- Booth #835
         </span>
 
         {/* Headline */}
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight max-w-md">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight leading-tight max-w-md">
           You're at AAE 2026.
           <br />
           Run your free Checkup.
@@ -82,7 +82,7 @@ export default function AAELanding() {
 
       {/* Footer */}
       <footer className="text-center pb-8">
-        <p className="text-[10px] text-white/15 uppercase tracking-widest">
+        <p className="text-xs text-white/15 uppercase tracking-widest">
           getalloro.com
         </p>
       </footer>

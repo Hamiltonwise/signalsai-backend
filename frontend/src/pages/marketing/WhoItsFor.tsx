@@ -20,7 +20,7 @@ export default function WhoItsFor() {
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight">
             Built for people who chose service first.
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-[#212D40]/60 leading-relaxed max-w-xl mx-auto">

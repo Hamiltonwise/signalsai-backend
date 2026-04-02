@@ -272,7 +272,7 @@ export const Messages: React.FC = () => {
               <MessageSquare className="w-5 h-5 text-alloro-navy" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-alloro-navy font-heading tracking-tight">
+              <h1 className="text-xl font-semibold text-alloro-navy font-heading tracking-tight">
                 Messages
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -290,7 +290,7 @@ export const Messages: React.FC = () => {
         {/* Left panel: conversation list */}
         <div className="w-80 border-r border-slate-100 flex flex-col bg-slate-50/50">
           <div className="px-4 py-3 border-b border-slate-100">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-[0.2em]">
               Conversations
             </p>
           </div>
@@ -338,12 +338,12 @@ export const Messages: React.FC = () => {
                           {conv.label}
                         </span>
                         {conv.unreadCount > 0 && (
-                          <span className="ml-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-alloro-orange text-white text-[9px] font-black px-1">
+                          <span className="ml-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-alloro-orange text-white text-[9px] font-semibold px-1">
                             {conv.unreadCount}
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                      <p className="text-xs text-slate-400 truncate mt-0.5">
                         {conv.lastMessage.content}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
@@ -355,7 +355,7 @@ export const Messages: React.FC = () => {
                           {MESSAGE_TYPE_ICONS[conv.lastMessage.message_type]}
                           {MESSAGE_TYPE_LABELS[conv.lastMessage.message_type]}
                         </span>
-                        <span className="text-[10px] text-slate-300">
+                        <span className="text-xs text-slate-300">
                           {formatTime(conv.lastMessage.created_at)}
                         </span>
                       </div>
@@ -394,7 +394,7 @@ export const Messages: React.FC = () => {
                   <h2 className="text-sm font-bold text-alloro-navy">
                     {activeConversation.label}
                   </h2>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-xs text-slate-400">
                     {activeConversation.messages.length} message
                     {activeConversation.messages.length !== 1 ? "s" : ""}
                   </p>
@@ -418,7 +418,7 @@ export const Messages: React.FC = () => {
                         }`}
                       >
                         {!isMine && (
-                          <p className="text-[10px] font-bold opacity-50 mb-1">
+                          <p className="text-xs font-bold opacity-50 mb-1">
                             User #{msg.sender_id}
                           </p>
                         )}
@@ -438,7 +438,7 @@ export const Messages: React.FC = () => {
                           {msg.content}
                         </p>
                         <p
-                          className={`text-[10px] mt-1.5 ${
+                          className={`text-xs mt-1.5 ${
                             isMine ? "text-white/40" : "text-slate-300"
                           }`}
                         >
@@ -461,7 +461,7 @@ export const Messages: React.FC = () => {
                     <button
                       key={type}
                       onClick={() => setMessageType(type)}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
                         messageType === type
                           ? "bg-alloro-navy text-white"
                           : "bg-slate-100 text-slate-500 hover:bg-slate-200"

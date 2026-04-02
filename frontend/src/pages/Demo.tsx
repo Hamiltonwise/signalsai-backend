@@ -170,7 +170,7 @@ function DemoPositionCard() {
         </span>
       </div>
       <div className="mt-2">
-        <span className="text-5xl font-black text-[#212D40]">#{PRACTICE.rank}</span>
+        <span className="text-5xl font-semibold text-[#212D40]">#{PRACTICE.rank}</span>
         <span className="text-lg text-gray-400 ml-2">of {PRACTICE.totalCompetitors}</span>
       </div>
       <p className="text-sm text-gray-500 mt-2">
@@ -196,11 +196,11 @@ function RankingSparkline() {
           const heightPct = ((7 - m.position) / 6) * 100;
           return (
             <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[10px] font-bold text-[#212D40]">#{m.position}</span>
+              <span className="text-xs font-bold text-[#212D40]">#{m.position}</span>
               <div className="w-full rounded-t-lg bg-[#D56753]/10 relative" style={{ height: `${heightPct}%` }}>
                 <div className="absolute inset-0 rounded-t-lg bg-[#D56753]" style={{ opacity: m.position <= 3 ? 1 : 0.4 }} />
               </div>
-              <span className="text-[10px] text-gray-400">{m.month}</span>
+              <span className="text-xs text-gray-400">{m.month}</span>
             </div>
           );
         })}
@@ -250,7 +250,7 @@ function ReferralNetwork() {
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-[#212D40] truncate">{gp.name}</p>
                 {gp.status === "drift" && (
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-100 rounded-full px-2 py-0.5">
+                  <span className="flex items-center gap-1 text-xs font-bold text-red-600 bg-red-100 rounded-full px-2 py-0.5">
                     <AlertTriangle className="h-2.5 w-2.5" />
                     DRIFT
                   </span>
@@ -258,7 +258,7 @@ function ReferralNetwork() {
               </div>
               <p className="text-xs text-gray-500">{gp.practice}</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`text-[11px] font-medium ${
+                <span className={`text-xs font-medium ${
                   gp.trend === "up" ? "text-emerald-600" : gp.trend === "down" ? "text-red-500" : "text-gray-400"
                 }`}>
                   {gp.trend === "up" && <TrendingUp className="h-3 w-3 inline mr-0.5" />}
@@ -268,9 +268,9 @@ function ReferralNetwork() {
               </div>
             </div>
             <div className="text-right shrink-0 ml-4">
-              <p className="text-lg font-black text-[#212D40]">{gp.referrals}</p>
-              <p className="text-[10px] text-gray-400">referrals</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">Last: {gp.lastReferral}</p>
+              <p className="text-lg font-semibold text-[#212D40]">{gp.referrals}</p>
+              <p className="text-xs text-gray-400">referrals</p>
+              <p className="text-xs text-gray-400 mt-0.5">Last: {gp.lastReferral}</p>
             </div>
           </div>
         ))}
@@ -317,26 +317,26 @@ function DemoProgressReport() {
 
       {/* Hero stat */}
       <div className="bg-[#212D40] rounded-2xl p-6 text-center text-white">
-        <p className="text-5xl font-black">47</p>
+        <p className="text-5xl font-semibold">47</p>
         <p className="text-sm font-medium text-white/70 mt-1">Alloro tasks completed this year</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
-          <p className="text-xl font-black text-emerald-600">+3</p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Positions</p>
-          <p className="text-[10px] text-gray-400">#6 → #3</p>
+          <p className="text-xl font-semibold text-emerald-600">+3</p>
+          <p className="text-xs font-bold text-gray-400 uppercase mt-1">Positions</p>
+          <p className="text-xs text-gray-400">#6 → #3</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
-          <p className="text-xl font-black text-[#212D40]">+19</p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Reviews</p>
-          <p className="text-[10px] text-gray-400">42 → 61</p>
+          <p className="text-xl font-semibold text-[#212D40]">+19</p>
+          <p className="text-xs font-bold text-gray-400 uppercase mt-1">Reviews</p>
+          <p className="text-xs text-gray-400">42 → 61</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
-          <p className="text-xl font-black text-[#D56753]">+19</p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Score</p>
-          <p className="text-[10px] text-gray-400">42 → 61</p>
+          <p className="text-xl font-semibold text-[#D56753]">+19</p>
+          <p className="text-xs font-bold text-gray-400 uppercase mt-1">Score</p>
+          <p className="text-xs text-gray-400">42 → 61</p>
         </div>
       </div>
 
@@ -349,7 +349,7 @@ function DemoProgressReport() {
             <div>
               <p className="text-sm font-semibold text-[#212D40]">{move.title}</p>
               <p className="text-xs text-emerald-600 font-medium">{move.outcome}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{move.date}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{move.date}</p>
             </div>
           </div>
         ))}
@@ -412,7 +412,7 @@ function DemoCSAgent() {
             }`} />
             <div>
               <p className="text-sm text-gray-700">{a.text}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">{a.time}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{a.time}</p>
             </div>
           </div>
         ))}
@@ -481,7 +481,7 @@ export default function Demo() {
             </div>
             <span className="text-lg font-bold tracking-tight">alloro</span>
           </Link>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 bg-white/10 px-3 py-1 rounded-full">
+          <span className="text-xs font-bold uppercase tracking-widest text-white/40 bg-white/10 px-3 py-1 rounded-full">
             Demo
           </span>
         </div>
@@ -490,7 +490,7 @@ export default function Demo() {
       <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
         {/* Greeting */}
         <div>
-          <h1 className="text-2xl font-extrabold text-[#212D40]">
+          <h1 className="text-2xl font-semibold text-[#212D40]">
             Good morning, Dr. Hayward.
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -543,7 +543,7 @@ export default function Demo() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-[11px] text-gray-300 uppercase tracking-wide pt-4">
+        <p className="text-center text-xs text-gray-300 uppercase tracking-wide pt-4">
           Demo account &middot; Valley Specialty Practice &middot; Salt Lake City, UT
         </p>
       </div>

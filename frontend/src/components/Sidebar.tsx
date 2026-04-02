@@ -126,7 +126,7 @@ const NavItem = ({
         {isLocked && <Lock size={12} className="text-white/30" />}
         {badge && !isLocked && (
           <span
-            className={`px-2 py-0.5 rounded-md text-[9px] font-black leading-none
+            className={`px-2 py-0.5 rounded-md text-[9px] font-semibold leading-none
             ${
               active ? "bg-alloro-orange text-white" : "bg-white/10 text-white/40"
             }`}
@@ -138,7 +138,7 @@ const NavItem = ({
       </div>
     )}
     {minimized && badge && !isLocked && (
-      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-alloro-orange text-white text-[8px] font-black px-1">
+      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-alloro-orange text-white text-[8px] font-semibold px-1">
         {badge}
       </span>
     )}
@@ -481,12 +481,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {isSuperAdmin && !isMinimized && (
           <div className="bg-alloro-orange/10 border border-alloro-orange/20 rounded-xl p-3 mb-4">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black text-alloro-orange/80 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-alloro-orange/80 uppercase tracking-wider">
                 Viewing as customer
               </span>
               <button
                 onClick={() => setViewMode("admin")}
-                className="flex items-center gap-1.5 text-[11px] font-bold text-white/60 hover:text-white transition-colors"
+                className="flex items-center gap-1.5 text-xs font-bold text-white/60 hover:text-white transition-colors"
               >
                 <ArrowLeft size={12} />
                 Exit
@@ -507,7 +507,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Main nav items */}
         <div className="space-y-1.5">
           {!isMinimized && (
-            <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] px-4 mb-4">
+            <div className="text-xs font-semibold text-white/20 uppercase tracking-[0.3em] px-4 mb-4">
               Operations
               {isWizardActive && (
                 <span className="ml-2 text-alloro-orange">(Tour Active)</span>
@@ -633,7 +633,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="p-3 rounded-xl bg-red-50 text-red-600">
                     <AlertTriangle className="w-6 h-6" />
                   </div>
-                  <h3 className="text-lg font-black text-alloro-navy font-heading">
+                  <h3 className="text-lg font-semibold text-alloro-navy font-heading">
                     Log Out?
                   </h3>
                 </div>
@@ -698,10 +698,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="w-10 h-10 rounded-xl shadow-soft-glow transition-transform group-hover:scale-105"
               />
               <div className="flex flex-col">
-                <h1 className="font-heading font-black text-xl tracking-tight leading-none">
+                <h1 className="font-heading font-semibold text-xl tracking-tight leading-none">
                   Alloro
                 </h1>
-                <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.25em] mt-1.5 leading-none">
+                <span className="text-[9px] font-semibold text-white/30 uppercase tracking-[0.25em] mt-1.5 leading-none">
                   Intelligence
                 </span>
               </div>
@@ -734,11 +734,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-1.5">
                   <Lock size={14} className="text-red-400 shrink-0" />
-                  <span className="text-[11px] font-black text-red-300 uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-red-300 uppercase tracking-wider">
                     Account Locked
                   </span>
                 </div>
-                <p className="text-[11px] text-red-300/70 leading-relaxed">
+                <p className="text-xs text-red-300/70 leading-relaxed">
                   Add a payment method in Settings to restore access.
                 </p>
               </div>
@@ -759,7 +759,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <TailorToggle minimized />
             <button
               onClick={() => handleNavigate("/settings")}
-              className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-[10px] font-black border border-white/10 hover:border-alloro-orange transition-colors"
+              className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-xs font-semibold border border-white/10 hover:border-alloro-orange transition-colors"
               title="Settings"
             >
               {userProfile?.practiceName?.substring(0, 2).toUpperCase() || "AP"}
@@ -782,7 +782,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => handleNavigate("/settings")}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-[10px] font-black border border-white/10 group-hover:border-alloro-orange transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-xs font-semibold border border-white/10 group-hover:border-alloro-orange transition-colors">
                   {userProfile?.practiceName?.substring(0, 2).toUpperCase() ||
                     "AP"}
                 </div>
@@ -790,7 +790,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <p className="text-[13px] font-bold text-white truncate">
                     {userProfile?.practiceName || "Your Business"}
                   </p>
-                  <p className="text-[9px] text-white/20 font-black uppercase tracking-widest mt-0.5">
+                  <p className="text-[9px] text-white/20 font-semibold uppercase tracking-widest mt-0.5">
                     {isSuperAdmin
                       ? "Super Admin"
                       : isPartner
@@ -808,7 +808,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   setShowLogoutConfirm(true);
                 }}
-                className="flex items-center gap-2 text-white/20 hover:text-red-400 transition-all w-full text-[9px] font-black uppercase tracking-widest"
+                className="flex items-center gap-2 text-white/20 hover:text-red-400 transition-all w-full text-[9px] font-semibold uppercase tracking-widest"
               >
                 <LogOut size={14} /> Log out
               </button>

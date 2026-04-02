@@ -169,7 +169,7 @@ export default function AddCompetitor({ currentCount, maxCount, onAdded }: AddCo
                 {s.mainText}
               </p>
               {s.secondaryText && (
-                <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                <p className="text-xs text-slate-400 truncate mt-0.5">
                   {s.secondaryText}
                 </p>
               )}

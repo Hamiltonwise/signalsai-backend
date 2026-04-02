@@ -233,7 +233,7 @@ function WorkloadRow({ name, count, urgent, label, status }: { name: string; cou
     <div className="flex items-center justify-between">
       <span className="text-sm font-medium text-[#212D40]">{name}</span>
       <div className="flex items-center gap-2">
-        {urgent && urgent > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-semibold">{urgent} urgent</span>}
+        {urgent && urgent > 0 && <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-semibold">{urgent} urgent</span>}
         <span className={`text-sm font-semibold ${status === "green" ? "text-emerald-600" : "text-[#212D40]"}`}>
           {count} {label || "open"}
         </span>

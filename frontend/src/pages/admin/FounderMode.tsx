@@ -158,9 +158,9 @@ function FounderBrief({
           { label: "409A Due", value: `${d409a}d`, sub: "Jun 30, 2026", color: d409a <= 30 ? "text-red-400" : d409a <= 60 ? "text-amber-400" : "text-white" },
         ].map((m) => (
           <div key={m.label} className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-            <p className={`text-xl font-black ${m.color}`}>{m.value}</p>
-            <p className="text-[10px] uppercase tracking-widest text-white/40 mt-1">{m.label}</p>
-            <p className="text-[10px] text-white/25 mt-0.5">{m.sub}</p>
+            <p className={`text-xl font-semibold ${m.color}`}>{m.value}</p>
+            <p className="text-xs uppercase tracking-widest text-white/40 mt-1">{m.label}</p>
+            <p className="text-xs text-white/25 mt-0.5">{m.sub}</p>
           </div>
         ))}
       </div>
@@ -168,9 +168,9 @@ function FounderBrief({
       {/* Cash on hand -- editable */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-widest text-white/40">Cash on Hand</p>
+          <p className="text-xs uppercase tracking-widest text-white/40">Cash on Hand</p>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-white/30">$</span>
+            <span className="text-xs text-white/30">$</span>
             <InlineInput
               type="number"
               value={cashOnHand}
@@ -185,8 +185,8 @@ function FounderBrief({
       {/* QSBS Clock */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] uppercase tracking-widest text-white/40">QSBS Clock</p>
-          <span className="text-xs font-black text-emerald-400">{qsbsPct}% of 10yr hold</span>
+          <p className="text-xs uppercase tracking-widest text-white/40">QSBS Clock</p>
+          <span className="text-xs font-semibold text-emerald-400">{qsbsPct}% of 10yr hold</span>
         </div>
         <div className="flex items-center justify-between text-xs text-white/50 mb-1.5">
           <span>{qsbsElapsed} days elapsed</span>
@@ -195,14 +195,14 @@ function FounderBrief({
         <div className="h-2 bg-white/10 rounded-full overflow-hidden">
           <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${qsbsPct}%` }} />
         </div>
-        <p className="text-[10px] text-white/25 mt-2">
+        <p className="text-xs text-white/25 mt-2">
           Oct 28, 2025 to Oct 28, 2030. 5yr hold = 100% federal exclusion up to $10M gain per 1202
         </p>
       </div>
 
       {/* Pattern connection */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-        <p className="text-[10px] uppercase tracking-widest text-white/40 mb-2">Pattern Connection</p>
+        <p className="text-xs uppercase tracking-widest text-white/40 mb-2">Pattern Connection</p>
         <p className="text-sm text-white/80 leading-relaxed">{signal}</p>
       </div>
 
@@ -210,7 +210,7 @@ function FounderBrief({
       <div className="rounded-xl bg-[#D56753]/20 border border-[#D56753]/30 p-4">
         <div className="flex items-center gap-2 mb-2">
           <Zap className="h-4 w-4 text-[#D56753]" />
-          <p className="text-[10px] uppercase tracking-widest text-[#D56753]">Needs Your Decision</p>
+          <p className="text-xs uppercase tracking-widest text-[#D56753]">Needs Your Decision</p>
         </div>
         {exceptions.length > 0 ? (
           <p className="text-sm text-white">
@@ -276,7 +276,7 @@ function FinancialCommand({
           </div>
         </div>
         {sol.current_position && (
-          <p className={`text-[10px] font-medium mt-1 ${
+          <p className={`text-xs font-medium mt-1 ${
             sol.current_position <= sol.alert_low ? "text-emerald-400" : sol.current_position >= sol.alert_high ? "text-amber-400" : "text-white/40"
           }`}>
             {sol.current_position <= sol.alert_low ? "Deploy dip tranche" : sol.current_position >= sol.alert_high ? "Trim 10-25% into BTC" : "Hold. Within parameters."}
@@ -298,7 +298,7 @@ function FinancialCommand({
           </div>
         </div>
         {btc.current_position && (
-          <p className={`text-[10px] font-medium mt-1 ${
+          <p className={`text-xs font-medium mt-1 ${
             btc.current_position <= btc.alert_low ? "text-red-400" : "text-white/40"
           }`}>
             {btc.current_position <= btc.alert_low ? "Macro risk alert" : "Hold. Continue DCA."}
@@ -308,17 +308,17 @@ function FinancialCommand({
 
       {/* QSBS Tax Exclusion Calculator */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-        <p className="text-[10px] uppercase tracking-widest text-white/40 mb-3">QSBS Tax Exclusion Calculator</p>
+        <p className="text-xs uppercase tracking-widest text-white/40 mb-3">QSBS Tax Exclusion Calculator</p>
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] text-white/30">Estimated exit value: $</span>
+          <span className="text-xs text-white/30">Estimated exit value: $</span>
           <InlineInput value={exitValue} onChange={setExitValue} placeholder="e.g. 5000000" type="number" className="w-36 text-right" />
         </div>
         {exitValue && (
           <div className="mt-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
             <p className="text-xs text-emerald-400">
-              Federal exclusion at 10yr hold: <span className="font-black">${excluded.toLocaleString()}</span>
+              Federal exclusion at 10yr hold: <span className="font-semibold">${excluded.toLocaleString()}</span>
             </p>
-            <p className="text-[10px] text-white/30 mt-1">
+            <p className="text-xs text-white/30 mt-1">
               Min(exit_value, $10M) x 100% = excluded amount per 1202
             </p>
           </div>
@@ -330,7 +330,7 @@ function FinancialCommand({
         <Shield className="h-4 w-4 text-emerald-400 shrink-0" />
         <div>
           <p className="text-sm font-medium text-white">VA 100% P&T Benefits</p>
-          <p className="text-[10px] text-white/40">
+          <p className="text-xs text-white/40">
             Active. Monitor for legislative changes. Last checked: {new Date().toISOString().slice(0, 10)}
           </p>
         </div>
@@ -382,10 +382,10 @@ function WatchLedger({
             <div className="flex items-start justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-white">{w.name}</p>
-                <p className="text-[10px] text-white/30 font-mono">Ref. {w.ref}</p>
-                {w.giftingIntent && <p className="text-[10px] text-[#D56753] font-medium mt-1">{w.giftingIntent}</p>}
+                <p className="text-xs text-white/30 font-mono">Ref. {w.ref}</p>
+                {w.giftingIntent && <p className="text-xs text-[#D56753] font-medium mt-1">{w.giftingIntent}</p>}
                 {w.floorPrice && editingId !== w.id && (
-                  <p className="text-[10px] text-white/40 mt-1">
+                  <p className="text-xs text-white/40 mt-1">
                     Floor: {w.floorPrice}{w.notes ? ` . ${w.notes}` : ""}
                   </p>
                 )}
@@ -446,7 +446,7 @@ function ContentFlywheel() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Content Flywheel</h2>
-        <span className="text-[10px] text-white/30">{concepts.length} concepts</span>
+        <span className="text-xs text-white/30">{concepts.length} concepts</span>
       </div>
       <div className="space-y-2">
         {concepts.map((item, i) => {
@@ -459,7 +459,7 @@ function ContentFlywheel() {
                   <p className="text-sm font-semibold text-white truncate">{item.title}</p>
                   <span className="text-[9px] uppercase tracking-widest text-white/20 bg-white/5 px-1.5 py-0.5 rounded shrink-0">{item.type}</span>
                 </div>
-                <p className="text-[10px] text-white/40 mt-1 line-clamp-2">{item.hook}</p>
+                <p className="text-xs text-white/40 mt-1 line-clamp-2">{item.hook}</p>
               </div>
             </div>
           );
@@ -521,7 +521,7 @@ function CompetitiveIntel({
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <div className="flex items-center gap-2 mb-3">
           <Shield className="h-4 w-4 text-emerald-400" />
-          <p className="text-[10px] uppercase tracking-widest text-white/40">USPTO Trademark Watch</p>
+          <p className="text-xs uppercase tracking-widest text-white/40">USPTO Trademark Watch</p>
         </div>
         <div className="space-y-1.5">
           {trademarks.map((m) => (
@@ -531,7 +531,7 @@ function CompetitiveIntel({
                 <span className="text-[9px] text-white/20">{m.cls}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-emerald-400 font-medium text-[10px]">{m.status}</span>
+                <span className="text-emerald-400 font-medium text-xs">{m.status}</span>
                 <span className="text-[9px] text-white/20">{m.lastChecked}</span>
               </div>
             </div>
@@ -543,7 +543,7 @@ function CompetitiveIntel({
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <div className="flex items-center gap-2 mb-3">
           <Eye className="h-4 w-4 text-blue-400" />
-          <p className="text-[10px] uppercase tracking-widest text-white/40">Competitor Digest</p>
+          <p className="text-xs uppercase tracking-widest text-white/40">Competitor Digest</p>
         </div>
         <div className="space-y-3">
           {competitorNames.map((name) => {
@@ -570,7 +570,7 @@ function CompetitiveIntel({
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <div className="flex items-center gap-2 mb-2">
           <Globe className="h-4 w-4 text-[#D56753]" />
-          <p className="text-[10px] uppercase tracking-widest text-white/40">Personal Brand Monitor</p>
+          <p className="text-xs uppercase tracking-widest text-white/40">Personal Brand Monitor</p>
         </div>
         <p className="text-xs text-white/40 mb-2">Corey Wise / Alloro / Business Clarity</p>
         <InlineInput
@@ -586,7 +586,7 @@ function CompetitiveIntel({
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
         <div className="flex items-center gap-2 mb-2">
           <Shield className="h-4 w-4 text-blue-400" />
-          <p className="text-[10px] uppercase tracking-widest text-white/40">SDVOSB Status</p>
+          <p className="text-xs uppercase tracking-widest text-white/40">SDVOSB Status</p>
         </div>
         <InlineInput
           value={sdvosb.status || ""}
@@ -651,7 +651,7 @@ function ExpandableField({ label, content }: { label: string; content: string | 
   if (!content) return null;
   return (
     <button onClick={() => setOpen(!open)} className="w-full text-left mt-2">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
+      <p className="text-xs font-bold uppercase tracking-widest text-white/30">
         {label} {open ? "\u25B4" : "\u25BE"}
       </p>
       {open && <p className="text-xs text-white/50 mt-1 leading-relaxed">{content}</p>}
@@ -793,7 +793,7 @@ function TheLibrary() {
     <div className="space-y-4">
       <div>
         <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Knowledge Lattice</h2>
-        <p className="text-[10px] text-white/30 mt-1">The intellectual backbone. Read before building. Updated monthly.</p>
+        <p className="text-xs text-white/30 mt-1">The intellectual backbone. Read before building. Updated monthly.</p>
       </div>
 
       {/* Tabs */}
@@ -820,7 +820,7 @@ function TheLibrary() {
               <button
                 key={c}
                 onClick={() => setCatFilter(c)}
-                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-colors ${
                   catFilter === c ? "bg-[#D56753] text-white" : "bg-white/5 text-white/30 hover:text-white/50"
                 }`}
               >
@@ -865,7 +865,7 @@ function TheLibrary() {
               <button
                 key={p}
                 onClick={() => setPhaseFilter(p)}
-                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-colors ${
                   phaseFilter === p ? "bg-[#D56753] text-white" : "bg-white/5 text-white/30 hover:text-white/50"
                 }`}
               >
@@ -983,15 +983,15 @@ export default function FounderMode({ onClose }: { onClose: () => void }) {
       <header className="sticky top-0 z-10 bg-[#0D1117]/95 backdrop-blur border-b border-white/5 px-5 py-4">
         <div className="mx-auto max-w-4xl flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center text-white text-xs font-black">F</div>
+            <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center text-white text-xs font-semibold">F</div>
             <div>
               <p className="text-sm font-bold text-white">Founder Mode</p>
-              <p className="text-[10px] text-white/30">Personal intelligence. Not shared. Esc to close.</p>
+              <p className="text-xs text-white/30">Personal intelligence. Not shared. Esc to close.</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             {saveMutation.isPending && (
-              <span className="text-[10px] text-white/30 flex items-center gap-1">
+              <span className="text-xs text-white/30 flex items-center gap-1">
                 <Save className="h-3 w-3 animate-pulse" /> Saving...
               </span>
             )}
@@ -1038,7 +1038,7 @@ export default function FounderMode({ onClose }: { onClose: () => void }) {
       </div>
 
       <footer className="py-8 text-center">
-        <p className="text-[10px] text-white/10 uppercase tracking-widest">
+        <p className="text-xs text-white/10 uppercase tracking-widest">
           Founder Mode . Corey Wise . Alloro
         </p>
       </footer>

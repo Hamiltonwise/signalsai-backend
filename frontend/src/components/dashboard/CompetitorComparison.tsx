@@ -151,14 +151,14 @@ export default function CompetitorComparison({
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#212D40]/40">
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#212D40]/40">
             vs. Competitor
           </p>
           <p className="text-sm font-bold text-[#212D40] truncate mt-0.5">
             {competitor.name}
           </p>
           {competitor.address && (
-            <p className="text-[10px] text-[#212D40]/40 truncate">
+            <p className="text-xs text-[#212D40]/40 truncate">
               {competitor.address}
             </p>
           )}

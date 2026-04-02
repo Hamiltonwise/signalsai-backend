@@ -96,7 +96,7 @@ export default function CEOIntelligenceChat() {
               <Brain className="h-5 w-5 text-[#D56753]" />
               <div>
                 <p className="text-sm font-bold">The Conversation</p>
-                <p className="text-[10px] text-white/50">Full organizational intelligence</p>
+                <p className="text-xs text-white/50">Full organizational intelligence</p>
               </div>
             </div>
             <button

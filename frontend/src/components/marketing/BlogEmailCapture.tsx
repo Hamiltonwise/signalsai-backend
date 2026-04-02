@@ -93,7 +93,7 @@ export default function BlogEmailCapture() {
           Something went wrong. Try again.
         </p>
       )}
-      <p className="mt-4 text-[10px] text-white/30 text-center">
+      <p className="mt-4 text-xs text-white/30 text-center">
         No spam. Unsubscribe anytime. Your inbox, your rules.
       </p>
     </div>

@@ -214,7 +214,7 @@ export default function EditorSidebar({
                 {selectedInfo.friendlyName}
               </span>
               {selectedInfo.isHidden && (
-                <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-medium shrink-0">
+                <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded font-medium shrink-0">
                   Hidden
                 </span>
               )}

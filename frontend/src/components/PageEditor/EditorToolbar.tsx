@@ -51,11 +51,11 @@ export default function EditorToolbar({
         </Link>
         <div className="w-px h-4 bg-gray-200" />
         <span className="text-xs font-medium text-gray-700">{pagePath}</span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">
+        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">
           v{pageVersion}
         </span>
         <span
-          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+          className={`text-xs px-1.5 py-0.5 rounded font-medium ${
             pageStatus === "published"
               ? "bg-green-50 text-green-600 border border-green-200"
               : pageStatus === "draft"
@@ -66,7 +66,7 @@ export default function EditorToolbar({
           {pageStatus}
         </span>
         {isDirty && (
-          <span className="text-[10px] text-gray-400">Unsaved changes</span>
+          <span className="text-xs text-gray-400">Unsaved changes</span>
         )}
       </div>
 
@@ -122,7 +122,7 @@ export default function EditorToolbar({
           title="SEO panel"
         >
           <BarChart3 className="w-4 h-4" />
-          <span className="text-[10px] font-bold">SEO</span>
+          <span className="text-xs font-bold">SEO</span>
         </button>
       </div>
 

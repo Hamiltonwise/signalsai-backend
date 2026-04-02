@@ -654,7 +654,7 @@ export default function ImportDetail() {
                     <Copy className="w-3.5 h-3.5" />
                   )}
                 </motion.button>
-                <span className="text-[10px] text-gray-400 font-medium">
+                <span className="text-xs text-gray-400 font-medium">
                   Published
                 </span>
               </div>
@@ -690,7 +690,7 @@ export default function ImportDetail() {
                           Version {version.version}
                         </span>
                         <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
                             STATUS_COLORS[version.status]
                           }`}
                         >
@@ -716,7 +716,7 @@ export default function ImportDetail() {
 
                     {/* Version URL */}
                     <div className="flex items-center gap-2">
-                      <code className="flex-1 bg-gray-50 rounded-lg px-3 py-1.5 text-[11px] font-mono text-gray-600 border border-gray-100 truncate">
+                      <code className="flex-1 bg-gray-50 rounded-lg px-3 py-1.5 text-xs font-mono text-gray-600 border border-gray-100 truncate">
                         {versionUrl}
                       </code>
                       <motion.button

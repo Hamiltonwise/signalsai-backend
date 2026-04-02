@@ -108,8 +108,8 @@ export default function SharedResults() {
                       }}
                     />
                     <div className="flex flex-col items-center">
-                      <span className="text-4xl font-black text-[#212D40]">{card.score}</span>
-                      <span className="text-[11px] font-semibold text-[#212D40]/50">/ 100</span>
+                      <span className="text-4xl font-semibold text-[#212D40]">{card.score}</span>
+                      <span className="text-xs font-semibold text-[#212D40]/50">/ 100</span>
                     </div>
                   </div>
                 </div>
@@ -130,17 +130,17 @@ export default function SharedResults() {
                   <div className="text-center">
                     <BarChart3 className="w-4 h-4 text-[#D56753] mx-auto mb-1" />
                     <p className="text-lg font-bold text-[#212D40]">#{card.rank}</p>
-                    <p className="text-[10px] text-[#212D40]/50 uppercase">Rank</p>
+                    <p className="text-xs text-[#212D40]/50 uppercase">Rank</p>
                   </div>
                   <div className="text-center">
                     <Users className="w-4 h-4 text-[#D56753] mx-auto mb-1" />
                     <p className="text-lg font-bold text-[#212D40]">{card.totalCompetitors}</p>
-                    <p className="text-[10px] text-[#212D40]/50 uppercase">Competitors</p>
+                    <p className="text-xs text-[#212D40]/50 uppercase">Competitors</p>
                   </div>
                   <div className="text-center">
                     <Star className="w-4 h-4 text-[#D56753] mx-auto mb-1" />
                     <p className="text-lg font-bold text-[#212D40]">{card.score}</p>
-                    <p className="text-[10px] text-[#212D40]/50 uppercase">Score</p>
+                    <p className="text-xs text-[#212D40]/50 uppercase">Score</p>
                   </div>
                 </div>
 
@@ -176,7 +176,7 @@ export default function SharedResults() {
       </main>
 
       <footer className="py-8 text-center border-t border-slate-100">
-        <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
+        <p className="text-xs font-medium tracking-wide text-slate-300 uppercase">
           Alloro &middot; Business Clarity
         </p>
       </footer>

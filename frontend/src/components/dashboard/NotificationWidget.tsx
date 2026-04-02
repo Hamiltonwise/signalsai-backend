@@ -222,7 +222,7 @@ export function NotificationWidget({
           </div>
           <div>
             <p className="text-sm font-bold text-red-800">Error Loading</p>
-            <p className="text-[10px] text-red-600 font-semibold uppercase tracking-widest mt-0.5">
+            <p className="text-xs text-red-600 font-semibold uppercase tracking-widest mt-0.5">
               {error}
             </p>
           </div>
@@ -274,7 +274,7 @@ export function NotificationWidget({
               {latestUnread.title}
             </h3>
             <span
-              className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border shrink-0 w-fit ${style.impactBg} ${style.impactText} ${style.impactBorder}`}
+              className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border shrink-0 w-fit ${style.impactBg} ${style.impactText} ${style.impactBorder}`}
             >
               {style.impactLabel}
             </span>
@@ -285,7 +285,7 @@ export function NotificationWidget({
             </p>
           )}
           <div className="flex items-center justify-between pt-3">
-            <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <div className="flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
               <span className="flex items-center gap-2">
                 <Clock size={14} className="opacity-40" />
                 {formatDistanceToNow(new Date(latestUnread.created_at), {

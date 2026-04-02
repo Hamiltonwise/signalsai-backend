@@ -136,10 +136,10 @@ export default function HomePage() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[#D56753]/[0.06] rounded-full blur-[120px] pointer-events-none" />
 
         <div className="max-w-2xl mx-auto text-center relative">
-          <p className="text-[11px] font-semibold tracking-[0.25em] text-[#D56753] uppercase mb-6">
+          <p className="text-xs font-semibold tracking-[0.25em] text-[#D56753] uppercase mb-6">
             For the ones who took the leap
           </p>
-          <h1 className="text-[28px] sm:text-[44px] font-extrabold text-white leading-[1.15] tracking-tight font-heading">
+          <h1 className="text-[28px] sm:text-[44px] font-semibold text-white leading-[1.15] tracking-tight font-heading">
             You trained for years in a craft you love.
             <br className="hidden sm:block" />
             <span className="text-white/50">Then you bought a business.</span>
@@ -193,7 +193,7 @@ export default function HomePage() {
           Not a feature list. A story. One specific moment. */}
       <section className="px-5 py-16 sm:py-20 bg-warm-gradient">
         <div className="max-w-3xl mx-auto">
-          <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/50 mb-8">
+          <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-[#D56753]/50 mb-8">
             This is what Monday morning looks like
           </p>
           <div className="grid sm:grid-cols-3 gap-5">
@@ -220,10 +220,10 @@ export default function HomePage() {
           This is the tribal moment. The shift from "tool" to "us." */}
       <section className="px-5 py-16 sm:py-20 bg-white">
         <div className="max-w-2xl mx-auto text-center">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/50 mb-4">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D56753]/50 mb-4">
             You are not alone in this
           </p>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] leading-tight font-heading">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-[#212D40] leading-tight font-heading">
             240 million people worldwide started a business for freedom.
           </h2>
           <p className="mt-4 text-base text-[#212D40]/60 leading-relaxed max-w-lg mx-auto">
@@ -262,7 +262,7 @@ export default function HomePage() {
         <div className="max-w-3xl mx-auto">
           <div className="grid sm:grid-cols-2 gap-0 rounded-2xl overflow-hidden shadow-warm-lg">
             <div className="bg-[#212D40] p-8 text-white/80 text-sm leading-relaxed">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-5">Before</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30 mb-5">Before</p>
               <p className="italic">
                 "I was spending three hours every Sunday
                 checking my rankings, counting my reviews,
@@ -275,7 +275,7 @@ export default function HomePage() {
               </p>
             </div>
             <div className="bg-gradient-to-br from-white to-[#FFF9F7] p-8 text-[#212D40] text-sm leading-relaxed">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/50 mb-5">After</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D56753]/50 mb-5">After</p>
               <p className="italic">
                 "Monday morning. Six words in the subject line:
                 'Dr. Reyes sent 0 cases in March.'
@@ -320,7 +320,7 @@ export default function HomePage() {
           Three things, simply stated. Not features. Outcomes. */}
       <section className="px-5 py-16 sm:py-20" style={{ backgroundColor: "rgba(214, 104, 83, 0.03)" }}>
         <div className="max-w-4xl mx-auto">
-          <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/50 mb-10">
+          <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-[#D56753]/50 mb-10">
             Three things. All automatic. All for you.
           </p>
           <div className="grid sm:grid-cols-3 gap-8">
@@ -349,10 +349,10 @@ export default function HomePage() {
       {/* ═══ PRODUCT PROOF — Real Screenshots ═══ */}
       <section className="px-5 py-16 sm:py-20 bg-white">
         <div className="max-w-4xl mx-auto">
-          <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/50 mb-3">
+          <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-[#D56753]/50 mb-3">
             The actual product
           </p>
-          <h2 className="text-center text-2xl sm:text-3xl font-extrabold text-[#212D40] mb-10 font-heading">
+          <h2 className="text-center text-2xl sm:text-3xl font-semibold text-[#212D40] mb-10 font-heading">
             Not a mockup. Not a promise. This.
           </h2>
           <div className="grid sm:grid-cols-3 gap-6">
@@ -391,7 +391,7 @@ export default function HomePage() {
         <div className="max-w-xl mx-auto text-white space-y-6 leading-relaxed relative">
           <div className="flex items-center gap-3 mb-2">
             <Heart className="w-5 h-5 text-white/60" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">
               Heroes & Founders Foundation
             </p>
           </div>
@@ -431,7 +431,7 @@ export default function HomePage() {
       {/* ═══ WHAT YOU'RE REPLACING ═══ */}
       <section className="px-5 py-16 sm:py-20 bg-white">
         <div className="max-w-xl mx-auto space-y-6">
-          <p className="text-[10px] font-bold text-[#212D40]/30 uppercase tracking-[0.2em]">
+          <p className="text-xs font-bold text-[#212D40]/30 uppercase tracking-[0.2em]">
             What most business owners are paying for right now
           </p>
           <div className="space-y-4">
@@ -579,7 +579,7 @@ export default function HomePage() {
 function DiagnosisCard({ title, body }: { title: string; body: string }) {
   return (
     <div className="bg-[#212D40] rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-white/5">
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/70 mb-3">{title}</p>
+      <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D56753]/70 mb-3">{title}</p>
       <p className="text-sm text-white/60 leading-relaxed">{body}</p>
     </div>
   );
@@ -592,7 +592,7 @@ function ThreeThing({ icon, verb, body }: { icon: React.ReactNode; verb: string;
         <div className="w-9 h-9 rounded-lg bg-[#D56753]/8 flex items-center justify-center">
           {icon}
         </div>
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#D56753]">{verb}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D56753]">{verb}</p>
       </div>
       <p className="text-sm text-[#212D40]/60 leading-relaxed">{body}</p>
     </div>

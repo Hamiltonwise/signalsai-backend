@@ -213,7 +213,7 @@ export function SyncStepTimeline({ steps, className = "" }: SyncStepTimelineProp
                       y: state === "running" ? 0 : 4,
                     }}
                     className={`transition-colors mb-1 block ${
-                      state === "running" ? "text-xs" : "text-[10px]"
+                      state === "running" ? "text-xs" : "text-xs"
                     }`}
                   >
                     {label}

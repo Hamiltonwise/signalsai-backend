@@ -964,7 +964,7 @@ export default function PostsTab({
                   className="overflow-hidden"
                 >
                   <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-2">
-                    <p className="text-[11px] font-medium text-gray-500">Provide a reference URL to scrape or paste content directly:</p>
+                    <p className="text-xs font-medium text-gray-500">Provide a reference URL to scrape or paste content directly:</p>
                     <input
                       type="url"
                       value={aiRefUrl}
@@ -973,7 +973,7 @@ export default function PostsTab({
                       className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-alloro-orange/20 focus:border-alloro-orange"
                     />
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-gray-400">or</span>
+                      <span className="text-xs text-gray-400">or</span>
                     </div>
                     <textarea
                       value={aiRefContent}

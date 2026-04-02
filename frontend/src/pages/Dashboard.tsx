@@ -214,7 +214,7 @@ export default function Dashboard() {
                   <span className="w-2 h-2 bg-alloro-orange rounded-full animate-pulse"></span>
                   <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">Getting Started</span>
                 </div>
-                <h1 className="text-4xl font-black text-alloro-navy font-heading tracking-tight mb-3">
+                <h1 className="text-4xl font-semibold text-alloro-navy font-heading tracking-tight mb-3">
                   Let's Set Up Your Dashboard
                 </h1>
                 <p className="text-lg text-slate-500 font-medium">
@@ -233,14 +233,14 @@ export default function Dashboard() {
                     {/* Step number */}
                     <div className="shrink-0">
                       <div className="w-14 h-14 bg-gradient-to-br from-alloro-orange to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-alloro-orange/30 group-hover:scale-110 transition-transform">
-                        <span className="text-2xl font-black text-white">1</span>
+                        <span className="text-2xl font-semibold text-white">1</span>
                       </div>
                     </div>
                     {/* Content */}
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-black text-alloro-navy tracking-tight">Connect Your Google Business Profile</h3>
-                        <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg">Required</span>
+                        <h3 className="text-xl font-semibold text-alloro-navy tracking-tight">Connect Your Google Business Profile</h3>
+                        <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-xs font-semibold uppercase tracking-wider rounded-lg">Required</span>
                       </div>
                       <p className="text-slate-500 font-medium leading-relaxed mb-4">
                         Link your Google Business Profile to enable tracking and insights.
@@ -264,14 +264,14 @@ export default function Dashboard() {
                     {/* Step number */}
                     <div className="shrink-0">
                       <div className="w-14 h-14 bg-slate-200 rounded-2xl flex items-center justify-center">
-                        <span className="text-2xl font-black text-slate-400">2</span>
+                        <span className="text-2xl font-semibold text-slate-400">2</span>
                       </div>
                     </div>
                     {/* Content */}
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-black text-slate-400 tracking-tight">See Your Market Intelligence</h3>
-                        <span className="px-2 py-1 bg-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1">
+                        <h3 className="text-xl font-semibold text-slate-400 tracking-tight">See Your Market Intelligence</h3>
+                        <span className="px-2 py-1 bg-slate-200 text-slate-400 text-xs font-semibold uppercase tracking-wider rounded-lg flex items-center gap-1">
                           <Lock className="w-3 h-3" />
                           Locked
                         </span>

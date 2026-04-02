@@ -47,13 +47,13 @@ export default function Footer() {
 
         {/* Row 3: Legal */}
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-          <Link to="/terms" className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors">
+          <Link to="/terms" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
             Terms
           </Link>
-          <Link to="/privacy" className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors">
+          <Link to="/privacy" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
             Privacy
           </Link>
-          <span className="text-[10px] text-gray-300">
+          <span className="text-xs text-gray-300">
             &copy; 2026 Alloro, Inc. Bend, Oregon.
           </span>
         </div>
@@ -62,7 +62,7 @@ export default function Footer() {
         <p className="text-center">
           <Link
             to="/about"
-            className="text-[10px] text-gray-300 hover:text-gray-500 transition-colors"
+            className="text-xs text-gray-300 hover:text-gray-500 transition-colors"
           >
             Built with purpose. 1% of revenue goes to community.
           </Link>

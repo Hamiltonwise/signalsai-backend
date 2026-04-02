@@ -59,7 +59,7 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
                 ? userProfile?.practiceName?.charAt(0)?.toUpperCase() || "A"
                 : "A"}
             </div>
-            <span className="text-alloro-navy font-heading font-black text-base hidden sm:inline-block">
+            <span className="text-alloro-navy font-heading font-semibold text-base hidden sm:inline-block">
               {onboardingCompleted
                 ? userProfile?.practiceName || "Alloro"
                 : "Alloro"}
@@ -75,7 +75,7 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
           )}
           <button
             onClick={() => navigate("/settings")}
-            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold border border-slate-200"
+            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold border border-slate-200"
           >
             {userProfile?.practiceName?.substring(0, 2).toUpperCase() || "AP"}
           </button>

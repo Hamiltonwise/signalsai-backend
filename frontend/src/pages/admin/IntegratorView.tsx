@@ -260,7 +260,7 @@ function SandboxChangelog() {
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50/50 border border-emerald-100">
         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" style={{ animationDuration: "3s" }} />
         <span className="text-xs font-semibold text-emerald-700">Pipeline: GREEN</span>
-        <span className="text-[10px] text-gray-400 ml-auto">
+        <span className="text-xs text-gray-400 ml-auto">
           {latestDeploy
             ? `Last push: ${formatDate(latestDeploy.created_at)}`
             : "No deploys this week"}
@@ -420,19 +420,19 @@ function WeeklyPulse({ orgs }: { orgs: AdminOrganization[] }) {
       <div className="grid grid-cols-2 gap-3">
         <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
           <p className="text-lg font-bold text-[#212D40]">{formatter.format(mrr)}</p>
-          <p className="text-[10px] text-gray-400 uppercase font-medium tracking-wider mt-0.5">MRR</p>
+          <p className="text-xs text-gray-400 uppercase font-medium tracking-wider mt-0.5">MRR</p>
         </div>
         <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
           <p className="text-lg font-bold text-[#212D40]">{newSignupsThisWeek}</p>
-          <p className="text-[10px] text-gray-400 uppercase font-medium tracking-wider mt-0.5">New Signups</p>
+          <p className="text-xs text-gray-400 uppercase font-medium tracking-wider mt-0.5">New Signups</p>
         </div>
         <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
           <p className="text-lg font-bold text-[#212D40]">{checkupsThisWeek}</p>
-          <p className="text-[10px] text-gray-400 uppercase font-medium tracking-wider mt-0.5">Checkups</p>
+          <p className="text-xs text-gray-400 uppercase font-medium tracking-wider mt-0.5">Checkups</p>
         </div>
         <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
           <p className="text-lg font-bold text-[#212D40]">{referralsThisWeek}</p>
-          <p className="text-[10px] text-gray-400 uppercase font-medium tracking-wider mt-0.5">Referrals</p>
+          <p className="text-xs text-gray-400 uppercase font-medium tracking-wider mt-0.5">Referrals</p>
         </div>
       </div>
     </div>
@@ -970,7 +970,7 @@ function TrialPipeline({ orgs }: { orgs: AdminOrganization[] }) {
                 {hasConnection ? " . Connected" : " . Not connected"}
               </p>
             </div>
-            <span className={`shrink-0 text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${lc.bg} ${lc.color}`}>
+            <span className={`shrink-0 text-xs font-bold uppercase px-2.5 py-1 rounded-full ${lc.bg} ${lc.color}`}>
               {lc.label}
             </span>
           </div>
@@ -1037,7 +1037,7 @@ function WeeklyNumbers({ orgs }: { orgs: AdminOrganization[] }) {
         <div key={stat.label} className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
           <stat.icon className="w-4 h-4 text-gray-400 mx-auto mb-1.5" />
           <p className="text-lg font-bold text-[#212D40]">{stat.value}</p>
-          <p className="text-[10px] text-gray-400 uppercase font-medium tracking-wider mt-0.5">
+          <p className="text-xs text-gray-400 uppercase font-medium tracking-wider mt-0.5">
             <TailorText editKey={`hq.integrator.weekly.${stat.label.toLowerCase().replace(/\s/g, "_")}`} defaultText={stat.label} />
           </p>
         </div>
@@ -1204,7 +1204,7 @@ function BlastRadiusBadge({ radius }: { radius?: string }) {
   };
   const c = config[radius] || config.green;
   return (
-    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
+    <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
       {c.label}
     </span>
   );
@@ -1389,7 +1389,7 @@ function AgentStatusBadge({ status }: { status: string }) {
   };
   const c = config[status] || { bg: "bg-gray-50", text: "text-gray-600" };
   return (
-    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
+    <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
       {status}
     </span>
   );

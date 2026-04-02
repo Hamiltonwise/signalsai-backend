@@ -239,7 +239,7 @@ export default function ColorPicker({
 
           {/* Hue slider */}
           <div>
-            <label className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs text-gray-400 uppercase tracking-wide mb-1.5 block">
               Color
             </label>
             <div
@@ -266,7 +266,7 @@ export default function ColorPicker({
 
           {/* Lightness slider */}
           <div>
-            <label className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs text-gray-400 uppercase tracking-wide mb-1.5 block">
               Darkness
             </label>
             <div
@@ -292,7 +292,7 @@ export default function ColorPicker({
 
           {/* Hex input */}
           <div>
-            <label className="text-[10px] text-gray-400 uppercase tracking-wide mb-1 block">
+            <label className="text-xs text-gray-400 uppercase tracking-wide mb-1 block">
               Hex
             </label>
             <input
@@ -308,7 +308,7 @@ export default function ColorPicker({
 
           {/* Preset swatches */}
           <div>
-            <label className="text-[10px] text-gray-400 uppercase tracking-wide mb-1.5 block">
+            <label className="text-xs text-gray-400 uppercase tracking-wide mb-1.5 block">
               Presets
             </label>
             <div className="grid grid-cols-8 gap-1.5">

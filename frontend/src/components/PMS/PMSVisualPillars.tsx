@@ -127,7 +127,7 @@ const MetricCard = ({
         </span>
       )}
     </div>
-    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest leading-none">
+    <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest leading-none">
       {sub}
     </span>
   </div>
@@ -136,7 +136,7 @@ const MetricCard = ({
 // Temporarily hidden - Practice Diagnosis section
 // const DiagnosisBlock = ({ title, desc }: { title: string; desc: string }) => (
 //   <div>
-//     <h4 className="text-[10px] font-bold text-alloro-teal mb-1.5 uppercase tracking-widest leading-none">
+//     <h4 className="text-xs font-bold text-alloro-teal mb-1.5 uppercase tracking-widest leading-none">
 //       {title}
 //     </h4>
 //     <p className="text-[13px] text-blue-100/60 leading-relaxed font-medium tracking-tight">
@@ -1145,7 +1145,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 Setup Required
               </span>
             </div>
-            <h1 className="text-4xl font-black text-alloro-navy font-heading tracking-tight mb-3">
+            <h1 className="text-4xl font-semibold text-alloro-navy font-heading tracking-tight mb-3">
               Let's Set Up Your Dashboard
             </h1>
             <p className="text-lg text-slate-500 font-medium">
@@ -1164,16 +1164,16 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 {/* Step number */}
                 <div className="shrink-0">
                   <div className="w-14 h-14 bg-gradient-to-br from-alloro-orange to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-alloro-orange/30 group-hover:scale-110 transition-transform">
-                    <span className="text-2xl font-black text-white">1</span>
+                    <span className="text-2xl font-semibold text-white">1</span>
                   </div>
                 </div>
                 {/* Content */}
                 <div className="flex-1 text-left">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-black text-alloro-navy tracking-tight">
+                    <h3 className="text-xl font-semibold text-alloro-navy tracking-tight">
                       Connect Your Google Business Profile
                     </h3>
-                    <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg">
+                    <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-xs font-semibold uppercase tracking-wider rounded-lg">
                       Required
                     </span>
                   </div>
@@ -1202,16 +1202,16 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 {/* Step number */}
                 <div className="shrink-0">
                   <div className="w-14 h-14 bg-slate-200 rounded-2xl flex items-center justify-center">
-                    <span className="text-2xl font-black text-slate-400">2</span>
+                    <span className="text-2xl font-semibold text-slate-400">2</span>
                   </div>
                 </div>
                 {/* Content */}
                 <div className="flex-1 text-left">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-black text-slate-400 tracking-tight">
+                    <h3 className="text-xl font-semibold text-slate-400 tracking-tight">
                       Upload Your PMS Data
                     </h3>
-                    <span className="px-2 py-1 bg-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider rounded-lg flex items-center gap-1">
+                    <span className="px-2 py-1 bg-slate-200 text-slate-400 text-xs font-semibold uppercase tracking-wider rounded-lg flex items-center gap-1">
                       <Lock className="w-3 h-3" />
                       Locked
                     </span>
@@ -1250,7 +1250,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
               <BarChart3 size={20} />
             </div>
             <div>
-              <h1 className="text-[10px] font-bold font-heading text-alloro-navy uppercase tracking-[0.2em]">
+              <h1 className="text-xs font-bold font-heading text-alloro-navy uppercase tracking-[0.2em]">
                 Revenue Attribution
               </h1>
               <div className="flex items-center gap-2 mt-1">
@@ -1297,7 +1297,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 <p className="font-bold text-alloro-navy text-sm">
                   Your latest PMS data is now being processed.
                 </p>
-                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-0.5">
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mt-0.5">
                   We'll notify you when the analysis is complete.
                 </p>
               </div>
@@ -1321,7 +1321,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
               <div className="font-bold text-alloro-navy text-base">
                 Your PMS data is processed.
               </div>
-              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest">
+              <div className="text-xs text-slate-400 font-semibold uppercase tracking-widest">
                 Review the latest results and confirm once everything looks
                 good.
               </div>
@@ -1337,7 +1337,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 type="button"
                 onClick={() => setIsEditorOpen(true)}
                 disabled={latestJobId == null || !hasLatestJobRaw}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-alloro-orange bg-white px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-alloro-orange transition hover:bg-alloro-orange/5 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-alloro-orange bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-alloro-orange transition hover:bg-alloro-orange/5 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Confirm and get insights
@@ -1360,7 +1360,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
               <p className="font-bold text-red-800">
                 Unable to retrieve PMS data.
               </p>
-              <p className="text-[10px] text-red-600 font-semibold uppercase tracking-widest mt-0.5">
+              <p className="text-xs text-red-600 font-semibold uppercase tracking-widest mt-0.5">
                 {error}
               </p>
             </div>
@@ -1373,7 +1373,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
             {/* 1. ATTRIBUTION VITALS - Matching newdesign */}
             <section data-wizard-target="pms-attribution" className="space-y-4">
               <div className="flex items-center gap-4 px-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+                <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400">
                   Your PMS Vitals (YTD)
                 </h3>
                 <div className="h-px flex-1 bg-slate-100"></div>
@@ -1422,13 +1422,13 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-alloro-orange"></div>
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
                       Marketing
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-alloro-navy"></div>
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
                       Doctor
                     </span>
                   </div>
@@ -1479,7 +1479,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                                 ease: "easeOut",
                               }}
                             />
-                            <span className="text-[11px] font-bold text-alloro-navy tabular-nums">
+                            <span className="text-xs font-bold text-alloro-navy tabular-nums">
                               {data.selfReferrals}
                             </span>
                           </div>
@@ -1499,7 +1499,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                                   ease: "easeOut",
                                 }}
                               />
-                              <span className="text-[10px] font-bold text-slate-400 tabular-nums">
+                              <span className="text-xs font-bold text-slate-400 tabular-nums">
                                 {data.doctorReferrals}
                               </span>
                             </div>
@@ -1513,7 +1513,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                         <p className="text-sm font-semibold">
                           No monthly data available
                         </p>
-                        <p className="text-[10px] uppercase tracking-widest mt-1">
+                        <p className="text-xs uppercase tracking-widest mt-1">
                           Upload PMS data to see trends
                         </p>
                       </div>
@@ -1527,7 +1527,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
             {/* When client approval banner is shown, show the progress timeline at "Your confirmation" step */}
             <section data-wizard-target="pms-matrices" className="space-y-4">
               <div className="flex items-center gap-4 px-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+                <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400">
                   Intelligence Hub Matrices
                 </h3>
                 <div className="h-px flex-1 bg-slate-100"></div>
@@ -1661,7 +1661,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                       }`}
                     />
                   </div>
-                  <button className="w-full md:w-auto py-3.5 px-8 bg-alloro-orange rounded-xl text-[10px] font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg active:scale-95">
+                  <button className="w-full md:w-auto py-3.5 px-8 bg-alloro-orange rounded-xl text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg active:scale-95">
                     View Strategic Plan
                   </button>
                 </div>

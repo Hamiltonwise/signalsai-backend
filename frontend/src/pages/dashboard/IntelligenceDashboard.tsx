@@ -71,7 +71,7 @@ function SEOTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-3xl font-black text-[#212D40]">
+          <p className="text-3xl font-semibold text-[#212D40]">
             {latest.seo_score}/100
           </p>
           <p className="text-xs text-gray-400 mt-1">
@@ -222,7 +222,7 @@ function CROTab() {
                   key={v}
                   className={`rounded-lg p-3 ${isWinner ? "bg-emerald-50 border border-emerald-200" : "bg-gray-50"}`}
                 >
-                  <p className="text-[10px] font-bold uppercase text-gray-400 mb-1">
+                  <p className="text-xs font-bold uppercase text-gray-400 mb-1">
                     Option {v.toUpperCase()} {isWinner && "(Best)"}
                   </p>
                   <p className="text-xs text-gray-600 mb-2 line-clamp-2">
@@ -303,7 +303,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   return (
     <span
-      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${colors[status] || "bg-gray-100 text-gray-500"}`}
+      className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colors[status] || "bg-gray-100 text-gray-500"}`}
     >
       {status}
     </span>
@@ -349,7 +349,7 @@ export default function IntelligenceDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <TailorText editKey="intelligence.score.label" defaultText="Intelligence Score" as="p" className="text-xs font-medium text-gray-300 uppercase tracking-wider" />
-              <p className="text-4xl font-black mt-1">
+              <p className="text-4xl font-semibold mt-1">
                 {summary.intelligenceScore ?? "--"}
                 <span className="text-lg font-normal text-gray-400">/100</span>
               </p>
@@ -362,17 +362,17 @@ export default function IntelligenceDashboard() {
             <div className="flex gap-6">
               <div className="text-center">
                 <p className="text-2xl font-bold">{summary.seoScore ?? "--"}</p>
-                <p className="text-[10px] text-gray-400 mt-1">SEO</p>
+                <p className="text-xs text-gray-400 mt-1">SEO</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold">{summary.aeoFaqCount}</p>
-                <p className="text-[10px] text-gray-400 mt-1">FAQs</p>
+                <p className="text-xs text-gray-400 mt-1">FAQs</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold">
                   {summary.croExperimentsActive}
                 </p>
-                <p className="text-[10px] text-gray-400 mt-1">Tests</p>
+                <p className="text-xs text-gray-400 mt-1">Tests</p>
               </div>
             </div>
           </div>

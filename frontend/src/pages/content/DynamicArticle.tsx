@@ -78,7 +78,7 @@ export default function DynamicArticle() {
       >
         <section className="px-5 py-24 sm:py-32">
           <div className="max-w-md mx-auto text-center">
-            <p className="text-7xl font-black text-[#212D40]/10 mb-4">404</p>
+            <p className="text-7xl font-semibold text-[#212D40]/10 mb-4">404</p>
             <h1 className="text-2xl font-bold text-[#212D40] mb-4">
               This article does not exist.
             </h1>
@@ -223,11 +223,11 @@ export default function DynamicArticle() {
       <article className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
         <header className="mb-12">
           {article.category && (
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#D56753]">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
               {article.category}
             </span>
           )}
-          <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold text-[#212D40] leading-tight tracking-tight">
+          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-[#212D40] leading-tight tracking-tight">
             {article.title}
           </h1>
           {displayDate && (

@@ -23,7 +23,7 @@ export default function HeroesPage() {
             Heroes Initiative
           </p>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-black text-[#212D40] leading-tight">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] leading-tight">
           You protected something bigger than yourself. Now protect what you built.
         </h1>
         <p className="mt-6 text-base text-gray-600 leading-relaxed">

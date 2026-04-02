@@ -66,7 +66,7 @@ function ProposalDiff({ proposal }: { proposal: SyncProposal }) {
         <div className="mt-2 grid grid-cols-2 gap-3">
           {proposal.target_excerpt && (
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-red-400 mb-1.5">
+              <p className="text-xs font-bold uppercase tracking-wider text-red-400 mb-1.5">
                 Will Forget
               </p>
               <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-300 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -75,7 +75,7 @@ function ProposalDiff({ proposal }: { proposal: SyncProposal }) {
             </div>
           )}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-green-400 mb-1.5">
+            <p className="text-xs font-bold uppercase tracking-wider text-green-400 mb-1.5">
               Will Learn
             </p>
             <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-xs text-green-300 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -283,7 +283,7 @@ export function ParentingProposals({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   <span
-                    className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg ${
+                    className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg ${
                       proposal.type === "NEW"
                         ? "bg-green-500/15 text-green-400"
                         : proposal.type === "UPDATE"
@@ -332,7 +332,7 @@ export function ParentingProposals({
                     <button
                       onClick={() => handleProposalAction(proposal.id, "pending")}
                       disabled={actioningId === proposal.id}
-                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-[#6a6a75] hover:text-[#a0a0a8] hover:bg-white/[0.05] transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-[#6a6a75] hover:text-[#a0a0a8] hover:bg-white/[0.05] transition-colors disabled:opacity-50"
                       title="Undo"
                     >
                       {actioningId === proposal.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Undo2 className="h-3 w-3" />}
@@ -349,7 +349,7 @@ export function ParentingProposals({
                     <button
                       onClick={() => handleProposalAction(proposal.id, "pending")}
                       disabled={actioningId === proposal.id}
-                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-[#6a6a75] hover:text-[#a0a0a8] hover:bg-white/[0.05] transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-[#6a6a75] hover:text-[#a0a0a8] hover:bg-white/[0.05] transition-colors disabled:opacity-50"
                       title="Undo"
                     >
                       {actioningId === proposal.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Undo2 className="h-3 w-3" />}

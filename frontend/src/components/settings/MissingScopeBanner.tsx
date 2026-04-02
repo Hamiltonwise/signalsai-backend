@@ -170,7 +170,7 @@ export const MissingScopeBanner: React.FC<MissingScopeBannerProps> = ({
         <div className="space-y-5">
           {/* Message */}
           <div>
-            <h3 className="font-black text-red-900 text-lg">
+            <h3 className="font-semibold text-red-900 text-lg">
               Missing {missingCount} Required API Access
               {missingCount > 1 ? "es" : ""}
             </h3>

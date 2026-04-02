@@ -57,16 +57,16 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           : "bg-white border-black/5 hover:border-alloro-orange/20 hover:shadow-premium"
       }`}
     >
-      <span className="text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.2em] mb-4 leading-none text-left">
+      <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-[0.2em] mb-4 leading-none text-left">
         {label}
       </span>
       <div className="flex items-center justify-between">
-        <span className="text-3xl font-black font-heading tracking-tighter leading-none text-alloro-textDark">
+        <span className="text-3xl font-semibold font-heading tracking-tighter leading-none text-alloro-textDark">
           {value}
         </span>
         {trend && (
           <span
-            className={`text-[11px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm ${
+            className={`text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm ${
               isUp
                 ? "bg-green-100 text-green-700"
                 : isDown
@@ -106,7 +106,7 @@ export const CompactTag: React.FC<CompactTagProps> = ({ status }) => {
 
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border leading-none mt-1 w-fit ${
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider border leading-none mt-1 w-fit ${
         styles[status] || styles["Stable"]
       }`}
     >
@@ -130,7 +130,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 }) => (
   <div className="flex items-center gap-4 px-1">
     {icon && <div className="shrink-0">{icon}</div>}
-    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-alloro-textDark/40 whitespace-nowrap">
+    <h3 className="text-xs font-semibold uppercase tracking-[0.4em] text-alloro-textDark/40 whitespace-nowrap">
       {title}
     </h3>
     <div className="h-px w-full bg-black/10"></div>
@@ -161,7 +161,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           {icon}
         </div>
         <div className="flex flex-col text-left">
-          <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
+          <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
             {title}
           </h1>
           {subtitle && (
@@ -201,7 +201,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({
 
   return (
     <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${colorStyles[color]}`}
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest border ${colorStyles[color]}`}
     >
       {label}
     </span>
@@ -448,7 +448,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
       transition={{ duration: 0.5, delay, type: "spring", stiffness: 100 }}
     >
       {label && (
-        <span className="mb-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+        <span className="mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
           {label}
         </span>
       )}
@@ -931,7 +931,7 @@ export const TabBar: React.FC<TabBarProps> = ({
               <span>{tab.label}</span>
             </span>
             {isActive && tab.description && (
-              <span className="text-[10px] font-normal leading-tight text-gray-400 mt-0.5">
+              <span className="text-xs font-normal leading-tight text-gray-400 mt-0.5">
                 {tab.description}
               </span>
             )}

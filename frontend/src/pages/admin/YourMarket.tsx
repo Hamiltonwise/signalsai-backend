@@ -69,7 +69,7 @@ function PositionTrack({
         >
           {slot === position ? (
             <div className="h-6 w-6 rounded-full bg-[#D56753] flex items-center justify-center shadow-sm">
-              <span className="text-[10px] font-bold text-white">{slot}</span>
+              <span className="text-xs font-bold text-white">{slot}</span>
             </div>
           ) : (
             <div className="h-5 w-5 rounded-full border-2 border-[#212D40]/20 flex items-center justify-center">

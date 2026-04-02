@@ -13,7 +13,7 @@ export function EnvironmentBanner() {
   if (!isSandbox) return null;
 
   return (
-    <div className="bg-amber-400 text-amber-900 text-center py-1 px-4 text-[11px] font-bold uppercase tracking-widest z-[9999] relative">
+    <div className="bg-amber-400 text-amber-900 text-center py-1 px-4 text-xs font-bold uppercase tracking-widest z-[9999] relative">
       SANDBOX
     </div>
   );

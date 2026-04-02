@@ -32,10 +32,10 @@ const InfoRow = ({ icon, label, value }: InfoRowProps) => (
       {icon}
     </div>
     <div className="min-w-0 text-left">
-      <div className="text-[8px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
+      <div className="text-[8px] font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
         {label}
       </div>
-      <div className="text-base font-black text-alloro-navy tracking-tight truncate group-hover:translate-x-1 transition-transform">
+      <div className="text-base font-semibold text-alloro-navy tracking-tight truncate group-hover:translate-x-1 transition-transform">
         {value}
       </div>
     </div>
@@ -106,7 +106,7 @@ export const IntegrationsRoute: React.FC = () => {
       {/* Left Column - Practice Identity */}
       <section className="xl:col-span-5 space-y-6">
         <div className="px-1">
-          <h2 className="text-lg font-black text-alloro-navy tracking-tight mb-1">
+          <h2 className="text-lg font-semibold text-alloro-navy tracking-tight mb-1">
             Business Details
           </h2>
           <p className="text-slate-500 text-sm">
@@ -151,17 +151,17 @@ export const IntegrationsRoute: React.FC = () => {
             </div>
             <div className="space-y-1">
               <p className="text-sm font-bold leading-snug tracking-tight text-white/90">
-                <span className="text-alloro-orange font-black">
+                <span className="text-alloro-orange font-semibold">
                   Encrypted & Secure.
                 </span>{" "}
                 All business data is protected by high-level
                 encryption protocols.
               </p>
               <div className="flex items-center gap-4 pt-1">
-                <span className="flex items-center gap-1.5 text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">
+                <span className="flex items-center gap-1.5 text-[8px] font-semibold text-white/20 uppercase tracking-[0.2em]">
                   <Lock size={10} /> HIPAA Compliant
                 </span>
-                <span className="flex items-center gap-1.5 text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">
+                <span className="flex items-center gap-1.5 text-[8px] font-semibold text-white/20 uppercase tracking-[0.2em]">
                   <Activity size={10} /> Monitored 24/7
                 </span>
               </div>
@@ -203,7 +203,7 @@ export const IntegrationsRoute: React.FC = () => {
           >
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <h3 className="font-black text-alloro-navy text-lg">
+                <h3 className="font-semibold text-alloro-navy text-lg">
                   Connect Google Account
                 </h3>
                 <p className="text-slate-500 text-sm mt-1">

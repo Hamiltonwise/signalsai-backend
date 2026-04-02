@@ -137,7 +137,7 @@ export default function VisionaryView() {
           <div className="bg-white border border-gray-200 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">What Needs You</p>
-              <span className="text-[10px] font-bold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">{openTasks.length}</span>
+              <span className="text-xs font-bold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">{openTasks.length}</span>
             </div>
             <div className="space-y-2">
               {openTasks.slice(0, 5).map((t) => (
@@ -147,7 +147,7 @@ export default function VisionaryView() {
                   }`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-[#212D40] font-medium truncate">{t.title}</p>
-                    {t.source && <p className="text-[10px] text-gray-400">{t.source}</p>}
+                    {t.source && <p className="text-xs text-gray-400">{t.source}</p>}
                   </div>
                 </div>
               ))}
@@ -210,16 +210,16 @@ export default function VisionaryView() {
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="text-center">
-            <p className="text-2xl font-black text-[#212D40]">{championCount}</p>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Champions</p>
+            <p className="text-2xl font-semibold text-[#212D40]">{championCount}</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Champions</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-black text-[#212D40]">{championCount}</p>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Heroes Funded</p>
+            <p className="text-2xl font-semibold text-[#212D40]">{championCount}</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Heroes Funded</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-black text-[#212D40]">2</p>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider">RISE Scholars</p>
+            <p className="text-2xl font-semibold text-[#212D40]">2</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider">RISE Scholars</p>
           </div>
         </div>
       </div>
@@ -271,10 +271,10 @@ function NumberCard({
     <div className="bg-white border border-gray-200 rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
+        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{label}</span>
       </div>
-      <p className={`text-2xl font-black ${valueColor || "text-[#212D40]"}`}>{value}</p>
-      <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>
+      <p className={`text-2xl font-semibold ${valueColor || "text-[#212D40]"}`}>{value}</p>
+      <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
     </div>
   );
 }

@@ -284,10 +284,10 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
         <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
           <div className="max-w-[1200px] mx-auto px-6 sm:px-12 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
-              <h1 className="text-2xl font-black font-heading text-alloro-navy tracking-tight">
+              <h1 className="text-2xl font-semibold font-heading text-alloro-navy tracking-tight">
                 Client Journey Insights
               </h1>
-              <p className="text-slate-400 font-medium text-[11px] uppercase tracking-wider flex items-center gap-2 mt-1">
+              <p className="text-slate-400 font-medium text-xs uppercase tracking-wider flex items-center gap-2 mt-1">
                 <Activity size={14} className="text-alloro-orange" />
                 AI-powered business analytics • {STAGES.length} stages
               </p>
@@ -295,7 +295,7 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
 
             <button
               onClick={handleFetchAIReadyData}
-              className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 py-3 bg-alloro-orange text-white rounded-xl text-[11px] font-bold uppercase tracking-widest shadow-lg shadow-blue-900/10 active:scale-95 transition-all hover:bg-alloro-navy disabled:opacity-60"
+              className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 py-3 bg-alloro-orange text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-blue-900/10 active:scale-95 transition-all hover:bg-alloro-navy disabled:opacity-60"
               disabled={isFetchingAIData}
             >
               {isFetchingAIData ? (
@@ -315,7 +315,7 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
 
         <main className="w-full max-w-[1200px] mx-auto px-6 sm:px-12 py-10 space-y-10">
           {/* Engine Status Bar */}
-          <div className="bg-white border border-slate-200 rounded-2xl px-8 py-5 flex flex-wrap items-center gap-x-12 gap-y-3 text-[10px] font-bold text-slate-400 shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-2xl px-8 py-5 flex flex-wrap items-center gap-x-12 gap-y-3 text-xs font-bold text-slate-400 shadow-sm">
             <span className="uppercase tracking-[0.2em] opacity-60">
               Engine Status:
             </span>
@@ -400,7 +400,7 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
                     >
                       {activeIndex + 1}
                     </span>
-                    <h3 className="font-black text-alloro-navy text-2xl sm:text-3xl font-heading tracking-tight">
+                    <h3 className="font-semibold text-alloro-navy text-2xl sm:text-3xl font-heading tracking-tight">
                       {activeStage.title}
                     </h3>
                   </div>
@@ -408,7 +408,7 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
                     {activeStage.description}
                   </p>
                   {hasCurrentStageError() && (
-                    <div className="mt-6 flex items-center gap-2 text-[10px] font-bold text-red-500 bg-red-50 px-4 py-1.5 rounded-full border border-red-100 uppercase tracking-widest w-fit">
+                    <div className="mt-6 flex items-center gap-2 text-xs font-bold text-red-500 bg-red-50 px-4 py-1.5 rounded-full border border-red-100 uppercase tracking-widest w-fit">
                       <TrendingUp size={14} className="rotate-45" /> Error
                       loading {activeStage.dataSource}
                     </div>
@@ -426,13 +426,13 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.1, duration: 0.3 }}
                   >
-                    <div className="text-4xl sm:text-5xl font-black font-heading text-alloro-navy mb-3 tracking-tighter tabular-nums leading-none">
+                    <div className="text-4xl sm:text-5xl font-semibold font-heading text-alloro-navy mb-3 tracking-tighter tabular-nums leading-none">
                       {metric.value}
                     </div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">
                       {metric.label}
                     </div>
-                    <div className="text-[11px] text-slate-400 font-bold opacity-70">
+                    <div className="text-xs text-slate-400 font-bold opacity-70">
                       {metric.subtext}
                     </div>
                   </motion.div>
@@ -446,7 +446,7 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
                   <Lightbulb size={32} />
                 </div>
                 <div className="relative z-10">
-                  <h4 className="text-alloro-teal font-bold text-[10px] uppercase tracking-[0.25em] mb-2 leading-none">
+                  <h4 className="text-alloro-teal font-bold text-xs uppercase tracking-[0.25em] mb-2 leading-none">
                     Algorithmic Observation
                   </h4>
                   <p className="text-blue-50/90 text-lg sm:text-xl font-medium leading-relaxed tracking-tight">
@@ -461,14 +461,14 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
               <button
                 onClick={prevStage}
                 disabled={activeIndex === 0}
-                className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-alloro-navy disabled:opacity-0 transition-all"
+                className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-alloro-navy disabled:opacity-0 transition-all"
               >
                 <ChevronLeft size={16} /> Previous Stage
               </button>
               <button
                 onClick={nextStage}
                 disabled={activeIndex === STAGES.length - 1}
-                className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-alloro-orange hover:text-alloro-navy disabled:opacity-0 transition-all"
+                className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-alloro-orange hover:text-alloro-navy disabled:opacity-0 transition-all"
               >
                 Next Stage <ChevronRight size={16} />
               </button>
@@ -511,7 +511,7 @@ export const VitalSignsCards: React.FC<VitalSignsCardsProps> = ({
                       {getIcon(stage.iconName, 20)}
                     </div>
                     <span
-                      className={`text-[10px] font-bold uppercase tracking-widest mt-4 transition-colors ${
+                      className={`text-xs font-bold uppercase tracking-widest mt-4 transition-colors ${
                         isActive ? "text-alloro-navy" : "text-slate-400"
                       }`}
                     >

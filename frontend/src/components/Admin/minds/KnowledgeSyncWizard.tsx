@@ -266,7 +266,7 @@ export function KnowledgeSyncWizard({
                     {step.label}
                   </span>
                   <span
-                    className={`text-[11px] mt-0.5 transition-colors max-w-[160px] ${
+                    className={`text-xs mt-0.5 transition-colors max-w-[160px] ${
                       isActive
                         ? "text-gray-500"
                         : isPast

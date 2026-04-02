@@ -189,7 +189,7 @@ export default function HQSearch({ onClose }: { onClose: () => void }) {
 
           {!loading && query.length < 2 && recentSearches.length > 0 && (
             <div className="px-5 py-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
                 <Clock className="h-3 w-3 inline mr-1" />
                 Recent
               </p>
@@ -207,7 +207,7 @@ export default function HQSearch({ onClose }: { onClose: () => void }) {
 
           {!loading && Object.entries(grouped).map(([type, items]) => (
             <div key={type}>
-              <p className="px-5 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              <p className="px-5 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-gray-400">
                 {TYPE_LABEL[type] || type}
               </p>
               {items.map((result) => {
@@ -233,7 +233,7 @@ export default function HQSearch({ onClose }: { onClose: () => void }) {
                       <p className="text-xs text-gray-400 truncate">{result.subtitle}</p>
                     </div>
                     {result.meta && (
-                      <span className="text-[10px] text-gray-400 shrink-0">{result.meta}</span>
+                      <span className="text-xs text-gray-400 shrink-0">{result.meta}</span>
                     )}
                   </button>
                 );
@@ -244,10 +244,10 @@ export default function HQSearch({ onClose }: { onClose: () => void }) {
 
         {/* Footer */}
         <div className="border-t border-gray-100 px-5 py-2.5 flex items-center justify-between">
-          <p className="text-[10px] text-gray-400">
+          <p className="text-xs text-gray-400">
             <kbd className="px-1 py-0.5 rounded bg-gray-100 text-gray-500 font-mono text-[9px]">ESC</kbd> to close
           </p>
-          <p className="text-[10px] text-gray-400">
+          <p className="text-xs text-gray-400">
             <kbd className="px-1 py-0.5 rounded bg-gray-100 text-gray-500 font-mono text-[9px]">&uarr;&darr;</kbd> navigate
             <kbd className="px-1 py-0.5 rounded bg-gray-100 text-gray-500 font-mono text-[9px] ml-1">&crarr;</kbd> select
           </p>

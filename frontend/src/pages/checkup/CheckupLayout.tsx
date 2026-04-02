@@ -29,7 +29,7 @@ export default function CheckupLayout() {
       {/* Refined footer */}
       <footer className="py-8 text-center">
         <div className="h-px divider-warm mx-auto max-w-[8rem] mb-6" />
-        <p className="text-[11px] font-medium tracking-[0.15em] text-[#D56753]/25 uppercase">
+        <p className="text-xs font-medium tracking-[0.15em] text-[#D56753]/25 uppercase">
           Alloro &middot; Business Clarity
         </p>
       </footer>

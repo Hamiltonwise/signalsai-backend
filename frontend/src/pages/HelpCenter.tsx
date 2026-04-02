@@ -93,7 +93,7 @@ export default function HelpCenter() {
       <div className="max-w-lg mx-auto px-5 py-12 sm:py-16 space-y-12">
         {/* Title */}
         <div className="text-center">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#212D40] tracking-tight">
             Help
           </h1>
           <p className="mt-2 text-sm text-slate-500">
@@ -205,7 +205,7 @@ export default function HelpCenter() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-[11px] text-slate-300">
+        <p className="text-center text-xs text-slate-300">
           &copy; 2026 Alloro, Inc. Bend, Oregon.
         </p>
       </div>

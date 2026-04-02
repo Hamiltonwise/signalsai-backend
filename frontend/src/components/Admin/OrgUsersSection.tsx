@@ -320,11 +320,11 @@ export function OrgUsersSection({
                   </td>
                   <td className="py-3">
                     {user.has_password ? (
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-green-50 text-green-600 border border-green-200">
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-bold rounded-full bg-green-50 text-green-600 border border-green-200">
                         <Key className="h-2.5 w-2.5" /> Set
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-bold rounded-full bg-amber-50 text-amber-600 border border-amber-200">
                         <Key className="h-2.5 w-2.5" /> None
                       </span>
                     )}

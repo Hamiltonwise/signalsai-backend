@@ -120,13 +120,13 @@ function SnapshotCard({ snapshot, isLatest }: { snapshot: RankingSnapshot; isLat
             Week of {new Date(snapshot.week_start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </span>
           {isLatest && (
-            <span className="text-[10px] font-bold bg-[#D56753]/10 text-[#D56753] px-2 py-0.5 rounded-full">
+            <span className="text-xs font-bold bg-[#D56753]/10 text-[#D56753] px-2 py-0.5 rounded-full">
               This Week
             </span>
           )}
         </div>
         {snapshot.position && (
-          <span className="text-lg font-black text-[#212D40]">#{snapshot.position}</span>
+          <span className="text-lg font-semibold text-[#212D40]">#{snapshot.position}</span>
         )}
       </div>
 
@@ -220,7 +220,7 @@ export default function RankingsScreen() {
     <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-[#212D40]">Your Rankings</h1>
+        <h1 className="text-2xl font-semibold text-[#212D40]">Your Rankings</h1>
         <p className="text-sm text-gray-500 mt-1">
           Weekly intelligence on your market position. Updated every Sunday.
         </p>
@@ -242,7 +242,7 @@ export default function RankingsScreen() {
             <div>
               <p className="text-xs text-white/50 uppercase tracking-wider font-bold">Current Position</p>
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-3xl sm:text-5xl font-black">#{latest.position}</span>
+                <span className="text-3xl sm:text-5xl font-semibold">#{latest.position}</span>
                 {positionDelta !== null && positionDelta !== 0 && (
                   <span className={`flex items-center gap-1 text-sm font-bold ${
                     positionDelta > 0 ? "text-emerald-400" : "text-red-400"
@@ -308,7 +308,7 @@ export default function RankingsScreen() {
                 From your Checkup
               </p>
               <div className="flex flex-col sm:flex-row items-baseline gap-1 sm:gap-2 mb-1">
-                <span className="text-3xl sm:text-4xl font-black">#{checkupCtx.data.market.rank || "?"}</span>
+                <span className="text-3xl sm:text-4xl font-semibold">#{checkupCtx.data.market.rank || "?"}</span>
                 <span className="text-white/50 text-sm">
                   of {checkupCtx.data.market.totalCompetitors || "?"} in {checkupCtx.data.market.city || "your market"}
                 </span>
@@ -413,7 +413,7 @@ function ActivityFeed() {
                 {entry.label}
               </p>
             </div>
-            <span className="shrink-0 text-[11px] text-gray-400">{entry.relativeTime}</span>
+            <span className="shrink-0 text-xs text-gray-400">{entry.relativeTime}</span>
           </div>
         ))}
       </div>

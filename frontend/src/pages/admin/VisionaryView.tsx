@@ -134,7 +134,7 @@ function PanelHeader({
   return (
     <div className="flex items-center gap-2.5 mb-4">
       <Icon className={`h-4 w-4 ${iconColor}`} />
-      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40">
+      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/40">
         {label}
       </p>
     </div>
@@ -163,7 +163,7 @@ function CollapsibleSection({
         className="flex items-center gap-2.5 w-full text-left mb-2 group"
       >
         <Icon className={`h-4 w-4 ${iconColor}`} />
-        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40 flex-1">
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/40 flex-1">
           {title}
         </p>
         {open ? (
@@ -186,7 +186,7 @@ function PersonalAgentHeadline({ brief }: { brief: PersonalAgentBrief | null | u
     <div className="rounded-2xl border-2 border-[#D56753]/20 bg-gradient-to-br from-[#FFF9F7] via-white to-[#FFF5F2] p-8 shadow-sm">
       <div className="flex items-center gap-2.5 mb-4">
         <Zap className="h-4 w-4 text-[#D56753]" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60">
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60">
           Right Now
         </p>
       </div>
@@ -287,9 +287,9 @@ function MorningBriefingStats({
               <span className="text-sm font-bold text-[#212D40]">{redCount}</span>
             </div>
           ) : (
-            <p className="text-2xl font-black text-[#212D40]">{stat.value}</p>
+            <p className="text-2xl font-semibold text-[#212D40]">{stat.value}</p>
           )}
-          <TailorText editKey={stat.editKey} defaultText={stat.label} as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1" />
+          <TailorText editKey={stat.editKey} defaultText={stat.label} as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400 mt-1" />
         </div>
       ))}
     </div>
@@ -315,7 +315,7 @@ function RevenuePanel() {
 
       <div className="space-y-5">
         <div>
-          <p className="text-4xl font-black text-[#212D40]">
+          <p className="text-4xl font-semibold text-[#212D40]">
             ${mrr.toLocaleString()}
           </p>
           <TailorText editKey="hq.visionary.revenue.mrrLabel" defaultText="Monthly Recurring Revenue" as="p" className="text-xs text-gray-400 mt-1" />
@@ -436,13 +436,13 @@ function DecisionPanel({
           className={`h-4 w-4 ${hasItems ? "text-red-500" : "text-gray-400"}`}
         />
         <p
-          className={`text-[11px] font-bold uppercase tracking-wider ${
+          className={`text-xs font-bold uppercase tracking-wider ${
             hasItems ? "text-red-500" : "text-gray-400"
           }`}
         >
           Decisions Needing You
           {hasItems && (
-            <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+            <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold">
               {redTasks.length + extraUrgent.length + agentUrgentItems.length}
             </span>
           )}
@@ -468,7 +468,7 @@ function DecisionPanel({
                     {t.owner_name} . {timeAgo(t.created_at)}
                   </p>
                 </div>
-                <span className="shrink-0 ml-3 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                <span className="shrink-0 ml-3 text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700">
                   red
                 </span>
               </div>
@@ -506,7 +506,7 @@ function DecisionPanel({
                 </p>
                 <p className="text-xs text-gray-400">Personal Agent</p>
               </div>
-              <span className="shrink-0 ml-3 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+              <span className="shrink-0 ml-3 text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700">
                 red
               </span>
             </div>
@@ -527,7 +527,7 @@ function DecisionPanel({
                 </p>
               </div>
               <span
-                className={`shrink-0 ml-3 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                className={`shrink-0 ml-3 text-xs font-bold uppercase px-2 py-0.5 rounded-full ${
                   t.priority === "urgent"
                     ? "bg-red-100 text-red-700"
                     : "bg-amber-100 text-amber-700"
@@ -626,7 +626,7 @@ function RoadmapPanel() {
         <div className="rounded-xl bg-white border border-blue-100 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Navigation className="h-3.5 w-3.5 text-[#D56753]" />
-            <TailorText editKey="hq.visionary.roadmap.currentPosition" defaultText="Current Position" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400" />
+            <TailorText editKey="hq.visionary.roadmap.currentPosition" defaultText="Current Position" as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400" />
           </div>
           <p className="text-sm font-semibold text-[#212D40]">
             {roadmap.currentPhase}
@@ -640,7 +640,7 @@ function RoadmapPanel() {
         <div className="rounded-xl bg-white border border-blue-100 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Target className="h-3.5 w-3.5 text-blue-500" />
-            <TailorText editKey="hq.visionary.roadmap.nextTurn" defaultText="Next Milestone" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400" />
+            <TailorText editKey="hq.visionary.roadmap.nextTurn" defaultText="Next Milestone" as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400" />
           </div>
           <p className="text-sm font-medium text-[#212D40] mb-2">
             {roadmap.nextMilestone.name}
@@ -658,7 +658,7 @@ function RoadmapPanel() {
               {milestoneProgress}%
             </span>
           </div>
-          <p className="text-[10px] text-gray-400 mt-1.5">
+          <p className="text-xs text-gray-400 mt-1.5">
             ETA: {roadmap.nextMilestone.estimatedDate}
           </p>
         </div>
@@ -669,7 +669,7 @@ function RoadmapPanel() {
         <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 mb-4">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600">Course Correction</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600">Course Correction</span>
           </div>
           <p className="text-xs text-amber-800 leading-relaxed">
             {roadmap.courseCorrection}
@@ -687,7 +687,7 @@ function RoadmapPanel() {
         ) : (
           <ChevronRight className="h-3.5 w-3.5" />
         )}
-        <span className="text-[10px] font-bold uppercase tracking-wider">
+        <span className="text-xs font-bold uppercase tracking-wider">
           Full Route Timeline ({roadmap.phases.length} phases)
         </span>
       </button>
@@ -696,7 +696,7 @@ function RoadmapPanel() {
         <div className="mt-3">
           {/* ETA to Unicorn */}
           <div className="mb-4 rounded-xl bg-gradient-to-r from-[#212D40] to-[#2d3d54] p-3">
-            <TailorText editKey="hq.visionary.roadmap.etaToUnicorn" defaultText="ETA to Unicorn" as="p" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1" />
+            <TailorText editKey="hq.visionary.roadmap.etaToUnicorn" defaultText="ETA to Unicorn" as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1" />
             <p className="text-sm text-white leading-relaxed">
               {roadmap.etaToUnicorn}
             </p>
@@ -740,7 +740,7 @@ function RoadmapPanel() {
                       >
                         {phase.name}: {phase.label}
                       </p>
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-xs text-gray-400">
                         {phase.mrrTarget} MRR / {phase.clientTarget} clients
                       </span>
                     </div>
@@ -760,31 +760,31 @@ function RoadmapPanel() {
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
             <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
-              <p className="text-lg font-black text-[#212D40]">
+              <p className="text-lg font-semibold text-[#212D40]">
                 ${roadmap.currentMRR.toLocaleString()}
               </p>
               <TailorText editKey="hq.visionary.roadmap.metrics.mrr" defaultText="MRR" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
             </div>
             <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
-              <p className="text-lg font-black text-[#212D40]">
+              <p className="text-lg font-semibold text-[#212D40]">
                 {roadmap.currentClients}
               </p>
               <TailorText editKey="hq.visionary.roadmap.metrics.clients" defaultText="Clients" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
             </div>
             <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
-              <p className="text-lg font-black text-[#212D40]">
+              <p className="text-lg font-semibold text-[#212D40]">
                 {roadmap.checkupsCompleted}
               </p>
               <TailorText editKey="hq.visionary.roadmap.metrics.checkups" defaultText="Checkups" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
             </div>
             <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
-              <p className="text-lg font-black text-[#212D40]">
+              <p className="text-lg font-semibold text-[#212D40]">
                 {roadmap.trialConversionRate > 0 ? `${roadmap.trialConversionRate}%` : "--"}
               </p>
               <TailorText editKey="hq.visionary.roadmap.metrics.trialConv" defaultText="Trial Conv." as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
             </div>
             <div className="rounded-xl bg-white border border-[#D56753]/6 p-3 text-center">
-              <p className="text-lg font-black text-[#212D40]">
+              <p className="text-lg font-semibold text-[#212D40]">
                 {roadmap.referralRate > 0 ? `${roadmap.referralRate}%` : "--"}
               </p>
               <TailorText editKey="hq.visionary.roadmap.metrics.referralRate" defaultText="Referral Rate" as="p" className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-0.5" />
@@ -914,16 +914,16 @@ function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  <th className="pb-2 pr-4 text-xs font-bold uppercase tracking-wider text-gray-400">
                     Record
                   </th>
-                  <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  <th className="pb-2 pr-4 text-xs font-bold uppercase tracking-wider text-gray-400">
                     Who
                   </th>
-                  <th className="pb-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  <th className="pb-2 pr-4 text-xs font-bold uppercase tracking-wider text-gray-400">
                     Their Time
                   </th>
-                  <th className="pb-2 text-[10px] font-bold uppercase tracking-wider text-[#D56753]">
+                  <th className="pb-2 text-xs font-bold uppercase tracking-wider text-[#D56753]">
                     Alloro Target
                   </th>
                 </tr>
@@ -970,13 +970,13 @@ function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
               </div>
             ))}
           </div>
-          <TailorText editKey="hq.visionary.scoreboard.calibrationNote" defaultText="Scores from internal calibration. Updated quarterly." as="p" className="text-[10px] text-gray-400 mt-2 italic" />
+          <TailorText editKey="hq.visionary.scoreboard.calibrationNote" defaultText="Scores from internal calibration. Updated quarterly." as="p" className="text-xs text-gray-400 mt-2 italic" />
         </div>
       </CollapsibleSection>
 
       {/* Milestone Timeline: compact, next 3 only */}
       <div>
-        <TailorText editKey="hq.visionary.scoreboard.milestoneTimeline" defaultText="Next Milestones" as="p" className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40 mb-3" />
+        <TailorText editKey="hq.visionary.scoreboard.milestoneTimeline" defaultText="Next Milestones" as="p" className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/40 mb-3" />
         <div className="space-y-2">
           {upcomingMilestones.map((m) => (
             <div
@@ -1003,13 +1003,13 @@ function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
                   <p className="text-sm font-semibold text-[#212D40] truncate">
                     {m.name}
                   </p>
-                  <p className="text-[10px] text-gray-400">{m.target}</p>
+                  <p className="text-xs text-gray-400">{m.target}</p>
                 </div>
               </div>
               <div className="text-right shrink-0 ml-3">
                 <p className="text-xs font-bold text-[#212D40]">{m.progress}</p>
                 <p
-                  className={`text-[10px] font-bold uppercase ${
+                  className={`text-xs font-bold uppercase ${
                     m.status === "done"
                       ? "text-emerald-600"
                       : m.status === "in-progress"
@@ -1176,7 +1176,7 @@ function PortfolioScorePanel({
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-3xl font-black ${scoreColor}`}>
+          <span className={`text-3xl font-semibold ${scoreColor}`}>
             {healthData.length > 0 ? avgScore : "--"}
           </span>
         </div>
@@ -1282,28 +1282,28 @@ function AgentMissionControl() {
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
           <span className="text-xs font-semibold text-[#212D40]">{summary.nominal}</span>
-          <span className="text-[10px] text-gray-400">nominal</span>
+          <span className="text-xs text-gray-400">nominal</span>
         </div>
         {summary.degraded > 0 && (
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-amber-400" />
             <span className="text-xs font-semibold text-[#212D40]">{summary.degraded}</span>
-            <span className="text-[10px] text-gray-400">degraded</span>
+            <span className="text-xs text-gray-400">degraded</span>
           </div>
         )}
         {summary.failed > 0 && (
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-red-500" />
             <span className="text-xs font-semibold text-[#212D40]">{summary.failed}</span>
-            <span className="text-[10px] text-gray-400">failed</span>
+            <span className="text-xs text-gray-400">failed</span>
           </div>
         )}
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-gray-300" />
           <span className="text-xs font-semibold text-[#212D40]">{summary.idle}</span>
-          <span className="text-[10px] text-gray-400">idle</span>
+          <span className="text-xs text-gray-400">idle</span>
         </div>
-        <span className="text-[10px] text-gray-400 ml-auto">
+        <span className="text-xs text-gray-400 ml-auto">
           {summary.total} total agents
         </span>
       </div>
@@ -1346,13 +1346,13 @@ function AgentMissionControl() {
                 <span className="text-xs font-semibold text-[#212D40] flex-1 text-left">{team}</span>
 
                 {teamFailed > 0 && (
-                  <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{teamFailed} failed</span>
+                  <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{teamFailed} failed</span>
                 )}
                 {teamDegraded > 0 && (
-                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{teamDegraded} degraded</span>
+                  <span className="text-xs font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{teamDegraded} degraded</span>
                 )}
 
-                <span className="text-[10px] text-gray-400">{agents.length} agents</span>
+                <span className="text-xs text-gray-400">{agents.length} agents</span>
 
                 {isExpanded ? (
                   <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -1377,10 +1377,10 @@ function AgentMissionControl() {
                           <span className="text-xs font-medium text-[#212D40] flex-1 truncate">
                             {agent.displayName}
                           </span>
-                          <span className="text-[10px] text-gray-400 shrink-0">
+                          <span className="text-xs text-gray-400 shrink-0">
                             {agent.lastRun ? timeAgo(agent.lastRun) : "never"}
                           </span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${
                             agent.tier === "fast" ? "bg-blue-50 text-blue-600" :
                             agent.tier === "judgment" ? "bg-purple-50 text-purple-600" :
                             "bg-gray-50 text-gray-500"
@@ -1392,32 +1392,32 @@ function AgentMissionControl() {
                         {isAgentExpanded && (
                           <div className="px-4 pb-3 pt-1 bg-gray-50/30 grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <div>
-                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Last Run</p>
+                              <p className="text-xs text-gray-400 uppercase tracking-wider">Last Run</p>
                               <p className="text-xs font-medium text-[#212D40]">
                                 {agent.lastRun ? timeAgo(agent.lastRun) : "Never"}
                               </p>
                               {agent.lastRunDuration !== undefined && (
-                                <p className="text-[10px] text-gray-400">{(agent.lastRunDuration / 1000).toFixed(1)}s</p>
+                                <p className="text-xs text-gray-400">{(agent.lastRunDuration / 1000).toFixed(1)}s</p>
                               )}
                             </div>
                             <div>
-                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Next Run</p>
+                              <p className="text-xs text-gray-400 uppercase tracking-wider">Next Run</p>
                               <p className="text-xs font-medium text-[#212D40]">
                                 {agent.nextScheduledRun ? timeAgo(agent.nextScheduledRun) : "Unscheduled"}
                               </p>
                             </div>
                             <div>
-                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Circuit</p>
+                              <p className="text-xs text-gray-400 uppercase tracking-wider">Circuit</p>
                               <p className={`text-xs font-medium ${circuit.color}`}>
                                 {circuit.text}
                               </p>
                             </div>
                             <div>
-                              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Weekly Cost</p>
+                              <p className="text-xs text-gray-400 uppercase tracking-wider">Weekly Cost</p>
                               <p className="text-xs font-medium text-[#212D40]">
                                 ${agent.costThisWeek.toFixed(3)}
                               </p>
-                              <p className="text-[10px] text-gray-400">
+                              <p className="text-xs text-gray-400">
                                 {agent.weeklyRuns} runs, {agent.weeklyFailures} failures
                               </p>
                             </div>
@@ -1528,7 +1528,7 @@ function EmailHealthPanel() {
                   {m.value}{m.suffix}
                 </span>
                 {m.target !== null && (
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-xs text-gray-400">
                     target: {m.label.includes("Bounce") || m.label.includes("Complaint") ? "<" : ">"}{m.target}{m.suffix}
                   </span>
                 )}
@@ -1544,7 +1544,7 @@ function EmailHealthPanel() {
         ))}
       </div>
 
-      <p className="text-[10px] text-gray-400 mt-3">
+      <p className="text-xs text-gray-400 mt-3">
         {health.totalEmails.toLocaleString()} emails tracked (last 30 days)
       </p>
     </Panel>
@@ -1605,7 +1605,7 @@ function AICostPanel() {
       <div className="space-y-4">
         {/* Total spend */}
         <div>
-          <p className="text-3xl font-black text-[#212D40]">${thisMonth.total.toFixed(2)}</p>
+          <p className="text-3xl font-semibold text-[#212D40]">${thisMonth.total.toFixed(2)}</p>
           <div className="flex items-center gap-2 mt-1">
             {changePercent !== 0 && (
               <>
@@ -1624,13 +1624,13 @@ function AICostPanel() {
 
         {/* Per-client */}
         <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Per-Client Average</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Per-Client Average</p>
           <p className="text-lg font-bold text-[#212D40]">${thisMonth.perClient.toFixed(2)}/mo</p>
         </div>
 
         {/* Tier breakdown as stacked bar */}
         <div>
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">By Tier</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">By Tier</p>
           <div className="h-3 w-full rounded-full bg-gray-100 flex overflow-hidden">
             {tierEntries.map(([tier, cost]) => (
               <div
@@ -1645,7 +1645,7 @@ function AICostPanel() {
             {tierEntries.map(([tier, cost]) => (
               <div key={tier} className="flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full ${TIER_COLORS[tier] || "bg-gray-400"}`} />
-                <span className="text-[10px] text-gray-500">{tier}: ${cost.toFixed(2)}</span>
+                <span className="text-xs text-gray-500">{tier}: ${cost.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -1714,7 +1714,7 @@ export default function VisionaryView() {
       {/* F badge */}
       <button
         onClick={() => setFounderOpen(true)}
-        className="fixed top-4 right-4 z-40 w-8 h-8 rounded-lg bg-[#212D40] text-white text-xs font-black flex items-center justify-center hover:bg-[#D56753] transition-colors"
+        className="fixed top-4 right-4 z-40 w-8 h-8 rounded-lg bg-[#212D40] text-white text-xs font-semibold flex items-center justify-center hover:bg-[#D56753] transition-colors"
         title="Founder Mode"
       >
         F

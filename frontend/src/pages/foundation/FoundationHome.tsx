@@ -19,7 +19,7 @@ export default function FoundationHome() {
         <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-4">
           Heroes & Founders Foundation
         </p>
-        <h1 className="text-4xl sm:text-5xl font-black text-[#212D40] leading-tight">
+        <h1 className="text-4xl sm:text-5xl font-semibold text-[#212D40] leading-tight">
           Built for people who chose service first.
         </h1>
         <p className="mt-6 text-lg text-gray-600 leading-relaxed max-w-xl mx-auto">

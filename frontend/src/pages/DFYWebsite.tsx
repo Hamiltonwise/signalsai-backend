@@ -965,7 +965,7 @@ export function DFYWebsite() {
               Almost There
             </span>
           </div>
-          <h1 className="text-3xl font-black text-alloro-navy font-heading tracking-tight mb-3">
+          <h1 className="text-3xl font-semibold text-alloro-navy font-heading tracking-tight mb-3">
             Your Website is Being Built
           </h1>
           <p className="text-base text-slate-500 font-medium max-w-md mx-auto">
@@ -1193,7 +1193,7 @@ export function DFYWebsite() {
           </AnimatePresence>
 
           {usage && (
-            <div className="flex items-center gap-2.5 text-[11px] text-gray-400">
+            <div className="flex items-center gap-2.5 text-xs text-gray-400">
               <span>
                 {usage.edits_today}/{usage.edits_limit} edits
               </span>
@@ -1220,7 +1220,7 @@ export function DFYWebsite() {
               href={`${liveUrl}${selectedPage?.path || ""}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-alloro-orange transition-colors"
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-alloro-orange transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
               View Live
@@ -1399,7 +1399,7 @@ export function DFYWebsite() {
             </AnimatePresence>
 
             {viewportMode === "desktop" && !previewVersion && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 text-white text-[10px] px-3 py-1 rounded-full backdrop-blur-sm">
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
                 Preview scaled to fit. Use View Live for full size.
               </div>
             )}

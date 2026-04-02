@@ -469,17 +469,17 @@ export default function AiCommandTab({ projectId, pages = [], onExecutionComplet
                         <div className="flex items-center gap-2 mb-1">
                           <BatchTypeBadge targets={b.targets} />
                           <StatusPill status={b.status} />
-                          <span className="text-[11px] text-gray-400">
+                          <span className="text-xs text-gray-400">
                             {new Date(b.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
                         <p className="text-sm text-gray-700 truncate">{b.summary || b.prompt.slice(0, 100) || "Untitled"}</p>
                         {s.total > 0 && (
                           <div className="flex gap-1.5 mt-1.5">
-                            {s.pending > 0 && <span className="text-[10px] text-gray-400">{s.pending} pending</span>}
-                            {s.approved > 0 && <span className="text-[10px] text-green-600">{s.approved} approved</span>}
-                            {s.rejected > 0 && <span className="text-[10px] text-red-400">{s.rejected} rejected</span>}
-                            {s.executed > 0 && <span className="text-[10px] text-alloro-orange">{s.executed} executed</span>}
+                            {s.pending > 0 && <span className="text-xs text-gray-400">{s.pending} pending</span>}
+                            {s.approved > 0 && <span className="text-xs text-green-600">{s.approved} approved</span>}
+                            {s.rejected > 0 && <span className="text-xs text-red-400">{s.rejected} rejected</span>}
+                            {s.executed > 0 && <span className="text-xs text-alloro-orange">{s.executed} executed</span>}
                           </div>
                         )}
                       </div>
@@ -636,7 +636,7 @@ export default function AiCommandTab({ projectId, pages = [], onExecutionComplet
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 mt-2 text-[10px]">
+                <div className="flex items-center gap-3 mt-2 text-xs">
                   {(stats.executed || 0) > 0 && <span className="flex items-center gap-1 text-green-600"><span className="w-2 h-2 rounded-full bg-green-500" />{stats.executed} done</span>}
                   {(stats.failed || 0) > 0 && <span className="flex items-center gap-1 text-red-500"><span className="w-2 h-2 rounded-full bg-red-500" />{stats.failed} failed</span>}
                   {(stats.approved || 0) > 0 && <span className="flex items-center gap-1 text-gray-400"><span className="w-2 h-2 rounded-full bg-gray-300" />{stats.approved} queued</span>}
@@ -734,7 +734,7 @@ function StatusPill({ status }: { status: string }) {
   };
   const s = map[status] || map.ready;
   return (
-    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>
       {s.label}
     </span>
   );
@@ -753,12 +753,12 @@ function TargetSection({ icon, label, mode, onModeChange, children }: {
         <div className="flex items-center gap-2">
           <span className={mode === "off" ? "text-gray-300" : "text-gray-500"}>{icon}</span>
           <span className={`text-sm font-medium ${mode === "off" ? "text-gray-400" : "text-gray-700"}`}>{label}</span>
-          {mode === "all" && <span className="text-[10px] font-medium text-alloro-orange bg-alloro-orange/8 px-1.5 py-0.5 rounded">ALL</span>}
+          {mode === "all" && <span className="text-xs font-medium text-alloro-orange bg-alloro-orange/8 px-1.5 py-0.5 rounded">ALL</span>}
         </div>
         <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
           {(["all", "specific", "off"] as const).map((m) => (
             <button key={m} onClick={() => onModeChange(m)}
-              className={`px-2.5 py-1 text-[11px] rounded font-medium transition-all ${mode === m ? "bg-white text-gray-800 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
+              className={`px-2.5 py-1 text-xs rounded font-medium transition-all ${mode === m ? "bg-white text-gray-800 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
               {m === "all" ? "All" : m === "specific" ? "Pick" : "Off"}
             </button>
           ))}
@@ -789,7 +789,7 @@ function StatBadge({ label, count, color }: { label: string; count: number; colo
     red: "bg-red-100 text-red-600",
     alloro: "bg-green-100 text-green-700",
   };
-  return <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${colors[color] || colors.gray}`}>{count} {label}</span>;
+  return <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${colors[color] || colors.gray}`}>{count} {label}</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -898,15 +898,15 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
             <div className="flex items-center justify-between mb-2 pl-1 pr-1">
               <div className="flex items-center gap-2">
                 {groupProcessing && <Loader2 className="w-3.5 h-3.5 animate-spin text-alloro-orange" />}
-                <h4 className={`text-[10px] font-bold uppercase tracking-[0.12em] ${groupProcessing ? "text-alloro-orange" : "text-gray-400"}`}>{gk}</h4>
-                <span className="text-[10px] text-gray-300">{groupTotal}</span>
+                <h4 className={`text-xs font-bold uppercase tracking-[0.12em] ${groupProcessing ? "text-alloro-orange" : "text-gray-400"}`}>{gk}</h4>
+                <span className="text-xs text-gray-300">{groupTotal}</span>
                 {groupExecuted > 0 && <span className="text-[9px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">{groupExecuted} done</span>}
               </div>
               {!readonly && groupPending > 0 && (
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => allGroupRecs.filter((r) => r.status === "pending").forEach((r) => onApproveReject(r.id, "approved"))}
-                    className="text-[10px] text-gray-400 hover:text-green-600 transition-colors flex items-center gap-0.5"
+                    className="text-xs text-gray-400 hover:text-green-600 transition-colors flex items-center gap-0.5"
                     title={`Approve all ${groupPending} pending in ${gk}`}
                   >
                     <Check className="w-3 h-3" /> Approve {gk}
@@ -914,7 +914,7 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
                   <span className="text-gray-200">|</span>
                   <button
                     onClick={() => allGroupRecs.filter((r) => r.status === "pending").forEach((r) => onApproveReject(r.id, "rejected"))}
-                    className="text-[10px] text-gray-400 hover:text-red-500 transition-colors flex items-center gap-0.5"
+                    className="text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-0.5"
                     title={`Reject all ${groupPending} pending in ${gk}`}
                   >
                     <X className="w-3 h-3" /> Reject
@@ -1063,7 +1063,7 @@ function AdditionalNotesInput({ recId, onApproveReject }: {
     return (
       <button
         onClick={() => setShowNotes(true)}
-        className="text-[11px] text-gray-400 hover:text-alloro-orange mt-1 ml-6 transition-colors flex items-center gap-1"
+        className="text-xs text-gray-400 hover:text-alloro-orange mt-1 ml-6 transition-colors flex items-center gap-1"
       >
         <Pencil className="w-3 h-3" />
         Add notes for execution
@@ -1090,13 +1090,13 @@ function AdditionalNotesInput({ recId, onApproveReject }: {
             setShowNotes(false);
           }}
           disabled={!notes.trim()}
-          className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-500 text-white text-[11px] rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Check className="w-3 h-3" /> Approve with Notes
         </button>
         <button
           onClick={() => setShowNotes(false)}
-          className="px-2.5 py-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
+          className="px-2.5 py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
         >
           Cancel
         </button>
@@ -1187,7 +1187,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
                 ) : null;
               })()}
               {rec.target_type === "page_section" && !!(rec.target_meta as Record<string, unknown>)?.section_name && (
-                <span className="text-[10px] text-gray-400 font-mono">
+                <span className="text-xs text-gray-400 font-mono">
                   {String((rec.target_meta as Record<string, unknown>).section_name)}
                 </span>
               )}
@@ -1199,26 +1199,26 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
 
           {executionError && <p className="text-xs text-red-500 mt-1 ml-6">{executionError}</p>}
           {pipelineMessage && (
-            <p className="text-[11px] text-alloro-orange mt-1 ml-6 flex items-center gap-1">
+            <p className="text-xs text-alloro-orange mt-1 ml-6 flex items-center gap-1">
               <Loader2 className="w-3 h-3 animate-spin" />
               {pipelineMessage}
             </p>
           )}
           {pipelineStats && (
-            <p className="text-[10px] text-gray-400 mt-0.5 ml-6">{pipelineStats}</p>
+            <p className="text-xs text-gray-400 mt-0.5 ml-6">{pipelineStats}</p>
           )}
 
           {/* Reference data indicator for approved create_page/create_post */}
           {/* Post type indicator for create_post */}
           {rec.target_type === "create_post" && meta?.post_type_slug && (
-            <p className="text-[11px] text-purple-600 mt-1 ml-6 flex items-center gap-1">
+            <p className="text-xs text-purple-600 mt-1 ml-6 flex items-center gap-1">
               <Newspaper className="w-3 h-3" />
               Post type: <span className="font-semibold">{String(meta.post_type_slug)}</span>
             </p>
           )}
 
           {needsReference && hasReference && rec.status === "approved" && (
-            <p className="text-[11px] text-green-600 mt-1 ml-6">
+            <p className="text-xs text-green-600 mt-1 ml-6">
               Reference: {meta.reference_url ? (meta.reference_url as string) : "Content provided"}
             </p>
           )}
@@ -1226,7 +1226,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
           {/* Reference input for create_page/create_post */}
           {needsReference && !hasReference && rec.status === "pending" && (
             <div className="ml-6 mt-2 space-y-2 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
-              <p className="text-[11px] font-medium text-gray-500">Reference content required for page creation:</p>
+              <p className="text-xs font-medium text-gray-500">Reference content required for page creation:</p>
               <input
                 type="url"
                 value={refUrl}
@@ -1235,7 +1235,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
                 className="w-full px-2.5 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-alloro-orange/20 focus:border-alloro-orange"
               />
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-400">or</span>
+                <span className="text-xs text-gray-400">or</span>
               </div>
               <textarea
                 value={refContent}
@@ -1258,8 +1258,8 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
           {isBrokenLink && rec.status === "pending" && (
             <div className="ml-6 mt-2 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[10px] font-mono text-red-400 line-through">{brokenHref}</span>
-                <span className="text-[10px] text-gray-400">→</span>
+                <span className="text-xs font-mono text-red-400 line-through">{brokenHref}</span>
+                <span className="text-xs text-gray-400">→</span>
               </div>
               <div className="flex gap-2">
                 <input
@@ -1283,7 +1283,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
                 </button>
               </div>
               {hasSuggestion && (
-                <p className="text-[10px] text-green-600 mt-1">Auto-suggested based on existing pages</p>
+                <p className="text-xs text-green-600 mt-1">Auto-suggested based on existing pages</p>
               )}
             </div>
           )}
@@ -1291,7 +1291,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
           {/* URL input for menu items with NEEDS_INPUT */}
           {needsUrlInput && rec.status === "pending" && (
             <div className="ml-6 mt-2 space-y-2 p-2.5 bg-amber-50/50 rounded-lg border border-amber-200/50">
-              <p className="text-[11px] font-medium text-amber-700">URL required — the AI doesn't know this link:</p>
+              <p className="text-xs font-medium text-amber-700">URL required — the AI doesn't know this link:</p>
               <div className="flex gap-2">
                 <input
                   type="url"
@@ -1317,18 +1317,18 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
 
           {/* Needs input indicator — only show for non-visible inputs */}
           {needsUrlInput && rec.status === "pending" && (
-            <p className="text-[11px] text-amber-600 mt-1 ml-6">Requires URL before approval</p>
+            <p className="text-xs text-amber-600 mt-1 ml-6">Requires URL before approval</p>
           )}
 
           {rec.status !== "rejected" && (
             <button onClick={() => setShowInstruction(!showInstruction)}
-              className="text-[11px] text-gray-400 hover:text-gray-500 mt-1 ml-6 transition-colors">
+              className="text-xs text-gray-400 hover:text-gray-500 mt-1 ml-6 transition-colors">
               {showInstruction ? "Hide" : "Show"} instruction
             </button>
           )}
 
           {showInstruction && rec.status !== "rejected" && (
-            <p className="text-[11px] text-gray-500 mt-1.5 ml-6 font-mono bg-gray-50 p-2 rounded border border-gray-100">
+            <p className="text-xs text-gray-500 mt-1.5 ml-6 font-mono bg-gray-50 p-2 rounded border border-gray-100">
               {rec.instruction}
             </p>
           )}

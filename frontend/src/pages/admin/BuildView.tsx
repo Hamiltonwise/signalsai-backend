@@ -320,7 +320,7 @@ function SystemStatusPanel() {
               <StatusDot status={backendUp ? "ok" : "fail"} />
               <div>
                 <TailorText editKey="hq.build.status.backend" defaultText="Backend" as="p" className="text-sm text-green-400 font-medium" />
-                <p className="text-[10px] text-gray-500">
+                <p className="text-xs text-gray-500">
                   {backendUp ? "Healthy" : "Down"}
                 </p>
               </div>
@@ -330,7 +330,7 @@ function SystemStatusPanel() {
               <StatusDot status={dbUp ? "ok" : "fail"} />
               <div>
                 <TailorText editKey="hq.build.status.database" defaultText="Database" as="p" className="text-sm text-green-400 font-medium" />
-                <p className="text-[10px] text-gray-500">
+                <p className="text-xs text-gray-500">
                   {dbUp ? "Connected" : "Error"}
                   {detailed.database?.latency_ms != null ? ` (${detailed.database.latency_ms}ms)` : ""}
                 </p>
@@ -341,7 +341,7 @@ function SystemStatusPanel() {
               <StatusDot status={redisKnown ? (redisUp ? "ok" : "fail") : "unknown"} />
               <div>
                 <TailorText editKey="hq.build.status.redis" defaultText="Redis" as="p" className="text-sm text-green-400 font-medium" />
-                <p className="text-[10px] text-gray-500">
+                <p className="text-xs text-gray-500">
                   {redisKnown
                     ? redisUp
                       ? `Connected${redisLatency != null ? ` (${redisLatency}ms)` : ""}`
@@ -355,7 +355,7 @@ function SystemStatusPanel() {
               <StatusDot status={bullmqKnown ? (bullmqUp ? (failedJobs > 0 ? "fail" : "ok") : "fail") : "unknown"} />
               <div>
                 <TailorText editKey="hq.build.status.bullmq" defaultText="BullMQ" as="p" className="text-sm text-green-400 font-medium" />
-                <p className={`text-[10px] ${failedJobs > 0 ? "text-red-400" : "text-gray-500"}`}>
+                <p className={`text-xs ${failedJobs > 0 ? "text-red-400" : "text-gray-500"}`}>
                   {bullmqKnown
                     ? bullmqUp
                       ? `${queuedJobs} queued, ${failedJobs} failed`
@@ -367,7 +367,7 @@ function SystemStatusPanel() {
           </div>
 
           {(health.timestamp || detailedRaw?.timestamp) && (
-            <p className="text-[10px] text-gray-600">
+            <p className="text-xs text-gray-600">
               Last check: {new Date(detailedRaw?.timestamp || health.timestamp || "").toLocaleTimeString()}
               {detailedRaw?.uptime_seconds
                 ? ` . Uptime: ${Math.floor(detailedRaw.uptime_seconds / 3600)}h`
@@ -470,7 +470,7 @@ function AgentHealthGrid() {
               >
                 <StatusDot status={teamStatus} />
                 <span className="text-sm text-green-400 font-medium flex-1 text-left">{team}</span>
-                <span className="text-[10px] text-gray-500 font-mono">{teamAgents.length} agents</span>
+                <span className="text-xs text-gray-500 font-mono">{teamAgents.length} agents</span>
                 {isExpanded ? (
                   <ChevronUp className="w-3.5 h-3.5 text-gray-600" />
                 ) : (
@@ -481,7 +481,7 @@ function AgentHealthGrid() {
               {isExpanded && (
                 <div className="ml-4 mb-2 space-y-0.5">
                   {/* Column headers */}
-                  <div className="grid grid-cols-[1fr_60px_60px_70px_60px] gap-2 text-[10px] text-gray-600 uppercase font-bold pb-1 border-b border-gray-800 px-2">
+                  <div className="grid grid-cols-[1fr_60px_60px_70px_60px] gap-2 text-xs text-gray-600 uppercase font-bold pb-1 border-b border-gray-800 px-2">
                     <span>Agent</span>
                     <span>Last Run</span>
                     <span>Duration</span>
@@ -500,16 +500,16 @@ function AgentHealthGrid() {
                           <AgentDot status={agent.status} />
                           <span className="text-xs text-green-400 truncate">{agent.displayName}</span>
                         </div>
-                        <span className="text-[10px] text-gray-500 font-mono">
+                        <span className="text-xs text-gray-500 font-mono">
                           {timeAgo(agent.lastRun)}
                         </span>
-                        <span className="text-[10px] text-gray-500 font-mono">
+                        <span className="text-xs text-gray-500 font-mono">
                           {formatDuration(agent.lastRunDuration)}
                         </span>
-                        <span className={`text-[10px] font-mono font-bold ${circuit.color}`}>
+                        <span className={`text-xs font-mono font-bold ${circuit.color}`}>
                           {circuit.text}
                         </span>
-                        <span className={`text-[10px] font-mono ${
+                        <span className={`text-xs font-mono ${
                           agent.status === "failed"
                             ? "text-red-400"
                             : agent.status === "degraded"
@@ -533,12 +533,12 @@ function AgentHealthGrid() {
       {/* Quick failed list (always visible if any failed) */}
       {sorted.filter((a) => a.status === "failed").length > 0 && (
         <div className="mt-3 pt-3 border-t border-gray-800">
-          <p className="text-[10px] text-red-500 uppercase font-bold mb-2">Failed Agents</p>
+          <p className="text-xs text-red-500 uppercase font-bold mb-2">Failed Agents</p>
           {sorted.filter((a) => a.status === "failed").map((agent) => (
             <div key={agent.name} className="flex items-center gap-2 py-1">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               <span className="text-xs text-red-400">{agent.displayName}</span>
-              <span className="text-[10px] text-gray-600 font-mono ml-auto">
+              <span className="text-xs text-gray-600 font-mono ml-auto">
                 {agent.weeklyFailures} failures this week
               </span>
             </div>
@@ -634,10 +634,10 @@ function CostDashboard() {
             const data = tierTotals[tier];
             return (
               <div key={tier} className="rounded-lg bg-[#0d1117] border border-gray-800 p-3">
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">{tierLabel[tier]}</p>
+                <p className="text-xs text-gray-500 uppercase font-bold mb-1">{tierLabel[tier]}</p>
                 <p className="text-sm text-green-400 font-mono font-bold">{formatCost(data.cost)}</p>
-                <p className="text-[10px] text-gray-600 font-mono">{formatTokens(data.tokens)} tkn</p>
-                <p className="text-[10px] text-gray-600">{data.count} agents</p>
+                <p className="text-xs text-gray-600 font-mono">{formatTokens(data.tokens)} tkn</p>
+                <p className="text-xs text-gray-600">{data.count} agents</p>
               </div>
             );
           })}
@@ -646,9 +646,9 @@ function CostDashboard() {
         {/* Top cost agents table */}
         {topAgents.length > 0 && (
           <div>
-            <p className="text-[10px] text-gray-500 uppercase font-bold mb-2">Cost Per Agent</p>
+            <p className="text-xs text-gray-500 uppercase font-bold mb-2">Cost Per Agent</p>
             <div className="space-y-0.5">
-              <div className="grid grid-cols-[1fr_80px_80px_60px] gap-2 text-[10px] text-gray-600 uppercase font-bold pb-1 border-b border-gray-800">
+              <div className="grid grid-cols-[1fr_80px_80px_60px] gap-2 text-xs text-gray-600 uppercase font-bold pb-1 border-b border-gray-800">
                 <span>Agent</span>
                 <span>Cost</span>
                 <span>Tokens</span>
@@ -659,7 +659,7 @@ function CostDashboard() {
                   <span className="text-xs text-green-400 truncate">{agent.displayName}</span>
                   <span className="text-xs text-gray-400 font-mono">{formatCost(agent.costThisWeek)}</span>
                   <span className="text-xs text-gray-500 font-mono">{formatTokens(agent.tokensUsedThisWeek)}</span>
-                  <span className={`text-[10px] font-mono ${
+                  <span className={`text-xs font-mono ${
                     agent.tier === "judgment" ? "text-purple-400" : agent.tier === "fast" ? "text-blue-400" : "text-gray-400"
                   }`}>
                     {agent.tier}
@@ -741,21 +741,21 @@ function EmailDeliveryHealth() {
                 <StatusDot status={metric.status as "ok" | "fail" | "unknown"} />
                 <div>
                   <p className="text-sm text-green-400 font-medium font-mono">{metric.value}</p>
-                  <p className="text-[10px] text-gray-500">{metric.label}</p>
+                  <p className="text-xs text-gray-500">{metric.label}</p>
                 </div>
               </div>
             ))}
           </div>
 
           <div className="rounded-lg bg-[#0d1117] border border-gray-800 p-3">
-            <p className="text-[10px] text-gray-500 font-mono mb-1">
+            <p className="text-xs text-gray-500 font-mono mb-1">
               Total emails (30d): {healthData.totalEmails}
             </p>
-            <p className="text-[10px] text-gray-500 font-mono mb-1">
+            <p className="text-xs text-gray-500 font-mono mb-1">
               Click rate: {healthData.clickRate}%
             </p>
             {mailgunWebhook && (
-              <p className="text-[10px] text-gray-500 font-mono">
+              <p className="text-xs text-gray-500 font-mono">
                 Mailgun webhook: {mailgunWebhook.status === "active" ? "active" : mailgunWebhook.status}
                 {mailgunWebhook.last_received_at ? ` . last event: ${timeAgo(mailgunWebhook.last_received_at)}` : ""}
                 {mailgunWebhook.env_var_configured ? "" : " . API KEY NOT SET"}
@@ -864,7 +864,7 @@ function RecentErrorsPanel() {
           {/* Agent execution errors */}
           {agentErrors.length > 0 && (
             <div>
-              <p className="text-[10px] text-red-500 uppercase font-bold mb-2">Agent Execution Errors</p>
+              <p className="text-xs text-red-500 uppercase font-bold mb-2">Agent Execution Errors</p>
               <div className="space-y-1">
                 {agentErrors.map((err) => (
                   <div
@@ -894,10 +894,10 @@ function RecentErrorsPanel() {
           {entries.length > 0 && (
             <div>
               {agentErrors.length > 0 && (
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-2">Behavioral Events</p>
+                <p className="text-xs text-gray-500 uppercase font-bold mb-2">Behavioral Events</p>
               )}
               <div className="space-y-1">
-                <div className="grid grid-cols-[1fr_80px_80px] gap-2 text-[10px] text-gray-600 uppercase font-bold pb-1 border-b border-gray-800">
+                <div className="grid grid-cols-[1fr_80px_80px] gap-2 text-xs text-gray-600 uppercase font-bold pb-1 border-b border-gray-800">
                   <span>Event Type</span>
                   <span>Count</span>
                   <span>Last Seen</span>
@@ -958,7 +958,7 @@ function DeployStatusPanel() {
         </div>
 
         <div>
-          <TailorText editKey="hq.build.deploy.pendingMigrations" defaultText="Pending Migrations" as="p" className="text-[10px] text-gray-600 uppercase font-bold mb-2" />
+          <TailorText editKey="hq.build.deploy.pendingMigrations" defaultText="Pending Migrations" as="p" className="text-xs text-gray-600 uppercase font-bold mb-2" />
           <p className="text-xs text-gray-500 font-mono">
             $ npx knex migrate:status
           </p>
@@ -1027,9 +1027,9 @@ function DaveTasksPanel({
                 <p className="text-sm font-medium text-blue-400 truncate">
                   {item}
                 </p>
-                <p className="text-[10px] text-gray-600">from agent brief</p>
+                <p className="text-xs text-gray-600">from agent brief</p>
               </div>
-              <span className="shrink-0 ml-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-900/50 text-blue-400">
+              <span className="shrink-0 ml-2 text-xs font-bold uppercase px-2 py-0.5 rounded bg-blue-900/50 text-blue-400">
                 brief
               </span>
             </div>
@@ -1058,7 +1058,7 @@ function DaveTasksPanel({
                   >
                     {t.title}
                   </p>
-                  <p className="text-[10px] text-gray-600">
+                  <p className="text-xs text-gray-600">
                     {age}d open
                     {t.due_date
                       ? ` . due ${new Date(t.due_date).toLocaleDateString(
@@ -1070,7 +1070,7 @@ function DaveTasksPanel({
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 ml-2 text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                  className={`shrink-0 ml-2 text-xs font-bold uppercase px-2 py-0.5 rounded ${
                     t.priority === "urgent"
                       ? "bg-red-900/50 text-red-400"
                       : t.priority === "high"

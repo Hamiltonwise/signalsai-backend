@@ -215,10 +215,10 @@ export default function AAEDashboard() {
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#D56753] rounded-full" />
             </div>
             <div>
-              <h1 className="text-xl font-black tracking-tight">
+              <h1 className="text-xl font-semibold tracking-tight">
                 AAE 2026 LIVE
               </h1>
-              <p className="text-[11px] text-gray-500 font-medium">
+              <p className="text-xs text-gray-500 font-medium">
                 Salt Lake City, April 15-18
               </p>
             </div>
@@ -233,7 +233,7 @@ export default function AAEDashboard() {
         </div>
 
         {/* Last refresh */}
-        <p className="text-[10px] text-gray-600 -mt-4">
+        <p className="text-xs text-gray-600 -mt-4">
           Last update: {lastRefresh.toLocaleTimeString()}
         </p>
 
@@ -250,7 +250,7 @@ export default function AAEDashboard() {
               This dashboard activates the moment the first doctor scans
               the QR code at the Alloro booth.
             </p>
-            <div className="mt-8 flex items-center gap-2 text-[11px] text-gray-600">
+            <div className="mt-8 flex items-center gap-2 text-xs text-gray-600">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
               Monitoring behavioral_events in real time
             </div>
@@ -324,12 +324,12 @@ export default function AAEDashboard() {
                               </span>
                             ) : null}
                           </p>
-                          <p className="text-[10px] text-gray-600 mt-0.5">
+                          <p className="text-xs text-gray-600 mt-0.5">
                             {timeAgo(event.created_at)}
                           </p>
                         </div>
                         <span
-                          className={`text-[10px] font-black tracking-wider ${color} shrink-0 ml-2`}
+                          className={`text-xs font-semibold tracking-wider ${color} shrink-0 ml-2`}
                         >
                           {label}
                         </span>
@@ -352,7 +352,7 @@ export default function AAEDashboard() {
                       <span className="text-xs text-gray-400 font-medium">
                         {bar.label}
                       </span>
-                      <span className="text-xs font-black text-white">
+                      <span className="text-xs font-semibold text-white">
                         {bar.count}
                       </span>
                     </div>
@@ -374,10 +374,10 @@ export default function AAEDashboard() {
               </div>
               {counts.scans > 0 && (
                 <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
-                  <span className="text-[11px] text-gray-500">
+                  <span className="text-xs text-gray-500">
                     Scan-to-account rate
                   </span>
-                  <span className="text-sm font-black text-[#D56753]">
+                  <span className="text-sm font-semibold text-[#D56753]">
                     {Math.round((counts.accounts / counts.scans) * 100)}%
                   </span>
                 </div>
@@ -403,11 +403,11 @@ export default function AAEDashboard() {
                         "{f.finding}"
                       </p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-[10px] text-gray-500">
+                        <span className="text-xs text-gray-500">
                           {f.practice}
                         </span>
                         {f.score && (
-                          <span className="text-[10px] font-black text-[#D56753]">
+                          <span className="text-xs font-semibold text-[#D56753]">
                             Score: {f.score}
                           </span>
                         )}
@@ -428,18 +428,18 @@ export default function AAEDashboard() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
                     Current MRR
                   </p>
-                  <p className="text-2xl font-black text-emerald-400">
+                  <p className="text-2xl font-semibold text-emerald-400">
                     {formatCurrency(mrr.current)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
                     If all convert
                   </p>
-                  <p className="text-2xl font-black text-[#D56753]">
+                  <p className="text-2xl font-semibold text-[#D56753]">
                     {formatCurrency(mrr.projected)}
                   </p>
                 </div>
@@ -449,7 +449,7 @@ export default function AAEDashboard() {
         )}
 
         {/* Footer */}
-        <p className="text-center text-[10px] text-gray-700 pb-4">
+        <p className="text-center text-xs text-gray-700 pb-4">
           Alloro Business Clarity Platform
         </p>
       </div>
@@ -480,11 +480,11 @@ function BigNumber({
         >
           <Icon className={`w-4 h-4 ${color}`} />
         </div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
           {label}
         </p>
       </div>
-      <p className={`text-4xl font-black ${color}`}>{value}</p>
+      <p className={`text-4xl font-semibold ${color}`}>{value}</p>
     </div>
   );
 }

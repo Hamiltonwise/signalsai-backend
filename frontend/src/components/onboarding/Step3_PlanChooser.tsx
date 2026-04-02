@@ -58,7 +58,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
         whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(214,104,83,0.15)" }}
       >
         {/* Plan Name */}
-        <h3 className="text-sm font-black text-alloro-navy uppercase tracking-wider mb-1">
+        <h3 className="text-sm font-semibold text-alloro-navy uppercase tracking-wider mb-1">
           Alloro Intelligence
         </h3>
         <p className="text-slate-400 text-xs mb-4">
@@ -67,7 +67,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
 
         {/* Price */}
         <div className="flex items-baseline gap-1 mb-5">
-          <span className="text-3xl font-black text-alloro-navy tracking-tighter">
+          <span className="text-3xl font-semibold text-alloro-navy tracking-tighter">
             $2,000
           </span>
           <span className="text-slate-400 font-bold text-sm">/month</span>

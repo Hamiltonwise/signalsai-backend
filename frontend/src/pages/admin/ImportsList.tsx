@@ -306,7 +306,7 @@ export default function ImportsList() {
       <FilterBar>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               Type
             </span>
             <select
@@ -322,7 +322,7 @@ export default function ImportsList() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               Search
             </span>
             <input

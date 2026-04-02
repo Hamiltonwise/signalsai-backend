@@ -186,7 +186,7 @@ export const Notifications: React.FC = () => {
               <Bell size={20} />
             </div>
             <div className="flex flex-col text-left">
-              <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
+              <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 Notifications
               </h1>
               <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
@@ -198,7 +198,7 @@ export const Notifications: React.FC = () => {
             <button
               onClick={handleMarkAllRead}
               disabled={markingAll || unreadCount === 0}
-              className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-alloro-orange uppercase tracking-[0.15em] transition-all group disabled:opacity-50 px-3 py-2 rounded-lg hover:bg-slate-100"
+              className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-alloro-orange uppercase tracking-[0.15em] transition-all group disabled:opacity-50 px-3 py-2 rounded-lg hover:bg-slate-100"
             >
               {markingAll ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -210,7 +210,7 @@ export const Notifications: React.FC = () => {
             <button
               onClick={() => setShowDeleteConfirm(true)}
               disabled={deletingAll || notifications.length === 0}
-              className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-red-500 uppercase tracking-[0.15em] transition-all group disabled:opacity-50 px-3 py-2 rounded-lg hover:bg-red-50"
+              className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-red-500 uppercase tracking-[0.15em] transition-all group disabled:opacity-50 px-3 py-2 rounded-lg hover:bg-red-50"
             >
               {deletingAll ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -227,22 +227,22 @@ export const Notifications: React.FC = () => {
         {/* Hero Section */}
         <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 pt-2">
           <div className="flex items-center gap-4 mb-3">
-            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-[10px] font-black uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
+            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-xs font-semibold uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-alloro-orange animate-pulse"></span>
               Notifications Active
             </div>
             {unreadCount > 0 && (
-              <div className="px-3 py-1.5 bg-alloro-navy/5 rounded-lg text-alloro-navy text-[10px] font-black uppercase tracking-widest border border-alloro-navy/10">
+              <div className="px-3 py-1.5 bg-alloro-navy/5 rounded-lg text-alloro-navy text-xs font-semibold uppercase tracking-widest border border-alloro-navy/10">
                 {unreadCount} unread
               </div>
             )}
           </div>
-          <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
+          <h1 className="text-5xl lg:text-6xl font-semibold font-heading text-alloro-navy tracking-tight leading-none mb-4">
             Business Updates.
           </h1>
           <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
             A live feed of{" "}
-            <span className="text-alloro-orange underline underline-offset-8 font-black">
+            <span className="text-alloro-orange underline underline-offset-8 font-semibold">
               Important Events
             </span>{" "}
             that need your attention.
@@ -314,20 +314,20 @@ export const Notifications: React.FC = () => {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                         <div className="flex items-center gap-3">
                           <h3
-                            className={`text-2xl font-black font-heading tracking-tight leading-none group-hover:text-alloro-orange transition-colors ${
+                            className={`text-2xl font-semibold font-heading tracking-tight leading-none group-hover:text-alloro-orange transition-colors ${
                               isRead ? "text-slate-500" : "text-alloro-navy"
                             }`}
                           >
                             {notif.title}
                           </h3>
                           {!isRead && (
-                            <span className="px-2 py-1 bg-alloro-orange text-white text-[8px] font-black uppercase tracking-widest rounded-md">
+                            <span className="px-2 py-1 bg-alloro-orange text-white text-[8px] font-semibold uppercase tracking-widest rounded-md">
                               New
                             </span>
                           )}
                         </div>
                         <span
-                          className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border shrink-0 w-fit shadow-sm ${
+                          className={`px-5 py-2 rounded-xl text-xs font-semibold uppercase tracking-widest border shrink-0 w-fit shadow-sm ${
                             impact.includes("Critical")
                               ? "bg-red-50 text-red-600 border-red-100"
                               : impact.includes("High")
@@ -346,7 +346,7 @@ export const Notifications: React.FC = () => {
                         {notif.message}
                       </p>
                       <div className="flex items-center justify-between pt-6 border-t border-black/[0.03]">
-                        <div className="flex items-center gap-8 text-[11px] font-black text-slate-300 uppercase tracking-[0.2em]">
+                        <div className="flex items-center gap-8 text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">
                           <span className="flex items-center gap-2.5">
                             <Clock
                               size={18}
@@ -390,7 +390,7 @@ export const Notifications: React.FC = () => {
               <ShieldCheck size={40} />
             </div>
             <div className="space-y-4">
-              <h4 className="text-2xl font-black font-heading text-alloro-navy tracking-tight">
+              <h4 className="text-2xl font-semibold font-heading text-alloro-navy tracking-tight">
                 All Clear.
               </h4>
               <p className="text-slate-400 font-bold text-lg max-w-md leading-relaxed tracking-tight">
@@ -409,7 +409,7 @@ export const Notifications: React.FC = () => {
             <ShieldCheck size={40} className="text-white/60" />
           </div>
           <div className="space-y-4 relative z-10">
-            <h4 className="text-2xl font-black font-heading text-white tracking-tight">
+            <h4 className="text-2xl font-semibold font-heading text-white tracking-tight">
               Notification Monitoring Active
             </h4>
             <p className="text-blue-100/40 font-bold text-lg max-w-lg leading-relaxed tracking-tight">
@@ -418,10 +418,10 @@ export const Notifications: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-12 pt-6 relative z-10">
-            <div className="flex items-center gap-3 text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">
+            <div className="flex items-center gap-3 text-xs font-semibold text-white/20 uppercase tracking-[0.3em]">
               <Lock size={16} /> SOC2 SECURE
             </div>
-            <div className="flex items-center gap-3 text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">
+            <div className="flex items-center gap-3 text-xs font-semibold text-white/20 uppercase tracking-[0.3em]">
               <Activity size={16} /> LIVE DATASTREAM
             </div>
           </div>
@@ -434,7 +434,7 @@ export const Notifications: React.FC = () => {
             alt="Alloro"
             className="w-16 h-16 rounded-2xl shadow-2xl"
           />
-          <p className="text-[11px] text-alloro-textDark/20 font-black tracking-[0.4em] uppercase">
+          <p className="text-xs text-alloro-textDark/20 font-semibold tracking-[0.4em] uppercase">
             Alloro Notifications • v2.6.0
           </p>
         </footer>

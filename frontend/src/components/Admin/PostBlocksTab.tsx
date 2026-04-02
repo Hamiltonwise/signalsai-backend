@@ -708,7 +708,7 @@ export default function PostBlocksTab({
                           <div key={idx} className="flex items-start gap-2 p-3 rounded-lg border border-gray-100 bg-gray-50">
                             <div className="flex-1 grid grid-cols-4 gap-2">
                               <div>
-                                <label className="block text-[11px] text-gray-500 mb-0.5">Name</label>
+                                <label className="block text-xs text-gray-500 mb-0.5">Name</label>
                                 <input
                                   type="text"
                                   value={field.name}
@@ -718,7 +718,7 @@ export default function PostBlocksTab({
                                 />
                               </div>
                               <div>
-                                <label className="block text-[11px] text-gray-500 mb-0.5">Type</label>
+                                <label className="block text-xs text-gray-500 mb-0.5">Type</label>
                                 <select
                                   value={field.type}
                                   onChange={(e) => updateSchemaField(idx, { type: e.target.value })}
@@ -730,7 +730,7 @@ export default function PostBlocksTab({
                                 </select>
                               </div>
                               <div>
-                                <label className="block text-[11px] text-gray-500 mb-0.5">Slug</label>
+                                <label className="block text-xs text-gray-500 mb-0.5">Slug</label>
                                 <input
                                   type="text"
                                   value={field.slug}
@@ -759,7 +759,7 @@ export default function PostBlocksTab({
                             {/* Select options */}
                             {field.type === "select" && (
                               <div className="col-span-4 mt-1">
-                                <label className="block text-[11px] text-gray-500 mb-0.5">Options (comma-separated)</label>
+                                <label className="block text-xs text-gray-500 mb-0.5">Options (comma-separated)</label>
                                 <input
                                   type="text"
                                   value={(field.options || []).join(", ")}
@@ -780,7 +780,7 @@ export default function PostBlocksTab({
 
                     {/* Token hint */}
                     {schemaFields.some((f) => f.slug) && (
-                      <div className="mt-3 rounded bg-blue-50 border border-blue-200 px-3 py-2 text-[11px] text-blue-700">
+                      <div className="mt-3 rounded bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-700">
                         <strong>Tokens:</strong>{" "}
                         {schemaFields
                           .filter((f) => f.slug)

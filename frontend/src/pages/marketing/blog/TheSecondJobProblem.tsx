@@ -17,10 +17,10 @@ export default function TheSecondJobProblem() {
     >
       <article className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
         <header className="mb-12">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#D56753]">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
             Business Clarity
           </span>
-          <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold text-[#212D40] leading-tight tracking-tight">
+          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-[#212D40] leading-tight tracking-tight">
             The second job nobody warned you about
           </h1>
           <p className="mt-4 text-base text-[#212D40]/50">

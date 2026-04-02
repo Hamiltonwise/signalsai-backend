@@ -76,7 +76,7 @@ function ProposalDiff({ proposal }: { proposal: SyncProposal }) {
         <div className="mt-2 grid grid-cols-2 gap-3">
           {proposal.target_excerpt && (
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-red-500 mb-1.5">
+              <p className="text-xs font-bold uppercase tracking-wider text-red-500 mb-1.5">
                 Will Forget
               </p>
               <div className="rounded-xl bg-red-50 border border-red-100 p-3 text-xs text-red-800 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -85,7 +85,7 @@ function ProposalDiff({ proposal }: { proposal: SyncProposal }) {
             </div>
           )}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-green-600 mb-1.5">
+            <p className="text-xs font-bold uppercase tracking-wider text-green-600 mb-1.5">
               Will Learn
             </p>
             <div className="rounded-xl bg-green-50 border border-green-100 p-3 text-xs text-green-800 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -421,7 +421,7 @@ export function SlideProposalsReview({
                     {/* Type badge */}
                     <div className="flex items-center gap-2 mb-2">
                       <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg ${
+                        className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg ${
                           proposal.type === "NEW"
                             ? "bg-green-100 text-green-700"
                             : proposal.type === "UPDATE"
@@ -481,7 +481,7 @@ export function SlideProposalsReview({
                             handleProposalAction(proposal.id, "pending")
                           }
                           disabled={actioningId === proposal.id}
-                          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
                           title="Undo"
                         >
                           {actioningId === proposal.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Undo2 className="h-3 w-3" />}
@@ -500,7 +500,7 @@ export function SlideProposalsReview({
                             handleProposalAction(proposal.id, "pending")
                           }
                           disabled={actioningId === proposal.id}
-                          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
                           title="Undo"
                         >
                           {actioningId === proposal.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Undo2 className="h-3 w-3" />}

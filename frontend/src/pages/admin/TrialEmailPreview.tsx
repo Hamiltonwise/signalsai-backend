@@ -253,7 +253,7 @@ export default function TrialEmailPreview() {
         <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-2">
           Trial Sequence
         </p>
-        <h1 className="text-2xl font-extrabold text-[#212D40]">
+        <h1 className="text-2xl font-semibold text-[#212D40]">
           7-Day Trial Emails
         </h1>
         <p className="mt-2 text-sm text-slate-500">
@@ -288,7 +288,7 @@ export default function TrialEmailPreview() {
                         {email.dayLabel}
                       </p>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                           email.live
                             ? "bg-emerald-50 text-emerald-700"
                             : "bg-amber-50 text-amber-600"
@@ -314,7 +314,7 @@ export default function TrialEmailPreview() {
                 <div className="px-5 pb-5 border-t border-gray-100">
                   {/* Email preview */}
                   <div className="mt-4 rounded-xl bg-[#FAFAF8] border border-gray-100 p-4">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
                       Subject: {email.subject}
                     </p>
                     <pre className="text-xs text-[#212D40]/80 leading-relaxed whitespace-pre-wrap font-sans">

@@ -37,7 +37,7 @@ export default function NewAccountOnboarding() {
               New Account Setup
             </span>
           </div>
-          <h1 className="text-4xl font-black text-alloro-navy font-heading tracking-tight mb-3">
+          <h1 className="text-4xl font-semibold text-alloro-navy font-heading tracking-tight mb-3">
             Connect Your Business
           </h1>
           <p className="text-lg text-slate-500 font-medium">
@@ -62,16 +62,16 @@ export default function NewAccountOnboarding() {
                   {/* Step number */}
                   <div className="shrink-0">
                     <div className="w-14 h-14 bg-gradient-to-br from-alloro-orange to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-alloro-orange/30 group-hover:scale-110 transition-transform">
-                      <span className="text-2xl font-black text-white">1</span>
+                      <span className="text-2xl font-semibold text-white">1</span>
                     </div>
                   </div>
                   {/* Content */}
                   <div className="flex-1 text-left">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-black text-alloro-navy tracking-tight">
+                      <h3 className="text-xl font-semibold text-alloro-navy tracking-tight">
                         Read Our Google API Terms
                       </h3>
-                      <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg">
+                      <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-xs font-semibold uppercase tracking-wider rounded-lg">
                         Required
                       </span>
                     </div>
@@ -107,10 +107,10 @@ export default function NewAccountOnboarding() {
                   {/* Content */}
                   <div className="flex-1 text-left">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-black text-green-700 tracking-tight">
+                      <h3 className="text-xl font-semibold text-green-700 tracking-tight">
                         Google API Terms Reviewed
                       </h3>
-                      <span className="px-2 py-1 bg-green-100 text-green-600 text-[10px] font-black uppercase tracking-wider rounded-lg">
+                      <span className="px-2 py-1 bg-green-100 text-green-600 text-xs font-semibold uppercase tracking-wider rounded-lg">
                         Completed
                       </span>
                     </div>
@@ -140,16 +140,16 @@ export default function NewAccountOnboarding() {
                   {/* Step number */}
                   <div className="shrink-0">
                     <div className="w-14 h-14 bg-gradient-to-br from-alloro-orange to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-alloro-orange/30">
-                      <span className="text-2xl font-black text-white">2</span>
+                      <span className="text-2xl font-semibold text-white">2</span>
                     </div>
                   </div>
                   {/* Content */}
                   <div className="flex-1 text-left">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-black text-alloro-navy tracking-tight">
+                      <h3 className="text-xl font-semibold text-alloro-navy tracking-tight">
                         Connect Google Business Profile
                       </h3>
-                      <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-wider rounded-lg">
+                      <span className="px-2 py-1 bg-alloro-orange/10 text-alloro-orange text-xs font-semibold uppercase tracking-wider rounded-lg">
                         Required
                       </span>
                     </div>
@@ -187,7 +187,7 @@ export default function NewAccountOnboarding() {
                   {/* Step number */}
                   <div className="shrink-0">
                     <div className="w-14 h-14 bg-slate-200 rounded-2xl flex items-center justify-center">
-                      <span className="text-2xl font-black text-slate-400">
+                      <span className="text-2xl font-semibold text-slate-400">
                         2
                       </span>
                     </div>
@@ -195,10 +195,10 @@ export default function NewAccountOnboarding() {
                   {/* Content */}
                   <div className="flex-1 text-left">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-black text-slate-400 tracking-tight">
+                      <h3 className="text-xl font-semibold text-slate-400 tracking-tight">
                         Connect Google Business Profile
                       </h3>
-                      <span className="px-2 py-1 bg-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider rounded-lg">
+                      <span className="px-2 py-1 bg-slate-200 text-slate-400 text-xs font-semibold uppercase tracking-wider rounded-lg">
                         Next
                       </span>
                     </div>

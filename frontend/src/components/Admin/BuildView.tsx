@@ -95,7 +95,7 @@ export default function BuildView() {
                   t.priority === "urgent" ? "bg-red-500" : t.priority === "high" ? "bg-amber-500" : "bg-gray-300"
                 }`} />
                 <p className="text-sm font-medium text-[#212D40] truncate flex-1">{t.title}</p>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${
+                <span className={`text-xs px-1.5 py-0.5 rounded font-semibold shrink-0 ${
                   t.priority === "urgent" ? "bg-red-100 text-red-600" : t.priority === "high" ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-500"
                 }`}>{t.priority || "normal"}</span>
               </div>

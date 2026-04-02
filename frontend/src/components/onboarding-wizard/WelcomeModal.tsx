@@ -54,7 +54,7 @@ export function WelcomeModal({ onStart, onSkip }: WelcomeModalProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="text-5xl font-black text-white font-heading mb-4"
+          className="text-5xl font-semibold text-white font-heading mb-4"
         >
           Welcome to Alloro
         </motion.h1>
@@ -96,7 +96,7 @@ export function WelcomeModal({ onStart, onSkip }: WelcomeModalProps) {
         >
           <button
             onClick={onStart}
-            className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-alloro-orange hover:bg-white/90 transition-all shadow-xl shadow-black/10 text-lg font-black"
+            className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-white text-alloro-orange hover:bg-white/90 transition-all shadow-xl shadow-black/10 text-lg font-semibold"
           >
             Start the Tour
             <ArrowRight size={20} />

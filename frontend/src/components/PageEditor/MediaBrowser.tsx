@@ -81,7 +81,7 @@ export default function MediaBrowser({ projectId, onSelect, onClose, compact }: 
                   <Image className="w-6 h-6 text-gray-400" />
                 </div>
               )}
-              <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-[10px] px-1 py-0.5 truncate opacity-0 group-hover:opacity-100 transition">
+              <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs px-1 py-0.5 truncate opacity-0 group-hover:opacity-100 transition">
                 {item.display_name}
               </div>
             </button>

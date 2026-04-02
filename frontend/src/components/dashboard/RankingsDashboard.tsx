@@ -221,19 +221,19 @@ const KPICard = ({
               size={14}
               className="text-slate-300 hover:text-alloro-orange cursor-help transition-colors"
             />
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-alloro-navy text-white text-[11px] font-medium rounded-lg shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 w-48 text-center leading-relaxed z-50">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-alloro-navy text-white text-xs font-medium rounded-lg shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 w-48 text-center leading-relaxed z-50">
               {tooltip}
               <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-alloro-navy"></div>
             </div>
           </div>
         )}
-        <span className="text-[10px] font-black text-alloro-navy uppercase tracking-[0.25em] leading-none">
+        <span className="text-xs font-semibold text-alloro-navy uppercase tracking-[0.25em] leading-none">
           {label}
         </span>
       </div>
       {trend && (
         <span
-          className={`text-[10px] font-black px-2.5 py-1 rounded-lg border tabular-nums leading-none ${
+          className={`text-xs font-semibold px-2.5 py-1 rounded-lg border tabular-nums leading-none ${
             dir === "up"
               ? "bg-green-50 text-green-700 border-green-100"
               : dir === "down"
@@ -248,11 +248,11 @@ const KPICard = ({
     </div>
 
     <div className="flex items-baseline gap-1 mb-2">
-      <span className="text-4xl lg:text-5xl font-black font-sans text-alloro-navy tracking-tighter leading-none tabular-nums group-hover:text-alloro-orange transition-colors">
+      <span className="text-4xl lg:text-5xl font-semibold font-sans text-alloro-navy tracking-tighter leading-none tabular-nums group-hover:text-alloro-orange transition-colors">
         {value}
       </span>
       {suffix && (
-        <span className="text-base font-black text-slate-300 ml-1">
+        <span className="text-base font-semibold text-slate-300 ml-1">
           {suffix}
         </span>
       )}
@@ -427,7 +427,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                 <Target size={20} />
               </div>
               <div className="flex flex-col text-left">
-                <TailorText editKey="rankings.header.title" defaultText="Market Intelligence" as="h1" className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
+                <TailorText editKey="rankings.header.title" defaultText="Market Intelligence" as="h1" className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
                 <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                   Loading data...
                 </span>
@@ -452,13 +452,13 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
           <div className="p-4 bg-red-50 rounded-2xl w-fit mx-auto mb-4">
             <AlertCircle className="h-10 w-10 text-red-500" />
           </div>
-          <h3 className="text-xl font-black text-alloro-navy font-heading mb-2 tracking-tight">
+          <h3 className="text-xl font-semibold text-alloro-navy font-heading mb-2 tracking-tight">
             Unable to Load Rankings
           </h3>
           <p className="text-slate-500 text-sm font-bold mb-6">{error}</p>
           <button
             onClick={fetchLatestRankings}
-            className="px-6 py-3 bg-alloro-orange text-white rounded-xl hover:bg-blue-700 transition-colors font-black text-sm flex items-center gap-2 mx-auto uppercase tracking-widest"
+            className="px-6 py-3 bg-alloro-orange text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-sm flex items-center gap-2 mx-auto uppercase tracking-widest"
           >
             <RefreshCw className="h-4 w-4" />
             Try Again
@@ -475,7 +475,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
           <div className="p-4 bg-slate-100 rounded-2xl w-fit mx-auto mb-4">
             <Trophy className="h-10 w-10 text-slate-400" />
           </div>
-          <h3 className="text-xl font-black text-alloro-navy font-heading mb-2 tracking-tight">
+          <h3 className="text-xl font-semibold text-alloro-navy font-heading mb-2 tracking-tight">
             No Account Connected
           </h3>
           <p className="text-slate-500 text-sm font-bold">
@@ -498,7 +498,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                   <Target size={20} />
                 </div>
                 <div className="flex flex-col text-left">
-                  <TailorText editKey="rankings.header.title" defaultText="Market Intelligence" as="h1" className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
+                  <TailorText editKey="rankings.header.title" defaultText="Market Intelligence" as="h1" className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
                   <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                     From your initial checkup
                   </span>
@@ -545,20 +545,20 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                   <div className="w-10 h-10 rounded-xl bg-alloro-orange/10 flex items-center justify-center">
                     <Trophy size={20} className="text-alloro-orange" />
                   </div>
-                  <h3 className="text-lg font-black text-alloro-navy tracking-tight">
+                  <h3 className="text-lg font-semibold text-alloro-navy tracking-tight">
                     Your Top Competitor
                   </h3>
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xl font-black text-alloro-navy">{checkupSnapshot.topCompetitor.name}</p>
+                    <p className="text-xl font-semibold text-alloro-navy">{checkupSnapshot.topCompetitor.name}</p>
                     <p className="text-sm text-slate-500 mt-1">
                       {checkupSnapshot.topCompetitor.reviewCount} reviews, {checkupSnapshot.topCompetitor.rating} stars
                     </p>
                   </div>
                   {checkupSnapshot.topCompetitor.reviewCount > checkupSnapshot.reviewCount && (
                     <div className="text-right">
-                      <p className="text-2xl font-black text-alloro-orange">
+                      <p className="text-2xl font-semibold text-alloro-orange">
                         {checkupSnapshot.topCompetitor.reviewCount - checkupSnapshot.reviewCount}
                       </p>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">review gap</p>
@@ -575,7 +575,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                   <div className="w-10 h-10 rounded-xl bg-alloro-bg flex items-center justify-center">
                     <Lightbulb size={20} className="text-alloro-orange" />
                   </div>
-                  <h3 className="text-lg font-black text-alloro-navy tracking-tight">
+                  <h3 className="text-lg font-semibold text-alloro-navy tracking-tight">
                     Key Findings
                   </h3>
                 </div>
@@ -600,7 +600,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                   <Zap className="w-7 h-7 text-alloro-orange" />
                 </div>
                 <div className="flex-1 text-left">
-                  <h3 className="text-xl font-black text-white tracking-tight mb-1">
+                  <h3 className="text-xl font-semibold text-white tracking-tight mb-1">
                     Unlock Weekly Tracking
                   </h3>
                   <p className="text-white/60 font-medium leading-relaxed">
@@ -624,7 +624,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               <Sparkles className="w-4 h-4 text-alloro-orange" />
               <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">Get Started</span>
             </div>
-            <TailorText editKey="rankings.empty.heading" defaultText="Your Market Intelligence" as="h1" className="text-3xl font-black text-alloro-navy font-heading tracking-tight mb-3" />
+            <TailorText editKey="rankings.empty.heading" defaultText="Your Market Intelligence" as="h1" className="text-3xl font-semibold text-alloro-navy font-heading tracking-tight mb-3" />
             <p className="text-base text-slate-500 font-medium max-w-md mx-auto">
               Connect your Google Business Profile to see where you rank, who your competitors are, and what to do about it.
             </p>
@@ -641,7 +641,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                 </div>
               </div>
               <div className="flex-1 text-left">
-                <h3 className="text-xl font-black text-alloro-navy tracking-tight mb-2">
+                <h3 className="text-xl font-semibold text-alloro-navy tracking-tight mb-2">
                   Connect Your Google Business Profile
                 </h3>
                 <p className="text-slate-500 font-medium leading-relaxed mb-4">
@@ -786,17 +786,17 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               <Target size={20} />
             </div>
             <div className="flex flex-col text-left">
-              <TailorText editKey="rankings.header.title" defaultText="Local Rankings" as="h1" className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
+              <TailorText editKey="rankings.header.title" defaultText="Local Rankings" as="h1" className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
               <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 How you compare to others
               </span>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-5 bg-white px-6 py-3 rounded-2xl border border-black/5 shadow-premium">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
               Latest Analysis:
             </span>
-            <span className="text-[11px] font-black text-alloro-navy flex items-center gap-2">
+            <span className="text-xs font-semibold text-alloro-navy flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500"></div>{" "}
               {selectedRanking?.gbpLocationName || "Location"} •{" "}
               {new Date(
@@ -814,15 +814,15 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
         {/* HERO SECTION */}
         <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 text-left pt-2">
           <div className="flex items-center gap-4 mb-3">
-            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-[10px] font-black uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
+            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-xs font-semibold uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-alloro-orange"></span>
               Local SEO Tracking On
             </div>
           </div>
-          <TailorText editKey="rankings.hero.heading" defaultText="Local Reputation." as="h1" className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4" />
+          <TailorText editKey="rankings.hero.heading" defaultText="Local Reputation." as="h1" className="text-5xl lg:text-6xl font-semibold font-heading text-alloro-navy tracking-tight leading-none mb-4" />
           <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
             See how your{" "}
-            <span className="text-alloro-orange underline underline-offset-8 font-black">
+            <span className="text-alloro-orange underline underline-offset-8 font-semibold">
               Rank and Reviews
             </span>{" "}
             compare to the businesses nearby.
@@ -981,18 +981,18 @@ function PerformanceDashboard({
       >
         <div className="px-10 py-8 border-b border-black/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="text-left">
-            <TailorText editKey="rankings.competitors.heading" defaultText="Nearby Competitors" as="h2" className="text-xl font-black font-heading text-alloro-navy tracking-tight" />
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
+            <TailorText editKey="rankings.competitors.heading" defaultText="Nearby Competitors" as="h2" className="text-xl font-semibold font-heading text-alloro-navy tracking-tight" />
+            <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1.5">
               How you compare to the neighbors
             </p>
           </div>
-          <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-black/5 text-[10px] font-black text-alloro-orange uppercase tracking-widest">
+          <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-black/5 text-xs font-semibold text-alloro-orange uppercase tracking-widest">
             Last checked today
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse table-fixed">
-            <thead className="bg-slate-50/50 text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.25em] border-b border-black/5">
+            <thead className="bg-slate-50/50 text-xs font-semibold text-alloro-textDark/40 uppercase tracking-[0.25em] border-b border-black/5">
               <tr>
                 <th className="px-10 py-5 w-[40%]">Business Name</th>
                 <th className="px-4 py-5 text-center w-[15%]">Rank</th>
@@ -1069,7 +1069,7 @@ function PerformanceDashboard({
                     <td className="px-10 py-7 text-left">
                       <div className="flex flex-col">
                         <span
-                          className={`text-[16px] font-black tracking-tight ${
+                          className={`text-[16px] font-semibold tracking-tight ${
                             comp.isClient
                               ? "text-alloro-orange"
                               : "text-alloro-navy"
@@ -1078,11 +1078,11 @@ function PerformanceDashboard({
                           {comp.name}
                         </span>
                         {comp.isClient ? (
-                          <span className="text-[9px] font-black bg-alloro-orange text-white px-2 py-0.5 rounded uppercase tracking-widest w-fit mt-1.5 leading-none">
+                          <span className="text-[9px] font-semibold bg-alloro-orange text-white px-2 py-0.5 rounded uppercase tracking-widest w-fit mt-1.5 leading-none">
                             You
                           </span>
                         ) : (
-                          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest w-fit mt-1.5 leading-none">
+                          <span className="text-[9px] font-semibold text-slate-300 uppercase tracking-widest w-fit mt-1.5 leading-none">
                             Competitor
                           </span>
                         )}
@@ -1090,7 +1090,7 @@ function PerformanceDashboard({
                     </td>
                     <td className="px-4 py-7 text-center">
                       <span
-                        className={`text-2xl font-black font-heading tabular-nums ${
+                        className={`text-2xl font-semibold font-heading tabular-nums ${
                           comp.rankPosition <= 3
                             ? "text-alloro-orange"
                             : "text-slate-300"
@@ -1099,11 +1099,11 @@ function PerformanceDashboard({
                         #{comp.rankPosition}
                       </span>
                     </td>
-                    <td className="px-4 py-7 text-center font-black text-alloro-navy tabular-nums font-sans text-lg">
+                    <td className="px-4 py-7 text-center font-semibold text-alloro-navy tabular-nums font-sans text-lg">
                       {comp.totalReviews.toLocaleString()}
                     </td>
                     <td className="px-10 py-7 text-right">
-                      <div className="flex items-center justify-end gap-2 text-green-600 font-black text-lg font-sans">
+                      <div className="flex items-center justify-end gap-2 text-green-600 font-semibold text-lg font-sans">
                         +{comp.reviewsLast30d || 0}
                         <ArrowUpRight size={18} className="opacity-40" />
                       </div>
@@ -1124,10 +1124,10 @@ function PerformanceDashboard({
         <section className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden text-left">
           <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between">
             <div className="space-y-1">
-              <h3 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+              <h3 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
                 What's Driving Your Rank
               </h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                 Key factors influencing your position
               </p>
             </div>
@@ -1153,7 +1153,7 @@ function PerformanceDashboard({
                       <TrendingDown size={20} className="text-red-600 shrink-0" />
                     )}
                     <p
-                      className={`font-black text-lg tracking-tight ${
+                      className={`font-semibold text-lg tracking-tight ${
                         driver.direction === "positive"
                           ? "text-green-700"
                           : "text-red-700"
@@ -1166,7 +1166,7 @@ function PerformanceDashboard({
                   </div>
                   <button
                     onClick={() => setSelectedDriverIndex(idx)}
-                    className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 cursor-pointer ${
+                    className={`text-xs font-semibold uppercase tracking-widest flex items-center gap-1.5 cursor-pointer ${
                       driver.direction === "positive"
                         ? "text-green-600 hover:text-green-700"
                         : "text-red-600 hover:text-red-700"
@@ -1212,7 +1212,7 @@ function PerformanceDashboard({
                       <TrendingDown size={20} className="text-red-600" />
                     </div>
                   )}
-                  <p className={`font-black text-base tracking-tight ${
+                  <p className={`font-semibold text-base tracking-tight ${
                     drivers[selectedDriverIndex - 1].direction === "positive"
                       ? "text-green-700"
                       : "text-red-700"
@@ -1253,7 +1253,7 @@ function PerformanceDashboard({
                       <TrendingDown size={20} className="text-red-600" />
                     </div>
                   )}
-                  <p className={`font-black text-base tracking-tight ${
+                  <p className={`font-semibold text-base tracking-tight ${
                     drivers[selectedDriverIndex + 1].direction === "positive"
                       ? "text-green-700"
                       : "text-red-700"
@@ -1295,7 +1295,7 @@ function PerformanceDashboard({
                     </div>
                   )}
                   <h3
-                    className={`text-2xl font-black tracking-tight ${
+                    className={`text-2xl font-semibold tracking-tight ${
                       selectedDriver.direction === "positive"
                         ? "text-green-700"
                         : "text-red-700"
@@ -1314,7 +1314,7 @@ function PerformanceDashboard({
                 </button>
               </div>
               <div className="bg-slate-50 rounded-2xl p-8">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">
                   Insight
                 </p>
                 <p className="text-slate-700 font-medium leading-relaxed text-lg">
@@ -1381,10 +1381,10 @@ function PerformanceDashboard({
         <section className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden text-left">
           <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between">
             <div className="space-y-1">
-              <h3 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+              <h3 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
                 Opportunities to Improve
               </h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                 Areas where you can gain ground
               </p>
             </div>
@@ -1399,7 +1399,7 @@ function PerformanceDashboard({
                 className="p-6 bg-slate-50/50 rounded-2xl border border-black/5"
               >
                 <span
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border inline-block mb-3 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-widest border inline-block mb-3 ${
                     gap.impact === "high"
                       ? "bg-red-50 text-red-600 border-red-100"
                       : gap.impact === "medium"
@@ -1409,7 +1409,7 @@ function PerformanceDashboard({
                 >
                   {gap.impact} impact
                 </span>
-                <p className="font-black text-alloro-navy tracking-tight">
+                <p className="font-semibold text-alloro-navy tracking-tight">
                   {gap.type
                     .replace(/_/g, " ")
                     .replace(/\b\w/g, (c) => c.toUpperCase())}
@@ -1487,10 +1487,10 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
     >
       <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between">
         <div className="space-y-1">
-          <h3 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+          <h3 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
             Rank Improvement Plan
           </h3>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
             Steps to reach #1
           </p>
         </div>
@@ -1507,7 +1507,7 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
               className="p-8 bg-slate-50/50 rounded-2xl border border-black/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8 hover:bg-white hover:border-alloro-orange/20 hover:shadow-premium transition-all group"
             >
               <div className="space-y-3">
-                <h4 className="font-black text-alloro-navy text-xl tracking-tight leading-none group-hover:text-alloro-orange transition-colors">
+                <h4 className="font-semibold text-alloro-navy text-xl tracking-tight leading-none group-hover:text-alloro-orange transition-colors">
                   {task.title}
                 </h4>
                 <p className="text-[15px] text-slate-500 font-bold tracking-tight leading-relaxed max-w-2xl line-clamp-2">
@@ -1516,7 +1516,7 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
               </div>
               <div className="flex items-center gap-6 shrink-0">
                 <span
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border shadow-sm ${
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-widest border shadow-sm ${
                     task.metadata?.priority === "High" ||
                     task.metadata?.priority === "1"
                       ? "bg-red-50 text-red-600 border-red-100"
@@ -1533,7 +1533,7 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
                   onClick={() =>
                     navigate("/tasks", { state: { scrollToTaskId: task.id } })
                   }
-                  className="flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 text-alloro-orange rounded-xl text-[10px] font-black uppercase tracking-widest border border-alloro-orange/20 hover:bg-alloro-orange hover:text-white transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 text-alloro-orange rounded-xl text-xs font-semibold uppercase tracking-widest border border-alloro-orange/20 hover:bg-alloro-orange hover:text-white transition-all cursor-pointer"
                 >
                   <ExternalLink size={14} />
                   View in Tasks

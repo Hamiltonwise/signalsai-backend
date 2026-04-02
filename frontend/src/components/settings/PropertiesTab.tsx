@@ -223,7 +223,7 @@ export const PropertiesTab: React.FC = () => {
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-black text-alloro-navy font-heading tracking-tight">
+          <h3 className="text-lg font-semibold text-alloro-navy font-heading tracking-tight">
             Locations
           </h3>
           <p className="text-slate-400 text-[12px] mt-1 font-semibold">
@@ -233,7 +233,7 @@ export const PropertiesTab: React.FC = () => {
         {hasGoogleConnection && (
           <button
             onClick={openAddLocation}
-            className="flex items-center gap-2 px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-white bg-alloro-orange rounded-xl hover:bg-alloro-orange/90 transition-colors shadow-lg active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 text-xs font-semibold uppercase tracking-widest text-white bg-alloro-orange rounded-xl hover:bg-alloro-orange/90 transition-colors shadow-lg active:scale-95"
           >
             <Plus size={14} />
             Add Location
@@ -271,7 +271,7 @@ export const PropertiesTab: React.FC = () => {
               </p>
               <button
                 onClick={openAddLocation}
-                className="inline-flex items-center gap-2 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white bg-alloro-orange rounded-xl hover:bg-alloro-orange/90 transition-colors shadow-lg active:scale-95"
+                className="inline-flex items-center gap-2 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-white bg-alloro-orange rounded-xl hover:bg-alloro-orange/90 transition-colors shadow-lg active:scale-95"
               >
                 <Plus size={14} />
                 Add Location
@@ -312,11 +312,11 @@ export const PropertiesTab: React.FC = () => {
                                 setEditingNameId(null);
                             }}
                             autoFocus
-                            className="text-lg font-black text-alloro-navy font-heading tracking-tight border-b-2 border-alloro-orange outline-none bg-transparent"
+                            className="text-lg font-semibold text-alloro-navy font-heading tracking-tight border-b-2 border-alloro-orange outline-none bg-transparent"
                           />
                         ) : (
                           <h4
-                            className="text-lg font-black text-alloro-navy font-heading tracking-tight cursor-pointer hover:text-alloro-orange transition-colors group flex items-center gap-1.5"
+                            className="text-lg font-semibold text-alloro-navy font-heading tracking-tight cursor-pointer hover:text-alloro-orange transition-colors group flex items-center gap-1.5"
                             onClick={() =>
                               canManageConnections && startNameEdit(loc)
                             }
@@ -331,7 +331,7 @@ export const PropertiesTab: React.FC = () => {
                           </h4>
                         )}
                         {loc.is_primary && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200">
                             <Star size={10} className="fill-amber-500" />
                             Primary
                           </span>
@@ -344,7 +344,7 @@ export const PropertiesTab: React.FC = () => {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => handleChangeGBP(loc.id)}
-                          className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-alloro-orange bg-alloro-orange/10 rounded-xl hover:bg-alloro-orange/20 transition-colors"
+                          className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-alloro-orange bg-alloro-orange/10 rounded-xl hover:bg-alloro-orange/20 transition-colors"
                         >
                           <RefreshCw size={12} className="inline mr-1.5" />
                           {gbpProp ? "Change GBP" : "Connect GBP"}
@@ -352,7 +352,7 @@ export const PropertiesTab: React.FC = () => {
                         {!loc.is_primary && (
                           <button
                             onClick={() => handleSetPrimary(loc.id)}
-                            className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors"
+                            className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-slate-500 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors"
                           >
                             Set Primary
                           </button>
@@ -427,7 +427,7 @@ export const PropertiesTab: React.FC = () => {
               className="relative bg-white rounded-[28px] shadow-2xl w-full max-w-md overflow-hidden"
             >
               <div className="p-8">
-                <h3 className="text-lg font-black text-alloro-navy font-heading mb-1">
+                <h3 className="text-lg font-semibold text-alloro-navy font-heading mb-1">
                   Add New Location
                 </h3>
                 <p className="text-slate-400 text-sm mb-6">

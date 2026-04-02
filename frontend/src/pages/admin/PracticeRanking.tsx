@@ -2135,7 +2135,7 @@ function RankingResultsView({
                     <span className="text-sm font-semibold text-gray-900">
                       {FACTOR_LABELS[key] || key.replace(/_/g, " ")}
                     </span>
-                    <span className="text-[10px] font-medium text-gray-400 tabular-nums">
+                    <span className="text-xs font-medium text-gray-400 tabular-nums">
                       {weightPct}% weight
                     </span>
                   </div>
@@ -2182,7 +2182,7 @@ function RankingResultsView({
               <h4 className="font-semibold text-gray-900 text-sm tracking-tight">
                 Competitive Ranking Factors
               </h4>
-              <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
                 Used for rank position
               </span>
             </div>
@@ -2200,7 +2200,7 @@ function RankingResultsView({
                   <h4 className="font-semibold text-gray-900 text-sm tracking-tight">
                     Client-Only Insights
                   </h4>
-                  <span className="text-[10px] font-medium text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-medium text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
                     Not used in competitive ranking
                   </span>
                 </div>
@@ -2312,12 +2312,12 @@ function RankingResultsView({
                           {comp.name}
                         </span>
                         {comp.isClient && (
-                          <span className="text-[10px] font-semibold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded flex-shrink-0">
+                          <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded flex-shrink-0">
                             YOU
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-gray-400">
+                      <span className="text-xs text-gray-400">
                         {comp.primaryCategory || "-"}
                       </span>
                     </div>
@@ -2325,18 +2325,18 @@ function RankingResultsView({
                     {/* Stats */}
                     <div className="flex items-center gap-4 flex-shrink-0">
                       <div className="text-right">
-                        <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Reviews</div>
+                        <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Reviews</div>
                         <div className="text-sm font-bold text-gray-800 tabular-nums">{comp.totalReviews.toLocaleString()}</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Rating</div>
+                        <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Rating</div>
                         <div className="text-sm font-bold text-gray-800 tabular-nums flex items-center justify-end gap-0.5">
                           {comp.averageRating?.toFixed(1) || "-"}
                           <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
                         </div>
                       </div>
                       <div className="text-right w-14">
-                        <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Score</div>
+                        <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Score</div>
                         <div className={`text-sm font-bold tabular-nums ${scoreColor}`}>
                           {comp.rankScore?.toFixed(1) || "-"}
                         </div>
@@ -2397,7 +2397,7 @@ function RankingResultsView({
                       transition={{ delay: idx * 0.05 }}
                     >
                       <div className="flex items-start gap-2.5">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${impactBadge} flex-shrink-0 mt-0.5`}>
+                        <span className={`text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${impactBadge} flex-shrink-0 mt-0.5`}>
                           {gap.impact}
                         </span>
                         <div className="min-w-0">

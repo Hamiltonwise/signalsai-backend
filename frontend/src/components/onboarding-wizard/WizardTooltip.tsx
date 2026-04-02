@@ -260,7 +260,7 @@ export function WizardTooltip({
               </div>
 
               {/* Title */}
-              <h3 className="text-2xl font-black text-white font-heading mb-3">
+              <h3 className="text-2xl font-semibold text-white font-heading mb-3">
                 {step.title}
               </h3>
 
@@ -293,7 +293,7 @@ export function WizardTooltip({
 
                   <button
                     onClick={onNext}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-alloro-orange hover:bg-white/90 transition-all shadow-lg text-sm font-black whitespace-nowrap"
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-alloro-orange hover:bg-white/90 transition-all shadow-lg text-sm font-semibold whitespace-nowrap"
                   >
                     {isLastStep ? (
                       "Finish Tour"
@@ -373,7 +373,7 @@ export function WizardTooltip({
             </div>
 
             {/* Title */}
-            <h3 className="text-xl font-black text-alloro-navy font-heading mb-2">
+            <h3 className="text-xl font-semibold text-alloro-navy font-heading mb-2">
               {step.title}
             </h3>
 

@@ -49,7 +49,7 @@ function PositionBadge({ position, delta }: { position: number | null; delta: nu
     const nextMonday = new Date(now);
     nextMonday.setDate(now.getDate() + daysUntilMonday);
     const monthDay = nextMonday.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    return <span className="text-[11px] text-gray-400">First check {monthDay}</span>;
+    return <span className="text-xs text-gray-400">First check {monthDay}</span>;
   }
 
   return (
@@ -67,9 +67,9 @@ function PositionBadge({ position, delta }: { position: number | null; delta: nu
 }
 
 function SourceTag({ source }: { source: string }) {
-  if (source === "auto") return <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">Auto</span>;
-  if (source === "suggested") return <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">Suggested</span>;
-  return <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-500 font-medium">Custom</span>;
+  if (source === "auto") return <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">Auto</span>;
+  if (source === "suggested") return <span className="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">Suggested</span>;
+  return <span className="text-xs px-1.5 py-0.5 rounded bg-gray-50 text-gray-500 font-medium">Custom</span>;
 }
 
 export default function FocusKeywords() {

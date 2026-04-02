@@ -117,10 +117,10 @@ function PositionTrack({ entry }: { entry: LeaderboardEntry }) {
         <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 -translate-y-1/2" />
 
         {/* Position markers 1 and max */}
-        <span className="absolute left-0 -top-0.5 text-[10px] text-gray-300 font-medium">
+        <span className="absolute left-0 -top-0.5 text-xs text-gray-300 font-medium">
           1
         </span>
-        <span className="absolute right-0 -top-0.5 text-[10px] text-gray-300 font-medium">
+        <span className="absolute right-0 -top-0.5 text-xs text-gray-300 font-medium">
           {maxPos}
         </span>
 
@@ -142,7 +142,7 @@ function PositionTrack({ entry }: { entry: LeaderboardEntry }) {
 
       {/* Position number + delta */}
       <div className="w-20 shrink-0 text-right">
-        <span className="text-lg font-black text-[#212D40]">
+        <span className="text-lg font-semibold text-[#212D40]">
           #{entry.position}
         </span>
         {entry.delta !== null && entry.delta !== 0 && (

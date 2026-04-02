@@ -243,19 +243,19 @@ function ProgressTracker() {
                   {step.label}
                 </p>
                 {step.progress && !step.complete && (
-                  <span className="text-[10px] font-bold text-[#212D40]/40 bg-[#212D40]/5 px-1.5 py-0.5 rounded">
+                  <span className="text-xs font-bold text-[#212D40]/40 bg-[#212D40]/5 px-1.5 py-0.5 rounded">
                     {step.progress}
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-gray-400 mt-0.5">{step.reward}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{step.reward}</p>
             </div>
 
             {/* CTA */}
             {!step.complete && step.ctaAction && (
               <a
                 href={step.ctaAction}
-                className="shrink-0 text-[11px] font-semibold text-[#D56753] hover:underline"
+                className="shrink-0 text-xs font-semibold text-[#D56753] hover:underline"
               >
                 {step.cta} →
               </a>
@@ -290,16 +290,16 @@ function PortfolioView() {
       {/* Stats header */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-2xl font-black text-[#212D40]">{stats.totalReferred}</p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Practices</p>
+          <p className="text-2xl font-semibold text-[#212D40]">{stats.totalReferred}</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Practices</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-2xl font-black text-emerald-600">${stats.totalMRR}</p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">MRR Attributed</p>
+          <p className="text-2xl font-semibold text-emerald-600">${stats.totalMRR}</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">MRR Attributed</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-2xl font-black text-[#212D40]">{stats.avgScore ?? "-"}</p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Avg Score</p>
+          <p className="text-2xl font-semibold text-[#212D40]">{stats.avgScore ?? "-"}</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Avg Score</p>
         </div>
       </div>
 
@@ -339,20 +339,20 @@ function PortfolioView() {
               </p>
               <div className="flex items-center gap-3 mt-2">
                 {p.subscriptionStatus === "active" && (
-                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
+                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
                 )}
                 {p.subscriptionStatus !== "active" && (
-                  <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
                     {p.subscriptionStatus || "Pending"}
                   </span>
                 )}
                 {p.rankPosition && (
-                  <span className="text-[10px] text-gray-400">Rank #{p.rankPosition}</span>
+                  <span className="text-xs text-gray-400">Rank #{p.rankPosition}</span>
                 )}
               </div>
             </div>
             <div className="text-right shrink-0 ml-4">
-              <p className={`text-2xl font-black ${
+              <p className={`text-2xl font-semibold ${
                 p.score && p.score >= 70 ? "text-emerald-600" : p.score && p.score >= 50 ? "text-amber-600" : "text-[#D56753]"
               }`}>
                 {p.score ?? "-"}
@@ -361,7 +361,7 @@ function PortfolioView() {
                 {trend === "up" && <TrendingUp className="h-3 w-3 text-emerald-500" />}
                 {trend === "down" && <TrendingDown className="h-3 w-3 text-red-500" />}
                 {trend === "flat" && <Minus className="h-3 w-3 text-gray-300" />}
-                <span className="text-[10px] text-gray-400">/100</span>
+                <span className="text-xs text-gray-400">/100</span>
               </div>
             </div>
           </div>
@@ -438,7 +438,7 @@ function CheckupLauncher() {
           </button>
         </div>
         {refCode && (
-          <p className="text-[11px] text-gray-400 mt-2">
+          <p className="text-xs text-gray-400 mt-2">
             Your referral code: <span className="font-mono font-bold">{refCode}</span>
           </p>
         )}
@@ -496,11 +496,11 @@ function PerformanceDashboard() {
         <div className="bg-[#212D40] rounded-2xl p-5 text-white flex items-center justify-between">
           <div>
             <p className="text-xs text-white/50 uppercase tracking-wider font-bold">Your Referral Code</p>
-            <p className="text-2xl font-mono font-black mt-1">{data.referralCode}</p>
+            <p className="text-2xl font-mono font-semibold mt-1">{data.referralCode}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-white/50 uppercase tracking-wider font-bold">Estimated MRR</p>
-            <p className="text-2xl font-black mt-1">${data.estimatedMRR}</p>
+            <p className="text-2xl font-semibold mt-1">${data.estimatedMRR}</p>
           </div>
         </div>
       )}
@@ -521,11 +521,11 @@ function PerformanceDashboard() {
                 <div>
                   <p className="text-sm font-semibold text-[#212D40]">{step.label}</p>
                   {i > 0 && funnel[0].value > 0 && (
-                    <p className="text-[10px] text-gray-400">{pct}% of scans</p>
+                    <p className="text-xs text-gray-400">{pct}% of scans</p>
                   )}
                 </div>
               </div>
-              <p className="text-xl font-black text-[#212D40]">{step.value}</p>
+              <p className="text-xl font-semibold text-[#212D40]">{step.value}</p>
             </div>
           );
         })}
@@ -620,7 +620,7 @@ function VoiceProfileSetup({
           <div className="flex items-center justify-between mb-2">
             <button
               onClick={() => setShowFullPrompt(!showFullPrompt)}
-              className="text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
             >
               Voice Extraction Prompt {showFullPrompt ? "▾" : "▸"}
             </button>
@@ -631,7 +631,7 @@ function VoiceProfileSetup({
                   setTimeout(() => setPromptCopied(false), 2000);
                 });
               }}
-              className={`flex items-center gap-1.5 text-[11px] font-semibold rounded-lg px-3 py-1.5 transition-all ${
+              className={`flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-all ${
                 promptCopied
                   ? "bg-emerald-50 text-emerald-700"
                   : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
@@ -642,7 +642,7 @@ function VoiceProfileSetup({
             </button>
           </div>
           {showFullPrompt ? (
-            <pre className="text-[11px] text-gray-500 leading-relaxed whitespace-pre-wrap font-mono max-h-60 overflow-y-auto">
+            <pre className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap font-mono max-h-60 overflow-y-auto">
               {EXTRACTION_PROMPT}
             </pre>
           ) : (
@@ -667,7 +667,7 @@ function VoiceProfileSetup({
         {/* Profile quality indicator */}
         {profileText.trim().length > 30 && (
           <div className={`mt-3 rounded-lg p-3 ${isValidProfile ? "bg-[#D56753]/[0.04]" : "bg-amber-50"}`}>
-            <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isValidProfile ? "text-[#D56753]" : "text-amber-600"}`}>
+            <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${isValidProfile ? "text-[#D56753]" : "text-amber-600"}`}>
               {isValidProfile ? `Profile detected, ${sectionCount} sections found` : "Looks incomplete"}
             </p>
             <p className="text-xs text-gray-600">
@@ -834,7 +834,7 @@ function CMOAgent() {
 
         {activeRec && (
           <div className="rounded-xl bg-[#212D40]/[0.03] px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#D56753] mb-1">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-1">
               Campaign built from
             </p>
             <p className="text-sm font-semibold text-[#212D40]">{activeRec}</p>
@@ -846,7 +846,7 @@ function CMOAgent() {
             <div key={idx} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                  <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
                     Option {idx + 1}
                   </span>
                   <p className="text-sm font-bold text-[#212D40] mt-1">
@@ -972,12 +972,12 @@ function CMOAgent() {
             </div>
             <div>
               <p className="text-sm font-bold">Your CMO</p>
-              <p className="text-[11px] text-white/50">Analyzing your pipeline</p>
+              <p className="text-xs text-white/50">Analyzing your pipeline</p>
             </div>
           </div>
           <button
             onClick={() => setEditingVoice(true)}
-            className="text-[11px] font-medium text-white/40 hover:text-white/70 transition-colors"
+            className="text-xs font-medium text-white/40 hover:text-white/70 transition-colors"
           >
             Edit voice
           </button>
@@ -1009,7 +1009,7 @@ function CMOAgent() {
                     {rec.headline}
                   </h3>
                 </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${priorityColor(rec.priority)}`}>
+                <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${priorityColor(rec.priority)}`}>
                   {rec.priority}
                 </span>
               </div>
@@ -1089,7 +1089,7 @@ export default function PartnerPortal() {
               </svg>
             </div>
             <span className="text-lg font-bold tracking-tight">alloro</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 bg-white/10 px-2.5 py-0.5 rounded-full ml-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-white/40 bg-white/10 px-2.5 py-0.5 rounded-full ml-2">
               Partner
             </span>
           </div>
@@ -1104,7 +1104,7 @@ export default function PartnerPortal() {
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="mb-6">
-              <h1 className="text-2xl font-extrabold text-[#212D40]">
+              <h1 className="text-2xl font-semibold text-[#212D40]">
                 {activeTab === "portfolio" && "Your Portfolio"}
                 {activeTab === "checkup" && "Run a Checkup"}
                 {activeTab === "performance" && "Referral Performance"}

@@ -192,7 +192,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                         <span className="text-sm font-semibold text-gray-900">
                           Organization (Umbrella)
                         </span>
-                        <span className="text-[10px] font-bold text-alloro-orange bg-orange-50 border border-alloro-orange/30 rounded-full px-2 py-0.5">
+                        <span className="text-xs font-bold text-alloro-orange bg-orange-50 border border-alloro-orange/30 rounded-full px-2 py-0.5">
                           SEO Context
                         </span>
                       </div>
@@ -308,7 +308,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                           {loc.name}
                         </span>
                         {loc.is_primary && (
-                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
+                          <span className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
                             Primary
                           </span>
                         )}

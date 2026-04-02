@@ -135,7 +135,7 @@ export function SetupProgressWizard() {
           {/* Progress indicator badge - positioned outside the button */}
           {!progress.completed && (
             <div className="absolute -top-1 -right-1 w-5 h-5 bg-alloro-orange rounded-full border-2 border-white flex items-center justify-center">
-              <span className="text-[10px] font-jakarta text-white">
+              <span className="text-xs font-jakarta text-white">
                 {steps.filter((s) => !s.completed).length}
               </span>
             </div>
@@ -239,7 +239,7 @@ export function SetupProgressWizard() {
                     className="h-full bg-gradient-to-r from-alloro-orange to-orange-400 rounded-full"
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 font-medium mt-2 text-center">
+                <p className="text-xs text-slate-400 font-medium mt-2 text-center">
                   {steps.filter((s) => s.completed).length} of {steps.length}{" "}
                   steps completed
                 </p>

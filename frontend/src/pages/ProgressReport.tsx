@@ -112,9 +112,9 @@ function StatCard({
 }) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-      <p className="text-2xl font-black tabular-nums ${color}">{value}</p>
+      <p className="text-2xl font-semibold tabular-nums ${color}">{value}</p>
       <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">{label}</p>
-      {detail && <p className="text-[11px] text-gray-400 mt-0.5">{detail}</p>}
+      {detail && <p className="text-xs text-gray-400 mt-0.5">{detail}</p>}
     </div>
   );
 }
@@ -138,14 +138,14 @@ function YearInReviewSection({ data }: { data: YearInReview }) {
       <div className="bg-[#212D40] rounded-2xl p-4 sm:p-6 text-center text-white">
         {data.tasksCompleted > 0 ? (
           <>
-            <p className="text-3xl sm:text-5xl font-black tabular-nums">{data.tasksCompleted}</p>
+            <p className="text-3xl sm:text-5xl font-semibold tabular-nums">{data.tasksCompleted}</p>
             <p className="text-sm font-medium text-white/70 mt-1">
               Alloro tasks completed in the last 365 days
             </p>
           </>
         ) : (
           <>
-            <p className="text-2xl font-black">Your year starts now.</p>
+            <p className="text-2xl font-semibold">Your year starts now.</p>
             <p className="text-sm font-medium text-white/70 mt-1">
               Every action Alloro completes for you will show up here.
             </p>
@@ -163,7 +163,7 @@ function YearInReviewSection({ data }: { data: YearInReview }) {
         {data.currentPosition && (
           <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
             <div className="flex items-center justify-center gap-1.5">
-              <p className="text-2xl font-black text-[#212D40]">#{data.currentPosition}</p>
+              <p className="text-2xl font-semibold text-[#212D40]">#{data.currentPosition}</p>
               {posUp && (
                 <span className="flex items-center text-xs font-bold text-emerald-600">
                   <TrendingUp className="h-3 w-3" />+{data.positionDelta}
@@ -179,7 +179,7 @@ function YearInReviewSection({ data }: { data: YearInReview }) {
               Current Rank
             </p>
             {data.startPosition && (
-              <p className="text-[11px] text-gray-400 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5">
                 Started at #{data.startPosition}
               </p>
             )}
@@ -336,7 +336,7 @@ function GoalProgressSection({
             <div key={milestone.label}>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-semibold text-[#212D40]">{milestone.label}</span>
-                <span className="text-[11px] text-gray-400">{mPct}%</span>
+                <span className="text-xs text-gray-400">{mPct}%</span>
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
@@ -346,7 +346,7 @@ function GoalProgressSection({
                   style={{ width: `${mPct}%` }}
                 />
               </div>
-              <p className="text-[11px] text-gray-400 mt-1">{milestone.desc}</p>
+              <p className="text-xs text-gray-400 mt-1">{milestone.desc}</p>
             </div>
           );
         })}
@@ -392,7 +392,7 @@ function TopMovesSection({ moves }: { moves: TopMove[] }) {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[#212D40]">{move.title}</p>
                 <p className="text-xs text-emerald-600 font-medium mt-1">{move.outcome}</p>
-                <p className="text-[11px] text-gray-400 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   {new Date(move.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                 </p>
               </div>
@@ -448,7 +448,7 @@ function YourYearSection({ data }: { data: EnhancedYearSummary }) {
       </div>
 
       <div className="bg-[#212D40] rounded-2xl p-4 sm:p-6 text-center text-white">
-        <p className="text-3xl sm:text-5xl font-black tabular-nums">{data.days_active}</p>
+        <p className="text-3xl sm:text-5xl font-semibold tabular-nums">{data.days_active}</p>
         <p className="text-sm font-medium text-white/70 mt-1">days active since {startStr}</p>
       </div>
 
@@ -456,7 +456,7 @@ function YourYearSection({ data }: { data: EnhancedYearSummary }) {
         {data.current_position != null && (
           <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
             <div className="flex items-center justify-center gap-1.5">
-              <p className="text-2xl font-black text-[#212D40]">#{data.current_position}</p>
+              <p className="text-2xl font-semibold text-[#212D40]">#{data.current_position}</p>
               {data.positions_gained != null && data.positions_gained > 0 && (
                 <span className="flex items-center text-xs font-bold text-emerald-600">
                   <TrendingUp className="h-3 w-3" />+{data.positions_gained}
@@ -469,7 +469,7 @@ function YourYearSection({ data }: { data: EnhancedYearSummary }) {
               )}
             </div>
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Current Rank</p>
-            {data.start_position && <p className="text-[11px] text-gray-400 mt-0.5">Started at #{data.start_position}</p>}
+            {data.start_position && <p className="text-xs text-gray-400 mt-0.5">Started at #{data.start_position}</p>}
           </div>
         )}
 
@@ -520,7 +520,7 @@ function KeyMomentsSection({ milestones }: { milestones: Milestone[] }) {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-[#212D40]">{m.headline}</p>
               {m.detail && <p className="text-xs text-gray-500 mt-0.5">{m.detail}</p>}
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 {new Date(m.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </p>
             </div>
@@ -631,7 +631,7 @@ function IntelligenceBuildingState({
       {/* Hero */}
       <div className="bg-[#212D40] rounded-2xl p-5 sm:p-8 text-center text-white">
         <Search className="h-8 w-8 mx-auto mb-3 text-white/50" />
-        <p className="text-xl sm:text-2xl font-extrabold">Your intelligence is building.</p>
+        <p className="text-xl sm:text-2xl font-semibold">Your intelligence is building.</p>
         <p className="text-sm text-white/60 mt-2 max-w-md mx-auto">
           Alloro is watching your market, tracking competitors, and building the data needed for
           your full progress report.
@@ -647,20 +647,20 @@ function IntelligenceBuildingState({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="bg-gray-50 rounded-xl p-4 text-center">
-              <p className="text-3xl font-black text-[#212D40] tabular-nums">{Math.round(score)}</p>
+              <p className="text-3xl font-semibold text-[#212D40] tabular-nums">{Math.round(score)}</p>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">
                 Checkup Score
               </p>
-              <p className="text-[11px] text-gray-400 mt-0.5">/100</p>
+              <p className="text-xs text-gray-400 mt-0.5">/100</p>
             </div>
             {rank != null && (
               <div className="bg-gray-50 rounded-xl p-4 text-center">
-                <p className="text-3xl font-black text-[#212D40] tabular-nums">#{rank}</p>
+                <p className="text-3xl font-semibold text-[#212D40] tabular-nums">#{rank}</p>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">
                   Market Position
                 </p>
                 {totalCompetitors && (
-                  <p className="text-[11px] text-gray-400 mt-0.5">
+                  <p className="text-xs text-gray-400 mt-0.5">
                     of {totalCompetitors} competitors
                   </p>
                 )}
@@ -816,7 +816,7 @@ export default function ProgressReport() {
         <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-2">
           365-Day Progress Report
         </p>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-[#212D40] tracking-tight">
           {practiceName}
         </h1>
         <p className="text-sm text-gray-500 mt-2">
@@ -914,7 +914,7 @@ export default function ProgressReport() {
 
       {/* Footer */}
       <div className="text-center pt-4 border-t border-gray-100">
-        <p className="text-[11px] text-gray-300 uppercase tracking-wide">
+        <p className="text-xs text-gray-300 uppercase tracking-wide">
           Generated by Alloro &middot; {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
         </p>
       </div>

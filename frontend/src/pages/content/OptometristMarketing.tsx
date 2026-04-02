@@ -98,7 +98,7 @@ export default function OptometristMarketing() {
       />
 
         <div className="mx-auto max-w-2xl px-5 pb-16">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
             Why Optometry Practices Lose Patients to Competitors (Without Ever
             Knowing Why)
           </h1>

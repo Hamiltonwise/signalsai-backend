@@ -96,16 +96,16 @@ const MetricCard = ({
           : "bg-white border-black/5 hover:border-alloro-orange/20 hover:shadow-premium"
       }`}
     >
-      <span className="text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.2em] mb-4 leading-none text-left">
+      <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-[0.2em] mb-4 leading-none text-left">
         {label}
       </span>
       <div className="flex items-center justify-between">
-        <span className="text-3xl font-black font-heading tracking-tighter leading-none text-alloro-textDark">
+        <span className="text-3xl font-semibold font-heading tracking-tighter leading-none text-alloro-textDark">
           {value}
         </span>
         {trend && (
           <span
-            className={`text-[11px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm ${
+            className={`text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm ${
               isUp
                 ? "bg-green-100 text-green-700"
                 : isDown
@@ -810,7 +810,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <AlertCircle className="w-8 h-8 text-red-600" />
         </div>
-        <h3 className="text-lg font-extrabold text-alloro-navy font-heading mb-2">
+        <h3 className="text-lg font-semibold text-alloro-navy font-heading mb-2">
           Failed to Load Data
         </h3>
         <p className="text-slate-600 mb-6">{error}</p>
@@ -829,7 +829,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
     <div className="min-h-screen bg-[#F8FAFC] font-body text-alloro-textDark selection:bg-alloro-orange/10">
       {/* Alert Bar */}
       {hasMissingData && (
-        <div className="bg-alloro-orange text-white text-[10px] font-black uppercase tracking-widest py-3 px-4 text-center border-b border-white/10 flex items-center justify-center gap-2 shadow-sm relative z-[60]">
+        <div className="bg-alloro-orange text-white text-xs font-semibold uppercase tracking-widest py-3 px-4 text-center border-b border-white/10 flex items-center justify-center gap-2 shadow-sm relative z-[60]">
           <AlertTriangle size={14} className="text-white" />
           <span>
             Our agents are currently completing your account setup. You may see
@@ -848,7 +848,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           <div className="flex items-center gap-5">
             <IntelligencePulse />
             <div className="flex flex-col text-left">
-              <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
+              <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 Business Hub
               </h1>
               <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
@@ -859,7 +859,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg border border-green-100">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-              <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">
+              <span className="text-xs font-semibold text-green-600 uppercase tracking-widest">
                 Live Updates On
               </span>
             </div>
@@ -885,18 +885,18 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           className="animate-in fade-in slide-in-from-bottom-2 duration-700 text-left"
         >
           <div className="flex items-center gap-4 mb-3">
-            <div className="px-3 py-1.5 bg-[#FDECEA] rounded-lg text-[#D66853] text-[10px] font-black uppercase tracking-widest border border-[#D66853]/10 flex items-center gap-2">
+            <div className="px-3 py-1.5 bg-[#FDECEA] rounded-lg text-[#D66853] text-xs font-semibold uppercase tracking-widest border border-[#D66853]/10 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#D66853]"></span>
               Latest Update • {format(new Date(), "MMM d")}
             </div>
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(34,197,94,0.4)]"></span>
-              <span className="text-green-500 text-[10px] font-black uppercase tracking-widest">
+              <span className="text-green-500 text-xs font-semibold uppercase tracking-widest">
                 Growth looks good
               </span>
             </div>
           </div>
-          <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
+          <h1 className="text-5xl lg:text-6xl font-semibold font-heading text-alloro-navy tracking-tight leading-none mb-4">
             {getGreeting()}
             {effectiveFirstName ? `, ${effectiveFirstName}` : ""}.
           </h1>
@@ -908,7 +908,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
               {prooflineExplanation && (
                 <button
                   onClick={() => setShowProoflineModal(true)}
-                  className="text-[11px] font-black text-alloro-orange uppercase tracking-[0.2em] hover:text-alloro-navy transition-colors flex items-center gap-2 group"
+                  className="text-xs font-semibold text-alloro-orange uppercase tracking-[0.2em] hover:text-alloro-navy transition-colors flex items-center gap-2 group"
                 >
                   Learn More
                   <ArrowRight
@@ -933,7 +933,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             className="space-y-8 pt-4"
           >
             <div className="flex items-center gap-4 px-1">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-alloro-textDark/40 whitespace-nowrap">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.4em] text-alloro-textDark/40 whitespace-nowrap">
                 Monthly Business Totals
               </h3>
               <div className="h-px w-full bg-black/10"></div>
@@ -1011,7 +1011,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                 <div className="relative z-20 mb-6 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <MapPin size={16} className="text-alloro-orange" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                       Location {currentLocationIndex + 1} of {totalLocations}
                     </span>
                   </div>
@@ -1048,11 +1048,11 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
               <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-12 text-left">
                 <div className="flex-1 space-y-6">
                   <div className="flex items-center gap-3">
-                    <div className="px-4 py-1.5 bg-alloro-navy text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-lg shadow-sm">
+                    <div className="px-4 py-1.5 bg-alloro-navy text-white text-xs font-semibold uppercase tracking-[0.3em] rounded-lg shadow-sm">
                       RANKINGS
                     </div>
                     <div className="h-px w-20 bg-slate-100"></div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
                       {currentLocationData?.location || "LOCAL MARKET"}
                     </span>
                   </div>
@@ -1062,7 +1062,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                         className="animate-in fade-in duration-500"
                         key={currentLocationIndex}
                       >
-                        <h2 className="text-4xl lg:text-5xl font-black font-heading text-alloro-navy tracking-tight leading-[1.05]">
+                        <h2 className="text-4xl lg:text-5xl font-semibold font-heading text-alloro-navy tracking-tight leading-[1.05]">
                           You're ranked{" "}
                           <span className="text-alloro-orange">
                             #{currentLocationData.rank} of{" "}
@@ -1098,13 +1098,13 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
 
                 <div className="flex flex-wrap items-center gap-10 shrink-0">
                   <div className="flex flex-col items-center group/stat">
-                    <span className="text-[10px] font-black text-black uppercase tracking-[0.2em] mb-3">
+                    <span className="text-xs font-semibold text-black uppercase tracking-[0.2em] mb-3">
                       Visibility Score
                     </span>
                     <div className="relative">
                       {currentLocationData ? (
                         <>
-                          <span className="text-7xl font-black font-heading text-alloro-navy tabular-nums group-hover/stat:text-alloro-orange transition-colors duration-500">
+                          <span className="text-7xl font-semibold font-heading text-alloro-navy tabular-nums group-hover/stat:text-alloro-orange transition-colors duration-500">
                             {currentLocationData.score}
                           </span>
                           <div className="absolute -top-1 -right-4 w-2 h-2 rounded-full bg-alloro-orange animate-pulse"></div>
@@ -1118,7 +1118,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                         e.stopPropagation();
                         navigate("/rankings");
                       }}
-                      className="mt-4 px-5 py-2.5 bg-alloro-orange text-white rounded-xl text-[11px] font-black uppercase tracking-widest cursor-pointer flex items-center gap-2"
+                      className="mt-4 px-5 py-2.5 bg-alloro-orange text-white rounded-xl text-xs font-semibold uppercase tracking-widest cursor-pointer flex items-center gap-2"
                     >
                       See why <ArrowRight size={14} />
                     </button>
@@ -1150,12 +1150,12 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                     />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-xl sm:text-2xl font-black font-heading tracking-tight leading-none">
+                    <h3 className="text-xl sm:text-2xl font-semibold font-heading tracking-tight leading-none">
                       Important Updates
                     </h3>
                     <p className="text-white/80 text-base font-medium tracking-tight max-w-lg leading-relaxed">
                       You have{" "}
-                      <span className="text-white font-black underline decoration-white/40 underline-offset-4">
+                      <span className="text-white font-semibold underline decoration-white/40 underline-offset-4">
                         {criticalActionsCount} tasks
                       </span>{" "}
                       that need attention.
@@ -1164,7 +1164,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                 </div>
                 <button
                   onClick={() => navigate("/tasks", { state: { highlightTaskIds: criticalActionIds } })}
-                  className="w-full sm:w-auto px-10 py-4 bg-white text-alloro-orange rounded-2xl text-[11px] font-black uppercase tracking-[0.25em] shadow-lg hover:shadow-xl hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-4 shrink-0"
+                  className="w-full sm:w-auto px-10 py-4 bg-white text-alloro-orange rounded-2xl text-xs font-semibold uppercase tracking-[0.25em] shadow-lg hover:shadow-xl hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-4 shrink-0"
                 >
                   SEE TASKS <ArrowRight size={16} />
                 </button>
@@ -1181,7 +1181,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             className="space-y-8 pt-4"
           >
             <div className="flex items-center gap-4 px-1">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-alloro-textDark/40 whitespace-nowrap">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.4em] text-alloro-textDark/40 whitespace-nowrap">
                 What's working vs What's not
               </h3>
               <div className="h-px w-full bg-black/10"></div>
@@ -1190,7 +1190,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
               {effectiveWins && (
                 <div className="space-y-5">
-                  <div className="flex items-center gap-3 text-green-600 font-black text-[10px] uppercase tracking-[0.3em]">
+                  <div className="flex items-center gap-3 text-green-600 font-semibold text-xs uppercase tracking-[0.3em]">
                     <div className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center border border-green-100 shadow-sm">
                       <TrendingUp size={16} />
                     </div>
@@ -1217,7 +1217,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
 
               {effectiveRisks && (
                 <div className="space-y-5">
-                  <div className="flex items-center gap-3 text-red-600 font-black text-[10px] uppercase tracking-[0.3em]">
+                  <div className="flex items-center gap-3 text-red-600 font-semibold text-xs uppercase tracking-[0.3em]">
                     <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center border border-red-100 shadow-sm">
                       <AlertTriangle size={16} />
                     </div>
@@ -1294,11 +1294,11 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             <section className="bg-white border border-slate-100 rounded-2xl p-6 lg:px-10 lg:py-8 shadow-premium relative flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="flex-1 text-left space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="px-2.5 py-1 bg-red-50 text-red-600 text-[9px] font-black uppercase tracking-widest rounded-lg border border-red-100 leading-none">
+                  <span className="px-2.5 py-1 bg-red-50 text-red-600 text-[9px] font-semibold uppercase tracking-widest rounded-lg border border-red-100 leading-none">
                     ACTION NEEDED
                   </span>
                 </div>
-                <h2 className="text-3xl lg:text-4xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                <h2 className="text-3xl lg:text-4xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
                   {parseHighlightTags(
                     (immediateTask.title || "").replace(/<[^>]*>/g, ""),
                     "highlight-red",
@@ -1316,7 +1316,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                   const taskId = immediateTask.id;
                   navigate("/tasks", { state: { scrollToTaskId: taskId } });
                 }}
-                className="w-full sm:w-auto px-8 py-4 bg-[#11151C] text-white rounded-[1rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3 shrink-0 active:scale-95 group"
+                className="w-full sm:w-auto px-8 py-4 bg-[#11151C] text-white rounded-[1rem] text-xs font-semibold uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3 shrink-0 active:scale-95 group"
               >
                 See in Tasks{" "}
                 <ChevronRight
@@ -1338,12 +1338,12 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-1">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="px-4 py-1.5 bg-alloro-orange/10 text-alloro-orange text-[10px] font-black uppercase tracking-[0.3em] rounded-lg leading-none">
+                  <div className="px-4 py-1.5 bg-alloro-orange/10 text-alloro-orange text-xs font-semibold uppercase tracking-[0.3em] rounded-lg leading-none">
                     Estimates Only
                   </div>
                   <div className="h-px w-24 bg-alloro-navy/10"></div>
                 </div>
-                <h2 className="text-4xl lg:text-5xl font-black font-heading text-alloro-navy tracking-tighter leading-tight">
+                <h2 className="text-4xl lg:text-5xl font-semibold font-heading text-alloro-navy tracking-tighter leading-tight">
                   3 Fixes That Could Return{" "}
                   <span className="text-alloro-orange inline-flex items-baseline gap-1">
                     {formatCurrency(effectiveEstimatedRevenue)}
@@ -1380,7 +1380,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
 
                     <div className="relative z-10 flex flex-col h-full">
                       {/* Title at top */}
-                      <h4 className="text-xl lg:text-2xl font-black font-heading text-alloro-navy leading-tight tracking-tight mb-4">
+                      <h4 className="text-xl lg:text-2xl font-semibold font-heading text-alloro-navy leading-tight tracking-tight mb-4">
                         {title}
                       </h4>
 
@@ -1403,7 +1403,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                           onClick={() =>
                             setSelectedFix({ index: idx + 1, fix })
                           }
-                          className="flex items-center gap-3 text-[10px] font-black text-alloro-navy uppercase tracking-[0.3em] group-hover:text-alloro-orange transition-colors cursor-pointer hover:gap-4"
+                          className="flex items-center gap-3 text-xs font-semibold text-alloro-navy uppercase tracking-[0.3em] group-hover:text-alloro-orange transition-colors cursor-pointer hover:gap-4"
                         >
                           View More <ArrowRight size={16} />
                         </button>
@@ -1437,7 +1437,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                 >
                   <div className="p-8 lg:p-10 space-y-6">
                     <div className="flex items-start justify-between">
-                      <h3 className="text-2xl lg:text-3xl font-black font-heading text-alloro-navy tracking-tight">
+                      <h3 className="text-2xl lg:text-3xl font-semibold font-heading text-alloro-navy tracking-tight">
                         {title}
                       </h3>
                       <button
@@ -1455,7 +1455,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                         <span className="text-sm font-bold text-green-700">
                           Estimated Return:
                         </span>
-                        <span className="text-lg font-black text-green-600">
+                        <span className="text-lg font-semibold text-green-600">
                           {formatCurrency(fixData.estimated_return)}
                         </span>
                       </div>
@@ -1464,7 +1464,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                     <div className="pt-6 border-t border-slate-100 space-y-6">
                       {/* Description */}
                       <div>
-                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+                        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
                           Description
                         </h4>
                         <p className="text-lg text-slate-600 font-medium leading-relaxed">
@@ -1475,7 +1475,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                       {/* Why Important */}
                       {fixData && fixData.why_important && (
                         <div>
-                          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+                          <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
                             Why This Matters
                           </h4>
                           <p className="text-base text-slate-600 font-medium leading-relaxed">
@@ -1487,7 +1487,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                       {/* Expected Impact */}
                       {fixData && fixData.expected_impact && (
                         <div>
-                          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+                          <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
                             Expected Impact
                           </h4>
                           <p className="text-base text-slate-600 font-medium leading-relaxed">
@@ -1501,7 +1501,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                         fixData.sources &&
                         fixData.sources.length > 0 && (
                           <div>
-                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+                            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
                               Data Sources
                             </h4>
                             <ul className="space-y-1.5">
@@ -1550,13 +1550,13 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
               <div className="p-8 lg:p-10 space-y-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                       Last Updated:{" "}
                       {prooflineLastUpdated
                         ? format(new Date(prooflineLastUpdated), "MMM d, yyyy")
                         : "N/A"}
                     </span>
-                    <h3 className="text-2xl lg:text-3xl font-black font-heading text-alloro-navy tracking-tight">
+                    <h3 className="text-2xl lg:text-3xl font-semibold font-heading text-alloro-navy tracking-tight">
                       {prooflineTitle || "Business Clarity Update"}
                     </h3>
                   </div>
@@ -1596,7 +1596,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           <div className="pt-10 text-center">
             <button
               onClick={() => setShowDataHub(!showDataHub)}
-              className="w-full sm:w-auto inline-flex items-center justify-center px-12 py-7 bg-white border border-alloro-orange/20 text-alloro-orange text-[12px] font-black uppercase tracking-[0.3em] rounded-2xl hover:bg-alloro-orange hover:text-white transition-all shadow-premium active:scale-95 group"
+              className="w-full sm:w-auto inline-flex items-center justify-center px-12 py-7 bg-white border border-alloro-orange/20 text-alloro-orange text-[12px] font-semibold uppercase tracking-[0.3em] rounded-2xl hover:bg-alloro-orange hover:text-white transition-all shadow-premium active:scale-95 group"
             >
               {showDataHub ? "Hide Detail Data" : "See Detailed Business Data"}
               <div
@@ -1628,10 +1628,10 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             className="w-16 h-16 rounded-2xl shadow-2xl"
           />
           <div className="space-y-4">
-            <p className="text-[11px] text-alloro-textDark/20 font-black tracking-[0.4em] uppercase">
+            <p className="text-xs text-alloro-textDark/20 font-semibold tracking-[0.4em] uppercase">
               Alloro Business Clarity • v2.6.0
             </p>
-            <div className="flex items-center justify-center gap-10 text-[10px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em]">
+            <div className="flex items-center justify-center gap-10 text-xs font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em]">
               <span className="flex items-center gap-3">
                 <ShieldCheck size={18} /> HIPAA SECURE
               </span>

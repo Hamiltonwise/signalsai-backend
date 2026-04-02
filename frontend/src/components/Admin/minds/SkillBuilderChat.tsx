@@ -280,7 +280,7 @@ export function SkillBuilderChat({
           </div>
           <div>
             <h3 className="text-sm font-semibold text-[#eaeaea]">Skill Builder</h3>
-            <p className="text-[11px] text-[#6a6a75]">
+            <p className="text-xs text-[#6a6a75]">
               Building a skill for {mindName}
             </p>
           </div>
@@ -419,7 +419,7 @@ export function SkillBuilderChat({
 
         {/* Resolved fields sidebar */}
         <div className="w-56 border-l border-white/6 p-4 overflow-y-auto" style={{ backgroundColor: "#1e1e1c" }}>
-          <h4 className="text-[10px] font-semibold text-[#6a6a75] uppercase tracking-wider mb-3">
+          <h4 className="text-xs font-semibold text-[#6a6a75] uppercase tracking-wider mb-3">
             Resolved Fields
           </h4>
 
@@ -431,7 +431,7 @@ export function SkillBuilderChat({
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-[10px] text-[#6a6a75] mt-1">
+            <p className="text-xs text-[#6a6a75] mt-1">
               {resolvedCount}/{TOTAL_FIELDS} fields
             </p>
           </div>
@@ -453,12 +453,12 @@ export function SkillBuilderChat({
                         isResolved ? "bg-green-400" : "bg-white/10"
                       }`}
                     />
-                    <span className="text-[10px] font-medium text-[#a0a0a8]">
+                    <span className="text-xs font-medium text-[#a0a0a8]">
                       {label}
                     </span>
                   </div>
                   {isResolved && (
-                    <p className="text-[10px] text-[#c2c0b6] pl-3.5 truncate">
+                    <p className="text-xs text-[#c2c0b6] pl-3.5 truncate">
                       {displayValue}
                     </p>
                   )}

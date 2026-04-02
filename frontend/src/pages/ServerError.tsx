@@ -8,7 +8,7 @@ import { RefreshCw } from "lucide-react";
 export default function ServerError() {
   return (
     <div className="min-h-dvh bg-[#FAFAF8] flex flex-col items-center justify-center px-5 text-center">
-      <p className="text-7xl font-black text-[#D56753]/10 mb-4">500</p>
+      <p className="text-7xl font-semibold text-[#D56753]/10 mb-4">500</p>
       <h1 className="text-2xl font-bold text-[#212D40]">Something went wrong on our end.</h1>
       <p className="text-base text-gray-500 mt-2 max-w-sm">
         We've been notified and are looking into it.

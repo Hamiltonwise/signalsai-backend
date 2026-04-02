@@ -89,7 +89,7 @@ export default function GoogleReviewsGuide() {
         </header>
 
         <main className="mx-auto max-w-2xl px-5 pb-16">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
             Google Reviews for Dental Practices: What Actually Works in 2026
           </h1>
 
@@ -152,7 +152,7 @@ export default function GoogleReviewsGuide() {
         </main>
 
         <footer className="py-8 text-center border-t border-slate-100">
-          <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
+          <p className="text-xs font-medium tracking-wide text-slate-300 uppercase">
             Alloro &middot; Business Clarity for Dental Practices
           </p>
         </footer>

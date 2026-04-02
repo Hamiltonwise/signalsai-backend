@@ -125,7 +125,7 @@ export default function ScoreImprovementPlan() {
               Score Improvement Plan
             </h3>
             {currentScore != null && estimatedNewScore != null && !allDone && (
-              <p className="text-[11px] text-[#212D40]/50 mt-0.5">
+              <p className="text-xs text-[#212D40]/50 mt-0.5">
                 {currentScore} pts now. Reach{" "}
                 <span className="font-bold text-[#D56753]">
                   {estimatedNewScore}
@@ -134,7 +134,7 @@ export default function ScoreImprovementPlan() {
               </p>
             )}
             {allDone && (
-              <p className="text-[11px] text-green-600 font-semibold mt-0.5">
+              <p className="text-xs text-green-600 font-semibold mt-0.5">
                 All actions complete. Your score will update on next scan.
               </p>
             )}
@@ -208,16 +208,16 @@ export default function ScoreImprovementPlan() {
                     {action.action}
                   </p>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <span className="text-[10px] font-bold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-md">
+                    <span className="text-xs font-bold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-md">
                       +{action.estimatedGain} pts
                     </span>
-                    <span className={`text-[10px] font-bold ${diff.color} ${diff.bg} px-2 py-0.5 rounded-md border ${diff.border}`}>
+                    <span className={`text-xs font-bold ${diff.color} ${diff.bg} px-2 py-0.5 rounded-md border ${diff.border}`}>
                       {diff.label}
                     </span>
-                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <span className="text-xs text-slate-400 flex items-center gap-1">
                       <Clock size={10} /> {action.timeEstimate}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-xs text-slate-400">
                       {action.subScore}: {action.currentPoints}/{action.maxPoints}
                     </span>
                   </div>

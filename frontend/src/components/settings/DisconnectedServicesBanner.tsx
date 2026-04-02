@@ -37,7 +37,7 @@ export const DisconnectedServicesBanner: React.FC<
           <AlertCircle size={20} className="text-amber-600" />
         </div>
         <div>
-          <h3 className="font-black text-amber-900 text-lg">
+          <h3 className="font-semibold text-amber-900 text-lg">
             {disconnectedServices.length === 1
               ? "1 Integration Not Connected"
               : `${disconnectedServices.length} Integrations Not Connected`}

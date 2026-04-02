@@ -509,7 +509,7 @@ export function MindSettingsTab({ mind, onMindUpdated, onMindDeleted }: MindSett
                       {source.name || source.url}
                     </span>
                     {!source.is_active && (
-                      <span className="text-[10px] font-medium text-gray-400 uppercase">
+                      <span className="text-xs font-medium text-gray-400 uppercase">
                         inactive
                       </span>
                     )}
@@ -575,7 +575,7 @@ export function MindSettingsTab({ mind, onMindUpdated, onMindDeleted }: MindSett
                       v{version.version_number}
                     </span>
                     {isPublished && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-alloro-orange">
+                      <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-alloro-orange">
                         <Crown className="h-3 w-3" />
                         Published
                       </span>
@@ -793,8 +793,8 @@ export function MindSettingsTab({ mind, onMindUpdated, onMindDeleted }: MindSett
           {testResponse && (
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Response</span>
-                <span className="text-[10px] text-gray-400">{testResponse.tokens_used} tokens</span>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Response</span>
+                <span className="text-xs text-gray-400">{testResponse.tokens_used} tokens</span>
               </div>
               <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
                 {testResponse.response}
@@ -902,7 +902,7 @@ export function MindSettingsTab({ mind, onMindUpdated, onMindDeleted }: MindSett
                       </span>
                     )}
                     <span
-                      className={`text-[10px] font-medium uppercase px-2 py-0.5 rounded-full ${
+                      className={`text-xs font-medium uppercase px-2 py-0.5 rounded-full ${
                         cred.status === "active"
                           ? "bg-green-50 text-green-600"
                           : cred.status === "revoked"
@@ -913,7 +913,7 @@ export function MindSettingsTab({ mind, onMindUpdated, onMindDeleted }: MindSett
                       {cred.status}
                     </span>
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-0.5">
+                  <p className="text-xs text-gray-400 mt-0.5">
                     Added {new Date(cred.created_at).toLocaleDateString()}
                   </p>
                 </div>

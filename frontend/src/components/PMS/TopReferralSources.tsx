@@ -136,7 +136,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
       {/* Table */}
       <div className="flex-1 overflow-y-auto p-2">
         <table className="w-full text-left border-collapse">
-          <thead className="sticky top-0 bg-white z-10 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          <thead className="sticky top-0 bg-white z-10 text-xs font-bold text-slate-400 uppercase tracking-wider">
             <tr>
               <th className="px-4 py-3 pl-6">Source Name</th>
               <th className="px-4 py-3 w-32">Volume</th>
@@ -156,7 +156,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
                   <div className="flex items-center gap-4">
                     <div
                       className={`
-                        w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm
+                        w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm
                         ${
                           idx < 3
                             ? "bg-alloro-orange text-white"
@@ -170,7 +170,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
                       <div className="font-bold text-sm text-alloro-navy truncate max-w-[200px]">
                         {source.name}
                       </div>
-                      <div className="text-[11px] text-slate-400 font-medium mt-0.5">
+                      <div className="text-xs text-slate-400 font-medium mt-0.5">
                         {source.percentage}% Share
                       </div>
                     </div>
@@ -195,7 +195,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
                     <span className="text-sm font-bold text-slate-700 tabular-nums">
                       {Math.round(source.referrals).toLocaleString()}
                     </span>
-                    <span className="text-[10px] text-slate-400">refs</span>
+                    <span className="text-xs text-slate-400">refs</span>
                   </div>
                 </td>
                 <td className="px-4 py-4 text-right pr-6 align-top pt-5">

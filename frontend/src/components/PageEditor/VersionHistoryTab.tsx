@@ -147,13 +147,13 @@ export default function VersionHistoryTab({
                     v{version.version}
                   </span>
                   <span
-                    className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border ${config.color}`}
+                    className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded border ${config.color}`}
                   >
                     <StatusIcon size={10} />
                     {config.label}
                   </span>
                 </div>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-xs text-gray-400">
                   {relativeTime(version.updated_at)}
                 </span>
               </div>
@@ -164,7 +164,7 @@ export default function VersionHistoryTab({
                     onClick={() =>
                       isPreviewing ? onExitPreview() : onPreview(version)
                     }
-                    className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
                       isPreviewing
                         ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -178,7 +178,7 @@ export default function VersionHistoryTab({
                   <button
                     onClick={() => handleRestore(version.id)}
                     disabled={restoring === version.id}
-                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium bg-alloro-orange/10 text-alloro-orange hover:bg-alloro-orange/20 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-alloro-orange/10 text-alloro-orange hover:bg-alloro-orange/20 transition-colors disabled:opacity-50"
                   >
                     <RotateCcw
                       size={11}

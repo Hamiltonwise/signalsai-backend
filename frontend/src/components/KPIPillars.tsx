@@ -213,11 +213,11 @@ export const KPIPillars: FC<KPIPillarsProps> = ({
                     key={metric.name}
                     className="flex items-center justify-between"
                   >
-                    <span className="text-[11px] text-slate-600">
+                    <span className="text-xs text-slate-600">
                       {metric.name}
                     </span>
                     <span
-                      className={`text-[11px] px-2 py-1 rounded-full backdrop-blur-sm border border-white/50 ${getStatusColor(
+                      className={`text-xs px-2 py-1 rounded-full backdrop-blur-sm border border-white/50 ${getStatusColor(
                         metric.status
                       )}`}
                     >

@@ -42,7 +42,7 @@ export function TailorToggle({ minimized = false }: TailorToggleProps) {
       }`}
     >
       <Scissors size={14} className="shrink-0" />
-      <span className="text-[11px] font-bold uppercase tracking-wider">
+      <span className="text-xs font-bold uppercase tracking-wider">
         {isTailorMode ? "Tailor On" : "Tailor"}
       </span>
     </button>

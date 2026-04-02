@@ -229,7 +229,7 @@ export default function DashboardSettings() {
           <ExportButton label="Rankings history" description="CSV, last 12 weeks" path="/user/export/rankings" filename="alloro-rankings.csv" />
           <ExportButton label="Referral sources" description="CSV" path="/user/export/referrals" filename="alloro-referrals.csv" />
         </div>
-        <p className="text-[11px] text-gray-400 mt-4 leading-relaxed">
+        <p className="text-xs text-gray-400 mt-4 leading-relaxed">
           No support ticket needed. No waiting period. Your data, anytime.
         </p>
       </div>
@@ -284,7 +284,7 @@ function ExportButton({ label, description, path, filename }: {
     >
       <div className="text-left">
         <p className="text-sm font-medium text-[#212D40]">{label}</p>
-        <p className="text-[11px] text-gray-400">{description}</p>
+        <p className="text-xs text-gray-400">{description}</p>
       </div>
       <Download className={`h-4 w-4 text-gray-400 ${downloading ? "animate-pulse" : ""}`} />
     </button>

@@ -96,7 +96,7 @@ function NodeCard({
         </p>
       </div>
       {!node.is_active && (
-        <span className="shrink-0 text-[10px] font-bold text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">
+        <span className="shrink-0 text-xs font-bold text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">
           PAUSED
         </span>
       )}
@@ -133,7 +133,7 @@ function DepartmentBranch({
       {/* Department header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-gray-600 transition-colors px-1 py-1"
+        className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-gray-600 transition-colors px-1 py-1"
       >
         {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         {department}
@@ -542,16 +542,16 @@ function NodeTaskList({ nodeId, nodeName: _nodeName }: { nodeId: string; nodeNam
                     {task.title}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] font-medium text-gray-400">
+                    <span className="text-xs font-medium text-gray-400">
                       {task.owner_name}
                     </span>
                     {task.due_date && (
-                      <span className={`text-[10px] font-medium ${isOverdue ? "text-red-500" : "text-gray-400"}`}>
+                      <span className={`text-xs font-medium ${isOverdue ? "text-red-500" : "text-gray-400"}`}>
                         {isOverdue ? "overdue" : task.due_date}
                       </span>
                     )}
                     {task.priority !== "normal" && (
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${PRIORITY_BADGES[task.priority] || ""}`}>
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${PRIORITY_BADGES[task.priority] || ""}`}>
                         {task.priority}
                       </span>
                     )}
@@ -825,7 +825,7 @@ export default function DreamTeam() {
         <div className="space-y-6">
           {/* Leadership row */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 px-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 px-1">
               Leadership
             </p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-3">

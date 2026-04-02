@@ -128,12 +128,12 @@ function LocationCard({
                 {location.name}
               </p>
               {location.is_primary && (
-                <span className="shrink-0 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase">
+                <span className="shrink-0 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-bold uppercase">
                   Primary
                 </span>
               )}
               {location.is_coming_soon && (
-                <span className="shrink-0 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold uppercase flex items-center gap-1">
+                <span className="shrink-0 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-xs font-bold uppercase flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   Coming Soon
                 </span>
@@ -155,21 +155,21 @@ function LocationCard({
         <div className="flex items-center gap-3 shrink-0">
           {location.ranking_position != null && (
             <div className="text-right">
-              <p className="text-lg font-black text-[#212D40]">
+              <p className="text-lg font-semibold text-[#212D40]">
                 {location.ranking_position ? `#${location.ranking_position}` : "Unranked"}
               </p>
-              <p className="text-[10px] text-gray-400 uppercase font-bold">
+              <p className="text-xs text-gray-400 uppercase font-bold">
                 Position
               </p>
             </div>
           )}
           {location.review_count != null && (
             <div className="text-right">
-              <p className="text-lg font-black text-[#212D40] flex items-center gap-1">
+              <p className="text-lg font-semibold text-[#212D40] flex items-center gap-1">
                 <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                 {location.review_count}
               </p>
-              <p className="text-[10px] text-gray-400 uppercase font-bold">
+              <p className="text-xs text-gray-400 uppercase font-bold">
                 Reviews
               </p>
             </div>

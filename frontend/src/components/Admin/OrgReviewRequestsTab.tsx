@@ -173,7 +173,7 @@ export function OrgReviewRequestsTab({
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <span
-                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                  className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                     r.status === "converted"
                       ? "bg-emerald-50 text-emerald-700"
                       : r.status === "clicked"

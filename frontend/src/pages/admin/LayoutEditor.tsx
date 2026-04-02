@@ -426,11 +426,11 @@ function LayoutEditorInner() {
           </Link>
           <div className="w-px h-4 bg-gray-200" />
           <span className="text-xs font-medium text-gray-700 capitalize">{field}</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">
+          <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-medium">
             layout
           </span>
           {isDirty && (
-            <span className="text-[10px] text-gray-400">Unsaved changes</span>
+            <span className="text-xs text-gray-400">Unsaved changes</span>
           )}
         </div>
         {/* Center: Device switcher + code toggle (header/footer only) */}

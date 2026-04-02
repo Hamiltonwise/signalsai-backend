@@ -542,7 +542,7 @@ export function MindChatTab({ mindId, mindName }: MindChatTabProps) {
                       {conv.title || "New conversation"}
                     </p>
                   )}
-                  <p className="text-[10px] text-[#6a6a75]">
+                  <p className="text-xs text-[#6a6a75]">
                     {timeAgo(conv.updated_at)}
                   </p>
                 </div>
@@ -596,8 +596,8 @@ export function MindChatTab({ mindId, mindName }: MindChatTabProps) {
           <div className="flex items-center justify-between px-4 py-2 border-b border-white/4" style={{ backgroundColor: "#1e1e1c" }}>
             <span className="text-xs text-[#a0a0a8]">Enable sound notifications for agent replies?</span>
             <div className="flex items-center gap-2">
-              <button onClick={acceptSound} className="text-[10px] font-semibold text-alloro-orange hover:underline">Enable</button>
-              <button onClick={dismissSound} className="text-[10px] text-[#6a6a75] hover:text-[#a0a0a8]">No thanks</button>
+              <button onClick={acceptSound} className="text-xs font-semibold text-alloro-orange hover:underline">Enable</button>
+              <button onClick={dismissSound} className="text-xs text-[#6a6a75] hover:text-[#a0a0a8]">No thanks</button>
             </div>
           </div>
         )}
@@ -606,7 +606,7 @@ export function MindChatTab({ mindId, mindName }: MindChatTabProps) {
           <div className="flex justify-end px-3 pt-2">
             <button
               onClick={handleExportConversation}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] text-[#6a6a75] hover:text-[#eaeaea] hover:bg-white/[0.04] transition-colors"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-[#6a6a75] hover:text-[#eaeaea] hover:bg-white/[0.04] transition-colors"
               title="Export to continue somewhere else"
             >
               <Download className="h-3.5 w-3.5" />

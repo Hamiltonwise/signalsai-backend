@@ -146,10 +146,10 @@ export default function GPDiscoveryPage() {
         {/* Header */}
         <header className="bg-[#212D40] text-white py-6 px-5">
           <div className="mx-auto max-w-2xl">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1">
+            <p className="text-xs font-bold uppercase tracking-widest text-white/40 mb-1">
               Refer a Patient
             </p>
-            <h1 className="text-2xl font-extrabold tracking-tight">{practice.name}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{practice.name}</h1>
             {practice.city && (
               <p className="text-sm text-white/60 mt-1">{practice.specialty || "Specialist"} in {practice.city}</p>
             )}
@@ -166,7 +166,7 @@ export default function GPDiscoveryPage() {
                 </div>
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-white/70">Direct Scheduling</p>
-                  <a href={`tel:${practice.phone}`} className="text-xl font-black hover:underline">
+                  <a href={`tel:${practice.phone}`} className="text-xl font-semibold hover:underline">
                     {practice.phone}
                   </a>
                 </div>
@@ -296,7 +296,7 @@ export default function GPDiscoveryPage() {
                     placeholder="First name only"
                     className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
                   />
-                  <p className="text-[10px] text-gray-400 mt-1">First name only for PHI compliance</p>
+                  <p className="text-xs text-gray-400 mt-1">First name only for PHI compliance</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -362,7 +362,7 @@ export default function GPDiscoveryPage() {
 
           {/* Footer */}
           <div className="text-center pt-4 border-t border-gray-100">
-            <p className="text-[11px] text-gray-300">
+            <p className="text-xs text-gray-300">
               Powered by Alloro
             </p>
           </div>

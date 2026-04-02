@@ -142,7 +142,7 @@ export default function BoardChat() {
             <Brain size={20} />
           </div>
           <div className="flex flex-col text-left">
-            <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">The Board</h1>
+            <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">The Board</h1>
             <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5">{config.subtitle}</span>
           </div>
         </div>
@@ -152,7 +152,7 @@ export default function BoardChat() {
           {messages.length === 0 && (
             <div className="text-center py-16">
               <div className="w-16 h-16 bg-alloro-orange/10 rounded-2xl flex items-center justify-center mx-auto mb-6"><Sparkles className="w-8 h-8 text-alloro-orange" /></div>
-              <h2 className="text-xl font-black text-alloro-textDark tracking-tight mb-2">{config.greeting}</h2>
+              <h2 className="text-xl font-semibold text-alloro-textDark tracking-tight mb-2">{config.greeting}</h2>
               <p className="text-sm text-slate-500 max-w-md mx-auto mb-8">{config.description}</p>
               <div className="flex flex-wrap gap-2 justify-center max-w-lg mx-auto">
                 {config.starters.map(p => (

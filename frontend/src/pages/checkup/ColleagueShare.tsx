@@ -113,12 +113,12 @@ export default function ColleagueShare() {
           <div className="flex flex-col items-center gap-2">
             <div className="relative">
               <div className="w-20 h-20 rounded-full border-[3px] border-slate-100 flex items-center justify-center">
-                <span className="text-3xl font-extrabold text-[#212D40]">
+                <span className="text-3xl font-semibold text-[#212D40]">
                   {checkupScore}
                 </span>
               </div>
               <div
-                className={`absolute -bottom-1 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold text-white uppercase tracking-wider ${getScoreColor(checkupScore)}`}
+                className={`absolute -bottom-1 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-bold text-white uppercase tracking-wider ${getScoreColor(checkupScore)}`}
               >
                 {getScoreLabel(checkupScore)}
               </div>
@@ -128,7 +128,7 @@ export default function ColleagueShare() {
 
         {/* Headline */}
         <div className="space-y-3">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight leading-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#212D40] tracking-tight leading-tight">
             Know someone who should see theirs?
           </h1>
           <p className="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">

@@ -103,7 +103,7 @@ function SkillCard({
             <h4 className="text-sm font-semibold text-gray-900">
               {skill.name}
             </h4>
-            <p className="text-[11px] text-gray-400 font-mono">{skill.slug}</p>
+            <p className="text-xs text-gray-400 font-mono">{skill.slug}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -132,17 +132,17 @@ function SkillCard({
       {/* Trigger / Pipeline info */}
       {skill.work_creation_type && (
         <div className="flex flex-wrap gap-1.5 mb-3">
-          <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">
+          <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">
             {skill.work_creation_type}
           </span>
-          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
             {skill.trigger_type}
           </span>
-          <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-medium text-purple-600">
+          <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-600">
             {skill.pipeline_mode.replace(/_/g, " ")}
           </span>
           {channelName && (
-            <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-600">
+            <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-600">
               → {channelName}
             </span>
           )}
@@ -151,7 +151,7 @@ function SkillCard({
 
       {/* API endpoint */}
       <div className="flex items-center gap-2 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 mb-3">
-        <code className="text-[10px] text-gray-500 truncate flex-1 font-mono">
+        <code className="text-xs text-gray-500 truncate flex-1 font-mono">
           POST {endpoint}
         </code>
         <button

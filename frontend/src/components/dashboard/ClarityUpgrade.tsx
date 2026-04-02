@@ -60,13 +60,13 @@ export default function ClarityUpgrade({
     <div className="rounded-2xl border border-[#D56753]/15 bg-white p-5 relative">
       <button
         onClick={() => setDismissed(true)}
-        className="absolute top-3 right-3 p-1 text-gray-300 hover:text-gray-500 transition-colors"
+        className="absolute top-3 right-3 p-1 text-gray-400 hover:text-gray-500 transition-colors"
         aria-label="Dismiss"
       >
         <X className="h-3.5 w-3.5" />
       </button>
 
-      <p className="text-[10px] font-bold uppercase tracking-widest text-[#D56753]/50 mb-2">
+      <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]/50 mb-2">
         Based on your data
       </p>
       <p className="text-sm font-bold text-[#212D40] leading-snug pr-6">
@@ -84,7 +84,7 @@ export default function ClarityUpgrade({
         <ArrowRight className="h-3.5 w-3.5" />
       </a>
 
-      <p className="text-[10px] text-gray-400 mt-3">
+      <p className="text-xs text-gray-400 mt-3">
         No commitment. See the difference first.
       </p>
     </div>

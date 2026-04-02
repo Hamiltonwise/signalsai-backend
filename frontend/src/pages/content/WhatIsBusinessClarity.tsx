@@ -106,7 +106,7 @@ export default function WhatIsBusinessClarity() {
 
         <div className="mx-auto max-w-2xl px-5 pb-16">
           {/* H1 */}
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
             Business Clarity: What It Is, Why It's Rare, and What Changes When
             You Have It
           </h1>

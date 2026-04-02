@@ -89,7 +89,7 @@ export default function OwnerProfile() {
         {/* Header */}
         {step === 0 && (
           <div className="text-center mb-10">
-            <h1 className="text-2xl font-extrabold text-[#212D40] tracking-tight">
+            <h1 className="text-2xl font-semibold text-[#212D40] tracking-tight">
               Before we go further.
             </h1>
             <p className="text-sm text-gray-500 mt-2">
@@ -145,7 +145,7 @@ export default function OwnerProfile() {
               />
               <span className="text-sm text-gray-400">10</span>
             </div>
-            <p className="text-center text-3xl font-black text-[#212D40]">{sliderValue}</p>
+            <p className="text-center text-3xl font-semibold text-[#212D40]">{sliderValue}</p>
 
             {/* Followup question */}
             {current.followup && (

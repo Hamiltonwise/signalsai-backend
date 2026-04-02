@@ -221,7 +221,7 @@ function ArtifactEditorView({
         <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
           <p className="text-xs text-amber-800">
             <strong>Reminder:</strong> Build with base path matching this page's slug:{" "}
-            <code className="bg-amber-100 px-1 py-0.5 rounded text-[11px]">
+            <code className="bg-amber-100 px-1 py-0.5 rounded text-xs">
               vite build --base={page.path}/
             </code>
           </p>

@@ -269,20 +269,20 @@ export const BillingTab: React.FC = () => {
                   {isCancellingAtPeriodEnd ? (
                     <div className="px-2.5 py-1 bg-red-500/40 border border-red-300/40 rounded-full flex items-center gap-1.5">
                       <XCircle size={12} className="text-white" />
-                      <span className="text-white text-[10px] font-black uppercase tracking-wider">
+                      <span className="text-white text-xs font-semibold uppercase tracking-wider">
                         Cancelled
                       </span>
                     </div>
                   ) : (
                     <div className="px-2.5 py-1 bg-white/20 border border-white/25 rounded-full flex items-center gap-1.5">
                       <CheckCircle2 size={12} className="text-white" />
-                      <span className="text-white text-[10px] font-black uppercase tracking-wider">
+                      <span className="text-white text-xs font-semibold uppercase tracking-wider">
                         Active
                       </span>
                     </div>
                   )}
                 </div>
-                <h3 className="text-xl font-black text-white tracking-tight mb-0.5">
+                <h3 className="text-xl font-semibold text-white tracking-tight mb-0.5">
                   {PLAN.name}
                 </h3>
                 <p className="text-white/60 text-sm font-medium">
@@ -386,7 +386,7 @@ export const BillingTab: React.FC = () => {
                 <XCircle size={22} className="text-red-500" />
               </div>
               <div>
-                <h3 className="text-xl font-black text-alloro-navy tracking-tight mb-0.5">
+                <h3 className="text-xl font-semibold text-alloro-navy tracking-tight mb-0.5">
                   Subscription Cancelled
                 </h3>
                 <p className="text-slate-400 text-sm font-medium">
@@ -428,7 +428,7 @@ export const BillingTab: React.FC = () => {
                 <Zap size={22} className="text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-black text-alloro-navy tracking-tight mb-0.5">
+                <h3 className="text-xl font-semibold text-alloro-navy tracking-tight mb-0.5">
                   Get Started with Alloro
                 </h3>
                 <p className="text-slate-400 text-sm font-medium">
@@ -438,7 +438,7 @@ export const BillingTab: React.FC = () => {
             </div>
 
             <div className="px-3 py-1.5 bg-alloro-orange/[0.07] rounded-lg w-fit mb-6">
-              <span className="text-alloro-orange font-black text-[10px] tracking-[0.15em] uppercase">
+              <span className="text-alloro-orange font-semibold text-xs tracking-[0.15em] uppercase">
                 {PLAN.name}
               </span>
             </div>
@@ -487,7 +487,7 @@ export const BillingTab: React.FC = () => {
         >
           <div className="flex items-center gap-2.5 mb-5">
             <Receipt size={18} className="text-alloro-navy/40" />
-            <h3 className="text-lg font-black text-alloro-navy tracking-tight">
+            <h3 className="text-lg font-semibold text-alloro-navy tracking-tight">
               Payment History
             </h3>
           </div>
@@ -496,19 +496,19 @@ export const BillingTab: React.FC = () => {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-black/5">
-                  <th className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-3 pr-4">
+                  <th className="text-xs font-semibold text-slate-400 uppercase tracking-widest pb-3 pr-4">
                     Date
                   </th>
-                  <th className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-3 pr-4">
+                  <th className="text-xs font-semibold text-slate-400 uppercase tracking-widest pb-3 pr-4">
                     Amount
                   </th>
-                  <th className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-3 pr-4">
+                  <th className="text-xs font-semibold text-slate-400 uppercase tracking-widest pb-3 pr-4">
                     Status
                   </th>
-                  <th className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-3 pr-4">
+                  <th className="text-xs font-semibold text-slate-400 uppercase tracking-widest pb-3 pr-4">
                     Coupon
                   </th>
-                  <th className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-3">
+                  <th className="text-xs font-semibold text-slate-400 uppercase tracking-widest pb-3">
                     Invoice
                   </th>
                 </tr>
@@ -534,7 +534,7 @@ export const BillingTab: React.FC = () => {
                     </td>
                     <td className="py-3 pr-4">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
                           invoice.status === "paid"
                             ? "bg-green-50 text-green-700 border border-green-200"
                             : invoice.status === "open"

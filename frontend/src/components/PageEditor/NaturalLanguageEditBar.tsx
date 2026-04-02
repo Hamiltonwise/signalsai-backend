@@ -197,11 +197,11 @@ export default function NaturalLanguageEditBar({
             {changes.map((change, i) => (
               <div key={i} className="px-4 py-2.5">
                 <div className="flex items-start gap-2 mb-1.5">
-                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mt-0.5">
+                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-0.5">
                     {change.section}
                   </span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                    className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                       change.changeType === "replace"
                         ? "bg-blue-50 text-blue-600"
                         : change.changeType === "add"
@@ -212,7 +212,7 @@ export default function NaturalLanguageEditBar({
                     {change.changeType}
                   </span>
                   {change.confidence === "low" && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium flex items-center gap-0.5">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium flex items-center gap-0.5">
                       <AlertTriangle className="h-2.5 w-2.5" />
                       Review this one
                     </span>

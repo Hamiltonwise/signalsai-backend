@@ -18,7 +18,7 @@ export default function PricingPage() {
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight">
             Everything Alloro does. One price.
           </h1>
           <p className="mt-4 text-base sm:text-lg text-[#212D40]/60">
@@ -35,7 +35,7 @@ export default function PricingPage() {
             <div className="p-8">
               {/* Price */}
               <div className="text-center mb-8">
-                <span className="text-5xl sm:text-6xl font-black text-[#212D40]">
+                <span className="text-5xl sm:text-6xl font-semibold text-[#212D40]">
                   $2,000
                 </span>
                 <span className="text-lg text-slate-400 ml-2">/ month</span>

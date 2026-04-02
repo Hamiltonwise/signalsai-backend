@@ -41,7 +41,7 @@ export default function Blog() {
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight">
             Alloro Blog
           </h1>
           <p className="mt-4 text-base sm:text-lg text-[#212D40]/60 leading-relaxed">
@@ -66,7 +66,7 @@ export default function Blog() {
               to={`/blog/${post.slug}`}
               className="group rounded-2xl border border-gray-200 bg-white p-6 hover:border-[#D56753]/30 hover:shadow-sm transition-all"
             >
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[#D56753]">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
                 {post.category}
               </span>
               <h2 className="mt-3 text-base font-bold text-[#212D40] leading-snug group-hover:text-[#D56753] transition-colors">

@@ -107,7 +107,7 @@ const CompactTag = ({ status }: { status: string }) => {
   };
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border leading-none mt-1 w-fit ${
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider border leading-none mt-1 w-fit ${
         styles[status] || styles["Stable"]
       }`}
     >
@@ -120,7 +120,7 @@ const TypeBadge = ({ type }: { type: "doctor" | "marketing" }) => {
   const isDoctor = type === "doctor";
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border leading-none ${
+      className={`inline-flex items-center px-2 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider border leading-none ${
         isDoctor
           ? "text-blue-700 bg-blue-50 border-blue-100"
           : "text-orange-700 bg-orange-50 border-orange-100"
@@ -415,10 +415,10 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
       {/* Header with Filter Toggle */}
       <div className="px-6 py-6 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white">
         <div>
-          <h2 className="text-xl font-black font-heading text-alloro-navy tracking-tight">
+          <h2 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight">
             See What Referrals Are Giving You the Most Value
           </h2>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
             Combined Doctor & Marketing Sources
           </p>
         </div>
@@ -428,7 +428,7 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
           <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
             <button
               onClick={() => setActiveFilter("all")}
-              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+              className={`px-4 py-2 text-xs font-semibold uppercase tracking-widest rounded-lg transition-all ${
                 activeFilter === "all"
                   ? "bg-white text-alloro-navy shadow-sm"
                   : "text-slate-400 hover:text-slate-600"
@@ -441,7 +441,7 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
             </button>
             <button
               onClick={() => setActiveFilter("doctor")}
-              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+              className={`px-4 py-2 text-xs font-semibold uppercase tracking-widest rounded-lg transition-all ${
                 activeFilter === "doctor"
                   ? "bg-white text-blue-700 shadow-sm"
                   : "text-slate-400 hover:text-slate-600"
@@ -454,7 +454,7 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
             </button>
             <button
               onClick={() => setActiveFilter("marketing")}
-              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${
+              className={`px-4 py-2 text-xs font-semibold uppercase tracking-widest rounded-lg transition-all ${
                 activeFilter === "marketing"
                   ? "bg-white text-orange-700 shadow-sm"
                   : "text-slate-400 hover:text-slate-600"
@@ -472,7 +472,7 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
       {/* Combined Table */}
       <div className="w-full overflow-x-auto">
         <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
-          <thead className="bg-slate-50/30 text-[9px] font-black text-slate-400 uppercase tracking-[0.25em] border-b border-slate-100">
+          <thead className="bg-slate-50/30 text-[9px] font-semibold text-slate-400 uppercase tracking-[0.25em] border-b border-slate-100">
             <tr>
               <th className="px-6 py-4 w-[20%]">Source</th>
               <th className="px-2 py-4 text-center w-[8%]">Type</th>
@@ -490,7 +490,7 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
               >
                 <td className="px-6 py-5">
                   <div className="flex flex-col min-w-0">
-                    <span className="font-black text-alloro-navy text-[13px] leading-tight group-hover:text-alloro-orange transition-colors truncate">
+                    <span className="font-semibold text-alloro-navy text-[13px] leading-tight group-hover:text-alloro-orange transition-colors truncate">
                       {row.name}
                     </span>
                     {row.trend_label && <CompactTag status={row.trend_label} />}
@@ -499,10 +499,10 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
                 <td className="px-2 py-5 text-center">
                   <TypeBadge type={row.type} />
                 </td>
-                <td className="px-2 py-5 text-center font-black text-alloro-navy text-sm tabular-nums">
+                <td className="px-2 py-5 text-center font-semibold text-alloro-navy text-sm tabular-nums">
                   {row.referred}
                 </td>
-                <td className="px-4 py-5 text-right font-black text-alloro-navy text-sm tabular-nums">
+                <td className="px-4 py-5 text-right font-semibold text-alloro-navy text-sm tabular-nums">
                   {formatCurrency(row.net_production)}
                 </td>
                 <td className="px-4 py-5 text-right font-bold text-slate-500 text-sm tabular-nums">
@@ -520,7 +520,7 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
                     {row.notes && row.notes.length > 80 && (
                       <button
                         onClick={() => toggleNoteExpansion(row.id)}
-                        className="flex items-center gap-1 text-[10px] font-bold text-alloro-orange hover:text-alloro-navy transition-colors"
+                        className="flex items-center gap-1 text-xs font-bold text-alloro-orange hover:text-alloro-navy transition-colors"
                       >
                         {expandedNotes.has(row.id) ? (
                           <>

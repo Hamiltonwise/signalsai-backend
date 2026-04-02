@@ -272,7 +272,7 @@ export function MindPublishChannelsTab() {
                     )}
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <Link className="h-3 w-3 text-[#6a6a75]" />
-                      <code className="text-[11px] text-[#6a6a75] font-mono truncate">
+                      <code className="text-xs text-[#6a6a75] font-mono truncate">
                         {ch.webhook_url}
                       </code>
                     </div>

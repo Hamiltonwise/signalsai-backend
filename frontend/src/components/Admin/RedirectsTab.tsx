@@ -98,7 +98,7 @@ export default function RedirectsTab({ projectId }: RedirectsTabProps) {
         {/* Add form */}
         <div className="flex items-end gap-2">
           <div className="flex-1">
-            <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1 block">From</label>
+            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 block">From</label>
             <input
               type="text"
               value={fromPath}
@@ -109,7 +109,7 @@ export default function RedirectsTab({ projectId }: RedirectsTabProps) {
           </div>
           <ArrowRight className="w-4 h-4 text-gray-300 mb-2.5 shrink-0" />
           <div className="flex-1">
-            <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1 block">To</label>
+            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 block">To</label>
             <input
               type="text"
               value={toPath}
@@ -119,7 +119,7 @@ export default function RedirectsTab({ projectId }: RedirectsTabProps) {
             />
           </div>
           <div className="w-20">
-            <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-1 block">Type</label>
+            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 block">Type</label>
             <select
               value={redirectType}
               onChange={(e) => setRedirectType(parseInt(e.target.value, 10))}
@@ -161,13 +161,13 @@ export default function RedirectsTab({ projectId }: RedirectsTabProps) {
                   <code className="text-sm text-gray-700 truncate">{r.from_path}</code>
                   <ArrowRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
                   <code className="text-sm text-alloro-orange truncate">{r.to_path}</code>
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${
+                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded shrink-0 ${
                     r.type === 301 ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600"
                   }`}>
                     {r.type}
                   </span>
                   {r.is_wildcard && (
-                    <span className="text-[10px] font-medium bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                    <span className="text-xs font-medium bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
                       wildcard
                     </span>
                   )}

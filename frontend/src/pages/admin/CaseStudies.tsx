@@ -340,16 +340,16 @@ export default function CaseStudies() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">
                   Practice
                 </th>
-                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">
                   Position
                 </th>
-                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">
                   Revenue Impact
                 </th>
-                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">
                   Published
                 </th>
               </tr>

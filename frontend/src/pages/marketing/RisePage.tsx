@@ -16,7 +16,7 @@ export default function RisePage() {
     >
       <section className="px-5 py-16 sm:py-24 bg-white">
         <div className="max-w-xl mx-auto space-y-8">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight leading-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight leading-tight">
             Bring someone who needs this
             and you carry the cost together.
           </h1>

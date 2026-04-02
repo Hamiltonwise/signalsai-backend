@@ -239,11 +239,11 @@ export default function ClientTimeline({ orgId }: { orgId: number }) {
                     <p className="text-sm font-medium text-[#212D40]">
                       {config.label(props)}
                     </p>
-                    <span className="text-[10px] text-gray-400 shrink-0 tabular-nums">
+                    <span className="text-xs text-gray-400 shrink-0 tabular-nums">
                       {timeAgo(event.created_at)}
                     </span>
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
+                  <p className="text-xs text-gray-400 mt-0.5">
                     {formatDate(event.created_at)} at {formatTime(event.created_at)}
                   </p>
                 </div>

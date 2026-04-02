@@ -119,7 +119,7 @@ export default function CSAgentChat({
               </div>
               <div>
                 <p className="text-sm font-bold text-white">Alloro Intelligence</p>
-                <p className="text-[10px] text-white/50 uppercase tracking-wider">
+                <p className="text-xs text-white/50 uppercase tracking-wider">
                   {practiceName}
                 </p>
               </div>
@@ -217,7 +217,7 @@ export default function CSAgentChat({
                 )}
               </button>
             </div>
-            <p className="text-[10px] text-gray-300 text-center mt-2">
+            <p className="text-xs text-gray-400 text-center mt-2">
               Powered by Alloro Intelligence
             </p>
           </div>

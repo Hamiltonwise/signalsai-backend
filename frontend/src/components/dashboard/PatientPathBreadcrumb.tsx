@@ -52,7 +52,7 @@ export default function PatientPathBreadcrumb({
                 : "Website preview"}
           </p>
           {hostname && (
-            <p className="text-[10px] text-gray-400 truncate">{hostname}</p>
+            <p className="text-xs text-gray-400 truncate">{hostname}</p>
           )}
         </div>
       </div>
@@ -90,7 +90,7 @@ export default function PatientPathBreadcrumb({
           )}
           <a
             href="/dfy/website"
-            className="text-[10px] font-medium text-gray-400 hover:text-[#212D40] transition-colors"
+            className="text-xs font-medium text-gray-400 hover:text-[#212D40] transition-colors"
           >
             View in dashboard
           </a>

@@ -99,7 +99,7 @@ export default function LegalPracticeMarketing() {
       />
 
         <div className="mx-auto max-w-2xl px-5 pb-16">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
             How Law Firms Lose Clients to Competitors (And How to See It Before
             It Happens)
           </h1>

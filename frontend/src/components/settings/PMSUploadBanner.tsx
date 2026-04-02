@@ -35,7 +35,7 @@ export const PMSUploadBanner: React.FC<PMSUploadBannerProps> = ({
             <Sparkles size={20} className="text-green-600" />
           </div>
           <div>
-            <h3 className="font-black text-green-900 text-lg">
+            <h3 className="font-semibold text-green-900 text-lg">
               You're All Set!
             </h3>
             <p className="text-green-700 text-sm mt-1">

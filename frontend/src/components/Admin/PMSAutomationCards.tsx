@@ -143,7 +143,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 flex items-center gap-1">
+        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center gap-1">
           {icon}
           {label}
         </span>

@@ -648,7 +648,7 @@ export const PMSLatestJobEditor: React.FC<PMSLatestJobEditorProps> = ({
                           background: `linear-gradient(135deg, ${card.tint}, #ffffff)`,
                         }}
                       >
-                        <div className="text-[11px] text-gray-400 uppercase text-center mb-2">
+                        <div className="text-xs text-gray-400 uppercase text-center mb-2">
                           {card.label}
                         </div>
                         <div className="flex items-center justify-center gap-3 scale-90">
@@ -777,7 +777,7 @@ export const PMSLatestJobEditor: React.FC<PMSLatestJobEditorProps> = ({
                   </AnimatePresence>
 
                   {/* ===== TABLE HEADER ===== */}
-                  <div className="grid grid-cols-13 gap-4 mb-3 px-2 text-[11px] font-bold text-gray-400 uppercase">
+                  <div className="grid grid-cols-13 gap-4 mb-3 px-2 text-xs font-bold text-gray-400 uppercase">
                     <div className="col-span-3">Source</div>
                     <div className="col-span-2">Type</div>
                     <div className="col-span-3">Referral Count</div>

@@ -139,7 +139,7 @@ export default function ScoreHistory() {
           <p className="text-sm font-bold text-[#212D40]">Score History</p>
         </div>
         {totalDelta !== 0 && (
-          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${
             trendUp
               ? "bg-emerald-50 text-emerald-700"
               : "bg-amber-50 text-amber-700"
@@ -155,10 +155,10 @@ export default function ScoreHistory() {
 
       {/* Week labels */}
       <div className="flex justify-between mt-2 px-1">
-        <span className="text-[10px] text-gray-300">
+        <span className="text-xs text-gray-400">
           {new Date(scoreHistory[0].date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </span>
-        <span className="text-[10px] text-gray-300">
+        <span className="text-xs text-gray-400">
           {new Date(scoreHistory[scoreHistory.length - 1].date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </span>
       </div>

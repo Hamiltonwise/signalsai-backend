@@ -52,7 +52,7 @@ export default function CompetitorDrawer({
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors shrink-0"
+            className="p-1.5 text-gray-400 hover:text-gray-500 transition-colors shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
@@ -82,7 +82,7 @@ export default function CompetitorDrawer({
               {competitor.category && (
                 <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
                   <span className="text-sm text-gray-700">Category</span>
-                  <span className="text-sm font-medium text-gray-600">{competitor.category}</span>
+                  <span className="text-sm font-medium text-gray-500">{competitor.category}</span>
                 </div>
               )}
             </div>
@@ -95,12 +95,12 @@ export default function CompetitorDrawer({
             </p>
             <div className="rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-600">Their reviews</span>
-                <span className="text-lg font-black text-[#212D40]">{competitor.reviewCount}</span>
+                <span className="text-sm text-gray-500">Their reviews</span>
+                <span className="text-lg font-semibold text-[#212D40]">{competitor.reviewCount}</span>
               </div>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-gray-600">Your reviews</span>
-                <span className="text-lg font-black text-[#212D40]">{clientReviews}</span>
+                <span className="text-sm text-gray-500">Your reviews</span>
+                <span className="text-lg font-semibold text-[#212D40]">{clientReviews}</span>
               </div>
               {reviewGap > 0 && (
                 <div className="flex items-center justify-between bg-[#D56753]/5 rounded-lg px-3 py-2">
@@ -139,7 +139,7 @@ export default function CompetitorDrawer({
                 </p>
               </div>
               {clientVelocityPerWeek != null && clientVelocityPerWeek > 0 && (
-                <p className="text-[10px] text-gray-400 mt-2 ml-8">
+                <p className="text-xs text-gray-400 mt-2 ml-8">
                   Your pace: ~{clientVelocityPerWeek.toFixed(1)} reviews/week
                 </p>
               )}

@@ -747,7 +747,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                           background: `linear-gradient(135deg, ${card.tint}, #ffffff)`,
                         }}
                       >
-                        <div className="text-[10px] text-gray-400 uppercase text-center mb-1">
+                        <div className="text-xs text-gray-400 uppercase text-center mb-1">
                           {card.label}
                         </div>
                         <div className="flex items-center justify-center gap-2 scale-75">
@@ -760,7 +760,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                 )}
 
                 {/* Table Header */}
-                <div className="grid grid-cols-13 gap-4 px-2 text-[11px] font-bold text-gray-400 uppercase">
+                <div className="grid grid-cols-13 gap-4 px-2 text-xs font-bold text-gray-400 uppercase">
                   <div className="col-span-3">Source</div>
                   <div className="col-span-2">Type</div>
                   <div className="col-span-3">Referral Count</div>

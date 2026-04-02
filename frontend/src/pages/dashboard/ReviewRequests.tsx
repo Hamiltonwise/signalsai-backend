@@ -176,7 +176,7 @@ export default function ReviewRequests() {
             </button>
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
-          <p className="text-[10px] text-gray-400">Up to 20 requests per day</p>
+          <p className="text-xs text-gray-400">Up to 20 requests per day</p>
         </div>
       </div>
 
@@ -202,7 +202,7 @@ export default function ReviewRequests() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.color}`}>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.color}`}>
                       {badge.text}
                     </span>
                     <span className="text-xs text-gray-400">{timeAgo(r.sent_at)}</span>
@@ -219,7 +219,7 @@ export default function ReviewRequests() {
         <h2 className="text-sm font-bold text-[#212D40] mb-3">Review velocity</h2>
         {velocity > 0 ? (
           <>
-            <p className="text-3xl font-black text-[#212D40]">
+            <p className="text-3xl font-semibold text-[#212D40]">
               {velocity.toFixed(1)} <span className="text-base font-medium text-gray-400">per week</span>
             </p>
             <p className="text-sm text-gray-500 mt-2">
@@ -228,7 +228,7 @@ export default function ReviewRequests() {
           </>
         ) : (
           <>
-            <p className="text-3xl font-black text-gray-300">0</p>
+            <p className="text-3xl font-semibold text-gray-300">0</p>
             <p className="text-sm text-gray-400 mt-2">
               Send your first request above to start tracking.
             </p>
@@ -361,7 +361,7 @@ function ReviewDraftCard({
 
       {/* Draft response */}
       <div className="bg-gray-50 rounded-lg p-3">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
           Draft response
         </p>
         {isEditing ? (

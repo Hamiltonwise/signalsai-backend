@@ -109,7 +109,7 @@ export default function BusinessClarityHub() {
         </header>
 
         <main className="mx-auto max-w-2xl px-5 pb-16">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
             Business Clarity for Licensed Specialists
           </h1>
 
@@ -137,7 +137,7 @@ export default function BusinessClarityHub() {
                       {vertical.description}
                     </p>
                     {!vertical.ready && (
-                      <span className="inline-block mt-2 text-[10px] font-semibold uppercase tracking-wider text-[#D56753]/60 bg-[#D56753]/5 px-2 py-0.5 rounded">
+                      <span className="inline-block mt-2 text-xs font-semibold uppercase tracking-wider text-[#D56753]/60 bg-[#D56753]/5 px-2 py-0.5 rounded">
                         Run your free checkup
                       </span>
                     )}
@@ -164,7 +164,7 @@ export default function BusinessClarityHub() {
         </main>
 
         <footer className="py-8 text-center border-t border-slate-100">
-          <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
+          <p className="text-xs font-medium tracking-wide text-slate-300 uppercase">
             Alloro &middot; Business Clarity for Every Specialist
           </p>
         </footer>

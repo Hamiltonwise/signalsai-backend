@@ -253,7 +253,7 @@ export function NotificationPopover({
               <Bell size={20} />
             </div>
             <div>
-              <h3 className="text-[10px] font-bold font-heading text-alloro-navy uppercase tracking-[0.2em]">
+              <h3 className="text-xs font-bold font-heading text-alloro-navy uppercase tracking-[0.2em]">
                 Intelligence Signals
               </h3>
               <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1">
@@ -294,7 +294,7 @@ export function NotificationPopover({
             <p className="text-base font-bold text-alloro-navy font-heading tracking-tight">
               No signals yet
             </p>
-            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-1.5">
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mt-1.5">
               We'll notify you when something important happens
             </p>
           </div>

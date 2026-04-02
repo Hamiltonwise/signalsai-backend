@@ -69,7 +69,7 @@ export function FlagIssueButton() {
               autoFocus
             />
 
-            <p className="text-[10px] text-gray-400 mt-2">
+            <p className="text-xs text-gray-400 mt-2">
               Creates a task assigned to Corey. Paste a screenshot URL if you have one.
             </p>
 

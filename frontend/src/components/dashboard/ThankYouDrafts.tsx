@@ -84,7 +84,7 @@ function DraftCard({ draft, onAction }: { draft: Draft; onAction: () => void }) 
         <p className="text-sm font-semibold text-[#212D40]">
           Thank-you to Dr. {draft.gp_name}
         </p>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">
           Draft
         </span>
       </div>
@@ -128,7 +128,7 @@ function DraftCard({ draft, onAction }: { draft: Draft; onAction: () => void }) 
         </button>
         <button
           onClick={() => setEditing(!editing)}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-500 transition-colors"
         >
           <Edit3 className="w-3 h-3" />
           {editing ? "Done" : "Edit"}
@@ -136,7 +136,7 @@ function DraftCard({ draft, onAction }: { draft: Draft; onAction: () => void }) 
         <button
           onClick={() => skipMutation.mutate()}
           disabled={skipMutation.isPending}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors ml-auto"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-500 transition-colors ml-auto"
         >
           <X className="w-3 h-3" />
           Skip

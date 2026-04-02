@@ -13,7 +13,7 @@ export default function NotFound() {
   return (
     <MarketingLayout title="Page Not Found" description="This page doesn't exist. But your market data does.">
       <div className="flex flex-col items-center justify-center px-5 py-24 text-center">
-        <p className="text-7xl font-black text-[#212D40]/10 mb-4">404</p>
+        <p className="text-7xl font-semibold text-[#212D40]/10 mb-4">404</p>
         <h1 className="text-2xl font-bold text-[#212D40]">This page doesn't exist.</h1>
         <p className="text-base text-gray-500 mt-2 max-w-sm">
           But your market data does.

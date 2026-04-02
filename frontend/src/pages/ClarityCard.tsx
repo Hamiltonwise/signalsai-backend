@@ -128,7 +128,7 @@ export default function ClarityCard() {
                       }}
                     />
                     <div className="flex flex-col items-center">
-                      <span className="text-5xl font-black text-[#212D40] tabular-nums">
+                      <span className="text-5xl font-semibold text-[#212D40] tabular-nums">
                         {card.score}
                       </span>
                       <span className="text-xs font-semibold text-[#212D40]/40 mt-0.5">
@@ -148,17 +148,17 @@ export default function ClarityCard() {
                   <div className="text-center bg-[#FAFAF8] rounded-xl py-3 px-2">
                     <TrendingUp className="w-4 h-4 text-[#D56753] mx-auto mb-1.5" />
                     <p className="text-lg font-bold text-[#212D40]">#{card.rank}</p>
-                    <p className="text-[10px] text-[#212D40]/50 uppercase font-medium">Rank</p>
+                    <p className="text-xs text-[#212D40]/50 uppercase font-medium">Rank</p>
                   </div>
                   <div className="text-center bg-[#FAFAF8] rounded-xl py-3 px-2">
                     <Users className="w-4 h-4 text-[#D56753] mx-auto mb-1.5" />
                     <p className="text-lg font-bold text-[#212D40]">{card.totalCompetitors}</p>
-                    <p className="text-[10px] text-[#212D40]/50 uppercase font-medium">In Market</p>
+                    <p className="text-xs text-[#212D40]/50 uppercase font-medium">In Market</p>
                   </div>
                   <div className="text-center bg-[#FAFAF8] rounded-xl py-3 px-2">
                     <BarChart3 className="w-4 h-4 text-[#D56753] mx-auto mb-1.5" />
                     <p className="text-lg font-bold text-[#212D40]">{card.score}</p>
-                    <p className="text-[10px] text-[#212D40]/50 uppercase font-medium">Score</p>
+                    <p className="text-xs text-[#212D40]/50 uppercase font-medium">Score</p>
                   </div>
                 </div>
 
@@ -178,7 +178,7 @@ export default function ClarityCard() {
               {/* Powered by footer */}
               <div className="border-t border-[#212D40]/5 py-4 px-8 bg-[#FAFAF8]">
                 <div className="flex items-center justify-center gap-2">
-                  <span className="text-[11px] text-[#212D40]/30 font-medium">Powered by</span>
+                  <span className="text-xs text-[#212D40]/30 font-medium">Powered by</span>
                   <div className="flex items-center gap-1.5">
                     <div className="w-4 h-4 rounded bg-[#D56753] flex items-center justify-center">
                       <svg width="8" height="8" viewBox="0 0 16 16" fill="none">
@@ -197,7 +197,7 @@ export default function ClarityCard() {
       </main>
 
       <footer className="py-6 text-center">
-        <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
+        <p className="text-xs font-medium tracking-wide text-slate-300 uppercase">
           Business Clarity
         </p>
       </footer>

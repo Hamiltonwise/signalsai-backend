@@ -892,7 +892,7 @@ export default function TemplateDetail() {
                               {pageFavicon && (
                                 <img src={pageFavicon} alt="" className="w-3 h-3 flex-shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                               )}
-                              <span className="text-[10px] text-gray-200 truncate">
+                              <span className="text-xs text-gray-200 truncate">
                                 {pageTitle || "Untitled"}
                               </span>
                             </div>
@@ -900,7 +900,7 @@ export default function TemplateDetail() {
                           <div className="bg-gray-600 px-3 py-1 flex items-center gap-2 flex-shrink-0">
                             <div className="flex-1 bg-gray-500 rounded-md px-2 py-0.5 flex items-center gap-1.5">
                               <Globe className="w-2.5 h-2.5 text-gray-300 flex-shrink-0" />
-                              <span className="text-[10px] text-gray-300 truncate">
+                              <span className="text-xs text-gray-300 truncate">
                                 {pageUrl}
                               </span>
                             </div>
@@ -942,7 +942,7 @@ export default function TemplateDetail() {
                           <div className="bg-gray-800 px-3 py-1.5 flex items-center gap-2 flex-shrink-0">
                             <div className="flex-1 bg-gray-700 rounded-full px-3 py-1 flex items-center gap-1.5">
                               <Globe className="w-2.5 h-2.5 text-gray-400 flex-shrink-0" />
-                              <span className="text-[10px] text-gray-300 truncate">
+                              <span className="text-xs text-gray-300 truncate">
                                 {pageTitle || pageUrl}
                               </span>
                             </div>
@@ -974,7 +974,7 @@ export default function TemplateDetail() {
                           </div>
 
                           <div className="space-y-2">
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                               Desktop Result
                             </p>
                             <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-1.5">
@@ -1011,7 +1011,7 @@ export default function TemplateDetail() {
                               </p>
                             </div>
                             <div className="flex gap-4 px-1">
-                              <span className={`text-[10px] font-medium ${
+                              <span className={`text-xs font-medium ${
                                 pageTitle.length === 0 ? "text-red-400" :
                                 pageTitle.length > 60 ? "text-amber-500" : "text-green-500"
                               }`}>
@@ -1019,7 +1019,7 @@ export default function TemplateDetail() {
                                 {pageTitle.length === 0 && ", Missing!"}
                                 {pageTitle.length > 60 && ", May be truncated"}
                               </span>
-                              <span className={`text-[10px] font-medium ${
+                              <span className={`text-xs font-medium ${
                                 pageDescription.length === 0 ? "text-red-400" :
                                 pageDescription.length > 160 ? "text-amber-500" : "text-green-500"
                               }`}>
@@ -1031,7 +1031,7 @@ export default function TemplateDetail() {
                           </div>
 
                           <div className="space-y-2">
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                               Mobile Result
                             </p>
                             <div className="bg-white rounded-xl border border-gray-200 p-4 max-w-sm space-y-1.5">
@@ -1049,7 +1049,7 @@ export default function TemplateDetail() {
                                       try { return new URL(pageUrl).hostname; } catch { return "example.com"; }
                                     })()}
                                   </span>
-                                  <span className="text-[10px] text-gray-500 truncate">
+                                  <span className="text-xs text-gray-500 truncate">
                                     {pageUrl}
                                   </span>
                                 </div>
@@ -1068,7 +1068,7 @@ export default function TemplateDetail() {
                           </div>
 
                           <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                               SEO Checklist
                             </p>
                             <div className="space-y-2">
@@ -1114,7 +1114,7 @@ export default function TemplateDetail() {
                                   <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
                                     item.ok ? "bg-green-100" : item.warn ? "bg-amber-100" : "bg-red-100"
                                   }`}>
-                                    <span className={`text-[10px] font-bold ${
+                                    <span className={`text-xs font-bold ${
                                       item.ok ? "text-green-600" : item.warn ? "text-amber-600" : "text-red-500"
                                     }`}>
                                       {item.ok ? "✓" : item.warn ? "!" : "✕"}
@@ -1122,7 +1122,7 @@ export default function TemplateDetail() {
                                   </div>
                                   <div>
                                     <span className="text-xs font-semibold text-gray-700">{item.label}</span>
-                                    <p className="text-[11px] text-gray-500">{item.detail}</p>
+                                    <p className="text-xs text-gray-500">{item.detail}</p>
                                   </div>
                                 </div>
                               ))}

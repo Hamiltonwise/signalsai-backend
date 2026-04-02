@@ -18,7 +18,7 @@ export default function ProductPage() {
     >
       {/* Headline */}
       <section className="px-5 py-16 sm:py-24 bg-white">
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] text-center tracking-tight max-w-lg mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] text-center tracking-tight max-w-lg mx-auto">
           What Business Clarity actually looks like.
         </h1>
       </section>

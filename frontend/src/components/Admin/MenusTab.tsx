@@ -606,7 +606,7 @@ export default function MenusTab({
             placeholder="auto-generated from name"
           />
           <p className="mt-1.5 text-xs text-gray-400">
-            Use in header: <code className="px-1 py-0.5 bg-gray-100 rounded text-[11px]">{`{{ menu id='${menuSlug || "slug"}' }}`}</code>
+            Use in header: <code className="px-1 py-0.5 bg-gray-100 rounded text-xs">{`{{ menu id='${menuSlug || "slug"}' }}`}</code>
           </p>
         </div>
 
@@ -665,7 +665,7 @@ export default function MenusTab({
               </button>
             </div>
             <p className="text-xs text-gray-400 mt-0.5">
-              Shortcode: <code className="px-1 py-0.5 bg-gray-100 rounded text-[11px]">{`{{ menu id='${activeMenu.slug}' }}`}</code>
+              Shortcode: <code className="px-1 py-0.5 bg-gray-100 rounded text-xs">{`{{ menu id='${activeMenu.slug}' }}`}</code>
             </p>
           </div>
 
@@ -947,7 +947,7 @@ export default function MenusTab({
                             <div className="text-sm font-medium text-gray-900 truncate">{post.title}</div>
                             <div className="flex items-center gap-2 mt-0.5">
                               {postType && (
-                                <span className="text-[10px] font-medium text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded">{postType.name}</span>
+                                <span className="text-xs font-medium text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded">{postType.name}</span>
                               )}
                               <span className="text-xs text-gray-400 font-mono truncate">{url}</span>
                             </div>

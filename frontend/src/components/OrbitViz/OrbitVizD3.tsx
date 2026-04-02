@@ -1173,7 +1173,7 @@ export const OrbitVizD3: React.FC<OrbitVizD3Props> = ({
             <div className="text-slate-600 mt-0.5">{hovered.desc}</div>
           )}
           {/* Value omitted in tooltip by request */}
-          <div className="text-[10px] text-slate-500 mt-1">
+          <div className="text-xs text-slate-500 mt-1">
             Click to see more
           </div>
         </div>

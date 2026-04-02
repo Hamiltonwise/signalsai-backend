@@ -220,7 +220,7 @@ export function OrgNotificationsTab({
                     {notif.title}
                   </span>
                   <span
-                    className={`px-1.5 py-0.5 text-[10px] font-semibold uppercase rounded ${
+                    className={`px-1.5 py-0.5 text-xs font-semibold uppercase rounded ${
                       TYPE_COLORS[notif.type] || TYPE_COLORS.system
                     }`}
                   >
@@ -235,11 +235,11 @@ export function OrgNotificationsTab({
                 )}
 
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-xs text-gray-400">
                     {new Date(notif.created_at).toLocaleString()}
                   </span>
                   {notif.location_name && (
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-xs text-gray-400">
                       {notif.location_name}
                     </span>
                   )}

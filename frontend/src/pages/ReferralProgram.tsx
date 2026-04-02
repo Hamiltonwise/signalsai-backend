@@ -57,7 +57,7 @@ export default function ReferralProgram() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#D56753]/10 mb-5">
             <Users className="w-6 h-6 text-[#D56753]" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight leading-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#212D40] tracking-tight leading-tight">
             A colleague thought you'd want to see this.
           </h1>
           <p className="mt-4 text-base text-slate-500 leading-relaxed max-w-md mx-auto">
@@ -92,7 +92,7 @@ export default function ReferralProgram() {
 
         {/* Section 2: Run yours */}
         <div className="text-center">
-          <h2 className="text-xl font-extrabold text-[#212D40]">
+          <h2 className="text-xl font-semibold text-[#212D40]">
             Every practice has a different result.
           </h2>
           <p className="mt-2 text-sm text-slate-500">

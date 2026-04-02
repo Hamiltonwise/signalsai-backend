@@ -103,7 +103,7 @@ export function LocationSwitcher() {
                     )}
                     <span className="truncate">{location.name}</span>
                     {location.is_primary && (
-                      <span className="ml-auto text-[9px] font-black text-white/20 uppercase tracking-widest flex-shrink-0">
+                      <span className="ml-auto text-[9px] font-semibold text-white/20 uppercase tracking-widest flex-shrink-0">
                         Primary
                       </span>
                     )}

@@ -80,7 +80,7 @@ export default function BusinessClarity() {
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="mx-auto max-w-2xl text-center">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight">
             What is Business Clarity?
           </h1>
           <p className="text-base sm:text-lg text-[#212D40]/70 leading-relaxed mt-6 max-w-xl mx-auto">

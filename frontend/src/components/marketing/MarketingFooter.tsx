@@ -23,7 +23,7 @@ export default function MarketingFooter() {
           <p className="text-xs text-gray-500 leading-relaxed">
             Business Clarity for local service professionals.
           </p>
-          <p className="mt-4 text-[10px] text-gray-400">
+          <p className="mt-4 text-xs text-gray-400">
             &copy; 2026 Alloro, Inc. All rights reserved.
           </p>
         </div>
@@ -59,7 +59,7 @@ export default function MarketingFooter() {
           >
             corey@getalloro.com
           </a>
-          <p className="mt-3 text-[11px] text-gray-400 leading-relaxed">
+          <p className="mt-3 text-xs text-gray-400 leading-relaxed">
             Your data stays yours. No contracts. Cancel anytime.
           </p>
           <div className="mt-3 h-0.5 w-16 bg-[#D56753] rounded-full opacity-40" />

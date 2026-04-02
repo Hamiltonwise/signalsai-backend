@@ -45,7 +45,7 @@ export function parseHighlightTags(
           result.push(
             <span
               key={index}
-              className="text-red-600 font-black underline decoration-red-600/30 underline-offset-4"
+              className="text-red-600 font-semibold underline decoration-red-600/30 underline-offset-4"
             >
               {part}
             </span>
@@ -54,7 +54,7 @@ export function parseHighlightTags(
           result.push(
             <span
               key={index}
-              className="text-alloro-orange font-black underline underline-offset-4 decoration-alloro-orange/40 decoration-2"
+              className="text-alloro-orange font-semibold underline underline-offset-4 decoration-alloro-orange/40 decoration-2"
             >
               {part}
             </span>

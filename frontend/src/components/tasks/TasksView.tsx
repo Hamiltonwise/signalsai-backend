@@ -168,14 +168,14 @@ const TaskCard: React.FC<TaskCardProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-4">
               <h3
-                className={`font-black text-xl text-alloro-navy font-heading tracking-tight leading-tight transition-all ${
+                className={`font-semibold text-xl text-alloro-navy font-heading tracking-tight leading-tight transition-all ${
                   isDone ? "line-through opacity-30" : ""
                 }`}
               >
                 {parseHighlightTags(task.title, "underline")}
               </h3>
               {isHighPriority && !isDone && (
-                <span className="px-3 py-1 bg-red-50 text-red-600 text-[9px] font-black uppercase tracking-widest rounded-lg border border-red-100 leading-none">
+                <span className="px-3 py-1 bg-red-50 text-red-600 text-[9px] font-semibold uppercase tracking-widest rounded-lg border border-red-100 leading-none">
                   High Priority
                 </span>
               )}
@@ -186,7 +186,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                   e.stopPropagation();
                   setShowHelp(!showHelp);
                 }}
-                className={`p-2 rounded-xl transition-all duration-300 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest ${
+                className={`p-2 rounded-xl transition-all duration-300 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-widest ${
                   showHelp
                     ? "bg-alloro-orange text-white"
                     : "bg-alloro-bg text-slate-400 hover:text-alloro-orange hover:bg-alloro-orange/5"
@@ -218,7 +218,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                   {sent ? <CheckCircle2 size={16} /> : <Send size={16} />}
                 </button>
               </div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-tight">
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-tight">
                 Alloro is processing your request.
               </p>
             </div>
@@ -254,7 +254,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center gap-x-10 gap-y-3 pt-6 border-t border-black/5 text-[10px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em]">
+              <div className="flex flex-wrap items-center gap-x-10 gap-y-3 pt-6 border-t border-black/5 text-xs font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em]">
                 <span className="flex items-center gap-2.5">
                   <Clock size={16} className="text-alloro-orange/40" />{" "}
                   {isDone && task.completed_at
@@ -618,7 +618,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
               <Target size={20} />
             </div>
             <div className="flex flex-col text-left">
-              <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
+              <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 To-Do List
               </h1>
               <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
@@ -629,7 +629,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
           <button
             onClick={handleSync}
             disabled={loading}
-            className="flex items-center gap-3 px-5 py-3 bg-white border border-black/5 text-alloro-navy rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:border-alloro-orange/20 transition-all shadow-premium active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-3 px-5 py-3 bg-white border border-black/5 text-alloro-navy rounded-xl text-xs font-semibold uppercase tracking-[0.2em] hover:border-alloro-orange/20 transition-all shadow-premium active:scale-95 disabled:opacity-50"
           >
             <RotateCw
               size={14}
@@ -646,17 +646,17 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
         {/* HERO SECTION */}
         <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 text-left pt-2">
           <div className="flex items-center gap-4 mb-3">
-            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-[10px] font-black uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
+            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-xs font-semibold uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-alloro-orange"></span>
               Actionable Growth
             </div>
           </div>
-          <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
+          <h1 className="text-5xl lg:text-6xl font-semibold font-heading text-alloro-navy tracking-tight leading-none mb-4">
             Growth Roadmap.
           </h1>
           <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
             Complete these{" "}
-            <span className="text-alloro-orange underline underline-offset-8 font-black">
+            <span className="text-alloro-orange underline underline-offset-8 font-semibold">
               Team Tasks
             </span>{" "}
             to capture high-value revenue leakage.
@@ -671,21 +671,21 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
                 <Layout size={24} />
               </div>
               <div className="text-left">
-                <h2 className="text-2xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                <h2 className="text-2xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
                   Team Tasks
                 </h2>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
+                <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1.5">
                   Action items for your team
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex flex-col items-end mr-4">
-                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none mb-1">
+                <span className="text-[9px] font-semibold text-slate-300 uppercase tracking-widest leading-none mb-1">
                   Total Completion
                 </span>
                 <span
-                  className={`text-base font-black font-sans leading-none ${
+                  className={`text-base font-semibold font-sans leading-none ${
                     completionPct === 100
                       ? "text-green-600"
                       : "text-alloro-navy"
@@ -774,7 +774,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
               ))
             )}
             {!isLoadingTasks && (
-              <button className="h-full min-h-[280px] border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center gap-4 text-slate-400 font-black uppercase tracking-[0.4em] text-[9px] hover:border-alloro-orange hover:text-alloro-orange hover:bg-white transition-all group shadow-inner-soft active:scale-[0.99]">
+              <button className="h-full min-h-[280px] border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center gap-4 text-slate-400 font-semibold uppercase tracking-[0.4em] text-[9px] hover:border-alloro-orange hover:text-alloro-orange hover:bg-white transition-all group shadow-inner-soft active:scale-[0.99]">
                 <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center group-hover:scale-110 group-hover:shadow-premium transition-all">
                   <Plus size={24} />
                 </div>
@@ -813,14 +813,14 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
                 </div>
                 <div className="text-left">
                   <h3
-                    className={`text-xl font-black font-heading tracking-tight leading-none ${
+                    className={`text-xl font-semibold font-heading tracking-tight leading-none ${
                       showAlloroTasks ? "text-white" : "text-alloro-navy"
                     }`}
                   >
                     Alloro System Intelligence
                   </h3>
                   <p
-                    className={`text-[9px] font-black uppercase tracking-widest mt-1.5 ${
+                    className={`text-[9px] font-semibold uppercase tracking-widest mt-1.5 ${
                       showAlloroTasks ? "text-white/40" : "text-slate-300"
                     }`}
                   >
@@ -885,7 +885,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
             alt="Alloro"
             className="w-16 h-16 rounded-2xl shadow-2xl"
           />
-          <p className="text-[11px] text-alloro-textDark/20 font-black tracking-[0.4em] uppercase">
+          <p className="text-xs text-alloro-textDark/20 font-semibold tracking-[0.4em] uppercase">
             Alloro Roadmap • v2.6.0
           </p>
         </footer>

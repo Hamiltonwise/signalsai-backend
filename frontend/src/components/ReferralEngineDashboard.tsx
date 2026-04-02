@@ -144,16 +144,16 @@ const MetricCard = ({
           : "bg-white border-black/5 hover:border-alloro-orange/20 hover:shadow-premium"
       }`}
     >
-      <span className="text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.2em] mb-4 leading-none text-left">
+      <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-[0.2em] mb-4 leading-none text-left">
         {label}
       </span>
       <div className="flex items-center justify-between">
-        <span className="text-3xl font-black font-sans tracking-tighter leading-none text-alloro-navy">
+        <span className="text-3xl font-semibold font-sans tracking-tighter leading-none text-alloro-navy">
           {value}
         </span>
         {trend && (
           <span
-            className={`text-[11px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm ${
+            className={`text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm ${
               isUp
                 ? "bg-green-100 text-green-700"
                 : isDown
@@ -185,7 +185,7 @@ const CompactTag = ({ status }: { status: string }) => {
   };
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border leading-none mt-1 w-fit ${
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-semibold uppercase tracking-wider border leading-none mt-1 w-fit ${
         styles[status] || styles["Doctor"]
       }`}
     >
@@ -560,13 +560,13 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
         <div className="max-w-[1400px] mx-auto relative flex flex-col">
           <div className="py-32 px-6">
             <div className="bg-red-50 border border-red-200 rounded-2xl p-10 text-center max-w-lg mx-auto">
-              <p className="text-red-600 font-black text-lg mb-2">
+              <p className="text-red-600 font-semibold text-lg mb-2">
                 Failed to load data
               </p>
               <p className="text-red-500 text-sm mb-6">{error}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-red-700 transition-colors"
+                className="px-6 py-3 bg-red-600 text-white rounded-xl font-semibold text-sm uppercase tracking-widest hover:bg-red-700 transition-colors"
               >
                 Retry
               </button>
@@ -581,7 +581,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
     <div className="min-h-screen bg-alloro-bg font-body text-alloro-textDark pb-32 selection:bg-alloro-orange selection:text-white">
       {/* Minimized Alert Bar when data is missing */}
       {!data && (
-        <div className="bg-alloro-orange text-white text-[10px] font-black uppercase tracking-widest py-3 px-4 text-center border-b border-white/10 flex items-center justify-center gap-2 shadow-sm relative z-[60]">
+        <div className="bg-alloro-orange text-white text-xs font-semibold uppercase tracking-widest py-3 px-4 text-center border-b border-white/10 flex items-center justify-center gap-2 shadow-sm relative z-[60]">
           <TrendingDown size={14} className="text-white" />
           <span>
             Revenue attribution analysis has not been run yet. Please upload
@@ -598,7 +598,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                 <BarChart3 size={20} />
               </div>
               <div className="flex flex-col text-left">
-                <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
+                <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                   Revenue Sources
                 </h1>
                 <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
@@ -608,7 +608,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
             </div>
             <button
               onClick={handleExport}
-              className="flex items-center gap-3 px-6 py-3.5 bg-white border border-black/5 text-alloro-navy rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:border-alloro-orange/20 transition-all shadow-premium active:scale-95"
+              className="flex items-center gap-3 px-6 py-3.5 bg-white border border-black/5 text-alloro-navy rounded-xl text-xs font-semibold uppercase tracking-[0.2em] hover:border-alloro-orange/20 transition-all shadow-premium active:scale-95"
             >
               <Download
                 size={14}
@@ -625,17 +625,17 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
           {/* Hero Section - matches newdesign */}
           <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 text-left pt-2">
             <div className="flex items-center gap-4 mb-3">
-              <div className="px-3 py-1.5 bg-green-50 rounded-lg text-green-600 text-[10px] font-black uppercase tracking-widest border border-green-100 flex items-center gap-2">
+              <div className="px-3 py-1.5 bg-green-50 rounded-lg text-green-600 text-xs font-semibold uppercase tracking-widest border border-green-100 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                 Revenue Tracking On
               </div>
             </div>
-            <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
+            <h1 className="text-5xl lg:text-6xl font-semibold font-heading text-alloro-navy tracking-tight leading-none mb-4">
               Revenue Details.
             </h1>
             <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
               See which{" "}
-              <span className="text-alloro-orange underline underline-offset-8 font-black">
+              <span className="text-alloro-orange underline underline-offset-8 font-semibold">
                 Marketing or Doctors
               </span>{" "}
               are sending you the most work.
@@ -645,7 +645,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
           {/* Monthly Totals - matches newdesign */}
           <section className="space-y-6">
             <div className="flex items-center gap-4 px-1">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-alloro-textDark/40 whitespace-nowrap">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.4em] text-alloro-textDark/40 whitespace-nowrap">
                 Monthly Totals
               </h3>
               <div className="h-px w-full bg-black/10"></div>
@@ -683,10 +683,10 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   <Calendar size={22} />
                 </div>
                 <div className="text-left">
-                  <h2 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                  <h2 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
                     Referral Activity Pipeline
                   </h2>
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1.5">
                     Trailing 6-month Synced Analysis
                   </p>
                 </div>
@@ -694,13 +694,13 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
               <div className="flex items-center gap-8 bg-slate-50 px-6 py-3 rounded-2xl border border-black/5">
                 <div className="flex items-center gap-2.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-alloro-orange"></div>
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
                     Marketing
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-alloro-navy"></div>
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
                     Doctor
                   </span>
                 </div>
@@ -713,10 +713,10 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-12 group/row"
                 >
                   <div className="w-24 sm:text-right shrink-0">
-                    <div className="text-sm font-black text-alloro-navy uppercase tracking-widest">
+                    <div className="text-sm font-semibold text-alloro-navy uppercase tracking-widest">
                       {monthData.month}
                     </div>
-                    <div className="text-[10px] text-slate-300 font-bold uppercase tracking-widest mt-1">
+                    <div className="text-xs text-slate-300 font-bold uppercase tracking-widest mt-1">
                       FY {monthData.year}
                     </div>
                   </div>
@@ -728,7 +728,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                           width: `${(monthData.selfReferrals / 25) * 100}%`,
                         }}
                       />
-                      <span className="text-sm font-black text-alloro-navy tabular-nums font-sans">
+                      <span className="text-sm font-semibold text-alloro-navy tabular-nums font-sans">
                         {monthData.selfReferrals}
                       </span>
                     </div>
@@ -739,7 +739,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                           width: `${(monthData.doctorReferrals / 25) * 100}%`,
                         }}
                       />
-                      <span className="text-[11px] font-black text-slate-400 tabular-nums font-sans">
+                      <span className="text-xs font-semibold text-slate-400 tabular-nums font-sans">
                         {monthData.doctorReferrals}
                       </span>
                     </div>
@@ -753,10 +753,10 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
           <section className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden">
             <div className="px-10 py-8 border-b border-black/5 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
               <div className="text-left">
-                <h2 className="text-xl font-black font-heading text-alloro-navy tracking-tight">
+                <h2 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight">
                   Attribution Master Matrix
                 </h2>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
+                <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1.5">
                   Direct Production Sync
                 </p>
               </div>
@@ -765,7 +765,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   <button
                     key={filter}
                     onClick={() => setActiveFilter(filter)}
-                    className={`flex-1 lg:flex-none px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all ${
+                    className={`flex-1 lg:flex-none px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] rounded-xl transition-all ${
                       activeFilter === filter
                         ? "bg-white text-alloro-navy shadow-md border border-black/5"
                         : "text-slate-400 hover:text-alloro-navy"
@@ -778,7 +778,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse table-fixed">
-                <thead className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] border-b border-black/5">
+                <thead className="bg-slate-50/50 text-xs font-semibold text-slate-400 uppercase tracking-[0.25em] border-b border-black/5">
                   <tr>
                     <th className="px-10 py-5 w-[25%]">Ledger Source</th>
                     <th className="px-4 py-5 text-center w-[12%]">Volume</th>
@@ -796,13 +796,13 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                       >
                         <td className="px-10 py-7 text-left">
                           <div className="flex flex-col">
-                            <span className="font-black text-alloro-navy text-[15px] leading-tight tracking-tight group-hover:text-alloro-orange transition-colors">
+                            <span className="font-semibold text-alloro-navy text-[15px] leading-tight tracking-tight group-hover:text-alloro-orange transition-colors">
                               {source.name}
                             </span>
                             <CompactTag status={source.category} />
                           </div>
                         </td>
-                        <td className="px-4 py-7 text-center font-black text-alloro-navy text-xl font-sans tabular-nums">
+                        <td className="px-4 py-7 text-center font-semibold text-alloro-navy text-xl font-sans tabular-nums">
                           {source.count}
                         </td>
                         <td className="px-4 py-7 text-right font-bold text-slate-500 tabular-nums text-base font-sans">
@@ -810,7 +810,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                             ? formatCurrency(source.avgPerReferral)
                             : "N/A"}
                         </td>
-                        <td className="px-4 py-7 text-right font-black text-alloro-navy tabular-nums text-xl font-sans">
+                        <td className="px-4 py-7 text-right font-semibold text-alloro-navy tabular-nums text-xl font-sans">
                           ${source.production.toLocaleString()}
                         </td>
                         <td className="px-10 py-7 text-left">
@@ -845,27 +845,27 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   <Upload size={24} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[11px] font-black uppercase tracking-[0.3em] text-alloro-orange">
+                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-alloro-orange">
                     Ledger Ingestion
                   </span>
-                  <h3 className="text-3xl font-black font-heading text-alloro-navy tracking-tight mt-1">
+                  <h3 className="text-3xl font-semibold font-heading text-alloro-navy tracking-tight mt-1">
                     Sync your practice.
                   </h3>
                 </div>
               </div>
               <p className="text-lg text-slate-500 font-medium tracking-tight leading-relaxed max-w-lg">
                 Upload your latest exports from{" "}
-                <span className="text-alloro-navy font-black">
+                <span className="text-alloro-navy font-semibold">
                   Cloud9, Dolphin, or Gaidge
                 </span>{" "}
                 to refresh all intelligence models instantly.
               </p>
               <div className="flex flex-wrap items-center gap-8 pt-4">
-                <div className="flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <div className="flex items-center gap-3 text-xs font-semibold text-slate-400 uppercase tracking-widest">
                   <ShieldCheck size={16} className="text-green-500" /> 100%
                   HIPAA SECURE
                 </div>
-                <div className="flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <div className="flex items-center gap-3 text-xs font-semibold text-slate-400 uppercase tracking-widest">
                   <Lock size={16} className="text-alloro-orange" /> AES-256
                   ENCRYPTED
                 </div>
@@ -894,10 +894,10 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                       className="animate-spin text-alloro-orange"
                     />
                   </div>
-                  <span className="text-base font-black text-alloro-navy font-heading">
+                  <span className="text-base font-semibold text-alloro-navy font-heading">
                     Uploading...
                   </span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-[0.2em] mt-3">
                     Please wait
                   </span>
                 </>
@@ -906,10 +906,10 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center shadow-premium border border-green-200 mb-5">
                     <CheckCircle size={28} className="text-green-600" />
                   </div>
-                  <span className="text-base font-black text-green-700 font-heading">
+                  <span className="text-base font-semibold text-green-700 font-heading">
                     Upload Successful!
                   </span>
-                  <span className="text-[10px] font-bold text-green-600 mt-3 text-center px-4">
+                  <span className="text-xs font-bold text-green-600 mt-3 text-center px-4">
                     {uploadMessage}
                   </span>
                 </>
@@ -918,10 +918,10 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center shadow-premium border border-red-200 mb-5">
                     <AlertCircle size={28} className="text-red-600" />
                   </div>
-                  <span className="text-base font-black text-red-700 font-heading">
+                  <span className="text-base font-semibold text-red-700 font-heading">
                     Upload Failed
                   </span>
-                  <span className="text-[10px] font-bold text-red-600 mt-3 text-center px-4">
+                  <span className="text-xs font-bold text-red-600 mt-3 text-center px-4">
                     {uploadMessage}
                   </span>
                   <button
@@ -941,10 +941,10 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-premium border border-black/5 mb-5 group-hover/upload:scale-110 group-hover/upload:text-alloro-orange transition-all">
                     <Upload size={28} />
                   </div>
-                  <span className="text-base font-black text-alloro-navy font-heading">
+                  <span className="text-base font-semibold text-alloro-navy font-heading">
                     {isDragOver ? "Drop file here" : "Drop Revenue CSV Export"}
                   </span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-[0.2em] mt-3">
                     Max Ingestion: 50MB
                   </span>
                   <span className="text-[9px] font-bold text-alloro-orange mt-2">

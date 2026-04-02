@@ -25,7 +25,7 @@ export const Settings: React.FC = () => {
   }, [searchParams, navigate]);
 
   const tabClass = (isActive: boolean) =>
-    `px-6 py-3 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all duration-200 flex items-center gap-2 ${
+    `px-6 py-3 rounded-[14px] text-xs font-semibold uppercase tracking-widest transition-all duration-200 flex items-center gap-2 ${
       isActive
         ? "bg-alloro-navy text-white shadow-lg"
         : "text-slate-400 hover:text-alloro-navy hover:bg-slate-50"
@@ -38,14 +38,14 @@ export const Settings: React.FC = () => {
         <header className="glass-header border-b border-black/5 lg:sticky lg:top-0 z-40">
           <div className="max-w-[1100px] mx-auto px-6 lg:px-10 py-8 lg:py-12 flex items-center justify-between">
             <div className="flex items-center gap-8">
-              <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-3xl bg-alloro-navy text-white flex items-center justify-center text-4xl font-black font-heading shadow-premium shrink-0 relative group cursor-pointer overflow-hidden">
+              <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-3xl bg-alloro-navy text-white flex items-center justify-center text-4xl font-semibold font-heading shadow-premium shrink-0 relative group cursor-pointer overflow-hidden">
                 <div className="absolute inset-0 bg-alloro-orange opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <span className="relative z-10">
                   {userProfile?.practiceName?.charAt(0).toUpperCase() || "A"}
                 </span>
               </div>
               <div className="text-left">
-                <h1 className="text-3xl lg:text-5xl font-black font-heading text-alloro-navy tracking-tighter leading-none mb-2">
+                <h1 className="text-3xl lg:text-5xl font-semibold font-heading text-alloro-navy tracking-tighter leading-none mb-2">
                   {userProfile?.practiceName || "Your Business"}
                 </h1>
                 <p className="text-slate-500 text-sm font-medium">
@@ -109,7 +109,7 @@ export const Settings: React.FC = () => {
               alt="Alloro"
               className="w-16 h-16 rounded-2xl shadow-2xl"
             />
-            <p className="text-[11px] text-alloro-textDark/20 font-black tracking-[0.4em] uppercase">
+            <p className="text-xs text-alloro-textDark/20 font-semibold tracking-[0.4em] uppercase">
               Alloro Settings • v2.6.0
             </p>
           </footer>

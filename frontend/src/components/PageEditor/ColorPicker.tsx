@@ -234,7 +234,7 @@ export default function ColorPicker({
 
           {/* Preset swatches */}
           <div className="flex flex-col gap-2 pt-1">
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
               Theme Colors
             </p>
             {primaryColor && (
@@ -246,7 +246,7 @@ export default function ColorPicker({
                   className="w-5 h-5 rounded-md border border-gray-200 shrink-0"
                   style={{ backgroundColor: primaryColor }}
                 />
-                <span className="text-[11px] text-gray-600 font-medium">
+                <span className="text-xs text-gray-600 font-medium">
                   Primary
                 </span>
               </button>
@@ -260,12 +260,12 @@ export default function ColorPicker({
                   className="w-5 h-5 rounded-md border border-gray-200 shrink-0"
                   style={{ backgroundColor: accentColor }}
                 />
-                <span className="text-[11px] text-gray-600 font-medium">
+                <span className="text-xs text-gray-600 font-medium">
                   Accent
                 </span>
               </button>
             )}
-            <p className="text-[10px] text-gray-300 mt-1">
+            <p className="text-xs text-gray-300 mt-1">
               Click or drag to pick
             </p>
           </div>

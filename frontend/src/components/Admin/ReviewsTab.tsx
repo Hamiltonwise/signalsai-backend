@@ -126,7 +126,7 @@ export default function ReviewsTab({ projectId, organizationId }: ReviewsTabProp
                       style={{ height: `${height}%` }}
                       title={`${star} star: ${count}`}
                     />
-                    <span className="text-[10px] text-gray-400">{star}</span>
+                    <span className="text-xs text-gray-400">{star}</span>
                   </div>
                 );
               })}

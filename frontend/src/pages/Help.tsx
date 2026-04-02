@@ -104,7 +104,7 @@ const Help = () => {
               <HelpCircle size={20} />
             </div>
             <div className="flex flex-col text-left">
-              <h1 className="text-[11px] font-black font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
+              <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 Help Center
               </h1>
               <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
@@ -114,7 +114,7 @@ const Help = () => {
           </div>
           <div className="hidden md:flex items-center gap-4 bg-white px-4 py-2 rounded-xl border border-black/5 shadow-inner-soft">
             <ShieldCheck size={14} className="text-green-500" />
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
+            <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest leading-none">
               Verified Channel
             </span>
           </div>
@@ -126,17 +126,17 @@ const Help = () => {
         {/* Hero Section */}
         <section className="animate-in fade-in slide-in-from-bottom-2 duration-700 text-left pt-2">
           <div className="flex items-center gap-4 mb-3">
-            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-[10px] font-black uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
+            <div className="px-3 py-1.5 bg-alloro-orange/5 rounded-lg text-alloro-orange text-xs font-semibold uppercase tracking-widest border border-alloro-orange/10 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-alloro-orange"></span>
               Alloro is here to help
             </div>
           </div>
-          <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
+          <h1 className="text-5xl lg:text-6xl font-semibold font-heading text-alloro-navy tracking-tight leading-none mb-4">
             How can Alloro help?
           </h1>
           <p className="text-xl lg:text-2xl text-slate-500 font-medium tracking-tight leading-relaxed max-w-4xl">
             Talk to your{" "}
-            <span className="text-alloro-orange underline underline-offset-8 font-black">
+            <span className="text-alloro-orange underline underline-offset-8 font-semibold">
               Alloro Strategist
             </span>{" "}
             for help with your business growth.
@@ -155,7 +155,7 @@ const Help = () => {
                     <CheckCircle2 size={40} />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-3xl font-black font-heading text-alloro-navy tracking-tight">
+                    <h3 className="text-3xl font-semibold font-heading text-alloro-navy tracking-tight">
                       Message Received.
                     </h3>
                     <p className="text-slate-500 font-bold max-w-sm">
@@ -165,7 +165,7 @@ const Help = () => {
                   </div>
                   <button
                     onClick={() => setSubmitted(false)}
-                    className="text-[10px] font-black uppercase tracking-[0.2em] text-alloro-orange hover:underline underline-offset-4"
+                    className="text-xs font-semibold uppercase tracking-[0.2em] text-alloro-orange hover:underline underline-offset-4"
                   >
                     Send another inquiry
                   </button>
@@ -176,7 +176,7 @@ const Help = () => {
                   className="space-y-8 relative z-10"
                 >
                   <div className="space-y-2">
-                    <h2 className="text-3xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                    <h2 className="text-3xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
                       Submit an Inquiry
                     </h2>
                     <p className="text-slate-400 font-bold text-sm tracking-tight leading-none">
@@ -193,7 +193,7 @@ const Help = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 text-left">
-                      <label className="text-[10px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em] ml-1">
+                      <label className="text-xs font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em] ml-1">
                         Your Name
                       </label>
                       <input
@@ -207,7 +207,7 @@ const Help = () => {
                       />
                     </div>
                     <div className="space-y-2 text-left">
-                      <label className="text-[10px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em] ml-1">
+                      <label className="text-xs font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em] ml-1">
                         Your Email
                       </label>
                       <input
@@ -224,7 +224,7 @@ const Help = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 text-left">
-                      <label className="text-[10px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em] ml-1">
+                      <label className="text-xs font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em] ml-1">
                         Subject Matter
                       </label>
                       <select
@@ -240,7 +240,7 @@ const Help = () => {
                       </select>
                     </div>
                     <div className="space-y-2 text-left">
-                      <label className="text-[10px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em] ml-1">
+                      <label className="text-xs font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em] ml-1">
                         Urgency Tier
                       </label>
                       <select
@@ -257,7 +257,7 @@ const Help = () => {
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <label className="text-[10px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em] ml-1">
+                    <label className="text-xs font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em] ml-1">
                       Directive Details
                     </label>
                     <textarea
@@ -273,7 +273,7 @@ const Help = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full sm:w-auto px-12 py-5 bg-alloro-navy text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.25em] shadow-2xl hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-4 group disabled:opacity-50"
+                    className="w-full sm:w-auto px-12 py-5 bg-alloro-navy text-white rounded-2xl text-xs font-semibold uppercase tracking-[0.25em] shadow-2xl hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-4 group disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       "Transmitting Intelligence..."
@@ -295,10 +295,10 @@ const Help = () => {
           <div className="lg:col-span-5 space-y-10">
             <div className="bg-white rounded-[2.5rem] border border-black/5 shadow-premium p-10 lg:p-14 text-left space-y-10">
               <div className="space-y-1">
-                <h3 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+                <h3 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
                   Instant Channels
                 </h3>
-                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest leading-none">
+                <p className="text-xs font-semibold text-slate-300 uppercase tracking-widest leading-none">
                   Real-time reach protocol
                 </p>
               </div>
@@ -309,10 +309,10 @@ const Help = () => {
                     <Mail size={24} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-alloro-textDark/30 uppercase tracking-[0.2em] mb-1">
+                    <p className="text-xs font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em] mb-1">
                       Direct Strategy Email
                     </p>
-                    <p className="text-xl font-black text-alloro-navy tracking-tight group-hover:text-alloro-navy transition-colors">
+                    <p className="text-xl font-semibold text-alloro-navy tracking-tight group-hover:text-alloro-navy transition-colors">
                       info@getalloro.com
                     </p>
                   </div>
@@ -344,7 +344,7 @@ const Help = () => {
             alt="Alloro"
             className="w-16 h-16 rounded-2xl shadow-2xl"
           />
-          <p className="text-[11px] text-alloro-textDark/20 font-black tracking-[0.4em] uppercase">
+          <p className="text-xs text-alloro-textDark/20 font-semibold tracking-[0.4em] uppercase">
             Alloro Support
           </p>
         </footer>

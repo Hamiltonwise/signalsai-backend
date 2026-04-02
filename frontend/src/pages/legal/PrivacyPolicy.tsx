@@ -30,7 +30,7 @@ export default function PrivacyPolicy() {
       </header>
 
       <main className="mx-auto max-w-2xl px-5 pb-16">
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight text-center mt-8">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
           Privacy Policy
         </h1>
 
@@ -192,7 +192,7 @@ export default function PrivacyPolicy() {
             </p>
           </div>
 
-          <p className="text-[11px] text-gray-300 text-center mt-4">
+          <p className="text-xs text-gray-300 text-center mt-4">
             This policy will be reviewed by legal counsel before Alloro accepts payment.
             <br />
             <Link to="/terms" className="underline underline-offset-2 hover:text-gray-400">Terms of Service</Link>
@@ -201,7 +201,7 @@ export default function PrivacyPolicy() {
       </main>
 
       <footer className="py-8 text-center border-t border-slate-100">
-        <p className="text-[11px] font-medium tracking-wide text-slate-300 uppercase">
+        <p className="text-xs font-medium tracking-wide text-slate-300 uppercase">
           Alloro &middot; Business Clarity
         </p>
       </footer>

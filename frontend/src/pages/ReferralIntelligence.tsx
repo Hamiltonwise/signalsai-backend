@@ -185,7 +185,7 @@ function DriftAlerts({ alerts }: { alerts: DriftAlert[] }) {
                 <p className="text-xl font-bold text-[#D56753]">
                   {a.annualValueAtRisk != null && !isNaN(a.annualValueAtRisk) ? `$${a.annualValueAtRisk.toLocaleString()}` : "$--"}
                 </p>
-                <p className="text-[10px] text-gray-400">estimated per year</p>
+                <p className="text-xs text-gray-400">estimated per year</p>
               </div>
             </div>
           </div>
@@ -256,7 +256,7 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
         >
           <Upload className="h-6 w-6 text-[#D56753]" />
           <span className="text-sm font-semibold text-[#212D40]">Drop a file</span>
-          <span className="text-[11px] text-gray-400">CSV, Excel, PDF, any format</span>
+          <span className="text-xs text-gray-400">CSV, Excel, PDF, any format</span>
         </button>
 
         <button
@@ -268,7 +268,7 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
           <span className="text-sm font-semibold text-[#212D40]">
             {isTouchDevice ? "Take a photo" : "Upload a screenshot"}
           </span>
-          <span className="text-[11px] text-gray-400">Of a report, spreadsheet, or screen</span>
+          <span className="text-xs text-gray-400">Of a report, spreadsheet, or screen</span>
         </button>
 
         <button
@@ -278,7 +278,7 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
         >
           <FileText className="h-6 w-6 text-[#D56753]" />
           <span className="text-sm font-semibold text-[#212D40]">Paste anything</span>
-          <span className="text-[11px] text-gray-400">Names, numbers, notes from any source</span>
+          <span className="text-xs text-gray-400">Names, numbers, notes from any source</span>
         </button>
       </div>
 
@@ -465,10 +465,10 @@ function GPDiscoverySection() {
             {/* Subject */}
             <div className="px-5 py-3 border-b border-gray-50">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Subject</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Subject</p>
                 <button
                   onClick={() => handleCopy(outreachMutation.data!.letter!.subject, "subject")}
-                  className="flex items-center gap-1 text-[10px] font-semibold text-[#D56753] hover:underline"
+                  className="flex items-center gap-1 text-xs font-semibold text-[#D56753] hover:underline"
                 >
                   <Copy className="h-3 w-3" />
                   {copiedField === "subject" ? "Copied" : "Copy"}
@@ -482,10 +482,10 @@ function GPDiscoverySection() {
             {/* Body */}
             <div className="px-5 py-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Body</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Body</p>
                 <button
                   onClick={() => handleCopy(outreachMutation.data!.letter!.body, "body")}
-                  className="flex items-center gap-1 text-[10px] font-semibold text-[#D56753] hover:underline"
+                  className="flex items-center gap-1 text-xs font-semibold text-[#D56753] hover:underline"
                 >
                   <Copy className="h-3 w-3" />
                   {copiedField === "body" ? "Copied" : "Copy"}
@@ -500,7 +500,7 @@ function GPDiscoverySection() {
             {outreachMutation.data.letter.warnings && outreachMutation.data.letter.warnings.length > 0 && (
               <div className="px-5 pb-3">
                 {outreachMutation.data.letter.warnings.map((w, i) => (
-                  <p key={i} className="text-[10px] text-amber-500">{w}</p>
+                  <p key={i} className="text-xs text-amber-500">{w}</p>
                 ))}
               </div>
             )}

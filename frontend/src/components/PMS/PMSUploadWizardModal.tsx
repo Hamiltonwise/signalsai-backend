@@ -394,16 +394,16 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
   const ExampleTable = () => (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200">
-        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide">Example Report Format</p>
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Example Report Format</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-slate-50/50">
-              <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wide">Referral Date</th>
-              <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wide">Referring Practice</th>
-              <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 uppercase tracking-wide">Referring Source</th>
-              <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-slate-600 uppercase tracking-wide">Production</th>
+              <th className="px-2 py-1.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Referral Date</th>
+              <th className="px-2 py-1.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Referring Practice</th>
+              <th className="px-2 py-1.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Referring Source</th>
+              <th className="px-2 py-1.5 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">Production</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

@@ -94,11 +94,11 @@ export default function PitchRepTracker() {
       {/* Counter */}
       <div className="text-center">
         {done ? (
-          <p className="text-4xl sm:text-5xl font-black text-[#212D40]">
+          <p className="text-4xl sm:text-5xl font-semibold text-[#212D40]">
             Ready for AAE.
           </p>
         ) : (
-          <p className="text-5xl sm:text-6xl font-black text-[#212D40]">
+          <p className="text-5xl sm:text-6xl font-semibold text-[#212D40]">
             {count}{" "}
             <span className="text-2xl font-bold text-slate-300">
               / {TARGET}

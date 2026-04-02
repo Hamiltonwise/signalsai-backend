@@ -87,14 +87,14 @@ function MRRTrendChart({ orgs }: { orgs: AdminOrganization[] }) {
       <div className="flex items-end gap-3 h-32">
         {months.map((m, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <span className="text-[10px] font-bold text-[#212D40] tabular-nums">
+            <span className="text-xs font-bold text-[#212D40] tabular-nums">
               {m.mrr > 0 ? `$${(m.mrr / 1000).toFixed(0)}K` : "--"}
             </span>
             <div
               className="w-full rounded-t-lg bg-[#D56753] transition-all duration-700"
               style={{ height: `${maxMRR > 0 ? (m.mrr / maxMRR) * 100 : 0}%`, minHeight: m.mrr > 0 ? 4 : 0 }}
             />
-            <span className="text-[10px] text-gray-400">{m.label}</span>
+            <span className="text-xs text-gray-400">{m.label}</span>
           </div>
         ))}
       </div>
@@ -173,27 +173,27 @@ export default function RevenueDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white border border-gray-200 rounded-2xl p-5 text-center">
           <DollarSign className="h-5 w-5 text-emerald-500 mx-auto mb-2" />
-          <p className="text-2xl font-black text-[#212D40]">${mrr.toLocaleString()}</p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">MRR</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">{activeOrgs.length} active</p>
+          <p className="text-2xl font-semibold text-[#212D40]">${mrr.toLocaleString()}</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">MRR</p>
+          <p className="text-xs text-gray-400 mt-0.5">{activeOrgs.length} active</p>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-2xl p-5 text-center">
           <Users className="h-5 w-5 text-blue-500 mx-auto mb-2" />
-          <p className="text-2xl font-black text-[#212D40]">{trialOrgs.length}</p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Trial Pipeline</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">
+          <p className="text-2xl font-semibold text-[#212D40]">{trialOrgs.length}</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Trial Pipeline</p>
+          <p className="text-xs text-gray-400 mt-0.5">
             Est. ${trialOrgs.reduce((s, o) => s + orgMonthlyRate(o), 0).toLocaleString()}/mo if converted
           </p>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-2xl p-5 text-center">
           <AlertTriangle className="h-5 w-5 text-red-500 mx-auto mb-2" />
-          <p className={`text-2xl font-black ${criticalOrgs.length > 0 ? "text-red-600" : "text-[#212D40]"}`}>
+          <p className={`text-2xl font-semibold ${criticalOrgs.length > 0 ? "text-red-600" : "text-[#212D40]"}`}>
             {criticalOrgs.length}
           </p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Churn Risk</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Churn Risk</p>
+          <p className="text-xs text-gray-400 mt-0.5">
             ${criticalOrgs.reduce((s: number, c) => s + (byOrg[c.id] ?? 0), 0).toLocaleString()} at risk
           </p>
         </div>
@@ -204,11 +204,11 @@ export default function RevenueDashboard() {
           ) : (
             <TrendingDown className="h-5 w-5 text-red-500 mx-auto mb-2" />
           )}
-          <p className={`text-2xl font-black ${nrr >= 100 ? "text-emerald-600" : "text-red-600"}`}>
+          <p className={`text-2xl font-semibold ${nrr >= 100 ? "text-emerald-600" : "text-red-600"}`}>
             {nrr}%
           </p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">NRR Proxy</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">vs. 30 days ago</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">NRR Proxy</p>
+          <p className="text-xs text-gray-400 mt-0.5">vs. 30 days ago</p>
         </div>
       </div>
 
@@ -221,11 +221,11 @@ export default function RevenueDashboard() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Practice</th>
-                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Monthly</th>
-                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Months</th>
-                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Health</th>
-                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">Last Login</th>
+                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">Practice</th>
+                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">Monthly</th>
+                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">Months</th>
+                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">Health</th>
+                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">Last Login</th>
               </tr>
             </thead>
             <tbody>

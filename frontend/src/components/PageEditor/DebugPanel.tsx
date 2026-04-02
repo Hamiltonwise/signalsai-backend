@@ -50,7 +50,7 @@ export default function DebugPanel({ debugInfo, selectedInfo, systemPrompt }: De
         <div className="px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex items-center gap-2 mb-1.5">
             <span
-              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
+              className={`px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider ${
                 selectedInfo.type === "section"
                   ? "bg-purple-50 text-purple-600 border border-purple-200"
                   : "bg-blue-50 text-blue-600 border border-blue-200"
@@ -62,7 +62,7 @@ export default function DebugPanel({ debugInfo, selectedInfo, systemPrompt }: De
               {selectedInfo.label}
             </span>
           </div>
-          <p className="text-[11px] text-gray-400 font-mono break-all">
+          <p className="text-xs text-gray-400 font-mono break-all">
             {selectedInfo.alloroClass}
           </p>
         </div>
@@ -72,7 +72,7 @@ export default function DebugPanel({ debugInfo, selectedInfo, systemPrompt }: De
         <>
           {systemPrompt && (
             <CollapsibleSection title="System Prompt">
-              <pre className="text-[11px] text-gray-600 font-mono whitespace-pre-wrap break-words leading-relaxed max-h-60 overflow-y-auto">
+              <pre className="text-xs text-gray-600 font-mono whitespace-pre-wrap break-words leading-relaxed max-h-60 overflow-y-auto">
                 {systemPrompt}
               </pre>
             </CollapsibleSection>
@@ -97,7 +97,7 @@ export default function DebugPanel({ debugInfo, selectedInfo, systemPrompt }: De
         <span className="text-xs font-mono text-gray-600">
           {debugInfo.model}
         </span>
-        <div className="flex items-center gap-3 text-[11px] text-gray-500">
+        <div className="flex items-center gap-3 text-xs text-gray-500">
           <span>
             In: <span className="font-medium text-gray-700">{debugInfo.inputTokens.toLocaleString()}</span>
           </span>
@@ -109,7 +109,7 @@ export default function DebugPanel({ debugInfo, selectedInfo, systemPrompt }: De
 
       {/* System Prompt */}
       <CollapsibleSection title="System Prompt">
-        <pre className="text-[11px] text-gray-600 font-mono whitespace-pre-wrap break-words leading-relaxed max-h-60 overflow-y-auto">
+        <pre className="text-xs text-gray-600 font-mono whitespace-pre-wrap break-words leading-relaxed max-h-60 overflow-y-auto">
           {debugInfo.systemPrompt}
         </pre>
       </CollapsibleSection>
@@ -120,7 +120,7 @@ export default function DebugPanel({ debugInfo, selectedInfo, systemPrompt }: De
           {debugInfo.messages.map((msg, i) => (
             <div key={i} className="border border-gray-100 rounded-md overflow-hidden">
               <div
-                className={`px-2 py-1 text-[10px] font-semibold uppercase tracking-wider ${
+                className={`px-2 py-1 text-xs font-semibold uppercase tracking-wider ${
                   msg.role === "user"
                     ? "bg-orange-50 text-orange-600"
                     : "bg-blue-50 text-blue-600"
@@ -128,7 +128,7 @@ export default function DebugPanel({ debugInfo, selectedInfo, systemPrompt }: De
               >
                 {msg.role}
               </div>
-              <pre className="px-2 py-1.5 text-[11px] text-gray-600 font-mono whitespace-pre-wrap break-words leading-relaxed max-h-48 overflow-y-auto">
+              <pre className="px-2 py-1.5 text-xs text-gray-600 font-mono whitespace-pre-wrap break-words leading-relaxed max-h-48 overflow-y-auto">
                 {msg.content}
               </pre>
             </div>

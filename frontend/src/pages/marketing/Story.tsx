@@ -17,7 +17,7 @@ export default function Story() {
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="max-w-xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#212D40] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight">
             Why this exists.
           </h1>
           <Link

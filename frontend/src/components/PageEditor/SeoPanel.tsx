@@ -482,7 +482,7 @@ export default function SeoPanel({
           {/* Score */}
           <div className="flex items-center gap-3 mr-auto">
             <div className="flex items-center gap-2">
-              <span className={`text-xl font-black tabular-nums ${getScoreColor(pct)}`}>{totalScore}</span>
+              <span className={`text-xl font-semibold tabular-nums ${getScoreColor(pct)}`}>{totalScore}</span>
               <span className="text-sm text-gray-300 font-semibold">/ {totalMax}</span>
             </div>
             <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -491,7 +491,7 @@ export default function SeoPanel({
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-[11px] font-medium text-gray-400">{getScoreLabel(pct)}</span>
+            <span className="text-xs font-medium text-gray-400">{getScoreLabel(pct)}</span>
           </div>
 
           {/* Location selector */}
@@ -543,19 +543,19 @@ export default function SeoPanel({
         {!hasBusinessData && (
           <div className="flex items-center gap-2 mt-2.5 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <p className="text-[11px] text-amber-700 flex-1">
+            <p className="text-xs text-amber-700 flex-1">
               Business data required for AI generation.
             </p>
             {organizationId ? (
               <Link
                 to={`/admin/organizations/${organizationId}?section=settings`}
-                className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-900 transition-colors whitespace-nowrap"
+                className="flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 transition-colors whitespace-nowrap"
               >
                 Manage Business Data
                 <ExternalLink className="w-3 h-3" />
               </Link>
             ) : (
-              <span className="text-[11px] font-medium text-amber-600 whitespace-nowrap">
+              <span className="text-xs font-medium text-amber-600 whitespace-nowrap">
                 Link an organization first
               </span>
             )}
@@ -604,7 +604,7 @@ export default function SeoPanel({
                       style={{ width: `${sectionPct}%` }}
                     />
                   </div>
-                  <span className="text-[10px] tabular-nums font-medium text-gray-400 w-8 text-right">
+                  <span className="text-xs tabular-nums font-medium text-gray-400 w-8 text-right">
                     {s.score}/{s.max}
                   </span>
                 </div>
@@ -630,7 +630,7 @@ export default function SeoPanel({
                   <button
                     onClick={() => handleAnalyzeSection(activeSection)}
                     disabled={isBusy}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Analyze this section"
                   >
                     {analyzingSection === activeSection ? (
@@ -643,7 +643,7 @@ export default function SeoPanel({
                   <button
                     onClick={() => handleGenerateSection(activeSection)}
                     disabled={isBusy}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold text-white bg-alloro-orange hover:bg-alloro-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold text-white bg-alloro-orange hover:bg-alloro-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Regenerate this section"
                   >
                     {generatingSection === activeSection ? (
@@ -661,7 +661,7 @@ export default function SeoPanel({
             {isWrapperLevel && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-gray-100 border border-gray-200 mb-4">
                 <Info className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
-                <p className="text-[11px] text-gray-500">
+                <p className="text-xs text-gray-500">
                   Auto-detected from your wrapper HTML. Update via the <strong>Layouts</strong> tab.
                 </p>
               </div>
@@ -686,7 +686,7 @@ export default function SeoPanel({
                   <span className={`text-xs flex-1 ${item.passed ? "text-gray-600" : "text-gray-500"}`}>
                     {item.label}
                   </span>
-                  <span className="text-[10px] tabular-nums text-gray-400 font-medium">{item.points}pts</span>
+                  <span className="text-xs tabular-nums text-gray-400 font-medium">{item.points}pts</span>
                 </div>
               ))}
             </div>
@@ -711,7 +711,7 @@ export default function SeoPanel({
                 <div className="flex items-start gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-1">AI Insight</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-blue-500 mb-1">AI Insight</p>
                     <p className="text-xs text-blue-800 leading-relaxed">{currentInsight}</p>
                   </div>
                 </div>
@@ -729,7 +729,7 @@ export default function SeoPanel({
 // ---------------------------------------------------------------------------
 
 const fieldInput = "w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 bg-white";
-const fieldLabel = "text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block";
+const fieldLabel = "text-xs font-bold uppercase tracking-widest text-gray-400 mb-1.5 block";
 
 function CriticalFields({ seo, onChange }: { seo: SeoData; onChange: (f: keyof SeoData, v: unknown) => void }) {
   const titleLen = (seo.meta_title || "").length;
@@ -743,7 +743,7 @@ function CriticalFields({ seo, onChange }: { seo: SeoData; onChange: (f: keyof S
           className={fieldInput}
           placeholder="Page Title | Business Name"
         />
-        <div className={`text-[10px] mt-1 ${titleLen >= 50 && titleLen <= 60 ? "text-green-600" : titleLen > 60 ? "text-red-500" : "text-gray-400"}`}>
+        <div className={`text-xs mt-1 ${titleLen >= 50 && titleLen <= 60 ? "text-green-600" : titleLen > 60 ? "text-red-500" : "text-gray-400"}`}>
           {titleLen}/60 characters
         </div>
       </div>
@@ -786,7 +786,7 @@ function HighImpactFields({ seo, onChange }: { seo: SeoData; onChange: (f: keyof
           className={`${fieldInput} resize-none`}
           placeholder="Description with CTA and trust signal..."
         />
-        <div className={`text-[10px] mt-1 ${descLen >= 140 && descLen <= 160 ? "text-green-600" : descLen > 160 ? "text-red-500" : "text-gray-400"}`}>
+        <div className={`text-xs mt-1 ${descLen >= 140 && descLen <= 160 ? "text-green-600" : descLen > 160 ? "text-red-500" : "text-gray-400"}`}>
           {descLen}/160 characters
         </div>
       </div>
@@ -825,7 +825,7 @@ function SchemaFields({ seo, onChange }: { seo: SeoData; onChange: (f: keyof Seo
         {schemaStr && (
           <button
             onClick={() => { setEditing(!editing); setEditValue(schemaStr); }}
-            className="text-[10px] font-bold text-alloro-orange hover:text-alloro-orange/80 transition-colors"
+            className="text-xs font-bold text-alloro-orange hover:text-alloro-orange/80 transition-colors"
           >
             {editing ? "Cancel" : "Edit"}
           </button>
@@ -847,7 +847,7 @@ function SchemaFields({ seo, onChange }: { seo: SeoData; onChange: (f: keyof Seo
           </button>
         </div>
       ) : schemaStr ? (
-        <pre className="text-[11px] text-gray-600 bg-white rounded-lg p-3 overflow-x-auto max-h-48 border border-gray-200 font-mono">
+        <pre className="text-xs text-gray-600 bg-white rounded-lg p-3 overflow-x-auto max-h-48 border border-gray-200 font-mono">
           {schemaStr}
         </pre>
       ) : (

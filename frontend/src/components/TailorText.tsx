@@ -119,7 +119,7 @@ export function TailorText({
         <Pencil size={10} />
       </span>
       {showSaved && (
-        <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap animate-fade-in">
+        <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap animate-fade-in">
           Saved
         </span>
       )}

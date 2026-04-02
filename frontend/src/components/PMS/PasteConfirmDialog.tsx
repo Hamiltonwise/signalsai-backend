@@ -174,7 +174,7 @@ export const PasteConfirmDialog: React.FC<PasteConfirmDialogProps> = ({
                           }}
                         />
                         <span
-                          className="text-[10px] font-medium transition-colors duration-300"
+                          className="text-xs font-medium transition-colors duration-300"
                           style={{ color: isActive ? ALORO_ORANGE : "#9ca3af" }}
                         >
                           {p === "parsing" ? "Parse" : "Clean"}

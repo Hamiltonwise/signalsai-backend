@@ -225,7 +225,7 @@ function FeatureRow({ feature }: { feature: Feature }) {
           <p className={`text-sm font-semibold ${config.color}`}>{feature.name}</p>
           <p className="text-xs text-gray-500 mt-0.5">{feature.area}</p>
         </div>
-        <span className={`text-[10px] font-bold uppercase tracking-wider ${config.color} shrink-0`}>
+        <span className={`text-xs font-bold uppercase tracking-wider ${config.color} shrink-0`}>
           {config.label}
         </span>
         {expanded ? <ChevronDown className="w-3 h-3 text-gray-400" /> : <ChevronRight className="w-3 h-3 text-gray-400" />}
@@ -235,7 +235,7 @@ function FeatureRow({ feature }: { feature: Feature }) {
           <p className="text-xs text-gray-600">{feature.notes}</p>
           {feature.dependencies.length > 0 && (
             <div>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Dependencies:</p>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Dependencies:</p>
               <ul className="mt-1 space-y-0.5">
                 {feature.dependencies.map((d, i) => (
                   <li key={i} className="text-xs text-gray-600 flex items-center gap-1.5">
@@ -247,10 +247,10 @@ function FeatureRow({ feature }: { feature: Feature }) {
             </div>
           )}
           {feature.lastVerified && (
-            <p className="text-[10px] text-gray-400">Last verified: {feature.lastVerified}</p>
+            <p className="text-xs text-gray-400">Last verified: {feature.lastVerified}</p>
           )}
           {feature.files.length > 0 && (
-            <p className="text-[10px] text-gray-400 font-mono">{feature.files.join(", ")}</p>
+            <p className="text-xs text-gray-400 font-mono">{feature.files.join(", ")}</p>
           )}
         </div>
       )}

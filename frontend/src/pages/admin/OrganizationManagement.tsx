@@ -229,15 +229,15 @@ export function OrganizationManagement() {
                           <Badge variant="orange">DFY</Badge>
                           {/* Billing status badge */}
                           {org.subscription_status === "inactive" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-50 text-red-700 border border-red-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold rounded-full bg-red-50 text-red-700 border border-red-200">
                               🔒 Locked
                             </span>
                           ) : org.stripe_customer_id ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-50 text-green-700 border border-green-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold rounded-full bg-green-50 text-green-700 border border-green-200">
                               ✓ Active
                             </span>
                           ) : org.subscription_status === "active" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                               ⚠ No Billing
                             </span>
                           ) : null}
@@ -299,7 +299,7 @@ export function OrganizationManagement() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-black text-alloro-navy tracking-tight">
+                <h2 className="text-xl font-semibold text-alloro-navy tracking-tight">
                   Create Organization
                 </h2>
                 <button

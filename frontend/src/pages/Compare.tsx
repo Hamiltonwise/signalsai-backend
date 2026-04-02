@@ -91,7 +91,7 @@ export default function Compare() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-100 mb-5">
             <MapPin className="w-7 h-7 text-slate-400" />
           </div>
-          <h2 className="text-xl font-extrabold text-[#212D40]">
+          <h2 className="text-xl font-semibold text-[#212D40]">
             Comparison not available
           </h2>
           <p className="mt-3 text-sm text-slate-500 leading-relaxed">
@@ -120,7 +120,7 @@ export default function Compare() {
       <div className="max-w-2xl mx-auto px-5 py-10 space-y-8">
         {/* Title */}
         <div className="text-center">
-          <h1 className="text-xl sm:text-2xl font-extrabold text-[#212D40] tracking-tight leading-tight">
+          <h1 className="text-xl sm:text-2xl font-semibold text-[#212D40] tracking-tight leading-tight">
             {p.name} vs {c.name}
           </h1>
           <p className="mt-2 text-sm text-slate-500">
@@ -192,13 +192,13 @@ export default function Compare() {
 
           {/* Category */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
               Category
             </p>
             <p className="text-xs text-[#212D40] font-medium">{p.category || "--"}</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
               Category
             </p>
             <p className="text-xs text-[#212D40] font-medium">{c.category || "--"}</p>
@@ -270,12 +270,12 @@ function MetricCell({
     >
       <div className="flex items-center justify-center gap-1.5 mb-1">
         <Icon className={`w-3.5 h-3.5 ${highlight ? "text-[#D56753]" : "text-slate-400"}`} />
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
           {label}
         </p>
       </div>
       <p
-        className={`text-2xl font-black ${
+        className={`text-2xl font-semibold ${
           highlight ? "text-[#D56753]" : "text-[#212D40]"
         }`}
       >

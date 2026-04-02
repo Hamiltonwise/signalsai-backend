@@ -54,7 +54,7 @@ export const GoogleAPITermsModal: React.FC<GoogleAPITermsModalProps> = ({
                     <Shield size={28} className="text-alloro-orange" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black font-heading tracking-tight">
+                    <h2 className="text-2xl font-semibold font-heading tracking-tight">
                       Google API Access Terms
                     </h2>
                     <p className="text-white/70 text-sm mt-1">
@@ -93,7 +93,7 @@ export const GoogleAPITermsModal: React.FC<GoogleAPITermsModalProps> = ({
                       />
                     </div>
                     <div>
-                      <h3 className="font-black text-alloro-navy text-lg">
+                      <h3 className="font-semibold text-alloro-navy text-lg">
                         Google Business Profile (GBP)
                       </h3>
                       <p className="text-slate-500 text-sm">

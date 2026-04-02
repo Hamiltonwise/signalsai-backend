@@ -126,7 +126,7 @@ export const ProfileTab: React.FC = () => {
               <Key className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-alloro-navy tracking-tight">
+              <h3 className="text-lg font-semibold text-alloro-navy tracking-tight">
                 {hasPassword ? "Change Password" : "Set Password"}
               </h3>
               <p className="text-sm text-slate-500">
@@ -142,7 +142,7 @@ export const ProfileTab: React.FC = () => {
             {/* Current Password (only if has password) */}
             {hasPassword && (
               <div>
-                <label className="block text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.15em] mb-2">
+                <label className="block text-xs font-semibold text-alloro-textDark/40 uppercase tracking-[0.15em] mb-2">
                   Current Password
                 </label>
                 <div className="relative">
@@ -166,7 +166,7 @@ export const ProfileTab: React.FC = () => {
 
             {/* New Password */}
             <div>
-              <label className="block text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.15em] mb-2">
+              <label className="block text-xs font-semibold text-alloro-textDark/40 uppercase tracking-[0.15em] mb-2">
                 {hasPassword ? "New Password" : "Password"}
               </label>
               <div className="relative">
@@ -212,7 +212,7 @@ export const ProfileTab: React.FC = () => {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.15em] mb-2">
+              <label className="block text-xs font-semibold text-alloro-textDark/40 uppercase tracking-[0.15em] mb-2">
                 Confirm Password
               </label>
               <div className="relative">
@@ -257,7 +257,7 @@ export const ProfileTab: React.FC = () => {
             <button
               type="submit"
               disabled={!canSubmit}
-              className="w-full px-6 py-3 bg-alloro-navy text-white text-sm font-black uppercase tracking-widest rounded-xl hover:bg-alloro-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-6 py-3 bg-alloro-navy text-white text-sm font-semibold uppercase tracking-widest rounded-xl hover:bg-alloro-navy/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
               {hasPassword ? "Update Password" : "Set Password"}
@@ -279,7 +279,7 @@ export const ProfileTab: React.FC = () => {
               <Download className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-alloro-navy tracking-tight">
+              <h3 className="text-lg font-semibold text-alloro-navy tracking-tight">
                 Export My Data
               </h3>
               <p className="text-sm text-slate-500">
@@ -309,7 +309,7 @@ export const ProfileTab: React.FC = () => {
                 // Silent fail, user can retry
               }
             }}
-            className="px-6 py-3 bg-alloro-navy text-white text-sm font-black uppercase tracking-widest rounded-xl hover:bg-alloro-navy/90 transition-colors flex items-center gap-2"
+            className="px-6 py-3 bg-alloro-navy text-white text-sm font-semibold uppercase tracking-widest rounded-xl hover:bg-alloro-navy/90 transition-colors flex items-center gap-2"
           >
             <Download className="w-4 h-4" />
             Export my data

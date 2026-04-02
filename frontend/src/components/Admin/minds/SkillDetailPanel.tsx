@@ -134,7 +134,7 @@ function AnalyticsSection({
               key={d.date}
               className="flex-1 flex flex-col items-center gap-1"
             >
-              <span className="text-[10px] font-medium text-gray-500">
+              <span className="text-xs font-medium text-gray-500">
                 {d.count > 0 ? d.count : ""}
               </span>
               <div
@@ -145,7 +145,7 @@ function AnalyticsSection({
                   opacity: d.count > 0 ? 1 : 0.2,
                 }}
               />
-              <span className="text-[10px] text-gray-400">{d.label}</span>
+              <span className="text-xs text-gray-400">{d.label}</span>
             </div>
           ))}
         </div>
@@ -435,7 +435,7 @@ export function SkillDetailPanel({
                   color={statusColor(skillStatus)}
                 />
               </div>
-              <p className="text-[11px] text-gray-400 font-mono">
+              <p className="text-xs text-gray-400 font-mono">
                 {skill.slug}
               </p>
             </div>
@@ -581,7 +581,7 @@ export function SkillDetailPanel({
               </div>
               <div className="flex items-center gap-3">
                 {neuron && !generating && (
-                  <span className="text-[10px] text-gray-400">
+                  <span className="text-xs text-gray-400">
                     Generated{" "}
                     {new Date(neuron.generated_at).toLocaleDateString()}
                   </span>
@@ -748,7 +748,7 @@ export function SkillDetailPanel({
                   className="w-full rounded-lg border border-white/8 px-3 py-2 text-sm text-[#c2c0b6] focus:border-alloro-orange focus:outline-none focus:ring-1 focus:ring-alloro-orange/50"
                   style={{ backgroundColor: "rgba(255,255,255,0.04)" }}
                 />
-                <p className="text-[10px] text-[#6a6a75] mt-1">How many work items per run</p>
+                <p className="text-xs text-[#6a6a75] mt-1">How many work items per run</p>
               </div>
             </div>
 
@@ -799,7 +799,7 @@ export function SkillDetailPanel({
                 <div className="grid grid-cols-3 gap-3 rounded-xl border border-white/8 bg-white/[0.04] p-4">
                   {(cfgTriggerType === "weekly" || cfgTriggerType === "day_of_week") && (
                     <div>
-                      <label className="block text-[10px] font-medium text-[#a0a0a8] mb-1">Day</label>
+                      <label className="block text-xs font-medium text-[#a0a0a8] mb-1">Day</label>
                       <select
                         value={cfgTriggerDay}
                         onChange={(e) => setCfgTriggerDay(e.target.value)}
@@ -818,7 +818,7 @@ export function SkillDetailPanel({
                     </div>
                   )}
                   <div>
-                    <label className="block text-[10px] font-medium text-[#a0a0a8] mb-1">Time</label>
+                    <label className="block text-xs font-medium text-[#a0a0a8] mb-1">Time</label>
                     <input
                       type="time"
                       value={cfgTriggerTime}
@@ -828,7 +828,7 @@ export function SkillDetailPanel({
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-medium text-[#a0a0a8] mb-1">Timezone</label>
+                    <label className="block text-xs font-medium text-[#a0a0a8] mb-1">Timezone</label>
                     <select
                       value={cfgTriggerTimezone}
                       onChange={(e) => setCfgTriggerTimezone(e.target.value)}
@@ -905,7 +905,7 @@ export function SkillDetailPanel({
                   ))}
                 </select>
                 {channels.length === 0 && (
-                  <p className="text-[10px] text-[#6a6a75] mt-1">
+                  <p className="text-xs text-[#6a6a75] mt-1">
                     No channels configured. Add one in the Publish Channels tab.
                   </p>
                 )}
@@ -943,7 +943,7 @@ export function SkillDetailPanel({
                 {testPortalResponse && (
                   <div className="rounded-lg border border-white/8 bg-white/[0.04] p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-medium text-[#a0a0a8] uppercase tracking-wider">Response</span>
+                      <span className="text-xs font-medium text-[#a0a0a8] uppercase tracking-wider">Response</span>
                     </div>
                     <p className="text-sm text-[#c2c0b6] whitespace-pre-wrap leading-relaxed">
                       {testPortalResponse.response}

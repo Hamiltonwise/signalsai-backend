@@ -120,7 +120,7 @@ export const MonthlyReferralsChart: React.FC<MonthlyReferralsChartProps> = ({
               <div className="text-2xl font-bold text-white/90 tabular-nums">
                 {Math.round(totals.self).toLocaleString()}
               </div>
-              <div className="text-[10px] text-blue-300 font-medium uppercase tracking-wide">
+              <div className="text-xs text-blue-300 font-medium uppercase tracking-wide">
                 Self-Referrals
               </div>
             </div>
@@ -139,7 +139,7 @@ export const MonthlyReferralsChart: React.FC<MonthlyReferralsChartProps> = ({
           <h3 className="font-bold text-alloro-navy font-heading">
             Monthly Trend
           </h3>
-          <div className="flex gap-3 text-[10px] font-bold uppercase tracking-wider">
+          <div className="flex gap-3 text-xs font-bold uppercase tracking-wider">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-alloro-orange"></span>{" "}
               Self
@@ -179,7 +179,7 @@ export const MonthlyReferralsChart: React.FC<MonthlyReferralsChartProps> = ({
                   {/* Visuals */}
                   <div className="relative">
                     {/* Tooltip on hover */}
-                    <div className="mb-1 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-6 left-0 bg-slate-800 text-white text-[10px] px-2 py-1 rounded pointer-events-none z-20 whitespace-nowrap">
+                    <div className="mb-1 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-6 left-0 bg-slate-800 text-white text-xs px-2 py-1 rounded pointer-events-none z-20 whitespace-nowrap">
                       Total: {item.total} referrals
                     </div>
 
@@ -194,7 +194,7 @@ export const MonthlyReferralsChart: React.FC<MonthlyReferralsChartProps> = ({
                             duration: 0.6,
                             ease: "easeOut",
                           }}
-                          className="h-full bg-alloro-orange rounded-r-md text-[10px] text-white font-bold flex items-center justify-end px-2 shadow-sm shadow-blue-200 transition-all duration-300 group-hover:bg-blue-700"
+                          className="h-full bg-alloro-orange rounded-r-md text-xs text-white font-bold flex items-center justify-end px-2 shadow-sm shadow-blue-200 transition-all duration-300 group-hover:bg-blue-700"
                         >
                           {item.selfReferrals > 0 && item.selfReferrals}
                         </motion.div>
@@ -211,7 +211,7 @@ export const MonthlyReferralsChart: React.FC<MonthlyReferralsChartProps> = ({
                               duration: 0.6,
                               ease: "easeOut",
                             }}
-                            className="h-full bg-alloro-teal rounded-r-md text-[10px] text-white font-bold flex items-center justify-end px-2 shadow-sm shadow-teal-200 transition-all duration-300 group-hover:brightness-110"
+                            className="h-full bg-alloro-teal rounded-r-md text-xs text-white font-bold flex items-center justify-end px-2 shadow-sm shadow-teal-200 transition-all duration-300 group-hover:brightness-110"
                           >
                             {item.doctorReferrals}
                           </motion.div>

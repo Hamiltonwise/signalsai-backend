@@ -260,7 +260,7 @@ export function OrgSubscriptionSection({
             <h3 className="text-sm font-bold text-gray-900">Overview</h3>
           </div>
           {billingStatusBadge && (
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-full ${billingStatusBadge.bg} ${billingStatusBadge.text} border ${billingStatusBadge.border}`}>
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full ${billingStatusBadge.bg} ${billingStatusBadge.text} border ${billingStatusBadge.border}`}>
               <billingStatusBadge.icon className="h-3 w-3" />
               {billingStatusBadge.label}
             </span>
@@ -271,7 +271,7 @@ export function OrgSubscriptionSection({
           <div className="grid grid-cols-3 gap-6">
             {/* Type */}
             <div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Type</div>
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Type</div>
               {org.organization_type ? (
                 <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-md bg-purple-50 text-purple-700">
                   {org.organization_type === "saas" ? "SaaS" : "Health"}
@@ -297,13 +297,13 @@ export function OrgSubscriptionSection({
 
             {/* Tier */}
             <div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Tier</div>
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Tier</div>
               <span className="text-sm font-bold text-gray-900">DFY</span>
             </div>
 
             {/* Website Project */}
             <div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Project</div>
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Project</div>
               {org.website ? (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700">
                   <Globe className="h-3 w-3" />
@@ -330,7 +330,7 @@ export function OrgSubscriptionSection({
             <div className="grid grid-cols-3 gap-6">
               {/* Payment Method */}
               <div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Payment Method</div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Payment Method</div>
                 {billingDetails?.paymentMethod ? (
                   <div className="flex items-center gap-1.5">
                     <CreditCard className="h-3.5 w-3.5 text-gray-400" />
@@ -348,7 +348,7 @@ export function OrgSubscriptionSection({
 
               {/* Coupon */}
               <div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Coupon</div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Coupon</div>
                 {billingDetails?.discount ? (
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700">
                     <Tag className="h-3 w-3" />
@@ -366,7 +366,7 @@ export function OrgSubscriptionSection({
 
               {/* Cancel State */}
               <div>
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Cancel State</div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Cancel State</div>
                 {billingDetails?.canceledAt ? (
                   <span className="text-xs font-medium text-red-600">
                     Cancelled {new Date(billingDetails.canceledAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -398,11 +398,11 @@ export function OrgSubscriptionSection({
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="px-3 py-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider">Date</th>
-                          <th className="px-3 py-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider">Amount</th>
-                          <th className="px-3 py-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider">Status</th>
-                          <th className="px-3 py-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider">Coupon</th>
-                          <th className="px-3 py-2 font-bold text-[10px] text-gray-400 uppercase tracking-wider">Invoice</th>
+                          <th className="px-3 py-2 font-bold text-xs text-gray-400 uppercase tracking-wider">Date</th>
+                          <th className="px-3 py-2 font-bold text-xs text-gray-400 uppercase tracking-wider">Amount</th>
+                          <th className="px-3 py-2 font-bold text-xs text-gray-400 uppercase tracking-wider">Status</th>
+                          <th className="px-3 py-2 font-bold text-xs text-gray-400 uppercase tracking-wider">Coupon</th>
+                          <th className="px-3 py-2 font-bold text-xs text-gray-400 uppercase tracking-wider">Invoice</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -415,7 +415,7 @@ export function OrgSubscriptionSection({
                               ${inv.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                             <td className="px-3 py-2">
-                              <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
+                              <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide ${
                                 inv.status === "paid"
                                   ? "bg-green-50 text-green-700"
                                   : inv.status === "open"

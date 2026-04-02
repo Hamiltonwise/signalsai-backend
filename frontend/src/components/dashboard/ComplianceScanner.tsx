@@ -32,7 +32,7 @@ function SeverityBadge({ severity }: { severity: string }) {
     low: "bg-blue-50 text-blue-600 border-blue-200",
   };
   return (
-    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${styles[severity as keyof typeof styles] || styles.low}`}>
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${styles[severity as keyof typeof styles] || styles.low}`}>
       {severity.toUpperCase()}
     </span>
   );

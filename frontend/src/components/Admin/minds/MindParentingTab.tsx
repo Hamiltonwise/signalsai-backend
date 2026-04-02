@@ -56,7 +56,7 @@ const DARK_PILL_STYLES: Record<ParentingSession["status"], string> = {
 function DarkPill({ label, status }: { label: string; status: ParentingSession["status"] }) {
   return (
     <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${DARK_PILL_STYLES[status]}`}
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest border ${DARK_PILL_STYLES[status]}`}
     >
       {label}
     </span>
@@ -406,7 +406,7 @@ export function MindParentingTab({ mindId, mindName }: MindParentingTabProps) {
                     label={STATUS_LABELS[session.status]}
                     status={session.status}
                   />
-                  <span className="text-[10px] text-[#6a6a75]">
+                  <span className="text-xs text-[#6a6a75]">
                     {timeAgo(session.created_at)}
                   </span>
                 </div>

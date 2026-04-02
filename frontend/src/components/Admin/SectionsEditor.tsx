@@ -279,7 +279,7 @@ export default function SectionsEditor({
           {/* Section list */}
           <div className="w-56 bg-[#252526] border-r border-[#333] flex flex-col overflow-hidden">
             <div className="px-3 py-2 border-b border-[#333]">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+              <span className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
                 Sections
               </span>
             </div>

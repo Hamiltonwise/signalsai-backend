@@ -52,12 +52,12 @@ function MockEmailPreview() {
       <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
         <div className="flex items-center gap-2 mb-1.5">
           <Mail className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-[10px] text-slate-400">Monday 7:00 AM</span>
+          <span className="text-xs text-slate-400">Monday 7:00 AM</span>
         </div>
         <p className="text-xs font-bold text-[#212D40]">
           Dr. Mitchell, Valley Endodontics SLC is pulling away.
         </p>
-        <p className="text-[10px] text-slate-400 mt-0.5">
+        <p className="text-xs text-slate-400 mt-0.5">
           From: Alloro Intelligence
         </p>
       </div>
@@ -80,7 +80,7 @@ function MockEmailPreview() {
             visit -- they remember you best in the first hour.
           </p>
         </div>
-        <p className="text-[10px] text-slate-300 text-center pt-1">
+        <p className="text-xs text-slate-300 text-center pt-1">
           Alloro Business Clarity -- Mountain View Endodontics
         </p>
       </div>
@@ -151,7 +151,7 @@ export default function DemoGuided() {
             <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-2">
               Step {step + 1} of {STEPS.length}
             </p>
-            <h2 className="text-lg font-extrabold text-[#212D40]">
+            <h2 className="text-lg font-semibold text-[#212D40]">
               {current.title}
             </h2>
 

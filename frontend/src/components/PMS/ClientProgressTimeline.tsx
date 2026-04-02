@@ -372,8 +372,8 @@ export const ClientProgressTimeline: React.FC<ClientProgressTimelineProps> = ({
                     <p className={`
                       font-medium leading-relaxed py-1 px-3 rounded-lg border backdrop-blur-sm
                       ${state === "current" ? "text-xs bg-white/80 text-alloro-orange/80 border-alloro-orange/20 shadow-sm" : ""}
-                      ${state === "completed" ? "text-[10px] bg-alloro-orange/5 text-alloro-orange/70 border-alloro-orange/10" : ""}
-                      ${state === "pending" ? "text-[10px] bg-gray-50 text-gray-400 border-gray-100" : ""}
+                      ${state === "completed" ? "text-xs bg-alloro-orange/5 text-alloro-orange/70 border-alloro-orange/10" : ""}
+                      ${state === "pending" ? "text-xs bg-gray-50 text-gray-400 border-gray-100" : ""}
                     `}>
                       {step.description}
                     </p>

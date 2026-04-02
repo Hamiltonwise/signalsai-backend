@@ -78,7 +78,7 @@ export default function VerticalFeedback({
 
   if (state === "confirmed") {
     return (
-      <span className={`inline-flex items-center gap-1 text-[10px] text-emerald-600 ${className}`}>
+      <span className={`inline-flex items-center gap-1 text-xs text-emerald-600 ${className}`}>
         <Check className="h-3 w-3" /> Updated
       </span>
     );
@@ -87,7 +87,7 @@ export default function VerticalFeedback({
   if (state === "asking") {
     return (
       <div className={`inline-flex flex-col gap-2 ${className}`}>
-        <p className="text-[10px] text-gray-500">What type of business is this?</p>
+        <p className="text-xs text-gray-500">What type of business is this?</p>
         <div className="flex flex-wrap gap-1.5">
           {BUSINESS_TYPES.slice(0, 8).map((type) => (
             <button
@@ -96,14 +96,14 @@ export default function VerticalFeedback({
                 setSelectedType(type);
                 setState("correcting");
               }}
-              className="text-[10px] px-2 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-[#D56753] hover:text-[#D56753] transition-colors"
+              className="text-xs px-2 py-1 rounded-full border border-gray-200 text-gray-500 hover:border-[#D56753] hover:text-[#D56753] transition-colors"
             >
               {type}
             </button>
           ))}
           <button
             onClick={() => setState("correcting")}
-            className="text-[10px] px-2 py-1 rounded-full border border-gray-200 text-gray-600 hover:border-[#D56753] hover:text-[#D56753] transition-colors"
+            className="text-xs px-2 py-1 rounded-full border border-gray-200 text-gray-500 hover:border-[#D56753] hover:text-[#D56753] transition-colors"
           >
             Other...
           </button>
@@ -120,13 +120,13 @@ export default function VerticalFeedback({
           value={selectedType}
           onChange={(e) => setSelectedType(e.target.value)}
           placeholder="e.g. Tattoo Studio"
-          className="text-[10px] px-2 py-1 border border-gray-200 rounded-lg w-32 focus:border-[#D56753] outline-none"
+          className="text-xs px-2 py-1 border border-gray-200 rounded-lg w-32 focus:border-[#D56753] outline-none"
           autoFocus
         />
         <button
           onClick={handleCorrect}
           disabled={!selectedType}
-          className="text-[10px] px-2 py-1 rounded-lg bg-[#D56753] text-white disabled:opacity-40"
+          className="text-xs px-2 py-1 rounded-lg bg-[#D56753] text-white disabled:opacity-40"
         >
           Save
         </button>
@@ -137,7 +137,7 @@ export default function VerticalFeedback({
   return (
     <button
       onClick={() => setState("asking")}
-      className={`inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-[#D56753] transition-colors ${className}`}
+      className={`inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[#D56753] transition-colors ${className}`}
       title="Is this business type correct?"
     >
       <AlertCircle className="h-3 w-3" />

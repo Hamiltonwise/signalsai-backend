@@ -1725,7 +1725,7 @@ export default function WebsiteDetail() {
                           {p.generation_status === "ready" && (
                             <Check className="h-3.5 w-3.5 text-green-500 stroke-[3]" />
                           )}
-                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getGenStatusStyles(p.generation_status)}`}>
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${getGenStatusStyles(p.generation_status)}`}>
                             {p.generation_status}
                           </span>
                           {p.generation_status === "ready" && (
@@ -1980,7 +1980,7 @@ export default function WebsiteDetail() {
                                   style={{ width: `${seoScore.pct}%` }}
                                 />
                               </div>
-                              <span className={`text-[10px] font-bold tabular-nums ${seoScore.colorClass}`}>
+                              <span className={`text-xs font-bold tabular-nums ${seoScore.colorClass}`}>
                                 {seoScore.pct > 0 ? seoScore.pct : "-"}
                               </span>
                             </div>
@@ -2056,14 +2056,14 @@ export default function WebsiteDetail() {
                                           <Loader2 className="h-3 w-3 text-amber-500 animate-spin" />
                                         )}
                                         <span
-                                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getGenStatusStyles(page.generation_status)}`}
+                                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${getGenStatusStyles(page.generation_status)}`}
                                         >
                                           {page.generation_status}
                                         </span>
                                       </>
                                     ) : (
                                       <span
-                                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getPageStatusStyles(page.status)}`}
+                                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${getPageStatusStyles(page.status)}`}
                                       >
                                         {page.status}
                                       </span>

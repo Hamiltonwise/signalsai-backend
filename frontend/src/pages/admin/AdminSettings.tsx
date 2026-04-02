@@ -110,13 +110,13 @@ export default function AdminSettings() {
               <button
                 onClick={handleReset}
                 disabled={prompt === DEFAULT_PROMPT}
-                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <RotateCcw className="w-3 h-3" />
                 Reset to default
               </button>
             </div>
-            <p className="text-[11px] text-gray-400 mb-3">
+            <p className="text-xs text-gray-400 mb-3">
               This prompt is sent as the system message when editing page
               components via the visual editor. It controls how the LLM
               interprets and applies edit instructions.
@@ -160,7 +160,7 @@ export default function AdminSettings() {
             </button>
 
             {isDirty && !saving && (
-              <span className="text-[11px] text-gray-400">
+              <span className="text-xs text-gray-400">
                 Unsaved changes
               </span>
             )}

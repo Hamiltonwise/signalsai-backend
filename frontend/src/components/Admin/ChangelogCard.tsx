@@ -103,7 +103,7 @@ export default function ChangelogCard() {
           </p>
         </div>
         {aheadCount > 0 && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-semibold">
             {aheadCount} pending production
           </span>
         )}
@@ -140,11 +140,11 @@ export default function ChangelogCard() {
                 <span className="text-xs font-semibold text-[#212D40]">
                   {formatDate(group.date)}
                 </span>
-                <span className="text-[10px] text-gray-400">
+                <span className="text-xs text-gray-400">
                   {group.commits.length} commit{group.commits.length !== 1 ? "s" : ""}
                 </span>
                 {pendingInGroup > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 font-semibold">
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 font-semibold">
                     {pendingInGroup} pending
                   </span>
                 )}
@@ -165,26 +165,26 @@ export default function ChangelogCard() {
                           {commit.message}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] font-mono text-gray-400">
+                          <span className="text-xs font-mono text-gray-400">
                             {commit.hash}
                           </span>
-                          <span className="text-[10px] text-gray-400">
+                          <span className="text-xs text-gray-400">
                             {commit.author}
                           </span>
-                          <span className="text-[10px] text-gray-400">
+                          <span className="text-xs text-gray-400">
                             {timeAgo(commit.date)}
                           </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {commit.filesChanged > 0 && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                          <span className="flex items-center gap-0.5 text-xs text-gray-400">
                             <FileText className="h-3 w-3" />
                             {commit.filesChanged}
                           </span>
                         )}
                         <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                          className={`text-xs px-1.5 py-0.5 rounded font-semibold ${
                             commit.aheadOfMain
                               ? "bg-orange-100 text-orange-600"
                               : "bg-emerald-100 text-emerald-600"

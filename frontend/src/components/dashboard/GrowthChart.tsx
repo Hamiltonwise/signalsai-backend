@@ -145,14 +145,14 @@ export default function GrowthChart({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-0.5 bg-[#D56753] rounded-full" />
-            <span className="text-[10px] text-slate-400 truncate max-w-[120px]">
+            <span className="text-xs text-slate-400 truncate max-w-[120px]">
               {practice_name}
             </span>
           </div>
           {competitor_name && (
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-0.5 bg-[#212D40] rounded-full opacity-50" style={{ borderTop: "1px dashed #212D40" }} />
-              <span className="text-[10px] text-slate-400 truncate max-w-[120px]">
+              <span className="text-xs text-slate-400 truncate max-w-[120px]">
                 {competitor_name}
               </span>
             </div>
@@ -182,7 +182,7 @@ export default function GrowthChart({
                 x={CHART_PADDING_LEFT - 8}
                 y={toY(tick) + 3}
                 textAnchor="end"
-                className="text-[10px] fill-slate-400"
+                className="text-xs fill-slate-400"
                 style={{ fontSize: "10px" }}
               >
                 #{tick}
