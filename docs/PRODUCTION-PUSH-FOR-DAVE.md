@@ -87,3 +87,31 @@ Dave: pick whichever approach you're most confident in. The goal is Dr. Pawlak s
 ---
 
 *Written April 1, 2026. This page is final. Do not scatter these instructions elsewhere. If something changes, update THIS page.*
+
+---
+
+## URGENT: Production API Not Routing (April 2, 2026)
+
+**Every customer on production is affected right now.**
+
+`curl https://getalloro.com/api/health` returns HTML instead of JSON.
+The Apache/nginx proxy is not forwarding /api/* routes to the Node backend.
+
+This means:
+- Pawlak's dashboard shows no data (she thinks rankings dropped)
+- Garrison can't reset his password (the reset endpoint doesn't respond)
+- DentalEMR sees no metrics (Merideth reports demos/conversions dropping)
+- EVERY API call from the React frontend fails silently
+
+**The fix:** Apache or nginx config needs to proxy /api/* to the Node
+backend (likely localhost:3000 or whatever port the Node process runs on).
+
+**How to verify:**
+```
+curl https://getalloro.com/api/health
+```
+Should return: `{"status":"ok","timestamp":"..."}`
+Currently returns: HTML (the React app's index.html)
+
+**This is the single most impactful fix possible right now.**
+Every feature, every dashboard, every score depends on the API working.
