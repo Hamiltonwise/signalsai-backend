@@ -98,12 +98,17 @@ async function evaluateCustomer(c: typeof CUSTOMERS[0]): Promise<CustomerReadine
     checks.push({ name: "Dollar Figures", pass: false, value: "Missing", issue: "Findings lack economic consequence" });
   }
 
-  // 6. Tasks
-  const taskCount = await db("tasks").where({ organization_id: c.id, category: "USER", status: "pending" }).count("* as c").first();
-  const tc = Number(taskCount?.c || 0);
-  if (tc >= 3) {
-    checks.push({ name: "Tasks", pass: true, value: `${tc} tasks` });
+  // 6. Tasks (count + actionability)
+  const userTasks = await db("tasks").where({ organization_id: c.id, category: "USER", status: "pending" }).select("title").limit(10);
+  const tc = userTasks.length;
+  const actionVerbs = /\b(call|email|contact|send|post|text|visit|check|verify|add|remove|update|ask|request|schedule|respond|upload)\b/i;
+  const actionable = userTasks.filter((t) => actionVerbs.test(t.title || ""));
+  const actionRatio = tc > 0 ? actionable.length / tc : 0;
+  if (tc >= 3 && actionRatio >= 0.4) {
+    checks.push({ name: "Tasks", pass: true, value: `${tc} tasks, ${Math.round(actionRatio * 100)}% actionable` });
     points++;
+  } else if (tc >= 3) {
+    checks.push({ name: "Tasks", pass: false, value: `${tc} tasks but only ${Math.round(actionRatio * 100)}% actionable`, issue: "Tasks need specific verbs (call, email, visit, check)" });
   } else {
     checks.push({ name: "Tasks", pass: false, value: `${tc} tasks`, issue: "Sparse task list" });
   }
@@ -138,7 +143,47 @@ async function evaluateCustomer(c: typeof CUSTOMERS[0]): Promise<CustomerReadine
     }
   }
 
-  const score = Math.round((points / maxPoints) * 100);
+  // 10. Specificity markers (the Oz data test)
+  const allContent = [
+    proofOut ? JSON.stringify(proofOut) : "",
+    sumOut ? JSON.stringify(sumOut) : "",
+  ].join(" ");
+  const hasReviewCount = /\d+ review/i.test(allContent);
+  const hasPercentage = /\d+(\.\d+)?%/.test(allContent);
+  const hasCompetitorName = /[A-Z][a-z]+ (Orthodontics|Endodontics|Dental|Dentist|Endo|Ortho)/i.test(allContent);
+  const hasDoctorName = /Dr\.\s+[A-Z][a-z]+/i.test(allContent);
+  const specCount = [hasReviewCount, hasPercentage, hasCompetitorName, hasDoctorName].filter(Boolean).length;
+  if (specCount >= 3) {
+    checks.push({ name: "Specificity", pass: true, value: `${specCount}/4 markers (reviews, %, competitor, doctor)` });
+    points++;
+  } else {
+    const missing = [
+      !hasReviewCount && "review counts",
+      !hasPercentage && "percentages",
+      !hasCompetitorName && "competitor names",
+      !hasDoctorName && "doctor names",
+    ].filter(Boolean).join(", ");
+    checks.push({ name: "Specificity", pass: false, value: `${specCount}/4 markers`, issue: `Missing: ${missing}` });
+  }
+
+  // 11. Oz Moment holistic (the meta-check)
+  const ozFactors = [
+    checks.find((ch) => ch.name === "Greeting")?.pass,
+    checks.find((ch) => ch.name === "Trajectory")?.pass,
+    checks.find((ch) => ch.name === "Ranking")?.pass,
+    checks.find((ch) => ch.name === "Wins")?.pass,
+    checks.find((ch) => ch.name === "Dollar Figures")?.pass,
+    specCount >= 3,
+  ].filter(Boolean).length;
+  if (ozFactors >= 5) {
+    checks.push({ name: "Oz Moment", pass: true, value: `${ozFactors}/6 factors. Would land.` });
+    points++;
+  } else {
+    checks.push({ name: "Oz Moment", pass: false, value: `${ozFactors}/6 factors`, issue: ozFactors >= 3 ? "Close but not undeniable" : "Would feel like a beta" });
+  }
+
+  const maxWithStrict = maxPoints + 2; // added specificity + oz moment
+  const score = Math.round((points / maxWithStrict) * 100);
   let verdict: CustomerReadiness["verdict"] = "BROKEN";
   if (score >= 90) verdict = "UNDENIABLE";
   else if (score >= 70) verdict = "CLOSE";
