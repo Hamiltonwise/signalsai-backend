@@ -49,7 +49,7 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
 
   const content = `
     <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Monday Brief</p>
-    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 800; color: ${BRAND_COLORS.navy};">Clean week.</h1>
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND_COLORS.navy};">Clean week.</h1>
     <p style="margin: 0 0 20px; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">${practiceName}</p>
 
     ${createDivider()}
@@ -71,7 +71,7 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
     </div>
 
     <p style="margin: 24px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5;">
-      If any of this is off, reply. I read every reply personally.
+      If any of this is off, reply to this email anytime.
     </p>
     <p style="margin: 8px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">
       Corey

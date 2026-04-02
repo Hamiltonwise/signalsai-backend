@@ -53,7 +53,7 @@ export async function sendWelcomeCheckupEmail(data: WelcomeCheckupData): Promise
   const scoreSection = checkupScore != null
     ? createCard(`
         <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Your Business Clarity Score</p>
-        <p style="margin: 0; font-size: 32px; font-weight: 800; color: ${BRAND_COLORS.navy};">${checkupScore}<span style="font-size: 16px; color: ${BRAND_COLORS.mediumGray};">/100</span></p>
+        <p style="margin: 0; font-size: 32px; font-weight: 600; color: ${BRAND_COLORS.navy};">${checkupScore}<span style="font-size: 16px; color: ${BRAND_COLORS.mediumGray};">/100</span></p>
       `)
     : "";
 

@@ -57,13 +57,9 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
     .map((p) => `<p style="margin: 0 0 12px; color: ${BRAND_COLORS.darkGray}; font-size: 15px; line-height: 1.6;">${p}</p>`)
     .join("");
 
-  const dollarSection = dollarFigure > 0
-    ? createCard(`
-        <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Estimated Monthly Impact</p>
-        <p style="margin: 0; font-size: 28px; font-weight: 800; color: ${BRAND_COLORS.navy};">$${dollarFigure.toLocaleString()}</p>
-        <p style="margin: 4px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">at risk if this trend continues</p>
-      `)
-    : "";
+  // Dollar figures removed from email. Facts are more honest than estimates.
+  // The finding body contains the specific data. That's enough.
+  const dollarSection = "";
 
   const competitorSection = competitorNote
     ? `<p style="margin: 16px 0 0; padding: 12px 16px; background: ${BRAND_COLORS.lightGray}; border-radius: 8px; font-size: 13px; color: ${BRAND_COLORS.darkGray};">${competitorNote}</p>`
@@ -81,7 +77,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
     <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND_COLORS.darkGray}; line-height: 1.5;">
       ${doctorName.split(" ")[0] || doctorName}, your business has been talking this week. Here's what it said.
     </p>
-    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 800; color: ${BRAND_COLORS.navy};">${findingHeadline}</h1>
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND_COLORS.navy};">${findingHeadline}</h1>
     <p style="margin: 0 0 20px; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">${practiceName} &middot; ${rankingUpdate}</p>
 
     ${createDivider()}
@@ -102,7 +98,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
       You're not doing this alone. Same time next Monday.
     </p>
     <p style="margin: 12px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5;">
-      If any of this is off, reply. I read every reply personally.
+      If any of this is off, reply to this email anytime.
     </p>
     <p style="margin: 8px 0 0; font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.navy};">
       Corey
