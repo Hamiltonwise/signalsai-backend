@@ -121,13 +121,13 @@ export default function ScoreImprovementPlan() {
             <TrendingUp size={16} className="text-white" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-[#212D40] tracking-tight">
+            <h3 className="text-sm font-semibold text-[#1A1D23] tracking-tight">
               Score Improvement Plan
             </h3>
             {currentScore != null && estimatedNewScore != null && !allDone && (
-              <p className="text-xs text-[#212D40]/50 mt-0.5">
+              <p className="text-xs text-[#1A1D23]/50 mt-0.5">
                 {currentScore} pts now. Reach{" "}
-                <span className="font-bold text-[#D56753]">
+                <span className="font-semibold text-[#D56753]">
                   {estimatedNewScore}
                 </span>{" "}
                 with {actions.length - completedCount} action{actions.length - completedCount !== 1 ? "s" : ""}.
@@ -201,17 +201,17 @@ export default function ScoreImprovementPlan() {
                   <p
                     className={`text-sm leading-relaxed ${
                       isCompleted
-                        ? "text-[#212D40]/40 line-through"
-                        : "text-[#212D40]/80"
+                        ? "text-[#1A1D23]/40 line-through"
+                        : "text-[#1A1D23]/80"
                     }`}
                   >
                     {action.action}
                   </p>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <span className="text-xs font-bold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-md">
+                    <span className="text-xs font-semibold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-md">
                       +{action.estimatedGain} pts
                     </span>
-                    <span className={`text-xs font-bold ${diff.color} ${diff.bg} px-2 py-0.5 rounded-md border ${diff.border}`}>
+                    <span className={`text-xs font-semibold ${diff.color} ${diff.bg} px-2 py-0.5 rounded-md border ${diff.border}`}>
                       {diff.label}
                     </span>
                     <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -230,9 +230,9 @@ export default function ScoreImprovementPlan() {
           {!allDone && (
             <div className="flex items-center gap-2 pt-2 pl-1">
               <Zap size={14} className="text-[#D56753]" />
-              <p className="text-xs text-[#212D40]/60">
+              <p className="text-xs text-[#1A1D23]/60">
                 Complete all {actions.length} actions to add up to{" "}
-                <span className="font-bold text-[#D56753]">
+                <span className="font-semibold text-[#D56753]">
                   +{totalPotentialGain} points
                 </span>{" "}
                 to your score.

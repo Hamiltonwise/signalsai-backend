@@ -161,7 +161,7 @@ export default function ScoreSimulator() {
           <Zap className="w-4 h-4 text-[#D56753]" />
         </div>
         <div>
-          <p className="text-sm font-bold text-[#212D40]">What If...</p>
+          <p className="text-sm font-semibold text-[#1A1D23]">What If...</p>
           <p className="text-xs text-gray-400">See how actions change your score</p>
         </div>
       </div>
@@ -170,10 +170,10 @@ export default function ScoreSimulator() {
       {hasChanges && (
         <div className="mb-5 p-4 rounded-xl bg-gradient-to-r from-[#D56753]/5 to-emerald-50/50 border border-[#D56753]/10">
           <div className="flex items-center justify-center gap-3">
-            <span className="text-2xl font-semibold text-[#212D40]">{simulatorData.currentScore}</span>
+            <span className="text-2xl font-semibold text-[#1A1D23]">{simulatorData.currentScore}</span>
             <ArrowRight className="w-5 h-5 text-[#D56753]" />
             <span className="text-2xl font-semibold text-emerald-600">{projectedScore}</span>
-            <span className={`text-sm font-bold px-2 py-0.5 rounded-lg ${
+            <span className={`text-sm font-semibold px-2 py-0.5 rounded-lg ${
               delta > 0 ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
             }`}>
               {delta > 0 ? "+" : ""}{delta}
@@ -188,7 +188,7 @@ export default function ScoreSimulator() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-gray-500">Add more reviews</span>
-            <span className="text-xs font-bold text-[#212D40]">
+            <span className="text-xs font-semibold text-[#1A1D23]">
               {addReviews === 0 ? "None" : `+${addReviews}`}
             </span>
           </div>
@@ -198,7 +198,7 @@ export default function ScoreSimulator() {
                 key={n}
                 type="button"
                 onClick={() => setAddReviews(n)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   addReviews === n
                     ? "bg-[#D56753] text-white shadow-sm"
                     : "bg-gray-50 text-gray-500 hover:bg-gray-100"
@@ -214,7 +214,7 @@ export default function ScoreSimulator() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-gray-500">Add more photos</span>
-            <span className="text-xs font-bold text-[#212D40]">
+            <span className="text-xs font-semibold text-[#1A1D23]">
               {addPhotos === 0 ? "None" : `+${addPhotos}`}
             </span>
           </div>
@@ -224,7 +224,7 @@ export default function ScoreSimulator() {
                 key={n}
                 type="button"
                 onClick={() => setAddPhotos(n)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   addPhotos === n
                     ? "bg-[#D56753] text-white shadow-sm"
                     : "bg-gray-50 text-gray-500 hover:bg-gray-100"
@@ -259,7 +259,7 @@ export default function ScoreSimulator() {
       {hasChanges && delta > 0 && (
         <a
           href="#improvement-plan"
-          className="mt-5 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#D56753]/10 text-[#D56753] text-sm font-bold hover:bg-[#D56753]/15 transition-colors"
+          className="mt-5 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#D56753]/10 text-[#D56753] text-sm font-semibold hover:bg-[#D56753]/15 transition-colors"
         >
           <TrendingUp className="w-4 h-4" />
           Start with your improvement plan

@@ -138,7 +138,7 @@ export default function GrowthChart({
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-[#D56753]">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753]">
           Market Position
         </p>
         {/* Legend */}

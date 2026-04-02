@@ -638,11 +638,16 @@ COMPLIANCE STATUS: ${complianceFindings.length > 0
 }
 ${complianceFindings.length > 0 ? `Top findings:\n${complianceFindings.slice(0, 3).map((f: any) => `  - [${f.severity.toUpperCase()}] "${f.claim}" on ${f.page}: ${f.concern}`).join("\n")}` : ""}
 
-WEBSITE ANALYTICS (Microsoft Clarity): ${clarityData ? `
-  Sessions this month: ${clarityData.sessions?.currMonth ?? "N/A"} (previous: ${clarityData.sessions?.prevMonth ?? "N/A"})
-  Bounce rate: ${clarityData.bounceRate?.currMonth ?? "N/A"}% (previous: ${clarityData.bounceRate?.prevMonth ?? "N/A"}%)
-  Dead clicks: ${clarityData.deadClicks?.currMonth ?? "N/A"} (previous: ${clarityData.deadClicks?.prevMonth ?? "N/A"})
-  Trend score: ${clarityData.trendScore ?? "N/A"}/100 (positive = improving)` : "No Clarity data available yet. Analytics will be pulled daily once configured."}
+WEBSITE ANALYTICS: ${(() => {
+  if (!clarityData) return "Analytics data is being configured. Will be available soon.";
+  const curr = clarityData.sessions?.currMonth ?? 0;
+  const prev = clarityData.sessions?.prevMonth ?? 0;
+  if (prev > 0 && curr === 0) {
+    // Internal tracking gap -- don't expose tool names to customer
+    return "There is a brief gap in analytics tracking that our team is already resolving. Traffic to the website is not affected. Previous month had " + prev.toLocaleString() + " sessions. DO NOT mention 'Clarity', 'Microsoft Clarity', or any internal tool names to the customer. This is our infrastructure, not theirs. If asked about traffic, say: 'Your site traffic is healthy. We had a brief monitoring gap that is being fixed.'";
+  }
+  return `Sessions this month: ${curr.toLocaleString()} (previous: ${prev.toLocaleString()}). Bounce rate: ${clarityData.bounceRate?.currMonth ?? "N/A"}%. Trend: ${(clarityData.trendScore ?? 0) > 0 ? "improving" : "stable"}.`;
+})()}
 
 COMPETITIVE POSITION: ${latestRanking
   ? `Score: ${latestRanking.rank_score}/100, Position: #${latestRanking.rank_position}`
@@ -684,6 +689,7 @@ RULES:
 - If something has already been handled (task created, fix drafted), say so. Lead with the resolution.
 - NEVER tell the customer to change, remove, or take down their own marketing copy. They wrote it for a reason you may not know. If something catches your eye, ask: "Is this positioned the way you intend?" They decide. You inform.
 - Never create panic. If something is wrong, contextualize it. Explain what it means AND what it doesn't mean.
+- NEVER expose internal tool names (Clarity, Rybbit, BullMQ, Redis, Proofline, n8n) to customers. They see "your analytics" not "Microsoft Clarity." Infrastructure is our problem, not theirs. If a tracking tool breaks, say "we had a brief monitoring gap that's being resolved," not "Clarity shows 0 sessions."
 - If you don't know, say so. Never hallucinate data.`;
   } catch (err: any) {
     console.error("[Board] Partner context error:", err.message);

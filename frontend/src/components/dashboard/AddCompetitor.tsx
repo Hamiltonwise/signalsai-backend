@@ -141,7 +141,7 @@ export default function AddCompetitor({ currentCount, maxCount, onAdded }: AddCo
             setError(null);
           }}
           placeholder="Search for a business..."
-          className="flex-1 text-sm text-[#212D40] outline-none placeholder:text-slate-300 bg-transparent"
+          className="flex-1 text-sm text-[#1A1D23] outline-none placeholder:text-slate-300 bg-transparent"
           disabled={isAdding}
         />
         <button
@@ -165,7 +165,7 @@ export default function AddCompetitor({ currentCount, maxCount, onAdded }: AddCo
               onClick={() => selectPlace(s)}
               className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 cursor-pointer"
             >
-              <p className="text-sm font-medium text-[#212D40] truncate">
+              <p className="text-sm font-medium text-[#1A1D23] truncate">
                 {s.mainText}
               </p>
               {s.secondaryText && (

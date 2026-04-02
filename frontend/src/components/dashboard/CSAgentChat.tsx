@@ -118,7 +118,7 @@ export default function CSAgentChat({
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-sm font-bold text-white">Alloro Intelligence</p>
+                <p className="text-sm font-semibold text-white">Alloro Intelligence</p>
                 <p className="text-xs text-white/50 uppercase tracking-wider">
                   {practiceName}
                 </p>
@@ -149,7 +149,7 @@ export default function CSAgentChat({
                     key={s}
                     onClick={() => handleSend(s)}
                     disabled={sending}
-                    className="w-full text-left rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] hover:border-[#D56753]/30 hover:bg-[#D56753]/[0.02] transition-colors disabled:opacity-50"
+                    className="w-full text-left rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#1A1D23] hover:border-[#D56753]/30 hover:bg-[#D56753]/[0.02] transition-colors disabled:opacity-50"
                   >
                     {s}
                   </button>
@@ -167,7 +167,7 @@ export default function CSAgentChat({
                   className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                     msg.role === "user"
                       ? "bg-[#D56753] text-white rounded-br-md"
-                      : "bg-gray-100 text-[#212D40] rounded-bl-md"
+                      : "bg-gray-100 text-[#1A1D23] rounded-bl-md"
                   }`}
                 >
                   {msg.content.split("\n").map((line, j) => (
@@ -202,7 +202,7 @@ export default function CSAgentChat({
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about your business..."
                 rows={1}
-                className="flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 max-h-24"
+                className="flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 max-h-24"
                 style={{ minHeight: "40px" }}
               />
               <button

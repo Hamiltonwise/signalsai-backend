@@ -58,7 +58,7 @@ function StatusBadge({ status }: { status: Status }) {
     neutral: "",
   };
   return (
-    <span className={`text-[9px] font-bold uppercase tracking-wider ${statusColors[status]} ${statusBg[status]} px-1.5 py-0.5 rounded`}>
+    <span className={`text-[9px] font-semibold uppercase tracking-wider ${statusColors[status]} ${statusBg[status]} px-1.5 py-0.5 rounded`}>
       {labels[status]}
     </span>
   );
@@ -151,14 +151,14 @@ export default function CompetitorComparison({
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#212D40]/40">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#1A1D23]/40">
             vs. Competitor
           </p>
-          <p className="text-sm font-bold text-[#212D40] truncate mt-0.5">
+          <p className="text-sm font-semibold text-[#1A1D23] truncate mt-0.5">
             {competitor.name}
           </p>
           {competitor.address && (
-            <p className="text-xs text-[#212D40]/40 truncate">
+            <p className="text-xs text-[#1A1D23]/40 truncate">
               {competitor.address}
             </p>
           )}
@@ -179,9 +179,9 @@ export default function CompetitorComparison({
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-slate-100">
-              <th className="text-[9px] font-bold uppercase tracking-wider text-[#212D40]/30 pb-2 pr-2">Metric</th>
-              <th className="text-[9px] font-bold uppercase tracking-wider text-[#212D40]/30 pb-2 text-center">You</th>
-              <th className="text-[9px] font-bold uppercase tracking-wider text-[#212D40]/30 pb-2 text-center">Them</th>
+              <th className="text-[9px] font-semibold uppercase tracking-wider text-[#1A1D23]/30 pb-2 pr-2">Metric</th>
+              <th className="text-[9px] font-semibold uppercase tracking-wider text-[#1A1D23]/30 pb-2 text-center">You</th>
+              <th className="text-[9px] font-semibold uppercase tracking-wider text-[#1A1D23]/30 pb-2 text-center">Them</th>
               <th className="pb-2 w-16"></th>
             </tr>
           </thead>
@@ -191,18 +191,18 @@ export default function CompetitorComparison({
                 <td className="py-2.5 pr-2">
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-400">{row.icon}</span>
-                    <span className="text-xs text-[#212D40]/70 font-medium">
+                    <span className="text-xs text-[#1A1D23]/70 font-medium">
                       {row.label}
                     </span>
                   </div>
                 </td>
                 <td className="py-2.5 text-center">
-                  <span className="text-xs font-bold text-[#212D40]">
+                  <span className="text-xs font-semibold text-[#1A1D23]">
                     {row.yours}
                   </span>
                 </td>
                 <td className="py-2.5 text-center">
-                  <span className="text-xs font-bold text-[#212D40]/60">
+                  <span className="text-xs font-semibold text-[#1A1D23]/60">
                     {row.theirs}
                   </span>
                 </td>

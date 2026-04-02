@@ -44,7 +44,7 @@ export default function PatientPathBreadcrumb({
           }`} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold text-[#212D40]">
+          <p className="text-xs font-semibold text-[#1A1D23]">
             {safeStatus === "live"
               ? "Your website is live"
               : safeStatus === "preview_ready"
@@ -90,7 +90,7 @@ export default function PatientPathBreadcrumb({
           )}
           <a
             href="/dfy/website"
-            className="text-xs font-medium text-gray-400 hover:text-[#212D40] transition-colors"
+            className="text-xs font-medium text-gray-400 hover:text-[#1A1D23] transition-colors"
           >
             View in dashboard
           </a>

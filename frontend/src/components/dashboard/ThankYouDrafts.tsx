@@ -35,7 +35,7 @@ export default function ThankYouDrafts() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
+      <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">
         Thank-you drafts
       </p>
       {drafts.map((draft) => (
@@ -81,10 +81,10 @@ function DraftCard({ draft, onAction }: { draft: Draft; onAction: () => void }) 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex items-start justify-between mb-2">
-        <p className="text-sm font-semibold text-[#212D40]">
+        <p className="text-sm font-semibold text-[#1A1D23]">
           Thank-you to Dr. {draft.gp_name}
         </p>
-        <span className="text-xs font-bold uppercase tracking-wider text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">
           Draft
         </span>
       </div>
@@ -94,10 +94,10 @@ function DraftCard({ draft, onAction }: { draft: Draft; onAction: () => void }) 
           value={editedBody}
           onChange={(e) => setEditedBody(e.target.value)}
           rows={4}
-          className="w-full text-sm text-[#212D40] border border-gray-200 rounded-lg px-3 py-2 focus:border-[#D56753] focus:outline-none focus:ring-2 focus:ring-[#D56753]/10 resize-none mb-3"
+          className="w-full text-sm text-[#1A1D23] border border-gray-200 rounded-lg px-3 py-2 focus:border-[#D56753] focus:outline-none focus:ring-2 focus:ring-[#D56753]/10 resize-none mb-3"
         />
       ) : (
-        <p className="text-sm text-[#212D40]/70 leading-relaxed mb-3 italic">
+        <p className="text-sm text-[#1A1D23]/70 leading-relaxed mb-3 italic">
           &ldquo;{draft.body}&rdquo;
         </p>
       )}

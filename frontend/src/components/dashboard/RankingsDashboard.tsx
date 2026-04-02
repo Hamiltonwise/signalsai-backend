@@ -267,7 +267,7 @@ const KPICard = ({
       )}
     </div>
 
-    <div className="mt-auto text-[13px] font-bold text-slate-500 leading-tight tracking-tight pt-4">
+    <div className="mt-auto text-[13px] font-semibold text-slate-500 leading-tight tracking-tight pt-4">
       {sub}
     </div>
   </div>
@@ -428,7 +428,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               </div>
               <div className="flex flex-col text-left">
                 <TailorText editKey="rankings.header.title" defaultText="Market Intelligence" as="h1" className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
-                <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+                <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                   Loading data...
                 </span>
               </div>
@@ -455,7 +455,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
           <h3 className="text-xl font-semibold text-alloro-navy font-heading mb-2 tracking-tight">
             Unable to Load Rankings
           </h3>
-          <p className="text-slate-500 text-sm font-bold mb-6">{error}</p>
+          <p className="text-slate-500 text-sm font-semibold mb-6">{error}</p>
           <button
             onClick={fetchLatestRankings}
             className="px-6 py-3 bg-alloro-orange text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-sm flex items-center gap-2 mx-auto uppercase tracking-widest"
@@ -478,7 +478,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
           <h3 className="text-xl font-semibold text-alloro-navy font-heading mb-2 tracking-tight">
             No Account Connected
           </h3>
-          <p className="text-slate-500 text-sm font-bold">
+          <p className="text-slate-500 text-sm font-semibold">
             Please connect your Google account to view ranking data.
           </p>
         </div>
@@ -499,7 +499,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                 </div>
                 <div className="flex flex-col text-left">
                   <TailorText editKey="rankings.header.title" defaultText="Market Intelligence" as="h1" className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
-                  <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+                  <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                     From your initial checkup
                   </span>
                 </div>
@@ -561,7 +561,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                       <p className="text-2xl font-semibold text-alloro-orange">
                         {checkupSnapshot.topCompetitor.reviewCount - checkupSnapshot.reviewCount}
                       </p>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">review gap</p>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">review gap</p>
                     </div>
                   )}
                 </div>
@@ -582,7 +582,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                 <div className="space-y-4">
                   {checkupSnapshot.findings.slice(0, 4).map((f, i) => (
                     <div key={i} className="border-l-2 border-alloro-orange/30 pl-4">
-                      <p className="text-sm font-bold text-alloro-navy">{f.title}</p>
+                      <p className="text-sm font-semibold text-alloro-navy">{f.title}</p>
                       <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">{f.detail}</p>
                     </div>
                   ))}
@@ -622,7 +622,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 rounded-full mb-4">
               <Sparkles className="w-4 h-4 text-alloro-orange" />
-              <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">Get Started</span>
+              <span className="text-xs font-semibold text-alloro-orange uppercase tracking-wider">Get Started</span>
             </div>
             <TailorText editKey="rankings.empty.heading" defaultText="Your Market Intelligence" as="h1" className="text-3xl font-semibold text-alloro-navy font-heading tracking-tight mb-3" />
             <p className="text-base text-slate-500 font-medium max-w-md mx-auto">
@@ -647,7 +647,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                 <p className="text-slate-500 font-medium leading-relaxed mb-4">
                   Link your GBP to unlock weekly ranking snapshots, competitor tracking, and visibility alerts.
                 </p>
-                <div className="flex items-center gap-2 text-alloro-orange font-bold text-sm group-hover:gap-3 transition-all">
+                <div className="flex items-center gap-2 text-alloro-orange font-semibold text-sm group-hover:gap-3 transition-all">
                   <Settings className="w-4 h-4" />
                   <span>Go to Settings</span>
                   <ChevronRight className="w-4 h-4" />
@@ -787,7 +787,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
             </div>
             <div className="flex flex-col text-left">
               <TailorText editKey="rankings.header.title" defaultText="Local Rankings" as="h1" className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
-              <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+              <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 How you compare to others
               </span>
             </div>
@@ -1127,7 +1127,7 @@ function PerformanceDashboard({
               <h3 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
                 What's Driving Your Rank
               </h3>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
                 Key factors influencing your position
               </p>
             </div>
@@ -1384,7 +1384,7 @@ function PerformanceDashboard({
               <h3 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
                 Opportunities to Improve
               </h3>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
                 Areas where you can gain ground
               </p>
             </div>
@@ -1490,7 +1490,7 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
           <h3 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
             Rank Improvement Plan
           </h3>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
             Steps to reach #1
           </p>
         </div>
@@ -1510,7 +1510,7 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
                 <h4 className="font-semibold text-alloro-navy text-xl tracking-tight leading-none group-hover:text-alloro-orange transition-colors">
                   {task.title}
                 </h4>
-                <p className="text-[15px] text-slate-500 font-bold tracking-tight leading-relaxed max-w-2xl line-clamp-2">
+                <p className="text-[15px] text-slate-500 font-semibold tracking-tight leading-relaxed max-w-2xl line-clamp-2">
                   {task.description}
                 </p>
               </div>
@@ -1543,7 +1543,7 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
           ))
         ) : (
           <div className="text-center py-8 text-slate-400">
-            <p className="text-sm font-bold">
+            <p className="text-sm font-semibold">
               No approved protocol tasks available yet.
             </p>
             <p className="text-xs text-slate-300 mt-2">

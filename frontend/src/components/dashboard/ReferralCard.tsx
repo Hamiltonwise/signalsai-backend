@@ -49,7 +49,7 @@ export default function ReferralCard() {
           <Users className="h-5 w-5 text-[#D56753]" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-[#212D40]">
+          <p className="text-sm font-semibold text-[#1A1D23]">
             See how a colleague ranks.
           </p>
           <p className="text-xs text-gray-500 mt-1 leading-relaxed">

@@ -66,10 +66,10 @@ export default function ClarityUpgrade({
         <X className="h-3.5 w-3.5" />
       </button>
 
-      <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]/50 mb-2">
+      <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753]/50 mb-2">
         Based on your data
       </p>
-      <p className="text-sm font-bold text-[#212D40] leading-snug pr-6">
+      <p className="text-sm font-semibold text-[#1A1D23] leading-snug pr-6">
         {headline}
       </p>
       <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">

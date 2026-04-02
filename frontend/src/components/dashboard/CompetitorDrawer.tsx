@@ -47,7 +47,7 @@ export default function CompetitorDrawer({
       <div className="fixed top-0 right-0 z-50 h-full w-full sm:w-[360px] bg-white border-l border-gray-200 shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-200">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
-          <h2 className="text-base font-bold text-[#212D40] truncate pr-4">
+          <h2 className="text-base font-semibold text-[#1A1D23] truncate pr-4">
             {competitor.name}
           </h2>
           <button
@@ -61,7 +61,7 @@ export default function CompetitorDrawer({
         <div className="p-5 space-y-5">
           {/* GBP Data */}
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
               Google Business Profile
             </p>
             <div className="space-y-2">
@@ -70,14 +70,14 @@ export default function CompetitorDrawer({
                   <Star className="h-4 w-4 text-amber-400" />
                   <span className="text-sm text-gray-700">Rating</span>
                 </div>
-                <span className="text-sm font-bold text-[#212D40]">{competitor.rating} stars</span>
+                <span className="text-sm font-semibold text-[#1A1D23]">{competitor.rating} stars</span>
               </div>
               <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-blue-400" />
                   <span className="text-sm text-gray-700">Reviews</span>
                 </div>
-                <span className="text-sm font-bold text-[#212D40]">{competitor.reviewCount}</span>
+                <span className="text-sm font-semibold text-[#1A1D23]">{competitor.reviewCount}</span>
               </div>
               {competitor.category && (
                 <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
@@ -90,28 +90,28 @@ export default function CompetitorDrawer({
 
           {/* Review Gap */}
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
               Review Gap
             </p>
             <div className="rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-gray-500">Their reviews</span>
-                <span className="text-lg font-semibold text-[#212D40]">{competitor.reviewCount}</span>
+                <span className="text-lg font-semibold text-[#1A1D23]">{competitor.reviewCount}</span>
               </div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm text-gray-500">Your reviews</span>
-                <span className="text-lg font-semibold text-[#212D40]">{clientReviews}</span>
+                <span className="text-lg font-semibold text-[#1A1D23]">{clientReviews}</span>
               </div>
               {reviewGap > 0 && (
                 <div className="flex items-center justify-between bg-[#D56753]/5 rounded-lg px-3 py-2">
                   <span className="text-sm font-medium text-[#D56753]">Gap</span>
-                  <span className="text-sm font-bold text-[#D56753]">{reviewGap} reviews</span>
+                  <span className="text-sm font-semibold text-[#D56753]">{reviewGap} reviews</span>
                 </div>
               )}
               {reviewGap <= 0 && (
                 <div className="flex items-center justify-between bg-emerald-50 rounded-lg px-3 py-2">
                   <span className="text-sm font-medium text-emerald-700">You lead by</span>
-                  <span className="text-sm font-bold text-emerald-700">{Math.abs(reviewGap)} reviews</span>
+                  <span className="text-sm font-semibold text-emerald-700">{Math.abs(reviewGap)} reviews</span>
                 </div>
               )}
             </div>
@@ -119,13 +119,13 @@ export default function CompetitorDrawer({
 
           {/* Gap-Closing Timeline */}
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
               Gap-Closing Timeline
             </p>
             <div className="rounded-xl border border-gray-200 p-4">
               <div className="flex items-center gap-3">
                 <Clock className="h-5 w-5 text-[#D56753] shrink-0" />
-                <p className="text-sm text-[#212D40] leading-relaxed">
+                <p className="text-sm text-[#1A1D23] leading-relaxed">
                   {weeksToClose != null ? (
                     <>
                       At your current pace, you close the review gap in approximately{" "}

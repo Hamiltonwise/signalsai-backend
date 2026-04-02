@@ -106,7 +106,7 @@ export default function ScoreHistory() {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#D56753]/10 to-[#D56753]/5 flex items-center justify-center">
             <TrendingUp className="w-3.5 h-3.5 text-[#D56753]" />
           </div>
-          <p className="text-sm font-bold text-[#212D40]">Score History</p>
+          <p className="text-sm font-semibold text-[#1A1D23]">Score History</p>
         </div>
         <p className="text-xs text-gray-400 leading-relaxed">
           Your score history builds weekly. Check back Monday.
@@ -136,10 +136,10 @@ export default function ScoreHistory() {
               <TrendingUp className="w-3.5 h-3.5 text-[#D56753]" />
             )}
           </div>
-          <p className="text-sm font-bold text-[#212D40]">Score History</p>
+          <p className="text-sm font-semibold text-[#1A1D23]">Score History</p>
         </div>
         {totalDelta !== 0 && (
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${
             trendUp
               ? "bg-emerald-50 text-emerald-700"
               : "bg-amber-50 text-amber-700"

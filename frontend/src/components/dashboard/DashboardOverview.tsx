@@ -851,7 +851,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
               <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 Business Hub
               </h1>
-              <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+              <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 Overview of your Business
               </span>
             </div>
@@ -1206,7 +1206,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                           className="text-green-500 shrink-0 mt-0.5"
                           size={20}
                         />
-                        <span className="text-sm font-bold text-slate-500 leading-relaxed tracking-tight">
+                        <span className="text-sm font-semibold text-slate-500 leading-relaxed tracking-tight">
                           {win}
                         </span>
                       </div>
@@ -1234,7 +1234,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                           className="flex gap-4 p-5 bg-white border border-slate-50 rounded-2xl shadow-sm hover:shadow-md transition-all"
                         >
                           <div className="w-2.5 h-2.5 bg-red-400 rounded-full shrink-0 mt-2"></div>
-                          <span className="text-sm font-bold text-slate-500 leading-relaxed tracking-tight">
+                          <span className="text-sm font-semibold text-slate-500 leading-relaxed tracking-tight">
                             {typeof risk === "string"
                               ? risk
                               : risk.title || risk.description || ""}
@@ -1385,13 +1385,13 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                       </h4>
 
                       {/* Description */}
-                      <p className="text-[15px] text-slate-500 font-bold leading-relaxed tracking-tight line-clamp-3 mb-4">
+                      <p className="text-[15px] text-slate-500 font-semibold leading-relaxed tracking-tight line-clamp-3 mb-4">
                         {description}
                       </p>
 
                       {/* Estimated Return Pill */}
                       {estimatedReturn != null && (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-600 text-sm font-bold rounded-lg w-fit mb-4">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-600 text-sm font-semibold rounded-lg w-fit mb-4">
                           <DollarSign size={14} />
                           {formatCurrency(estimatedReturn)}
                         </div>
@@ -1452,7 +1452,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                     {fixData && fixData.estimated_return && (
                       <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
                         <DollarSign size={18} className="text-green-600" />
-                        <span className="text-sm font-bold text-green-700">
+                        <span className="text-sm font-semibold text-green-700">
                           Estimated Return:
                         </span>
                         <span className="text-lg font-semibold text-green-600">
@@ -1526,7 +1526,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                     <div className="pt-4 flex justify-end">
                       <button
                         onClick={() => setSelectedFix(null)}
-                        className="px-6 py-3 bg-alloro-navy text-white rounded-xl text-sm font-bold hover:bg-black transition-colors"
+                        className="px-6 py-3 bg-alloro-navy text-white rounded-xl text-sm font-semibold hover:bg-black transition-colors"
                       >
                         Close
                       </button>
@@ -1550,7 +1550,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
               <div className="p-8 lg:p-10 space-y-6">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
                       Last Updated:{" "}
                       {prooflineLastUpdated
                         ? format(new Date(prooflineLastUpdated), "MMM d, yyyy")
@@ -1577,7 +1577,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                 <div className="pt-4 flex justify-end">
                   <button
                     onClick={() => setShowProoflineModal(false)}
-                    className="px-6 py-3 bg-alloro-navy text-white rounded-xl text-sm font-bold hover:bg-black transition-colors"
+                    className="px-6 py-3 bg-alloro-navy text-white rounded-xl text-sm font-semibold hover:bg-black transition-colors"
                   >
                     Close
                   </button>

@@ -221,7 +221,7 @@ export function NotificationWidget({
             <AlertCircle className="w-5 h-5 text-red-600" />
           </div>
           <div>
-            <p className="text-sm font-bold text-red-800">Error Loading</p>
+            <p className="text-sm font-semibold text-red-800">Error Loading</p>
             <p className="text-xs text-red-600 font-semibold uppercase tracking-widest mt-0.5">
               {error}
             </p>
@@ -240,7 +240,7 @@ export function NotificationWidget({
             <CheckCircle2 className="w-6 h-6 text-green-600" />
           </div>
           <div>
-            <p className="text-base font-bold text-alloro-navy font-heading tracking-tight">
+            <p className="text-base font-semibold text-alloro-navy font-heading tracking-tight">
               All caught up
             </p>
             <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-widest mt-1">
@@ -270,11 +270,11 @@ export function NotificationWidget({
         </div>
         <div className="flex-1 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h3 className="text-lg font-bold text-alloro-navy font-heading tracking-tight leading-none">
+            <h3 className="text-lg font-semibold text-alloro-navy font-heading tracking-tight leading-none">
               {latestUnread.title}
             </h3>
             <span
-              className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border shrink-0 w-fit ${style.impactBg} ${style.impactText} ${style.impactBorder}`}
+              className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest border shrink-0 w-fit ${style.impactBg} ${style.impactText} ${style.impactBorder}`}
             >
               {style.impactLabel}
             </span>
@@ -285,7 +285,7 @@ export function NotificationWidget({
             </p>
           )}
           <div className="flex items-center justify-between pt-3">
-            <div className="flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
+            <div className="flex items-center gap-4 text-xs font-semibold text-slate-400 uppercase tracking-widest">
               <span className="flex items-center gap-2">
                 <Clock size={14} className="opacity-40" />
                 {formatDistanceToNow(new Date(latestUnread.created_at), {

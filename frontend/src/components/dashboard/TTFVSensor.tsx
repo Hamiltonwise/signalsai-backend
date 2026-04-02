@@ -97,7 +97,7 @@ export default function TTFVSensor({ orgId, onYes }: TTFVSensorProps) {
             <p className="text-sm text-center text-gray-500">Thank you.</p>
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-3">
-              <p className="text-sm font-medium text-[#212D40] flex-1 text-center sm:text-left">
+              <p className="text-sm font-medium text-[#1A1D23] flex-1 text-center sm:text-left">
                 Did this tell you something you didn't know about your business?
               </p>
               <div className="flex gap-2 shrink-0">

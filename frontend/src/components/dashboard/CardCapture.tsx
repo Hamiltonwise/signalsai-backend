@@ -90,7 +90,7 @@ export default function CardCapture({
           <button
             onClick={handleAddCard}
             disabled={loading}
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#D56753] hover:text-[#c04e3a] transition-colors disabled:opacity-50"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#D56753] hover:text-[#c04e3a] transition-colors disabled:opacity-50"
           >
             {loading ? "Setting up..." : "Add card"}
             {!loading && <ArrowRight size={12} />}
