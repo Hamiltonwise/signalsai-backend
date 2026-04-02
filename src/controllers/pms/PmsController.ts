@@ -99,6 +99,11 @@ export async function uploadPmsData(req: Request, res: Response) {
         entryType: result.entryType,
         jobId: result.jobId,
         instantFinding: result.instantFinding,
+        parserFailed: result.parserFailed ?? false,
+        parserMessage: (result as any).parserMessage ?? undefined,
+        hipaaReport: (result as any).hipaaReport ?? null,
+        referralSummary: (result as any).referralSummary ?? null,
+        stats: (result as any).stats ?? null,
       },
       message: `Successfully processed file ${result.originalName} with ${result.recordsProcessed} records`,
     });

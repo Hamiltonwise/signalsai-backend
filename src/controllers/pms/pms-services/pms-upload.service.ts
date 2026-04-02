@@ -10,6 +10,7 @@ import {
 import { resolveLocationId } from "../../../utils/locationResolver";
 import { OrganizationModel } from "../../../models/OrganizationModel";
 import { detectSelfSufficientOperator } from "../../../services/operatorDetection";
+import { preprocessPmsData, type PreprocessResult } from "./pms-preprocessor.service";
 
 /**
  * Process a manual PMS data entry.
@@ -225,6 +226,31 @@ export async function processFileUpload(
   const jsonData = await convertFileToJson(file);
   const recordsProcessed = jsonData.length;
 
+  // HIPAA scrub + patient deduplication + referral aggregation
+  // Runs BEFORE data goes to n8n or gets stored
+  let preprocessResult: PreprocessResult | null = null;
+  try {
+    preprocessResult = preprocessPmsData(jsonData);
+    if (preprocessResult.hipaaReport.scrubbed) {
+      console.log(
+        `[PMS] HIPAA scrub: removed ${preprocessResult.hipaaReport.patientNamesFound} patient names ` +
+        `and ${preprocessResult.hipaaReport.patientIdsFound} patient IDs from ${preprocessResult.hipaaReport.fieldsScrubbedFrom.join(", ")}`
+      );
+    }
+    if (preprocessResult.stats.deduplicationRatio > 1.5) {
+      console.log(
+        `[PMS] Deduplication: ${preprocessResult.stats.totalRows} rows -> ${preprocessResult.stats.uniquePatients} unique patients ` +
+        `(${preprocessResult.stats.deduplicationRatio}x ratio). ${preprocessResult.stats.uniqueSources} referral sources.`
+      );
+    }
+  } catch (preprocessError: any) {
+    console.warn(`[PMS] Preprocessor warning (non-blocking): ${preprocessError.message}`);
+    // Non-blocking: if preprocessor fails, fall through to original flow
+  }
+
+  // Use scrubbed data for n8n (HIPAA safe) if available
+  const dataForParser = preprocessResult?.scrubbedData ?? jsonData;
+
   // Use authenticated org ID if available, fall back to domain lookup for backward compat
   let organizationId = authOrganizationId ?? null;
   if (!organizationId) {
@@ -265,9 +291,9 @@ export async function processFileUpload(
     customMessage: "Processing uploaded file...",
   });
 
-  // Save the raw input data for potential retry
+  // Save the raw input data for retry (scrubbed version if available)
   await PmsJobModel.updateById(jobId, {
-    raw_input_data: jsonData,
+    raw_input_data: dataForParser,
   } as any);
 
   // Complete file_upload step and start pms_parser step
@@ -289,8 +315,13 @@ export async function processFileUpload(
     const response = await axios.post(
       PMS_PARSER_WEBHOOK,
       {
-        report_data: jsonData,
+        report_data: dataForParser, // HIPAA-scrubbed data
         jobId,
+        preprocessed: preprocessResult ? {
+          uniquePatients: preprocessResult.stats.uniquePatients,
+          uniqueSources: preprocessResult.stats.uniqueSources,
+          referralSummary: preprocessResult.referralSummary,
+        } : undefined,
       },
       {
         headers: { "Content-Type": "application/json" },
@@ -329,7 +360,18 @@ export async function processFileUpload(
     };
   }
 
-  const instantFinding = extractInstantFinding(jsonData);
+  // Use preprocessor results for instant finding if available (more accurate)
+  const instantFinding = preprocessResult?.referralSummary?.length
+    ? {
+        totalRecords: preprocessResult.stats.uniquePatients,
+        topSource: preprocessResult.referralSummary[0]?.name !== "Self / Direct"
+          ? preprocessResult.referralSummary[0]?.name
+          : preprocessResult.referralSummary[1]?.name,
+        topSourceCount: preprocessResult.referralSummary[0]?.name !== "Self / Direct"
+          ? preprocessResult.referralSummary[0]?.uniquePatients
+          : preprocessResult.referralSummary[1]?.uniquePatients,
+      }
+    : extractInstantFinding(jsonData);
 
   return {
     recordsProcessed,
@@ -339,5 +381,8 @@ export async function processFileUpload(
     originalName: file.originalname,
     instantFinding,
     parserFailed: false,
+    hipaaReport: preprocessResult?.hipaaReport ?? null,
+    referralSummary: preprocessResult?.referralSummary ?? null,
+    stats: preprocessResult?.stats ?? null,
   };
 }
