@@ -43,7 +43,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const icons = {
     success: <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />,
     error: <XCircle className="h-4 w-4 text-red-600 shrink-0" />,
-    info: <Info className="h-4 w-4 text-[#212D40] shrink-0" />,
+    info: <Info className="h-4 w-4 text-[#1A1D23] shrink-0" />,
   };
 
   const borders = {
@@ -65,7 +65,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               className={`flex items-center gap-3 rounded-xl border border-gray-200 border-l-4 ${borders[toast.type]} bg-white px-4 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-2 duration-200`}
             >
               {icons[toast.type]}
-              <p className="text-sm text-[#212D40] flex-1">{toast.message}</p>
+              <p className="text-sm text-[#1A1D23] flex-1">{toast.message}</p>
               <button
                 onClick={() => dismiss(toast.id)}
                 className="p-0.5 text-gray-300 hover:text-gray-500 transition-colors shrink-0"

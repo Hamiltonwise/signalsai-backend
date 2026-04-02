@@ -17,7 +17,7 @@
 import { db } from "../../database/connection";
 import { getRegisteredAgents } from "../agentRegistry";
 import { AGENT_DEFINITIONS } from "./agentIdentity";
-import { EVENT_TYPES, EVENT_CONSUMERS } from "./eventSchema";
+import { EVENT_TYPES, EVENT_CONSUMERS, DYNAMIC_EVENT_PREFIXES } from "./eventSchema";
 import {
   prepareAgentContext,
   recordAgentAction,
@@ -70,6 +70,10 @@ async function checkBroken(): Promise<AuditFinding[]> {
       if (eventType.startsWith("go_no_go.") || eventType.startsWith("conductor.")) continue;
       if (eventType.startsWith("canon.") || eventType.startsWith("circuit_breaker.")) continue;
       if (eventType.startsWith("kill_switch.") || eventType.startsWith("security.")) continue;
+
+      // Also skip dynamic event types (template-literal families like ttfv.yes, trial.email_day_1_sent)
+      const isDynamic = DYNAMIC_EVENT_PREFIXES.some(prefix => eventType.startsWith(prefix));
+      if (isDynamic) continue;
 
       if (!knownEventTypes.has(eventType)) {
         findings.push({

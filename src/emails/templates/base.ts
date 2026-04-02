@@ -112,7 +112,7 @@ export function wrapInBaseTemplate(
       background-color: ${BRAND_COLORS.lightGray};
       color: ${BRAND_COLORS.darkGray};
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -205,7 +205,7 @@ export function wrapInBaseTemplate(
               };">
                 © ${currentYear} Alloro. All rights reserved.
               </p>
-              <p style="margin: 8px 0 0 0; font-size: 11px; color: ${
+              <p style="margin: 8px 0 0 0; font-size: 12px; color: ${
                 BRAND_COLORS.mediumGray
               };">
                 Sent from <span style="color: ${

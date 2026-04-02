@@ -23,14 +23,14 @@ export default function PrivacyPolicy() {
               <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
             </svg>
           </div>
-          <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+          <span className="text-[22px] font-bold tracking-tight text-[#1A1D23]">
             alloro
           </span>
         </button>
       </header>
 
       <main className="mx-auto max-w-2xl px-5 pb-16">
-        <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
           Privacy Policy
         </h1>
 
@@ -73,7 +73,7 @@ export default function PrivacyPolicy() {
               <Li>Build and optimize your Alloro website</Li>
               <Li>Improve the product based on usage patterns (never using individual business data for this)</Li>
             </ul>
-            <p className="mt-3 font-medium text-[#212D40]">
+            <p className="mt-3 font-medium text-[#1A1D23]">
               Your data is never sold. Never shared with competitors. Never used for advertising.
             </p>
           </Section>
@@ -178,7 +178,7 @@ export default function PrivacyPolicy() {
             className="rounded-2xl px-6 py-5 text-center"
             style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
           >
-            <p className="text-sm font-semibold text-[#212D40]">
+            <p className="text-sm font-semibold text-[#1A1D23]">
               Questions about your data?
             </p>
             <p className="text-sm text-gray-600 mt-1">
@@ -212,7 +212,7 @@ export default function PrivacyPolicy() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="text-sm font-semibold text-[#212D40] mb-3">{title}</h2>
+      <h2 className="text-sm font-semibold text-[#1A1D23] mb-3">{title}</h2>
       <div className="text-sm text-gray-700 leading-relaxed">{children}</div>
     </div>
   );

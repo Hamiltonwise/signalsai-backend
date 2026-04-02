@@ -365,19 +365,56 @@ export async function processFileUpload(
   } catch (webhookError: any) {
     console.error(`[PMS] Parser webhook failed for job ${jobId}:`, webhookError.message);
 
-    // Mark the job as failed so it doesn't sit at "processing" forever
-    await updateAutomationStatus(jobId, {
-      step: "pms_parser",
-      stepStatus: "failed",
-      customMessage: webhookError.code === "ECONNABORTED"
-        ? "Parser timed out after 2 minutes. Try again or use manual entry."
-        : `Parser unavailable: ${webhookError.message}. Try again or use manual entry.`,
-    });
+    // Store preprocessor results directly so the client gets immediate value
+    // even when the n8n webhook is unavailable. The preprocessor already did
+    // deduplication, referral source aggregation, and HIPAA scrubbing locally.
+    if (preprocessResult?.referralSummary?.length && organizationId) {
+      try {
+        await PmsJobModel.updateById(jobId, {
+          response_log: JSON.stringify({
+            source: "local_preprocessor",
+            referralSummary: preprocessResult.referralSummary,
+            stats: preprocessResult.stats,
+            note: "Processed locally. Full n8n analysis pending retry.",
+          }),
+          status: "pending_retry",
+        } as any);
 
-    // Return with parserFailed flag so frontend can show the right message
-    console.warn(`[PMS] Job ${jobId} marked as failed. Customer can retry via dashboard.`);
+        await updateAutomationStatus(jobId, {
+          step: "pms_parser",
+          stepStatus: "processing",
+          customMessage: "Your referral data was analyzed locally. Full analysis will complete when our processing system reconnects.",
+        });
 
-    const instantFinding = extractInstantFinding(jsonData);
+        console.log(`[PMS] Job ${jobId}: stored local preprocessor results (${preprocessResult.stats.uniqueSources} sources, ${preprocessResult.stats.uniquePatients} patients)`);
+      } catch (storeErr: any) {
+        console.error(`[PMS] Failed to store preprocessor results for job ${jobId}:`, storeErr.message);
+      }
+    } else {
+      await updateAutomationStatus(jobId, {
+        step: "pms_parser",
+        stepStatus: "failed",
+        customMessage: webhookError.code === "ECONNABORTED"
+          ? "Parser timed out after 2 minutes. Try again or use manual entry."
+          : `Parser unavailable: ${webhookError.message}. Try again or use manual entry.`,
+      });
+    }
+
+    console.warn(`[PMS] Job ${jobId} marked for retry. Customer sees preprocessor results immediately.`);
+
+    // Use preprocessor results for instant finding when available (more accurate than raw extraction)
+    const instantFinding = preprocessResult?.referralSummary?.length
+      ? {
+          totalRecords: preprocessResult.stats.uniquePatients,
+          topSource: preprocessResult.referralSummary[0]?.name !== "Self / Direct"
+            ? preprocessResult.referralSummary[0]?.name
+            : preprocessResult.referralSummary[1]?.name || preprocessResult.referralSummary[0]?.name,
+          topSourceCount: preprocessResult.referralSummary[0]?.name !== "Self / Direct"
+            ? preprocessResult.referralSummary[0]?.uniquePatients
+            : preprocessResult.referralSummary[1]?.uniquePatients || preprocessResult.referralSummary[0]?.uniquePatients,
+        }
+      : extractInstantFinding(jsonData);
+
     return {
       recordsProcessed,
       recordsStored: recordsProcessed,
@@ -386,9 +423,9 @@ export async function processFileUpload(
       originalName: file.originalname,
       instantFinding,
       parserFailed: true,
-      parserMessage: webhookError.code === "ECONNABORTED"
-        ? "Your data was received safely. Processing is taking longer than expected. We'll notify you when it's ready."
-        : "Your data was received safely. Our processing system is briefly unavailable. We'll process it shortly and notify you.",
+      parserMessage: instantFinding?.topSource
+        ? `Your referral data was analyzed. Top source: ${instantFinding.topSource} (${instantFinding.topSourceCount} cases). Full analysis completing shortly.`
+        : "Your data was received. Our full processing system is temporarily unavailable, but we'll process it shortly.",
     };
   }
 

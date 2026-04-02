@@ -344,26 +344,26 @@ function buildHomepageSections(
   const contactParts: string[] = [];
   if (address) {
     contactParts.push(`<div class="mb-6">
-        <h3 class="font-semibold text-[#212D40] mb-1">Location</h3>
+        <h3 class="font-semibold text-[#1A1D23] mb-1">Location</h3>
         <p class="text-gray-600">${escapeHtml(address)}</p>
       </div>`);
   }
   if (phone) {
     contactParts.push(`<div class="mb-6">
-        <h3 class="font-semibold text-[#212D40] mb-1">Phone</h3>
+        <h3 class="font-semibold text-[#1A1D23] mb-1">Phone</h3>
         <p class="text-gray-600"><a href="tel:${escapeHtml(phone)}" class="text-[#D56753] hover:underline">${escapeHtml(phone)}</a></p>
       </div>`);
   }
   if (website) {
     contactParts.push(`<div class="mb-6">
-        <h3 class="font-semibold text-[#212D40] mb-1">Website</h3>
+        <h3 class="font-semibold text-[#1A1D23] mb-1">Website</h3>
         <p class="text-gray-600"><a href="${escapeHtml(website)}" target="_blank" rel="noopener" class="text-[#D56753] hover:underline">${escapeHtml(website)}</a></p>
       </div>`);
   }
 
   const hoursBlock = hoursHtml
     ? `<div>
-        <h3 class="font-semibold text-[#212D40] mb-3">Hours</h3>
+        <h3 class="font-semibold text-[#1A1D23] mb-3">Hours</h3>
         <ul class="text-gray-600 text-sm">${hoursHtml}</ul>
       </div>`
     : "";

@@ -107,8 +107,8 @@ export async function sendPatientPathCard(orgId: number): Promise<boolean> {
           address_state: org.operational_jurisdiction?.split(",")[1]?.trim() || "",
           address_zip: "00000", // Would need real address from GBP data
         },
-        front: `<html><body style="font-family: Georgia, serif; padding: 40px; text-align: center;"><h1 style="color: #212D40; font-size: 28px;">${frontCopy}</h1><p style="color: #D56753; font-size: 14px; margin-top: 20px;">Business Clarity by Alloro</p></body></html>`,
-        back: `<html><body style="font-family: Georgia, serif; padding: 30px; font-size: 13px; color: #212D40; line-height: 1.6;"><p>${backCopy.replace(/\n/g, "<br>")}</p></body></html>`,
+        front: `<html><body style="font-family: Georgia, serif; padding: 40px; text-align: center;"><h1 style="color: #1A1D23; font-size: 28px;">${frontCopy}</h1><p style="color: #D56753; font-size: 14px; margin-top: 20px;">Business Clarity by Alloro</p></body></html>`,
+        back: `<html><body style="font-family: Georgia, serif; padding: 30px; font-size: 13px; color: #1A1D23; line-height: 1.6;"><p>${backCopy.replace(/\n/g, "<br>")}</p></body></html>`,
         size: "4x6",
       }),
     });

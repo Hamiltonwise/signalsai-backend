@@ -221,7 +221,7 @@ export async function autoConvertTrial(orgId: number): Promise<boolean> {
         if (user?.email) {
           const html = `
             <div style="max-width: 560px; margin: 0 auto;">
-              <h1 style="color: #212D40; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
+              <h1 style="color: #1A1D23; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
                 Your Business Clarity subscription is active.
               </h1>
               <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">

@@ -255,7 +255,7 @@ async function sendMilestoneEmail(
       <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 600; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">
         Current Position
       </p>
-      <p style="margin: 0; font-size: 36px; font-weight: 800; color: ${BRAND_COLORS.navy};">
+      <p style="margin: 0; font-size: 36px; font-weight: 600; color: ${BRAND_COLORS.navy};">
         #${input.currentPosition}
       </p>
       <p style="margin: 4px 0 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">

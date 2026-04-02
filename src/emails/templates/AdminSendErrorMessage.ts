@@ -77,7 +77,7 @@ export function buildAdminErrorContent(data: AdminErrorData): string {
       };">
         Stack Trace
       </h3>
-      <pre style="margin: 0; font-size: 11px; line-height: 1.5; color: ${
+      <pre style="margin: 0; font-size: 12px; line-height: 1.5; color: ${
         BRAND_COLORS.darkGray
       }; background-color: ${
       BRAND_COLORS.lightGray
@@ -96,7 +96,7 @@ ${escapeHtml(data.stackTrace)}
       };">
         Context Data
       </h3>
-      <pre style="margin: 0; font-size: 11px; line-height: 1.5; color: ${
+      <pre style="margin: 0; font-size: 12px; line-height: 1.5; color: ${
         BRAND_COLORS.darkGray
       }; background-color: ${
       BRAND_COLORS.lightGray

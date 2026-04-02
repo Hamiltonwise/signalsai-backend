@@ -107,8 +107,8 @@ reviewRequestRoutes.post("/send", sendLimiter, async (req: any, res) => {
       const emailResult = await sendReviewRequestEmail({
         recipientEmail: recipientEmail.trim(),
         recipientName: recipientName?.trim() || null,
-        practiceName: practiceName || "your business",
-        doctorName: doctorName?.trim() || null,
+        businessName: practiceName || "your business",
+        ownerName: doctorName?.trim() || null,
         trackingUrl,
       });
       messageId = emailResult.messageId;

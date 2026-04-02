@@ -13,7 +13,7 @@ import { trackEvent } from "../../api/tracking";
 interface ShareState {
   referralCode?: string | null;
   checkupScore?: number | null;
-  practiceName?: string | null;
+  businessName?: string | null;
 }
 
 function getScoreLabel(score: number): string {

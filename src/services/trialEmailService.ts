@@ -120,7 +120,7 @@ export async function sendTrialDay1(orgId: number): Promise<void> {
 
   const html = `
     <div style="max-width: 560px; margin: 0 auto;">
-      <h1 style="color: #212D40; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
+      <h1 style="color: #1A1D23; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
         Welcome to Alloro, ${escapeHtml(ctx.practiceName)}.
       </h1>
       <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
@@ -172,7 +172,7 @@ export async function sendTrialDay3(orgId: number): Promise<void> {
 
   const html = `
     <div style="max-width: 560px; margin: 0 auto;">
-      <h1 style="color: #212D40; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
+      <h1 style="color: #1A1D23; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
         Quick question for ${escapeHtml(ctx.practiceName)}
       </h1>
       <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
@@ -181,7 +181,7 @@ export async function sendTrialDay3(orgId: number): Promise<void> {
       </p>
 
       <div style="background: rgba(213, 103, 83, 0.08); border-radius: 12px; padding: 24px; margin-bottom: 24px; border-left: 4px solid #D56753;">
-        <p style="color: #212D40; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">
+        <p style="color: #1A1D23; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">
           Who is the GP that sends you the most referrals?
         </p>
         <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin: 0;">
@@ -223,12 +223,12 @@ export async function sendTrialDay5(orgId: number): Promise<void> {
 
   const html = `
     <div style="max-width: 560px; margin: 0 auto;">
-      <h1 style="color: #212D40; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
+      <h1 style="color: #1A1D23; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
         Mid-trial update for ${escapeHtml(ctx.practiceName)}
       </h1>
 
       <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-        <p style="color: #212D40; font-size: 15px; font-weight: 600; margin: 0 0 8px 0;">
+        <p style="color: #1A1D23; font-size: 15px; font-weight: 600; margin: 0 0 8px 0;">
           ${growthNote}
         </p>
         <p style="color: #64748b; font-size: 14px; margin: 0;">
@@ -270,7 +270,7 @@ export async function sendTrialDay6(orgId: number): Promise<void> {
 
   const html = `
     <div style="max-width: 560px; margin: 0 auto;">
-      <h1 style="color: #212D40; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
+      <h1 style="color: #1A1D23; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
         Your trial ends tomorrow.
       </h1>
       <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
@@ -324,12 +324,12 @@ export async function sendTrialDay7(orgId: number): Promise<void> {
   lossItems.push("One Action Card recommendations personalized to your market");
 
   const lossList = lossItems
-    .map((item) => `<li style="color: #212D40; font-size: 14px; line-height: 1.8;">${item}</li>`)
+    .map((item) => `<li style="color: #1A1D23; font-size: 14px; line-height: 1.8;">${item}</li>`)
     .join("");
 
   const html = `
     <div style="max-width: 560px; margin: 0 auto;">
-      <h1 style="color: #212D40; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
+      <h1 style="color: #1A1D23; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
         Your trial has ended.
       </h1>
       <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
@@ -341,7 +341,7 @@ export async function sendTrialDay7(orgId: number): Promise<void> {
       </ul>
 
       <div style="background: rgba(213, 103, 83, 0.08); border-radius: 12px; padding: 20px; margin-bottom: 24px; border-left: 4px solid #D56753;">
-        <p style="color: #212D40; font-size: 15px; font-weight: 600; margin: 0;">
+        <p style="color: #1A1D23; font-size: 15px; font-weight: 600; margin: 0;">
           Your competitors are still being tracked. You just cannot see the data anymore.
         </p>
       </div>

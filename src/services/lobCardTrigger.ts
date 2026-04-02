@@ -109,7 +109,7 @@ export async function queueLobCard(orgId: number): Promise<boolean> {
   // Log behavioral event
   await db("behavioral_events").insert({
     id: db.raw("gen_random_uuid()"),
-    event_type: "lob_card.queued",
+    event_type: "lob.card_queued",
     org_id: orgId,
     properties: JSON.stringify({ irreplaceableThing: irreplaceableThing.substring(0, 100) }),
     created_at: new Date(),

@@ -18,7 +18,7 @@ import { isConferenceMode, clearFlowParams } from "./conferenceFallback";
  */
 
 interface BuildingState {
-  practiceName: string;
+  businessName: string;
   specialty: string;
   email: string;
   referralCode?: string | null;
@@ -60,18 +60,18 @@ export default function BuildingScreen() {
         state: {
           referralCode: state?.referralCode || null,
           checkupScore: state?.checkupScore || null,
-          practiceName: state?.practiceName || null,
+          businessName: state?.businessName || null,
         },
       });
     }, 4000);
     return () => clearTimeout(timer);
   }, [ready, navigate, state]);
 
-  if (!state?.practiceName) {
+  if (!state?.businessName) {
     return <Navigate to="/checkup" replace />;
   }
 
-  const { practiceName, email, checkupScore } = state;
+  const { businessName, email, checkupScore } = state;
 
   return (
     <div className="w-full max-w-md mt-4 sm:mt-12 text-center space-y-8">
@@ -81,7 +81,7 @@ export default function BuildingScreen() {
           <CheckCircle2 className="w-8 h-8 text-emerald-500" />
         </div>
         <h2 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight leading-tight font-heading">
-          {practiceName} is set up.
+          {businessName} is set up.
         </h2>
       </div>
 

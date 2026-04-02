@@ -22,14 +22,14 @@ export default function TermsOfService() {
               <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
             </svg>
           </div>
-          <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+          <span className="text-[22px] font-bold tracking-tight text-[#1A1D23]">
             alloro
           </span>
         </button>
       </header>
 
       <main className="mx-auto max-w-2xl px-5 pb-16">
-        <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
           Terms of Service
         </h1>
 
@@ -161,7 +161,7 @@ export default function TermsOfService() {
             className="rounded-2xl px-6 py-5 text-center"
             style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
           >
-            <p className="text-sm font-semibold text-[#212D40]">
+            <p className="text-sm font-semibold text-[#1A1D23]">
               Questions?
             </p>
             <p className="text-sm text-gray-600 mt-1">
@@ -195,7 +195,7 @@ export default function TermsOfService() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="text-sm font-semibold text-[#212D40] mb-3">{title}</h2>
+      <h2 className="text-sm font-semibold text-[#1A1D23] mb-3">{title}</h2>
       <div className="text-sm text-gray-700 leading-relaxed">{children}</div>
     </div>
   );

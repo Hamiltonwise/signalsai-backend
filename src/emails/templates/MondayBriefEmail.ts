@@ -73,7 +73,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
     : "";
 
   const content = `
-    <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Your Monday Brief</p>
+    <p style="margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Your Monday Brief</p>
     <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND_COLORS.darkGray}; line-height: 1.5;">
       ${ownerName.split(" ")[0] || ownerName}, your business has been talking this week. Here's what it said.
     </p>

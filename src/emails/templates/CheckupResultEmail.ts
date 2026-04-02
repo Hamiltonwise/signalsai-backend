@@ -72,7 +72,7 @@ export function buildCheckupResultContent(
       <div style="width: 100px; height: 100px; border-radius: 50%; border: 6px solid ${scoreColor}; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
         <div>
           <div style="font-size: 32px; font-weight: 700; color: ${BRAND_COLORS.navy}; line-height: 1;">${data.compositeScore}</div>
-          <div style="font-size: 11px; font-weight: 600; color: ${scoreColor}; margin-top: 2px;">${scoreLabel}</div>
+          <div style="font-size: 12px; font-weight: 600; color: ${scoreColor}; margin-top: 2px;">${scoreLabel}</div>
         </div>
       </div>
       <h1 style="margin: 0 0 4px 0; font-size: 22px; font-weight: 700; color: ${BRAND_COLORS.navy};">
@@ -86,7 +86,7 @@ export function buildCheckupResultContent(
 
   // Key finding card
   const findingContent = `
-    <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 700; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">
+    <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 700; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">
       Key Finding
     </p>
     <p style="margin: 0; font-size: 15px; line-height: 1.6; color: ${BRAND_COLORS.darkGray};">
@@ -100,12 +100,12 @@ export function buildCheckupResultContent(
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 20px 0;">
       <tr>
         <td width="50%" style="padding: 12px; text-align: center; background-color: ${BRAND_COLORS.lightGray}; border-radius: 10px 0 0 10px;">
-          <p style="margin: 0; font-size: 11px; font-weight: 600; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">Your Rank</p>
+          <p style="margin: 0; font-size: 12px; font-weight: 600; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">Your Rank</p>
           <p style="margin: 4px 0 0 0; font-size: 22px; font-weight: 700; color: ${BRAND_COLORS.navy};">#${data.rank}</p>
           <p style="margin: 2px 0 0 0; font-size: 12px; color: ${BRAND_COLORS.mediumGray};">of ${data.totalCompetitors} in ${escapeHtml(data.city)}</p>
         </td>
         <td width="50%" style="padding: 12px; text-align: center; background-color: ${BRAND_COLORS.lightGray}; border-radius: 0 10px 10px 0; border-left: 2px solid ${BRAND_COLORS.white};">
-          <p style="margin: 0; font-size: 11px; font-weight: 600; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">Reviews</p>
+          <p style="margin: 0; font-size: 12px; font-weight: 600; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">Reviews</p>
           <p style="margin: 4px 0 0 0; font-size: 22px; font-weight: 700; color: ${BRAND_COLORS.navy};">${data.practiceReviews}</p>
           ${data.topCompetitorName && data.topCompetitorReviews
             ? `<p style="margin: 2px 0 0 0; font-size: 12px; color: ${BRAND_COLORS.mediumGray};">vs ${data.topCompetitorReviews} (${escapeHtml(data.topCompetitorName)})</p>`

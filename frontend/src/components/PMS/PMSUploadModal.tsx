@@ -111,15 +111,17 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
         setUploadResult(result.data);
 
         if (parserFailed) {
-          // Parser failed but data was saved. Be honest, not alarming.
+          // Parser failed but preprocessor ran locally. Show what we found, be honest about status.
           setUploadStatus("success");
           setMessage(
             result.data?.parserMessage ||
-            "Your data was received safely. Processing will complete shortly, and we'll have your referral picture ready soon."
+            "Your data was received. We're still processing the full analysis."
           );
           showUploadToast(
-            "Data received",
-            `${finding?.totalRecords || 0} records saved. Processing shortly.`
+            finding?.topSource ? finding.topSource : "Data received",
+            finding?.topSource
+              ? `${finding.topSourceCount} cases found in ${finding.totalRecords} records`
+              : `${finding?.totalRecords || 0} records saved. Full analysis completing.`
           );
         } else if (finding?.topSource) {
           // Full success with instant finding

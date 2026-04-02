@@ -56,7 +56,7 @@ export function buildAdminNotificationContent(
           <span style="font-size: 24px;">📋</span>
         </div>
         <div>
-          <p style="margin: 0; font-size: 28px; font-weight: 800; color: ${BRAND_COLORS.navy};">
+          <p style="margin: 0; font-size: 28px; font-weight: 600; color: ${BRAND_COLORS.navy};">
             ${data.newActionItems}
           </p>
           <p style="margin: 0; font-size: 12px; font-weight: 600; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -106,12 +106,12 @@ export function buildAdminNotificationContent(
             <td style="padding: 8px 0; border-bottom: 1px solid ${
               BRAND_COLORS.border
             }; text-align: right;">
-              <p style="margin: 0; font-size: 18px; font-weight: 800; color: ${
+              <p style="margin: 0; font-size: 18px; font-weight: 600; color: ${
                 BRAND_COLORS.orange
               };">
                 #${ranking.rankPosition}
               </p>
-              <p style="margin: 0; font-size: 11px; color: ${
+              <p style="margin: 0; font-size: 12px; color: ${
                 BRAND_COLORS.mediumGray
               };">
                 Score: ${ranking.rankScore.toFixed(1)}

@@ -91,7 +91,7 @@ export default function Compare() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-100 mb-5">
             <MapPin className="w-7 h-7 text-slate-400" />
           </div>
-          <h2 className="text-xl font-semibold text-[#212D40]">
+          <h2 className="text-xl font-semibold text-[#1A1D23]">
             Comparison not available
           </h2>
           <p className="mt-3 text-sm text-slate-500 leading-relaxed">
@@ -120,7 +120,7 @@ export default function Compare() {
       <div className="max-w-2xl mx-auto px-5 py-10 space-y-8">
         {/* Title */}
         <div className="text-center">
-          <h1 className="text-xl sm:text-2xl font-semibold text-[#212D40] tracking-tight leading-tight">
+          <h1 className="text-xl sm:text-2xl font-semibold text-[#1A1D23] tracking-tight leading-tight">
             {p.name} vs {c.name}
           </h1>
           <p className="mt-2 text-sm text-slate-500">
@@ -141,7 +141,7 @@ export default function Compare() {
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
               Competitor
             </p>
-            <p className="text-sm font-bold text-[#212D40] truncate">{c.name}</p>
+            <p className="text-sm font-bold text-[#1A1D23] truncate">{c.name}</p>
           </div>
 
           {/* Reviews */}
@@ -195,13 +195,13 @@ export default function Compare() {
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
               Category
             </p>
-            <p className="text-xs text-[#212D40] font-medium">{p.category || "--"}</p>
+            <p className="text-xs text-[#1A1D23] font-medium">{p.category || "--"}</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
               Category
             </p>
-            <p className="text-xs text-[#212D40] font-medium">{c.category || "--"}</p>
+            <p className="text-xs text-[#1A1D23] font-medium">{c.category || "--"}</p>
           </div>
         </div>
 
@@ -211,14 +211,14 @@ export default function Compare() {
             The gap
           </p>
           <div className="space-y-2">
-            <p className="text-sm text-[#212D40]/80 leading-relaxed">
+            <p className="text-sm text-[#1A1D23]/80 leading-relaxed">
               {reviewDelta > 0
                 ? `You have ${reviewDelta} more reviews than ${c.name}.`
                 : reviewDelta < 0
                   ? `${c.name} has ${Math.abs(reviewDelta)} more reviews than you.`
                   : `You and ${c.name} have the same number of reviews.`}
             </p>
-            <p className="text-sm text-[#212D40]/80 leading-relaxed">
+            <p className="text-sm text-[#1A1D23]/80 leading-relaxed">
               {ratingDelta > 0
                 ? `Your rating is ${ratingDelta} stars higher.`
                 : ratingDelta < 0
@@ -276,7 +276,7 @@ function MetricCell({
       </div>
       <p
         className={`text-2xl font-semibold ${
-          highlight ? "text-[#D56753]" : "text-[#212D40]"
+          highlight ? "text-[#D56753]" : "text-[#1A1D23]"
         }`}
       >
         {value}

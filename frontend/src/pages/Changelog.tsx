@@ -71,7 +71,7 @@ export default function Changelog() {
           <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-2">
             What's new
           </p>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-[#212D40] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight">
             Changelog
           </h1>
           <p className="mt-2 text-sm text-slate-500">
@@ -89,7 +89,7 @@ export default function Changelog() {
               <p className="text-xs font-bold text-slate-400 mb-1">
                 {entry.date}
               </p>
-              <h2 className="text-base font-semibold text-[#212D40] mb-4">
+              <h2 className="text-base font-semibold text-[#1A1D23] mb-4">
                 {entry.headline}
               </h2>
               <ul className="space-y-2.5">

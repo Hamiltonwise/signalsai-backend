@@ -284,11 +284,11 @@ function buildWelcomeIntelligenceEmail(params: {
       (gp) => `
       <tr>
         <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">
-          <strong style="color: #212D40;">${escapeHtml(gp.name)}</strong>
+          <strong style="color: #1A1D23;">${escapeHtml(gp.name)}</strong>
           <br/><span style="color: #94a3b8; font-size: 13px;">${escapeHtml(gp.address)}</span>
         </td>
         <td style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; text-align: right; white-space: nowrap;">
-          <span style="color: #212D40; font-weight: 600;">${gp.rating.toFixed(1)}&#9733;</span>
+          <span style="color: #1A1D23; font-weight: 600;">${gp.rating.toFixed(1)}&#9733;</span>
           <br/><span style="color: #94a3b8; font-size: 13px;">${gp.reviewCount} reviews</span>
         </td>
       </tr>`
@@ -297,7 +297,7 @@ function buildWelcomeIntelligenceEmail(params: {
 
   return `
     <div style="max-width: 560px; margin: 0 auto;">
-      <h1 style="color: #212D40; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
+      <h1 style="color: #1A1D23; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
         We kept digging after your Checkup.
       </h1>
       <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
@@ -309,7 +309,7 @@ function buildWelcomeIntelligenceEmail(params: {
         <h2 style="color: #D56753; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 4px 0;">
           Revenue Opportunity
         </h2>
-        <p style="color: #212D40; font-size: 16px; font-weight: 600; margin: 0;">
+        <p style="color: #1A1D23; font-size: 16px; font-weight: 600; margin: 0;">
           ${nearbyGPs.length} businesses near ${city} that could be sending you clients.
         </p>
       </div>
@@ -317,8 +317,8 @@ function buildWelcomeIntelligenceEmail(params: {
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
         <thead>
           <tr>
-            <th style="padding: 8px 16px; text-align: left; color: #94a3b8; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Practice</th>
-            <th style="padding: 8px 16px; text-align: right; color: #94a3b8; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Rating</th>
+            <th style="padding: 8px 16px; text-align: left; color: #94a3b8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Practice</th>
+            <th style="padding: 8px 16px; text-align: right; color: #94a3b8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Rating</th>
           </tr>
         </thead>
         <tbody>${gpRows}</tbody>
@@ -336,7 +336,7 @@ function buildWelcomeIntelligenceEmail(params: {
         </h2>
         ${homeworkFindings.map((f) => `
         <div style="margin-bottom: 16px;">
-          <p style="color: #212D40; font-size: 15px; font-weight: 600; margin: 0 0 4px 0;">
+          <p style="color: #1A1D23; font-size: 15px; font-weight: 600; margin: 0 0 4px 0;">
             ${escapeHtml(f.headline)}
           </p>
           <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin: 0;">
@@ -360,7 +360,7 @@ function buildWelcomeIntelligenceEmail(params: {
 
       ${topCompetitorName ? `
       <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
-        Your top competitor <strong style="color: #212D40;">${escapeHtml(topCompetitorName)}</strong> isn't standing still. Neither should you.
+        Your top competitor <strong style="color: #1A1D23;">${escapeHtml(topCompetitorName)}</strong> isn't standing still. Neither should you.
       </p>
       ` : ""}
 
