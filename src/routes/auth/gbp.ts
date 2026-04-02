@@ -38,7 +38,11 @@ router.get("/google", gbpAuthLimiter, (req: Request, res: Response) => {
     const authUrl = oauth2.generateAuthUrl({
       access_type: "offline",
       prompt: "consent",
-      scope: ["https://www.googleapis.com/auth/business.manage"],
+      scope: [
+        "https://www.googleapis.com/auth/business.manage",
+        "https://www.googleapis.com/auth/analytics.readonly",
+        "https://www.googleapis.com/auth/webmasters.readonly",
+      ],
       state,
     });
 
@@ -111,6 +115,70 @@ router.get("/google/callback", async (req: Request, res: Response) => {
     });
 
     console.log(`[GBP-AUTH] Stored GBP tokens for org ${orgId}, account ${gbpAccountId}`);
+
+    // Discover GA4 and GSC properties (new scopes)
+    try {
+      const analyticsAdmin = google.analyticsadmin({ version: "v1beta", auth: oauth2 });
+      const accountSummaries = await analyticsAdmin.accountSummaries.list();
+      const ga4Properties: any[] = [];
+      for (const acct of accountSummaries.data.accountSummaries || []) {
+        for (const prop of acct.propertySummaries || []) {
+          ga4Properties.push({
+            propertyId: prop.property,
+            displayName: prop.displayName,
+            account: acct.displayName,
+          });
+        }
+      }
+      if (ga4Properties.length > 0) {
+        console.log(`[GBP-AUTH] Found ${ga4Properties.length} GA4 properties for org ${orgId}`);
+      }
+
+      // Also discover GSC sites
+      const searchconsole = google.searchconsole({ version: "v1", auth: oauth2 });
+      const gscSites: any[] = [];
+      try {
+        const siteList = await searchconsole.sites.list();
+        for (const site of siteList.data.siteEntry || []) {
+          gscSites.push({
+            siteUrl: site.siteUrl,
+            permissionLevel: site.permissionLevel,
+          });
+        }
+        if (gscSites.length > 0) {
+          console.log(`[GBP-AUTH] Found ${gscSites.length} GSC sites for org ${orgId}`);
+        }
+      } catch (gscErr: any) {
+        console.warn("[GBP-AUTH] GSC discovery failed:", gscErr.message);
+      }
+
+      // Store discovered properties in the connection record (matched by org domain if possible)
+      if (ga4Properties.length > 0 || gscSites.length > 0) {
+        const existingConn = await db("google_connections").where({ organization_id: orgId }).first();
+        if (existingConn) {
+          const pids = typeof existingConn.google_property_ids === "string"
+            ? JSON.parse(existingConn.google_property_ids)
+            : existingConn.google_property_ids || {};
+
+          // Store first GA4 property (or keep existing)
+          if (ga4Properties.length > 0 && !pids.ga4) {
+            pids.ga4 = { propertyId: ga4Properties[0].propertyId, displayName: ga4Properties[0].displayName };
+          }
+          // Store first matching GSC site (or keep existing)
+          if (gscSites.length > 0 && !pids.gsc) {
+            pids.gsc = { siteUrl: gscSites[0].siteUrl, displayName: gscSites[0].siteUrl };
+          }
+
+          await db("google_connections").where({ id: existingConn.id }).update({
+            google_property_ids: JSON.stringify(pids),
+          });
+          console.log(`[GBP-AUTH] Updated property IDs for org ${orgId}: GA4=${!!pids.ga4}, GSC=${!!pids.gsc}`);
+        }
+      }
+    } catch (analyticsErr: any) {
+      console.warn("[GBP-AUTH] Analytics discovery failed (non-fatal):", analyticsErr.message?.substring(0, 80));
+      // Non-fatal: GBP connection still works without GA4/GSC
+    }
 
     // Enqueue PatientPath build
     try {
