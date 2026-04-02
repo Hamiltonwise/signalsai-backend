@@ -64,6 +64,12 @@ function createOAuthClient(accessToken: string, refreshToken: string) {
  * Fetch GA4 analytics for an organization.
  * Returns null if no GA4 property connected or on error.
  */
+/**
+ * Fetch GA4 analytics for an organization.
+ * Tries the org's own connection first, falls back to the master
+ * HW analytics connection (info@hamiltonwise.com, org 36) if the
+ * org's token doesn't have analytics scope.
+ */
 export async function fetchGA4Data(
   orgId: number,
   daysBack: number = 30,
@@ -78,7 +84,42 @@ export async function fetchGA4Data(
   const ga4Property = pids?.ga4?.propertyId;
   if (!ga4Property) return null;
 
-  const auth = createOAuthClient(conn.access_token, conn.refresh_token);
+  // Try the org's own token first
+  let auth = createOAuthClient(conn.access_token, conn.refresh_token);
+
+  // If the org's token fails with permissions, try the master HW connection
+  const tryFetch = async (authClient: any): Promise<GA4Summary | null> => {
+    return fetchGA4WithAuth(authClient, ga4Property, daysBack, orgId);
+  };
+
+  try {
+    return await tryFetch(auth);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("permission") || message.includes("scope")) {
+      // Fallback to master HW connection
+      const masterConn = await db("google_connections").where({ email: "info@hamiltonwise.com" }).first();
+      if (masterConn?.refresh_token) {
+        console.log(`[Analytics] Org ${orgId}: falling back to HW master token`);
+        auth = createOAuthClient(masterConn.access_token, masterConn.refresh_token);
+        try {
+          return await tryFetch(auth);
+        } catch {
+          // Master token also failed
+        }
+      }
+    }
+    console.error(`[Analytics] GA4 fetch failed for org ${orgId}:`, message);
+    return null;
+  }
+}
+
+async function fetchGA4WithAuth(
+  auth: any,
+  ga4Property: string,
+  daysBack: number,
+  orgId: number,
+): Promise<GA4Summary | null> {
   const analyticsData = google.analyticsdata({ version: "v1beta", auth });
 
   const startDate = `${daysBack}daysAgo`;
@@ -179,6 +220,10 @@ export async function fetchGA4Data(
  * Fetch Google Search Console data for an organization.
  * Returns null if no GSC property connected or on error.
  */
+/**
+ * Fetch GSC data for an organization.
+ * Same fallback pattern as GA4: tries org token, falls back to HW master.
+ */
 export async function fetchGSCData(
   orgId: number,
   daysBack: number = 30,
@@ -193,7 +238,33 @@ export async function fetchGSCData(
   const gscSite = pids?.gsc?.siteUrl;
   if (!gscSite) return null;
 
-  const auth = createOAuthClient(conn.access_token, conn.refresh_token);
+  let auth = createOAuthClient(conn.access_token, conn.refresh_token);
+
+  try {
+    return await fetchGSCWithAuth(auth, gscSite, daysBack, orgId);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("permission") || message.includes("scope")) {
+      const masterConn = await db("google_connections").where({ email: "info@hamiltonwise.com" }).first();
+      if (masterConn?.refresh_token) {
+        console.log(`[Analytics] GSC org ${orgId}: falling back to HW master token`);
+        auth = createOAuthClient(masterConn.access_token, masterConn.refresh_token);
+        try {
+          return await fetchGSCWithAuth(auth, gscSite, daysBack, orgId);
+        } catch { /* master also failed */ }
+      }
+    }
+    console.error(`[Analytics] GSC fetch failed for org ${orgId}:`, message);
+    return null;
+  }
+}
+
+async function fetchGSCWithAuth(
+  auth: any,
+  gscSite: string,
+  daysBack: number,
+  orgId: number,
+): Promise<GSCSummary | null> {
   const searchconsole = google.searchconsole({ version: "v1", auth });
 
   const endDate = new Date().toISOString().split("T")[0];
