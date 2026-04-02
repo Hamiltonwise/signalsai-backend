@@ -117,6 +117,7 @@ const HQBoard = React.lazy(() => import("./pages/admin/BoardChat"));
 // --- Non-page imports (always loaded) ---
 import { PageWrapper } from "./components/PageWrapper";
 import HelpButton from "./components/HelpButton";
+import ProactiveHelp from "./components/ProactiveHelp";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
 import { VocabularyProvider } from "./contexts/vocabularyContext.tsx";
 import { GBPProvider } from "./contexts/GBPContext.tsx";
@@ -440,6 +441,7 @@ function App() {
         </TailorProvider>
         </VocabularyProvider>
         <HelpButton />
+        <ProactiveHelp />
       </AuthProvider>
     </BrowserRouter>
     </ToastProvider>
