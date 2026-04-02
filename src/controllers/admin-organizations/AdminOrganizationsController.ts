@@ -22,6 +22,7 @@ import * as BusinessDataService from "../locations/BusinessDataService";
 import { getValidOAuth2ClientByOrg } from "../../auth/oauth2Helper";
 import * as TierManagementService from "./feature-services/TierManagementService";
 import * as AdminOrgCreationService from "./feature-services/AdminOrgCreationService";
+import * as QuickCreateService from "./feature-services/QuickCreateService";
 import * as hostnameGenerator from "./feature-utils/hostnameGenerator";
 import { deleteOrganization } from "../settings/feature-services/service.delete-organization";
 import { sendEmail } from "../../emails/emailService";
@@ -779,5 +780,137 @@ export async function syncOrgBusinessData(
     return res.json({ success: true, business_data: synced });
   } catch (error) {
     return handleError(res, error, "Sync org business data");
+  }
+}
+
+/**
+ * POST /api/admin/organizations/quick-create
+ * Create account from a Google Places placeId with full data hydration.
+ */
+export async function quickCreate(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const { placeId, email, accountType, firstName, lastName, skipTrialEmails, trialDays } = req.body;
+
+    if (!placeId || !email) {
+      return res.status(400).json({
+        success: false,
+        error: "placeId and email are required",
+      });
+    }
+
+    const validTypes = ["prospect", "paying", "partner", "foundation", "case_study", "internal"];
+    if (accountType && !validTypes.includes(accountType)) {
+      return res.status(400).json({
+        success: false,
+        error: `accountType must be one of: ${validTypes.join(", ")}`,
+      });
+    }
+
+    const result = await QuickCreateService.quickCreateFromPlace({
+      placeId,
+      email,
+      accountType: accountType || "prospect",
+      firstName,
+      lastName,
+      skipTrialEmails,
+      trialDays,
+    });
+
+    return res.status(201).json(result);
+  } catch (error: any) {
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({ success: false, error: error.message });
+    }
+    return handleError(res, error, "Quick create organization");
+  }
+}
+
+/**
+ * PATCH /api/admin/organizations/:id/billing-controls
+ * Update billing/trial settings for an organization.
+ */
+export async function updateBillingControls(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id, 10);
+    if (isNaN(orgId)) {
+      return res.status(400).json({ success: false, error: "Invalid organization ID" });
+    }
+
+    const org = await OrganizationModel.findById(orgId);
+    if (!org) {
+      return res.status(404).json({ success: false, error: "Organization not found" });
+    }
+
+    const { accountType, trialEndAt, trialDays, subscriptionStatus, subscriptionTier } = req.body;
+
+    const updates: Record<string, any> = {};
+
+    // Account type
+    if (accountType !== undefined) {
+      const validTypes = ["prospect", "paying", "partner", "foundation", "case_study", "internal", null];
+      if (!validTypes.includes(accountType)) {
+        return res.status(400).json({ success: false, error: "Invalid account type" });
+      }
+      updates.account_type = accountType;
+    }
+
+    // Trial end date (explicit date)
+    if (trialEndAt !== undefined) {
+      if (trialEndAt === null) {
+        updates.trial_end_at = null;
+        updates.trial_status = null;
+      } else {
+        updates.trial_end_at = new Date(trialEndAt);
+        updates.trial_status = new Date(trialEndAt) > new Date() ? "active" : "expired";
+        if (!updates.trial_start_at && !org.trial_start_at) {
+          updates.trial_start_at = new Date();
+        }
+      }
+    }
+
+    // Trial days (relative extension from now)
+    if (trialDays !== undefined && trialDays > 0) {
+      updates.trial_end_at = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+      updates.trial_status = "active";
+      if (!org.trial_start_at) {
+        updates.trial_start_at = new Date();
+      }
+    }
+
+    // Subscription status (active/inactive/trial/cancelled)
+    if (subscriptionStatus !== undefined) {
+      const validStatuses = ["active", "inactive", "trial", "cancelled"];
+      if (!validStatuses.includes(subscriptionStatus)) {
+        return res.status(400).json({ success: false, error: "Invalid subscription status" });
+      }
+      updates.subscription_status = subscriptionStatus;
+    }
+
+    // Subscription tier
+    if (subscriptionTier !== undefined) {
+      const validTiers = ["DWY", "DFY"];
+      if (!validTiers.includes(subscriptionTier)) {
+        return res.status(400).json({ success: false, error: "Invalid subscription tier" });
+      }
+      updates.subscription_tier = subscriptionTier;
+      updates.subscription_updated_at = new Date();
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, error: "No valid fields to update" });
+    }
+
+    await db("organizations").where({ id: orgId }).update(updates);
+
+    const updated = await OrganizationModel.findById(orgId);
+    return res.json({ success: true, organization: updated });
+  } catch (error) {
+    return handleError(res, error, "Update billing controls");
   }
 }

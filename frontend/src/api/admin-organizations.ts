@@ -479,3 +479,59 @@ export async function adminRemoveOrgUser(
     path: `/admin/organizations/${orgId}/users/${userId}`,
   });
 }
+
+// ── Quick Create ───────────────────────────────────
+
+export type AccountType = "prospect" | "paying" | "partner" | "foundation" | "case_study" | "internal";
+
+export interface QuickCreateInput {
+  placeId: string;
+  email: string;
+  accountType: AccountType;
+  firstName?: string;
+  lastName?: string;
+  skipTrialEmails?: boolean;
+  trialDays?: number;
+}
+
+export interface QuickCreateResponse {
+  success: boolean;
+  organizationId: number;
+  userId: number;
+  locationId: number;
+  tempPassword: string;
+  orgName: string;
+  email: string;
+  accountType: AccountType;
+  websitePreviewUrl: string | null;
+  message: string;
+}
+
+export async function adminQuickCreate(
+  input: QuickCreateInput
+): Promise<QuickCreateResponse> {
+  return apiPost({
+    path: "/admin/organizations/quick-create",
+    passedData: input,
+  });
+}
+
+// ── Billing Controls ───────────────────────────────────
+
+export interface BillingControlsInput {
+  accountType?: AccountType | null;
+  trialEndAt?: string | null;
+  trialDays?: number;
+  subscriptionStatus?: "active" | "inactive" | "trial" | "cancelled";
+  subscriptionTier?: "DWY" | "DFY";
+}
+
+export async function adminUpdateBillingControls(
+  orgId: number,
+  data: BillingControlsInput
+): Promise<{ success: boolean; organization: any }> {
+  return apiPatch({
+    path: `/admin/organizations/${orgId}/billing-controls`,
+    passedData: data,
+  });
+}

@@ -25,8 +25,10 @@ import {
   adminUnlockOrganization,
   adminUpdateOrganizationType,
   adminGetBillingDetails,
+  adminUpdateBillingControls,
   type AdminOrganizationDetail,
   type AdminBillingDetails,
+  type AccountType,
 } from "../../api/admin-organizations";
 import { fetchWebsites, linkWebsiteToOrganization } from "../../api/websites";
 
@@ -48,6 +50,13 @@ export function OrgSubscriptionSection({
   const [isSavingType, setIsSavingType] = useState(false);
   const [billingDetails, setBillingDetails] = useState<AdminBillingDetails | null>(null);
   const [showInvoices, setShowInvoices] = useState(false);
+
+  // Billing controls state
+  const [savingControls, setSavingControls] = useState(false);
+  const [controlAccountType, setControlAccountType] = useState<AccountType | "">(
+    (org as any).account_type || ""
+  );
+  const [controlTrialDays, setControlTrialDays] = useState<string>("");
 
   // Fetch billing details if org has Stripe
   useEffect(() => {
@@ -452,7 +461,101 @@ export function OrgSubscriptionSection({
         </div>
       )}
 
-      {/* ─── Section 3: Actions ─── */}
+      {/* ─── Section 3: Billing Controls ─── */}
+      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100 flex items-center gap-2">
+          <Clock className="h-4 w-4 text-gray-400" />
+          <h3 className="text-sm font-bold text-gray-900">Billing Controls</h3>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Account Type */}
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Account Type</label>
+              <select
+                value={controlAccountType}
+                onChange={(e) => setControlAccountType(e.target.value as AccountType | "")}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-alloro-orange/50"
+              >
+                <option value="">Not set</option>
+                <option value="prospect">Prospect</option>
+                <option value="paying">Paying</option>
+                <option value="partner">Partner</option>
+                <option value="foundation">Foundation</option>
+                <option value="case_study">Case Study</option>
+                <option value="internal">Internal</option>
+              </select>
+            </div>
+
+            {/* Trial Extension */}
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Extend Trial (days from now)</label>
+              <input
+                type="number"
+                value={controlTrialDays}
+                onChange={(e) => setControlTrialDays(e.target.value)}
+                placeholder="e.g. 30"
+                min={1}
+                max={365}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-alloro-orange/50"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              disabled={savingControls}
+              onClick={async () => {
+                setSavingControls(true);
+                try {
+                  const data: Record<string, any> = {};
+                  if (controlAccountType) data.accountType = controlAccountType;
+                  if (controlTrialDays && parseInt(controlTrialDays) > 0) data.trialDays = parseInt(controlTrialDays);
+                  if (Object.keys(data).length === 0) {
+                    toast.error("No changes to save");
+                    return;
+                  }
+                  const result = await adminUpdateBillingControls(orgId, data);
+                  if (result.success) {
+                    toast.success("Billing controls updated");
+                    setControlTrialDays("");
+                    await onRefresh();
+                  }
+                } catch (error: any) {
+                  toast.error(error?.response?.data?.error || "Failed to update");
+                } finally {
+                  setSavingControls(false);
+                }
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-alloro-orange rounded-lg hover:bg-alloro-orange/90 transition-colors disabled:opacity-50"
+            >
+              {savingControls ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              {savingControls ? "Saving..." : "Save Changes"}
+            </button>
+
+            {/* Quick actions */}
+            <button
+              onClick={async () => {
+                setSavingControls(true);
+                try {
+                  await adminUpdateBillingControls(orgId, { trialEndAt: null, subscriptionStatus: "active" });
+                  toast.success("Billing bypassed (no trial, active status)");
+                  await onRefresh();
+                } catch { toast.error("Failed"); }
+                finally { setSavingControls(false); }
+              }}
+              disabled={savingControls}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              <Unlock className="h-3 w-3" />
+              Bypass Billing
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Section 4: Actions ─── */}
       <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
         <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100">
           <h3 className="text-sm font-bold text-gray-900">Actions</h3>

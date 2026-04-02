@@ -30,6 +30,7 @@ import {
   useAdminOrganizations,
   useInvalidateOrganizations,
 } from "../../hooks/queries/useAdminQueries";
+import { QuickAccountCreator } from "../../components/Admin/QuickAccountCreator";
 
 const EMPTY_CREATE_FORM: AdminCreateOrgInput = {
   organization: { name: "", domain: "", address: "" },
@@ -155,6 +156,9 @@ export function OrganizationManagement() {
           </div>
         }
       />
+
+      {/* Quick Account Creator */}
+      <QuickAccountCreator onCreated={refetchOrganizations} />
 
       {organizations.length === 0 ? (
         <EmptyState

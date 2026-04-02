@@ -15,6 +15,15 @@ organizationsRoutes.post(
   controller.createOrganization
 );
 
+// POST /api/admin/organizations/quick-create — Quick account from GBP place ID
+// MUST be before /:id to avoid matching as the :id param
+organizationsRoutes.post(
+  "/quick-create",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.quickCreate
+);
+
 // GET /api/admin/organizations — List all with enriched data
 organizationsRoutes.get(
   "/",
@@ -80,6 +89,14 @@ organizationsRoutes.patch(
   authenticateToken,
   superAdminMiddleware,
   controller.updateOrganizationType
+);
+
+// PATCH /api/admin/organizations/:id/billing-controls — Update billing/trial settings
+organizationsRoutes.patch(
+  "/:id/billing-controls",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.updateBillingControls
 );
 
 // POST /api/admin/organizations/:id/create-project — Create website project for org
