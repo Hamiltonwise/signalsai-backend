@@ -283,14 +283,20 @@ export function preprocessPmsData(rawRows: Record<string, unknown>[]): Preproces
 
   const headers = Object.keys(rawRows[0]);
 
-  // Detect columns
+  // Clear the session-local UUID map for this upload
+  patientUUIDMap.clear();
+
+  // Detect all column types
   const patientColumns = findPatientColumns(headers);
+  const phiColumns = findPHIColumns(headers);
+  const dateColumns = findDateColumns(headers);
   const revenueColumn = findRevenueColumn(headers);
   const referralColumn = findReferralColumn(headers);
 
-  // HIPAA scan
+  // HIPAA scan: count what we found
   let patientNamesFound = 0;
   let patientIdsFound = 0;
+  const allPhiFields = new Set<string>([...patientColumns, ...phiColumns, ...dateColumns]);
   for (const row of rawRows) {
     for (const col of patientColumns) {
       const val = String(row[col] || "");
@@ -301,7 +307,7 @@ export function preprocessPmsData(rawRows: Record<string, unknown>[]): Preproces
     }
   }
 
-  // Process rows: scrub, deduplicate, aggregate
+  // Process rows: HIPAA scrub (Safe Harbor), deduplicate, aggregate
   const patientMap = new Map<string, {
     rows: Record<string, unknown>[];
     source: string;
@@ -312,8 +318,8 @@ export function preprocessPmsData(rawRows: Record<string, unknown>[]): Preproces
   const scrubbedData: Record<string, unknown>[] = [];
 
   for (const row of rawRows) {
-    const patientKey = extractPatientKey(row, patientColumns);
-    const scrubbed = scrubRow(row, patientColumns, patientKey);
+    const { dedupKey, anonId } = extractPatientKey(row, patientColumns);
+    const scrubbed = scrubRow(row, patientColumns, phiColumns, dateColumns, anonId);
     scrubbedData.push(scrubbed);
 
     const source = referralColumn
@@ -325,8 +331,8 @@ export function preprocessPmsData(rawRows: Record<string, unknown>[]): Preproces
     const providerCol = headers.find(h => /provider/i.test(h));
     const provider = providerCol ? String(row[providerCol] || "").trim() : "";
 
-    if (!patientMap.has(patientKey)) {
-      patientMap.set(patientKey, {
+    if (!patientMap.has(dedupKey)) {
+      patientMap.set(dedupKey, {
         rows: [],
         source,
         revenue: 0,
@@ -334,7 +340,7 @@ export function preprocessPmsData(rawRows: Record<string, unknown>[]): Preproces
       });
     }
 
-    const existing = patientMap.get(patientKey)!;
+    const existing = patientMap.get(dedupKey)!;
     existing.rows.push(scrubbed);
     existing.revenue += revenue;
     if (provider) existing.providers.add(provider);
@@ -383,7 +389,7 @@ export function preprocessPmsData(rawRows: Record<string, unknown>[]): Preproces
     hipaaReport: {
       patientNamesFound,
       patientIdsFound,
-      fieldsScrubbedFrom: patientColumns,
+      fieldsScrubbedFrom: Array.from(allPhiFields),
       scrubbed: patientColumns.length > 0,
     },
     referralSummary,
