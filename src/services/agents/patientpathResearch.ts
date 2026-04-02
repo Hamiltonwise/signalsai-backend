@@ -88,6 +88,36 @@ export async function runPatientPathResearch(
   const rankingData = await gatherRankingData(orgId);
   const referralSources = await gatherReferralSources(orgId);
 
+  // Step 1.5: Import existing website (if they have one)
+  // The Queer Eye principle: read what the owner already values before writing anything new.
+  // Their daughters' love letter becomes the foundation. We honor it, not replace it.
+  const existingSiteUrl = org.website_url || org.checkup_data?.place?.websiteUri || null;
+  let existingSiteContext: string | null = null;
+  if (existingSiteUrl) {
+    try {
+      const response = await fetch(existingSiteUrl, { signal: AbortSignal.timeout(10000) });
+      if (response.ok) {
+        const html = await response.text();
+        // Extract meaningful text content (strip HTML tags)
+        const textContent = html
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "") // remove scripts
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")   // remove styles
+          .replace(/<[^>]+>/g, " ")                           // remove tags
+          .replace(/\s+/g, " ")                               // normalize whitespace
+          .trim()
+          .slice(0, 3000); // Cap at 3000 chars for Claude context
+
+        if (textContent.length > 100) {
+          existingSiteContext = textContent;
+          console.log(`[PatientPathResearch] Imported ${textContent.length} chars from existing site: ${existingSiteUrl}`);
+        }
+      }
+    } catch {
+      // Non-blocking: if we can't reach the site, proceed without it
+      console.log(`[PatientPathResearch] Could not import existing site: ${existingSiteUrl}`);
+    }
+  }
+
   // Step 2: Analyze reviews for patterns
   const reviewAnalysis = analyzeReviews(reviews);
 
@@ -110,6 +140,7 @@ export async function runPatientPathResearch(
         reviewAnalysis,
         competitorProfiles,
         referralSources,
+        existingSiteContext,
       );
       copyDirection = claudeResult.copyDirection;
       confidenceLevel = claudeResult.confidenceLevel;
@@ -441,6 +472,7 @@ async function synthesizeWithClaude(
   analysis: ReviewAnalysis,
   competitors: CompetitorProfile[],
   referralSources: any[],
+  existingSiteContext?: string | null,
 ): Promise<ClaudeResult> {
   const Anthropic = (await import("@anthropic-ai/sdk")).default;
   const client = new Anthropic();
@@ -482,6 +514,11 @@ ${competitors.map((c) => `- ${c.name}: ${c.reviewCount} reviews`).join("\n") || 
 REFERRAL SOURCES:
 ${referralSources.map((r: any) => `- ${r.provider_name || r.source_name}: ${r.referral_count} referrals`).join("\n") || "No referral data"}
 
+${existingSiteContext ? `EXISTING WEBSITE CONTENT (the owner's current site -- honor what's personal):
+${existingSiteContext}
+
+IMPORTANT: The owner (or their family) built this site. Look for personal details worth preserving: team member stories, community involvement, mission work, personal touches, specific language choices. These represent what the owner VALUES about their identity. The new site should honor these while improving the technical execution.
+` : ""}
 Your task: produce a JSON object with these fields:
 
 copyDirection:
