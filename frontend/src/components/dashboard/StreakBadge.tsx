@@ -68,7 +68,7 @@ export default function StreakBadge({ type, count, label }: StreakBadgeProps) {
     >
       <div className="flex items-center gap-1.5">
         <Icon className={`w-5 h-5 ${config.color} ${isMilestone ? "animate-score-celebrate" : ""}`} />
-        <span className={`text-2xl font-extrabold ${config.color} tabular-nums`}>
+        <span className={`text-2xl font-semibold ${config.color} tabular-nums`}>
           {count}
         </span>
       </div>
@@ -76,7 +76,7 @@ export default function StreakBadge({ type, count, label }: StreakBadgeProps) {
         <p className={`text-xs font-bold ${config.color} uppercase tracking-wide`}>
           Week streak
         </p>
-        <p className="text-[11px] text-gray-500 truncate">
+        <p className="text-xs text-gray-500 truncate">
           {milestoneMessage || label}
         </p>
       </div>

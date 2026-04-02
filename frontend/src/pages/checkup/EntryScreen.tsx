@@ -303,7 +303,7 @@ export default function EntryScreen() {
     <div className="w-full max-w-md mt-2 sm:mt-8">
       {/* Referral banner */}
       {referrerName && (
-        <div className="flex items-center justify-center gap-2 mb-6 text-sm text-[#212D40] bg-[#D56753]/5 border border-[#D56753]/15 rounded-xl px-4 py-2.5">
+        <div className="flex items-center justify-center gap-2 mb-6 text-sm text-[#1A1D23] bg-[#D56753]/5 border border-[#D56753]/15 rounded-xl px-4 py-2.5">
           <UserCheck className="w-4 h-4 text-[#D56753] shrink-0" />
           <span>Referred by <strong>{referrerName}</strong></span>
         </div>
@@ -311,9 +311,9 @@ export default function EntryScreen() {
 
       {/* Headline — warm, continues the homepage identity */}
       <div className="text-center mb-10">
-        <TailorText editKey="checkup.entry.badge" defaultText="Free. 60 seconds." as="p" className="text-[11px] font-semibold tracking-[0.2em] text-[#D56753]/60 uppercase mb-4" />
-        <TailorText editKey="checkup.entry.headline" defaultText="Let's see what your business has been saying." as="h1" className="text-2xl sm:text-[34px] font-extrabold text-[#212D40] tracking-tight leading-tight font-heading" />
-        <p className="mt-4 text-base text-[#212D40]/50 leading-relaxed max-w-sm mx-auto">
+        <TailorText editKey="checkup.entry.badge" defaultText="Free. 60 seconds." as="p" className="text-xs font-semibold tracking-[0.2em] text-[#D56753]/60 uppercase mb-4" />
+        <TailorText editKey="checkup.entry.headline" defaultText="Let's see what your business has been saying." as="h1" className="text-2xl sm:text-[34px] font-semibold text-[#1A1D23] tracking-tight leading-tight font-heading" />
+        <p className="mt-4 text-base text-[#1A1D23]/50 leading-relaxed max-w-sm mx-auto">
           {selectedPlace
             ? `We'll read your market in ${selectedPlace.city || "your area"} and tell you what we find. Honest.`
             : "Type your name. We'll tell you something specific and true about your business."}
@@ -331,7 +331,7 @@ export default function EntryScreen() {
             onChange={(e) => handleInputChange(e.target.value)}
             placeholder="Search your business name..."
             autoComplete="off"
-            className="w-full h-[56px] pl-12 pr-12 rounded-2xl bg-white border border-[#D56753]/10 text-base text-[#212D40] placeholder:text-slate-400 shadow-[0_2px_12px_rgba(214,104,83,0.04)] transition-all duration-200 focus:outline-none focus:border-[#D56753]/40 focus:ring-4 focus:ring-[#D56753]/8 focus:shadow-[0_2px_20px_rgba(214,104,83,0.1)]"
+            className="w-full h-[56px] pl-12 pr-12 rounded-2xl bg-white border border-[#D56753]/10 text-base text-[#1A1D23] placeholder:text-slate-400 shadow-[0_2px_12px_rgba(214,104,83,0.04)] transition-all duration-200 focus:outline-none focus:border-[#D56753]/40 focus:ring-4 focus:ring-[#D56753]/8 focus:shadow-[0_2px_20px_rgba(214,104,83,0.1)]"
           />
           {isSearching && (
             <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#D56753] animate-spin" />
@@ -360,7 +360,7 @@ export default function EntryScreen() {
                 >
                   <MapPin className="w-4 h-4 text-[#D56753] mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#212D40] break-words">
+                    <p className="text-sm font-semibold text-[#1A1D23] break-words">
                       {s.mainText}
                     </p>
                     <p className="text-xs text-slate-500 break-words">
@@ -392,7 +392,7 @@ export default function EntryScreen() {
               className={`text-[13px] px-4 py-2 rounded-full border transition-all duration-200 ${
                 intent === label
                   ? "border-[#D56753] bg-[#D56753]/5 text-[#D56753] font-semibold shadow-sm"
-                  : "border-slate-200 text-[#212D40]/70 hover:border-[#D56753]/40 hover:text-[#D56753]"
+                  : "border-slate-200 text-[#1A1D23]/70 hover:border-[#D56753]/40 hover:text-[#D56753]"
               }`}
             >
               {label}
@@ -415,7 +415,7 @@ export default function EntryScreen() {
               <MapPin className="w-5 h-5 text-[#D56753]" />
             </div>
             <div className="min-w-0">
-              <p className="text-base font-bold text-[#212D40]">
+              <p className="text-base font-bold text-[#1A1D23]">
                 {selectedPlace.name}
               </p>
               <p className="text-sm text-slate-500 mt-0.5">

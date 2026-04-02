@@ -79,19 +79,19 @@ export default function ThankYou() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-50 mb-4">
             <CheckCircle2 className="w-7 h-7 text-emerald-600" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight font-heading">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight font-heading">
             You're set.
           </h1>
-          <p className="text-sm text-[#212D40]/40 mt-2">Alloro is watching your market now.</p>
+          <p className="text-sm text-[#1A1D23]/40 mt-2">Alloro is watching your market now.</p>
         </div>
 
         {/* P0: Monday time anchor, the most important line on the page */}
         <div className="card-primary text-center">
-          <p className="text-lg font-bold text-[#212D40] leading-snug font-heading">
+          <p className="text-lg font-bold text-[#1A1D23] leading-snug font-heading">
             Monday at 7:15 AM, your first briefing
             lands in your inbox.
           </p>
-          <p className="mt-3 text-sm text-[#212D40]/50 leading-relaxed">
+          <p className="mt-3 text-sm text-[#1A1D23]/50 leading-relaxed">
             Something specific about your market that you didn't know.
             A name, a number, and one clear action. Before your day starts.
           </p>
@@ -103,7 +103,7 @@ export default function ThankYou() {
             <div className="w-2 h-2 rounded-full bg-[#D56753]" />
           </div>
           <p className="text-sm text-slate-600 leading-relaxed">
-            <span className="font-semibold text-[#212D40]">Nothing to set up.</span>{" "}
+            <span className="font-semibold text-[#1A1D23]">Nothing to set up.</span>{" "}
             No app to download. No password to create.
             We do the work. You see the results Monday.
           </p>
@@ -114,7 +114,7 @@ export default function ThankYou() {
           className="rounded-2xl px-5 py-4"
           style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
         >
-          <p className="text-sm text-[#212D40]/70 leading-relaxed">
+          <p className="text-sm text-[#1A1D23]/70 leading-relaxed">
             Last month, a business owner discovered their top referral
             source had gone quiet for 6 weeks. That single relationship
             was worth $27,000 a year. It was in their Monday briefing.
@@ -125,7 +125,7 @@ export default function ThankYou() {
         <div className="text-center">
           <button
             onClick={handleAddToCalendar}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-medium text-[#212D40] px-5 py-3 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-medium text-[#1A1D23] px-5 py-3 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all"
           >
             <Calendar className="w-4 h-4 text-[#D56753]" />
             Add Monday 7:15 AM to your calendar

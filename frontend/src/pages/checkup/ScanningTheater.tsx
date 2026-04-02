@@ -333,7 +333,7 @@ function DiscoveryFeed({
   return (
     <div className="space-y-1.5 mt-5 pt-5 border-t border-slate-100 max-h-[220px] overflow-y-auto">
       {/* Business data section */}
-      <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">
+      <p className="text-xs font-bold tracking-widest text-slate-400 uppercase mb-2">
         Your Profile
       </p>
       {businessItems.slice(0, visibleBusinessItems).map((item, i) => (
@@ -343,7 +343,7 @@ function DiscoveryFeed({
         >
           <item.icon className="w-3.5 h-3.5 text-[#D56753] shrink-0" />
           <span className="text-slate-500">{item.label}</span>
-          <span className="ml-auto font-semibold text-[#212D40] text-right break-words max-w-[160px]">{item.value}</span>
+          <span className="ml-auto font-semibold text-[#1A1D23] text-right break-words max-w-[160px]">{item.value}</span>
         </div>
       ))}
       {visibleBusinessItems === 0 && (
@@ -356,7 +356,7 @@ function DiscoveryFeed({
       {/* Competitors section */}
       {visibleCompetitorItems > 0 && (
         <>
-          <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mt-3 mb-2">
+          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase mt-3 mb-2">
             Competitors Found
           </p>
           {competitorItems.current.slice(0, visibleCompetitorItems).map((item, i) => {
@@ -373,7 +373,7 @@ function DiscoveryFeed({
                 }`}>
                   <span className="text-[8px] font-bold text-white">{i + 1}</span>
                 </div>
-                <span className={`font-semibold break-words max-w-[140px] ${isHighlighted ? "text-[#212D40]" : "text-slate-600"}`}>
+                <span className={`font-semibold break-words max-w-[140px] ${isHighlighted ? "text-[#1A1D23]" : "text-slate-600"}`}>
                   {item.label}
                 </span>
                 <span className="ml-auto text-slate-400 text-right break-words max-w-[120px]">{item.value}</span>
@@ -394,7 +394,7 @@ function DiscoveryFeed({
       {/* Oz teaser findings — build anticipation for the results page */}
       {visibleOzLines > 0 && (
         <>
-          <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mt-3 mb-2">
+          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase mt-3 mb-2">
             Deep Analysis
           </p>
           {OZ_TEASER_LINES.slice(0, visibleOzLines).map((line, i) => (
@@ -445,7 +445,7 @@ function ReviewTicker({ reviews }: { reviews: PlaceReview[] }) {
       <div className="flex items-start gap-2">
         <Quote className="w-3 h-3 text-[#D56753] shrink-0 mt-0.5 rotate-180" />
         <div className="min-w-0">
-          <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-2">
+          <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
             {review.text || `${review.rating}-star review`}
           </p>
           <div className="flex items-center gap-1.5 mt-1.5">
@@ -457,7 +457,7 @@ function ReviewTicker({ reviews }: { reviews: PlaceReview[] }) {
                 />
               ))}
             </div>
-            <span className="text-[10px] text-slate-400">{review.authorName}</span>
+            <span className="text-xs text-slate-400">{review.authorName}</span>
           </div>
         </div>
       </div>
@@ -485,7 +485,7 @@ function PhotoStrip({ photos }: { photos: PlacePhoto[] }) {
 
   return (
     <div className="mt-3">
-      <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mb-2">
+      <p className="text-xs font-bold tracking-widest text-slate-400 uppercase mb-2">
         GBP Photos
       </p>
       <div className="flex gap-1.5 overflow-hidden">
@@ -762,7 +762,7 @@ export default function ScanningTheater() {
   if (error) {
     return (
       <div className="w-full max-w-md mt-4 sm:mt-12 text-center px-4">
-        <p className="text-base font-medium text-[#212D40]">
+        <p className="text-base font-medium text-[#1A1D23]">
           We hit a snag analyzing your market.
         </p>
         <p className="text-sm text-gray-500 mt-2">
@@ -811,7 +811,7 @@ export default function ScanningTheater() {
         <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-2">
           Market Analysis
         </p>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-[#212D40] tracking-tight">
+        <h2 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight">
           Scanning {place.name}
         </h2>
         <p className="text-sm text-slate-500 mt-2">

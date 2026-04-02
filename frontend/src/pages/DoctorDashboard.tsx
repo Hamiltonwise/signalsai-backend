@@ -260,11 +260,11 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
             <MapPin className="w-5 h-5 text-[#D56753]" />
           </div>
           <div>
-            <TailorText editKey="dashboard.position.scanning.title" defaultText="Scanning your market" as="p" className="text-sm font-bold text-[#212D40]" />
+            <TailorText editKey="dashboard.position.scanning.title" defaultText="Scanning your market" as="p" className="text-sm font-bold text-[#1A1D23]" />
             <TailorText editKey="dashboard.position.scanning.status" defaultText="Working on it now" as="p" className="text-xs text-[#D56753] font-medium" />
           </div>
         </div>
-        <p className="text-sm text-gray-600 leading-relaxed">
+        <p className="text-sm text-gray-500 leading-relaxed">
           <TailorText editKey="dashboard.position.scanning.body" defaultText="Alloro is reading your market right now. Your first position report arrives Monday morning." as="span" className="" />
         </p>
         <div className="mt-5 space-y-2.5">
@@ -287,7 +287,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
   return (
     <div className="card-primary card-lift">
       <div className="flex items-start justify-between mb-1">
-        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60">
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60">
           <TailorText editKey="dashboard.position.label" defaultText="Market Position" as="span" className="" />
         </p>
         {delta !== null && delta !== 0 && (
@@ -297,7 +297,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
                 ? "badge-success"
                 : delta <= -2
                   ? "bg-amber-50 text-amber-700 border border-amber-200/40"
-                  : "bg-gray-50 text-gray-600"
+                  : "bg-gray-50 text-gray-500"
             }`}
           >
             {delta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -341,8 +341,8 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
             return (
               <div key={s.label}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-medium text-gray-500">{s.label}</span>
-                  <span className="text-[11px] font-semibold text-[#212D40]">{s.score}/{s.max}</span>
+                  <span className="text-xs font-medium text-gray-500">{s.label}</span>
+                  <span className="text-xs font-semibold text-[#1A1D23]">{s.score}/{s.max}</span>
                 </div>
                 <div className="h-1.5 bg-[#D56753]/[0.06] rounded-full overflow-hidden">
                   <div
@@ -382,7 +382,7 @@ function CompetitorGap({ ranking, onCompetitorClick }: { ranking: RankingData | 
       <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-2">
         <TailorText editKey="dashboard.competitor.label" defaultText="Your Top Competitor" as="span" className="" />
       </p>
-      <p className="text-base font-semibold text-[#212D40] leading-relaxed">
+      <p className="text-base font-semibold text-[#1A1D23] leading-relaxed">
         <span className="font-bold">{comp.name || "your top competitor"}</span>{" "}
         {ranking.rankPosition === 1 ? "is closest to your position" : "holds position #1"}
         {comp.rating ? ` with a ${comp.rating}-star rating` : ""}
@@ -450,11 +450,11 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
             <Star className="w-5 h-5 text-[#D56753]" />
           </div>
           <div>
-            <TailorText editKey="dashboard.findings.title" defaultText="Your agents are working" as="p" className="text-sm font-bold text-[#212D40]" />
+            <TailorText editKey="dashboard.findings.title" defaultText="Your agents are working" as="p" className="text-sm font-bold text-[#1A1D23]" />
             <TailorText editKey="dashboard.findings.status" defaultText="First report: Monday morning" as="p" className="text-xs text-[#D56753] font-medium" />
           </div>
         </div>
-        <p className="text-sm text-gray-600 leading-relaxed">
+        <p className="text-sm text-gray-500 leading-relaxed">
           <TailorText editKey="dashboard.findings.body" defaultText="Your competitors are being analyzed right now. Named findings with dollar figures arrive in your first Monday email." as="span" className="" />
         </p>
       </div>
@@ -464,7 +464,7 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
   if (findings.length === 0 && checkupInsights.length > 0) {
     return (
       <div className="card-supporting">
-        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
+        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
           <TailorText editKey="dashboard.findings.found" defaultText="What We Found" as="span" className="" />
         </p>
         <div className="space-y-3.5">
@@ -473,11 +473,11 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
               <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
                 {i + 1}
               </span>
-              <p className="text-sm text-[#212D40]/80 leading-relaxed">{insight}</p>
+              <p className="text-sm text-[#1A1D23]/80 leading-relaxed">{insight}</p>
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-gray-400 mt-5">
+        <p className="text-xs text-gray-400 mt-5">
           From your checkup scan. Live agent findings replace this after the first scheduled analysis.
         </p>
       </div>
@@ -486,7 +486,7 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
 
   return (
     <div className="card-supporting">
-      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
+      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
         This Week's Findings
       </p>
       <div className="space-y-3.5">
@@ -495,7 +495,7 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
             <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
               {i + 1}
             </span>
-            <p className="text-sm text-[#212D40]/80 leading-relaxed">{f.detail || f.title}</p>
+            <p className="text-sm text-[#1A1D23]/80 leading-relaxed">{f.detail || f.title}</p>
           </div>
         ))}
       </div>
@@ -513,14 +513,14 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
       <div className="card-preparing">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#212D40]/10 to-[#212D40]/5 flex items-center justify-center">
-            <Globe className="w-5 h-5 text-[#212D40]/60" />
+            <Globe className="w-5 h-5 text-[#1A1D23]/60" />
           </div>
           <div>
-            <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-bold text-[#212D40]" />
+            <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-bold text-[#1A1D23]" />
             <TailorText editKey="dashboard.website.status" defaultText="Being built for you" as="p" className="text-xs text-[#D56753] font-medium" />
           </div>
         </div>
-        <p className="text-sm text-gray-600 leading-relaxed">
+        <p className="text-sm text-gray-500 leading-relaxed">
           <TailorText editKey="dashboard.website.body" defaultText="Alloro studied your competitors' websites and your reviews. Your site is being built from what it found. You'll get a notification when it's live." as="span" className="" />
         </p>
       </div>
@@ -537,7 +537,7 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
             <Globe className="w-5 h-5 text-emerald-600" />
           </div>
           <div>
-            <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-bold text-[#212D40]" />
+            <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-bold text-[#1A1D23]" />
             <p className="text-xs text-gray-500">{website.generated_hostname}</p>
           </div>
         </div>
@@ -569,10 +569,10 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
     <div className="card-supporting">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#212D40]/8 to-[#212D40]/3 flex items-center justify-center">
-          <Share2 className="w-5 h-5 text-[#212D40]/60" />
+          <Share2 className="w-5 h-5 text-[#1A1D23]/60" />
         </div>
         <div>
-          <TailorText editKey="dashboard.referral.title" defaultText="Know someone who should see this?" as="p" className="text-sm font-bold text-[#212D40]" />
+          <TailorText editKey="dashboard.referral.title" defaultText="Know someone who should see this?" as="p" className="text-sm font-bold text-[#1A1D23]" />
           <TailorText editKey="dashboard.referral.subtitle" defaultText="Send them the checkup. When they join, you both save on month one." as="p" className="text-xs text-gray-500" />
         </div>
       </div>
@@ -635,17 +635,17 @@ function GapToNext({ ranking }: { ranking: RankingData | null }) {
         What It Takes to Reach Position #{ranking.rankPosition - 1}
       </p>
       {comp && (
-        <p className="text-base font-semibold text-[#212D40] mb-4">
+        <p className="text-base font-semibold text-[#1A1D23] mb-4">
           {comp.name || "Your top competitor"} is one spot ahead.
         </p>
       )}
       {reviewGap != null && reviewGap > 0 && (
         <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
           <div>
-            <p className="text-sm font-semibold text-[#212D40]">Reviews needed</p>
+            <p className="text-sm font-semibold text-[#1A1D23]">Reviews needed</p>
             <p className="text-xs text-gray-500">They have {comp?.reviewCount}. You have {ranking.clientReviews}.</p>
           </div>
-          <span className="text-lg font-black text-[#D56753]">{reviewGap}</span>
+          <span className="text-lg font-semibold text-[#D56753]">{reviewGap}</span>
         </div>
       )}
     </div>
@@ -658,10 +658,10 @@ function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
       <div className="card-preparing">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#212D40]/10 to-[#212D40]/5 flex items-center justify-center">
-            <Users className="w-5 h-5 text-[#212D40]/50" />
+            <Users className="w-5 h-5 text-[#1A1D23]/50" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#212D40]">Watching your competitors</p>
+            <p className="text-sm font-bold text-[#1A1D23]">Watching your competitors</p>
             <p className="text-xs text-[#D56753] font-medium">Named activity appears after your first scan.</p>
           </div>
         </div>
@@ -679,12 +679,12 @@ function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
 
   return (
     <div className="card-supporting">
-      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">Competitor Activity</p>
+      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">Competitor Activity</p>
       <div className="space-y-3">
         {activities.map((a, i) => (
           <div key={i} className="flex items-start gap-3 text-sm">
             <span className={`mt-1.5 shrink-0 w-2 h-2 rounded-full ${a.dot}`} />
-            <p className="text-gray-600">{a.text}</p>
+            <p className="text-gray-500">{a.text}</p>
           </div>
         ))}
       </div>
@@ -700,12 +700,12 @@ function GrowthPositionTrack({ ranking }: { ranking: RankingData | null }) {
 
   return (
     <div className="card-supporting">
-      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">Your Position</p>
+      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">Your Position</p>
       <div className="flex items-center gap-1">
         {positions.map((pos) => (
           <div key={pos} className="flex-1 flex flex-col items-center gap-1.5">
             <div className={`w-full h-2.5 rounded-full ${pos === ranking.rankPosition ? "bg-[#D56753]" : pos < ranking.rankPosition! ? "bg-[#212D40]/15" : "bg-gray-100"}`} />
-            <span className={`text-[10px] font-bold ${pos === ranking.rankPosition ? "text-[#D56753]" : "text-gray-300"}`}>{pos}</span>
+            <span className={`text-xs font-bold ${pos === ranking.rankPosition ? "text-[#D56753]" : "text-gray-400"}`}>{pos}</span>
           </div>
         ))}
       </div>
@@ -726,14 +726,14 @@ function ModeToggle({ mode, onChange }: { mode: "standard" | "growth"; onChange:
     <div className="flex items-center gap-1 rounded-xl bg-[#212D40]/[0.04] p-1 shrink-0">
       <button
         onClick={() => onChange("standard")}
-        className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 ${mode === "standard" ? "bg-white text-[#212D40] shadow-warm" : "text-gray-400 hover:text-gray-600"}`}
+        className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 ${mode === "standard" ? "bg-white text-[#1A1D23] shadow-warm" : "text-gray-400 hover:text-gray-500"}`}
       >
         <Shield className="h-3.5 w-3.5" />
         Overview
       </button>
       <button
         onClick={() => onChange("growth")}
-        className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 btn-press ${mode === "growth" ? "bg-[#D56753] text-white shadow-warm" : "text-gray-400 hover:text-gray-600"}`}
+        className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 btn-press ${mode === "growth" ? "bg-[#D56753] text-white shadow-warm" : "text-gray-400 hover:text-gray-500"}`}
       >
         <Flame className="h-3.5 w-3.5" />
         Growth
@@ -995,7 +995,7 @@ export default function DoctorDashboard() {
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D56753" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
           </div>
           <div>
-            <h2 className="text-2xl font-extrabold text-[#212D40]">Your trial has ended</h2>
+            <h2 className="text-2xl font-semibold text-[#1A1D23]">Your trial has ended</h2>
             <p className="text-sm text-gray-500 mt-2 leading-relaxed">
               Alloro kept watching your market. Subscribe to see what changed while you were away.
             </p>
@@ -1027,7 +1027,7 @@ export default function DoctorDashboard() {
       {/* Header */}
       <motion.div variants={warmCardVariants} className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-xl sm:text-2xl font-bold text-[#212D40] truncate leading-tight">
+          <h1 className="font-heading text-xl sm:text-2xl font-bold text-[#1A1D23] truncate leading-tight">
             {mode === "growth"
               ? "Close the gap."
               : narrativeGreeting(streakData, winData, !!effectiveRanking, effectiveRanking?.rankPosition, effectiveRanking?.location, userProfile?.firstName, toneProfile)}
@@ -1044,9 +1044,9 @@ export default function DoctorDashboard() {
             </p>
           )}
           {/* Ambient "someone is watching" signal -- Guidara's returning guest mechanic */}
-          <p className="text-[11px] text-[#D56753]/30 mt-2 flex items-center gap-2">
+          <p className="text-xs text-[#D56753]/30 mt-2 flex items-center gap-2">
             <span className="w-1 h-1 rounded-full bg-[#D56753]/30 animate-pulse" style={{ animationDuration: '4s' }} />
-            <TailorText editKey="dashboard.ambient.scanned" defaultText="Your market was scanned overnight. Here's what moved." as="span" className="text-[11px] text-[#D56753]/30" />
+            <TailorText editKey="dashboard.ambient.scanned" defaultText="Your market was scanned overnight. Here's what moved." as="span" className="text-xs text-[#D56753]/30" />
           </p>
         </div>
         <ModeToggle mode={mode} onChange={setMode} />
@@ -1062,9 +1062,9 @@ export default function DoctorDashboard() {
         >
           <div className="flex items-center gap-2 mb-2">
             <span className="w-2 h-2 rounded-full bg-[#D56753] animate-pulse" />
-            <TailorText editKey="dashboard.welcomeBack.label" defaultText="We kept watching" as="p" className="text-[11px] font-bold uppercase tracking-widest text-[#D56753]/70" />
+            <TailorText editKey="dashboard.welcomeBack.label" defaultText="We kept watching" as="p" className="text-xs font-bold uppercase tracking-widest text-[#D56753]/70" />
           </div>
-          <p className="text-sm font-medium text-[#212D40] leading-relaxed">
+          <p className="text-sm font-medium text-[#1A1D23] leading-relaxed">
             {welcomeMessage}
           </p>
         </motion.div>
@@ -1073,8 +1073,8 @@ export default function DoctorDashboard() {
       {/* GBP instant value reveal (WO-42) */}
       {showGbpReveal && (
         <motion.div variants={cardVariants} className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5">
-          <TailorText editKey="dashboard.gbpReveal.label" defaultText="Connected" as="p" className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 mb-2" />
-          <p className="text-sm font-bold text-[#212D40]">
+          <TailorText editKey="dashboard.gbpReveal.label" defaultText="Connected" as="p" className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-2" />
+          <p className="text-sm font-bold text-[#1A1D23]">
             {effectiveRanking?.clientReviews != null && effectiveRanking.clientReviews > 0
               ? `${effectiveRanking.clientReviews} reviews`
               : null}
@@ -1103,9 +1103,9 @@ export default function DoctorDashboard() {
           </p>
           {milestoneCard.sunday_fear && (
             <div className="mb-3">
-              <p className="text-sm text-[#212D40]/70 leading-relaxed">
+              <p className="text-sm text-[#1A1D23]/70 leading-relaxed">
                 When you started, you told us your biggest concern was:
-                <span className="italic text-[#212D40] font-medium">
+                <span className="italic text-[#1A1D23] font-medium">
                   {" "}&ldquo;{milestoneCard.sunday_fear.length > 50 ? milestoneCard.sunday_fear.slice(0, 50) + "..." : milestoneCard.sunday_fear}&rdquo;
                 </span>
               </p>
@@ -1117,12 +1117,12 @@ export default function DoctorDashboard() {
             </div>
           )}
           {milestoneCard.moved && (
-            <p className="text-sm text-[#212D40] font-medium">
+            <p className="text-sm text-[#1A1D23] font-medium">
               The one thing that moved: {milestoneCard.moved}
             </p>
           )}
           {milestoneCard.gap && (
-            <p className="text-sm text-[#212D40]/60 mt-1">
+            <p className="text-sm text-[#1A1D23]/60 mt-1">
               The one thing that hasn't yet: {milestoneCard.gap}
             </p>
           )}
@@ -1135,7 +1135,7 @@ export default function DoctorDashboard() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
           <div className="relative">
-            <TailorText editKey="dashboard.win.label" defaultText="This is a story worth telling" as="p" className="text-[11px] font-bold uppercase tracking-widest text-white/60 mb-2" />
+            <TailorText editKey="dashboard.win.label" defaultText="This is a story worth telling" as="p" className="text-xs font-bold uppercase tracking-widest text-white/60 mb-2" />
             <p className="text-base font-bold leading-snug">
               {winData.headline || "Something changed. You acted. It worked."}
             </p>
@@ -1143,7 +1143,7 @@ export default function DoctorDashboard() {
               <p className="text-sm text-white/75 mt-2.5 leading-relaxed">{winData.detail}</p>
             )}
             {winData.daysAgo != null && winData.daysAgo <= 1 && (
-              <p className="text-[10px] text-white/50 mt-3 uppercase tracking-wide">Just happened</p>
+              <p className="text-xs text-white/50 mt-3 uppercase tracking-wide">Just happened</p>
             )}
           </div>
         </motion.div>
@@ -1207,8 +1207,8 @@ export default function DoctorDashboard() {
               <Star className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[#212D40]">{week1WinData.headline}</p>
-              <p className="text-sm text-gray-600 leading-relaxed mt-1">{week1WinData.detail}</p>
+              <p className="text-sm font-bold text-[#1A1D23]">{week1WinData.headline}</p>
+              <p className="text-sm text-gray-500 leading-relaxed mt-1">{week1WinData.detail}</p>
             </div>
           </div>
         </div>
@@ -1232,7 +1232,7 @@ export default function DoctorDashboard() {
           {/* ══ YOUR MARKET — section divider ══ */}
           <div className="flex items-center gap-4 pt-2">
             <div className="h-px flex-1 divider-warm" />
-            <TailorText editKey="dashboard.section.yourMarket" defaultText="Your Market" as="span" className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#D56753]/40" />
+            <TailorText editKey="dashboard.section.yourMarket" defaultText="Your Market" as="span" className="text-xs font-bold uppercase tracking-[0.2em] text-[#D56753]/40" />
             <div className="h-px flex-1 divider-warm" />
           </div>
 
@@ -1317,12 +1317,12 @@ export default function DoctorDashboard() {
           {/* PatientPath Research Brief reveal (WO-43) */}
           {checkupCtx?.research_findings && checkupCtx.research_findings.length > 0 && (
             <motion.div variants={warmCardVariants} className="card-supporting">
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-3">
+              <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-3">
                 Before we built your site, we studied your business.
               </p>
               <div className="space-y-2.5">
                 {checkupCtx.research_findings.map((finding: string, i: number) => (
-                  <p key={i} className="text-sm text-[#212D40]/80 leading-relaxed">
+                  <p key={i} className="text-sm text-[#1A1D23]/80 leading-relaxed">
                     {finding}
                   </p>
                 ))}
@@ -1362,7 +1362,7 @@ export default function DoctorDashboard() {
           Context-aware. Never generic. Make them leave feeling better than when they arrived. */}
       {mode === "standard" && !isLoading && (
         <div className="text-center py-8">
-          <p className="text-sm text-[#212D40]/30 italic font-heading">
+          <p className="text-sm text-[#1A1D23]/30 italic font-heading">
             {winData && winData.daysAgo <= 3
               ? "Something moved this week. Because you acted."
               : streakData && streakData.count >= 8

@@ -166,7 +166,7 @@ export default function OnboardingChecklist({
       {/* Header -- IKEA effect: "building", not "completing" */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <TailorText editKey="dashboard.checklist.title" defaultText="Getting started" as="p" className="text-sm font-bold text-[#212D40]" />
+          <TailorText editKey="dashboard.checklist.title" defaultText="Getting started" as="p" className="text-sm font-bold text-[#1A1D23]" />
           <p className="text-xs text-[#D56753]/50 mt-1 font-medium">
             {completed} of {steps.length} complete
           </p>
@@ -174,7 +174,7 @@ export default function OnboardingChecklist({
         {canDismiss && (
           <button
             onClick={() => { setDismissed(true); onDismiss(); }}
-            className="p-1.5 text-gray-300 hover:text-gray-500 transition-colors rounded-lg hover:bg-gray-50"
+            className="p-1.5 text-gray-400 hover:text-gray-500 transition-colors rounded-lg hover:bg-gray-50"
             aria-label="Dismiss"
           >
             <X className="h-4 w-4" />
@@ -220,15 +220,15 @@ export default function OnboardingChecklist({
                   ? step.autoCompleted
                     ? "text-emerald-700"
                     : "text-gray-400 line-through"
-                  : "text-[#212D40]"
+                  : "text-[#1A1D23]"
               }`}>
                 {step.title}
               </p>
               {!step.complete && (
-                <p className="text-[10px] text-gray-400 mt-0.5">{step.anxiety}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{step.anxiety}</p>
               )}
               {step.complete && step.autoCompleted && (
-                <p className="text-[10px] text-emerald-500 mt-0.5 font-medium">Done for you</p>
+                <p className="text-xs text-emerald-500 mt-0.5 font-medium">Done for you</p>
               )}
             </div>
             {!step.complete && (

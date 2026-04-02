@@ -134,7 +134,7 @@ export default function BillingPromptBar({ orgId, score, finding }: BillingPromp
         </button>
 
         {score != null && (
-          <p className="text-3xl font-black mb-1">{score}<span className="text-lg text-white/50">/100</span></p>
+          <p className="text-3xl font-semibold mb-1">{score}<span className="text-lg text-white/50">/100</span></p>
         )}
 
         {/* TTFV signals */}

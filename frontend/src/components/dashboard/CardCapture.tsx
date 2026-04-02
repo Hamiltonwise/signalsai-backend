@@ -63,7 +63,7 @@ export default function CardCapture({
       {/* Dismiss button */}
       <button
         onClick={() => setDismissed(true)}
-        className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-black/5 transition-colors"
+        className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 hover:text-gray-500 hover:bg-black/5 transition-colors"
         aria-label="Dismiss"
       >
         <X size={14} />
@@ -72,12 +72,12 @@ export default function CardCapture({
       <div className="flex items-start gap-4">
         {/* Icon */}
         <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#212D40]/[0.06] flex items-center justify-center">
-          <CreditCard size={18} className="text-[#212D40]/50" />
+          <CreditCard size={18} className="text-[#1A1D23]/50" />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#212D40] leading-snug">
+          <p className="text-sm font-semibold text-[#1A1D23] leading-snug">
             Add a payment method to keep your intelligence running after your trial.
           </p>
           <p className="text-xs text-gray-500 mt-1 leading-relaxed">

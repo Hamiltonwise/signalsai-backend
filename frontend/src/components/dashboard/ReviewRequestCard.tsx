@@ -129,7 +129,7 @@ export default function ReviewRequestCard({
       <div className="card-supporting">
         <div className="flex items-center gap-2 mb-2">
           <Star className="w-5 h-5 text-[#D56753]" />
-          <TailorText editKey="dashboard.reviews.title" defaultText="Get More Reviews" as="h3" className="text-base font-bold text-[#212D40]" />
+          <TailorText editKey="dashboard.reviews.title" defaultText="Get More Reviews" as="h3" className="text-base font-bold text-[#1A1D23]" />
         </div>
         <p className="text-sm text-gray-500">
           <TailorText editKey="dashboard.reviews.connect" defaultText="Connect your Google Business Profile to start sending review requests." as="span" className="" />
@@ -144,7 +144,7 @@ export default function ReviewRequestCard({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Star className="w-5 h-5 text-[#D56753]" />
-          <TailorText editKey="dashboard.reviews.request" defaultText="Request a Review" as="h3" className="text-base font-bold text-[#212D40]" />
+          <TailorText editKey="dashboard.reviews.request" defaultText="Request a Review" as="h3" className="text-base font-bold text-[#1A1D23]" />
         </div>
         {stats && stats.total > 0 && (
           <div className="flex items-center gap-3 text-xs text-gray-400">
@@ -163,7 +163,7 @@ export default function ReviewRequestCard({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Client name (optional)"
-          className="w-full h-10 px-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
+          className="w-full h-10 px-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
         />
 
         {/* Email / SMS toggle + contact input */}
@@ -204,7 +204,7 @@ export default function ReviewRequestCard({
             onChange={(e) => { setContact(e.target.value); setError(""); }}
             placeholder={mode === "email" ? "client@email.com" : "+1 (202) 555-1234"}
             required
-            className={`flex-1 h-10 px-3 rounded-lg bg-gray-50 border text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
+            className={`flex-1 h-10 px-3 rounded-lg bg-gray-50 border text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
               error
                 ? "border-red-400 focus:border-red-400 focus:ring-red-400/10"
                 : "border-gray-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
@@ -248,15 +248,15 @@ export default function ReviewRequestCard({
                   {r.status === "clicked" || r.status === "converted" ? (
                     <MousePointerClick className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                   ) : (
-                    <Send className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                    <Send className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                   )}
-                  <span className="text-[#212D40] truncate">
+                  <span className="text-[#1A1D23] truncate">
                     {r.recipient_name || r.recipient_email || r.recipient_phone}
                   </span>
                   {deliveryIcon(r.delivery_method)}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.class}`}>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.class}`}>
                     {badge.label}
                   </span>
                   <span className="text-xs text-gray-400">{timeAgo(r.sent_at)}</span>
