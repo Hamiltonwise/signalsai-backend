@@ -20,7 +20,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Flag, X, Send, CheckCircle2 } from "lucide-react";
+import { Flag, CheckCircle2 } from "lucide-react";
 import { apiPost, apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";

@@ -16,7 +16,7 @@
  */
 
 import { useState, useRef } from "react";
-import { MessageCircle, Send, X, Mic, Loader2, Check } from "lucide-react";
+import { MessageCircle, Send, X, Loader2, Check } from "lucide-react";
 import { apiPost } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
