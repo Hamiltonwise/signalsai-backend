@@ -35,6 +35,11 @@ Agents: .claude/agents/
 - Universal language in core docs. Vertical-specific only in vocabulary configs
 - Dave receives finished specs only. Never rough ideas
 - Every screen looks like it was built by a company with 10,000 clients
+- Never use text-[10px] or text-[11px]. Minimum font size is text-xs (12px).
+- Never use font-black or font-extrabold. Maximum weight is font-semibold.
+- Never use #212D40 for text color. Use #1A1D23 (text-[#1A1D23]).
+- Never use "Prospects" in customer-facing copy. Use "People."
+- Never fabricate content ("Great experience!" for empty reviews).
 - Every session ends with verification checks posted to Build State
 - Permission mode: auto (never dangerously-skip-permissions in production workflows)
 - Before every commit: run `cd frontend && npx tsc -b --force && npm run build` (must be zero errors)
