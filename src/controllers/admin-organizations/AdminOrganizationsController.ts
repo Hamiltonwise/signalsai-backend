@@ -821,10 +821,15 @@ export async function quickCreate(
 
     return res.status(201).json(result);
   } catch (error: any) {
+    console.error("[QuickCreate] Error:", error?.message || error, error?.stack);
     if (error?.statusCode) {
       return res.status(error.statusCode).json({ success: false, error: error.message });
     }
-    return handleError(res, error, "Quick create organization");
+    return res.status(500).json({
+      success: false,
+      error: error?.message || "Quick create failed",
+      detail: process.env.NODE_ENV !== "production" ? error?.stack : undefined,
+    });
   }
 }
 

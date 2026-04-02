@@ -39,6 +39,12 @@ import { runVerticalReadinessScan } from "./agents/verticalReadiness";
 import { runHumanDeploymentScan } from "./agents/humanDeploymentScout";
 import { runPodcastScout } from "./agents/podcastScout";
 import { runPropertyScan } from "./agents/realEstateAgent";
+import { runTrademarkScan } from "./agents/cloAgent";
+import { runGhostWriterDaily } from "./agents/ghostWriter";
+import { runProgrammaticSEOAnalysis } from "./agents/programmaticSEOAgent";
+import { generateDailyBrief as generateCoreyBrief } from "./personalAgents/coreyAgent";
+import { generateDailyBrief as generateJoBrief } from "./personalAgents/joAgent";
+import { generateDailyBrief as generateDaveBrief } from "./personalAgents/daveAgent";
 import { db } from "../database/connection";
 import { processWeek1Win } from "../workers/processors/week1Win.processor";
 
@@ -328,6 +334,60 @@ const registry: Record<string, AgentHandler> = {
     description: "Weekly real estate market signal scan. Tracks commercial real estate trends relevant to client expansion.",
     handler: async () => {
       const result = await runPropertyScan();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+
+  // ─── Newly wired agents (previously identity-only) ────────────
+  clo_agent: {
+    displayName: "CLO Agent",
+    description: "Weekly legal/IP monitoring. Trademark alerts, compliance flags, HIPAA checks.",
+    handler: async () => {
+      const result = await runTrademarkScan();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  ghost_writer: {
+    displayName: "Ghost Writer",
+    description: "Daily content extraction. Pulls draft-worthy content from behavioral_events and ranking data.",
+    handler: async () => {
+      const result = await runGhostWriterDaily();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  programmatic_seo: {
+    displayName: "Programmatic SEO Agent",
+    description: "Weekly location-specific SEO page generation and gap analysis.",
+    handler: async () => {
+      const result = await runProgrammaticSEOAnalysis();
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  corey_agent: {
+    displayName: "Corey's Personal Agent",
+    description: "Daily brief for Corey: revenue, decisions, priorities, client pulse.",
+    handler: async () => {
+      // Corey's user ID from the system
+      const coreyUser = await db("users").where({ email: "corey@getalloro.com" }).first("id");
+      const result = await generateCoreyBrief(coreyUser?.id || 1);
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  jo_agent: {
+    displayName: "Jo's Personal Agent",
+    description: "Daily brief for Jo: client health, ops tasks, flags.",
+    handler: async () => {
+      const joUser = await db("users").where({ email: "jo@getalloro.com" }).first("id");
+      const result = await generateJoBrief(joUser?.id || 2);
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  dave_agent: {
+    displayName: "Dave's Personal Agent",
+    description: "Daily brief for Dave: deploy status, errors, task queue.",
+    handler: async () => {
+      const daveUser = await db("users").where({ email: "dave@getalloro.com" }).first("id");
+      const result = await generateDaveBrief(daveUser?.id || 3);
       return { summary: result as unknown as Record<string, unknown> };
     },
   },

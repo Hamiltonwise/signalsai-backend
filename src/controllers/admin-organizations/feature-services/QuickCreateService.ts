@@ -140,12 +140,18 @@ export async function quickCreateFromPlace(
       password_hash: passwordHash,
     }, trx);
 
-    await trx("users").where({ id: newUser.id }).update({
+    // Core user fields (always exist)
+    const userUpdates: Record<string, any> = {
       email_verified: true,
-      force_password_change: true,
       first_name: firstName?.trim() || null,
       last_name: lastName?.trim() || null,
-    });
+    };
+    // force_password_change may not exist if migration hasn't run
+    try {
+      const hasCol = await trx.schema.hasColumn("users", "force_password_change");
+      if (hasCol) userUpdates.force_password_change = true;
+    } catch { /* column check failed, skip */ }
+    await trx("users").where({ id: newUser.id }).update(userUpdates);
 
     // Create organization
     const newOrg = await OrganizationModel.create({
@@ -157,17 +163,29 @@ export async function quickCreateFromPlace(
     const trialDaysActual = trialDays || 30; // Default 30 days for admin-created
     const trialEnd = new Date(Date.now() + trialDaysActual * 24 * 60 * 60 * 1000);
 
-    await trx("organizations").where({ id: newOrg.id }).update({
+    // Build org updates -- check for optional columns
+    const orgUpdates: Record<string, any> = {
       subscription_tier: "DFY",
       subscription_status: "active",
       onboarding_completed: true,
       onboarding_wizard_completed: true,
       operational_jurisdiction: address,
-      account_type: accountType,
       trial_start_at: new Date(),
       trial_end_at: trialEnd,
       trial_status: "active",
-      organization_type: "health", // Default, can be changed later
+    };
+    // Optional columns that may not exist if migration hasn't run
+    try {
+      const hasAccountType = await trx.schema.hasColumn("organizations", "account_type");
+      if (hasAccountType) orgUpdates.account_type = accountType;
+    } catch { /* skip */ }
+    try {
+      const hasOrgType = await trx.schema.hasColumn("organizations", "organization_type");
+      if (hasOrgType) orgUpdates.organization_type = "health";
+    } catch { /* skip */ }
+
+    await trx("organizations").where({ id: newOrg.id }).update({
+      ...orgUpdates,
       checkup_data: JSON.stringify({
         score: null, // Will be populated by analyze
         place: {

@@ -256,7 +256,7 @@ export function QuickAccountCreator({ onCreated }: { onCreated: () => void }) {
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
-                    className="absolute z-10 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden"
+                    className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden"
                   >
                     {suggestions.map((s) => (
                       <button

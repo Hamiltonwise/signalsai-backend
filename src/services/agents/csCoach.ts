@@ -48,9 +48,10 @@ export async function runCSCoach(): Promise<CSCoachSummary> {
   const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  // Query all cs_agent events from the past week
+  // Query all CS Agent intervention events from the past week
+  // CS Agent writes "cs.proactive_intervention" (not "cs_agent." prefix)
   const csEvents = await db("behavioral_events")
-    .where("event_type", "like", "cs_agent.%")
+    .where("event_type", "like", "cs.%")
     .where("created_at", ">=", sevenDaysAgo)
     .where("created_at", "<", now)
     .select("event_type", "properties", "org_id");

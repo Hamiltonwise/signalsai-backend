@@ -324,22 +324,52 @@ dreamTeamRoutes.patch(
 
 async function computeAgentHealth(agentId: string): Promise<string> {
   try {
+    // Primary: check agent_results (where some agents write output)
     const latest = await db("agent_results")
       .where({ agent_type: agentId })
       .whereNot("status", "archived")
       .orderBy("created_at", "desc")
       .first();
 
-    if (!latest) return "gray";
+    if (latest) {
+      const hoursAgo =
+        (Date.now() - new Date(latest.created_at).getTime()) / (1000 * 60 * 60);
 
-    const hoursAgo =
-      (Date.now() - new Date(latest.created_at).getTime()) / (1000 * 60 * 60);
+      if (latest.status === "error") return "red";
+      if (hoursAgo > 48) return "red";
+      if (hoursAgo > 24) return "yellow";
+      if (latest.status === "success") return "green";
+      return "yellow";
+    }
 
-    if (latest.status === "error") return "red";
-    if (hoursAgo > 48) return "red";
-    if (hoursAgo > 24) return "yellow";
-    if (latest.status === "success") return "green";
-    return "yellow";
+    // Fallback: check behavioral_events (where most agents actually write)
+    // Many agents write to behavioral_events but not agent_results,
+    // causing them to appear "gray" on the dashboard despite running.
+    const hasEvents = await db.schema.hasTable("behavioral_events");
+    if (hasEvents) {
+      // Look for schedule_runs first (most reliable signal of agent execution)
+      const hasScheduleRuns = await db.schema.hasTable("schedule_runs");
+      if (hasScheduleRuns) {
+        const latestRun = await db("schedule_runs")
+          .whereIn("schedule_id", function() {
+            this.select("id").from("schedules").where({ agent_key: agentId });
+          })
+          .orderBy("started_at", "desc")
+          .first();
+
+        if (latestRun) {
+          const hoursAgo =
+            (Date.now() - new Date(latestRun.started_at).getTime()) / (1000 * 60 * 60);
+
+          if (latestRun.status === "failed") return "red";
+          if (hoursAgo > 48) return "red";
+          if (hoursAgo > 24) return "yellow";
+          return "green";
+        }
+      }
+    }
+
+    return "gray";
   } catch {
     return "gray";
   }
