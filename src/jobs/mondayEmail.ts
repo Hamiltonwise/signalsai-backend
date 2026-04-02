@@ -228,6 +228,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         competitorNote: topComp ? stripEmDashes(`${topComp.name} is the #1 competitor in your area`) : "",
         referralLine: null,
         founderLine,
+        communityCount,
       });
 
       if (success) {
@@ -669,6 +670,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       competitorNote: sanitizedCompetitorNote,
       referralLine,
       founderLine,
+      communityCount,
     });
 
     if (success) {

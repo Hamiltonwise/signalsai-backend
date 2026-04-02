@@ -34,6 +34,7 @@ export interface MondayBriefData {
   competitorNote: string;
   referralLine: string | null;
   founderLine?: string | null;
+  communityCount?: number | null;
 }
 
 export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boolean> {
@@ -94,8 +95,10 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
 
     ${referralSection}
 
-    <p style="margin: 24px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5;">
-      ${data.founderLine || "Built by Corey, after watching business owners work harder than they should have to. If any of this is off, reply. I read every one."}
+    ${data.communityCount && data.communityCount > 10 ? `<p style="margin: 24px 0 12px; font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5;">You and ${data.communityCount - 1} other business owners received this brief today. You're not doing this alone.</p>` : `<p style="margin: 24px 0 12px; font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5;">You're not doing this alone. Same time next Monday.</p>`}
+
+    <p style="margin: 0 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5;">
+      ${data.founderLine || "If any of this is off, reply. I read every one."}
     </p>
     <p style="margin: 8px 0 0; font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.navy};">
       Corey

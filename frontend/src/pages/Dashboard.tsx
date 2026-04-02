@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { AlertTriangle, Building2, Settings, Lock, ChevronRight, ChevronDown } from "lucide-react";
+import { getPriorityItem } from "../hooks/useLocalStorage";
 
 // Import auth and integration hooks for domain selection
 import { useAuth } from "../hooks/useAuth";
@@ -123,12 +124,46 @@ export default function Dashboard() {
     }
   };
 
+  // Lemonis Protocol guard: ensure the 5 owner-profile questions are answered.
+  // Without these, the intelligence layer can't personalize.
+  const [lemonisChecked, setLemonisChecked] = useState(false);
+  const orgId = userProfile?.organizationId || null;
+
+  useEffect(() => {
+    if (!orgId || !onboardingCompleted) { setLemonisChecked(true); return; }
+
+    const skipKey = "owner_profile_skip_count";
+    const skipCount = parseInt(localStorage.getItem(skipKey) || "0", 10);
+    if (skipCount >= 3) { setLemonisChecked(true); return; }
+
+    const isPilot = typeof window !== "undefined" && window.sessionStorage?.getItem("pilot_mode") === "true";
+    const token = isPilot
+      ? window.sessionStorage.getItem("token")
+      : (getPriorityItem("auth_token") || getPriorityItem("token"));
+
+    fetch("/api/user/owner-profile", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && data?.profile?.vision_3yr) {
+          setLemonisChecked(true);
+        } else {
+          navigate("/owner-profile", { replace: true });
+        }
+      })
+      .catch(() => setLemonisChecked(true));
+  }, [orgId, onboardingCompleted, navigate]);
+
   // Placeholder data - replace with actual hook data later
   const ready = true;
   const session = { user: { id: "1", email: "user@example.com" } };
   const clientId = "demo-client-123";
   const clientLoading = false;
   const clientError = null;
+  // Wait for Lemonis guard to complete before rendering
+  if (!lemonisChecked) return null;
+
   // Fast redirect to sign in if not authenticated
   if (!session) {
     window.location.href = "/signin";

@@ -9,7 +9,7 @@
  * Day 3: "Reply with a GP name" (the reply-trap)
  * Day 5: Referral ask + competitor update
  * Day 6: "Add payment to keep access"
- * Day 7: "Your trial ended. Here's what you'll lose." (loss aversion)
+ * Day 7: "Here's what we built for you." (value framing, not loss aversion)
  */
 
 import { db } from "../database/connection";
@@ -303,7 +303,7 @@ export async function sendTrialDay6(orgId: number): Promise<void> {
   await advanceSequence(orgId, 6);
 }
 
-// ---- Day 7: "Your trial ended. Here's what you'll lose." ----
+// ---- Day 7: Value summary -- here's what we built for you ----
 
 export async function sendTrialDay7(orgId: number): Promise<void> {
   const ctx = await buildContext(orgId);
@@ -316,51 +316,52 @@ export async function sendTrialDay7(orgId: number): Promise<void> {
   // Mark trial as expired
   await db("organizations").where({ id: orgId }).update({ trial_status: "expired" });
 
-  const lossItems: string[] = [];
-  if (ctx.competitorName) lossItems.push(`Real-time tracking of ${escapeHtml(ctx.competitorName)} and ${ctx.competitorReviewCount ? "their " + ctx.competitorReviewCount + " reviews" : "your competitors"}`);
-  lossItems.push("Weekly Monday Intelligence Briefs with market shifts");
-  lossItems.push("Automated review monitoring and growth tracking");
-  if (ctx.recentReviewGrowth > 0) lossItems.push(`The momentum from your ${ctx.recentReviewGrowth} new review${ctx.recentReviewGrowth > 1 ? "s" : ""}`);
-  lossItems.push("One Action Card recommendations personalized to your market");
+  // Build value summary -- what we did for them during their trial
+  const valueItems: string[] = [];
+  if (ctx.competitorName) valueItems.push(`Tracked ${escapeHtml(ctx.competitorName)}${ctx.competitorReviewCount ? " and their " + ctx.competitorReviewCount + " reviews" : ""} against your position`);
+  valueItems.push("Delivered your first Monday Intelligence Brief");
+  if (ctx.recentReviewGrowth > 0) valueItems.push(`Watched your business grow ${ctx.recentReviewGrowth} new review${ctx.recentReviewGrowth > 1 ? "s" : ""}`);
+  valueItems.push("Monitored your market for competitive shifts");
+  if (ctx.score) valueItems.push(`Scored your Business Clarity at ${ctx.score}/100`);
 
-  const lossList = lossItems
+  const valueList = valueItems
     .map((item) => `<li style="color: #1A1D23; font-size: 14px; line-height: 1.8;">${item}</li>`)
     .join("");
 
   const html = `
     <div style="max-width: 560px; margin: 0 auto;">
-      <h1 style="color: #1A1D23; font-size: 22px; font-weight: 700; margin-bottom: 8px;">
-        Your trial has ended.
+      <h1 style="color: #1A1D23; font-size: 22px; font-weight: 600; margin-bottom: 8px;">
+        Here is what we built for you this week.
       </h1>
       <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
-        ${escapeHtml(ctx.practiceName)}, as of today you no longer have access to:
+        ${escapeHtml(ctx.practiceName)}, in 7 days Alloro:
       </p>
 
       <ul style="padding-left: 20px; margin-bottom: 24px;">
-        ${lossList}
+        ${valueList}
       </ul>
 
       <div style="background: rgba(213, 103, 83, 0.08); border-radius: 12px; padding: 20px; margin-bottom: 24px; border-left: 4px solid #D56753;">
         <p style="color: #1A1D23; font-size: 15px; font-weight: 600; margin: 0;">
-          Your competitors are still being tracked. You just cannot see the data anymore.
+          Your Monday emails start here. Same time next week, same level of detail, for as long as you want someone watching.
         </p>
       </div>
 
       <div style="text-align: center; margin: 32px 0;">
         <a href="${APP_URL}/settings/billing" style="display: inline-block; background: #D56753; color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; font-size: 15px;">
-          Reactivate your intelligence
+          Keep your Monday emails coming
         </a>
       </div>
 
       <p style="color: #94a3b8; font-size: 13px; text-align: center; margin-top: 32px;">
-        Questions? Reply to this email. A real person reads every reply.
+        If it is not for you, no hard feelings. Your data is yours. Reply anytime.
       </p>
     </div>
   `;
 
   await sendEmail({
-    subject: "Your trial ended. Here is what you will lose.",
-    body: wrapInBaseTemplate(html, { preheader: "Your competitive intelligence has been paused.", showFooterLinks: false }),
+    subject: `Here is what Alloro built for ${escapeHtml(ctx.practiceName)} this week.`,
+    body: wrapInBaseTemplate(html, { preheader: "7 days of competitive intelligence, delivered.", showFooterLinks: false }),
     recipients: [ctx.email],
   });
 

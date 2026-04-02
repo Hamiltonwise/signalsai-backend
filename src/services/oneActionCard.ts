@@ -19,7 +19,8 @@ export interface OneActionCard {
   body: string;
   action_text: string | null;
   action_url: string | null;
-  priority_level: 1 | 2 | 3 | 4 | 5;
+  priority_level: 0 | 1 | 2 | 3 | 4 | 5;
+  clear?: boolean;
 }
 
 export interface OneActionIntelligence {
@@ -62,7 +63,33 @@ export async function getOneActionCard(orgId: number): Promise<OneActionCard> {
   const patientpath = await checkPatientPath(orgId);
   if (patientpath) return patientpath;
 
-  // ─── Rule 5: Steady state ───────────────────────────────────────
+  // ─── Rule 0: Clear state -- nothing needs attention ─────────────
+  // If we reached here, no drift, no closeable gap, no ranking drop,
+  // no PatientPath pending. Check if we have stable position data --
+  // if so, this is genuinely a "nothing to do" moment. The gift.
+
+  const clearCheck = await db("weekly_ranking_snapshots")
+    .where({ org_id: orgId })
+    .orderBy("week_start", "desc")
+    .limit(2);
+
+  if (clearCheck.length >= 2) {
+    const curr = clearCheck[0];
+    const prev = clearCheck[1];
+    // Position held or improved, and we have data
+    if (curr.position && prev.position && curr.position <= prev.position) {
+      return {
+        headline: "Your business is steady. Nothing needs you right now.",
+        body: "Your position held. No competitor gained ground. Alloro is watching your market and will tell you when something changes.",
+        action_text: null,
+        action_url: null,
+        priority_level: 0,
+        clear: true,
+      };
+    }
+  }
+
+  // ─── Rule 5: Steady state (new accounts, insufficient data) ────
 
   return getSteadyState(orgId);
 }
