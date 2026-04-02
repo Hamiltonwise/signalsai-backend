@@ -411,8 +411,8 @@ function App() {
         </OnboardingWizardProvider>
         </TailorProvider>
         </VocabularyProvider>
+        <ReportIssue />
       </AuthProvider>
-      <ReportIssue />
     </BrowserRouter>
     </ToastProvider>
     {ReactQueryDevtools && <React.Suspense fallback={null}><ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" /></React.Suspense>}

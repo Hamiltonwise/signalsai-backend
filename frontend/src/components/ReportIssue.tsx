@@ -17,6 +17,7 @@ import { useState } from "react";
 import { MessageSquarePlus, X, Send } from "lucide-react";
 import { apiPost } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 
 const CATEGORIES = [
@@ -31,17 +32,17 @@ export function ReportIssue() {
   const [category, setCategory] = useState<string>("bug");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
+  const location = useLocation();
 
   const handleSubmit = async () => {
     if (!description.trim()) return;
     setSubmitting(true);
 
     const context = {
-      url: window.location.pathname + window.location.search,
+      url: location.pathname + location.search,
       viewport: `${window.innerWidth}x${window.innerHeight}`,
-      userEmail: user?.email || "unknown",
-      userRole: user?.role || "unknown",
+      userEmail: userProfile?.email || "unknown",
       category,
       timestamp: new Date().toISOString(),
     };
@@ -52,7 +53,7 @@ export function ReportIssue() {
       "",
       "--- Auto-captured context ---",
       `Page: ${context.url}`,
-      `User: ${context.userEmail} (${context.userRole})`,
+      `User: ${context.userEmail}`,
       `Viewport: ${context.viewport}`,
       `Time: ${context.timestamp}`,
     ].join("\n");
@@ -83,7 +84,7 @@ export function ReportIssue() {
   };
 
   // Don't render if not authenticated
-  if (!user) return null;
+  if (!userProfile) return null;
 
   return (
     <>
