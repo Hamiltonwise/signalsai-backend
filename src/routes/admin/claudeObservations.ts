@@ -265,10 +265,23 @@ async function gatherObservations(role: string): Promise<Observation[]> {
   }
 
   // Sort: blockers first, then actions, then insights, then verified
-  const priority = { blocker: 0, action: 1, insight: 2, verified: 3 };
-  observations.sort((a, b) => (priority[a.type] ?? 9) - (priority[b.type] ?? 9));
+  const typePriority = { blocker: 0, action: 1, insight: 2, verified: 3 };
+  observations.sort((a, b) => (typePriority[a.type] ?? 9) - (typePriority[b.type] ?? 9));
 
-  return observations;
+  // Cap at 3. An advisor gives you the top three things, not a full audit.
+  // Blockers and actions always make the cut. Insights fill remaining slots.
+  // One verified win at the end if there's room (confidence matters).
+  const maxItems = 3;
+  const critical = observations.filter(o => o.type === "blocker" || o.type === "action");
+  const insights = observations.filter(o => o.type === "insight");
+  const verified = observations.filter(o => o.type === "verified");
+
+  const result: Observation[] = [];
+  result.push(...critical.slice(0, maxItems));
+  if (result.length < maxItems) result.push(...insights.slice(0, maxItems - result.length));
+  if (result.length < maxItems) result.push(...verified.slice(0, maxItems - result.length));
+
+  return result;
 }
 
 claudeObservationsRoutes.get(

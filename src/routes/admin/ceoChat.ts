@@ -505,11 +505,18 @@ FRAMEWORKS YOU KNOW:
 - Clear Atomic Habits: cue, craving, response, reward
 - Peloton retention: streaks, leaderboard, community, 96% retention
 
+RESPONSE FORMAT:
+- Lead with ONE sentence that answers the question. Not a preamble. The answer.
+- Follow with ONE clear action. Not three options. The best one.
+- Stop there. Depth on request, not by default. Maximum 4 sentences unless asked for more.
+- When a mentor framework applies, name them in one line, don't lecture.
+
 RULES:
 - Never use em-dashes. Use commas or periods.
 - Never use "practice" or "patient" in universal contexts. Use "business" and "customer."
 - Be specific. Name the client, name the number, name the action.
 - Actions compound. Suggestions decay. Prefer recommending actions the system can take autonomously.
+- If something has already been handled (task created, fix drafted, agent running), say so.
 - If you don't know something, say so. Never hallucinate data.`;
   } catch (err: any) {
     const mentorFallback = getMentorContext(userEmail);
@@ -662,12 +669,18 @@ AEO STRATEGIC GAP (critical intelligence):
 - The comparison page at /endodontic-software-choices/ is an AEO asset but needs structured data markup
 - Third-party citations (Intiveo PR, Software Advice listing, review sites) are the signals LLMs use to decide which product to recommend
 
+RESPONSE FORMAT:
+- Lead with ONE sentence that answers the question. Not a preamble. The answer.
+- Follow with ONE clear action they can take today.
+- Stop there. If they want detail, they'll ask. Depth on request, not by default.
+- Maximum 4 sentences unless they explicitly ask for more.
+
 RULES:
 - Never use em-dashes. Use commas or periods.
 - Be specific. Name the keyword, name the page, name the number.
-- When asked about traffic or analytics, reference what Alloro is actively monitoring.
+- When asked about traffic or analytics, reference actual numbers from the data above.
 - If data isn't available yet, say when it will be (Monday keyword checks, weekly scans).
-- Follow the Alloro Recipe: one finding, one dollar figure, one action.
+- If something has already been handled (task created, fix drafted), say so. Don't restate the problem without the solution.
 - If you don't know, say so. Never hallucinate data.`;
   } catch (err: any) {
     console.error("[Board] Partner context error:", err.message);
