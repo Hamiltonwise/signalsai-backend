@@ -650,7 +650,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
   // Use wizard demo trajectory or real trajectory
   const trajectory = isWizardActive
     ? (wizardDemoData?.prooflineData?.trajectory ??
-      "Your business is showing <hl>strong momentum</hl> this month. New customer activity is up 12% and your local visibility continues to improve.")
+      "Your business is showing <hl>strong momentum</hl> this month. New customer activity increased and your local visibility continues to improve.")
     : prooflineResult?.trajectory;
 
   // Use first name for personal greeting (works for doctors and non-doctors)

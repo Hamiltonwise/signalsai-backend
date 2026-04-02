@@ -288,7 +288,8 @@ export async function getThisWeeksMove(orgId: number): Promise<string> {
   }
 
   if (bestGrowth) {
-    return `Dr. ${bestGrowth.name.replace(/^Dr\.?\s*/i, "")} sent ${bestGrowth.currentMonth} referrals this month, up ${bestGrowth.growthPct}% from last month. Follow up to strengthen this relationship.`;
+    const priorCount = Math.round(bestGrowth.currentMonth / (1 + bestGrowth.growthPct / 100));
+    return `Dr. ${bestGrowth.name.replace(/^Dr\.?\s*/i, "")} sent ${bestGrowth.currentMonth} referrals this month, up from ${priorCount} last month. Follow up to strengthen this relationship.`;
   }
 
   // Priority 3: no data

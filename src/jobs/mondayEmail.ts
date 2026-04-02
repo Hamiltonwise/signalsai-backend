@@ -106,6 +106,14 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   const ownerName = [user.first_name, user.last_name].filter(Boolean).join(" ") || org.name || "there";
   const ownerLastName = user.last_name || ownerName;
 
+  // Load owner profile (Lemonis Protocol) -- know the person, not just the business
+  const ownerProfile = org.owner_profile
+    ? (typeof org.owner_profile === "string" ? JSON.parse(org.owner_profile) : org.owner_profile)
+    : null;
+  const archetype: string = org.owner_archetype || "craftsman";
+  const confidenceScore: number | null = ownerProfile?.confidence_score ?? null;
+  const personalGoal: string | null = ownerProfile?.personal_goal ?? null;
+
   // Load vocabulary for this org's vertical
   const vocabConfig = await db("vocabulary_configs").where({ org_id: orgId }).first();
   const customerTerm = vocabConfig?.config?.patientTerm || "customer";
@@ -361,6 +369,8 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         position: snapshot.position || null,
         totalCompetitors,
         city,
+        archetype,
+        personalGoal,
       });
 
       if (success) {
@@ -486,6 +496,8 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
               position: snapshot.position || null,
               totalCompetitors: totalCompetitorsCW,
               city: cityCW,
+              archetype,
+              personalGoal,
             });
             if (success) {
               console.log(`[MondayEmail] Sent clean week email (steady, no activity) to ${user.email} for ${org.name}`);
@@ -510,11 +522,32 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
   if (reviewGap > 0 && reviewGap <= 15) {
     const needed = Math.min(reviewGap, 3);
-    fiveMinuteFix = `5-MINUTE FIX: Send a review request to ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} from this week. You're ${reviewGap} review${reviewGap !== 1 ? "s" : ""} behind ${snapshot.competitor_name || competitorFallback}. Three reviews per week closes that gap in ${Math.ceil(reviewGap / 3)} weeks.`;
+    const gapWeeks = Math.ceil(reviewGap / 3);
+    if (archetype === "survivor" || (confidenceScore !== null && confidenceScore <= 4)) {
+      fiveMinuteFix = `5-MINUTE FIX: Text ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} from this week for a review. This is proven: 3 reviews per week closes a ${reviewGap}-review gap in ${gapWeeks} weeks. Predictable and reliable.`;
+    } else if (archetype === "builder") {
+      fiveMinuteFix = `5-MINUTE FIX: Send ${needed} review request${needed !== 1 ? "s" : ""}. You're ${reviewGap} behind ${snapshot.competitor_name || competitorFallback}. At 3/week, you pass them in ${gapWeeks} weeks. That momentum compounds.`;
+    } else {
+      // craftsman or legacy
+      fiveMinuteFix = `5-MINUTE FIX: Text ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} from this week for a review. Takes 3 minutes. You're ${reviewGap} behind ${snapshot.competitor_name || competitorFallback}, and 3/week closes it in ${gapWeeks} weeks.`;
+    }
   } else if (reviewGap > 15) {
-    fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. Consistent weekly reviews compound. At 3/week, you close a ${reviewGap}-review gap by ${new Date(Date.now() + Math.ceil(reviewGap / 3) * 7 * 86400000).toLocaleDateString("en-US", { month: "long", year: "numeric" })}.`;
+    const targetDate = new Date(Date.now() + Math.ceil(reviewGap / 3) * 7 * 86400000).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    if (archetype === "survivor" || (confidenceScore !== null && confidenceScore <= 4)) {
+      fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. Consistency is the strategy. At 3/week, you close the ${reviewGap}-review gap by ${targetDate}. One step at a time.`;
+    } else if (archetype === "builder") {
+      fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. At 3/week, you close a ${reviewGap}-review gap by ${targetDate}. Every review is a compounding asset.`;
+    } else {
+      fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. Consistent weekly reviews compound. At 3/week, you close the gap by ${targetDate}.`;
+    }
   } else if (steadyWeeks >= 3) {
-    fiveMinuteFix = `5-MINUTE FIX: Your position is steady. This is the week to gain ground. Send 3 review requests and add a new photo to your Google Business Profile.`;
+    if (archetype === "craftsman" && personalGoal) {
+      fiveMinuteFix = `5-MINUTE FIX: Your position held for ${steadyWeeks} weeks. That stability is earned. Send 3 review requests and add a photo to your Google Business Profile to widen the lead.`;
+    } else if (archetype === "builder") {
+      fiveMinuteFix = `5-MINUTE FIX: Steady for ${steadyWeeks} weeks. This is your window to gain ground. Send 3 review requests and add a new photo to your Google Business Profile.`;
+    } else {
+      fiveMinuteFix = `5-MINUTE FIX: Your position is steady. Send 3 review requests and add a new photo to your Google Business Profile to strengthen it.`;
+    }
   } else {
     fiveMinuteFix = `5-MINUTE FIX: Open your Google Business Profile and respond to any unanswered reviews. Each response signals activity to Google's ranking algorithm.`;
   }

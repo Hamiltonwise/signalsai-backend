@@ -27,6 +27,8 @@ export interface CleanWeekData {
   position: number | null;
   totalCompetitors: number | null;
   city: string | null;
+  archetype?: string | null;
+  personalGoal?: string | null;
 }
 
 export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> {
@@ -37,6 +39,8 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
     position,
     totalCompetitors,
     city,
+    archetype,
+    personalGoal,
   } = data;
 
   const subjectLine = `${firstName}, clean week. Nothing moved against you.`;
@@ -63,7 +67,7 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
     </p>
 
     <p style="margin: 0 0 24px; color: ${BRAND_COLORS.darkGray}; font-size: 15px; line-height: 1.6;">
-      Enjoy the week.
+      ${archetype === "survivor" ? "That stability is yours. You earned it." : archetype === "builder" ? "Use the calm. This is when you make moves." : personalGoal ? `Enjoy the week. Maybe use the quiet for ${personalGoal.toLowerCase().replace(/\.$/, "")}.` : "Enjoy the week."}
     </p>
 
     <div style="margin: 24px 0; text-align: center;">

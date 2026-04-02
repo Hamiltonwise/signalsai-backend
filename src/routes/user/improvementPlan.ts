@@ -87,7 +87,7 @@ improvementPlanRoutes.get(
         if (gain > 0) {
           allActions.push({
             id: "add_photos",
-            action: `Add ${Math.max(1, 8 - photoCount)} photos to your Google profile showing your office, team, and equipment. Businesses with 8+ photos get 35% more profile views.`,
+            action: `Add ${Math.max(1, 8 - photoCount)} photos to your Google profile showing your office, team, and equipment. You have ${photoCount}. Businesses with 8 or more get significantly more profile views.`,
             subScore: "First Impression",
             currentPoints: firstImpression,
             maxPoints: 30,
@@ -188,7 +188,7 @@ improvementPlanRoutes.get(
       if (!hasWebsite) {
         allActions.push({
           id: "add_website",
-          action: "Add a website link to your Google profile. Businesses with websites get 25-35% more clicks.",
+          action: "Add a website link to your Google profile. People searching for you are more likely to click when they see a website listed.",
           subScore: "First Impression",
           currentPoints: firstImpression,
           maxPoints: 30,

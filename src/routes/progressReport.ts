@@ -166,7 +166,7 @@ function generateOutcome(
     return "Improved review velocity and local search presence";
   }
   if (/photo/i.test(title)) {
-    return "GBP photos increase click-through rate by up to 35%";
+    return "GBP photos improve how often people click through to your business";
   }
   if (/rank|position/i.test(title)) {
     if (positionDelta && positionDelta > 0) {
@@ -203,7 +203,7 @@ function generateNext90Days(
   if (currentScore && currentScore < 70) {
     actions.push({
       title: "Complete your Google Business Profile — photos, hours, services, description",
-      why: "Incomplete profiles rank 23% lower in local search. This is the fastest fix with the most immediate impact.",
+      why: "Incomplete profiles rank lower in local search. A complete profile is the fastest fix with the most immediate impact.",
       impact: "5-15 point score improvement",
       priority: 2,
     });

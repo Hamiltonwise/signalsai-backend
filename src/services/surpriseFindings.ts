@@ -208,7 +208,7 @@ export async function generateSurpriseFindings(data: {
 
   if (topPhotoComp && topPhotoComp.photosCount > clientPhotoCount && topPhotoComp.photosCount > 10) {
     const photoGap = topPhotoComp.photosCount - clientPhotoCount;
-    const detail = `${topPhotoComp.name} has ${topPhotoComp.photosCount} photos on Google. You have ${clientPhotoCount || "none"}. Businesses with 20+ photos get 35% more clicks to their website. Each photo is free visibility you're leaving on the table.`;
+    const detail = `${topPhotoComp.name} has ${topPhotoComp.photosCount} photos on Google. You have ${clientPhotoCount || "none"}. Photos are free visibility. Each one shows people what your business looks like before they visit.`;
 
     findings.push({
       type: "hidden_money",

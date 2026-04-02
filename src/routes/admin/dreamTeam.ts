@@ -96,6 +96,66 @@ dreamTeamRoutes.get(
         node.health_status = await computeAgentHealth(node.agent_key);
       }
 
+      // Canon data: join on agent_key to agent_identities
+      let canon: any = null;
+      if (node.agent_key) {
+        // Try exact match first, then with _agent suffix (handles proofline -> proofline_agent)
+        let identity = await db("agent_identities")
+          .where({ slug: node.agent_key })
+          .first("canon_spec", "gold_questions", "gate_verdict", "gate_expires", "gate_date", "display_name");
+        if (!identity) {
+          identity = await db("agent_identities")
+            .where({ slug: node.agent_key + "_agent" })
+            .first("canon_spec", "gold_questions", "gate_verdict", "gate_expires", "gate_date", "display_name");
+        }
+        if (identity) {
+          const spec = typeof identity.canon_spec === "string"
+            ? JSON.parse(identity.canon_spec) : identity.canon_spec || {};
+          const gq = typeof identity.gold_questions === "string"
+            ? JSON.parse(identity.gold_questions) : identity.gold_questions || [];
+          const passing = Array.isArray(gq) ? gq.filter((q: any) => q.lastResult === "pass").length : 0;
+          const total = Array.isArray(gq) ? gq.length : 0;
+
+          // Get last simulation timestamp from behavioral_events
+          let lastSimulation: string | null = null;
+          try {
+            const simEvent = await db("behavioral_events")
+              .where({ event_type: "canon.simulation_run" })
+              .whereRaw("properties->>'agent' = ?", [node.agent_key])
+              .orderBy("created_at", "desc")
+              .first("created_at");
+            if (simEvent) lastSimulation = simEvent.created_at;
+          } catch { /* table may not exist */ }
+
+          // Get last run time from schedules
+          let lastRun: string | null = null;
+          try {
+            const schedule = await db("schedules")
+              .where({ agent_key: node.agent_key })
+              .first("last_run_at", "cron_expression");
+            if (schedule) {
+              lastRun = schedule.last_run_at;
+              if (!canon) canon = {};
+              canon.cronExpression = schedule.cron_expression;
+            }
+          } catch { /* table may not exist */ }
+
+          canon = {
+            ...canon,
+            purpose: spec.purpose || null,
+            expectedBehavior: spec.expectedBehavior || null,
+            constraints: spec.constraints || [],
+            process: spec.process || null,
+            gateVerdict: identity.gate_verdict,
+            gateExpires: identity.gate_expires,
+            gateDate: identity.gate_date,
+            goldQuestions: { passing, total },
+            lastSimulation,
+            lastRun,
+          };
+        }
+      }
+
       // Resume entries
       const resumeEntries = await db("dream_team_resume_entries")
         .where({ node_id: id })
@@ -124,6 +184,7 @@ dreamTeamRoutes.get(
       return res.json({
         success: true,
         node,
+        canon,
         resumeEntries,
         recentOutputs: recentOutputs.map((o) => ({
           id: o.id,

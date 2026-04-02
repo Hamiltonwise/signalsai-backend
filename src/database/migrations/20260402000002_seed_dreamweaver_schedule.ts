@@ -47,17 +47,23 @@ export async function up(knex: Knex): Promise<void> {
     `[seed-dreamweaver] Registered dreamweaver -> ${cronExpression}, next run: ${nextRun.toISOString()}`,
   );
 
-  // Also update the dream_team_tasks entry to have the correct agent_key
+  // Also update the dream_team_nodes entry to have the correct agent_key
   // so the org chart links to the schedule
-  await knex("dream_team_tasks")
-    .where({ title: "Dreamweaver Agent" })
-    .whereNull("agent_key")
-    .update({ agent_key: "dreamweaver" });
+  const hasNodes = await knex.schema.hasTable("dream_team_nodes");
+  if (hasNodes) {
+    await knex("dream_team_nodes")
+      .where({ role_title: "Dreamweaver Agent" })
+      .whereNull("agent_key")
+      .update({ agent_key: "dreamweaver" });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex("schedules").where({ agent_key: "dreamweaver" }).del();
-  await knex("dream_team_tasks")
-    .where({ title: "Dreamweaver Agent", agent_key: "dreamweaver" })
-    .update({ agent_key: null });
+  const hasNodes = await knex.schema.hasTable("dream_team_nodes");
+  if (hasNodes) {
+    await knex("dream_team_nodes")
+      .where({ role_title: "Dreamweaver Agent", agent_key: "dreamweaver" })
+      .update({ agent_key: null });
+  }
 }

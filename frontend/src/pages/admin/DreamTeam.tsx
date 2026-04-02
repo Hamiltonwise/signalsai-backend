@@ -29,6 +29,7 @@ import {
   type DreamTeamNode,
   type ResumeEntry,
   type RecentOutput,
+  type CanonData,
 } from "@/api/dream-team";
 import {
   CheckCircle2,
@@ -225,6 +226,7 @@ function ResumeDrawer({
   });
 
   const node = data?.node;
+  const canon: CanonData | null = data?.canon || null;
   const resumeEntries = data?.resumeEntries || [];
   const recentOutputs = data?.recentOutputs || [];
   const kpis = data?.kpis || [];
@@ -271,6 +273,121 @@ function ResumeDrawer({
         </div>
       ) : (
         <div className="p-6 space-y-8">
+          {/* Section 1: Canon Playbook (the agent explains itself) */}
+          {canon && node?.node_type === "agent" && (
+            <div className="space-y-4">
+              {/* What this agent does */}
+              {canon.purpose && (
+                <div>
+                  <h3 className="text-sm font-semibold text-[#1A1D23] mb-1.5">Purpose</h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">{canon.purpose}</p>
+                </div>
+              )}
+
+              {/* Playbook process */}
+              {canon.process && (
+                <div className="rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-2.5">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Playbook</h3>
+                  </div>
+                  <div className="px-4 py-3 space-y-3 text-sm">
+                    <div className="grid grid-cols-[100px_1fr] gap-y-2.5 gap-x-3">
+                      <span className="text-gray-400 font-medium">Triggered by</span>
+                      <span className="text-gray-700">{canon.process.triggeredBy}</span>
+                      <span className="text-gray-400 font-medium">Delivers to</span>
+                      <span className="text-gray-700">{canon.process.deliversTo}</span>
+                      <span className="text-gray-400 font-medium">Format</span>
+                      <span className="text-gray-700">{canon.process.deliversFormat}</span>
+                      <span className="text-gray-400 font-medium">Success metric</span>
+                      <span className="text-gray-700">{canon.process.successMetric}</span>
+                    </div>
+                    {canon.process.steps.length > 0 && (
+                      <div className="pt-2 border-t border-gray-100">
+                        <p className="text-xs font-medium text-gray-400 mb-1.5">Steps</p>
+                        <ol className="list-decimal list-inside space-y-1 text-gray-600">
+                          {canon.process.steps.map((step, i) => (
+                            <li key={i}>{step}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Canon status bar */}
+              <div className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3">
+                {canon.gateVerdict === "PASS" ? (
+                  <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+                ) : canon.gateVerdict === "FAIL" ? (
+                  <ShieldAlert className="h-4 w-4 text-red-500 shrink-0" />
+                ) : (
+                  <Eye className="h-4 w-4 text-amber-500 shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-semibold ${
+                      canon.gateVerdict === "PASS" ? "text-emerald-600" :
+                      canon.gateVerdict === "FAIL" ? "text-red-600" : "text-amber-600"
+                    }`}>
+                      {canon.gateVerdict || "PENDING"}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {canon.goldQuestions.passing}/{canon.goldQuestions.total} gold questions passing
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
+                    {canon.lastRun && (
+                      <span>Last ran: {new Date(canon.lastRun).toLocaleDateString()}</span>
+                    )}
+                    {!canon.lastRun && <span>Never ran</span>}
+                    {canon.lastSimulation && (
+                      <span>Last sim: {new Date(canon.lastSimulation).toLocaleDateString()}</span>
+                    )}
+                    {canon.gateExpires && (
+                      <span>Expires: {new Date(canon.gateExpires).toLocaleDateString()}</span>
+                    )}
+                  </div>
+                </div>
+                {/* Gold question progress bar */}
+                {canon.goldQuestions.total > 0 && (
+                  <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden shrink-0">
+                    <div
+                      className={`h-full rounded-full ${
+                        canon.goldQuestions.passing === canon.goldQuestions.total ? "bg-emerald-500" :
+                        canon.goldQuestions.passing > 0 ? "bg-amber-400" : "bg-gray-300"
+                      }`}
+                      style={{ width: `${(canon.goldQuestions.passing / canon.goldQuestions.total) * 100}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Constraints */}
+              {canon.constraints.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-400 mb-1">Constraints</p>
+                  <ul className="space-y-0.5">
+                    {canon.constraints.map((c, i) => (
+                      <li key={i} className="text-xs text-gray-500 flex items-start gap-1.5">
+                        <span className="text-red-400 mt-0.5 shrink-0">x</span>
+                        {c}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* No Canon data message for agents */}
+          {!canon && node?.node_type === "agent" && node?.agent_key && (
+            <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center">
+              <Eye className="h-5 w-5 text-gray-300 mx-auto mb-1.5" />
+              <p className="text-sm text-gray-400">No Canon spec yet. This agent needs a playbook.</p>
+            </div>
+          )}
+
           {/* Section 2: KPIs */}
           <div>
             <h3 className="text-sm font-bold text-[#212D40] mb-3">KPIs</h3>

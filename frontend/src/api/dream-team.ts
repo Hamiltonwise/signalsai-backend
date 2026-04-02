@@ -44,6 +44,27 @@ export interface KpiRow {
   status: string;
 }
 
+export interface CanonData {
+  purpose: string | null;
+  expectedBehavior: string | null;
+  constraints: string[];
+  process: {
+    steps: string[];
+    deliversTo: string;
+    deliversFormat: string;
+    triggeredBy: string;
+    feedbackLoop: string;
+    successMetric: string;
+  } | null;
+  cronExpression?: string | null;
+  gateVerdict: "PASS" | "FAIL" | "PENDING" | null;
+  gateExpires: string | null;
+  gateDate: string | null;
+  goldQuestions: { passing: number; total: number };
+  lastSimulation: string | null;
+  lastRun: string | null;
+}
+
 export async function fetchDreamTeam(): Promise<{ success: boolean; nodes: DreamTeamNode[] }> {
   return apiGet({ path: "/admin/dream-team" });
 }
@@ -51,6 +72,7 @@ export async function fetchDreamTeam(): Promise<{ success: boolean; nodes: Dream
 export async function fetchDreamTeamNode(id: string): Promise<{
   success: boolean;
   node: DreamTeamNode;
+  canon: CanonData | null;
   resumeEntries: ResumeEntry[];
   recentOutputs: RecentOutput[];
   kpis: KpiRow[];
