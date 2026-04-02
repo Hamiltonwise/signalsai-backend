@@ -417,7 +417,7 @@ export default function AAEDashboard() {
               {/* 7-day trend */}
               {data?.funnel?.last7days && data.funnel.last7days.scansStarted > 0 && (
                 <div className="mt-3 pt-3 border-t border-white/[0.06]">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">
                     7-Day Trend
                   </p>
                   <div className="flex items-center justify-between text-xs">
