@@ -1,0 +1,63 @@
+name: Uptime Monitor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        id: health
+        run: |
+          HTTP_STATUS=$(curl -s -o /tmp/health_response.json -w "%{http_code}" --max-time 15 https://sandbox.getalloro.com/api/health || echo "000")
+          echo "status=$HTTP_STATUS" >> "$GITHUB_OUTPUT"
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "Sandbox is healthy (HTTP $HTTP_STATUS)"
+            cat /tmp/health_response.json
+          else
+            echo "Sandbox is DOWN (HTTP $HTTP_STATUS)"
+            cat /tmp/health_response.json 2>/dev/null || echo "No response body"
+          fi
+
+      - name: Check for existing downtime issue
+        if: always()
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE=$(gh issue list --repo ${{ github.repository }} --label "downtime" --state open --json number --jq '.[0].number // empty')
+          echo "issue=$ISSUE" >> "$GITHUB_OUTPUT"
+
+      - name: Open downtime issue
+        if: steps.health.outputs.status != '200' && steps.existing.outputs.issue == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create --repo ${{ github.repository }} \
+            --title "Sandbox is down (HTTP ${{ steps.health.outputs.status }})" \
+            --label "downtime" \
+            --body "$(cat <<'EOF'
+          ## Sandbox Down
+
+          **Detected:** $(date -u +"%Y-%m-%d %H:%M UTC")
+          **HTTP Status:** ${{ steps.health.outputs.status }}
+          **Endpoint:** https://sandbox.getalloro.com/api/health
+
+          PM2 should auto-recover. If this issue stays open for 15+ minutes, the process is in a crash loop.
+
+          **To manually restart:** SSH into EC2 and run `pm2 reload ecosystem.config.js`
+          **Or:** Push any commit to `sandbox` branch to trigger a full redeploy.
+          EOF
+          )"
+
+      - name: Close downtime issue on recovery
+        if: steps.health.outputs.status == '200' && steps.existing.outputs.issue != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ steps.existing.outputs.issue }} --repo ${{ github.repository }} \
+            --body "Sandbox recovered at $(date -u +'%Y-%m-%d %H:%M UTC'). Auto-closing."
+          gh issue close ${{ steps.existing.outputs.issue }} --repo ${{ github.repository }}
