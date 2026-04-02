@@ -153,19 +153,26 @@ function deriveTagline(orgName: string, checkupData: any, category?: string | nu
     if (theme) return `Known for ${theme.toLowerCase()}`;
   }
 
-  // Category-based fallbacks using universal language
-  const cat = (category || "").toLowerCase();
-  if (cat.includes("endodont")) return "Expert care when it matters most";
-  if (cat.includes("orthodont")) return "Transforming smiles, building confidence";
-  if (cat.includes("dentist")) return "Your trusted partner in oral health";
-  if (cat.includes("chiropract")) return "Restoring movement, restoring life";
-  if (cat.includes("physical therap")) return "Getting you back to what you love";
-  if (cat.includes("optometr")) return "Clarity of vision, clarity of care";
-  if (cat.includes("veterinar")) return "Compassionate care for your family";
-  if (cat.includes("attorney") || cat.includes("lawyer")) return "Protecting what matters to you";
-  if (cat.includes("accountant") || cat.includes("cpa") || cat.includes("financial")) return "Your financial peace of mind";
+  // Use review-derived language. Never stock phrases.
+  // If no review themes, use the rating + review count as social proof.
+  const rating = checkupData?.rating || checkupData?.place?.rating;
+  const reviewCount = checkupData?.reviewCount || checkupData?.place?.userRatingCount;
 
-  return "Trusted by your community";
+  if (rating && reviewCount && reviewCount >= 10) {
+    return `${rating} stars from ${reviewCount} reviews`;
+  }
+  if (rating && rating >= 4.5) {
+    return `Rated ${rating} by the people who know us best`;
+  }
+
+  // Minimal fallbacks that don't pretend to know the business
+  const cat = (category || "").toLowerCase();
+  if (cat.includes("endodont") || cat.includes("orthodont") || cat.includes("dentist"))
+    return `${orgName} in your community`;
+  if (cat.includes("attorney") || cat.includes("lawyer"))
+    return `Serving the ${orgName.includes(" ") ? "community" : "area"} you call home`;
+
+  return `${orgName}`;
 }
 
 // -----------------------------------------------------------------------
@@ -211,8 +218,8 @@ function buildHomepageSections(
     name: "hero",
     content: `<section class="relative bg-gradient-to-br from-[#212D40] to-[#2a3a50] text-white py-24 px-6">
   <div class="max-w-4xl mx-auto text-center">
-    <h1 class="text-5xl font-bold tracking-tight mb-4">${escapedName}</h1>
-    <p class="text-xl text-gray-300 max-w-2xl mx-auto">${escapeHtml(tagline)}</p>
+    <h1 class="text-4xl font-semibold tracking-tight mb-4">${escapedName}</h1>
+    <p class="text-lg text-gray-300 max-w-2xl mx-auto">${escapeHtml(tagline)}</p>
     ${ratingStars}
     ${specialty ? `<p class="mt-3 text-sm text-gray-400 uppercase tracking-widest">${escapeHtml(specialty)}</p>` : ""}
     <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
@@ -239,8 +246,8 @@ function buildHomepageSections(
       name: "testimonials",
       content: `<section class="py-20 px-6 bg-gray-50">
   <div class="max-w-6xl mx-auto">
-    <h2 class="text-3xl font-bold text-[#212D40] text-center mb-4">What Our Customers Say</h2>
-    <p class="text-gray-500 text-center mb-12 max-w-xl mx-auto">Real reviews from real people who chose ${escapedName}.</p>
+    <h2 class="text-3xl font-semibold text-[#1A1D23] text-center mb-4">What people say about ${escapedName}</h2>
+    <p class="text-gray-500 text-center mb-12 max-w-xl mx-auto">From Google Reviews. Real words from real people.</p>
     <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
     ${testimonialCards}
     </div>
@@ -249,34 +256,54 @@ function buildHomepageSections(
     });
   }
 
-  // ── About / Why Us Section ──
+  // ── About Section -- use REAL data, not stock phrases ──
+  // Build from actual review count, rating, and address.
+  // Never "Proven Results" or "Community Focused" -- those are the puppy mill.
+  const aboutItems: Array<{ title: string; body: string }> = [];
+
+  if (rating && rating >= 4.5 && reviewCount) {
+    aboutItems.push({
+      title: `${rating} stars, ${reviewCount} reviews`,
+      body: `Real ratings from real people who chose ${escapedName}.`,
+    });
+  }
+  if (address) {
+    const city = checkupData?.place?.city || checkupData?.market?.city || "";
+    if (city) {
+      aboutItems.push({
+        title: `Located in ${escapeHtml(city)}`,
+        body: `Serving the ${escapeHtml(city)} community and surrounding areas.`,
+      });
+    }
+  }
+  if (phone) {
+    aboutItems.push({
+      title: "Easy to reach",
+      body: `Call <a href="tel:${escapeHtml(phone)}" class="text-[#D56753] font-semibold">${escapeHtml(phone)}</a> or use the form below.`,
+    });
+  }
+  // If we have no real data, show one honest item
+  if (aboutItems.length === 0) {
+    aboutItems.push({
+      title: `About ${escapedName}`,
+      body: "More details are being added as Alloro learns about this business.",
+    });
+  }
+
+  const aboutCards = aboutItems.map(item =>
+    `<div class="text-center">
+      <h3 class="font-semibold text-[#1A1D23] mb-2">${item.title}</h3>
+      <p class="text-gray-500 text-sm leading-relaxed">${item.body}</p>
+    </div>`
+  ).join("\n");
+
   sections.push({
     name: "about",
     content: `<section class="py-20 px-6">
   <div class="max-w-4xl mx-auto text-center">
-    <h2 class="text-3xl font-bold text-[#212D40] mb-6">Why ${escapedName}</h2>
-    <div class="grid gap-8 md:grid-cols-3 mt-10">
-      <div class="text-center">
-        <div class="w-14 h-14 bg-[#D56753]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <svg class="w-7 h-7 text-[#D56753]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </div>
-        <h3 class="font-semibold text-[#212D40] mb-2">Proven Results</h3>
-        <p class="text-gray-500 text-sm">Trusted by customers throughout the community with a track record of excellence.</p>
-      </div>
-      <div class="text-center">
-        <div class="w-14 h-14 bg-[#D56753]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <svg class="w-7 h-7 text-[#D56753]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </div>
-        <h3 class="font-semibold text-[#212D40] mb-2">Responsive Service</h3>
-        <p class="text-gray-500 text-sm">Fast responses, easy scheduling, and a team that values your time.</p>
-      </div>
-      <div class="text-center">
-        <div class="w-14 h-14 bg-[#D56753]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <svg class="w-7 h-7 text-[#D56753]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-        </div>
-        <h3 class="font-semibold text-[#212D40] mb-2">Community Focused</h3>
-        <p class="text-gray-500 text-sm">Deeply rooted in the local community, serving neighbors who become family.</p>
-      </div>
+    <h2 class="text-3xl font-semibold text-[#1A1D23] mb-10">${escapedName}</h2>
+    <div class="grid gap-8 md:grid-cols-${Math.min(aboutItems.length, 3)} mt-6">
+      ${aboutCards}
     </div>
   </div>
 </section>`,
