@@ -27,7 +27,6 @@ import {
   AlertTriangle,
   Activity,
   Shield,
-  Trophy,
   Map,
   Navigation,
   CheckCircle2,
@@ -43,7 +42,6 @@ import { useBusinessMetrics } from "@/hooks/useBusinessMetrics";
 import {} from "react-router-dom";
 import {
   adminListOrganizations,
-  type AdminOrganization,
 } from "@/api/admin-organizations";
 // Schedule type no longer needed -- Mission Control fetches its own data
 import {
@@ -70,26 +68,6 @@ function timeAgo(dateStr: string | null): string {
 }
 
 // ---- Interfaces ------------------------------------------------------------
-
-interface ClientHealthEntry {
-  id: number;
-  name: string;
-  health: "green" | "amber" | "red";
-  score?: number;
-  risk?: string;
-  last_login?: string;
-}
-
-interface MorningBriefing {
-  id?: number;
-  topEvent?: string;
-  headline?: string;
-  summary?: string;
-  signups?: number;
-  competitor_moves?: number;
-  reviews_received?: number;
-  generated_at?: string;
-}
 
 interface BriefSection {
   title: string;
@@ -142,42 +120,6 @@ function PanelHeader({
   );
 }
 
-/** Collapsible wrapper */
-function CollapsibleSection({
-  title,
-  icon: Icon,
-  iconColor = "text-gray-400",
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  iconColor?: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2.5 w-full text-left mb-2 group"
-      >
-        <Icon className={`h-4 w-4 ${iconColor}`} />
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/40 flex-1">
-          {title}
-        </p>
-        {open ? (
-          <ChevronDown className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
-        )}
-      </button>
-      {open && children}
-    </div>
-  );
-}
-
 // ---- Panel 0: Personal Agent Headline (THE one thing) ----------------------
 
 function PersonalAgentHeadline({ brief }: { brief: PersonalAgentBrief | null | undefined; }) {
@@ -212,98 +154,13 @@ function PersonalAgentHeadline({ brief }: { brief: PersonalAgentBrief | null | u
   );
 }
 
-// ---- Panel 1: Morning Briefing Stats (only non-zero) -----------------------
-
-function MorningBriefingStats({
-  healthData,
-}: {
-  healthData: ClientHealthEntry[];
-}) {
-  const { data: briefingRaw } = useQuery({
-    queryKey: ["morning-briefing-latest"],
-    queryFn: async () => {
-      const res = await apiGet({ path: "/admin/morning-briefing/latest" });
-      return res?.success !== false ? res : null;
-    },
-    retry: false,
-    staleTime: 5 * 60_000,
-  });
-
-  const briefing: MorningBriefing | null = briefingRaw ?? null;
-
-  const greenCount = healthData.filter((c) => c.health === "green").length;
-  const amberCount = healthData.filter((c) => c.health === "amber").length;
-  const redCount = healthData.filter((c) => c.health === "red").length;
-
-  // Build stat cards, only include non-zero values
-  const stats: { key: string; value: string | React.ReactNode; label: string; editKey: string }[] = [];
-
-  if (briefing?.signups && briefing.signups > 0) {
-    stats.push({
-      key: "signups",
-      value: String(briefing.signups),
-      label: "New Signups",
-      editKey: "hq.visionary.briefing.newSignups",
-    });
-  }
-  if (briefing?.competitor_moves && briefing.competitor_moves > 0) {
-    stats.push({
-      key: "competitor_moves",
-      value: String(briefing.competitor_moves),
-      label: "Competitor Moves",
-      editKey: "hq.visionary.briefing.competitorMoves",
-    });
-  }
-  if (briefing?.reviews_received && briefing.reviews_received > 0) {
-    stats.push({
-      key: "reviews",
-      value: String(briefing.reviews_received),
-      label: "Reviews",
-      editKey: "hq.visionary.briefing.reviews",
-    });
-  }
-  if (greenCount + amberCount + redCount > 0) {
-    stats.push({
-      key: "health",
-      value: "health",
-      label: "Client Health",
-      editKey: "hq.visionary.briefing.clientHealth",
-    });
-  }
-
-  // If everything is zero, don't show the stat bar at all
-  if (stats.length === 0) return null;
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      {stats.map((stat) => (
-        <div key={stat.key} className="rounded-xl bg-white border border-[#D56753]/6 p-4 text-center shadow-sm">
-          {stat.value === "health" ? (
-            <div className="flex items-center justify-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-sm font-bold text-[#212D40]">{greenCount}</span>
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span className="text-sm font-bold text-[#212D40]">{amberCount}</span>
-              <span className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-sm font-bold text-[#212D40]">{redCount}</span>
-            </div>
-          ) : (
-            <p className="text-2xl font-semibold text-[#212D40]">{stat.value}</p>
-          )}
-          <TailorText editKey={stat.editKey} defaultText={stat.label} as="p" className="text-xs font-bold uppercase tracking-wider text-gray-400 mt-1" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ---- Panel 2: Revenue ------------------------------------------------------
 
 function RevenuePanel() {
   const { data: metrics } = useBusinessMetrics();
   const mrr = metrics?.mrr.total ?? 0;
   const byOrg = metrics?.mrr.byOrg ?? {};
-  const growth = metrics?.orgCount.growth ?? 0;
+  const recentSignups = metrics?.pipeline?.recentSignups?.length ?? 0;
   const monthlyDelta = metrics?.mrr.delta ?? 0;
   const isProfitable = metrics?.mrr.isProfitable ?? false;
   const burn = metrics?.mrr.burn ?? 0;
@@ -347,21 +204,14 @@ function RevenuePanel() {
           {insightLine}
         </p>
 
-        <div className="flex items-center gap-2">
-          {growth >= 0 ? (
+        {recentSignups > 0 && (
+          <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-emerald-500" />
-          ) : (
-            <TrendingDown className="h-4 w-4 text-red-500" />
-          )}
-          <span
-            className={`text-sm font-semibold ${
-              growth >= 0 ? "text-emerald-600" : "text-red-600"
-            }`}
-          >
-            {growth >= 0 ? "+" : ""}
-            {growth} net new this month
-          </span>
-        </div>
+            <span className="text-sm font-semibold text-emerald-600">
+              +{recentSignups} new signups this week
+            </span>
+          </div>
+        )}
 
         <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
           <div className="flex items-center justify-between">
@@ -819,401 +669,6 @@ function RoadmapPanel() {
         </div>
       )}
     </div>
-  );
-}
-
-// ---- Panel 5: The Scoreboard (collapsible) ---------------------------------
-
-const RECORDS_TO_BEAT = [
-  {
-    record: "Most capital-efficient vertical SaaS",
-    who: "Veeva ($7M to $32B)",
-    theirTime: "6 years",
-    alloroTarget: "3 years",
-  },
-  {
-    record: "Smallest team at unicorn (revenue)",
-    who: "Instagram (13 people)",
-    theirTime: "2 years",
-    alloroTarget: "< 3 years, 3 people",
-  },
-  {
-    record: "Fastest bootstrapped to $1B",
-    who: "Zapier ($2.68M raised)",
-    theirTime: "10 years",
-    alloroTarget: "3 years",
-  },
-  {
-    record: "First AI-agent-operated unicorn",
-    who: "Nobody",
-    theirTime: "Never done",
-    alloroTarget: "First",
-  },
-];
-
-interface ConfidenceScore {
-  label: string;
-  value: number;
-  color: string;
-}
-
-const CONFIDENCE_SCORES: ConfidenceScore[] = [
-  { label: "FYM Confidence", value: 71, color: "bg-emerald-500" },
-  { label: "Unicorn Confidence", value: 58, color: "bg-[#D56753]" },
-  { label: "Rice Cooker (Autonomous Ops)", value: 74, color: "bg-blue-500" },
-];
-
-interface Milestone {
-  name: string;
-  target: string;
-  progress: string;
-  status: "done" | "in-progress" | "upcoming";
-}
-
-function buildMilestones(orgCount: number): Milestone[] {
-  const aaeDate = new Date("2026-04-14T00:00:00");
-  const now = new Date();
-  const daysUntilAAE = Math.max(
-    0,
-    Math.ceil((aaeDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  );
-  const aaeStatus: Milestone["status"] =
-    daysUntilAAE <= 0 ? "done" : "in-progress";
-
-  return [
-    {
-      name: "AAE Demo",
-      target: "April 14, 2026",
-      progress: daysUntilAAE <= 0 ? "Complete" : `${daysUntilAAE} days left`,
-      status: aaeStatus,
-    },
-    {
-      name: "50 Checkups",
-      target: "50 submitted",
-      progress: `${Math.min(orgCount, 50)} / 50`,
-      status: orgCount >= 50 ? "done" : orgCount > 0 ? "in-progress" : "upcoming",
-    },
-    {
-      name: "$50K MRR",
-      target: "$50,000/mo",
-      progress: `${orgCount} paying orgs`,
-      status: "upcoming",
-    },
-    {
-      name: "100 Clients",
-      target: "100 organizations",
-      progress: `${orgCount} / 100`,
-      status: orgCount >= 100 ? "done" : orgCount > 0 ? "in-progress" : "upcoming",
-    },
-    {
-      name: "First State of Clarity Report",
-      target: "At 50 checkups",
-      progress: orgCount >= 50 ? "Ready" : "Waiting for 50 checkups",
-      status: orgCount >= 50 ? "in-progress" : "upcoming",
-    },
-    {
-      name: "$500K MRR",
-      target: "$500,000/mo",
-      progress: "Milestone",
-      status: "upcoming",
-    },
-    {
-      name: "Anthropic Customer Story",
-      target: "At 12 months of results",
-      progress: "Upcoming",
-      status: "upcoming",
-    },
-  ];
-}
-
-function ScoreboardPanel({ orgs }: { orgs: AdminOrganization[] }) {
-  const milestones = buildMilestones(orgs.length);
-  // Show only next 3 milestones (first non-done ones)
-  const upcomingMilestones = milestones.filter((m) => m.status !== "done").slice(0, 3);
-
-  return (
-    <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/60 via-white to-orange-50/40 p-6 shadow-sm">
-      {/* Records to Beat: collapsible */}
-      <CollapsibleSection title="Records to Beat" icon={Trophy} iconColor="text-amber-600">
-        <div className="mb-6">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="pb-2 pr-4 text-xs font-bold uppercase tracking-wider text-gray-400">
-                    Record
-                  </th>
-                  <th className="pb-2 pr-4 text-xs font-bold uppercase tracking-wider text-gray-400">
-                    Who
-                  </th>
-                  <th className="pb-2 pr-4 text-xs font-bold uppercase tracking-wider text-gray-400">
-                    Their Time
-                  </th>
-                  <th className="pb-2 text-xs font-bold uppercase tracking-wider text-[#D56753]">
-                    Alloro Target
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {RECORDS_TO_BEAT.map((r) => (
-                  <tr key={r.record} className="border-b border-gray-100 last:border-0">
-                    <td className="py-2.5 pr-4 text-xs font-medium text-[#212D40]">
-                      {r.record}
-                    </td>
-                    <td className="py-2.5 pr-4 text-xs text-gray-500">{r.who}</td>
-                    <td className="py-2.5 pr-4 text-xs text-gray-500">{r.theirTime}</td>
-                    <td className="py-2.5 text-xs font-semibold text-[#D56753]">
-                      {r.alloroTarget}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </CollapsibleSection>
-
-      {/* Live Confidence Scores: collapsible */}
-      <CollapsibleSection title="Live Confidence Scores" icon={Target} iconColor="text-[#D56753]">
-        <div className="mb-6">
-          <div className="space-y-3">
-            {CONFIDENCE_SCORES.map((score) => (
-              <div key={score.label}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-gray-600">
-                    {score.label}
-                  </span>
-                  <span className="text-sm font-bold text-[#212D40]">
-                    {score.value}%
-                  </span>
-                </div>
-                <div className="h-2.5 w-full rounded-full bg-gray-100">
-                  <div
-                    className={`h-2.5 rounded-full ${score.color} transition-all duration-700`}
-                    style={{ width: `${score.value}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-          <TailorText editKey="hq.visionary.scoreboard.calibrationNote" defaultText="Scores from internal calibration. Updated quarterly." as="p" className="text-xs text-gray-400 mt-2 italic" />
-        </div>
-      </CollapsibleSection>
-
-      {/* Milestone Timeline: compact, next 3 only */}
-      <div>
-        <TailorText editKey="hq.visionary.scoreboard.milestoneTimeline" defaultText="Next Milestones" as="p" className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/40 mb-3" />
-        <div className="space-y-2">
-          {upcomingMilestones.map((m) => (
-            <div
-              key={m.name}
-              className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
-                m.status === "done"
-                  ? "bg-emerald-50 border-emerald-200"
-                  : m.status === "in-progress"
-                    ? "bg-white border-amber-200"
-                    : "bg-gray-50 border-gray-100"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                    m.status === "done"
-                      ? "bg-emerald-500"
-                      : m.status === "in-progress"
-                        ? "bg-amber-400"
-                        : "bg-gray-300"
-                  }`}
-                />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#212D40] truncate">
-                    {m.name}
-                  </p>
-                  <p className="text-xs text-gray-400">{m.target}</p>
-                </div>
-              </div>
-              <div className="text-right shrink-0 ml-3">
-                <p className="text-xs font-bold text-[#212D40]">{m.progress}</p>
-                <p
-                  className={`text-xs font-bold uppercase ${
-                    m.status === "done"
-                      ? "text-emerald-600"
-                      : m.status === "in-progress"
-                        ? "text-amber-600"
-                        : "text-gray-400"
-                  }`}
-                >
-                  {m.status === "done"
-                    ? "Complete"
-                    : m.status === "in-progress"
-                      ? "In Progress"
-                      : "Upcoming"}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---- Panel 6: Pipeline Funnel ----------------------------------------------
-
-function PipelineFunnelPanel({
-  orgs,
-  healthData,
-}: {
-  orgs: AdminOrganization[];
-  healthData: ClientHealthEntry[];
-}) {
-  const checkupStarted = orgs.filter(
-    (o) => !o.subscription_tier && !o.connections?.gbp
-  ).length;
-  const accountCreated = orgs.filter(
-    (o) => !o.subscription_tier && o.connections?.gbp
-  ).length;
-  const inTrial = orgs.filter(
-    (o) => o.subscription_status === "trial"
-  ).length;
-  const onboarding = orgs.filter(
-    (o) =>
-      o.subscription_status === "active" &&
-      o.subscription_tier &&
-      !o.connections?.gbp
-  ).length;
-  const active = orgs.filter(
-    (o) =>
-      o.subscription_status === "active" &&
-      o.subscription_tier &&
-      o.connections?.gbp
-  ).length;
-  const atRisk = healthData.filter((c) => c.health === "red").length;
-
-  const stages = [
-    { label: "Checkup Started", count: checkupStarted, color: "bg-gray-300" },
-    { label: "Account Created", count: accountCreated, color: "bg-blue-300" },
-    { label: "In Trial", count: inTrial, color: "bg-blue-400" },
-    { label: "Onboarding", count: onboarding, color: "bg-amber-400" },
-    { label: "Active", count: active, color: "bg-emerald-500" },
-    { label: "At Risk", count: atRisk, color: "bg-red-500" },
-  ];
-
-  const maxCount = Math.max(1, ...stages.map((s) => s.count));
-
-  return (
-    <Panel>
-      <PanelHeader icon={Users} label="Pipeline Funnel" iconColor="text-blue-500" />
-      <div className="space-y-3">
-        {stages.map((stage) => (
-          <div key={stage.label}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-gray-600">
-                {stage.label}
-              </span>
-              <span className="text-sm font-bold text-[#212D40]">
-                {stage.count}
-              </span>
-            </div>
-            <div className="h-2 w-full rounded-full bg-gray-100">
-              <div
-                className={`h-2 rounded-full ${stage.color} transition-all`}
-                style={{
-                  width: `${Math.max(2, (stage.count / maxCount) * 100)}%`,
-                }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
-// ---- Panel 7: Portfolio Score ----------------------------------------------
-
-function PortfolioScorePanel({
-  healthData,
-}: {
-  healthData: ClientHealthEntry[];
-}) {
-  let avgScore = 0;
-  if (healthData.length > 0) {
-    const hasScores = healthData.some((c) => c.score !== undefined);
-    if (hasScores) {
-      const total = healthData.reduce((sum, c) => sum + (c.score ?? 50), 0);
-      avgScore = Math.round(total / healthData.length);
-    } else {
-      const total = healthData.reduce((sum, c) => {
-        if (c.health === "green") return sum + 90;
-        if (c.health === "amber") return sum + 60;
-        return sum + 25;
-      }, 0);
-      avgScore = Math.round(total / healthData.length);
-    }
-  }
-
-  const scoreColor =
-    avgScore >= 80
-      ? "text-emerald-600"
-      : avgScore >= 60
-        ? "text-amber-600"
-        : avgScore >= 40
-          ? "text-orange-600"
-          : "text-red-600";
-
-  const ringColor =
-    avgScore >= 80
-      ? "stroke-emerald-500"
-      : avgScore >= 60
-        ? "stroke-amber-500"
-        : avgScore >= 40
-          ? "stroke-orange-500"
-          : "stroke-red-500";
-
-  const circumference = 2 * Math.PI * 45;
-  const offset = circumference - (avgScore / 100) * circumference;
-
-  return (
-    <Panel className="flex flex-col items-center justify-center">
-      <PanelHeader icon={Shield} label="Portfolio Score" iconColor="text-[#212D40]" />
-
-      <div className="relative w-32 h-32 mb-3">
-        <svg className="w-32 h-32 -rotate-90" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="#f3f4f6"
-            strokeWidth="6"
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            className={ringColor}
-            strokeWidth="6"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            style={{ transition: "stroke-dashoffset 0.8s ease" }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-3xl font-semibold ${scoreColor}`}>
-            {healthData.length > 0 ? avgScore : "--"}
-          </span>
-        </div>
-      </div>
-
-      <p className="text-xs text-gray-400 text-center">
-        {healthData.length > 0
-          ? `Across ${healthData.length} client${healthData.length !== 1 ? "s" : ""}`
-          : "No client data yet"}
-      </p>
-    </Panel>
   );
 }
 
@@ -1777,6 +1232,98 @@ function CustomerReadinessPanel() {
   );
 }
 
+// ---- Zone 3: Client Pulse (paying clients only) ---------------------------
+
+function ClientPulse() {
+  const { data: metrics } = useBusinessMetrics();
+  const clients = metrics?.clients ?? [];
+
+  if (clients.length === 0) return null;
+
+  const healthDot: Record<string, string> = {
+    green: "bg-emerald-500",
+    amber: "bg-amber-400",
+    red: "bg-red-500",
+  };
+
+  return (
+    <Panel>
+      <PanelHeader icon={Users} label={`${clients.length} Paying Clients`} iconColor="text-blue-500" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        {clients.map((c) => (
+          <div
+            key={c.id}
+            className="rounded-xl border border-gray-100 bg-white p-4 hover:border-[#D56753]/20 hover:shadow-sm transition-all"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-2 h-2 rounded-full ${healthDot[c.health] || healthDot.green}`} />
+              <p className="text-sm font-semibold text-[#212D40] truncate">{c.name}</p>
+            </div>
+            <p className="text-lg font-bold text-[#212D40]">${c.mrr.toLocaleString()}<span className="text-xs font-normal text-gray-400">/mo</span></p>
+            <p className="text-xs text-gray-400 mt-1">{c.insight}</p>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+// ---- Zone 4: Pipeline Funnel (conversion-focused) --------------------------
+
+function PipelineConversion() {
+  const { data: metrics } = useBusinessMetrics();
+  const pipeline = metrics?.pipeline;
+
+  if (!pipeline) return null;
+
+  const stages = [
+    { label: "Signups", count: pipeline.totalSignups, conversion: null },
+    { label: "Logged in", count: pipeline.accountCreated, conversion: pipeline.conversionRates.checkupToAccount },
+    { label: "In trial", count: pipeline.inTrial, conversion: pipeline.conversionRates.accountToTrial },
+    { label: "Onboarded", count: pipeline.onboardingComplete, conversion: pipeline.conversionRates.trialToOnboarded },
+    { label: "Paying", count: pipeline.paying, conversion: pipeline.conversionRates.overallToPaying },
+  ];
+
+  const maxCount = Math.max(...stages.map((s) => s.count), 1);
+
+  return (
+    <Panel>
+      <PanelHeader icon={TrendingUp} label="Pipeline" iconColor="text-[#D56753]" />
+
+      {/* Funnel bars */}
+      <div className="space-y-2">
+        {stages.map((stage) => (
+          <div key={stage.label} className="flex items-center gap-3">
+            <p className="text-xs font-semibold text-gray-500 w-20 text-right shrink-0">{stage.label}</p>
+            <div className="flex-1 flex items-center gap-2">
+              <div className="flex-1 h-7 bg-gray-50 rounded-lg overflow-hidden">
+                <div
+                  className="h-full rounded-lg bg-gradient-to-r from-[#D56753]/80 to-[#D56753]/40 transition-all duration-700 flex items-center px-2"
+                  style={{ width: `${Math.max((stage.count / maxCount) * 100, 8)}%` }}
+                >
+                  <span className="text-xs font-bold text-white">{stage.count}</span>
+                </div>
+              </div>
+              {stage.conversion !== null && (
+                <span className="text-xs font-semibold text-gray-400 w-10 shrink-0">{stage.conversion}%</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent signups */}
+      {pipeline.recentSignups.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-gray-100">
+          <p className="text-xs text-gray-400 mb-1">
+            {pipeline.recentSignups.length} new this week
+          </p>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 // ---- Main Component --------------------------------------------------------
 
 export default function VisionaryView() {
@@ -1794,28 +1341,8 @@ export default function VisionaryView() {
   });
   const agentBrief: PersonalAgentBrief | null = agentBriefRaw ?? null;
 
-  // Fetch organizations
-  const { data: orgData } = useQuery({
-    queryKey: ["admin-organizations"],
-    queryFn: adminListOrganizations,
-  });
-
-  const orgs: AdminOrganization[] =
-    (orgData as any)?.organizations ?? (Array.isArray(orgData) ? orgData : []);
-
-  // Fetch client health
-  const { data: healthRaw } = useQuery({
-    queryKey: ["admin-client-health-visionary"],
-    queryFn: async () => {
-      const res = await apiGet({ path: "/admin/client-health" });
-      return res?.success !== false
-        ? ((res?.data || res?.clients || res?.entries || []) as ClientHealthEntry[])
-        : [];
-    },
-    retry: false,
-    staleTime: 60_000,
-  });
-  const healthData: ClientHealthEntry[] = healthRaw ?? [];
+  // Org list kept for CustomerReadinessPanel and below-fold components
+  useQuery({ queryKey: ["admin-organizations"], queryFn: adminListOrganizations });
 
   // Fetch tasks
   const { data: taskData } = useQuery({
@@ -1843,44 +1370,42 @@ export default function VisionaryView() {
       </button>
 
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
-        {/* 1. The ONE thing: Personal Agent Headline */}
+        {/* ===== ABOVE THE FOLD: The 5-second view ===== */}
+
+        {/* Zone 1: The ONE thing */}
         <PersonalAgentHeadline brief={agentBrief} />
 
-        {/* 2. Morning Briefing Stats (only non-zero) */}
-        <MorningBriefingStats healthData={healthData} />
-
-        {/* 3. Revenue (prominent but not the hero) */}
+        {/* Zone 2: The Number */}
         <RevenuePanel />
 
-        {/* 4. Customer Readiness -- the undeniable bar */}
-        <CustomerReadinessPanel />
+        {/* Zone 3: Client Pulse -- your 5 paying clients, each with a heartbeat */}
+        <ClientPulse />
 
-        {/* 5. What I'm Noticing (Claude observations) */}
-        <ClaudeObservations role="visionary" />
+        {/* Zone 4: Pipeline -- where signups become customers */}
+        <PipelineConversion />
 
-        {/* 5. Decisions Needing You */}
+        {/* Zone 5: Decisions Needing You */}
         <DecisionPanel tasks={tasks} agentBrief={agentBrief} />
 
-        {/* 5. Route to Unicorn (compact, collapsible timeline) */}
+        {/* Zone 6: What I'm Noticing */}
+        <ClaudeObservations role="visionary" />
+
+        {/* ===== BELOW THE FOLD: Deep dives, collapsed ===== */}
+
+        {/* Customer Readiness */}
+        <CustomerReadinessPanel />
+
+        {/* Route to Unicorn */}
         <RoadmapPanel />
 
-        {/* 6. The Scoreboard (Records + Confidence, collapsible) */}
-        <ScoreboardPanel orgs={orgs} />
-
-        {/* 7 + 8: Pipeline + Portfolio Score side by side */}
+        {/* Agent Mission Control + AI Cost side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <PipelineFunnelPanel orgs={orgs} healthData={healthData} />
-          <PortfolioScorePanel healthData={healthData} />
-        </div>
-
-        {/* 9. Agent Mission Control */}
-        <AgentMissionControl />
-
-        {/* 10 + 11: Email Health + AI Cost side by side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <EmailHealthPanel />
+          <AgentMissionControl />
           <AICostPanel />
         </div>
+
+        {/* Email Health */}
+        <EmailHealthPanel />
       </div>
 
       {/* CEO Chat moved to dedicated nav page -- no floating widgets */}

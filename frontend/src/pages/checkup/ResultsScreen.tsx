@@ -828,7 +828,7 @@ export default function ResultsScreen() {
       }
       referralCode = createData.referralCode || null;
     } catch {
-      setEmailError("Something went wrong. Please try again.");
+      setEmailError("That didn't work. Try again in a moment.");
       setEmailSending(false);
       return;
     }

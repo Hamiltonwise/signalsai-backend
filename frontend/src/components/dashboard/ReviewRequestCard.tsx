@@ -118,7 +118,7 @@ export default function ReviewRequestCard({
         setError(result.error || "Failed to send");
       }
     } catch {
-      setError("Something went wrong");
+      setError("That didn't work");
     } finally {
       setSending(false);
     }

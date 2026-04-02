@@ -62,7 +62,7 @@ export default function CSAgentChat({
           {
             role: "assistant",
             content:
-              result.error || "Something went wrong. Please try again.",
+              result.error || "That didn't work. Try again in a moment.",
           },
         ]);
       }
@@ -71,7 +71,7 @@ export default function CSAgentChat({
         ...prev,
         {
           role: "assistant",
-          content: "Connection error. Please check your internet and try again.",
+          content: "Connection interrupted. Check your internet and try again.",
         },
       ]);
     } finally {

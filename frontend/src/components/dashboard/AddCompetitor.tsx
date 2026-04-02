@@ -85,7 +85,7 @@ export default function AddCompetitor({ currentCount, maxCount, onAdded }: AddCo
         setError(res?.error || "Could not track this competitor.");
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError("That didn't work. Try again in a moment.");
     } finally {
       setIsAdding(false);
     }
