@@ -43,6 +43,7 @@ import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
 import OneActionCard from "@/components/dashboard/OneActionCard";
 import CardCapture from "@/components/dashboard/CardCapture";
 import AlloroActivityCard from "@/components/dashboard/AlloroActivityCard";
+import MondayPreview from "@/components/dashboard/MondayPreview";
 // ReferralCard defined locally (line ~569) with referralCode prop
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import { isConferenceMode } from "./checkup/conferenceFallback";
@@ -1171,6 +1172,14 @@ export default function DoctorDashboard() {
             gbpConnected={hasGoogleConnection || !!rankingData}
             topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
           />
+        </motion.div>
+      )}
+
+      {/* Monday Preview -- THE product, rendered. Shows what Monday morning
+           looks like before the email actually fires. The screenshot moment. */}
+      {!isLoading && (
+        <motion.div variants={warmCardVariants}>
+          <MondayPreview />
         </motion.div>
       )}
 
