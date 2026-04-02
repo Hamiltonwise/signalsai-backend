@@ -20,6 +20,7 @@ import express from "express";
 import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";
 import { db } from "../../database/connection";
+import { getMRRFromDB } from "../../services/businessMetrics";
 
 const aaeDashboardRoutes = express.Router();
 
@@ -198,34 +199,13 @@ aaeDashboardRoutes.get(
         }
       }
 
-      // MRR calculation: per-org pricing (single source of truth)
-      const orgMonthlyRate: Record<number, number> = {
-        5: 2000,   // Garrison Orthodontics
-        6: 3500,   // DentalEMR
-        8: 1500,   // Artful Orthodontics
-        21: 0,     // McPherson Endodontics (beta)
-        25: 5000,  // Caswell Orthodontics (3 locations)
-        34: 0,     // Alloro (team org)
-        39: 1500,  // One Endodontics
-        42: 0,     // Valley Endodontics (demo)
-      };
+      // MRR from single source of truth
       let currentMrr = 0;
       let projectedMrr = 0;
       try {
-        const hasOrgs = await db.schema.hasTable("organizations");
-        if (hasOrgs) {
-          const activeOrgs = await db("organizations")
-            .where(function(this: any) {
-              this.where("subscription_status", "active")
-                .orWhereNotNull("subscription_tier");
-            })
-            .select("id");
-          currentMrr = activeOrgs.reduce(
-            (sum: number, o: any) => sum + (orgMonthlyRate[o.id] ?? 0),
-            0
-          );
-          projectedMrr = currentMrr;
-        }
+        const mrrData = await getMRRFromDB();
+        currentMrr = mrrData.total;
+        projectedMrr = currentMrr;
       } catch {
         // If orgs table doesn't exist or query fails, use 0
       }

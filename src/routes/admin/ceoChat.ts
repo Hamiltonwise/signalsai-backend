@@ -22,6 +22,7 @@ import { db } from "../../database/connection";
 import { isPartnerEmail } from "../../utils/partnerEmails";
 import { BehavioralEventModel } from "../../models/BehavioralEventModel";
 import { getKeyDataForClient } from "../../controllers/clarity/feature-services/service.clarity-data";
+import { getTotalMRR } from "../../services/businessMetrics";
 
 const ceoChatRoutes = express.Router();
 
@@ -462,24 +463,11 @@ async function buildSystemContext(userEmail: string): Promise<string> {
           .catch(() => []),
       ]);
 
-    // Calculate revenue using actual contracted rates
-    const orgMonthlyRate: Record<number, number> = {
-      5: 2000,   // Garrison Orthodontics
-      6: 3500,   // DentalEMR
-      8: 1500,   // Artful Orthodontics
-      21: 0,     // McPherson Endodontics (beta)
-      25: 5000,  // Caswell Orthodontics (3 locations)
-      34: 0,     // Alloro (team org)
-      39: 1500,  // One Endodontics
-      42: 0,     // Valley Endodontics (demo)
-    };
+    // Revenue from single source of truth
     const activeOrgs = orgs.filter(
       (o: any) => o.subscription_status === "active" || o.subscription_tier
     );
-    const mrr = activeOrgs.reduce(
-      (sum: number, o: any) => sum + (orgMonthlyRate[o.id] ?? 0),
-      0
-    );
+    const mrr = getTotalMRR(activeOrgs);
 
     // Agent health summary
     const greenAgents = dreamTeam.filter((n: any) => n.health_status === "green").length;

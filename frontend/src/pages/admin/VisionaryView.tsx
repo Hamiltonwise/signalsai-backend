@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import FounderMode from "./FounderMode";
 import { KillSwitchBanner } from "@/components/Admin/KillSwitchBanner";
+import { useBusinessMetrics } from "@/hooks/useBusinessMetrics";
 import {} from "react-router-dom";
 import {
   adminListOrganizations,
@@ -53,20 +54,7 @@ import { apiGet, apiPatch } from "@/api/index";
 
 // ---- Helpers ---------------------------------------------------------------
 
-// Real customer pricing (per-org, not per-tier, until billing is standardized)
-const ORG_MONTHLY_RATE: Record<number, number> = {
-  5: 2000,   // Garrison Orthodontics
-  6: 3500,   // DentalEMR
-  8: 1500,   // Artful Orthodontics
-  21: 0,     // McPherson Endodontics (beta)
-  25: 5000,  // Caswell Orthodontics (3 locations)
-  34: 0,     // Alloro (team org)
-  39: 1500,  // One Endodontics
-  42: 0,     // Valley Endodontics (demo)
-};
-// Fallback removed: ORG_MONTHLY_RATE is the single source of truth for pricing
-
-const MONTHLY_BURN = 9500;
+// MRR and burn come from useBusinessMetrics() hook -- no local calculation
 
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return "never";
@@ -310,31 +298,15 @@ function MorningBriefingStats({
 
 // ---- Panel 2: Revenue ------------------------------------------------------
 
-function RevenuePanel({ orgs }: { orgs: AdminOrganization[] }) {
-  const activeOrgs = orgs.filter(
-    (o) => o.subscription_status === "active" || o.subscription_tier
-  );
-
-  const mrr = activeOrgs.reduce((sum, o) => {
-    return sum + (ORG_MONTHLY_RATE[o.id] ?? 0);
-  }, 0);
-
-  const now = new Date();
-  const thisMonth = now.getMonth();
-  const lastMonthOrgs = activeOrgs.filter((o) => {
-    const d = new Date(o.created_at);
-    return d.getMonth() === (thisMonth === 0 ? 11 : thisMonth - 1);
-  });
-  const thisMonthOrgs = activeOrgs.filter((o) => {
-    const d = new Date(o.created_at);
-    return d.getMonth() === thisMonth;
-  });
-  const growth = thisMonthOrgs.length - lastMonthOrgs.length;
-
-  const monthlyDelta = mrr - MONTHLY_BURN;
-  const isProfitable = monthlyDelta >= 0;
+function RevenuePanel() {
+  const { data: metrics } = useBusinessMetrics();
+  const mrr = metrics?.mrr.total ?? 0;
+  const growth = metrics?.orgCount.growth ?? 0;
+  const monthlyDelta = metrics?.mrr.delta ?? 0;
+  const isProfitable = metrics?.mrr.isProfitable ?? false;
+  const burn = metrics?.mrr.burn ?? 0;
   const runwayMonths = !isProfitable && mrr > 0
-    ? Math.floor(MONTHLY_BURN / Math.max(1, MONTHLY_BURN - mrr))
+    ? Math.floor(burn / Math.max(1, burn - mrr))
     : null;
 
   return (
@@ -366,7 +338,7 @@ function RevenuePanel({ orgs }: { orgs: AdminOrganization[] }) {
         </div>
 
         <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
-          <TailorText editKey="hq.visionary.revenue.runwayLabel" defaultText={`Runway ($${MONTHLY_BURN.toLocaleString()} burn)`} as="p" className="text-xs text-gray-400 mb-1" />
+          <TailorText editKey="hq.visionary.revenue.runwayLabel" defaultText={`Runway ($${burn.toLocaleString()} burn)`} as="p" className="text-xs text-gray-400 mb-1" />
           {isProfitable ? (
             <p className="text-lg font-bold text-emerald-600">
               Profitable. +${monthlyDelta.toLocaleString()}/mo
@@ -1756,7 +1728,7 @@ export default function VisionaryView() {
         <MorningBriefingStats healthData={healthData} />
 
         {/* 3. Revenue (prominent but not the hero) */}
-        <RevenuePanel orgs={orgs} />
+        <RevenuePanel />
 
         {/* 4. Decisions Needing You */}
         <DecisionPanel tasks={tasks} agentBrief={agentBrief} />

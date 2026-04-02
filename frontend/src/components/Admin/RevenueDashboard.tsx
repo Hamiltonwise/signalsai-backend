@@ -19,6 +19,7 @@ import {
   type AdminOrganization,
 } from "@/api/admin-organizations";
 import { apiGet } from "@/api/index";
+import { useBusinessMetrics } from "@/hooks/useBusinessMetrics";
 
 // --- Types -------------------------------------------------------------------
 
@@ -37,29 +38,7 @@ const HEALTH_DOT: Record<string, string> = {
   green: "bg-emerald-500",
 };
 
-const TIER_PRICING: Record<string, number> = {
-  DWY: 997,
-  DFY: 2497,
-};
-
-// Actual contracted rates per org (until Stripe billing is wired)
-const ORG_MONTHLY_RATE: Record<number, number> = {
-  5: 2000,   // Garrison Orthodontics
-  6: 3500,   // DentalEMR
-  8: 1500,   // Artful Orthodontics
-  21: 0,     // McPherson Endodontics (beta)
-  25: 5000,  // Caswell Orthodontics (3 locations)
-  34: 0,     // Alloro (team org)
-  39: 1500,  // One Endodontics
-  42: 0,     // Valley Endodontics (demo)
-};
-
-function orgMonthlyRate(org: { id?: number; subscription_tier?: string | null }): number {
-  if (org.id !== undefined && ORG_MONTHLY_RATE[org.id] !== undefined) {
-    return ORG_MONTHLY_RATE[org.id];
-  }
-  return TIER_PRICING[org.subscription_tier || "DWY"] ?? 0;
-}
+// orgMonthlyRate is defined inside the component with access to metrics hook data
 
 function monthsActive(startDate: string | null): number {
   if (!startDate) return 0;
@@ -79,6 +58,9 @@ function timeAgo(dateStr: string | undefined): string {
 // --- MRR Trend Bar Chart (CSS-only, no deps) ---------------------------------
 
 function MRRTrendChart({ orgs }: { orgs: AdminOrganization[] }) {
+  const { data: metrics } = useBusinessMetrics();
+  const byOrg = metrics?.mrr.byOrg ?? {};
+  const orgMonthlyRate = (org: { id?: number }): number => org.id !== undefined ? (byOrg[org.id] ?? 0) : 0;
   // Group active orgs by subscription_started_at month, build last 6 months
   const now = new Date();
   const months: { label: string; mrr: number }[] = [];
@@ -123,6 +105,12 @@ function MRRTrendChart({ orgs }: { orgs: AdminOrganization[] }) {
 // --- Main Component ----------------------------------------------------------
 
 export default function RevenueDashboard() {
+  const { data: metrics } = useBusinessMetrics();
+  const byOrg = metrics?.mrr.byOrg ?? {};
+  const orgMonthlyRate = (org: { id?: number }): number => {
+    return org.id !== undefined ? (byOrg[org.id] ?? 0) : 0;
+  };
+
   const { data, isLoading } = useQuery({
     queryKey: ["admin-organizations"],
     queryFn: adminListOrganizations,
@@ -206,7 +194,7 @@ export default function RevenueDashboard() {
           </p>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Churn Risk</p>
           <p className="text-[10px] text-gray-400 mt-0.5">
-            ${criticalOrgs.reduce((s: number, c) => s + (TIER_PRICING[c.tier || "DWY"] ?? 997), 0).toLocaleString()} at risk
+            ${criticalOrgs.reduce((s: number, c) => s + (byOrg[c.id] ?? 0), 0).toLocaleString()} at risk
           </p>
         </div>
 

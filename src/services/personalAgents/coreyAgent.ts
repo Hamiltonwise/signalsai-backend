@@ -10,17 +10,7 @@
 import { db } from "../../database/connection";
 import { PersonalBrief } from "./types";
 
-// Per-org pricing (actual contracted rates, mirrors roadmapEngine.ts)
-const ORG_MONTHLY_RATE: Record<number, number> = {
-  5: 2000,   // Garrison Orthodontics
-  6: 3500,   // DentalEMR
-  8: 1500,   // Artful Orthodontics
-  21: 0,     // McPherson Endodontics (beta)
-  25: 5000,  // Caswell Orthodontics (3 locations)
-  34: 0,     // Alloro (team org)
-  39: 1500,  // One Endodontics
-  42: 0,     // Valley Endodontics (demo)
-};
+import { ORG_MONTHLY_RATE } from "../businessMetrics";
 
 async function getMRRData(): Promise<{ currentMRR: number; activeCount: number }> {
   const orgs = await db("organizations")

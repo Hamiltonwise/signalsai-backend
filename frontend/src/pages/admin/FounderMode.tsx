@@ -30,6 +30,7 @@ import {
 } from "@/api/admin-organizations";
 import { fetchSignal } from "@/api/admin-signal";
 import { apiGet, apiPatch, apiPost } from "@/api/index";
+import { useBusinessMetrics } from "@/hooks/useBusinessMetrics";
 
 // --- Constants ---------------------------------------------------------------
 
@@ -37,7 +38,7 @@ const AAE_DATE = new Date("2026-04-14");
 const QSBS_START = new Date("2025-10-28");
 const QSBS_END = new Date("2030-10-28");
 const VALUATION_409A_DUE = new Date("2026-06-30");
-const MONTHLY_BURN = 9500;
+// MONTHLY_BURN comes from useBusinessMetrics() hook
 
 function daysUntil(date: Date): number {
   return Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86_400_000));
@@ -132,19 +133,10 @@ function FounderBrief({
   cashOnHand: number;
   onCashChange: (v: number) => void;
 }) {
-  // Per-org pricing (single source of truth)
-  const ORG_MONTHLY_RATE: Record<number, number> = {
-    5: 2000,   // Garrison Orthodontics
-    6: 3500,   // DentalEMR
-    8: 1500,   // Artful Orthodontics
-    21: 0,     // McPherson Endodontics (beta)
-    25: 5000,  // Caswell Orthodontics (3 locations)
-    34: 0,     // Alloro (team org)
-    39: 1500,  // One Endodontics
-    42: 0,     // Valley Endodontics (demo)
-  };
+  const { data: metrics } = useBusinessMetrics();
+  const mrr = metrics?.mrr.total ?? 0;
+  const MONTHLY_BURN = metrics?.mrr.burn ?? 9500;
   const activeOrgs = orgs.filter((o) => o.subscription_status === "active" || o.subscription_tier);
-  const mrr = activeOrgs.reduce((sum, o) => sum + (ORG_MONTHLY_RATE[o.id] ?? 0), 0);
   const runwayDays = cashOnHand > 0 ? Math.round(cashOnHand / (MONTHLY_BURN / 30)) : 0;
   const exceptions = orgs.filter((o) => !o.connections?.gbp);
 

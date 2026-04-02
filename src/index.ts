@@ -120,6 +120,7 @@ import mailgunInboundRoutes from "./routes/webhooks/mailgunInbound";
 import adminKnowledgeLatticeRoutes from "./routes/admin/knowledgeLattice";
 import morningBriefingRoutes from "./routes/admin/morningBriefing";
 import adminRoadmapRoutes from "./routes/admin/roadmap";
+import adminMetricsRoutes from "./routes/admin/metrics";
 import snapshotRoutes from "./routes/snapshot";
 import ceoChatRoutes from "./routes/admin/ceoChat";
 import clarityMetricsRoutes from "./routes/admin/clarityMetrics";
@@ -355,6 +356,7 @@ app.use("/api/webhooks/mailgun", mailgunInboundRoutes); // T3: Mailgun inbound e
 app.use("/api/admin", adminKnowledgeLatticeRoutes); // T3: Knowledge + Sentiment Lattice CRUD
 app.use("/api/admin/morning-briefing", morningBriefingRoutes); // Agent: Morning Briefing daily intelligence summary
 app.use("/api/admin/roadmap", adminRoadmapRoutes); // Self-correcting roadmap engine for VisionaryView
+app.use("/api/admin/metrics", adminMetricsRoutes); // Single-source business metrics for all admin dashboards
 app.use("/api/seo", seoRoutes); // WO-7: Programmatic SEO pages + hub/spoke + stats
 app.use("/api/foundation", foundationRoutes); // WO-11: Foundation application submissions
 app.use("/api/intelligence", intelligenceRoutes); // WO-8: Practice owner intelligence dashboard

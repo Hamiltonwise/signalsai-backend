@@ -9,38 +9,9 @@
  * Google profile, do they choose you or swipe past?"
  */
 
-// Per-specialty review volume benchmarks: what "strong" looks like for this vertical
-export const REVIEW_VOLUME_BENCHMARKS: Record<string, number> = {
-  endodontist: 40,
-  orthodontist: 100,
-  dentist: 100,
-  "general dentist": 100,
-  "pediatric dentist": 80,
-  periodontist: 40,
-  prosthodontist: 30,
-  "oral surgeon": 50,
-  barber: 150,
-  "med spa": 200,
-  medspa: 200,
-  "plastic surgeon": 100,
-  chiropractor: 80,
-  optometrist: 60,
-  veterinarian: 100,
-  "physical therapist": 40,
-  attorney: 30,
-  lawyer: 30,
-  accountant: 20,
-  cpa: 20,
-  "hair salon": 150,
-  plumber: 50,
-  electrician: 50,
-  hvac: 50,
-  roofer: 30,
-  landscaper: 40,
-  "auto repair": 60,
-  "financial advisor": 20,
-  "real estate agent": 40,
-};
+// Benchmarks imported from single source of truth
+import { REVIEW_VOLUME_BENCHMARKS } from "./businessMetrics";
+export { REVIEW_VOLUME_BENCHMARKS };
 
 export interface PlaceData {
   rating: number;
@@ -75,12 +46,7 @@ export interface ScoringResult {
   scoreLabel: string;
 }
 
-function getScoreLabel(score: number): string {
-  if (score >= 80) return "Strong first impression";
-  if (score >= 60) return "Solid foundation";
-  if (score >= 40) return "Room to grow";
-  return "Needs attention";
-}
+import { getScoreLabel } from "./businessMetrics";
 
 /**
  * Calculate the Business Clarity Score from place data and competitors.

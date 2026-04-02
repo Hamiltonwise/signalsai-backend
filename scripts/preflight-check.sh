@@ -154,6 +154,28 @@ else
 fi
 echo ""
 
+# ─── CHECK 11: Single-Source Data Enforcement ────────────────────
+echo "CHECK 11: No ORG_MONTHLY_RATE definitions outside businessMetrics.ts"
+HITS=$(grep -rn "ORG_MONTHLY_RATE" src/ frontend/src/ --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v node_modules | grep -v "businessMetrics.ts" | grep -v "import " | grep -v "export " | grep -v "// " | grep "Record<number" | wc -l | tr -d ' ')
+if [ "$HITS" -gt 0 ]; then
+    echo -e "  ${RED}FAIL${NC}: $HITS duplicate ORG_MONTHLY_RATE definitions found"
+    grep -rn "ORG_MONTHLY_RATE" src/ frontend/src/ --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v node_modules | grep -v "businessMetrics.ts" | grep -v "import " | grep -v "export " | grep "Record<number"
+    VIOLATIONS=$((VIOLATIONS + HITS))
+else
+    echo -e "  ${GREEN}PASS${NC}: ORG_MONTHLY_RATE only in businessMetrics.ts"
+fi
+echo ""
+
+echo "CHECK 12: No REVIEW_VOLUME_BENCHMARKS definitions outside businessMetrics.ts"
+HITS=$(grep -rn "REVIEW_VOLUME_BENCHMARKS" src/ frontend/src/ --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v node_modules | grep -v "businessMetrics.ts" | grep -v "import " | grep -v "export " | grep -v "// " | grep "Record<string" | grep -v "constants/businessMetrics" | wc -l | tr -d ' ')
+if [ "$HITS" -gt 0 ]; then
+    echo -e "  ${RED}FAIL${NC}: $HITS duplicate REVIEW_VOLUME_BENCHMARKS definitions found"
+    VIOLATIONS=$((VIOLATIONS + HITS))
+else
+    echo -e "  ${GREEN}PASS${NC}: REVIEW_VOLUME_BENCHMARKS only in businessMetrics.ts"
+fi
+echo ""
+
 # ─── SUMMARY ─────────────────────────────────────────────────────
 echo "========================================="
 if [ "$VIOLATIONS" -gt 0 ]; then
