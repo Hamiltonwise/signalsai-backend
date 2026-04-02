@@ -1129,6 +1129,26 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           </section>
         )}
 
+        {/* Empty state: Rankings not yet available */}
+        {!effectiveRankingData?.length && !isWizardActive && (
+          <section className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className="bg-[#FDFDFD] rounded-3xl border border-slate-100 p-10 lg:px-12 lg:py-10 shadow-premium relative overflow-hidden">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-alloro-orange/10 flex items-center justify-center">
+                  <Activity size={20} className="text-alloro-orange" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-alloro-navy">Your Market Ranking</h3>
+                  <p className="text-xs text-slate-500">Updates every Monday at 7am</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Your competitive analysis is running. When it completes, you will see your position against every competitor in your market, with specific findings about what is working and what to fix.
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* SECTION 4: INTELLIGENCE BRIEFING BANNER - Show skeleton while loading, hide if no data after load */}
         {tasksLoading && !isWizardActive ? (
           <section className="animate-pulse">
@@ -1172,6 +1192,32 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             </div>
           </section>
         ) : null}
+
+        {/* Empty state: Wins/Risks not yet analyzed */}
+        {!effectiveWins && !effectiveRisks && !isWizardActive && (
+          <section className="space-y-8 pt-4">
+            <div className="flex items-center gap-4 px-1">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.4em] text-alloro-textDark/40 whitespace-nowrap">
+                What's Working vs What's Not
+              </h3>
+              <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent"></div>
+            </div>
+            <div className="bg-[#FDFDFD] rounded-3xl border border-slate-100 p-8 shadow-premium">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
+                  <ShieldCheck size={20} className="text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-alloro-navy">Intelligence Agents Working</h3>
+                  <p className="text-xs text-slate-500">First results arrive with your Monday email</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Our agents are analyzing your reviews, your competitors, and your market position. You will see specific wins to protect and risks to address here once the analysis completes.
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* SECTION 5: WHAT'S WORKING VS WHAT'S NOT -- wins lead, risks follow.
             Feel understood before feeling informed. */}
@@ -1327,6 +1373,26 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             </section>
           );
         })()}
+
+        {/* Empty state: Strategic fixes not yet calculated */}
+        {!effectiveTopFixes && !effectiveEstimatedRevenue && !isWizardActive && (
+          <section className="space-y-10 pt-8">
+            <div className="bg-[#FDFDFD] rounded-3xl border border-slate-100 p-8 shadow-premium">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-alloro-orange/10 flex items-center justify-center">
+                  <DollarSign size={20} className="text-alloro-orange" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-alloro-navy">Strategic Growth Opportunities</h3>
+                  <p className="text-xs text-slate-500">Personalized to your market and data</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Once your data is fully analyzed, you will see three specific actions ranked by revenue impact, with dollar estimates based on your market position and case values.
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* SECTION: PREMIUM TOP 3 STRATEGIC FIXES - matches newdesign (visible, not in hub) */}
         {((effectiveTopFixes && effectiveEstimatedRevenue) ||

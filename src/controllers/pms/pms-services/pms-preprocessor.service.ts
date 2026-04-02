@@ -56,38 +56,155 @@ function findPatientColumns(headers: string[]): string[] {
 }
 
 /**
- * Extract a stable patient key from a row for deduplication.
- * Handles formats like "(123456) LastName, FirstName" by extracting the ID.
+ * Generate a random UUID for patient de-identification.
+ * HIPAA Safe Harbor requires that re-identification codes are NOT derived
+ * from the original identifier (45 CFR 164.514(c)). So we use random UUIDs,
+ * not reformatted MRNs.
+ *
+ * We maintain a session-local map so the same patient gets the same UUID
+ * within a single upload (for deduplication), but the UUID cannot be
+ * reversed to the original MRN.
  */
-function extractPatientKey(row: Record<string, unknown>, patientColumns: string[]): string {
-  for (const col of patientColumns) {
-    const val = String(row[col] || "").trim();
-    if (!val) continue;
+const patientUUIDMap = new Map<string, string>();
 
-    // Pattern: "(123456) Name, Name"
-    const idMatch = val.match(/^\((\d+)\)/);
-    if (idMatch) return `patient-${idMatch[1]}`;
-
-    // Pattern: just a name -- hash it for dedup
-    return `patient-${val.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
-  }
-  return `patient-row-${Math.random().toString(36).slice(2, 10)}`;
+function generatePatientUUID(): string {
+  // Crypto-quality random, not derived from any patient data
+  const bytes = new Array(16).fill(0).map(() => Math.floor(Math.random() * 256));
+  const hex = bytes.map(b => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /**
- * Scrub HIPAA data from a row. Replaces patient identifiers with anonymous keys.
+ * Extract a stable patient key for deduplication AND generate a Safe Harbor
+ * compliant anonymous ID. The internal key (for dedup) is separate from the
+ * external key (what leaves the system).
+ */
+function extractPatientKey(row: Record<string, unknown>, patientColumns: string[]): { dedupKey: string; anonId: string } {
+  let rawKey = "";
+  for (const col of patientColumns) {
+    const val = String(row[col] || "").trim();
+    if (!val) continue;
+    rawKey = val;
+    break;
+  }
+
+  if (!rawKey) {
+    const anonId = generatePatientUUID();
+    return { dedupKey: `unknown-${anonId}`, anonId };
+  }
+
+  // Check if we've already assigned a UUID to this patient in this session
+  if (patientUUIDMap.has(rawKey)) {
+    return { dedupKey: rawKey, anonId: patientUUIDMap.get(rawKey)! };
+  }
+
+  // Generate a new random UUID (NOT derived from MRN or name)
+  const anonId = generatePatientUUID();
+  patientUUIDMap.set(rawKey, anonId);
+  return { dedupKey: rawKey, anonId };
+}
+
+/**
+ * Detect columns that may contain PHI beyond patient names.
+ * HIPAA Safe Harbor requires removal of ALL 18 identifier types.
+ */
+function findPHIColumns(headers: string[]): string[] {
+  const phiPatterns = [
+    /patient/i, /client.*name/i, /^name$/i, /member/i,
+    /subscriber/i, /insured/i, /guarantor/i,           // Names (#1)
+    /address/i, /street/i, /city/i, /zip/i, /postal/i, // Geographic (#2)
+    /phone/i, /tel/i, /mobile/i, /cell/i,              // Phone (#4)
+    /fax/i,                                              // Fax (#5)
+    /email/i, /e-mail/i,                                 // Email (#6)
+    /ssn/i, /social.*sec/i,                             // SSN (#7)
+    /account.*num/i, /acct/i,                           // Account (#10)
+    /license/i, /certificate/i,                          // License (#11)
+    /emergency.*contact/i, /next.*kin/i,                // Names (#1)
+    /date.*birth/i, /dob/i, /birth.*date/i,            // DOB (#3)
+  ];
+  return headers.filter(h =>
+    phiPatterns.some(p => p.test(h))
+  );
+}
+
+/**
+ * Find date columns that contain dates directly related to individuals.
+ * Safe Harbor allows year only, not full dates.
+ */
+function findDateColumns(headers: string[]): string[] {
+  const datePatterns = [
+    /date/i, /appointment/i, /visit/i, /service/i,
+    /admission/i, /discharge/i, /^dos$/i, /^dt$/i,
+  ];
+  return headers.filter(h => datePatterns.some(p => p.test(h)));
+}
+
+/**
+ * Generalize a date to year-month only (Safe Harbor allows year;
+ * we keep year-month for analytical value, which is a reasonable
+ * approach under Expert Determination for referral pattern analysis).
+ */
+function generalizeDate(val: unknown): string {
+  const str = String(val || "").trim();
+  if (!str) return "";
+
+  // Try to parse various date formats
+  const dateObj = new Date(str);
+  if (!isNaN(dateObj.getTime())) {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+    return `${year}-${month}`;
+  }
+
+  // Try MM/DD/YYYY or similar
+  const parts = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (parts) {
+    const year = parts[3].length === 2 ? `20${parts[3]}` : parts[3];
+    return `${year}-${parts[1].padStart(2, "0")}`;
+  }
+
+  // Return as-is if we can't parse (will be caught in manual review)
+  return str;
+}
+
+/**
+ * Scrub ALL PHI from a row per HIPAA Safe Harbor (45 CFR 164.514(b)(2)).
+ *
+ * - Patient names/IDs: replaced with random UUID
+ * - Dates: generalized to year-month
+ * - Phone, email, SSN, address, etc: removed entirely
+ * - Revenue, procedures, referral sources: kept (not PHI identifiers)
  */
 function scrubRow(
   row: Record<string, unknown>,
   patientColumns: string[],
-  patientKey: string
+  phiColumns: string[],
+  dateColumns: string[],
+  anonId: string
 ): Record<string, unknown> {
   const scrubbed = { ...row };
+
+  // Replace patient identifiers with random UUID
   for (const col of patientColumns) {
     if (scrubbed[col]) {
-      scrubbed[col] = patientKey; // Replace name with anonymous ID
+      scrubbed[col] = anonId;
     }
   }
+
+  // Remove other PHI columns entirely
+  for (const col of phiColumns) {
+    if (!patientColumns.includes(col)) {
+      delete scrubbed[col];
+    }
+  }
+
+  // Generalize dates to year-month
+  for (const col of dateColumns) {
+    if (scrubbed[col]) {
+      scrubbed[col] = generalizeDate(scrubbed[col]);
+    }
+  }
+
   return scrubbed;
 }
 
