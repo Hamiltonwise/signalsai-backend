@@ -218,17 +218,16 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   if ((!bullets || bullets.length === 0) && snapshot.position != null) {
     const rawBullets: string[] = [];
     const pos = snapshot.position;
-    const total = snapshot.total_competitors || 0;
-    const compName = snapshot.top_competitor_name;
-    const compReviews = snapshot.top_competitor_reviews || 0;
+    const compName = snapshot.competitor_name;
+    const compReviews = snapshot.competitor_review_count || 0;
     const clientRevs = snapshot.client_review_count || 0;
     const city = snapshot.keyword?.split(" in ")?.[1] || "";
 
     if (pos === 1) {
-      rawBullets.push(`You're #1${city ? " in " + city : ""}${total ? " out of " + total + " competitors" : ""}. That visibility is protecting your referral pipeline.`);
+      rawBullets.push(`You're #1${city ? " in " + city : ""}. That visibility is protecting your referral pipeline.`);
       if (compName) rawBullets.push(`${compName} is closest behind you with ${compReviews} reviews${clientRevs ? " to your " + clientRevs : ""}.`);
     } else {
-      rawBullets.push(`You're #${pos}${total ? " of " + total : ""}${city ? " in " + city : ""}. ${compName ? compName + " holds #1 with " + compReviews + " reviews." : ""}`);
+      rawBullets.push(`You're #${pos}${city ? " in " + city : ""}. ${compName ? compName + " holds #1 with " + compReviews + " reviews." : ""}`);
       if (clientRevs && compReviews > clientRevs) {
         const gap = compReviews - clientRevs;
         rawBullets.push(`The gap is ${gap} reviews. At 3 reviews per week, you close it in about ${Math.ceil(gap / 3)} weeks.`);
@@ -244,6 +243,39 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
           : `#${pos} in ${city || "your market"}${compName ? ", " + compName + " leads" : ""}`;
       }
     }
+  }
+
+  // Enrichment layer: when bullets are thin, pull richer findings from checkup_data
+  // The checkup analysis stores detailed findings with dollar impact that make
+  // the difference between "You're #3" and "how did they know that?"
+  if (bullets.length < 3 && org.checkup_data) {
+    try {
+      const checkup = typeof org.checkup_data === "string"
+        ? JSON.parse(org.checkup_data)
+        : org.checkup_data;
+      const findings = checkup?.findings || [];
+
+      for (const f of findings) {
+        if (bullets.length >= 3) break;
+        const detail = typeof f === "string" ? f : f.detail || f.title || "";
+        if (detail && !bullets.some((b: string) => b.includes(detail.substring(0, 30)))) {
+          bullets.push(detail);
+        }
+      }
+
+      // Use checkup finding headline if we don't have one yet
+      if (!snapshot.finding_headline && findings.length > 0) {
+        const firstFinding = findings[0];
+        snapshot.finding_headline = typeof firstFinding === "string"
+          ? firstFinding
+          : firstFinding.title || "Your competitive landscape";
+      }
+
+      // Use dollar impact from checkup if snapshot doesn't have one
+      if (!snapshot.dollar_figure && checkup?.totalImpact) {
+        snapshot.dollar_figure = checkup.totalImpact;
+      }
+    } catch { /* checkup data parse failed, continue with what we have */ }
   }
 
   // 2. Build payload

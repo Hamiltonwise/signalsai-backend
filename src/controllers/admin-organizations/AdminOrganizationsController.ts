@@ -919,3 +919,189 @@ export async function updateBillingControls(
     return handleError(res, error, "Update billing controls");
   }
 }
+
+/**
+ * POST /api/admin/organizations/:id/hydrate
+ * Run competitive analysis for a single org and persist results.
+ */
+export async function hydrateOrg(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = parseInt(req.params.id, 10);
+    if (isNaN(orgId)) return res.status(400).json({ success: false, error: "Invalid org ID" });
+
+    const org = await db("organizations").where({ id: orgId }).first();
+    if (!org) return res.status(404).json({ success: false, error: "Organization not found" });
+
+    // Extract placeId from checkup_data or business_data
+    let placeId: string | null = null;
+    let businessName = org.name;
+    let checkupData: any = null;
+
+    try {
+      checkupData = typeof org.checkup_data === "string" ? JSON.parse(org.checkup_data) : org.checkup_data;
+      placeId = checkupData?.place?.placeId || null;
+      businessName = checkupData?.place?.name || org.name;
+    } catch { /* parse failed */ }
+
+    if (!placeId) {
+      try {
+        const bd = typeof org.business_data === "string" ? JSON.parse(org.business_data) : org.business_data;
+        placeId = bd?.checkup_place_id || null;
+      } catch { /* parse failed */ }
+    }
+
+    if (!placeId) {
+      return res.status(400).json({ success: false, error: "No placeId found for this org. Cannot run analysis." });
+    }
+
+    // Run the analyze endpoint internally
+    const axios = (await import("axios")).default;
+    const port = process.env.PORT || 3000;
+    const city = checkupData?.place?.city || checkupData?.market?.city || "";
+    const state = checkupData?.place?.stateAbbr || checkupData?.market?.stateAbbr || "";
+    const category = checkupData?.place?.category || "";
+    const types = checkupData?.place?.types || [];
+    const rating = checkupData?.place?.rating || null;
+    const reviewCount = checkupData?.place?.reviewCount || 0;
+
+    const analyzeResponse = await axios.post(
+      `http://localhost:${port}/api/checkup/analyze`,
+      { name: businessName, city, state, category, types, rating, reviewCount, placeId },
+      { timeout: 30000 }
+    );
+
+    if (analyzeResponse.data?.success === false) {
+      return res.status(500).json({ success: false, error: "Analysis failed", detail: analyzeResponse.data });
+    }
+
+    const a = analyzeResponse.data;
+    const compositeScore = a.score?.composite ?? null;
+
+    // Persist
+    const updates: Record<string, any> = {};
+    if (compositeScore != null) updates.checkup_score = compositeScore;
+    if (a.topCompetitor?.name) updates.top_competitor_name = a.topCompetitor.name;
+    updates.checkup_data = JSON.stringify({
+      ...(checkupData || {}),
+      score: compositeScore,
+      scoreLabel: a.scoreLabel,
+      findings: a.findings || [],
+      findingSummary: a.findings?.[0]?.title || null,
+      topCompetitor: a.topCompetitor || null,
+      competitors: a.competitors || [],
+      market: { city, state, stateAbbr: state, specialty: a.market?.specialty || category, rank: a.market?.rank },
+      subScores: a.score || null,
+      totalImpact: a.totalImpact || 0,
+    });
+
+    await db("organizations").where({ id: orgId }).update(updates);
+
+    // Update ranking snapshot if one exists
+    try {
+      const topComp = a.topCompetitor;
+      const findings = a.findings || [];
+      const richBullets = findings.slice(0, 3).map((f: any) => f.detail || f.title || "").filter(Boolean);
+      if (richBullets.length === 0 && compositeScore) richBullets.push(`Business Clarity Score: ${compositeScore}/100.`);
+
+      await db("weekly_ranking_snapshots")
+        .where({ org_id: orgId })
+        .orderBy("week_start", "desc")
+        .limit(1)
+        .update({
+          position: a.market?.rank || null,
+          bullets: JSON.stringify(richBullets),
+          finding_headline: findings[0]?.title || "Your competitive landscape",
+          competitor_name: topComp?.name || null,
+          competitor_review_count: topComp?.reviewCount || null,
+          client_review_count: reviewCount || null,
+          dollar_figure: a.totalImpact || null,
+        });
+    } catch { /* best effort */ }
+
+    return res.json({
+      success: true,
+      orgId,
+      orgName: businessName,
+      score: compositeScore,
+      competitors: a.competitors?.length || 0,
+      topCompetitor: a.topCompetitor?.name || null,
+      findings: (a.findings || []).length,
+    });
+  } catch (error: any) {
+    console.error("[Hydrate] Error:", error?.message);
+    return res.status(500).json({ success: false, error: error?.message || "Hydration failed" });
+  }
+}
+
+/**
+ * POST /api/admin/organizations/hydrate-all
+ * Run competitive analysis for all orgs that have a placeId but no checkup_score.
+ */
+export async function hydrateAll(
+  req: AuthRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    // Find orgs that need hydration
+    const orgs = await db("organizations")
+      .where("subscription_status", "active")
+      .whereNull("checkup_score")
+      .select("id", "name", "checkup_data", "business_data");
+
+    const results: Array<{ orgId: number; name: string; status: string; score?: number }> = [];
+
+    const axios = (await import("axios")).default;
+    const port = process.env.PORT || 3000;
+
+    for (const org of orgs) {
+      let placeId: string | null = null;
+      try {
+        const cd = typeof org.checkup_data === "string" ? JSON.parse(org.checkup_data) : org.checkup_data;
+        placeId = cd?.place?.placeId || null;
+      } catch { /* skip */ }
+      if (!placeId) {
+        try {
+          const bd = typeof org.business_data === "string" ? JSON.parse(org.business_data) : org.business_data;
+          placeId = bd?.checkup_place_id || null;
+        } catch { /* skip */ }
+      }
+
+      if (!placeId) {
+        results.push({ orgId: org.id, name: org.name, status: "skipped_no_placeId" });
+        continue;
+      }
+
+      try {
+        // Call hydrate for this org
+        const hydrateResp = await axios.post(
+          `http://localhost:${port}/api/admin/organizations/${org.id}/hydrate`,
+          {},
+          {
+            timeout: 45000,
+            headers: { Authorization: req.headers.authorization || "" },
+          }
+        );
+        results.push({
+          orgId: org.id,
+          name: org.name,
+          status: "hydrated",
+          score: hydrateResp.data?.score,
+        });
+      } catch (err: any) {
+        results.push({ orgId: org.id, name: org.name, status: `failed: ${err.message}` });
+      }
+    }
+
+    return res.json({
+      success: true,
+      total: orgs.length,
+      results,
+    });
+  } catch (error: any) {
+    console.error("[HydrateAll] Error:", error?.message);
+    return res.status(500).json({ success: false, error: error?.message || "Hydrate-all failed" });
+  }
+}

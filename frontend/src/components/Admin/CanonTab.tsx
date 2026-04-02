@@ -281,6 +281,112 @@ function SpecEditor({ agent }: { agent: CanonAgent }) {
   );
 }
 
+// ── Gold Question Row (compact, expandable) ───────────────────────
+
+function GoldQuestionRow({
+  question: q,
+  index: i,
+  onPass,
+  onFail,
+  onRemove,
+  isPending,
+}: {
+  question: GoldQuestion;
+  index: number;
+  onPass: () => void;
+  onFail: () => void;
+  onRemove: () => void;
+  isPending: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Truncate question to first sentence or 80 chars
+  const shortQuestion = q.question.length > 80
+    ? q.question.slice(0, q.question.indexOf("?") + 1 || 80)
+    : q.question;
+
+  return (
+    <div className={`rounded-lg border transition-all ${
+      expanded ? "border-gray-300 bg-white shadow-sm p-3 space-y-2" : "border-transparent hover:bg-gray-50 px-2 py-1.5"
+    }`}>
+      {/* Compact row: click to expand */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 text-left"
+      >
+        {/* Pass/fail indicator */}
+        <div className="shrink-0">
+          {q.passed === true && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+          {q.passed === false && <XCircle className="h-3.5 w-3.5 text-red-500" />}
+          {q.passed === null && <Circle className="h-3.5 w-3.5 text-gray-300" />}
+        </div>
+
+        {/* Question number + category + truncated question */}
+        <span className="text-xs text-gray-400 shrink-0 w-5 tabular-nums">{i + 1}</span>
+        {q.category && (
+          <span className={`shrink-0 text-xs font-semibold px-1 py-0.5 rounded leading-none ${
+            q.category === "BUG" ? "bg-red-50 text-red-600" :
+            q.category === "DATA" ? "bg-blue-50 text-blue-600" :
+            "bg-purple-50 text-purple-600"
+          }`}>
+            {q.category}
+          </span>
+        )}
+        <span className="text-xs text-[#1A1D23] truncate flex-1">{shortQuestion}</span>
+        <ChevronRight className={`h-3 w-3 text-gray-400 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`} />
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <>
+          <p className="text-sm text-[#1A1D23] leading-relaxed">{q.question}</p>
+          <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-2 leading-relaxed">
+            <span className="font-medium text-gray-600">Expected:</span> {q.expectedAnswer}
+          </p>
+
+          {q.actualAnswer && (
+            <p className="text-xs text-gray-500 bg-amber-50 rounded-lg px-2.5 py-2 leading-relaxed">
+              <span className="font-medium text-amber-600">Actual:</span> {q.actualAnswer}
+            </p>
+          )}
+
+          {q.testedAt && (
+            <p className="text-xs text-gray-400">
+              <Clock className="inline h-3 w-3 mr-0.5" />
+              Tested {new Date(q.testedAt).toLocaleDateString()}
+            </p>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onPass}
+              disabled={isPending}
+              className="flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors"
+            >
+              <CheckCircle2 className="h-3 w-3" />
+              Pass
+            </button>
+            <button
+              onClick={onFail}
+              disabled={isPending}
+              className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <XCircle className="h-3 w-3" />
+              Fail
+            </button>
+            <button
+              onClick={onRemove}
+              className="ml-auto p-1 text-gray-400 hover:text-red-500"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Gold Questions Editor ──────────────────────────────────────────
 
 function GoldQuestionsEditor({ agent }: { agent: CanonAgent }) {
@@ -330,62 +436,39 @@ function GoldQuestionsEditor({ agent }: { agent: CanonAgent }) {
       </div>
 
       {questions.length > 0 && (
-        <div className="space-y-3">
-          {questions.map((q, i) => (
-            <div key={q.id} className="rounded-xl border border-gray-200 p-3 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-[#1A1D23]">
-                    {i + 1}. {q.question}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">Expected: {q.expectedAnswer}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {q.passed === true && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-                  {q.passed === false && <XCircle className="h-4 w-4 text-red-500" />}
-                  {q.passed === null && <Circle className="h-4 w-4 text-gray-300" />}
-                </div>
-              </div>
+        <div>
+          {/* Category summary bar */}
+          <div className="flex items-center gap-3 mb-3">
+            {(["BUG", "DATA", "CANON"] as const).map((cat) => {
+              const catQs = questions.filter((q) => q.category === cat);
+              if (catQs.length === 0) return null;
+              const catPassed = catQs.filter((q) => q.passed === true).length;
+              return (
+                <span key={cat} className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                  cat === "BUG" ? "bg-red-50 text-red-600" :
+                  cat === "DATA" ? "bg-blue-50 text-blue-600" :
+                  "bg-purple-50 text-purple-600"
+                }`}>
+                  {cat} {catPassed}/{catQs.length}
+                </span>
+              );
+            })}
+          </div>
 
-              {q.actualAnswer && (
-                <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-2 py-1">
-                  Actual: {q.actualAnswer}
-                </p>
-              )}
-
-              {q.testedAt && (
-                <p className="text-xs text-gray-400">
-                  <Clock className="inline h-3 w-3 mr-0.5" />
-                  Tested {new Date(q.testedAt).toLocaleDateString()}
-                </p>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => resultMut.mutate({ qid: q.id, actualAnswer: q.expectedAnswer, passed: true })}
-                  disabled={resultMut.isPending}
-                  className="flex items-center gap-1 rounded-lg border border-emerald-200 px-2.5 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors"
-                >
-                  <CheckCircle2 className="h-3 w-3" />
-                  Pass
-                </button>
-                <button
-                  onClick={() => resultMut.mutate({ qid: q.id, actualAnswer: "Did not meet expected answer", passed: false })}
-                  disabled={resultMut.isPending}
-                  className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  <XCircle className="h-3 w-3" />
-                  Fail
-                </button>
-                <button
-                  onClick={() => setQuestions(questions.filter((_, j) => j !== i))}
-                  className="ml-auto p-1 text-gray-400 hover:text-red-500"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
+          {/* Compact question list: click to expand */}
+          <div className="space-y-1">
+            {questions.map((q, i) => (
+              <GoldQuestionRow
+                key={q.id}
+                question={q}
+                index={i}
+                onPass={() => resultMut.mutate({ qid: q.id, actualAnswer: q.expectedAnswer, passed: true })}
+                onFail={() => resultMut.mutate({ qid: q.id, actualAnswer: "Did not meet expected answer", passed: false })}
+                onRemove={() => setQuestions(questions.filter((_, j) => j !== i))}
+                isPending={resultMut.isPending}
+              />
+            ))}
+          </div>
         </div>
       )}
 

@@ -234,6 +234,32 @@ export async function recordAgentAction(
     );
   }
 
+  // Write to agent_results so the Dream Team dashboard shows real health
+  // Every agent using the runtime gets dashboard visibility for free
+  try {
+    const hasTable = await db.schema.hasTable("agent_results");
+    if (hasTable) {
+      await db("agent_results").insert({
+        agent_type: agentName,
+        org_id: orgId || null,
+        status: "success",
+        agent_output: JSON.stringify({
+          headline: action.headline,
+          type: action.type,
+          detail: action.detail || null,
+        }),
+        created_at: new Date(),
+      });
+    }
+  } catch (err: unknown) {
+    // Non-critical: dashboard visibility is a nice-to-have, not a blocker
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[AgentRuntime] Failed to write agent_results for ${agentName}:`,
+      message,
+    );
+  }
+
   // Run through System Conductor if external-facing and has an org
   const externalTypes = [
     "notification",

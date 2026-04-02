@@ -418,6 +418,8 @@ export interface CanonSpec {
   owner: string;
 }
 
+export type GoldQuestionCategory = "BUG" | "DATA" | "CANON";
+
 export interface GoldQuestion {
   id: string;
   question: string;
@@ -425,6 +427,7 @@ export interface GoldQuestion {
   actualAnswer: string | null;
   passed: boolean | null;
   testedAt: string | null;
+  category?: GoldQuestionCategory;
 }
 
 /**

@@ -17,6 +17,8 @@ export interface DreamTeamNode {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  gate_verdict: "PASS" | "FAIL" | "PENDING" | null;
+  gate_expires: string | null;
 }
 
 export interface ResumeEntry {

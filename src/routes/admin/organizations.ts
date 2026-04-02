@@ -99,6 +99,23 @@ organizationsRoutes.patch(
   controller.updateBillingControls
 );
 
+// POST /api/admin/organizations/hydrate-all — Run competitive analysis for all orgs missing it
+// MUST be before /:id to avoid matching as the :id param
+organizationsRoutes.post(
+  "/hydrate-all",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.hydrateAll
+);
+
+// POST /api/admin/organizations/:id/hydrate — Run competitive analysis for a single org
+organizationsRoutes.post(
+  "/:id/hydrate",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.hydrateOrg
+);
+
 // POST /api/admin/organizations/:id/create-project — Create website project for org
 organizationsRoutes.post(
   "/:id/create-project",

@@ -39,9 +39,13 @@ import {
   Filter,
   Loader2 as Loader2Icon,
   Shield,
+  ShieldCheck,
+  ShieldAlert,
+  Eye,
 } from "lucide-react";
 import CanonTab from "@/components/Admin/CanonTab";
 import { CanonBanner } from "@/components/Admin/CanonBanner";
+import TeamPulse from "@/components/Admin/TeamPulse";
 
 // ─── Health Dot ─────────────────────────────────────────────────────
 
@@ -89,8 +93,8 @@ function NodeCard({
       }`}
     >
       <HealthDot status={node.health_status} />
-      <div className="min-w-0">
-        <p className="text-sm font-bold text-[#212D40] truncate" title={node.role_title}>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-[#1A1D23] truncate" title={node.role_title}>
           {node.role_title}
         </p>
         <p className="text-xs text-gray-400 truncate">
@@ -98,8 +102,24 @@ function NodeCard({
           {node.department && ` · ${node.department}`}
         </p>
       </div>
+      {/* Canon governance badge */}
+      {node.node_type === "agent" && node.gate_verdict === "PASS" && (
+        <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full" title="Canon: PASS">
+          <ShieldCheck className="h-3 w-3" />
+        </span>
+      )}
+      {node.node_type === "agent" && node.gate_verdict === "PENDING" && (
+        <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full" title="Canon: Observe mode">
+          <Eye className="h-3 w-3" />
+        </span>
+      )}
+      {node.node_type === "agent" && node.gate_verdict === "FAIL" && (
+        <span className="shrink-0 inline-flex items-center gap-0.5 text-xs font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full" title="Canon: FAIL">
+          <ShieldAlert className="h-3 w-3" />
+        </span>
+      )}
       {!node.is_active && (
-        <span className="shrink-0 text-xs font-bold text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">
+        <span className="shrink-0 text-xs font-semibold text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded">
           PAUSED
         </span>
       )}
@@ -813,6 +833,9 @@ export default function DreamTeam() {
 
       {/* Canon Status Banner -- always visible, every tab */}
       <CanonBanner onNavigateToCanon={() => setActiveTab("canon")} />
+
+      {/* Team Pulse -- the war room glance, shows on Org Chart tab */}
+      {activeTab === "chart" && <TeamPulse />}
 
       {/* Task Health Tab */}
       {activeTab === "tasks" && <TaskHealthTab />}

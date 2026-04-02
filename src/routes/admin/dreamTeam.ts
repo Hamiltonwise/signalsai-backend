@@ -26,8 +26,33 @@ dreamTeamRoutes.get(
         .select("*")
         .orderBy("created_at", "asc");
 
+      // Load Canon governance status for all agents (join on agent_key)
+      let canonMap: Record<string, { gate_verdict: string; gate_expires: string | null }> = {};
+      try {
+        const hasIdentities = await db.schema.hasTable("agent_identities");
+        if (hasIdentities) {
+          const identities = await db("agent_identities")
+            .whereNotNull("agent_key")
+            .select("agent_key", "gate_verdict", "gate_expires");
+          for (const id of identities) {
+            canonMap[id.agent_key] = { gate_verdict: id.gate_verdict, gate_expires: id.gate_expires };
+          }
+        }
+      } catch {
+        // Canon columns may not exist yet
+      }
+
       // Compute health from agent_results for nodes with agent_key
       for (const node of nodes) {
+        // Attach Canon governance status
+        if (node.agent_key && canonMap[node.agent_key]) {
+          node.gate_verdict = canonMap[node.agent_key].gate_verdict;
+          node.gate_expires = canonMap[node.agent_key].gate_expires;
+        } else {
+          node.gate_verdict = null;
+          node.gate_expires = null;
+        }
+
         if (node.agent_key) {
           node.health_status = await computeAgentHealth(node.agent_key);
         } else if (node.node_type === "human") {

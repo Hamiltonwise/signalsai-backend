@@ -11,6 +11,8 @@ export interface CanonSpec {
   owner: string;
 }
 
+export type GoldQuestionCategory = "BUG" | "DATA" | "CANON";
+
 export interface GoldQuestion {
   id: string;
   question: string;
@@ -18,6 +20,7 @@ export interface GoldQuestion {
   actualAnswer: string | null;
   passed: boolean | null;
   testedAt: string | null;
+  category?: GoldQuestionCategory;
 }
 
 export interface CanonAgent {
@@ -65,6 +68,26 @@ export async function recordQuestionResult(
 
 export async function setVerdict(slug: string, verdict: "PASS" | "FAIL"): Promise<{ success: boolean }> {
   return apiPost({ path: `/admin/agent-canon/${slug}/verdict`, passedData: { verdict } });
+}
+
+export interface PulseAgent {
+  slug: string;
+  displayName: string;
+  agentKey: string;
+  health: "green" | "yellow" | "red" | "gray";
+  trustLevel: string;
+  gateVerdict: "PASS" | "FAIL" | "PENDING";
+  gateExpires: string | null;
+  goldQuestionsPassed: number;
+  goldQuestionsTotal: number;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  lastRunSummary: string | null;
+  totalRuns: number;
+}
+
+export async function fetchPulse(): Promise<{ success: boolean; pulse: PulseAgent[] }> {
+  return apiGet({ path: "/admin/agent-canon/pulse" });
 }
 
 export interface SimulationResult {
