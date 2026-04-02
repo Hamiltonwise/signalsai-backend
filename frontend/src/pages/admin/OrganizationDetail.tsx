@@ -38,6 +38,7 @@ import { OrgSubscriptionSection } from "../../components/Admin/OrgSubscriptionSe
 import { OrgUsersSection } from "../../components/Admin/OrgUsersSection";
 import { OrgConnectionsSection } from "../../components/Admin/OrgConnectionsSection";
 import { OrgSettingsSection } from "../../components/Admin/OrgSettingsSection";
+import WebsiteMakeover from "../../components/Admin/WebsiteMakeover";
 import { OrgReviewRequestsTab } from "../../components/Admin/OrgReviewRequestsTab";
 import type { AdminLocation } from "../../api/admin-organizations";
 
@@ -323,7 +324,14 @@ export default function OrganizationDetail() {
           )}
 
           {activeSection === "connections" && (
-            <OrgConnectionsSection org={org} />
+            <div className="space-y-6">
+              <OrgConnectionsSection org={org} />
+              <WebsiteMakeover
+                orgId={Number(orgId)}
+                orgName={org?.name || "This practice"}
+                currentStatus={org?.patientpath_status}
+              />
+            </div>
           )}
 
           {activeSection === "agent" && (
