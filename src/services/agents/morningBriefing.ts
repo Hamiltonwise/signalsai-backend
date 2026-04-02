@@ -56,25 +56,16 @@ interface MorningBriefingSummary {
 
 // ── Event type mappings ─────────────────────────────────────────────
 
-// Event type filters -- MUST match what producers actually write.
-// Producer files: checkup.ts, competitiveScout.ts, reviewRequests.ts, milestoneDetector.ts
-// If you add a new event type, verify the producer writes the EXACT same string.
-const SIGNUP_EVENTS = [
-  "checkup.account_created",  // produced by checkup.ts (was: account.created)
-  "checkup.email_captured",   // produced by checkup.ts
-];
-const COMPETITOR_EVENTS = [
-  "competitor.review_surge",   // produced by seedDemoAccount (was: competitor.reviews_surge -- plural mismatch)
-  "competitor.movement",       // produced by competitiveScout.ts (was: competitive_scout.movement)
-];
-const REVIEW_EVENTS = [
-  "review_request.sent",       // produced by reviewRequests.ts (correct)
-];
-const HEALTH_EVENTS = ["client_health.scored"];
-const MILESTONE_EVENTS = [
-  "milestone.achieved",        // produced by milestoneDetector.ts (correct)
-  "first_win.achieved",        // produced by firstWinAttribution (was: week1_win.generated)
-];
+// Event type filters -- imported from the single source of truth.
+// Never define event type strings in this file. Always import from eventTypes.ts.
+import {
+  SIGNUP_EVENTS,
+  COMPETITOR_EVENTS,
+  REVIEW_EVENTS,
+  HEALTH_EVENTS,
+  MILESTONE_EVENTS,
+  COMPETITOR_REVIEW_SURGE,
+} from "../../constants/eventTypes";
 
 // Agent activity event types (16 additional coverage areas)
 const AGENT_EVENT_TYPES: Array<{
@@ -301,9 +292,9 @@ function determineTopEvent(
     return `${redEvents.length} client(s) flagged RED. Immediate follow-up needed.`;
   }
 
-  // Check for competitor surges (matches producer: competitor.review_surge)
+  // Check for competitor surges
   const surges = events.filter(
-    (e) => e.event_type === "competitor.review_surge",
+    (e) => e.event_type === COMPETITOR_REVIEW_SURGE,
   );
   if (surges.length > 0) {
     return `${surges.length} competitor review surge(s) detected overnight.`;
