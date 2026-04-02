@@ -302,7 +302,6 @@ export default function SiteMakeItYours({
                 }`}
               >
                 <div className="flex items-center gap-4">
-                  {/* Color preview */}
                   <div className="flex gap-1.5 shrink-0">
                     <div className="w-8 h-8 rounded-lg" style={{ backgroundColor: vibe.primaryColor }} />
                     <div className="w-8 h-8 rounded-lg border border-gray-100" style={{ backgroundColor: vibe.bgColor }} />
