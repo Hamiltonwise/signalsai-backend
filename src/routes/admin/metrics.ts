@@ -47,6 +47,9 @@ function clientInsight(org: any, mrr: number, totalMrr: number): string {
 
 router.get("/", async (_req: Request, res: Response) => {
   try {
+    // Refresh burn rate from config store (in case Corey changed it)
+    await refreshBurnRate();
+
     const orgs = await db("organizations")
       .select(
         "id", "name", "subscription_status", "subscription_tier",
