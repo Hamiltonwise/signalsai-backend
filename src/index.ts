@@ -146,6 +146,7 @@ import missionControlRoutes from "./routes/admin/missionControl";
 import killSwitchRoutes from "./routes/admin/killSwitch";
 import customerReadinessRoutes from "./routes/admin/customerReadiness";
 import agentIdentityRoutes from "./routes/admin/agentIdentity";
+import analyticsRoutes from "./routes/admin/analytics";
 import dataExportRoutes from "./routes/user/dataExport";
 import mailgunEventsRoutes from "./routes/webhooks/mailgunEvents";
 import { billingGateMiddleware } from "./middleware/billingGate";
@@ -382,6 +383,7 @@ app.use("/api/admin/mission-control", missionControlRoutes); // Mission Control:
 app.use("/api/admin/kill-switch", killSwitchRoutes); // Emergency kill switch for all agents
 app.use("/api/admin/customer-readiness", customerReadinessRoutes); // Customer experience readiness scores
 app.use("/api/admin/agent-identity", agentIdentityRoutes); // Agent identity, scopes, audit, quarantine
+app.use("/api/admin/analytics", analyticsRoutes); // GA4 + GSC analytics data pipeline
 app.use("/api/user/data-export", dataExportRoutes); // Full client data export (GDPR/compliance)
 app.use("/api/webhooks/mailgun", mailgunEventsRoutes); // Mailgun event webhooks: deliverability tracking
 
