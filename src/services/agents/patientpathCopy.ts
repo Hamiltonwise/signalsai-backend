@@ -83,7 +83,9 @@ async function generateWithClaude(
   const Anthropic = (await import("@anthropic-ai/sdk")).default;
   const client = new Anthropic();
 
-  const prompt = `You are the PatientPath Copy Agent for Alloro. Write all 10 sections of a PatientPath website from the research brief below. Every line of copy must sound like it was written by someone who knows this specific practice.
+  const prompt = `You are the PatientPath Copy Agent for Alloro. Write all 10 sections of a PatientPath website from the research brief below. Every line of copy must sound like it was written by someone who spent a week inside this specific practice.
+
+The standard: Dr. Kargoli said "It looks like just the AI copied something and put it there." That is the failure mode. Every sentence must pass the test: "Remove the practice name. Can this sentence still identify THIS practice?" If no, rewrite it.
 
 PRACTICE: ${input.practiceName}
 SPECIALTY: ${input.specialty}
@@ -93,7 +95,7 @@ AVERAGE RATING: ${input.averageRating || "N/A"}
 TONE: ${input.toneGuidance}
 PRACTICE PERSONALITY: ${input.practicePersonality}
 
-THE IRREPLACEABLE THING:
+THE IRREPLACEABLE THING (this is the single most important input):
 ${input.irreplaceableThing}
 
 HERO HEADLINE (from research):
@@ -102,40 +104,48 @@ ${input.heroHeadline}
 PROBLEM STATEMENT (from patient fears):
 ${input.problemStatement}
 
-FEAR CATEGORIES:
+FEAR CATEGORIES (what patients feared BEFORE coming here):
 ${input.fearCategories.join(", ") || "Unknown"}
 
-SOCIAL PROOF QUOTES:
-${input.socialProofQuotes.map((q, i) => `${i + 1}. "${q}"`).join("\n") || "No quotes available"}
-
-PRAISE PATTERNS:
+PRAISE PATTERNS (what patients say AFTER coming here):
 ${input.praisePatterns.map((p) => `- ${p}`).join("\n") || "No patterns available"}
 
-FAQ TOPICS:
+SOCIAL PROOF QUOTES (real review language, use verbatim):
+${input.socialProofQuotes.map((q, i) => `${i + 1}. "${q}"`).join("\n") || "No quotes available"}
+
+FAQ TOPICS (from real patient searches, NOT generic specialty questions):
 ${input.faqTopics.map((t) => `- ${t}`).join("\n")}
 
 Generate all 10 sections as a JSON array. Each section has: name, headline, body (markdown), imagePrompt (description for a real photo, never stock).
 
 SECTIONS:
-1. "hero" - Above-the-fold. Headline from review sentiment (never "Welcome to [Practice]"). Subheadline: the irreplaceable_thing in patient language. CTA: "See what patients say" or specialty-specific action.
-2. "problem" - Uses EXACT emotional language from reviews to describe patient fears. "I was terrified of root canals" is real. "Many patients experience dental anxiety" is generic. Real words only.
-3. "doctor" - Led by the irreplaceable_thing, not credentials. Credentials support the story. Include specific procedure count or years if relevant.
-4. "services" - Organized by patient NEED, not procedure name. Each service: what the patient feels before, what happens, what they feel after.
-5. "social_proof" - Real review quotes from the research. Minimum 3. Let the patients speak. Never "our patients love us."
-6. "technology" - What makes this practice different, framed as patient benefit. "You will see exactly what we see" not "state-of-the-art scanner."
-7. "faq" - 5 questions from real patient searches. Answers in first person from doctor's perspective. FAQPage schema.
-8. "location" - Map context, address, hours, parking, accessibility. Neighborhood context.
-9. "insurance" - Clear, honest language. No bait-and-switch.
-10. "cta" - Primary: appointment request. Secondary: call now. Urgency from patient need, not manufactured scarcity.
+1. "hero" - The irreplaceable_thing IS the headline. Not a summary of it. The actual thing that makes this practice unique, stated in patient language. If patients say "I didn't feel a thing," the headline is close to those words. Subheadline: "${input.specialty} in ${input.city}". CTA: one action, specific to this specialty.
 
-RULES:
+2. "problem" - Uses EXACT words from the fear categories above. "I was terrified" is real. "Many patients experience anxiety" is generic. Quote the actual review language. Name the specific emotion. The person reading this should think "that's exactly how I feel."
+
+3. "doctor" - First sentence is empathy: acknowledge what the patient is feeling. Second sentence is the irreplaceable thing applied to the doctor. Credentials come THIRD. Include specific numbers if available (years, procedures performed, patients treated).
+
+4. "services" - NOT "When you are in pain / When you need answers / When you have been referred." Those are generic. Instead, organize by what THIS practice's patients actually come in for, based on the praise patterns and fear categories. Each service: the fear before, what happens, the relief after. Use the vocabulary of THIS practice's reviews.
+
+5. "social_proof" - Real review quotes ONLY. Minimum 3 from the social proof quotes above. Let the patients speak in their own words. Curate by fear category: include at least one quote from a patient who was nervous, and one who was referred.
+
+6. "technology" - What THIS practice has that is mentioned in reviews or differentiates from competitors. Framed as patient benefit: "You see exactly what we see on the screen" not "state-of-the-art CBCT imaging." If nothing specific is known, focus on the experience: "Modern, comfortable, designed for you."
+
+7. "faq" - 5 questions generated from the fear categories and FAQ topics above. NOT generic specialty questions. Questions specific to ${input.city} and THIS practice. Answers in first person from the doctor. Each answer under 100 words, self-contained for AI citation.
+
+8. "location" - Include the city name, nearby landmarks or neighborhoods if known, parking and accessibility notes. "Located on [Street] in [Neighborhood], [City]" is specific. "Conveniently located" is generic.
+
+9. "insurance" - "We work with most PPO plans. No surprises. We discuss your investment before any procedure begins." If the practice has specific insurance info from GBP, include it. Never vague.
+
+10. "cta" - One action. "Request your appointment" or "Call us today at [phone]". No competing buttons. No newsletter signup. No social icons. The only thing on this section is the path to becoming a patient.
+
+ABSOLUTE RULES:
 - No em-dashes. Use commas, periods, or semicolons.
-- The hero image is ALWAYS real (from GBP), never stock. The imagePrompt should describe what a real photo of this practice would look like.
-- The headline must be drawn from real review language.
-- If the copy could apply to any practice in any city, rewrite it.
-- No "In today's competitive landscape" or any generic opener.
-- No "leverage," "optimize," "empower," "solution," "platform."
-- Every section serves a specific patient need: safety, belonging, purpose.
+- Every image prompt describes a REAL photo of THIS practice (from GBP), never stock.
+- If the copy could apply to any ${input.specialty} in any city, it FAILS. Rewrite with specifics.
+- No: "In today's competitive landscape," "leverage," "optimize," "empower," "solution," "platform," "Welcome to," "We are proud to," "Our team is dedicated to."
+- Every section serves one of three patient needs: safety, belonging, or purpose.
+- Typography: headlines are 5-8 words maximum. Body text uses short sentences. No walls of text.
 
 Return ONLY the JSON array, no markdown fences.`;
 
