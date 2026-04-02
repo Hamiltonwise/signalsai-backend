@@ -422,27 +422,58 @@ export async function processLocationRanking(
     );
   }
 
-  // Filter client out of competitors
+  // Filter client out of competitors (placeId + name + multi-location detection)
+  // Port of the correct logic from checkup.ts lines 284-298
   const clientNameLower = gbpLocationName.toLowerCase().trim();
+
+  // Look up client placeId from checkup_data if available
+  let clientPlaceId: string | null = null;
+  try {
+    const orgRecord = await db("organizations")
+      .where({ domain })
+      .orWhere("name", "ilike", `%${gbpLocationName}%`)
+      .first();
+    if (orgRecord?.checkup_data) {
+      const checkupData = typeof orgRecord.checkup_data === "string"
+        ? JSON.parse(orgRecord.checkup_data)
+        : orgRecord.checkup_data;
+      clientPlaceId = checkupData?.placeId || null;
+    }
+  } catch { /* non-blocking */ }
+
+  // Detect multi-location variants (same business name, different address)
+  const multiLocationPlaceIds = new Set<string>();
+  for (const comp of competitorDetails) {
+    const compNameLower = (comp.name || "").toLowerCase().trim();
+    if (compNameLower.includes(clientNameLower) || clientNameLower.includes(compNameLower)) {
+      if (comp.placeId) multiLocationPlaceIds.add(comp.placeId);
+    }
+  }
+
   competitorDetails = competitorDetails.filter((comp) => {
+    // Exact placeId match: this IS the client
+    if (clientPlaceId && comp.placeId === clientPlaceId) return false;
+
+    // Multi-location variant (same name, different location)
+    if (comp.placeId && multiLocationPlaceIds.has(comp.placeId)) return false;
+
+    // Name-based fallback
     const compNameLower = (comp.name || "").toLowerCase().trim();
     if (compNameLower === clientNameLower) return false;
     if (
       compNameLower.includes(clientNameLower) ||
       clientNameLower.includes(compNameLower)
     ) {
-      const shorterLength = Math.min(
-        compNameLower.length,
-        clientNameLower.length,
-      );
-      const longerLength = Math.max(
-        compNameLower.length,
-        clientNameLower.length,
-      );
+      const shorterLength = Math.min(compNameLower.length, clientNameLower.length);
+      const longerLength = Math.max(compNameLower.length, clientNameLower.length);
       if (shorterLength / longerLength > 0.5) return false;
     }
     return true;
   });
+
+  if (clientPlaceId) {
+    log(`[RANKING] [${rankingId}] Filtered self + ${multiLocationPlaceIds.size} multi-location variants`);
+  }
 
   // ========== STEP 4: Website Audit ==========
   await updateStatus(

@@ -59,6 +59,17 @@ dashboardContextRoutes.get(
 
       if (!org) return res.status(404).json({ success: false, error: "Org not found" });
 
+      // Update last_activity_at on every dashboard load (debounced: skip if updated within 5 min)
+      try {
+        await db("organizations")
+          .where({ id: orgId })
+          .where(function () {
+            this.whereNull("last_activity_at")
+              .orWhere("last_activity_at", "<", new Date(Date.now() - 5 * 60 * 1000));
+          })
+          .update({ last_activity_at: new Date() });
+      } catch { /* non-blocking */ }
+
       // Only include checkup context if data exists
       let checkupContext = null;
       if (org.session_checkup_key && org.checkup_data) {

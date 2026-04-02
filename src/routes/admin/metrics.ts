@@ -29,7 +29,7 @@ function timeAgo(dateStr: string | null): string {
 }
 
 function clientInsight(org: any, mrr: number, totalMrr: number): string {
-  const lastLogin = org.first_login_at || org.last_login_at;
+  const lastLogin = org.last_activity_at || org.first_login_at;
   if (!lastLogin) return "Has not logged in yet";
 
   const daysSinceLogin = Math.floor(
@@ -54,7 +54,7 @@ router.get("/", async (_req: Request, res: Response) => {
       .select(
         "id", "name", "subscription_status", "subscription_tier",
         "client_health_status", "created_at", "onboarding_completed",
-        "first_login_at"
+        "first_login_at", "last_activity_at"
       );
 
     // ---- MRR Breakdown ----
@@ -71,8 +71,8 @@ router.get("/", async (_req: Request, res: Response) => {
           name: o.name,
           mrr: orgMrr,
           health: o.client_health_status || "green",
-          lastLogin: o.first_login_at ? timeAgo(o.first_login_at) : "never",
-          lastLoginRaw: o.first_login_at || null,
+          lastLogin: (o.last_activity_at || o.first_login_at) ? timeAgo(o.last_activity_at || o.first_login_at) : "never",
+          lastLoginRaw: o.last_activity_at || o.first_login_at || null,
           insight: clientInsight(o, orgMrr, mrr.total),
           concentration: mrr.total > 0 ? Math.round((orgMrr / mrr.total) * 100) : 0,
         };

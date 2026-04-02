@@ -73,17 +73,29 @@ export async function generateSnapshotForOrg(orgId: number): Promise<boolean> {
         }
       }
 
-      // Top competitor = #1 result (if not us)
-      if (results.length > 0) {
-        const first = results[0];
-        const firstName = (first.displayName?.text || "").toLowerCase();
-        if (!firstName.includes(orgNameLower)) {
-          topCompetitorName = first.displayName?.text || null;
-          topCompetitorReviews = first.userRatingCount || 0;
-        } else if (results.length > 1) {
-          topCompetitorName = results[1].displayName?.text || null;
-          topCompetitorReviews = results[1].userRatingCount || 0;
-        }
+      // Top competitor = first result that isn't us or a multi-location variant
+      // Look up client placeId from checkup_data for accurate filtering
+      let clientPlaceId: string | null = null;
+      try {
+        const orgData = await db("organizations").where({ id: orgId }).select("checkup_data").first();
+        const parsed = orgData?.checkup_data
+          ? (typeof orgData.checkup_data === "string" ? JSON.parse(orgData.checkup_data) : orgData.checkup_data)
+          : null;
+        clientPlaceId = parsed?.placeId || null;
+      } catch { /* non-blocking */ }
+
+      for (const result of results) {
+        const rName = (result.displayName?.text || "").toLowerCase();
+        const rPlaceId = result.id || null;
+
+        // Skip self by placeId
+        if (clientPlaceId && rPlaceId === clientPlaceId) continue;
+        // Skip self or multi-location variant by name
+        if (rName.includes(orgNameLower) || orgNameLower.includes(rName)) continue;
+
+        topCompetitorName = result.displayName?.text || null;
+        topCompetitorReviews = result.userRatingCount || 0;
+        break;
       }
     }
   } catch (err: any) {

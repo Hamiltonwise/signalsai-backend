@@ -1539,7 +1539,13 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       // Store checkup data on org for dashboard pre-population
       if (checkup_score || checkup_data || place_id) {
         const checkupUpdates: Record<string, any> = {};
-        if (checkup_score) checkupUpdates.checkup_score = checkup_score;
+        if (checkup_score) {
+          checkupUpdates.checkup_score = checkup_score;
+          // Initialize clarity score so the Monday email has a baseline for delta calculation
+          checkupUpdates.current_clarity_score = checkup_score;
+          checkupUpdates.previous_clarity_score = checkup_score;
+          checkupUpdates.score_updated_at = new Date();
+        }
         if (checkup_data) checkupUpdates.checkup_data = JSON.stringify(checkup_data);
         if (checkup_data?.topCompetitor?.name) {
           checkupUpdates.top_competitor_name = checkup_data.topCompetitor.name;

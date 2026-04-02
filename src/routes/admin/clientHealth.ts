@@ -31,6 +31,7 @@ clientHealthRoutes.get(
           "subscription_status",
           "subscription_tier",
           "first_login_at",
+          "last_activity_at",
           "client_health_status",
           "created_at",
         );
@@ -50,13 +51,13 @@ clientHealthRoutes.get(
           // dream_team_tasks may not exist yet
         }
 
-        // Days since login
+        // Days since last activity (not first login)
         let daysSinceLogin: number | null = null;
-        if (org.first_login_at) {
+        const lastActive = org.last_activity_at || org.first_login_at;
+        if (lastActive) {
           const now = new Date();
-          const lastLogin = new Date(org.first_login_at);
           daysSinceLogin = Math.floor(
-            (now.getTime() - lastLogin.getTime()) / (1000 * 60 * 60 * 24),
+            (now.getTime() - new Date(lastActive).getTime()) / (1000 * 60 * 60 * 24),
           );
         }
 
