@@ -75,21 +75,21 @@ checkupFunnelRoutes.get(
         .count("id as count")
         .first();
 
-      // Source channel breakdown
+      // Source channel breakdown (PostgreSQL JSONB syntax)
       const sourceChannels = await db("behavioral_events")
         .where("event_type", "checkup.email_captured")
         .where("created_at", ">=", since)
-        .select(db.raw("JSON_EXTRACT(metadata, '$.source_channel') as channel"))
+        .select(db.raw("properties->>'source_channel' as channel"))
         .groupBy("channel")
         .count("id as count")
         .catch(() => []);
 
-      // Referral-driven signups
+      // Referral-driven signups (PostgreSQL JSONB syntax)
       const referralSignups = await db("behavioral_events")
         .where("event_type", "checkup.email_captured")
         .where("created_at", ">=", since)
-        .whereRaw("metadata LIKE '%ref_code%'")
-        .whereRaw("metadata NOT LIKE '%\"ref_code\":null%'")
+        .whereRaw("properties->>'ref_code' IS NOT NULL")
+        .whereRaw("properties->>'ref_code' != 'null'")
         .count("id as count")
         .first()
         .catch(() => ({ count: 0 }));
@@ -98,7 +98,7 @@ checkupFunnelRoutes.get(
       const recentOzEvents = await db("behavioral_events")
         .where("event_type", "checkup.scan_completed")
         .where("created_at", ">=", since)
-        .whereRaw("metadata LIKE '%ozMoments%'")
+        .whereRaw("properties::text LIKE '%ozMoments%'")
         .orderBy("created_at", "desc")
         .limit(10)
         .catch(() => []);

@@ -16,8 +16,9 @@ const DEMO_EMAIL = "demo@getalloro.com";
 demoLoginRoutes.get(
   "/login",
   async (_req, res) => {
-    // Block in production unless explicitly enabled
-    if (process.env.NODE_ENV === "production" && process.env.DEMO_MODE !== "true") {
+    // Block unless DEMO_MODE is explicitly enabled AND we are NOT in production.
+    // Demo mode should NEVER be available in production, even with the flag set.
+    if (process.env.NODE_ENV === "production" || process.env.DEMO_MODE !== "true") {
       return res.status(404).json({ success: false, error: "Not found" });
     }
 

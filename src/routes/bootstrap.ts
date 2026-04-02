@@ -1,13 +1,19 @@
 /**
  * Bootstrap -- one-time team account setup
  * POST /api/bootstrap/team
- * Idempotent: creates missing accounts, sets passwords on existing ones.
+ *
+ * SECURITY: Requires superAdmin authentication + BOOTSTRAP_SECRET env var.
+ * Without both, this route returns 403. Passwords are read from env vars,
+ * never hardcoded in source. If env vars are not set, uses secure random
+ * passwords and logs them to the console (one-time setup).
  */
 
 import express from "express";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { db } from "../database/connection";
+import { authenticateToken } from "../middleware/auth";
+import { superAdminMiddleware } from "../middleware/superAdmin";
 
 const bootstrapRoutes = express.Router();
 
@@ -18,7 +24,16 @@ const TEAM = [
   { email: "info@getalloro.com", firstName: "Alloro", lastName: "Admin", role: "admin" },
 ];
 
-bootstrapRoutes.post("/team", async (req, res) => {
+bootstrapRoutes.post("/team", authenticateToken, superAdminMiddleware, async (req, res) => {
+  // Double-gate: require BOOTSTRAP_SECRET in addition to superAdmin auth
+  const secret = req.headers["x-bootstrap-secret"] || req.body?.bootstrapSecret;
+  if (!process.env.BOOTSTRAP_SECRET || secret !== process.env.BOOTSTRAP_SECRET) {
+    return res.status(403).json({
+      success: false,
+      error: "BOOTSTRAP_SECRET required. Set it in .env and pass it in x-bootstrap-secret header.",
+    });
+  }
+
   const results: string[] = [];
   try {
     let alloroOrg = await db("organizations").where({ name: "Alloro HQ" }).first();
@@ -34,9 +49,14 @@ bootstrapRoutes.post("/team", async (req, res) => {
     }
 
     for (const member of TEAM) {
+      // Read password from env var (BOOTSTRAP_PASSWORD_COREY, etc.) or generate secure random
+      const envKey = `BOOTSTRAP_PASSWORD_${member.firstName.toUpperCase()}`;
+      const password = process.env[envKey] || crypto.randomBytes(16).toString("hex");
+      const isGenerated = !process.env[envKey];
+
       let user = await db("users").where({ email: member.email }).first();
       if (!user) {
-        const hash = await bcrypt.hash("alloro2026", 12);
+        const hash = await bcrypt.hash(password, 12);
         [user] = await db("users").insert({
           email: member.email,
           password_hash: hash,
@@ -46,9 +66,17 @@ bootstrapRoutes.post("/team", async (req, res) => {
         }).returning("*");
         results.push(`Created user: ${member.email} (id: ${user.id})`);
       } else {
-        const hash = await bcrypt.hash("alloro2026", 12);
+        const hash = await bcrypt.hash(password, 12);
         await db("users").where({ id: user.id }).update({ email_verified: true, password_hash: hash });
-        results.push(`User exists, password set: ${member.email} (id: ${user.id})`);
+        results.push(`User exists, password reset: ${member.email} (id: ${user.id})`);
+      }
+
+      if (isGenerated) {
+        // Log generated password to console only (never in response)
+        console.log(`[Bootstrap] Generated password for ${member.email}: ${password}`);
+        results.push(`  Password generated (check server logs)`);
+      } else {
+        results.push(`  Password set from ${envKey} env var`);
       }
 
       const existing = await db("organization_users")
