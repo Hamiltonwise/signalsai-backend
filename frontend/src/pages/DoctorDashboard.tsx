@@ -49,7 +49,7 @@ import { isConferenceMode } from "./checkup/conferenceFallback";
 import CompetitorDrawer from "@/components/dashboard/CompetitorDrawer";
 import ScoreImprovementPlan from "@/components/dashboard/ScoreImprovementPlan";
 import ScoreSimulator from "@/components/dashboard/ScoreSimulator";
-import ScoreHistory from "@/components/dashboard/ScoreHistory";
+// ScoreHistory moved to sub-page, removed from main dashboard to reduce clutter
 import CompetitorComparison from "@/components/dashboard/CompetitorComparison";
 import AddCompetitor from "@/components/dashboard/AddCompetitor";
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
@@ -753,7 +753,7 @@ export default function DoctorDashboard() {
   const orgId = userProfile?.organizationId || null;
   const locationId = selectedLocation?.id ?? null;
   const practiceName = selectedLocation?.name || userProfile?.practiceName || "Your Business";
-  const locationName = selectedLocation?.name || null;
+  // locationName available via selectedLocation?.name if needed in sub-components
 
   const userRole = getPriorityItem("user_role") as string | null;
   const isOwnerOrManager = userRole === "admin" || userRole === "manager";
@@ -1024,33 +1024,34 @@ export default function DoctorDashboard() {
       initial="hidden"
       animate="visible"
     >
-      {/* Header */}
-      <motion.div variants={warmCardVariants} className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-heading text-xl sm:text-2xl font-bold text-[#1A1D23] truncate leading-tight">
+      {/* ── First Impression ──────────────────────────────────────
+           Apple Health pattern: one calm hero, everything else recedes.
+           The owner should understand their business in 3 seconds.
+           ────────────────────────────────────────────────────────── */}
+      <motion.div variants={warmCardVariants}>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h1 className="font-heading text-xl sm:text-2xl font-semibold text-[#1A1D23] leading-tight">
             {mode === "growth"
               ? "Close the gap."
               : narrativeGreeting(streakData, winData, !!effectiveRanking, effectiveRanking?.rankPosition, effectiveRanking?.location, userProfile?.firstName, toneProfile)}
           </h1>
-          <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
-            {mode === "growth"
-              ? `What stands between ${practiceName} and the next position.`
-              : narrativeSubhead(streakData, winData, practiceName, effectiveRanking?.topCompetitor?.name)}
-          </p>
-          {locationName && (
-            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" style={{ animationDuration: '3s' }} />
-              {locationName}
-            </p>
-          )}
-          {/* Ambient "someone is watching" signal -- Guidara's returning guest mechanic */}
-          <p className="text-xs text-[#D56753]/30 mt-2 flex items-center gap-2">
-            <span className="w-1 h-1 rounded-full bg-[#D56753]/30 animate-pulse" style={{ animationDuration: '4s' }} />
-            <TailorText editKey="dashboard.ambient.scanned" defaultText="Your market was scanned overnight. Here's what moved." as="span" className="text-xs text-[#D56753]/30" />
-          </p>
+          <ModeToggle mode={mode} onChange={setMode} />
         </div>
-        <ModeToggle mode={mode} onChange={setMode} />
+        <p className="text-sm text-gray-500 leading-relaxed">
+          {mode === "growth"
+            ? `What stands between ${practiceName} and the next position.`
+            : narrativeSubhead(streakData, winData, practiceName, effectiveRanking?.topCompetitor?.name)}
+        </p>
       </motion.div>
+
+      {/* ── Hero: Market Position (always first, always visible) ──
+           This is the thing Dr. Pawlak sees in 3 seconds.
+           Apple Health pattern: one metric dominates. */}
+      {!isLoading && mode === "standard" && (
+        <motion.div variants={warmCardVariants}>
+          <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { trustSignal: checkupCtx.data.score.trustSignal ?? checkupCtx.data.score.localVisibility ?? 0, firstImpression: checkupCtx.data.score.firstImpression ?? checkupCtx.data.score.onlinePresence ?? 0, responsiveness: checkupCtx.data.score.responsiveness ?? checkupCtx.data.score.reviewHealth ?? 0, competitiveEdge: checkupCtx.data.score.competitiveEdge ?? 10 } : null} />
+        </motion.div>
+      )}
 
       {/* Dreamweaver Card -- the Oz Pearlman reveal for returning users.
            Names the thing they were wondering about but hadn't checked. */}
@@ -1062,7 +1063,7 @@ export default function DoctorDashboard() {
         >
           <div className="flex items-center gap-2 mb-2">
             <span className="w-2 h-2 rounded-full bg-[#D56753] animate-pulse" />
-            <TailorText editKey="dashboard.welcomeBack.label" defaultText="We kept watching" as="p" className="text-xs font-bold uppercase tracking-widest text-[#D56753]/70" />
+            <p className="text-xs font-medium uppercase tracking-[0.05em] text-[#D56753]/50">While you were away</p>
           </div>
           <p className="text-sm font-medium text-[#1A1D23] leading-relaxed">
             {welcomeMessage}
@@ -1229,26 +1230,9 @@ export default function DoctorDashboard() {
 
       {mode === "standard" ? (
         <>
-          {/* ══ YOUR MARKET — section divider ══ */}
-          <div className="flex items-center gap-4 pt-2">
-            <div className="h-px flex-1 divider-warm" />
-            <TailorText editKey="dashboard.section.yourMarket" defaultText="Your Market" as="span" className="text-xs font-bold uppercase tracking-[0.2em] text-[#D56753]/40" />
-            <div className="h-px flex-1 divider-warm" />
-          </div>
-
-          {/* 1. Business Clarity Score ring */}
-          <motion.div variants={cardVariants}>
-            <PositionCard ranking={effectiveRanking} subScores={checkupCtx?.data?.score ? { trustSignal: checkupCtx.data.score.trustSignal ?? checkupCtx.data.score.localVisibility ?? 0, firstImpression: checkupCtx.data.score.firstImpression ?? checkupCtx.data.score.onlinePresence ?? 0, responsiveness: checkupCtx.data.score.responsiveness ?? checkupCtx.data.score.reviewHealth ?? 0, competitiveEdge: checkupCtx.data.score.competitiveEdge ?? 10 } : null} />
-          </motion.div>
-
-          {/* Score History sparkline — shows the score is alive */}
-          <motion.div variants={cardVariants}>
-            <ScoreHistory />
-          </motion.div>
-
-          {/* Belonging signal -- the blue dot. "There are others like me." */}
+          {/* Belonging signal -- the blue dot */}
           {effectiveRanking?.location && (
-            <p className="text-xs text-[#D56753]/30 text-center -mt-2 font-heading italic">
+            <p className="text-xs text-gray-400 text-center font-heading italic">
               {(effectiveRanking.totalCompetitors ?? 0) < 10
                 ? `Among the first business owners watching their market in ${effectiveRanking.location}.`
                 : `One of ${effectiveRanking.totalCompetitors} business owners watching their market in ${effectiveRanking.location}.`}
