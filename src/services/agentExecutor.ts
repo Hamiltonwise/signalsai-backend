@@ -127,17 +127,33 @@ async function executeTool(
 ): Promise<string> {
   switch (toolName) {
     case "query_database": {
-      const sql = String(toolInput.sql || "");
-      // Safety: only SELECT queries allowed
-      if (!sql.trim().toUpperCase().startsWith("SELECT")) {
+      const sql = String(toolInput.sql || "").trim();
+      // Safety: only single SELECT statements allowed (no multi-statement injection)
+      const normalized = sql.replace(/--.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").trim();
+      if (!normalized.toUpperCase().startsWith("SELECT")) {
         return JSON.stringify({ error: "Only SELECT queries are allowed" });
+      }
+      // Block multi-statement attacks (SELECT 1; DROP TABLE ...) and write operations
+      // Split on semicolons outside of string literals
+      const statements = normalized.split(/;/).filter((s) => s.trim().length > 0);
+      if (statements.length > 1) {
+        return JSON.stringify({ error: "Multi-statement queries are not allowed" });
+      }
+      const blocked = /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|COPY)\b/i;
+      if (blocked.test(normalized)) {
+        return JSON.stringify({ error: "Only read-only SELECT queries are allowed" });
+      }
+      // Restrict to safe tables (no access to users, auth tokens, secrets)
+      const forbidden = /\b(users|auth_tokens|sessions|password|secret|credential)\b/i;
+      if (forbidden.test(normalized)) {
+        return JSON.stringify({ error: "Access to this table is restricted" });
       }
       try {
         const rows = await db.raw(sql);
         const result = Array.isArray(rows) ? rows.slice(0, 50) : (rows.rows || []).slice(0, 50);
         return JSON.stringify(result);
       } catch (err: any) {
-        return JSON.stringify({ error: err.message });
+        return JSON.stringify({ error: "Query failed. Check syntax and try again." });
       }
     }
 
