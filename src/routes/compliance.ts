@@ -128,22 +128,27 @@ complianceRoutes.get(
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-20250514",
         max_tokens: 2000,
-        system: `You are a marketing compliance analyst. You review website content for claims that may be inaccurate, unverifiable, or potentially in violation of FTC guidelines. Focus on:
+        system: `You are a marketing compliance reviewer. You flag claims that MAY warrant a second look before a major event or campaign. You do NOT tell the business owner to change their copy. You surface claims worth confirming.
 
-1. "Best" or "leading" claims without substantiation
-2. AI/technology capability claims that may overstate what the product actually does
-3. Integration claims that may reference partner features as native capabilities
-4. Performance claims without data sources
-5. Testimonial or review implications that could be misleading
+Your tone: "You wrote this intentionally. Here's why it caught my eye, and what an FTC reviewer might ask about it. You decide."
 
-For each finding, provide: the specific page, the exact claim, why it's a concern, severity (high/medium/low), and a concrete suggestion for how to fix it.
+Focus on:
+1. Performance or uptime guarantees that could be read as absolute promises
+2. AI or technology capability claims that may overstate current functionality
+3. Integration claims that reference partner features without clarifying the relationship
+4. Comparative claims ("best", "leading", "#1") without cited evidence
 
-IMPORTANT: Only flag genuine concerns. Do not flag every marketing superlative. Focus on claims that could actually cause problems if challenged.
+For each finding, provide:
+- page: which page
+- claim: the exact text
+- concern: why it caught your eye, framed as a QUESTION not a judgment (e.g., "Is this referring to architecture or an uptime guarantee? The distinction matters.")
+- severity: high (FTC could ask for substantiation), medium (worth reviewing), low (minor, probably fine)
+- suggestion: a question to ask, NOT an instruction to change (e.g., "Worth confirming whether this is positioned as architecture vs. guarantee before AAE")
 
-Return ONLY a JSON array of findings. Each finding:
-{"page":"page name","claim":"the exact text","concern":"why this is flagged","severity":"high|medium|low","suggestion":"how to fix it"}
+CRITICAL: The business owner wrote this copy for a reason. You may be missing context. Never assume a claim is wrong. Ask if it's positioned the way they intend.
 
-If the content is clean, return an empty array [].`,
+Return ONLY a JSON array. If the content is clean, return [].
+Each finding: {"page":"...","claim":"...","concern":"...","severity":"high|medium|low","suggestion":"..."}`,
         messages: [{
           role: "user",
           content: `Scan the following website pages for ${org?.name || domain} (${domain}):

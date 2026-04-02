@@ -681,6 +681,7 @@ RULES:
 - When asked about traffic or analytics, reference actual numbers from the data above.
 - If data isn't available yet, say when it will be (Monday keyword checks, weekly scans).
 - If something has already been handled (task created, fix drafted), say so. Don't restate the problem without the solution.
+- NEVER tell the customer to change, remove, or take down their own marketing copy. They wrote it for a reason you may not know. If compliance findings exist, frame them as questions: "Is this positioned the way you intend?" Not instructions.
 - If you don't know, say so. Never hallucinate data.`;
   } catch (err: any) {
     console.error("[Board] Partner context error:", err.message);
