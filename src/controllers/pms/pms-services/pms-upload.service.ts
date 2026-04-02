@@ -265,20 +265,35 @@ export async function processFileUpload(
     throw new Error("PMS_PARSER_WEBHOOK not configured in environment");
   }
 
-  const response = await axios.post(
-    PMS_PARSER_WEBHOOK,
-    {
-      report_data: jsonData,
-      jobId,
-    },
-    {
-      headers: {
-        "Content-Type": "application/json",
+  try {
+    const response = await axios.post(
+      PMS_PARSER_WEBHOOK,
+      {
+        report_data: jsonData,
+        jobId,
       },
-    }
-  );
+      {
+        headers: { "Content-Type": "application/json" },
+        timeout: 120_000, // 2 minute timeout
+      }
+    );
 
-  console.log(response);
+    console.log(`[PMS] Parser webhook responded for job ${jobId}:`, response.status);
+  } catch (webhookError: any) {
+    console.error(`[PMS] Parser webhook failed for job ${jobId}:`, webhookError.message);
+
+    // Mark the job as failed so it doesn't sit at "processing" forever
+    await updateAutomationStatus(jobId, {
+      step: "pms_parser",
+      stepStatus: "failed",
+      customMessage: webhookError.code === "ECONNABORTED"
+        ? "Parser timed out after 2 minutes. Try again or use manual entry."
+        : `Parser unavailable: ${webhookError.message}. Try again or use manual entry.`,
+    });
+
+    // Don't throw -- let the response return with the jobId so they can retry
+    console.warn(`[PMS] Job ${jobId} marked as failed. Customer can retry via dashboard.`);
+  }
 
   const instantFinding = extractInstantFinding(jsonData);
 

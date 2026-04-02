@@ -208,9 +208,21 @@ export async function approveByClient(jobId: number, clientApproval: boolean) {
       }
     } catch (triggerError: any) {
       console.error(
-        `[PMS] Error triggering monthly agents: ${triggerError.message}`
+        `[PMS] Error triggering monthly agents for job ${jobId}: ${triggerError.message}`
       );
-      // Don't fail the approval if agent trigger fails
+
+      // Record the failure in automation status so it's visible, not silent
+      try {
+        await updateAutomationStatus(jobId, {
+          step: "monthly_agents",
+          stepStatus: "failed",
+          customMessage: `Agent trigger failed: ${triggerError.message}. Data is approved but insights are not generating. Retry from admin panel.`,
+        });
+      } catch {
+        // Last-resort logging if even status update fails
+        console.error(`[PMS] Could not update automation status for failed job ${jobId}`);
+      }
+      // Don't fail the approval -- the data is saved, agents can be retried
     }
   }
 

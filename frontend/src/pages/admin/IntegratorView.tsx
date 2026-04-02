@@ -990,6 +990,9 @@ function RevenueSnapshot({ orgs }: { orgs: AdminOrganization[] }) {
   // MRR from single source of truth
   const { data: metrics } = useBusinessMetrics();
   const mrr = metrics?.mrr.total ?? 0;
+  const isProfitable = metrics?.mrr.isProfitable ?? false;
+  const delta = metrics?.mrr.delta ?? 0;
+  const payingCount = metrics?.mrr.payingCount ?? 0;
 
   const formatter = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -997,20 +1000,32 @@ function RevenueSnapshot({ orgs }: { orgs: AdminOrganization[] }) {
     maximumFractionDigits: 0,
   });
 
+  // One-line insight for Jo
+  const insight = isProfitable
+    ? `${payingCount} paying, $${Math.abs(delta).toLocaleString()} above burn`
+    : mrr > 0
+    ? `${payingCount} paying, $${Math.abs(delta).toLocaleString()} below burn`
+    : "Pre-revenue";
+
   return (
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">
-          <TailorText editKey="hq.integrator.revenue.label" defaultText="Monthly recurring" />
-        </p>
-        <p className="text-2xl font-bold text-[#212D40] mt-1">{formatter.format(mrr)}</p>
+    <div>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">
+            <TailorText editKey="hq.integrator.revenue.label" defaultText="Monthly recurring" />
+          </p>
+          <p className="text-2xl font-bold text-[#212D40] mt-1">{formatter.format(mrr)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-gray-400">
+            <TailorText editKey="hq.integrator.revenue.activeLabel" defaultText="Active clients" />
+          </p>
+          <p className="text-lg font-bold text-[#212D40] mt-1">{activeOrgs.length}</p>
+        </div>
       </div>
-      <div className="text-right">
-        <p className="text-xs text-gray-400">
-          <TailorText editKey="hq.integrator.revenue.activeLabel" defaultText="Active clients" />
-        </p>
-        <p className="text-lg font-bold text-[#212D40] mt-1">{activeOrgs.length}</p>
-      </div>
+      <p className={`text-xs mt-2 ${isProfitable ? "text-emerald-600" : mrr > 0 ? "text-amber-600" : "text-gray-400"}`}>
+        {insight}
+      </p>
     </div>
   );
 }

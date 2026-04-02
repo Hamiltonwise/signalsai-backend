@@ -127,7 +127,53 @@ async function gatherObservations(role: string): Promise<Observation[]> {
       }
     }
 
-    // 4. Infrastructure blockers (build role)
+    // 4. PMS pipeline health (stuck or failed jobs)
+    if (role === "visionary" || role === "integrator" || role === "build") {
+      const stuckJobs = await db("pms_jobs")
+        .where("status", "pending")
+        .where("timestamp", "<", new Date(Date.now() - 15 * 60 * 1000)) // older than 15 min
+        .select("id", "organization_id", "timestamp")
+        .catch(() => []);
+
+      for (const job of stuckJobs) {
+        const org = await db("organizations").where({ id: job.organization_id }).first().catch(() => null);
+        const minutesStuck = Math.round((Date.now() - new Date(job.timestamp).getTime()) / 60_000);
+        observations.push({
+          id: `pms-stuck-${obsIndex++}`,
+          text: `PMS upload for ${org?.name || "a customer"} has been processing for ${minutesStuck} minutes. The parser webhook may be unreachable. Retry or switch to manual entry.`,
+          confidence: "yellow",
+          type: "blocker",
+          source: `PMS job #${job.id}`,
+        });
+      }
+
+      // Check for failed jobs in the last 24 hours
+      const failedJobs = await db("pms_jobs")
+        .where("status", "error")
+        .where("timestamp", ">", new Date(Date.now() - 24 * 60 * 60 * 1000))
+        .select("id", "organization_id", "automation_status_detail")
+        .catch(() => []);
+
+      for (const job of failedJobs) {
+        const org = await db("organizations").where({ id: job.organization_id }).first().catch(() => null);
+        const detail = typeof job.automation_status_detail === "string"
+          ? JSON.parse(job.automation_status_detail)
+          : job.automation_status_detail;
+        const failedStep = Object.entries(detail?.steps || {}).find(
+          ([, v]: [string, any]) => v?.status === "failed"
+        );
+        const stepName = failedStep ? failedStep[0].replace(/_/g, " ") : "unknown step";
+        observations.push({
+          id: `pms-failed-${obsIndex++}`,
+          text: `PMS upload for ${org?.name || "a customer"} failed at ${stepName}. Data was not processed. Retry from the admin panel.`,
+          confidence: "red",
+          type: "blocker",
+          source: `PMS job #${job.id}`,
+        });
+      }
+    }
+
+    // 5. Infrastructure blockers (build role)
     if (role === "build") {
       // Check for pending migrations
       const envVarsNeeded = [];
