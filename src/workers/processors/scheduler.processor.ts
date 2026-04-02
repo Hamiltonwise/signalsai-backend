@@ -51,7 +51,10 @@ export async function processSchedulerTick(_job: Job): Promise<void> {
       continue;
     }
 
-    // Canon gate check: block agents that haven't passed governance
+    // Canon gate check: three levels
+    //   FAIL    -> fully stopped, skip entirely
+    //   PENDING -> observe mode (runs, but action scopes denied by checkScope)
+    //   PASS    -> full autonomy
     const gate = await checkGateStatus(schedule.agent_key);
     if (!gate.allowed) {
       console.log(`[SCHEDULER] GATE BLOCKED "${schedule.agent_key}" -- ${gate.reason}`);
@@ -60,7 +63,8 @@ export async function processSchedulerTick(_job: Job): Promise<void> {
       continue;
     }
 
-    console.log(`[SCHEDULER] Executing "${schedule.agent_key}" (${agent.displayName})`);
+    const modeLabel = gate.mode === "observe" ? " [OBSERVE MODE]" : "";
+    console.log(`[SCHEDULER] Executing "${schedule.agent_key}" (${agent.displayName})${modeLabel}`);
 
     // Create run record
     const run = await ScheduleRunModel.createRun(schedule.id);

@@ -13,7 +13,6 @@ import {
   Shield,
   ShieldCheck,
   ShieldAlert,
-  ShieldQuestion,
   ChevronDown,
   ChevronRight,
   CheckCircle2,
@@ -24,6 +23,9 @@ import {
   AlertTriangle,
   Plus,
   Trash2,
+  Play,
+  Loader2,
+  Eye,
 } from "lucide-react";
 import {
   fetchCanonAgents,
@@ -31,8 +33,10 @@ import {
   setGoldQuestions,
   recordQuestionResult,
   setVerdict,
+  runSimulation,
   type CanonAgent,
   type GoldQuestion,
+  type SimulationResult,
   type CanonSpec,
 } from "@/api/agent-canon";
 
@@ -57,8 +61,8 @@ function VerdictBadge({ verdict }: { verdict: string }) {
   }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
-      <ShieldQuestion className="h-3 w-3" />
-      PENDING
+      <Eye className="h-3 w-3" />
+      OBSERVE
     </span>
   );
 }
@@ -473,12 +477,96 @@ function VerdictControls({ agent }: { agent: CanonAgent }) {
   );
 }
 
+// ── Simulation Panel ───────────────────────────────────────────────
+
+function SimulationPanel({ agent }: { agent: CanonAgent }) {
+  const queryClient = useQueryClient();
+  const [simResult, setSimResult] = useState<SimulationResult | null>(null);
+
+  const simMut = useMutation({
+    mutationFn: () => runSimulation(agent.slug),
+    onSuccess: (data) => {
+      setSimResult(data.result);
+      toast.success(`Simulation complete in ${data.result.durationMs}ms`);
+      queryClient.invalidateQueries({ queryKey: ["canon-agents"] });
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.error || "Simulation failed"),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-[#1A1D23]">Simulation</h4>
+        <button
+          onClick={() => simMut.mutate()}
+          disabled={simMut.isPending}
+          className="flex items-center gap-1.5 rounded-lg bg-[#D56753] text-white px-4 py-2 text-sm font-medium hover:bg-[#D56753]/90 disabled:opacity-50 transition-colors"
+        >
+          {simMut.isPending ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Running...
+            </>
+          ) : (
+            <>
+              <Play className="h-3.5 w-3.5" />
+              Run Simulation
+            </>
+          )}
+        </button>
+      </div>
+
+      <p className="text-xs text-gray-500">
+        Calls the agent handler directly, captures output, and auto-populates gold question answers for review. Mark each question pass/fail based on what you see.
+      </p>
+
+      {simResult && (
+        <div className="space-y-3">
+          {/* Run summary */}
+          <div className={`rounded-xl border p-3 ${simResult.success ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"}`}>
+            <div className="flex items-center justify-between">
+              <span className={`text-sm font-medium ${simResult.success ? "text-emerald-700" : "text-red-700"}`}>
+                {simResult.success ? "Agent ran successfully" : "Agent threw an error"}
+              </span>
+              <span className="text-xs text-gray-500">{simResult.durationMs}ms</span>
+            </div>
+            {simResult.error && (
+              <p className="text-xs text-red-600 mt-1">{simResult.error}</p>
+            )}
+          </div>
+
+          {/* Raw output */}
+          <details className="group">
+            <summary className="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700">
+              Raw output (click to expand)
+            </summary>
+            <pre className="mt-2 rounded-lg bg-gray-900 text-gray-100 text-xs p-3 overflow-x-auto max-h-60 overflow-y-auto">
+              {JSON.stringify(simResult.output, null, 2)}
+            </pre>
+          </details>
+
+          {/* Gold question results from simulation */}
+          {simResult.goldQuestionResults.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-500">
+                {simResult.goldQuestionResults.length} questions evaluated. Review and mark pass/fail above.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Expanded Agent Detail ──────────────────────────────────────────
 
 function AgentDetail({ agent }: { agent: CanonAgent }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-6 mt-2 mb-1">
       <div className="text-sm text-gray-500">{agent.description}</div>
+      <SimulationPanel agent={agent} />
+      <div className="border-t border-gray-100" />
       <SpecEditor agent={agent} />
       <div className="border-t border-gray-100" />
       <GoldQuestionsEditor agent={agent} />
@@ -582,7 +670,7 @@ export default function CanonTab() {
         {[
           { label: "Passed", value: passCount, color: "text-emerald-600", icon: ShieldCheck },
           { label: "Failed", value: failCount, color: "text-red-600", icon: ShieldAlert },
-          { label: "Pending", value: pendingCount, color: "text-amber-600", icon: ShieldQuestion },
+          { label: "Observe", value: pendingCount, color: "text-amber-600", icon: Eye },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-4 text-center">
             <s.icon className={`h-5 w-5 mx-auto mb-1 ${s.color}`} />

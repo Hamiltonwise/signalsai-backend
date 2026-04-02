@@ -41,6 +41,7 @@ import {
   Shield,
 } from "lucide-react";
 import CanonTab from "@/components/Admin/CanonTab";
+import { CanonBanner } from "@/components/Admin/CanonBanner";
 
 // ─── Health Dot ─────────────────────────────────────────────────────
 
@@ -809,6 +810,9 @@ export default function DreamTeam() {
           </button>
         </div>
       </div>
+
+      {/* Canon Status Banner -- always visible, every tab */}
+      <CanonBanner onNavigateToCanon={() => setActiveTab("canon")} />
 
       {/* Task Health Tab */}
       {activeTab === "tasks" && <TaskHealthTab />}

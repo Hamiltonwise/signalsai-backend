@@ -266,6 +266,18 @@ export async function checkScope(
     return false;
   }
 
+  // PENDING agents can observe but not act
+  if (identity.gate_verdict === "PENDING" && ACTION_SCOPES.includes(scope)) {
+    await logAction(agentId, runId, "scope_check", scope, target, orgId, false, `Agent ${identity.slug} is PENDING (observe only), action scope ${scope} denied`);
+    return false;
+  }
+
+  // FAIL agents cannot do anything
+  if (identity.gate_verdict === "FAIL") {
+    await logAction(agentId, runId, "scope_check", scope, target, orgId, false, `Agent ${identity.slug} has FAIL verdict, all scopes denied`);
+    return false;
+  }
+
   const scopes: DataScope[] = typeof identity.scopes === "string"
     ? JSON.parse(identity.scopes)
     : identity.scopes;
@@ -416,10 +428,32 @@ export interface GoldQuestion {
 }
 
 /**
- * Check if an agent is allowed to run based on Canon gate status.
- * Backward compatible: agents without Canon records are allowed.
+ * Scopes that represent actions (send emails, create tasks, modify data).
+ * PENDING agents can observe (read/write findings) but cannot act.
  */
-export async function checkGateStatus(agentKey: string): Promise<{ allowed: boolean; reason: string }> {
+const ACTION_SCOPES: DataScope[] = [
+  "email:send",
+  "tasks:write",
+  "dream_team_tasks:write",
+  "organizations:write",
+  "users:write",
+  "billing:write",
+  "client_facing:output",
+];
+
+export type GateMode = "pass" | "observe" | "blocked";
+
+/**
+ * Check if an agent is allowed to run based on Canon gate status.
+ *
+ * Three levels:
+ *   PASS    -> allowed=true,  mode="pass"    (full autonomy)
+ *   PENDING -> allowed=true,  mode="observe" (read + write findings, no actions)
+ *   FAIL    -> allowed=false, mode="blocked" (fully stopped)
+ *
+ * Backward compatible: agents without Canon records get mode="pass".
+ */
+export async function checkGateStatus(agentKey: string): Promise<{ allowed: boolean; mode: GateMode; reason: string }> {
   // Look up by agent_key first, then by slug
   let identity = await db("agent_identities").where({ agent_key: agentKey }).first();
   if (!identity) {
@@ -428,7 +462,7 @@ export async function checkGateStatus(agentKey: string): Promise<{ allowed: bool
 
   // No identity row = ungoverned, backward compatible
   if (!identity) {
-    return { allowed: true, reason: "No Canon record found, ungoverned agent" };
+    return { allowed: true, mode: "pass", reason: "No Canon record found, ungoverned agent" };
   }
 
   // Check if gate has expired
@@ -436,14 +470,18 @@ export async function checkGateStatus(agentKey: string): Promise<{ allowed: bool
     await db("agent_identities").where({ id: identity.id }).update({
       gate_verdict: "PENDING",
     });
-    return { allowed: false, reason: "Canon gate expired, re-validation required" };
+    return { allowed: true, mode: "observe", reason: "Canon gate expired, demoted to observe mode" };
   }
 
-  if (identity.gate_verdict !== "PASS") {
-    return { allowed: false, reason: `Canon gate verdict is ${identity.gate_verdict}` };
+  if (identity.gate_verdict === "FAIL") {
+    return { allowed: false, mode: "blocked", reason: "Canon gate verdict is FAIL, agent fully stopped" };
   }
 
-  return { allowed: true, reason: "Canon gate PASS" };
+  if (identity.gate_verdict === "PENDING") {
+    return { allowed: true, mode: "observe", reason: "Canon gate PENDING, agent running in observe mode (no actions)" };
+  }
+
+  return { allowed: true, mode: "pass", reason: "Canon gate PASS" };
 }
 
 /**

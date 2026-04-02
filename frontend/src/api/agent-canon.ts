@@ -66,3 +66,22 @@ export async function recordQuestionResult(
 export async function setVerdict(slug: string, verdict: "PASS" | "FAIL"): Promise<{ success: boolean }> {
   return apiPost({ path: `/admin/agent-canon/${slug}/verdict`, passedData: { verdict } });
 }
+
+export interface SimulationResult {
+  agentKey: string;
+  success: boolean;
+  output: Record<string, unknown>;
+  error: string | null;
+  durationMs: number;
+  goldQuestionResults: Array<{
+    id: string;
+    question: string;
+    expectedAnswer: string;
+    actualAnswer: string;
+    passed: boolean;
+  }>;
+}
+
+export async function runSimulation(slug: string): Promise<{ success: boolean; result: SimulationResult }> {
+  return apiPost({ path: `/admin/agent-canon/${slug}/simulate`, passedData: {} });
+}
