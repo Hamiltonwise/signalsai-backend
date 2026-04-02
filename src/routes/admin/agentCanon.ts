@@ -23,7 +23,7 @@ import {
   type CanonSpec,
   type GoldQuestion,
 } from "../../services/agents/agentIdentity";
-import { getAgentHandler } from "../../services/agentRegistry";
+import { getAgentHandler, getRegisteredAgents } from "../../services/agentRegistry";
 
 const router = Router();
 
@@ -156,6 +156,143 @@ router.post("/:slug/verdict", authenticateToken, superAdminMiddleware, async (re
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(400).json({ success: false, error: message });
+  }
+});
+
+// GET /roster -- Single source of truth for every agent in the system
+// Cross-references: registry, identity, schedules, dream team nodes, Canon, playbooks
+router.get("/roster", authenticateToken, superAdminMiddleware, async (_req: Request, res: Response) => {
+  try {
+    // 1. Registry handlers (what can actually run)
+    const registeredAgents = getRegisteredAgents();
+    const registryKeys = new Set(registeredAgents.map((a: { key: string; displayName: string; description: string }) => a.key));
+
+    // 2. Identity definitions (what has scopes/trust/identity)
+    const identitySlugs = new Set(AGENT_DEFINITIONS.map((d) => d.slug));
+
+    // 3. Schedules (what fires on cron)
+    let scheduleMap: Record<string, { enabled: boolean; cron: string | null; lastRunAt: string | null }> = {};
+    try {
+      const hasSchedules = await db.schema.hasTable("schedules");
+      if (hasSchedules) {
+        const schedules = await db("schedules").select("agent_key", "enabled", "cron_expression", "last_run_at");
+        for (const s of schedules) {
+          scheduleMap[s.agent_key] = { enabled: s.enabled, cron: s.cron_expression, lastRunAt: s.last_run_at };
+        }
+      }
+    } catch { /* table may not exist */ }
+
+    // 4. Dream team nodes (what's on the org chart)
+    let dreamTeamMap: Record<string, { roleTitle: string; department: string | null }> = {};
+    try {
+      const hasNodes = await db.schema.hasTable("dream_team_nodes");
+      if (hasNodes) {
+        const nodes = await db("dream_team_nodes")
+          .where({ node_type: "agent" })
+          .whereNotNull("agent_key")
+          .select("agent_key", "role_title", "department");
+        for (const n of nodes) {
+          dreamTeamMap[n.agent_key] = { roleTitle: n.role_title, department: n.department };
+        }
+      }
+    } catch { /* table may not exist */ }
+
+    // 5. Canon governance (what has gold questions and verdicts)
+    let canonMap: Record<string, { verdict: string; questionsTotal: number; questionsPassed: number; hasPlaybook: boolean }> = {};
+    try {
+      const hasIdentities = await db.schema.hasTable("agent_identities");
+      if (hasIdentities) {
+        const identities = await db("agent_identities")
+          .whereNotNull("agent_key")
+          .select("agent_key", "gate_verdict", "gold_questions", "canon_spec");
+        for (const id of identities) {
+          const gqs = typeof id.gold_questions === "string" ? JSON.parse(id.gold_questions) : id.gold_questions || [];
+          const spec = typeof id.canon_spec === "string" ? JSON.parse(id.canon_spec) : id.canon_spec || {};
+          canonMap[id.agent_key] = {
+            verdict: id.gate_verdict,
+            questionsTotal: gqs.length,
+            questionsPassed: gqs.filter((q: any) => q.passed === true).length,
+            hasPlaybook: !!spec.process,
+          };
+        }
+      }
+    } catch { /* table/columns may not exist */ }
+
+    // Build the unified roster from registry (the canonical "can run" list)
+    const roster = registeredAgents.map((agent) => {
+      const schedule = scheduleMap[agent.key];
+      const dreamTeam = dreamTeamMap[agent.key];
+      const canon = canonMap[agent.key];
+      const hasIdentity = identitySlugs.has(agent.key) || identitySlugs.has(`${agent.key}_agent`);
+
+      return {
+        key: agent.key,
+        displayName: agent.displayName,
+        description: agent.description,
+        // Status across all systems
+        hasHandler: true, // it's in the registry
+        hasIdentity,
+        hasSchedule: !!schedule,
+        scheduleEnabled: schedule?.enabled ?? false,
+        scheduleCron: schedule?.cron ?? null,
+        lastRunAt: schedule?.lastRunAt ?? null,
+        onOrgChart: !!dreamTeam,
+        orgChartTitle: dreamTeam?.roleTitle ?? null,
+        department: dreamTeam?.department ?? null,
+        canonVerdict: canon?.verdict ?? null,
+        goldQuestionsTotal: canon?.questionsTotal ?? 0,
+        goldQuestionsPassed: canon?.questionsPassed ?? 0,
+        hasPlaybook: canon?.hasPlaybook ?? false,
+      };
+    });
+
+    // Also find orphans: things on the org chart or in identities but NOT in registry
+    const orgChartOrphans = Object.entries(dreamTeamMap)
+      .filter(([key]) => !registryKeys.has(key))
+      .map(([key, node]) => ({
+        key,
+        displayName: node.roleTitle,
+        department: node.department,
+        reason: "On org chart but no registry handler",
+      }));
+
+    const identityOrphans = AGENT_DEFINITIONS
+      .filter((d) => {
+        const possibleKeys = [d.slug, d.slug.replace(/_agent$/, "")];
+        return !possibleKeys.some((k) => registryKeys.has(k));
+      })
+      .map((d) => ({
+        key: d.slug,
+        displayName: d.displayName,
+        department: d.group,
+        reason: "Has identity definition but no registry handler",
+      }));
+
+    // Summary counts
+    const summary = {
+      totalRunnable: roster.length,
+      withSchedule: roster.filter((a) => a.hasSchedule && a.scheduleEnabled).length,
+      withIdentity: roster.filter((a) => a.hasIdentity).length,
+      onOrgChart: roster.filter((a) => a.onOrgChart).length,
+      canonGoverned: roster.filter((a) => a.goldQuestionsTotal > 0).length,
+      canonPassed: roster.filter((a) => a.canonVerdict === "PASS").length,
+      withPlaybook: roster.filter((a) => a.hasPlaybook).length,
+      orgChartOrphans: orgChartOrphans.length,
+      identityOrphans: identityOrphans.length,
+    };
+
+    res.json({
+      success: true,
+      summary,
+      roster,
+      orphans: {
+        orgChart: orgChartOrphans,
+        identity: identityOrphans,
+      },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, error: message });
   }
 });
 
