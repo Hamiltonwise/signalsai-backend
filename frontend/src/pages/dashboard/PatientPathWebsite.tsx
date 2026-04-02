@@ -24,16 +24,23 @@ export default function PatientPathWebsite() {
   const { userProfile } = useAuth();
   const orgId = userProfile?.organizationId || null;
 
-  const { data: websiteData, isLoading: isWebsiteLoading } = useQuery({
+  const { data: websiteResponse, isLoading: isWebsiteLoading } = useQuery({
     queryKey: ["client-website", orgId],
-    queryFn: async (): Promise<WebsiteInfo | null> => {
+    queryFn: async () => {
       const res = await apiGet({ path: "/user/website" });
       if (!res?.success || !res?.website) return null;
-      return res.website;
+      // Extract homepage pageId from the pages array
+      const pages = res.pages || [];
+      const homepage = pages.find((p: any) => p.name === "homepage" || p.name === "Home" || p.is_homepage) || pages[0];
+      return {
+        ...res.website,
+        pageId: homepage?.id || null,
+      } as WebsiteInfo;
     },
     enabled: !!orgId,
     staleTime: 10 * 60_000,
   });
+  const websiteData = websiteResponse ?? null;
 
   const { data: patientpathData, isLoading: isStatusLoading } = useQuery({
     queryKey: ["patientpath-status", orgId],
