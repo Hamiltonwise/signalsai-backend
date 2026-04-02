@@ -654,14 +654,16 @@ COMPETITIVE POSITION: ${latestRanking
   : "No ranking data yet. First scan pending."
 }
 
-DENTALEMR COMPETITIVE CONTEXT:
-- Primary competitor: TDO (The Dental Office), server-based endodontic software built on Microsoft Access
-- TDO launched NoteAI (standalone AI note-writing tool) in March 2026, not integrated with their PMS
-- DentalEMR is the ONLY truly cloud-based endodontic PMS
-- DentalEMR is #1 in 4/5 ChatGPT queries for endodontic software (as of Feb 2026)
-- Key positioning: cloud-native, HIPAA compliant, integrated workflows vs TDO's server-based legacy
-- Market expansion planned: perio, oral surgery, international after endo dominance secured
-- AAE 2026 (Salt Lake City, April 14-16) is the next major event
+DENTALEMR COMPETITIVE CONTEXT (verified April 2026):
+- Primary competitor: TDO (tdo4endo.com), acquired by Valsoft Corporation (Montreal roll-up acquirer) in March 2024 for ~$15M. Valsoft optimizes margins on mature software, does not invest in R&D innovation. TDO's product advantage is eroding structurally.
+- TDO still markets as "the gold standard in endodontic clinical documentation." Offers TDO Cloud (hybrid), TDO Mobile, TDO Comms+Payments.
+- DentalEMR is the ONLY truly cloud-native endodontic PMS. Full cloud since 2018.
+- DentalEMR is #1 organic search result for "cloud endodontic software" (verified April 2026).
+- DentalEMR is #1 in 4/5 ChatGPT queries for endodontic software (verified Feb 2026).
+- Other competitors: PBS Endo (Henry Schein One, on-prem), Endo-Exec/DSN (cloud v18, since 1978), EndoVision (on-prem), EndoSoft ($295/mo), CareStack (general dental with endo module).
+- Key positioning vs TDO: "TDO is now owned by a holding company that acquires and holds software. DentalEMR is founder-led and actively building. Cloud-native vs server-based. Integrated vs bolted-on."
+- AAE 2026: Salt Lake City, April 14-16. DentalEMR has 10x20 booth. This is the biggest annual sales event.
+- Market expansion planned: perio, oral surgery, international after endo dominance secured.
 
 RULES:
 - Never use em-dashes. Use commas or periods.
