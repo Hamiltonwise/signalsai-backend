@@ -75,6 +75,20 @@ const Compare = React.lazy(() => import("./pages/Compare"));
 const LegalPracticeMarketing = React.lazy(() => import("./pages/content/LegalPracticeMarketing"));
 const FinancialAdvisorMarketing = React.lazy(() => import("./pages/content/FinancialAdvisorMarketing"));
 const OptometristMarketing = React.lazy(() => import("./pages/content/OptometristMarketing"));
+// 13 content/SEO pages that were built but never routed. Each one is a vertical.
+const BusinessClarityHub = React.lazy(() => import("./pages/content/BusinessClarityHub"));
+const ChiropractorMarketing = React.lazy(() => import("./pages/content/ChiropractorMarketing"));
+const CPAMarketing = React.lazy(() => import("./pages/content/CPAMarketing"));
+const DentalMarketing = React.lazy(() => import("./pages/content/DentalMarketing"));
+const DermatologistMarketing = React.lazy(() => import("./pages/content/DermatologistMarketing"));
+const GoogleReviewsGuide = React.lazy(() => import("./pages/content/GoogleReviewsGuide"));
+const LocalServiceBusinessClarity = React.lazy(() => import("./pages/content/LocalServiceBusinessClarity"));
+const MedSpaMarketing = React.lazy(() => import("./pages/content/MedSpaMarketing"));
+const OrthodontistMarketing = React.lazy(() => import("./pages/content/OrthodontistMarketing"));
+const PediatricDentistMarketing = React.lazy(() => import("./pages/content/PediatricDentistMarketing"));
+const PlasticSurgeonMarketing = React.lazy(() => import("./pages/content/PlasticSurgeonMarketing"));
+const PTMarketing = React.lazy(() => import("./pages/content/PTMarketing"));
+const VeterinarianMarketing = React.lazy(() => import("./pages/content/VeterinarianMarketing"));
 const Locations = React.lazy(() => import("./pages/dashboard/Locations"));
 // Intelligence replaced by IntelligenceDashboard (WO-8: uses /api/intelligence, not admin API)
 // import About from "./pages/About"; // Not built yet
@@ -225,11 +239,25 @@ function App() {
               <Route path="/endodontist-marketing" element={<EndodontistMarketing />} />
               <Route path="/gp-referral-intelligence" element={<GPReferralIntelligenceContent />} />
 
-              {/* SEO content pages — vertical marketing */}
+              {/* SEO/AEO content pages — every vertical gets a page.
+                  Each page is an inbound funnel for that vertical.
+                  13 pages were built but never routed. Now they're live. */}
               <Route path="/law-firm-marketing" element={<LegalPracticeMarketing />} />
               <Route path="/financial-advisor-marketing" element={<FinancialAdvisorMarketing />} />
               <Route path="/optometrist-marketing" element={<OptometristMarketing />} />
-              {/* <Route path="/physical-therapist-marketing" element={<PhysicalTherapistMarketing />} /> -- not built yet */}
+              <Route path="/chiropractor-marketing" element={<ChiropractorMarketing />} />
+              <Route path="/cpa-marketing" element={<CPAMarketing />} />
+              <Route path="/dental-marketing" element={<DentalMarketing />} />
+              <Route path="/dermatologist-marketing" element={<DermatologistMarketing />} />
+              <Route path="/med-spa-marketing" element={<MedSpaMarketing />} />
+              <Route path="/orthodontist-marketing" element={<OrthodontistMarketing />} />
+              <Route path="/pediatric-dentist-marketing" element={<PediatricDentistMarketing />} />
+              <Route path="/plastic-surgeon-marketing" element={<PlasticSurgeonMarketing />} />
+              <Route path="/physical-therapist-marketing" element={<PTMarketing />} />
+              <Route path="/veterinarian-marketing" element={<VeterinarianMarketing />} />
+              <Route path="/google-reviews-guide" element={<GoogleReviewsGuide />} />
+              <Route path="/business-clarity" element={<BusinessClarityHub />} />
+              <Route path="/local-service-business-clarity" element={<LocalServiceBusinessClarity />} />
 
               {/* Public pages — no auth */}
               <Route path="/pricing" element={<PricingPage />} />
