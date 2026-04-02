@@ -4,13 +4,24 @@
  * Runs every 60 seconds via BullMQ repeatable job.
  * Checks `schedules` table for due jobs, executes them via the agent registry,
  * and records results in `schedule_runs`.
+ *
+ * Security stack (every agent flows through this automatically):
+ *   1. Kill Switch check (blocks ALL agents if active)
+ *   2. Circuit Breaker check (blocks agents with 3+ consecutive failures)
+ *   3. Canon Gate check (FAIL=blocked, PENDING=observe, PASS=full)
+ *   4. Agent Identity startRun (UUID run tracking, quarantine check)
+ *   5. Handler execution
+ *   6. Circuit Breaker success/failure recording
+ *   7. Agent Identity endRun (run lifecycle close)
  */
 
 import { Job } from "bullmq";
 import { CronExpressionParser } from "cron-parser";
 import { ScheduleModel, ScheduleRunModel, ISchedule } from "../../models/ScheduleModel";
 import { getAgentHandler } from "../../services/agentRegistry";
-import { checkGateStatus } from "../../services/agents/agentIdentity";
+import { checkGateStatus, startRun, endRun } from "../../services/agents/agentIdentity";
+import { checkCircuit, recordSuccess, recordFailure } from "../../services/agents/circuitBreaker";
+import { isKillSwitchActive } from "../../services/agents/killSwitch";
 
 function computeNextRunAt(schedule: ISchedule): Date {
   if (schedule.schedule_type === "cron" && schedule.cron_expression) {
@@ -30,6 +41,19 @@ function computeNextRunAt(schedule: ISchedule): Date {
 }
 
 export async function processSchedulerTick(_job: Job): Promise<void> {
+  // ── Layer 1: Kill Switch ──
+  // If active, no agent runs. Period.
+  try {
+    const killSwitch = await isKillSwitchActive();
+    if (killSwitch.active) {
+      console.log(`[SCHEDULER] KILL SWITCH ACTIVE: "${killSwitch.reason}" -- all agents halted`);
+      return;
+    }
+  } catch {
+    // Kill switch check failure should not block all agents
+    // Circuit breaker has its own sync check as backup
+  }
+
   const dueSchedules = await ScheduleModel.findDueSchedules();
 
   if (dueSchedules.length === 0) return;
@@ -40,7 +64,7 @@ export async function processSchedulerTick(_job: Job): Promise<void> {
     // Skip if already running
     const isRunning = await ScheduleRunModel.hasActiveRun(schedule.id);
     if (isRunning) {
-      console.log(`[SCHEDULER] Skipping "${schedule.agent_key}" — already running`);
+      console.log(`[SCHEDULER] Skipping "${schedule.agent_key}" -- already running`);
       continue;
     }
 
@@ -51,7 +75,17 @@ export async function processSchedulerTick(_job: Job): Promise<void> {
       continue;
     }
 
-    // Canon gate check: three levels
+    // ── Layer 2: Circuit Breaker ──
+    // Blocks agents with 3+ consecutive failures (5-min cooldown)
+    const circuit = checkCircuit(schedule.agent_key);
+    if (!circuit.allowed) {
+      console.log(`[SCHEDULER] CIRCUIT OPEN "${schedule.agent_key}" -- ${circuit.reason}`);
+      const nextRunAt = computeNextRunAt(schedule);
+      await ScheduleModel.updateById(schedule.id, { next_run_at: nextRunAt });
+      continue;
+    }
+
+    // ── Layer 3: Canon Gate ──
     //   FAIL    -> fully stopped, skip entirely
     //   PENDING -> observe mode (runs, but action scopes denied by checkScope)
     //   PASS    -> full autonomy
@@ -63,16 +97,48 @@ export async function processSchedulerTick(_job: Job): Promise<void> {
       continue;
     }
 
-    const modeLabel = gate.mode === "observe" ? " [OBSERVE MODE]" : "";
-    console.log(`[SCHEDULER] Executing "${schedule.agent_key}" (${agent.displayName})${modeLabel}`);
+    const modeLabel = gate.mode === "observe" ? " [OBSERVE]" : "";
 
-    // Create run record
+    // ── Layer 4: Agent Identity ──
+    // Start a tracked run with UUID. Checks quarantine status.
+    let identityRun: { agentId: string; runId: string } | null = null;
+    try {
+      identityRun = await startRun(schedule.agent_key);
+      if (!identityRun) {
+        console.log(`[SCHEDULER] IDENTITY BLOCKED "${schedule.agent_key}" -- quarantined or unknown`);
+        const nextRunAt = computeNextRunAt(schedule);
+        await ScheduleModel.updateById(schedule.id, { next_run_at: nextRunAt });
+        continue;
+      }
+    } catch {
+      // Identity system failure should not block agent execution
+      // Log it but continue
+      console.warn(`[SCHEDULER] Identity startRun failed for "${schedule.agent_key}", continuing without tracking`);
+    }
+
+    console.log(
+      `[SCHEDULER] Executing "${schedule.agent_key}" (${agent.displayName})${modeLabel}` +
+      (identityRun ? ` [run:${identityRun.runId.slice(0, 8)}]` : ""),
+    );
+
+    // ── Layer 5: Handler Execution ──
     const run = await ScheduleRunModel.createRun(schedule.id);
 
     try {
       const result = await agent.handler();
 
       await ScheduleRunModel.completeRun(run.id, result.summary);
+
+      // ── Layer 6: Record success ──
+      recordSuccess(schedule.agent_key);
+
+      if (identityRun) {
+        try {
+          await endRun(identityRun.agentId, identityRun.runId, true, "Completed successfully");
+        } catch {
+          // Non-critical
+        }
+      }
 
       // Update schedule: last_run_at + next_run_at
       const nextRunAt = computeNextRunAt(schedule);
@@ -83,8 +149,20 @@ export async function processSchedulerTick(_job: Job): Promise<void> {
 
       console.log(`[SCHEDULER] "${schedule.agent_key}" completed. Next run: ${nextRunAt.toISOString()}`);
     } catch (error: any) {
-      console.error(`[SCHEDULER] "${schedule.agent_key}" failed:`, error.message);
-      await ScheduleRunModel.failRun(run.id, error.message || String(error));
+      const errorMsg = error.message || String(error);
+      console.error(`[SCHEDULER] "${schedule.agent_key}" failed:`, errorMsg);
+      await ScheduleRunModel.failRun(run.id, errorMsg);
+
+      // ── Layer 6: Record failure ──
+      recordFailure(schedule.agent_key, errorMsg);
+
+      if (identityRun) {
+        try {
+          await endRun(identityRun.agentId, identityRun.runId, false, errorMsg);
+        } catch {
+          // Non-critical
+        }
+      }
 
       // Still advance next_run_at so we don't retry immediately
       const nextRunAt = computeNextRunAt(schedule);
