@@ -166,11 +166,31 @@ function extractInstantFinding(jsonData: any[]): {
       lower.includes("refer") ||
       lower.includes("source") ||
       lower.includes("doctor") ||
-      lower.includes("provider")
+      lower.includes("provider") ||
+      lower.includes("found us") ||
+      lower.includes("how") ||
+      lower.includes("lead") ||
+      lower.includes("channel") ||
+      lower.includes("origin") ||
+      lower.includes("acquired") ||
+      lower.includes("came from")
     );
   });
 
-  if (!sourceColumn) return { totalRecords };
+  if (!sourceColumn) {
+    // Check if the data looks like freeform text (single column, narrative content)
+    const isFreeform = headers.length === 1 && jsonData.some((row) => {
+      const val = String(Object.values(row)[0] || "");
+      return val.length > 30 || val.includes(" - ") || val.includes("=");
+    });
+
+    return {
+      totalRecords,
+      topSource: isFreeform
+        ? undefined  // Signal that manual entry might work better
+        : undefined,
+    };
+  }
 
   const counts: Record<string, number> = {};
   for (const row of jsonData) {
