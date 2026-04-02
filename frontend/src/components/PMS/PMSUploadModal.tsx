@@ -38,6 +38,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
   const [message, setMessage] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadResult, setUploadResult] = useState<any>(null);
+  const [expandedSource, setExpandedSource] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processingStorageKey = useMemo(
     () => `pmsProcessing:${clientId || "artfulorthodontics.com"}`,
@@ -467,18 +468,60 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: 0.7 + i * 0.1 }}
-                                className="flex items-center justify-between px-3 py-2.5 bg-white border border-gray-100 rounded-xl"
+                                className="bg-white border border-gray-100 rounded-xl overflow-hidden"
                               >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="text-xs font-semibold text-[#D56753] w-5 text-right shrink-0">
-                                    {i + 1}.
-                                  </span>
-                                  <span className="text-sm text-gray-800 truncate">{source.name}</span>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                  <span className="text-xs text-gray-500">{source.uniquePatients} patient{source.uniquePatients !== 1 ? "s" : ""}</span>
-                                  <span className="text-sm font-semibold text-[#1A1D23]">${Number(source.totalRevenue).toLocaleString()}</span>
-                                </div>
+                                <button
+                                  onClick={() => setExpandedSource(expandedSource === source.name ? null : source.name)}
+                                  className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-xs font-semibold text-[#D56753] w-5 text-right shrink-0">
+                                      {i + 1}.
+                                    </span>
+                                    <span className="text-sm text-gray-800 truncate">{source.name}</span>
+                                    {source.internalNotes?.length > 0 && (
+                                      <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded border border-amber-200">note</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    <span className="text-xs text-gray-500">{source.uniquePatients} patient{source.uniquePatients !== 1 ? "s" : ""}</span>
+                                    <span className="text-sm font-semibold text-[#1A1D23]">${Number(source.totalRevenue).toLocaleString()}</span>
+                                  </div>
+                                </button>
+
+                                {/* The math: expandable detail */}
+                                {expandedSource === source.name && source.details?.length > 0 && (
+                                  <div className="px-3 pb-3 border-t border-gray-50">
+                                    {source.internalNotes?.length > 0 && (
+                                      <div className="mt-2 mb-2 px-2 py-1.5 bg-amber-50 border border-amber-100 rounded-lg">
+                                        <p className="text-[11px] text-amber-700">
+                                          Internal note: {source.internalNotes.join("; ")}
+                                        </p>
+                                      </div>
+                                    )}
+                                    <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                                      {source.details.slice(0, 30).map((d: any, j: number) => (
+                                        <div key={j} className="flex items-center justify-between text-[11px] px-2 py-1 rounded hover:bg-gray-50">
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-gray-400 w-12 shrink-0">{d.date || "N/A"}</span>
+                                            <span className="text-gray-600 truncate">{d.procedure || "Visit"}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            <span className="text-gray-400">{d.provider}</span>
+                                            <span className="font-medium text-gray-700">${Number(d.revenue || 0).toLocaleString()}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                      {source.details.length > 30 && (
+                                        <p className="text-[10px] text-gray-400 text-center py-1">+{source.details.length - 30} more</p>
+                                      )}
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 mt-2 px-2">
+                                      {source.lineItems} line items across {source.uniquePatients} unique patient{source.uniquePatients !== 1 ? "s" : ""}
+                                      {source.providers?.length > 1 && ` (providers: ${source.providers.join(", ")})`}
+                                    </p>
+                                  </div>
+                                )}
                               </motion.div>
                             ))}
                             {uploadResult.referralSummary.length > 5 && (

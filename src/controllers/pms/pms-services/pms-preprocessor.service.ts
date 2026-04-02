@@ -20,12 +20,21 @@ export interface HipaaReport {
   scrubbed: boolean;
 }
 
+export interface ReferralSourceDetail {
+  date: string;          // Year-month (HIPAA safe)
+  procedure: string;     // Procedure code/description
+  revenue: number;       // Adjusted fee
+  provider: string;      // Treating provider
+}
+
 export interface ReferralSource {
   name: string;
   uniquePatients: number;
   totalRevenue: number;
   lineItems: number;
   providers: string[];
+  details: ReferralSourceDetail[];  // The math behind the number
+  internalNotes: string[];          // Captured notes like "DO NOT SEND EMR REPORT"
 }
 
 export interface PreprocessResult {
@@ -346,15 +355,25 @@ export function preprocessPmsData(rawRows: Record<string, unknown>[]): Preproces
     if (provider) existing.providers.add(provider);
   }
 
-  // Aggregate by referral source
+  // Detect procedure and date columns for detail extraction
+  const procedureCol = headers.find(h => /procedure|service|treatment.*type|description/i.test(h));
+  const providerCol = headers.find(h => /provider/i.test(h));
+
+  // Capture internal notes from referring practice names (e.g., "DO NOT SEND EMR REPORT")
+  const internalNotesMap = new Map<string, Set<string>>();
+  const notePattern = /\(([^)]*(?:DO NOT|INTERNAL|NOTE|IMPORTANT)[^)]*)\)/gi;
+
+  // Aggregate by referral source with full detail
   const sourceMap = new Map<string, {
     patients: Set<string>;
     totalRevenue: number;
     lineItems: number;
     providers: Set<string>;
+    details: ReferralSourceDetail[];
+    internalNotes: Set<string>;
   }>();
 
-  for (const [patientKey, data] of patientMap) {
+  for (const [dedupKey, data] of patientMap) {
     const source = data.source;
     if (!sourceMap.has(source)) {
       sourceMap.set(source, {
@@ -362,13 +381,40 @@ export function preprocessPmsData(rawRows: Record<string, unknown>[]): Preproces
         totalRevenue: 0,
         lineItems: 0,
         providers: new Set(),
+        details: [],
+        internalNotes: new Set(),
       });
     }
     const s = sourceMap.get(source)!;
-    s.patients.add(patientKey);
+    s.patients.add(dedupKey);
     s.totalRevenue += data.revenue;
     s.lineItems += data.rows.length;
     for (const p of data.providers) s.providers.add(p);
+
+    // Capture line-item details (the math behind the number)
+    for (const row of data.rows) {
+      const dateCol = dateColumns[0];
+      s.details.push({
+        date: dateCol ? String(row[dateCol] || "").trim() : "",
+        procedure: procedureCol ? String(row[procedureCol] || "").trim() : "",
+        revenue: revenueColumn ? parseRevenue(row[revenueColumn]) : 0,
+        provider: providerCol ? String(row[providerCol] || "").trim() : "",
+      });
+    }
+  }
+
+  // Extract internal notes from the original (unscrubbed) referring practice names
+  for (const row of rawRows) {
+    if (referralColumn) {
+      const rawRef = String(row[referralColumn] || "");
+      let match;
+      notePattern.lastIndex = 0;
+      while ((match = notePattern.exec(rawRef)) !== null) {
+        const source = cleanSourceName(rawRef);
+        if (!internalNotesMap.has(source)) internalNotesMap.set(source, new Set());
+        internalNotesMap.get(source)!.add(match[1].trim());
+      }
+    }
   }
 
   // Build sorted referral summary
@@ -379,6 +425,8 @@ export function preprocessPmsData(rawRows: Record<string, unknown>[]): Preproces
       totalRevenue: Math.round(data.totalRevenue * 100) / 100,
       lineItems: data.lineItems,
       providers: Array.from(data.providers),
+      details: data.details.sort((a, b) => a.date.localeCompare(b.date)),
+      internalNotes: Array.from(internalNotesMap.get(name) || []),
     }))
     .sort((a, b) => b.uniquePatients - a.uniquePatients);
 
