@@ -211,6 +211,7 @@ Rules:
 - Never change anything not mentioned in the instructions.
 - For "add" changes, oldContent should be the element after which to insert (or empty string to append).
 - For "remove" changes, newContent should be an empty string.
+- IMPORTANT: When the owner asks to change an email address, phone number, or URL, you must change BOTH the visible text AND the href/mailto/tel attribute. For example, changing "support@example.com" to "info@example.com" requires replacing the visible text AND updating href="mailto:support@example.com" to href="mailto:info@example.com". Return separate changes if they appear in different sections, but always update both the display text and the link target.
 - Return ONLY the JSON array, no explanation.`;
 
   const userMessage = `Current site sections:\n\n${sectionSummary}\n\nEdit instructions from the practice owner:\n${input.instructions}`;
