@@ -28,6 +28,12 @@ import {
   getMetricNameForAction,
   type ActionType,
 } from "../services/feedbackLoop";
+import {
+  prepareAgentContext,
+  recordAgentAction,
+  closeLoop,
+} from "../services/agents/agentRuntime";
+import { pollForDelivery } from "../services/agents/goNoGo";
 
 /**
  * Fallback: When Monday email fails to send, create an in-app notification
@@ -560,8 +566,19 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
 /**
  * Send Monday emails for ALL active orgs.
+ * Now wired through the agent runtime (System Conductor quality gates)
+ * and Go/No-Go polling (4-voter approval before each send).
  */
 export async function sendAllMondayEmails(): Promise<{ sent: number; total: number }> {
+  const agentCtx = { agentName: "monday_email", topic: "weekly_brief" };
+
+  // Runtime Step 1-4: prepare context
+  const runtime = await prepareAgentContext(agentCtx);
+  if (!runtime.orchestratorApproval.allowed) {
+    console.log(`[MondayEmail] Orchestrator blocked: ${runtime.orchestratorApproval.reason}`);
+    return { sent: 0, total: 0 };
+  }
+
   // Include subscribed orgs AND Checkup-originated signups (billing after TTFV, not at Step 4)
   const orgs = await db("organizations")
     .where(function () {
@@ -572,15 +589,49 @@ export async function sendAllMondayEmails(): Promise<{ sent: number; total: numb
     .select("id", "name");
 
   let sent = 0;
+  let held = 0;
   for (const org of orgs) {
     try {
+      // Go/No-Go poll: 4 voters must all say GO before this email ships
+      // Intelligence (findings ready?), Score Recalc (score fresh?),
+      // Safety (PII check), Orchestrator (rate limit)
+      const goNoGo = await pollForDelivery(org.id, "monday_email");
+      if (!goNoGo.cleared) {
+        console.log(`[MondayEmail] HELD for ${org.name}: ${goNoGo.heldBy} -- ${goNoGo.heldReason}`);
+        held++;
+        continue;
+      }
+
       const success = await sendMondayEmailForOrg(org.id);
-      if (success) sent++;
+      if (success) {
+        sent++;
+        // Runtime Step 5: record through the Conductor
+        await recordAgentAction(
+          { ...agentCtx, orgId: org.id },
+          {
+            type: "email_queued",
+            headline: `Monday brief sent to ${org.name}`,
+            detail: `Weekly intelligence email delivered`,
+            humanNeed: "safety",
+            economicConsequence: "Continued engagement reduces 30-day churn risk",
+          },
+        );
+      }
     } catch (err: any) {
       console.error(`[MondayEmail] Error for ${org.name}:`, err.message);
     }
   }
 
-  console.log(`[MondayEmail] Sent ${sent}/${orgs.length} emails`);
+  // Runtime Step 6: close the loop
+  await closeLoop(agentCtx, {
+    expected: `Send weekly brief to all eligible orgs`,
+    actual: `Sent ${sent}/${orgs.length} emails, ${held} held by Go/No-Go`,
+    success: sent > 0 || orgs.length === 0,
+    learning: held > 0
+      ? `${held} emails held by Go/No-Go. Check behavioral_events for go_no_go.held details.`
+      : undefined,
+  });
+
+  console.log(`[MondayEmail] Sent ${sent}/${orgs.length} emails (${held} held by Go/No-Go)`);
   return { sent, total: orgs.length };
 }

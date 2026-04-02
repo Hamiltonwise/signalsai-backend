@@ -192,6 +192,9 @@ export const AGENT_DEFINITIONS: Omit<AgentIdentity, "id" | "createdAt" | "lastRu
   { slug: "clo_agent", displayName: "CLO Agent", group: "governance", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.governance], maxTokenBudget: 30000, schedule: "0 9 * * 1", description: "Legal/IP monitoring and compliance flags" },
   { slug: "morning_briefing", displayName: "Morning Briefing", group: "governance", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.governance], maxTokenBudget: 25000, schedule: "30 6 * * *", description: "Daily synthesis of overnight signals for Corey" },
 
+  // ── Governance Group (continued) ──
+  { slug: "agent_auditor", displayName: "Agent Auditor", group: "governance", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.governance], maxTokenBudget: 30000, schedule: "0 23 * * *", description: "Daily audit of all agents: broken contracts, drift signals, missing wiring, Canon compliance" },
+
   // ── Personal Group ──
   { slug: "corey_agent", displayName: "Corey's Personal Agent", group: "personal", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.personal], maxTokenBudget: 30000, schedule: "0 6 * * *", description: "Daily brief for Corey: revenue, decisions, priorities" },
   { slug: "jo_agent", displayName: "Jo's Personal Agent", group: "personal", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.personal], maxTokenBudget: 30000, schedule: "0 6 * * *", description: "Daily brief for Jo: client health, ops tasks, flags" },
@@ -416,6 +419,19 @@ export interface CanonSpec {
   expectedBehavior: string;
   constraints: string[];
   owner: string;
+  // Operational process (the employee handbook)
+  process?: {
+    steps: string[];
+    deliversTo: string;
+    deliversFormat: string;
+    triggeredBy: string;
+    feedbackLoop: string;
+    successMetric: string;
+  };
+  // Gate Packet fields
+  citations?: string[];
+  lineage?: string;
+  freshness?: string;
 }
 
 export type GoldQuestionCategory = "BUG" | "DATA" | "CANON";

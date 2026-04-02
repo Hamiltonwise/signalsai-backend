@@ -16,6 +16,11 @@
  */
 
 import { db } from "../../database/connection";
+import {
+  prepareAgentContext,
+  recordAgentAction,
+  closeLoop,
+} from "./agentRuntime";
 
 // -- Types ------------------------------------------------------------------
 
@@ -48,6 +53,15 @@ const TRIAL_EXPIRY_WARNING_DAYS = 7;
  * Run the CS Agent proactive intervention scan for all active orgs.
  */
 export async function runCSAgentDaily(): Promise<CSAgentSummary> {
+  const agentCtx = { agentName: "cs_agent", topic: "proactive_intervention" };
+
+  // Runtime Step 1-4: prepare context (conflict check, orchestrator, heuristics)
+  const runtime = await prepareAgentContext(agentCtx);
+  if (!runtime.orchestratorApproval.allowed) {
+    console.log(`[CSAgent] Orchestrator blocked: ${runtime.orchestratorApproval.reason}`);
+    return { scanned: 0, interventions: 0, details: [], processedAt: new Date().toISOString() };
+  }
+
   const orgs = await db("organizations")
     .whereIn("subscription_status", ["active", "trial"])
     .select(
@@ -77,6 +91,20 @@ export async function runCSAgentDaily(): Promise<CSAgentSummary> {
       for (const intervention of orgInterventions) {
         interventions.push(intervention);
         await writeInterventionEvent(intervention);
+
+        // Runtime Step 5: record each intervention through the runtime
+        // This routes through the System Conductor for quality gating
+        // and writes to agent_results for dashboard visibility
+        await recordAgentAction(
+          { ...agentCtx, orgId: intervention.orgId },
+          {
+            type: "notification",
+            headline: `${intervention.triggerType}: ${intervention.orgName}`,
+            detail: intervention.message,
+            humanNeed: intervention.humanNeed,
+            economicConsequence: intervention.retentionValue,
+          },
+        );
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -93,6 +121,16 @@ export async function runCSAgentDaily(): Promise<CSAgentSummary> {
     details: interventions,
     processedAt: new Date().toISOString(),
   };
+
+  // Runtime Step 6: close the loop
+  await closeLoop(agentCtx, {
+    expected: `Scan all orgs, generate proactive interventions`,
+    actual: `Scanned ${scanned} orgs, ${interventions.length} interventions`,
+    success: true,
+    learning: interventions.length === 0
+      ? "No interventions generated. All orgs healthy or rate-limited."
+      : `Top trigger: ${interventions[0]?.triggerType}`,
+  });
 
   console.log(
     `[CSAgent] Scanned ${scanned} orgs, generated ${interventions.length} proactive interventions`,

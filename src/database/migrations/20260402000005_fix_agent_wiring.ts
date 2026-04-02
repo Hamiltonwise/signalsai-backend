@@ -120,6 +120,7 @@ export async function up(knex: Knex): Promise<void> {
       "corey_agent": "corey_agent",
       "jo_agent": "jo_agent",
       "dave_agent": "dave_agent",
+      "agent_auditor": "agent_auditor",
     };
 
     for (const [slug, agentKey] of Object.entries(identityKeyMap)) {
@@ -151,6 +152,7 @@ export async function up(knex: Knex): Promise<void> {
       { agent_key: "trend_scout", display_name: "Trend Scout", cron: "0 5 * * 5", desc: "Weekly trend detection" },
       { agent_key: "real_estate_agent", display_name: "Real Estate Agent", cron: "0 3 * * 6", desc: "Weekly real estate market scan" },
       { agent_key: "foundation_operations", display_name: "Foundation Operations", cron: "0 3 * * 1", desc: "Weekly foundation ops check" },
+      { agent_key: "agent_auditor", display_name: "Agent Auditor", cron: "0 23 * * *", desc: "Daily agent system health audit: broken, drifting, missing" },
     ];
 
     for (const sched of missingSchedules) {

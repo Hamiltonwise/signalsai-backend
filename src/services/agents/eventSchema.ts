@@ -87,6 +87,9 @@ export const EVENT_TYPES = {
 
   // ── Learning Agent ──
   LEARNING_CALIBRATION: "learning.calibration",
+
+  // ── Agent Auditor ──
+  AGENT_AUDITOR_FINDING: "agent_auditor.finding",
 } as const;
 
 export type EventType = typeof EVENT_TYPES[keyof typeof EVENT_TYPES];
@@ -216,4 +219,5 @@ export const EVENT_CONSUMERS: Record<string, string[]> = {
   [EVENT_TYPES.CIRCUIT_BREAKER_STATE_CHANGE]: ["morning_briefing"],
   [EVENT_TYPES.AGENT_QUARANTINED]: ["morning_briefing"],
   [EVENT_TYPES.GO_NO_GO_HELD]: ["morning_briefing"],
+  [EVENT_TYPES.AGENT_AUDITOR_FINDING]: ["morning_briefing"],
 };

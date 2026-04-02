@@ -45,6 +45,7 @@ import { runProgrammaticSEOAnalysis } from "./agents/programmaticSEOAgent";
 import { generateDailyBrief as generateCoreyBrief } from "./personalAgents/coreyAgent";
 import { generateDailyBrief as generateJoBrief } from "./personalAgents/joAgent";
 import { generateDailyBrief as generateDaveBrief } from "./personalAgents/daveAgent";
+import { runAgentAudit } from "./agents/agentAuditor";
 import { db } from "../database/connection";
 import { processWeek1Win } from "../workers/processors/week1Win.processor";
 
@@ -379,6 +380,14 @@ const registry: Record<string, AgentHandler> = {
     handler: async () => {
       const joUser = await db("users").where({ email: "jo@getalloro.com" }).first("id");
       const result = await generateJoBrief(joUser?.id || 2);
+      return { summary: result as unknown as Record<string, unknown> };
+    },
+  },
+  agent_auditor: {
+    displayName: "Agent Auditor",
+    description: "Daily system health check. Audits all agents for broken contracts, drift signals, missing wiring, and Canon compliance gaps.",
+    handler: async () => {
+      const result = await runAgentAudit();
       return { summary: result as unknown as Record<string, unknown> };
     },
   },

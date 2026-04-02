@@ -644,10 +644,67 @@ function SimulationPanel({ agent }: { agent: CanonAgent }) {
 
 // ── Expanded Agent Detail ──────────────────────────────────────────
 
+function ProcessPanel({ spec }: { spec: CanonSpec }) {
+  const process = spec.process;
+  if (!process) return null;
+
+  return (
+    <div className="space-y-3">
+      <h4 className="text-sm font-semibold text-[#1A1D23]">Process</h4>
+      <div className="space-y-2.5">
+        {/* Steps */}
+        <div>
+          <p className="text-xs font-medium text-gray-500 mb-1.5">Steps</p>
+          <div className="space-y-1">
+            {process.steps.map((step, i) => (
+              <p key={i} className="text-xs text-[#1A1D23] leading-relaxed pl-1">{step}</p>
+            ))}
+          </div>
+        </div>
+
+        {/* Delivery */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-0.5">Delivers to</p>
+            <p className="text-xs text-[#1A1D23] leading-relaxed">{process.deliversTo}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-0.5">Format</p>
+            <p className="text-xs text-[#1A1D23] leading-relaxed">{process.deliversFormat}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-0.5">Triggered by</p>
+            <p className="text-xs text-[#1A1D23] leading-relaxed">{process.triggeredBy}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-0.5">Success metric</p>
+            <p className="text-xs text-[#1A1D23] leading-relaxed">{process.successMetric}</p>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs font-medium text-gray-500 mb-0.5">Feedback loop</p>
+          <p className="text-xs text-[#1A1D23] leading-relaxed">{process.feedbackLoop}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AgentDetail({ agent }: { agent: CanonAgent }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-6 mt-2 mb-1">
       <div className="text-sm text-gray-500">{agent.description}</div>
+      {/* Process playbook (the employee handbook) */}
+      {agent.canon_spec?.process && (
+        <>
+          <ProcessPanel spec={agent.canon_spec} />
+          <div className="border-t border-gray-100" />
+        </>
+      )}
       <SimulationPanel agent={agent} />
       <div className="border-t border-gray-100" />
       <SpecEditor agent={agent} />

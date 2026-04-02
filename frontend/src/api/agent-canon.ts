@@ -9,6 +9,17 @@ export interface CanonSpec {
   expectedBehavior: string;
   constraints: string[];
   owner: string;
+  process?: {
+    steps: string[];
+    deliversTo: string;
+    deliversFormat: string;
+    triggeredBy: string;
+    feedbackLoop: string;
+    successMetric: string;
+  };
+  citations?: string[];
+  lineage?: string;
+  freshness?: string;
 }
 
 export type GoldQuestionCategory = "BUG" | "DATA" | "CANON";
