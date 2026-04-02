@@ -4,11 +4,12 @@
  */
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
 import MarketingLayout from "../../components/marketing/MarketingLayout";
 
 export default function FoundationApply() {
+  const navigate = useNavigate();
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -42,6 +43,13 @@ export default function FoundationApply() {
       if (!res.ok || !data.success) {
         setSubmitError(data.error || "Something went wrong. Please try again.");
         setSubmitting(false);
+        return;
+      }
+
+      // Auto-login if token returned (immediate access)
+      if (data.token) {
+        localStorage.setItem("auth_token", data.token);
+        navigate("/owner-profile", { replace: true });
         return;
       }
 

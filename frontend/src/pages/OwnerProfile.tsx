@@ -78,8 +78,9 @@ export default function OwnerProfile() {
   };
 
   const handleSkip = async () => {
-    // Mark as skipped so it shows once more on next login
-    localStorage.setItem("owner_profile_skipped", "1");
+    // Increment skip count. After 3 skips, dashboard stops redirecting here.
+    const current = parseInt(localStorage.getItem("owner_profile_skip_count") || "0", 10);
+    localStorage.setItem("owner_profile_skip_count", String(current + 1));
     navigate("/dashboard", { replace: true });
   };
 

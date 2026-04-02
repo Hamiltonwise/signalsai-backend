@@ -94,6 +94,18 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   // Must have active subscription OR be a Checkup-originated signup (billing after TTFV, not at Step 4)
   if (org.subscription_status !== "active" && !org.checkup_score && !org.onboarding_completed) return false;
 
+  // Community count: how many business owners received a brief this week
+  // "Clean week for you and 89 others." Breaks the loneliness.
+  let communityCount: number | null = null;
+  try {
+    const result = await db("organizations")
+      .whereNotNull("owner_user_id")
+      .where(function() { this.where("subscription_status", "active").orWhereNotNull("checkup_score"); })
+      .count("id as cnt")
+      .first();
+    communityCount = parseInt(String(result?.cnt || 0), 10) || null;
+  } catch { /* organizations table structure may vary */ }
+
   // Get doctor info
   const orgUser = await db("organization_users")
     .where({ organization_id: orgId, role: "admin" })
@@ -110,7 +122,9 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   const ownerProfile = org.owner_profile
     ? (typeof org.owner_profile === "string" ? JSON.parse(org.owner_profile) : org.owner_profile)
     : null;
-  const archetype: string = org.owner_archetype || "craftsman";
+  const archetypeConfidence: number = parseFloat(org.archetype_confidence) || 0;
+  // Only use archetype if detection confidence is above 0.5. A wrong read is worse than a generic one.
+  const archetype: string = (org.owner_archetype && archetypeConfidence >= 0.5) ? org.owner_archetype : "default";
   const confidenceScore: number | null = ownerProfile?.confidence_score ?? null;
   const personalGoal: string | null = ownerProfile?.personal_goal ?? null;
 
@@ -370,7 +384,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         totalCompetitors,
         city,
         archetype,
-        personalGoal,
+        communityCount,
       });
 
       if (success) {
@@ -497,7 +511,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
               totalCompetitors: totalCompetitorsCW,
               city: cityCW,
               archetype,
-              personalGoal,
+              communityCount,
             });
             if (success) {
               console.log(`[MondayEmail] Sent clean week email (steady, no activity) to ${user.email} for ${org.name}`);

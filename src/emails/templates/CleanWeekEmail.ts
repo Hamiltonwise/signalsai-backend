@@ -29,6 +29,7 @@ export interface CleanWeekData {
   city: string | null;
   archetype?: string | null;
   personalGoal?: string | null;
+  communityCount?: number | null;
 }
 
 export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> {
@@ -40,7 +41,7 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
     totalCompetitors,
     city,
     archetype,
-    personalGoal,
+    communityCount,
   } = data;
 
   const subjectLine = `${firstName}, clean week. Nothing moved against you.`;
@@ -52,7 +53,7 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
       : "Your position held. Same as last week. That is what consistency looks like.";
 
   const content = `
-    <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Monday Brief</p>
+    <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Monday Brief</p>
     <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND_COLORS.navy};">Clean week.</h1>
     <p style="margin: 0 0 20px; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">${businessName}</p>
 
@@ -67,8 +68,10 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
     </p>
 
     <p style="margin: 0 0 24px; color: ${BRAND_COLORS.darkGray}; font-size: 15px; line-height: 1.6;">
-      ${archetype === "survivor" ? "That stability is yours. You earned it." : archetype === "builder" ? "Use the calm. This is when you make moves." : personalGoal ? `Enjoy the week. Maybe use the quiet for ${personalGoal.toLowerCase().replace(/\.$/, "")}.` : "Enjoy the week."}
+      ${archetype === "survivor" ? "That stability is yours. You earned it." : archetype === "builder" ? "Use the calm. This is when you make moves." : "Enjoy the week."}
     </p>
+
+    ${communityCount && communityCount > 10 ? `<p style="margin: 0 0 24px; color: ${BRAND_COLORS.mediumGray}; font-size: 13px; line-height: 1.6;">Clean week for you and ${communityCount - 1} other business owners this Monday.</p>` : ""}
 
     <div style="margin: 24px 0; text-align: center;">
       ${createButton("View your dashboard", `${APP_URL}/dashboard`)}

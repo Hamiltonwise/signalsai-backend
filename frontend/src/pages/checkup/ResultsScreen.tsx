@@ -882,7 +882,7 @@ export default function ResultsScreen() {
     setTimeout(() => navigate("/checkup/building", {
       replace: true,
       state: {
-        practiceName: place.name,
+        businessName: place.name,
         specialty: place.category || "",
         email: email.trim(),
         referralCode,

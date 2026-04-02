@@ -174,14 +174,13 @@ function resolveAction(props: OneActionCardProps): OneAction {
   // GBP connection is an optional enhancement, not a gate.
   // Show the same healthy-state action whether or not GBP is connected.
 
-  // Rule 6: HEALTHY STATE
-  const compName = props.topCompetitorName || "your nearest competitor";
+  // Rule 6: HEALTHY STATE -- the gift of "nothing needs you"
   return {
     severity: "default",
-    title: `Your position held steady. Here's how to widen the lead.`,
-    detail: `Ask your next 3 customers for a Google review. Each one closes the gap with ${compName}. Text the link right after their visit, they remember you best in the first hour.`,
-    cta: "Send a review request",
-    ctaLink: "/dashboard/reviews",
+    title: `Your business is steady. Nothing needs you right now.`,
+    detail: `Your position held. No competitor gained ground. Alloro is watching your market and will tell you when something changes.`,
+    cta: "",
+    ctaLink: undefined,
     icon: Star,
     rule: "healthy_state",
   };
@@ -238,22 +237,24 @@ export default function OneActionCard(props: OneActionCardProps) {
           <p className="text-xs text-gray-500 leading-relaxed mt-1.5">
             {action.detail}
           </p>
-          {action.ctaLink ? (
-            <Link
-              to={action.ctaLink}
-              className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${styles.ctaColor} hover:underline`}
-            >
-              {action.cta}
-              <ChevronRight className="h-3 w-3" />
-            </Link>
-          ) : (
-            <button
-              className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${styles.ctaColor} hover:underline`}
-            >
-              {action.cta}
-              <ChevronRight className="h-3 w-3" />
-            </button>
-          )}
+          {action.cta ? (
+            action.ctaLink ? (
+              <Link
+                to={action.ctaLink}
+                className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${styles.ctaColor} hover:underline`}
+              >
+                {action.cta}
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            ) : (
+              <button
+                className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold ${styles.ctaColor} hover:underline`}
+              >
+                {action.cta}
+                <ChevronRight className="h-3 w-3" />
+              </button>
+            )
+          ) : null}
         </div>
       </div>
     </div>

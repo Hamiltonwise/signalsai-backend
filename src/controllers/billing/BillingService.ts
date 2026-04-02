@@ -30,8 +30,10 @@ const ALLORO_BRIEF_WEBHOOK = process.env.ALLORO_BRIEF_SLACK_WEBHOOK || "";
 export interface BillingStatus {
   tier: string | null;
   subscriptionStatus: string;
+  subscriptionTier?: string | null;
   hasStripeSubscription: boolean;
   isAdminGranted: boolean;
+  isFoundation: boolean;
   isLockedOut: boolean;
   stripeCustomerId: string | null;
   currentPeriodEnd: string | null;
@@ -258,12 +260,17 @@ export async function getSubscriptionStatus(
     }
   }
 
+  // Check Foundation status
+  const isFoundation = org.account_type === "foundation";
+
   return {
     tier: org.subscription_tier,
-    subscriptionStatus: org.subscription_status,
+    subscriptionStatus: isFoundation ? "active" : org.subscription_status,
+    subscriptionTier: org.subscription_tier,
     hasStripeSubscription: hasStripe,
     isAdminGranted,
-    isLockedOut,
+    isFoundation,
+    isLockedOut: isFoundation ? false : isLockedOut,
     stripeCustomerId: org.stripe_customer_id,
     currentPeriodEnd,
     cancelAtPeriodEnd,

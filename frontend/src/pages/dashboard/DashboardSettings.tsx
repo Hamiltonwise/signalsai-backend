@@ -365,7 +365,7 @@ function getRetentionResponse(reason: CancelReason, orgName: string): {
   }
 }
 
-function CancelSection({ orgName, isActive, isTrial: _isTrial }: { orgName: string; isActive: boolean; isTrial: boolean }) {
+function CancelSection({ orgName, isActive, isTrial: _isTrial, orgCreatedAt: _orgCreatedAt, rankPosition, weeksTracked, reviewsGained }: { orgName: string; isActive: boolean; isTrial: boolean; orgCreatedAt?: string | null; rankPosition?: number | null; weeksTracked?: number | null; reviewsGained?: number | null }) {
   const [step, setStep] = useState<"idle" | "reason" | "response" | "confirmed">("idle");
   const [reason, setReason] = useState<CancelReason | null>(null);
   const [otherText, setOtherText] = useState("");
@@ -476,6 +476,22 @@ function CancelSection({ orgName, isActive, isTrial: _isTrial }: { orgName: stri
             >
               Talk to Corey
             </button>
+          )}
+          {/* Journey summary: show what was built, not what will be lost */}
+          {(weeksTracked || rankPosition || reviewsGained) && (
+            <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 space-y-1.5">
+              <p className="text-xs font-semibold text-[#1A1D23]/50 uppercase tracking-wide">Your time with Alloro</p>
+              {weeksTracked && weeksTracked > 0 && (
+                <p className="text-sm text-[#1A1D23]/70">{weeksTracked} weeks of market monitoring</p>
+              )}
+              {rankPosition && (
+                <p className="text-sm text-[#1A1D23]/70">Current position: #{rankPosition} in your market</p>
+              )}
+              {reviewsGained && reviewsGained > 0 && (
+                <p className="text-sm text-[#1A1D23]/70">{reviewsGained} reviews gained during your time here</p>
+              )}
+              <p className="text-xs text-gray-400 mt-2">Thank you for trusting us with your business.</p>
+            </div>
           )}
           <button
             type="button"
