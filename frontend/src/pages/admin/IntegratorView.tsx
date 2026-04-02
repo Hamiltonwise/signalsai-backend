@@ -57,6 +57,7 @@ import { apiGet, apiPost, apiPatch } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { KillSwitchBanner } from "@/components/Admin/KillSwitchBanner";
 import { useBusinessMetrics } from "@/hooks/useBusinessMetrics";
+import ClaudeObservations from "@/components/Admin/ClaudeObservations";
 
 // ---- Constants ---------------------------------------------------------------
 
@@ -1517,6 +1518,9 @@ export default function IntegratorView() {
         />
         <WeeklyPulse orgs={orgs} />
       </Card>
+
+      {/* What I'm Noticing (Claude observations) */}
+      <ClaudeObservations role="integrator" />
 
       {/* Client Health Grid (hero section) */}
       <Card>

@@ -52,6 +52,7 @@ import adminBatchCheckupRoutes from "./routes/admin/batchCheckup";
 import adminFirefliesRoutes from "./routes/admin/firefliesWebhook";
 import adminReviewRoutes from "./routes/admin/reviews";
 import milestoneRoutes from "./routes/admin/milestones";
+import claudeObservationsRoutes from "./routes/admin/claudeObservations";
 import referralIntelligenceRoutes from "./routes/referralIntelligence";
 import intelligenceIntakeRoutes from "./routes/admin/intelligenceIntake";
 import intelligencePanelRoutes from "./routes/admin/intelligencePanel";
@@ -286,6 +287,7 @@ app.use("/api/admin/batch-checkup", adminBatchCheckupRoutes);
 app.use("/api/admin", adminFirefliesRoutes); // Fireflies webhook + dream team tasks
 app.use("/api/admin/reviews", adminReviewRoutes); // Review notifications + AI responses
 app.use("/api", milestoneRoutes); // Milestone notifications (admin + client routes)
+app.use("/api/admin/claude-observations", claudeObservationsRoutes); // Claude push intelligence for team dashboards
 app.use("/api/referral-intelligence", referralIntelligenceRoutes); // GP referral intelligence
 app.use("/api/admin/intelligence", intelligenceIntakeRoutes); // Founder Mode intelligence intake
 app.use("/api/admin/intelligence", intelligencePanelRoutes); // WO-8: SEO/AEO/CRO panel endpoints

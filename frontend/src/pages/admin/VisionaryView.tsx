@@ -51,6 +51,7 @@ import {
   type DreamTeamTask,
 } from "@/api/dream-team";
 import { apiGet, apiPatch } from "@/api/index";
+import ClaudeObservations from "@/components/Admin/ClaudeObservations";
 
 // ---- Helpers ---------------------------------------------------------------
 
@@ -1730,7 +1731,10 @@ export default function VisionaryView() {
         {/* 3. Revenue (prominent but not the hero) */}
         <RevenuePanel />
 
-        {/* 4. Decisions Needing You */}
+        {/* 4. What I'm Noticing (Claude observations) */}
+        <ClaudeObservations role="visionary" />
+
+        {/* 5. Decisions Needing You */}
         <DecisionPanel tasks={tasks} agentBrief={agentBrief} />
 
         {/* 5. Route to Unicorn (compact, collapsible timeline) */}

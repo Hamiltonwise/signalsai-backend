@@ -36,6 +36,7 @@ import {
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { KillSwitchBanner } from "@/components/Admin/KillSwitchBanner";
+import ClaudeObservations from "@/components/Admin/ClaudeObservations";
 
 // ---- Types -------------------------------------------------------------------
 
@@ -1218,6 +1219,9 @@ export default function BuildView() {
             <p className="text-sm text-green-300">{briefData.headline}</p>
           </div>
         )}
+
+        {/* What I'm Noticing (Claude observations - infra blockers) */}
+        <ClaudeObservations role="build" />
 
         {/* Panel 1: System Status */}
         <SystemStatusPanel />
