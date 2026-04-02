@@ -21,6 +21,7 @@ import { superAdminMiddleware } from "../../middleware/superAdmin";
 import { db } from "../../database/connection";
 import { isPartnerEmail } from "../../utils/partnerEmails";
 import { BehavioralEventModel } from "../../models/BehavioralEventModel";
+import { getKeyDataForClient } from "../../controllers/clarity/feature-services/service.clarity-data";
 
 const ceoChatRoutes = express.Router();
 
@@ -545,7 +546,7 @@ async function buildPartnerContext(userEmail: string): Promise<string> {
     if (!org) return "Organization not found.";
 
     // Gather partner-specific data in parallel
-    const [focusKeywords, complianceScans, latestRanking, locations, website] =
+    const [focusKeywords, complianceScans, latestRanking, locations, website, clarityData] =
       await Promise.all([
         db("focus_keywords")
           .where({ organization_id: orgId, is_active: true })
@@ -569,6 +570,8 @@ async function buildPartnerContext(userEmail: string): Promise<string> {
           .where({ organization_id: orgId })
           .first()
           .catch(() => null),
+        // Pull real Clarity analytics if domain is configured
+        org?.domain ? getKeyDataForClient(org.domain).catch(() => null) : Promise.resolve(null),
       ]);
 
     // Parse compliance findings
@@ -587,7 +590,34 @@ async function buildPartnerContext(userEmail: string): Promise<string> {
     } else if (emailPrefix === "jay") {
       roleContext = `You are speaking with Jay, the sales lead. He runs demos, closes deals, and manages the HubSpot pipeline. He needs prospect research before demos, competitive objection handling (especially TDO switching), and follow-up drafts. He's not deeply technical but is a natural salesperson.`;
     } else if (emailPrefix === "rosanna") {
-      roleContext = `You are speaking with Rosanna, the support lead. She handles client onboarding, chat support, and follow-up. She catches product inaccuracies faster than anyone. She needs clarity on what's native vs. partner-powered, client health status, and draft responses for complex support requests.`;
+      roleContext = `You are speaking with Rosanna, the support lead. She handles client onboarding, chat support, and follow-up. She catches product inaccuracies faster than anyone. She needs clarity on what's native vs. partner-powered, client health status, and draft responses for complex support requests.
+
+DENTALEMR FEATURE REFERENCE (Native vs Partner):
+Native to DentalEMR:
+- Practice management (scheduling, charting, treatment planning)
+- Claims submission and tracking
+- Patient records and HIPAA-compliant storage
+- Cloud-based access from any device
+- Multi-location account switching
+- Analytics dashboard (production, revenue, appointments)
+- AI chat support (knowledge base powered)
+
+Through Partners (NOT native):
+- Two-way texting: Weave or NexHealth integration
+- Insurance verification: Vine (formerly EDS) integration
+- Patient recall/reminders: Weave integration
+- Imaging integration: Dentsply Sirona (TWAIN/API), Intivio
+- Payment processing: Blue Swipe integration
+- Backup/disaster recovery: Google Cloud infrastructure (not a standalone feature)
+
+NOT available (clients ask, but it doesn't exist):
+- Native recall system (must use Weave)
+- Built-in two-way texting (must use Weave/NexHealth)
+- Tele-endodontics (not a current feature)
+- AI-powered case acceptance (not implemented)
+- Dental scheduling optimization AI (not implemented)
+
+IMPORTANT: Never claim a partner feature as native. If a client asks about texting, recall, or insurance verification, specify it's through the partner integration.`;
     }
 
     const keywordList = focusKeywords.length > 0
@@ -613,10 +643,25 @@ COMPLIANCE STATUS: ${complianceFindings.length > 0
 }
 ${complianceFindings.length > 0 ? `Top findings:\n${complianceFindings.slice(0, 3).map((f: any) => `  - [${f.severity.toUpperCase()}] "${f.claim}" on ${f.page}: ${f.concern}`).join("\n")}` : ""}
 
+WEBSITE ANALYTICS (Microsoft Clarity): ${clarityData ? `
+  Sessions this month: ${clarityData.sessions?.currMonth ?? "N/A"} (previous: ${clarityData.sessions?.prevMonth ?? "N/A"})
+  Bounce rate: ${clarityData.bounceRate?.currMonth ?? "N/A"}% (previous: ${clarityData.bounceRate?.prevMonth ?? "N/A"}%)
+  Dead clicks: ${clarityData.deadClicks?.currMonth ?? "N/A"} (previous: ${clarityData.deadClicks?.prevMonth ?? "N/A"})
+  Trend score: ${clarityData.trendScore ?? "N/A"}/100 (positive = improving)` : "No Clarity data available yet. Analytics will be pulled daily once configured."}
+
 COMPETITIVE POSITION: ${latestRanking
   ? `Score: ${latestRanking.rank_score}/100, Position: #${latestRanking.rank_position}`
   : "No ranking data yet. First scan pending."
 }
+
+DENTALEMR COMPETITIVE CONTEXT:
+- Primary competitor: TDO (The Dental Office), server-based endodontic software built on Microsoft Access
+- TDO launched NoteAI (standalone AI note-writing tool) in March 2026, not integrated with their PMS
+- DentalEMR is the ONLY truly cloud-based endodontic PMS
+- DentalEMR is #1 in 4/5 ChatGPT queries for endodontic software (as of Feb 2026)
+- Key positioning: cloud-native, HIPAA compliant, integrated workflows vs TDO's server-based legacy
+- Market expansion planned: perio, oral surgery, international after endo dominance secured
+- AAE 2026 (Salt Lake City, April 14-16) is the next major event
 
 RULES:
 - Never use em-dashes. Use commas or periods.

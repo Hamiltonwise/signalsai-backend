@@ -58,37 +58,70 @@ complianceRoutes.get(
 
       const domain = website.custom_domain || `${website.generated_hostname}.getalloro.com`;
 
-      // Fetch website pages from the builder
-      const pages = await db("website_builder.pages")
+      // Try builder pages first, fall back to fetching the live website
+      const builderPages = await db("website_builder.pages")
         .where({ project_id: website.id })
-        .select("id", "slug", "display_name", "content");
+        .select("id", "slug", "display_name", "content")
+        .catch(() => []);
 
-      if (pages.length === 0) {
-        return res.json({
-          success: true,
-          findings: [],
-          message: "No pages found to scan",
-        });
+      let pageContents: Array<{ page: string; slug: string; content: string }> = [];
+
+      if (builderPages.length > 0) {
+        // Use builder pages
+        pageContents = builderPages.map((p: any) => {
+          let textContent = "";
+          if (typeof p.content === "string") {
+            textContent = p.content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+          } else if (p.content) {
+            textContent = JSON.stringify(p.content).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+          }
+          return {
+            page: p.display_name || p.slug || "Unknown",
+            slug: p.slug,
+            content: textContent.slice(0, 3000),
+          };
+        }).filter((p: any) => p.content.length > 50);
+      } else {
+        // Fetch live website pages directly
+        console.log(`[Compliance] No builder pages for ${domain}, fetching live site`);
+        const pagePaths = ["/", "/features", "/about", "/pricing", "/integrations", "/contact"];
+        const fetchResults = await Promise.allSettled(
+          pagePaths.map(async (path) => {
+            const url = `https://${domain}${path}`;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000);
+            try {
+              const resp = await fetch(url, {
+                signal: controller.signal,
+                headers: { "User-Agent": "Alloro-Compliance-Scanner/1.0" },
+              });
+              clearTimeout(timeout);
+              if (!resp.ok) return null;
+              const html = await resp.text();
+              // Extract text from HTML
+              const text = html
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+                .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, "")
+                .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, "")
+                .replace(/<[^>]*>/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+              return { page: path === "/" ? "Homepage" : path.slice(1).charAt(0).toUpperCase() + path.slice(2), slug: path, content: text.slice(0, 3000) };
+            } catch {
+              clearTimeout(timeout);
+              return null;
+            }
+          })
+        );
+        pageContents = fetchResults
+          .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled" && r.value !== null)
+          .map((r) => r.value)
+          .filter((p) => p.content.length > 50);
       }
 
-      // Build page content for analysis
-      const pageContents = pages.map((p: any) => {
-        // Extract text content from HTML/JSON
-        let textContent = "";
-        if (typeof p.content === "string") {
-          textContent = p.content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-        } else if (p.content) {
-          textContent = JSON.stringify(p.content).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-        }
-        return {
-          page: p.display_name || p.slug || "Unknown",
-          slug: p.slug,
-          content: textContent.slice(0, 3000), // Cap per page to avoid token limits
-        };
-      }).filter((p: any) => p.content.length > 50); // Skip near-empty pages
-
       if (pageContents.length === 0) {
-        return res.json({ success: true, findings: [], message: "Pages have no scannable content" });
+        return res.json({ success: true, findings: [], message: "Could not access website pages for scanning" });
       }
 
       const anthropic = getLLM();
