@@ -186,6 +186,12 @@ export async function aggregatePmsData(
     }
 
     if (!entries.length) {
+      // response_log was empty, null, or unparseable for an approved job
+      // This means the customer's data was approved but produced no results
+      console.warn(
+        `[PMS Aggregator] Approved job ${job.id} for org ${organizationId} has empty/unparseable response_log. ` +
+        `Customer may see an empty dashboard. Consider re-uploading.`
+      );
       continue;
     }
 

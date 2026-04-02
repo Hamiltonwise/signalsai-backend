@@ -171,6 +171,24 @@ async function gatherObservations(role: string): Promise<Observation[]> {
           source: `PMS job #${job.id}`,
         });
       }
+
+      // Check for approved jobs with empty data (gap 5: corrupted response_log)
+      const emptyApprovedJobs = await db("pms_jobs")
+        .where({ is_approved: 1 })
+        .whereRaw("(response_log IS NULL OR response_log::text = 'null' OR response_log::text = '{}' OR response_log::text = '[]')")
+        .select("id", "organization_id")
+        .catch(() => []);
+
+      for (const job of emptyApprovedJobs) {
+        const org = await db("organizations").where({ id: job.organization_id }).first().catch(() => null);
+        observations.push({
+          id: `pms-empty-${obsIndex++}`,
+          text: `${org?.name || "A customer"} has an approved PMS upload with no parsed data. Their dashboard may show empty referral information. Consider re-uploading their data.`,
+          confidence: "red",
+          type: "blocker",
+          source: `PMS job #${job.id}`,
+        });
+      }
     }
 
     // 5. Infrastructure blockers (build role)
