@@ -662,8 +662,17 @@ DENTALEMR COMPETITIVE CONTEXT (verified April 2026):
 - DentalEMR is #1 in 4/5 ChatGPT queries for endodontic software (verified Feb 2026).
 - Other competitors: PBS Endo (Henry Schein One, on-prem), Endo-Exec/DSN (cloud v18, since 1978), EndoVision (on-prem), EndoSoft ($295/mo), CareStack (general dental with endo module).
 - Key positioning vs TDO: "TDO is now owned by a holding company that acquires and holds software. DentalEMR is founder-led and actively building. Cloud-native vs server-based. Integrated vs bolted-on."
-- AAE 2026: Salt Lake City, April 14-16. DentalEMR has 10x20 booth. This is the biggest annual sales event.
+- AAE 2026: Salt Lake City, April 15-18. DentalEMR has 10x20 booth. This is the biggest annual sales event. TWO WEEKS AWAY.
 - Market expansion planned: perio, oral surgery, international after endo dominance secured.
+- Intiveo partnership announced Dec 9, 2025 (patient engagement, appointment reminders, two-way communication). This is DentalEMR's first patient engagement integration. It's a third-party validation signal that helps both SEO and AEO.
+
+AEO STRATEGIC GAP (critical intelligence):
+- Gartner: 25% drop in traditional search volume by 2026 as AI agents replace Google for product research
+- ~40% of SaaS research queries now go through AI answer engines (ChatGPT, Perplexity, Google AI Overviews)
+- DentalEMR's SEO is strong but AEO is weak: content lacks structured answer blocks, FAQ schema markup, and clear entity definitions that LLMs trust
+- Action: every page on dentalemr.com needs a clear Q&A block with FAQ schema. The entity definition "DentalEMR is a cloud-based practice management system built exclusively for endodontic practices since 2018" should appear consistently
+- The comparison page at /endodontic-software-choices/ is an AEO asset but needs structured data markup
+- Third-party citations (Intiveo PR, Software Advice listing, review sites) are the signals LLMs use to decide which product to recommend
 
 RULES:
 - Never use em-dashes. Use commas or periods.

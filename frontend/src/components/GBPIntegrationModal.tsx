@@ -27,7 +27,7 @@ const mockLocations = [
   },
   {
     id: "location-2",
-    displayName: "Hamilton Wise Dental - Downtown",
+    displayName: "Alloro Demo - Downtown",
     accountName: "Alloro Demo Practice",
   },
 ];
