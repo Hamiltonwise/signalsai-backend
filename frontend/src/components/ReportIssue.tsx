@@ -140,7 +140,7 @@ export function ReportIssue() {
               autoFocus
             />
 
-            <p className="text-[10px] text-gray-400 mt-2">
+            <p className="text-xs text-gray-400 mt-2">
               Auto-captures: page URL, your role, screen size, timestamp.
             </p>
 

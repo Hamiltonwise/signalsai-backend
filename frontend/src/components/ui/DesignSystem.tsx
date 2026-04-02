@@ -165,7 +165,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             {title}
           </h1>
           {subtitle && (
-            <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+            <span className="text-xs font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
               {subtitle}
             </span>
           )}
@@ -1172,7 +1172,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
   <div className={`card-supporting ${className}`}>
     <div className="flex items-center gap-2.5 mb-4">
       {icon && <div className="text-[#D56753]/50">{icon}</div>}
-      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40">
+      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/40">
         {label}
       </p>
     </div>
@@ -1226,7 +1226,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   };
 
   const sizeStyles = size === "sm"
-    ? "px-2 py-0.5 text-[10px]"
+    ? "px-2 py-0.5 text-xs"
     : "px-3 py-1 text-xs";
 
   return (
@@ -1287,8 +1287,8 @@ export const InsightCard: React.FC<InsightCardProps> = ({
       {icon && (
         <div className="mb-3 text-[#D56753]/40">{icon}</div>
       )}
-      <p className="text-3xl font-black text-[#212D40] leading-none">{value}</p>
-      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#D56753]/40 mt-1">
+      <p className="text-3xl font-semibold text-[#212D40] leading-none">{value}</p>
+      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/40 mt-1">
         {label}
       </p>
       {trendLabel && (

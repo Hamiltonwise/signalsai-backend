@@ -67,9 +67,9 @@ export default function ClaudeObservations({ role }: { role: Role }) {
             <Brain className="w-4 h-4 text-white" />
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-slate-800">What I'm Noticing</p>
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider">
-              {observations.length} observation{observations.length !== 1 ? "s" : ""}
+            <p className="text-sm font-semibold text-slate-800">Here's What I'd Focus On</p>
+            <p className="text-xs text-slate-400 uppercase tracking-wider">
+              {observations.length} item{observations.length !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
@@ -89,10 +89,10 @@ export default function ClaudeObservations({ role }: { role: Role }) {
                 <div className="flex-1 min-w-0">
                   <p className="leading-relaxed">{obs.text}</p>
                   {obs.source && (
-                    <p className="text-[10px] opacity-50 mt-1">{obs.source}</p>
+                    <p className="text-xs opacity-50 mt-1">{obs.source}</p>
                   )}
                 </div>
-                <span className="text-[9px] font-semibold uppercase tracking-wider opacity-50 shrink-0 mt-0.5">
+                <span className="text-xs font-semibold uppercase tracking-wider opacity-50 shrink-0 mt-0.5">
                   {obs.confidence}
                 </span>
               </div>
