@@ -144,12 +144,12 @@ export async function generateSurpriseFindings(data: {
 
     const topComplaint = complaintCounts[0];
     const detail = topComplaint
-      ? `${negativeReviews.length} of your recent reviews mention concerns${topComplaint ? ` around "${topComplaint.word}"` : ""}. Prospects read negative reviews closely. Addressing this pattern publicly (in your responses) shows you listen and improve.`
-      : `${negativeReviews.length} of your recent reviews contain negative signals. Prospects weigh negative reviews heavily. Responding thoughtfully to concerns shows future customers you care.`;
+      ? `${negativeReviews.length} of your recent reviews mention concerns${topComplaint ? ` around "${topComplaint.word}"` : ""}. People read negative reviews closely. Addressing this pattern publicly (in your responses) shows you listen and improve.`
+      : `${negativeReviews.length} of your recent reviews contain negative signals. People weigh negative reviews heavily. Responding thoughtfully to concerns shows future customers you care.`;
 
     findings.push({
       type: "hidden_money",
-      headline: `${negativeReviews.length} reviews with concerns prospects will notice`,
+      headline: `${negativeReviews.length} reviews with concerns people will notice`,
       detail,
       surpriseScore: 75,
       actionability: 90,

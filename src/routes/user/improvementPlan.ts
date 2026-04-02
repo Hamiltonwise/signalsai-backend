@@ -160,7 +160,7 @@ improvementPlanRoutes.get(
         if (gain > 0) {
           allActions.push({
             id: "add_hours",
-            action: "Add business hours to your Google profile. Prospects who can't see your hours move on to a competitor who shows them.",
+            action: "Add business hours to your Google profile. People who can't see your hours move on to a competitor who shows them.",
             subScore: "First Impression",
             currentPoints: firstImpression,
             maxPoints: 30,
@@ -175,7 +175,7 @@ improvementPlanRoutes.get(
       if (!hasPhone) {
         allActions.push({
           id: "add_phone",
-          action: "Add your phone number to your Google profile. Prospects need a way to reach you directly.",
+          action: "Add your phone number to your Google profile. People need a way to reach you directly.",
           subScore: "First Impression",
           currentPoints: firstImpression,
           maxPoints: 30,
