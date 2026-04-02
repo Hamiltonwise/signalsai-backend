@@ -12,7 +12,7 @@
 
 import { Router, Request, Response } from "express";
 import { db } from "../../database/connection";
-import { getMRRBreakdown, getOrgMRR } from "../../services/businessMetrics";
+import { getMRRBreakdown, getOrgMRR, refreshBurnRate } from "../../services/businessMetrics";
 
 const router = Router();
 

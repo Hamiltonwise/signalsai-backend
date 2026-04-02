@@ -24,7 +24,21 @@ export const ORG_MONTHLY_RATE: Record<number, number> = {
   42: 0,     // Valley Endodontics (demo)
 };
 
-export const MONTHLY_BURN = 9500;
+// Default burn rate -- overridden by system_config "monthly_burn" when set
+export const MONTHLY_BURN_DEFAULT = 9500;
+
+// Synchronous access for components that can't await (uses cached/default value)
+export let MONTHLY_BURN = MONTHLY_BURN_DEFAULT;
+
+// Call this at startup or when config changes to refresh the burn rate
+export async function refreshBurnRate(): Promise<void> {
+  try {
+    const { getConfig } = await import("./configStore");
+    MONTHLY_BURN = await getConfig("monthly_burn", MONTHLY_BURN_DEFAULT);
+  } catch {
+    // configStore not available (e.g., frontend import) -- keep default
+  }
+}
 
 // ---- MRR Calculations ---------------------------------------------------------
 
