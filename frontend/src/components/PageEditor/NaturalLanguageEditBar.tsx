@@ -1,13 +1,21 @@
 /**
- * Natural Language Edit Bar
+ * Natural Language Edit Bar -- The Kuda Solution
  *
- * Allows practice owners to type plain-English edit instructions.
- * Sends to Claude API, shows a diff preview, applies on confirm.
- * WO-45: The Kuda Problem solved.
+ * Kuda emailed: "Change Team to Doctors. Add Internal Bleaching.
+ * Update referral forms. Add CareCredit." That email became a
+ * support ticket. The ticket became a project. The project took
+ * two weeks.
+ *
+ * This component makes it 60 seconds.
+ * Type what you want. See the preview. Tap confirm. Done.
+ *
+ * NOT a developer diff tool. A conversation with your website.
+ * "What would you like to change?" -> plain English response ->
+ * "Here's what will change" in words, not code -> Confirm.
  */
 
-import { useState, useRef } from "react";
-import { Sparkles, Loader2, Check, X, AlertTriangle, ChevronRight } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Send, Loader2, Check, X, AlertTriangle } from "lucide-react";
 import { apiPost } from "@/api/index";
 
 interface EditChange {
@@ -34,7 +42,16 @@ export default function NaturalLanguageEditBar({
   const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = "auto";
+      ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
+    }
+  }, [instructions]);
 
   async function handleSubmit() {
     if (!instructions.trim() || !pageId || isProcessing) return;
@@ -54,11 +71,11 @@ export default function NaturalLanguageEditBar({
         setChanges(res.changes);
       } else {
         setError(
-          res.message || "No matching content found. Try being more specific."
+          res.message || "Alloro couldn't find matching content to change. Try being more specific about what and where."
         );
       }
-    } catch (err: any) {
-      setError(err?.message || "Something went wrong. Please try again.");
+    } catch {
+      setError("Connection interrupted. Check your internet and try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -77,16 +94,16 @@ export default function NaturalLanguageEditBar({
       });
 
       if (res.success) {
-        setSuccessMessage(res.message);
+        setSuccessMessage("Changes published. Your site is updated.");
         setChanges(null);
         setInstructions("");
         onChangesApplied();
-        setTimeout(() => setSuccessMessage(null), 4000);
+        setTimeout(() => setSuccessMessage(null), 5000);
       } else {
-        setError(res.message || "Failed to apply changes.");
+        setError(res.message || "Changes couldn't be applied. Try again.");
       }
-    } catch (err: any) {
-      setError(err?.message || "Failed to apply changes.");
+    } catch {
+      setError("Connection interrupted. Your changes were not applied. Try again.");
     } finally {
       setIsApplying(false);
     }
@@ -105,144 +122,104 @@ export default function NaturalLanguageEditBar({
   }
 
   return (
-    <div className="border-b border-gray-200 bg-gray-50">
-      {/* Input Bar */}
-      <div className="px-4 py-2.5 flex items-start gap-3">
-        <div className="shrink-0 mt-1.5">
-          <Sparkles className="h-4 w-4 text-[#D56753]" />
-        </div>
-        <div className="flex-1 min-w-0">
+    <div className="space-y-3">
+      {/* Input -- feels like a message, not a form */}
+      {!changes && (
+        <div className="relative">
           <textarea
-            ref={inputRef}
+            ref={textareaRef}
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Tell us what to change. Example: 'Change Team to Doctors everywhere. Add CareCredit as a financing option.' We'll show you a preview before anything goes live."
-            rows={1}
-            className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-[#D56753]/30 focus:border-[#D56753]/40 placeholder:text-gray-400"
-            disabled={isProcessing || !!changes}
+            placeholder="What would you like to change?"
+            rows={2}
+            className="w-full text-sm text-[#1A1D23] bg-white border border-gray-200 rounded-xl px-4 py-3 pr-12 resize-none focus:outline-none focus:ring-2 focus:ring-[#D56753]/20 focus:border-[#D56753]/40 placeholder:text-gray-400 leading-relaxed"
+            disabled={isProcessing}
           />
+          <button
+            onClick={handleSubmit}
+            disabled={!instructions.trim() || !pageId || isProcessing}
+            className="absolute right-3 bottom-3 w-8 h-8 rounded-lg bg-[#D56753] text-white flex items-center justify-center disabled:opacity-30 hover:bg-[#C45A46] transition-colors"
+            title="Preview changes"
+          >
+            {isProcessing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </button>
         </div>
-        <button
-          onClick={handleSubmit}
-          disabled={!instructions.trim() || !pageId || isProcessing || !!changes}
-          className="shrink-0 mt-0.5 px-3 py-2 text-xs font-semibold text-white bg-[#D56753] rounded-lg hover:bg-[#C25544] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            <>
-              Preview changes
-              <ChevronRight className="h-3 w-3" />
-            </>
-          )}
-        </button>
-      </div>
+      )}
 
-      {/* Error message */}
+      {/* Error */}
       {error && (
-        <div className="px-4 pb-2.5 flex items-center gap-2 text-xs text-red-600">
-          <AlertTriangle className="h-3 w-3 shrink-0" />
-          {error}
+        <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <p>{error}</p>
         </div>
       )}
 
-      {/* Success message */}
+      {/* Success */}
       {successMessage && (
-        <div className="px-4 pb-2.5 flex items-center gap-2 text-xs text-green-600">
-          <Check className="h-3 w-3 shrink-0" />
-          {successMessage}
+        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 rounded-xl px-4 py-3">
+          <Check className="h-4 w-4 shrink-0" />
+          <p>{successMessage}</p>
         </div>
       )}
 
-      {/* Diff Preview */}
+      {/* Preview -- plain English, not a code diff */}
       {changes && changes.length > 0 && (
-        <div className="border-t border-gray-200 bg-white">
-          <div className="px-4 py-2 flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-700">
-              {changes.length} change{changes.length !== 1 ? "s" : ""} found.
-              Review before applying:
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleCancel}
-                className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={isApplying}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-[#D56753] rounded-md hover:bg-[#C25544] disabled:opacity-40 transition-colors flex items-center gap-1.5"
-              >
-                {isApplying ? (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Applying...
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-3 w-3" />
-                    Confirm all changes
-                  </>
-                )}
-              </button>
-            </div>
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100">
+            <p className="text-sm font-semibold text-[#1A1D23]">
+              {changes.length} change{changes.length !== 1 ? "s" : ""} ready to publish
+            </p>
           </div>
 
-          <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
+          <div className="divide-y divide-gray-50">
             {changes.map((change, i) => (
-              <div key={i} className="px-4 py-2.5">
-                <div className="flex items-start gap-2 mb-1.5">
-                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wider mt-0.5">
-                    {change.section}
-                  </span>
-                  <span
-                    className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                      change.changeType === "replace"
-                        ? "bg-blue-50 text-blue-600"
-                        : change.changeType === "add"
-                          ? "bg-green-50 text-green-600"
-                          : "bg-red-50 text-red-600"
-                    }`}
-                  >
-                    {change.changeType}
-                  </span>
-                  {change.confidence === "low" && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium flex items-center gap-0.5">
-                      <AlertTriangle className="h-2.5 w-2.5" />
-                      Review this one
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-600 mb-1.5">{change.description}</p>
-                {change.changeType !== "add" && change.oldContent && (
-                  <div className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded font-mono whitespace-pre-wrap break-all mb-1">
-                    <X className="h-2.5 w-2.5 inline mr-1 opacity-50" />
-                    {truncateContent(change.oldContent)}
-                  </div>
-                )}
-                {change.changeType !== "remove" && change.newContent && (
-                  <div className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded font-mono whitespace-pre-wrap break-all">
-                    <Check className="h-2.5 w-2.5 inline mr-1 opacity-50" />
-                    {truncateContent(change.newContent)}
-                  </div>
+              <div key={i} className="px-4 py-3">
+                {/* Plain English description, not a code diff */}
+                <p className="text-sm text-[#1A1D23] leading-relaxed">
+                  {change.description}
+                </p>
+                {change.confidence === "low" && (
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Double-check this one
+                  </p>
                 )}
               </div>
             ))}
+          </div>
+
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-end gap-2">
+            <button
+              onClick={handleCancel}
+              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={isApplying}
+              className="btn-primary btn-press inline-flex items-center gap-1.5 text-sm"
+            >
+              {isApplying ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  Publish changes
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}
     </div>
   );
-}
-
-function truncateContent(content: string, maxLen = 200): string {
-  // Strip HTML tags for display
-  const text = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-  if (text.length <= maxLen) return text;
-  return text.substring(0, maxLen) + "...";
 }
