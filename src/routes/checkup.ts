@@ -101,7 +101,6 @@ const emailLimiter = rateLimit({
  */
 checkupRoutes.get("/geo", async (req, res) => {
   try {
-    // Express trust proxy gives us the real IP via x-forwarded-for
     const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
       || req.socket.remoteAddress
       || "";
@@ -111,13 +110,29 @@ checkupRoutes.get("/geo", async (req, res) => {
       return res.json({ lat: null, lng: null });
     }
 
-    const geoRes = await fetch(`https://ipapi.co/${ip}/json/`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    const data = await geoRes.json();
+    // Try multiple geolocation services with fast fallback
+    const geoServices = [
+      // ip-api.com: free, no key required, 45 req/min
+      async () => {
+        const r = await fetch(`http://ip-api.com/json/${ip}?fields=lat,lon`, { signal: AbortSignal.timeout(2000) });
+        const d = await r.json();
+        return d.lat && d.lon ? { lat: d.lat, lng: d.lon } : null;
+      },
+      // ipapi.co: free tier, sometimes rate-limited
+      async () => {
+        const r = await fetch(`https://ipapi.co/${ip}/json/`, { signal: AbortSignal.timeout(2000) });
+        const d = await r.json();
+        return d.latitude && d.longitude ? { lat: d.latitude, lng: d.longitude } : null;
+      },
+    ];
 
-    if (data.latitude && data.longitude) {
-      return res.json({ lat: data.latitude, lng: data.longitude });
+    for (const service of geoServices) {
+      try {
+        const result = await service();
+        if (result) return res.json(result);
+      } catch {
+        continue;
+      }
     }
 
     return res.json({ lat: null, lng: null });
