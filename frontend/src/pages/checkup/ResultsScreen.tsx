@@ -403,18 +403,18 @@ function ReviewRaceCard({ gap }: { gap: CheckupGapItem }) {
         <div className="mt-4 grid grid-cols-3 gap-1 sm:gap-2">
           <div className="bg-slate-50 rounded-lg p-2 sm:p-2.5 text-center">
             <p className="text-base sm:text-lg font-bold text-[#212D40] tabular-nums">{v.clientWeekly}</p>
-            <p className="text-[10px] text-slate-400 leading-tight">Your pace</p>
+            <p className="text-xs text-slate-400 leading-tight">Your pace</p>
           </div>
           <div className="bg-slate-50 rounded-lg p-2 sm:p-2.5 text-center">
             <p className="text-base sm:text-lg font-bold text-slate-500 tabular-nums">{v.competitorWeekly}</p>
-            <p className="text-[10px] text-slate-400 leading-tight">Their pace</p>
+            <p className="text-xs text-slate-400 leading-tight">Their pace</p>
           </div>
           <div className={`rounded-lg p-2 sm:p-2.5 text-center ${v.weeksToPass ? "bg-[#D56753]/5" : "bg-emerald-50"}`}>
             <p className={`text-base sm:text-lg font-bold tabular-nums ${v.weeksToPass ? "text-[#D56753]" : "text-emerald-600"}`}>
-              {v.weeksToPass ? `${v.weeksToPass}w` : "---"}
+              {v.weeksToPass && v.weeksToPass <= 52 ? `${v.weeksToPass}w` : v.weeksToPass && v.weeksToPass > 52 ? "1yr+" : "---"}
             </p>
-            <p className="text-[10px] text-slate-400 leading-tight">
-              {v.weeksToPass ? "To pass" : isLeading ? "Leading" : "Increase pace"}
+            <p className="text-xs text-slate-400 leading-tight">
+              {v.weeksToPass && v.weeksToPass <= 52 ? "To pass" : v.weeksToPass && v.weeksToPass > 52 ? "Focus on pace" : isLeading ? "Leading" : "Increase pace"}
             </p>
           </div>
         </div>
@@ -978,7 +978,7 @@ export default function ResultsScreen() {
                 <span className="font-semibold text-slate-700">{place.reviewCount} review{place.reviewCount !== 1 ? "s" : ""}</span>.
                 {market && market.avgRating > 0 && (
                   place.rating >= market.avgRating
-                    ? <> Prospects see a rating above the {market.city} average of {market.avgRating.toFixed(1)}.</>
+                    ? <> People see a rating above the {market.city} average of {market.avgRating.toFixed(1)}.</>
                     : <> The {market.city} average is {market.avgRating.toFixed(1)}. Every improvement matters.</>
                 )}
               </>
@@ -994,7 +994,7 @@ export default function ResultsScreen() {
           <p className="text-xs text-slate-500 leading-relaxed pl-11">
             Photos, business hours, contact info, and description completeness.
             {!place.websiteUri && <> No website linked on your profile, which reduces trust.</>}
-            {" "}Prospects decide in seconds whether to call or scroll past.
+            {" "}People decide in seconds whether to call or scroll past.
           </p>
         </div>
 
@@ -1002,7 +1002,7 @@ export default function ResultsScreen() {
         <div className="space-y-2">
           <SubScoreBar label="Responsiveness" score={score.responsiveness ?? score.reviewHealth} maxScore={20} icon={Reply} />
           <p className="text-xs text-slate-500 leading-relaxed pl-11">
-            How actively you engage with reviews. Prospects notice when owners respond, especially to negative feedback.
+            How actively you engage with reviews. People notice when owners respond, especially to negative feedback.
           </p>
         </div>
 

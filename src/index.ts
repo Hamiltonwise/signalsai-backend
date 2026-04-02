@@ -47,6 +47,7 @@ import adminSignalRoutes from "./routes/admin/signal";
 import checkupFunnelRoutes from "./routes/admin/checkupFunnel";
 import agentRunnerRoutes from "./routes/admin/agentRunner";
 import adminDreamTeamRoutes from "./routes/admin/dreamTeam";
+import adminFlagIssueRoutes from "./routes/admin/flagIssue";
 import adminBatchCheckupRoutes from "./routes/admin/batchCheckup";
 import adminFirefliesRoutes from "./routes/admin/firefliesWebhook";
 import adminReviewRoutes from "./routes/admin/reviews";
@@ -279,6 +280,7 @@ app.use("/api/admin/clarity-metrics", clarityMetricsRoutes);
 app.use("/api/admin/checkup-funnel", checkupFunnelRoutes);
 app.use("/api/admin/agent", agentRunnerRoutes); // Dream Team agent runner (invoke any agent from HQ)
 app.use("/api/admin/dream-team", adminDreamTeamRoutes);
+app.use("/api/admin", adminFlagIssueRoutes); // Bug flag button in admin header
 app.use("/api/admin/batch-checkup", adminBatchCheckupRoutes);
 app.use("/api/admin", adminFirefliesRoutes); // Fireflies webhook + dream team tasks
 app.use("/api/admin/reviews", adminReviewRoutes); // Review notifications + AI responses

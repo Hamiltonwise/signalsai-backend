@@ -50,7 +50,7 @@ const FAQ_SCHEMA = {
       name: "How should a dental practice respond to negative Google reviews?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Respond to every negative review within 24 hours. Keep it professional, brief, and HIPAA-compliant -- never confirm or deny that the reviewer is a patient. Acknowledge their experience, express that you take feedback seriously, and invite them to contact your office directly. The response is not for the reviewer -- it is for the hundreds of prospective patients who will read it. A thoughtful response to a negative review builds more trust than the negative review erodes.",
+        text: "Respond to every negative review within 24 hours. Keep it professional, brief, and HIPAA-compliant -- never confirm or deny that the reviewer is a patient. Acknowledge their experience, express that you take feedback seriously, and invite them to contact your office directly. The response is not for the reviewer -- it is for the hundreds of people searching who will read it. A thoughtful response to a negative review builds more trust than the negative review erodes.",
       },
     },
     {
@@ -58,7 +58,7 @@ const FAQ_SCHEMA = {
       name: "Do Google reviews actually affect dental practice revenue?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. Google reviews directly affect local search ranking, which determines whether prospective patients see your practice when they search. A practice that drops below the local pack (the top three results on Google Maps) can lose 30 to 50 percent of its new patient inquiries from search. The review gap between you and your top competitor is a measurable, dollar-value liability. One position drop in the local pack can represent $5,000 to $15,000 per month in lost new patient revenue depending on your market.",
+        text: "Yes. Google reviews directly affect local search ranking, which determines whether people searching see your practice when they search. A practice that drops below the local pack (the top three results on Google Maps) can lose 30 to 50 percent of its new patient inquiries from search. The review gap between you and your top competitor is a measurable, dollar-value liability. One position drop in the local pack can represent $5,000 to $15,000 per month in lost new patient revenue depending on your market.",
       },
     },
   ],

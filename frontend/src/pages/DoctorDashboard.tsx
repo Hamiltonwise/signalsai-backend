@@ -152,8 +152,9 @@ function narrativeGreeting(
     return `${getGreeting()}, ${firstName}.`;
   }
 
-  if (checkupRank && checkupCity) return `You're #${checkupRank} in ${checkupCity}${name}.`;
-  if (!hasRanking) return `We already found something${name}.`;
+  if (checkupRank && checkupRank > 1 && checkupCity) return `You're #${checkupRank} in ${checkupCity}${name}.`;
+  if (checkupRank === 1 && checkupCity) return `${getGreeting()}${name}. Alloro is watching ${checkupCity}.`;
+  if (!hasRanking) return `Alloro already found something${name}.`;
   return `${getGreeting()}${name}.`;
 }
 
@@ -315,7 +316,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
       </div>
 
       <p className="text-sm text-gray-500 mt-2">
-        {ranking.totalCompetitors} {ranking.specialty || "competitor"}s in {ranking.location || "your market"}
+        {ranking.totalCompetitors} {ranking.specialty || "competitor"}s in {(ranking.location && ranking.location !== "unknown") ? ranking.location : "your market"}
       </p>
 
       {ranking.rankScore != null && (
@@ -582,7 +583,14 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
           className="flex-1 rounded-xl border border-[#212D40]/8 bg-[#FAFAF8] px-3 py-2.5 text-xs text-gray-500 truncate"
         />
         <button
-          onClick={() => {
+          onClick={async () => {
+            // Try Web Share API on mobile first (native share sheet)
+            if (navigator.share) {
+              try {
+                await navigator.share({ title: "See where you rank", url: link });
+                return;
+              } catch { /* user cancelled or unsupported, fall through to clipboard */ }
+            }
             navigator.clipboard.writeText(link).then(() => {
               setCopied(true);
               setTimeout(() => setCopied(false), 2000);
@@ -1011,7 +1019,7 @@ export default function DoctorDashboard() {
     />
 
     <motion.div
-      className="mx-auto max-w-2xl space-y-8 px-4 py-8 sm:py-12"
+      className="mx-auto max-w-3xl space-y-8 px-4 py-8 sm:py-12 bg-gray-50/40 min-h-screen rounded-none sm:rounded-3xl sm:my-4 sm:border sm:border-gray-100/80 sm:shadow-sm"
       variants={warmStagger}
       initial="hidden"
       animate="visible"
@@ -1159,7 +1167,7 @@ export default function DoctorDashboard() {
                 : null
             }
             competitorVelocity={competitorVelocityData}
-            gbpConnected={hasGoogleConnection}
+            gbpConnected={hasGoogleConnection || !!rankingData}
             topCompetitorName={effectiveRanking?.topCompetitor?.name || "your top competitor"}
           />
         </motion.div>
@@ -1177,7 +1185,7 @@ export default function DoctorDashboard() {
       {!isLoading && (
         <OnboardingChecklist
           checkupScore={effectiveRanking?.rankScore ?? null}
-          gbpConnected={hasGoogleConnection}
+          gbpConnected={hasGoogleConnection || !!rankingData}
           pmsUploaded={!!setupProgress?.checklist_pms || !!setupProgress?.step2_pms_uploaded}
           referralShared={!!setupProgress?.checklist_share}
           referralCode={referralCode}
@@ -1298,10 +1306,12 @@ export default function DoctorDashboard() {
             />
           </motion.div>
 
-          {/* GBP Connect card — optional enhancement, not a gate.
-              Shows below intelligence content as a soft prompt. */}
-          {!hasGoogleConnection && (
-            <GBPConnectCard gbpConnected={hasGoogleConnection} orgId={orgId} />
+          {/* GBP Connect card -- optional enhancement, not a gate.
+              Shows below intelligence content as a soft prompt.
+              Use both auth context AND dashboard context as truth sources
+              to prevent false "Connect Google" prompts (#9 fix). */}
+          {!hasGoogleConnection && !dashCtx?.has_google_connection && (
+            <GBPConnectCard gbpConnected={hasGoogleConnection || !!dashCtx?.has_google_connection} orgId={orgId} />
           )}
 
           {/* PatientPath Research Brief reveal (WO-43) */}

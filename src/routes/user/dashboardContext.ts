@@ -153,6 +153,13 @@ dashboardContextRoutes.get(
         };
       }
 
+      // GBP connection check -- server-side truth for dashboard (#9 fix)
+      const googleConn = await db("google_connections")
+        .where({ organization_id: orgId })
+        .first()
+        .catch(() => null);
+      const hasGoogleConnection = !!googleConn;
+
       // Parse score_history from JSONB
       let scoreHistory = null;
       if (org.score_history) {
@@ -178,6 +185,7 @@ dashboardContextRoutes.get(
         previous_clarity_score: org.previous_clarity_score ?? null,
         score_history: scoreHistory,
         score_updated_at: org.score_updated_at ?? null,
+        has_google_connection: hasGoogleConnection,
         trial: org.trial_end_at ? {
           ends_at: org.trial_end_at,
           status: org.trial_status || "active",

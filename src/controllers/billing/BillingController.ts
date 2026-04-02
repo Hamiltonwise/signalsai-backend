@@ -33,10 +33,12 @@ export async function createCheckout(
 
     const { tier, isOnboarding } = req.body;
 
-    if (!tier || !["DWY", "DFY"].includes(tier)) {
+    // Accept legacy tiers (DWY/DFY) and new tiers (growth/full)
+    const validTiers = ["DWY", "DFY", "growth", "full"];
+    if (!tier || !validTiers.includes(tier)) {
       res.status(400).json({
         success: false,
-        error: "tier must be either 'DWY' or 'DFY'",
+        error: `tier must be one of: ${validTiers.join(", ")}`,
       });
       return;
     }

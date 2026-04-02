@@ -166,7 +166,7 @@ export default function OnboardingChecklist({
       {/* Header -- IKEA effect: "building", not "completing" */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <TailorText editKey="dashboard.checklist.title" defaultText="Building your intelligence" as="p" className="text-sm font-bold text-[#212D40]" />
+          <TailorText editKey="dashboard.checklist.title" defaultText="Getting started" as="p" className="text-sm font-bold text-[#212D40]" />
           <p className="text-xs text-[#D56753]/50 mt-1 font-medium">
             {completed} of {steps.length} complete
           </p>
@@ -198,8 +198,8 @@ export default function OnboardingChecklist({
         {steps.map((step, i) => (
           <button
             key={step.id}
-            onClick={step.complete ? undefined : step.action}
-            disabled={step.complete}
+            onClick={step.action}
+            disabled={step.complete && step.autoCompleted}
             className={`w-full flex items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-all duration-200 ${
               step.complete
                 ? step.autoCompleted

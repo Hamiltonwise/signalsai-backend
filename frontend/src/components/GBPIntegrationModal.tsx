@@ -22,13 +22,13 @@ interface BaseIntegrationModalProps {
 const mockLocations = [
   {
     id: "location-1",
-    displayName: "Hamilton Wise Dental - Main Office",
-    accountName: "Hamilton Wise Dental Practice",
+    displayName: "Alloro Demo - Main Office",
+    accountName: "Alloro Demo Practice",
   },
   {
     id: "location-2",
     displayName: "Hamilton Wise Dental - Downtown",
-    accountName: "Hamilton Wise Dental Practice",
+    accountName: "Alloro Demo Practice",
   },
 ];
 

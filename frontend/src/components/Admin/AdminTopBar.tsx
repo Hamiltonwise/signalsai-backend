@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, LogOut, User, RefreshCw, Layers, FolderKanban } from "lucide-react";
 import { queryClient } from "../../lib/queryClient";
 import { toast } from "react-hot-toast";
+import { FlagIssueButton } from "./FlagIssueButton";
 
 export function useIsPmRoute() {
   const location = useLocation();
@@ -88,7 +89,9 @@ export function AdminTopBar() {
               </Link>
             </div>
 
-            {/* User Menu */}
+            {/* Flag Issue + User Menu */}
+            <div className="flex items-center gap-3">
+            <FlagIssueButton />
             <div className="relative" ref={menuRef}>
               <motion.button
                 type="button"
@@ -144,6 +147,7 @@ export function AdminTopBar() {
                   </motion.div>
                 )}
               </AnimatePresence>
+            </div>
             </div>
           </div>
         </div>

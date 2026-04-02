@@ -1,5 +1,5 @@
 /**
- * Practice Intelligence Dashboard (WO-8)
+ * Business Clarity Dashboard (WO-8)
  *
  * Route: /dashboard/intelligence
  * Shows practice owner their SEO/AEO/CRO intelligence.

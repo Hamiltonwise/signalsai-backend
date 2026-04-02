@@ -1344,18 +1344,28 @@ function AgentMissionControl() {
           const teamFailed = agents.filter((a) => a.status === "failed").length;
           const teamDegraded = agents.filter((a) => a.status === "degraded").length;
 
+          // Derive team-level color from the worst individual agent status
+          const teamStatusColor = teamFailed > 0
+            ? STATUS_DOT.failed
+            : teamDegraded > 0
+              ? STATUS_DOT.degraded
+              : agents.every((a) => a.status === "idle")
+                ? STATUS_DOT.idle
+                : STATUS_DOT.nominal;
+
           return (
             <div key={team} className="rounded-xl border border-gray-100 overflow-hidden">
               <button
                 onClick={() => setExpandedTeam(isExpanded ? null : team)}
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors"
               >
-                {/* Status dots grid */}
+                {/* Team-level status dot (worst agent wins) + individual dots */}
+                <span className={`w-3 h-3 rounded-full shrink-0 ${teamStatusColor}`} title={`${team}: ${teamFailed > 0 ? "failed" : teamDegraded > 0 ? "degraded" : "nominal"}`} />
                 <div className="flex items-center gap-1 shrink-0">
                   {agents.map((a) => (
                     <span
                       key={a.name}
-                      className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[a.status] || STATUS_DOT.idle}`}
+                      className={`w-2 h-2 rounded-full ${STATUS_DOT[a.status] || STATUS_DOT.idle}`}
                       title={`${a.displayName}: ${a.status}`}
                     />
                   ))}

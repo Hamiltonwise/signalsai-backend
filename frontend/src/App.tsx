@@ -121,6 +121,7 @@ import { PilotHandler } from "./components/PilotHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./contexts/ToastContext";
 import ScrollToTop from "./components/ScrollToTop";
+import { EnvironmentBanner } from "./components/EnvironmentBanner";
 
 /** Loading fallback for lazy-loaded routes */
 function LoadingFallback() {
@@ -188,6 +189,7 @@ function App() {
     >
     <ToastProvider>
     <BrowserRouter>
+      <EnvironmentBanner />
       <ScrollToTop />
       <PilotHandler />
       <AuthProvider>

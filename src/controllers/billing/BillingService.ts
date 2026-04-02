@@ -11,7 +11,7 @@
 import Stripe from "stripe";
 import axios from "axios";
 import { db } from "../../database/connection";
-import { getStripe, getDefaultPriceId, getWebhookSecret } from "../../config/stripe";
+import { getStripe, getDefaultPriceId, getWebhookSecret, getTierPriceId, type PricingTier } from "../../config/stripe";
 import {
   OrganizationModel,
   IOrganization,
@@ -86,15 +86,16 @@ function getAppUrl(): string {
 /**
  * Create a Stripe Checkout Session for a subscription.
  *
- * Single-product model: always uses the DFY price regardless of tier param.
+ * Supports legacy tiers (DWY/DFY) and new tiers (growth/full).
+ * growth = $997/month, full = $2,497/month.
  *
  * @param orgId - Organization ID
- * @param tier - Kept for API compatibility — always resolves to DFY
+ * @param tier - Pricing tier. Defaults to "full" for backward compatibility
  * @param isOnboarding - Whether this is during onboarding (affects redirect URLs)
  */
 export async function createCheckoutSession(
   orgId: number,
-  tier: "DWY" | "DFY" = "DFY",
+  tier: "DWY" | "DFY" | "growth" | "full" = "DFY",
   isOnboarding: boolean = false
 ): Promise<CheckoutResult> {
   const stripe = getStripe();
@@ -105,8 +106,15 @@ export async function createCheckoutSession(
     throw { statusCode: 404, message: "Organization not found" };
   }
 
-  // Use org-specific price override, or fall back to default ($2,000/location)
-  const priceId = org.stripe_price_id || getDefaultPriceId();
+  // Resolve price: org-specific override > tier-based > default
+  let priceId: string;
+  if (org.stripe_price_id) {
+    priceId = org.stripe_price_id;
+  } else if (tier === "growth" || tier === "full") {
+    priceId = getTierPriceId(tier as PricingTier);
+  } else {
+    priceId = getDefaultPriceId();
+  }
 
   // Quantity = override if set (flat-rate clients), otherwise location count
   let locationCount: number;
@@ -143,7 +151,7 @@ export async function createCheckoutSession(
     ],
     metadata: {
       organization_id: orgId.toString(),
-      tier: "DFY",
+      tier: tier,
       location_count: locationCount.toString(),
       is_onboarding: isOnboarding ? "true" : "false",
     },

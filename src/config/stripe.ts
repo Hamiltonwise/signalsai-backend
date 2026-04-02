@@ -63,6 +63,30 @@ export function getDefaultPriceId(): string {
   return STRIPE_DEFAULT_PRICE_ID;
 }
 
+// ─── Tier Pricing ───
+// Growth: $997/month -- score, improvement plan, Monday email. No PatientPath or competitor tracking.
+// Full: $2,497/month -- everything.
+const STRIPE_GROWTH_PRICE_ID = process.env.STRIPE_GROWTH_PRICE_ID;
+const STRIPE_FULL_PRICE_ID = process.env.STRIPE_FULL_PRICE_ID;
+
+export type PricingTier = "growth" | "full";
+
+const TIER_PRICE_MAP: Record<PricingTier, string | undefined> = {
+  growth: STRIPE_GROWTH_PRICE_ID,
+  full: STRIPE_FULL_PRICE_ID,
+};
+
+/**
+ * Get the Stripe price ID for a given tier.
+ * Falls back to the default price ID if the tier-specific env var is not set.
+ */
+export function getTierPriceId(tier: PricingTier = "full"): string {
+  const tierPrice = TIER_PRICE_MAP[tier];
+  if (tierPrice) return tierPrice;
+  // Fallback: use default price ID
+  return getDefaultPriceId();
+}
+
 /**
  * Check if Stripe is configured (for graceful degradation).
  */

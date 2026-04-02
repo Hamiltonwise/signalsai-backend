@@ -225,7 +225,7 @@ export const ConnectionDebugPanel: React.FC<ConnectionDebugPanelProps> = ({
               <button
                 onClick={() =>
                   window.open(
-                    "https://hamiltonwisedashboard.netlify.app/",
+                    "https://sandbox.getalloro.com/",
                     "_blank"
                   )
                 }
