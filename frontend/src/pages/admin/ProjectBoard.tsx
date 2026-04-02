@@ -330,6 +330,11 @@ export default function ProjectBoard() {
       <TaskDetailPanel
         task={selectedTask}
         onClose={() => setSelectedTask(null)}
+        isBacklog={
+          selectedTask
+            ? activeProject.columns.find((c) => c.id === selectedTask.column_id)?.name === "Backlog"
+            : false
+        }
       />
 
       {/* AI Synth Modal */}
