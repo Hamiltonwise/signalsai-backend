@@ -653,10 +653,10 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
       "Your business is showing <hl>strong momentum</hl> this month. New customer activity is up 12% and your local visibility continues to improve.")
     : prooflineResult?.trajectory;
 
-  // Use wizard demo user profile or real user profile for lastName
-  const effectiveLastName = isWizardActive
-    ? (wizardDemoData?.userProfile?.lastName ?? "Smith")
-    : userProfile?.lastName;
+  // Use first name for personal greeting (works for doctors and non-doctors)
+  const effectiveFirstName = isWizardActive
+    ? (wizardDemoData?.userProfile?.firstName ?? "there")
+    : userProfile?.firstName;
 
   // Get greeting based on time of day
   const getGreeting = () => {
@@ -898,7 +898,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           </div>
           <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
             {getGreeting()}
-            {effectiveLastName ? `, Dr. ${effectiveLastName}` : ""}.
+            {effectiveFirstName ? `, ${effectiveFirstName}` : ""}.
           </h1>
           {trajectory ? (
             <div className="space-y-4">

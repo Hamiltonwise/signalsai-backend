@@ -127,16 +127,15 @@ async function simulateCustomer(c: CustomerSim): Promise<ExperienceScore> {
     .select("first_name", "last_name", "name")
     .first();
 
-  if (user?.first_name && user?.last_name) {
-    const prefix = c.isDoctor ? "Dr. " : "";
-    result.greeting = { pass: true, value: `"Good Morning, ${prefix}${user.last_name}"` };
+  if (user?.first_name) {
+    result.greeting = { pass: true, value: `"Good Morning, ${user.first_name}"` };
     points++;
   } else {
     const fallback = user?.name || "unknown";
     result.greeting = {
       pass: false,
-      value: `Would show: "${fallback}"`,
-      issue: `first_name=${user?.first_name || "NULL"}, last_name=${user?.last_name || "NULL"}`,
+      value: `Would show: "Good Morning" (no name)`,
+      issue: `first_name is NULL, would fall back to no name`,
     };
   }
 
