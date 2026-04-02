@@ -56,23 +56,24 @@ interface MorningBriefingSummary {
 
 // ── Event type mappings ─────────────────────────────────────────────
 
-const SIGNUP_EVENTS = ["account.created", "checkup.submitted"];
+// Event type filters -- MUST match what producers actually write.
+// Producer files: checkup.ts, competitiveScout.ts, reviewRequests.ts, milestoneDetector.ts
+// If you add a new event type, verify the producer writes the EXACT same string.
+const SIGNUP_EVENTS = [
+  "checkup.account_created",  // produced by checkup.ts (was: account.created)
+  "checkup.email_captured",   // produced by checkup.ts
+];
 const COMPETITOR_EVENTS = [
-  "competitor.reviews_surge",
-  "competitor.rating_changed",
-  "competitor.new_entrant",
-  "competitive_scout.movement",
+  "competitor.review_surge",   // produced by seedDemoAccount (was: competitor.reviews_surge -- plural mismatch)
+  "competitor.movement",       // produced by competitiveScout.ts (was: competitive_scout.movement)
 ];
 const REVIEW_EVENTS = [
-  "review_request.sent",
-  "review.received",
-  "review_sync.completed",
+  "review_request.sent",       // produced by reviewRequests.ts (correct)
 ];
 const HEALTH_EVENTS = ["client_health.scored"];
 const MILESTONE_EVENTS = [
-  "milestone.achieved",
-  "milestone.detected",
-  "week1_win.generated",
+  "milestone.achieved",        // produced by milestoneDetector.ts (correct)
+  "first_win.achieved",        // produced by firstWinAttribution (was: week1_win.generated)
 ];
 
 // Agent activity event types (16 additional coverage areas)
@@ -300,9 +301,9 @@ function determineTopEvent(
     return `${redEvents.length} client(s) flagged RED. Immediate follow-up needed.`;
   }
 
-  // Check for competitor surges
+  // Check for competitor surges (matches producer: competitor.review_surge)
   const surges = events.filter(
-    (e) => e.event_type === "competitor.reviews_surge",
+    (e) => e.event_type === "competitor.review_surge",
   );
   if (surges.length > 0) {
     return `${surges.length} competitor review surge(s) detected overnight.`;
