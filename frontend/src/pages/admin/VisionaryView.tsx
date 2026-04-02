@@ -302,13 +302,33 @@ function MorningBriefingStats({
 function RevenuePanel() {
   const { data: metrics } = useBusinessMetrics();
   const mrr = metrics?.mrr.total ?? 0;
+  const byOrg = metrics?.mrr.byOrg ?? {};
   const growth = metrics?.orgCount.growth ?? 0;
   const monthlyDelta = metrics?.mrr.delta ?? 0;
   const isProfitable = metrics?.mrr.isProfitable ?? false;
   const burn = metrics?.mrr.burn ?? 0;
+  const payingCount = metrics?.mrr.payingCount ?? 0;
   const runwayMonths = !isProfitable && mrr > 0
     ? Math.floor(burn / Math.max(1, burn - mrr))
     : null;
+
+  // Find the largest client for concentration insight
+  const topOrg = Object.entries(byOrg).reduce(
+    (best, [id, rate]) => (rate > best.rate ? { id: Number(id), rate } : best),
+    { id: 0, rate: 0 }
+  );
+  const concentration = mrr > 0 ? Math.round((topOrg.rate / mrr) * 100) : 0;
+
+  // Build the insight line -- the Monday email voice
+  const insightLine = isProfitable
+    ? `$${Math.abs(monthlyDelta).toLocaleString()} above burn. ${payingCount} paying clients.`
+    : mrr === 0
+    ? "Pre-revenue. First paying client changes everything."
+    : `$${Math.abs(monthlyDelta).toLocaleString()} below burn. ${runwayMonths} months runway.${
+        concentration >= 30
+          ? ` Top client is ${concentration}% of revenue.`
+          : ""
+      }`;
 
   return (
     <Panel>
@@ -321,6 +341,11 @@ function RevenuePanel() {
           </p>
           <TailorText editKey="hq.visionary.revenue.mrrLabel" defaultText="Monthly Recurring Revenue" as="p" className="text-xs text-gray-400 mt-1" />
         </div>
+
+        {/* The insight -- not just a number, what it means */}
+        <p className="text-sm text-gray-600 leading-relaxed">
+          {insightLine}
+        </p>
 
         <div className="flex items-center gap-2">
           {growth >= 0 ? (
@@ -339,18 +364,18 @@ function RevenuePanel() {
         </div>
 
         <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
-          <TailorText editKey="hq.visionary.revenue.runwayLabel" defaultText={`Runway ($${burn.toLocaleString()} burn)`} as="p" className="text-xs text-gray-400 mb-1" />
-          {isProfitable ? (
-            <p className="text-lg font-bold text-emerald-600">
-              Profitable. +${monthlyDelta.toLocaleString()}/mo
-            </p>
-          ) : mrr === 0 ? (
-            <TailorText editKey="hq.visionary.revenue.preRevenue" defaultText="Pre-revenue" as="p" className="text-lg font-bold text-gray-400" />
-          ) : (
-            <p className="text-lg font-bold text-amber-600">
-              {runwayMonths} months runway at current burn
-            </p>
-          )}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">Monthly burn</p>
+              <p className="text-lg font-semibold text-[#212D40]">${burn.toLocaleString()}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-400 mb-1">Net</p>
+              <p className={`text-lg font-bold ${isProfitable ? "text-emerald-600" : mrr === 0 ? "text-gray-400" : "text-amber-600"}`}>
+                {isProfitable ? "+" : mrr === 0 ? "" : "-"}${Math.abs(monthlyDelta).toLocaleString()}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </Panel>
