@@ -15,7 +15,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, Check, X, AlertTriangle } from "lucide-react";
+import { Send, Loader2, Check, AlertTriangle } from "lucide-react";
 import { apiPost } from "@/api/index";
 
 interface EditChange {

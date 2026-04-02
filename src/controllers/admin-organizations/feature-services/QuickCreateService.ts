@@ -215,7 +215,7 @@ export async function quickCreateFromPlace(
     const loc = await LocationModel.create({
       organization_id: newOrg.id,
       name: businessName,
-      domain: website ? new URL(website).hostname.replace("www.", "") : null,
+      domain: (() => { try { return website ? new URL(website).hostname.replace("www.", "") : null; } catch { return null; } })(),
       is_primary: true,
     } as any, trx);
 
