@@ -104,11 +104,23 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
 
 
       if (result.success) {
-        setUploadStatus("success");
-
-        // WO-40: Show instant finding if available
         const finding = result.data?.instantFinding;
-        if (finding?.topSource) {
+        const parserFailed = result.data?.parserFailed;
+
+        if (parserFailed) {
+          // Parser failed but data was saved. Be honest, not alarming.
+          setUploadStatus("success");
+          setMessage(
+            result.data?.parserMessage ||
+            "Your data was received safely. Processing will complete shortly, and we'll have your referral picture ready soon."
+          );
+          showUploadToast(
+            "Data received",
+            `${finding?.totalRecords || 0} records saved. Processing shortly.`
+          );
+        } else if (finding?.topSource) {
+          // Full success with instant finding
+          setUploadStatus("success");
           setMessage(
             `Your top referral source: ${finding.topSource} (${finding.topSourceCount} cases from ${finding.totalRecords} records). See your full referral picture below.`
           );
@@ -117,6 +129,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
             `${finding.topSourceCount} cases found in ${finding.totalRecords} records`
           );
         } else {
+          setUploadStatus("success");
           setMessage(
             `We found ${finding?.totalRecords || 0} records. Your referral picture is being built.`
           );

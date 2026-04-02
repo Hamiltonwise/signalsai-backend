@@ -291,8 +291,22 @@ export async function processFileUpload(
         : `Parser unavailable: ${webhookError.message}. Try again or use manual entry.`,
     });
 
-    // Don't throw -- let the response return with the jobId so they can retry
+    // Return with parserFailed flag so frontend can show the right message
     console.warn(`[PMS] Job ${jobId} marked as failed. Customer can retry via dashboard.`);
+
+    const instantFinding = extractInstantFinding(jsonData);
+    return {
+      recordsProcessed,
+      recordsStored: recordsProcessed,
+      entryType: "csv" as const,
+      jobId,
+      originalName: file.originalname,
+      instantFinding,
+      parserFailed: true,
+      parserMessage: webhookError.code === "ECONNABORTED"
+        ? "Your data was received safely. Processing is taking longer than expected. We'll notify you when it's ready."
+        : "Your data was received safely. Our processing system is briefly unavailable. We'll process it shortly and notify you.",
+    };
   }
 
   const instantFinding = extractInstantFinding(jsonData);
@@ -304,5 +318,6 @@ export async function processFileUpload(
     jobId,
     originalName: file.originalname,
     instantFinding,
+    parserFailed: false,
   };
 }

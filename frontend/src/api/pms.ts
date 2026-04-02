@@ -188,6 +188,8 @@ export interface PMSUploadResponse {
       topSource?: string;
       topSourceCount?: number;
     } | null;
+    parserFailed?: boolean;
+    parserMessage?: string;
   };
   error?: string;
   message?: string;
