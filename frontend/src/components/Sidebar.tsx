@@ -186,7 +186,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     staleTime: 30 * 60_000,
   });
   const intelligenceMode = dashCtx?.intelligence_mode || "referral_based";
-  const showReferralHub = intelligenceMode !== "direct_acquisition";
   const [userTaskCount, setUserTaskCount] = useState<number>(0);
   const [unreadNotificationCount, setUnreadNotificationCount] =
     useState<number>(0);
@@ -425,11 +424,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         path: "/dashboard",
         showDuringOnboarding: true,
       },
-      // Referrals Hub: owner + manager only, hidden for direct_acquisition verticals
-      ...(isManagerOrAbove && showReferralHub
+      // Business data: always visible for owner + manager. Label adapts to vertical.
+      ...(isManagerOrAbove
         ? [
             {
-              label: intelligenceMode === "hybrid" ? "Revenue Sources" : "Referrals Hub",
+              label: intelligenceMode === "direct_acquisition" ? "Revenue Sources"
+                : intelligenceMode === "hybrid" ? "Revenue Sources"
+                : "Referrals Hub",
               icon: <Activity size={18} />,
               path: "/pmsStatistics",
               showDuringOnboarding: false,
