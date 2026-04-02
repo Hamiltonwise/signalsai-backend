@@ -270,7 +270,106 @@ export async function quickCreateFromPlace(
     properties: { placeId, accountType, businessName, createdBy: "admin" },
   }).catch(() => {});
 
-  // 4. Trigger hydration pipeline (all non-blocking)
+  // 4. Run competitive analysis (same engine as checkup) and persist to org
+  try {
+    const axios = (await import("axios")).default;
+    const port = process.env.PORT || 3000;
+    const analyzeResponse = await axios.post(
+      `http://localhost:${port}/api/checkup/analyze`,
+      {
+        name: businessName,
+        city,
+        state,
+        category,
+        types,
+        rating,
+        reviewCount,
+        placeId,
+        location: place.location || null,
+      },
+      { timeout: 30000 }
+    );
+
+    if (analyzeResponse.data?.success !== false) {
+      const a = analyzeResponse.data;
+      const compositeScore = a.score?.composite ?? null;
+      // Persist full checkup data to org
+      const checkupPersist: Record<string, any> = {};
+      if (compositeScore != null) checkupPersist.checkup_score = compositeScore;
+      if (a.topCompetitor?.name) checkupPersist.top_competitor_name = a.topCompetitor.name;
+      if (reviewCount) checkupPersist.checkup_review_count_at_creation = reviewCount;
+      checkupPersist.checkup_data = JSON.stringify({
+        score: compositeScore,
+        scoreLabel: a.scoreLabel,
+        findings: a.findings || [],
+        findingSummary: a.findings?.[0]?.title || null,
+        place: {
+          placeId,
+          name: businessName,
+          rating,
+          reviewCount,
+          category,
+          types,
+          phone,
+          website,
+          address,
+          city,
+          state,
+          stateAbbr,
+          photos: place.photos || [],
+          reviews: place.reviews || [],
+          regularOpeningHours: place.regularOpeningHours || null,
+          editorialSummary: place.editorialSummary || null,
+          businessStatus: place.businessStatus || null,
+        },
+        topCompetitor: a.topCompetitor || null,
+        competitors: a.competitors || [],
+        market: {
+          city,
+          state,
+          stateAbbr,
+          specialty: a.market?.specialty || category,
+          rank: a.market?.rank,
+        },
+        subScores: a.score || null,
+        totalImpact: a.totalImpact || 0,
+        reviewCount,
+        ozMoments: a.ozMoments || [],
+        surpriseFindings: a.surpriseFindings || [],
+        websiteIntelligence: a.websiteIntelligence || null,
+      });
+
+      await db("organizations").where({ id: org.id }).update(checkupPersist);
+
+      // Update ranking snapshot with real data
+      try {
+        const topComp = a.topCompetitor;
+        const checkupFindings = a.findings || [];
+        const richBullets = checkupFindings.slice(0, 3).map((f: any) => f.detail || f.title || "").filter(Boolean);
+        if (richBullets.length === 0) richBullets.push(`Business Clarity Score: ${compositeScore || "N/A"}/100.`);
+        const richHeadline = checkupFindings[0]?.title || "Your competitive landscape";
+
+        await db("weekly_ranking_snapshots")
+          .where({ org_id: org.id })
+          .update({
+            position: a.market?.rank || null,
+            keyword: `${businessName} in ${city || "your area"}`,
+            bullets: JSON.stringify(richBullets),
+            finding_headline: richHeadline,
+            competitor_name: topComp?.name || null,
+            competitor_review_count: topComp?.reviewCount || null,
+            client_review_count: reviewCount,
+            dollar_figure: a.totalImpact || null,
+          });
+      } catch { /* snapshot update is best-effort */ }
+
+      console.log(`[QuickCreate] Competitive analysis complete for org ${org.id}: score=${compositeScore}, competitors=${a.competitors?.length || 0}`);
+    }
+  } catch (analyzeErr: any) {
+    console.error(`[QuickCreate] Competitive analysis failed (non-blocking):`, analyzeErr.message);
+  }
+
+  // 5. Trigger hydration pipeline (all non-blocking)
   let websitePreviewUrl: string | null = null;
 
   // Website generation
