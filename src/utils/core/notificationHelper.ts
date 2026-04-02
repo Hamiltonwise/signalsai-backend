@@ -63,6 +63,25 @@ export async function createNotification(
   try {
     const locationId = options?.locationId ?? await resolveLocationId(organizationId);
 
+    // Dedup: don't create a notification if the same type+title already exists unread for this org
+    const existing = await db("notifications")
+      .where({
+        organization_id: organizationId,
+        type,
+        title,
+        read: false,
+      })
+      .first()
+      .catch(() => null);
+
+    if (existing) {
+      // Update timestamp on existing instead of creating a duplicate
+      await db("notifications")
+        .where({ id: existing.id })
+        .update({ updated_at: new Date() });
+      return existing.id;
+    }
+
     // Look up account email for email notification
     const account = await db("google_connections")
       .where({ organization_id: organizationId })

@@ -63,15 +63,33 @@ improvementPlanRoutes.get(
       const competitiveEdge = score.competitiveEdge ?? 0;
       const composite = score.composite ?? org.checkup_score ?? 0;
 
-      // Extract profile data from checkup
+      // Extract profile data from checkup, then overlay with latest ranking data
+      // (checkup is a snapshot that goes stale; ranking raw_data is the latest GBP scrape)
       const place = data?.place ?? {};
-      const photoCount = place.photoCount ?? place.photos ?? 0;
-      const reviewCount = place.reviewCount ?? 0;
+
+      // Check latest ranking for fresher GBP data
+      const latestRanking = await db("practice_rankings")
+        .where({ organization_id: orgId, status: "completed" })
+        .orderBy("created_at", "desc")
+        .first()
+        .catch(() => null);
+
+      let liveGbp: any = {};
+      if (latestRanking?.raw_data) {
+        const rawData = typeof latestRanking.raw_data === "string"
+          ? JSON.parse(latestRanking.raw_data)
+          : latestRanking.raw_data;
+        liveGbp = rawData?.client_gbp ?? {};
+      }
+
+      // Use live GBP data when available, fall back to checkup snapshot
+      const photoCount = liveGbp.photosCount ?? place.photoCount ?? place.photos ?? 0;
+      const reviewCount = liveGbp.totalReviewCount ?? place.reviewCount ?? 0;
       const lastReviewDaysAgo = data?.lastReviewDaysAgo ?? 999;
-      const hasDescription = !!place.editorialSummary;
-      const hasHours = !!place.hours || !!place.hasHours;
-      const hasPhone = !!place.phone;
-      const hasWebsite = !!place.website;
+      const hasDescription = !!(liveGbp.hasDescription ?? place.editorialSummary);
+      const hasHours = !!(liveGbp.hasHours ?? place.hours ?? place.hasHours);
+      const hasPhone = !!(liveGbp.hasPhone ?? place.phone);
+      const hasWebsite = !!(liveGbp.hasWebsite ?? place.website);
 
       // Market data
       const market = data?.market ?? {};
