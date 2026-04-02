@@ -38,7 +38,9 @@ import {
   ListTodo,
   Filter,
   Loader2 as Loader2Icon,
+  Shield,
 } from "lucide-react";
+import CanonTab from "@/components/Admin/CanonTab";
 
 // ─── Health Dot ─────────────────────────────────────────────────────
 
@@ -731,7 +733,7 @@ function TaskHealthTab() {
 
 export default function DreamTeam() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"chart" | "tasks">("chart");
+  const [activeTab, setActiveTab] = useState<"chart" | "tasks" | "canon">("chart");
 
   const { data, isLoading } = useQuery({
     queryKey: ["dream-team"],
@@ -766,7 +768,9 @@ export default function DreamTeam() {
           <p className="text-sm text-gray-500 mt-1">
             {activeTab === "chart"
               ? "Every role in Alloro. Green means autonomous. Red means attention needed."
-              : "All tasks across the org. Filter by owner or status."}
+              : activeTab === "tasks"
+                ? "All tasks across the org. Filter by owner or status."
+                : "Agent governance. Spec, gold questions, and gate verdicts."}
           </p>
         </div>
         <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1 shrink-0">
@@ -792,11 +796,25 @@ export default function DreamTeam() {
             <ListTodo className="h-3.5 w-3.5" />
             Task Health
           </button>
+          <button
+            onClick={() => setActiveTab("canon")}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              activeTab === "canon"
+                ? "bg-[#D56753] text-white shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Shield className="h-3.5 w-3.5" />
+            Canon
+          </button>
         </div>
       </div>
 
       {/* Task Health Tab */}
       {activeTab === "tasks" && <TaskHealthTab />}
+
+      {/* Canon Tab */}
+      {activeTab === "canon" && <CanonTab />}
 
       {/* Org Chart Tab */}
       {activeTab === "chart" && (<>

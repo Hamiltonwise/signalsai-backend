@@ -10,6 +10,7 @@ import { Job } from "bullmq";
 import { CronExpressionParser } from "cron-parser";
 import { ScheduleModel, ScheduleRunModel, ISchedule } from "../../models/ScheduleModel";
 import { getAgentHandler } from "../../services/agentRegistry";
+import { checkGateStatus } from "../../services/agents/agentIdentity";
 
 function computeNextRunAt(schedule: ISchedule): Date {
   if (schedule.schedule_type === "cron" && schedule.cron_expression) {
@@ -47,6 +48,15 @@ export async function processSchedulerTick(_job: Job): Promise<void> {
     const agent = getAgentHandler(schedule.agent_key);
     if (!agent) {
       console.error(`[SCHEDULER] No handler registered for agent_key "${schedule.agent_key}"`);
+      continue;
+    }
+
+    // Canon gate check: block agents that haven't passed governance
+    const gate = await checkGateStatus(schedule.agent_key);
+    if (!gate.allowed) {
+      console.log(`[SCHEDULER] GATE BLOCKED "${schedule.agent_key}" -- ${gate.reason}`);
+      const nextRunAt = computeNextRunAt(schedule);
+      await ScheduleModel.updateById(schedule.id, { next_run_at: nextRunAt });
       continue;
     }
 

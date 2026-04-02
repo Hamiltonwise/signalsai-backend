@@ -396,6 +396,150 @@ async function logAction(
 }
 
 // =====================================================================
+// CANON GOVERNANCE
+// =====================================================================
+
+export interface CanonSpec {
+  purpose: string;
+  expectedBehavior: string;
+  constraints: string[];
+  owner: string;
+}
+
+export interface GoldQuestion {
+  id: string;
+  question: string;
+  expectedAnswer: string;
+  actualAnswer: string | null;
+  passed: boolean | null;
+  testedAt: string | null;
+}
+
+/**
+ * Check if an agent is allowed to run based on Canon gate status.
+ * Backward compatible: agents without Canon records are allowed.
+ */
+export async function checkGateStatus(agentKey: string): Promise<{ allowed: boolean; reason: string }> {
+  // Look up by agent_key first, then by slug
+  let identity = await db("agent_identities").where({ agent_key: agentKey }).first();
+  if (!identity) {
+    identity = await db("agent_identities").where({ slug: agentKey }).first();
+  }
+
+  // No identity row = ungoverned, backward compatible
+  if (!identity) {
+    return { allowed: true, reason: "No Canon record found, ungoverned agent" };
+  }
+
+  // Check if gate has expired
+  if (identity.gate_verdict === "PASS" && identity.gate_expires && new Date(identity.gate_expires) < new Date()) {
+    await db("agent_identities").where({ id: identity.id }).update({
+      gate_verdict: "PENDING",
+    });
+    return { allowed: false, reason: "Canon gate expired, re-validation required" };
+  }
+
+  if (identity.gate_verdict !== "PASS") {
+    return { allowed: false, reason: `Canon gate verdict is ${identity.gate_verdict}` };
+  }
+
+  return { allowed: true, reason: "Canon gate PASS" };
+}
+
+/**
+ * Update the Canon spec for an agent. Resets gate to PENDING.
+ */
+export async function updateCanonSpec(agentId: string, spec: CanonSpec): Promise<void> {
+  await db("agent_identities").where({ id: agentId }).update({
+    canon_spec: JSON.stringify(spec),
+    gate_verdict: "PENDING",
+  });
+}
+
+/**
+ * Set gold questions for an agent. Resets gate to PENDING.
+ */
+export async function setGoldQuestions(agentId: string, questions: GoldQuestion[]): Promise<void> {
+  await db("agent_identities").where({ id: agentId }).update({
+    gold_questions: JSON.stringify(questions),
+    gate_verdict: "PENDING",
+  });
+}
+
+/**
+ * Record a single gold question result.
+ */
+export async function recordGoldQuestionResult(
+  agentId: string,
+  questionId: string,
+  actualAnswer: string,
+  passed: boolean,
+): Promise<void> {
+  const identity = await db("agent_identities").where({ id: agentId }).first();
+  if (!identity) throw new Error("Agent not found");
+
+  const questions: GoldQuestion[] = typeof identity.gold_questions === "string"
+    ? JSON.parse(identity.gold_questions)
+    : identity.gold_questions || [];
+
+  const idx = questions.findIndex((q) => q.id === questionId);
+  if (idx === -1) throw new Error(`Gold question ${questionId} not found`);
+
+  questions[idx].actualAnswer = actualAnswer;
+  questions[idx].passed = passed;
+  questions[idx].testedAt = new Date().toISOString();
+
+  await db("agent_identities").where({ id: agentId }).update({
+    gold_questions: JSON.stringify(questions),
+  });
+}
+
+/**
+ * Set the gate verdict. PASS only allowed if ALL gold questions passed.
+ */
+export async function setGateVerdict(agentId: string, verdict: "PASS" | "FAIL"): Promise<void> {
+  if (verdict === "PASS") {
+    const identity = await db("agent_identities").where({ id: agentId }).first();
+    if (!identity) throw new Error("Agent not found");
+
+    const questions: GoldQuestion[] = typeof identity.gold_questions === "string"
+      ? JSON.parse(identity.gold_questions)
+      : identity.gold_questions || [];
+
+    if (questions.length === 0) {
+      throw new Error("Cannot PASS with no gold questions defined");
+    }
+
+    const allPassed = questions.every((q) => q.passed === true);
+    if (!allPassed) {
+      throw new Error("Cannot PASS: not all gold questions have passed");
+    }
+  }
+
+  const now = new Date();
+  const expires = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+  await db("agent_identities").where({ id: agentId }).update({
+    gate_verdict: verdict,
+    gate_date: now,
+    gate_expires: expires,
+  });
+
+  // Log behavioral event for Morning Briefing
+  try {
+    await db("behavioral_events").insert({
+      id: db.raw("gen_random_uuid()"),
+      event_type: `canon.gate_${verdict.toLowerCase()}`,
+      org_id: null,
+      properties: JSON.stringify({ agentId, verdict }),
+      created_at: now,
+    });
+  } catch (err) {
+    console.error("[AgentIdentity] Failed to log gate verdict event:", err instanceof Error ? err.message : err);
+  }
+}
+
+// =====================================================================
 // QUERY HELPERS
 // =====================================================================
 
