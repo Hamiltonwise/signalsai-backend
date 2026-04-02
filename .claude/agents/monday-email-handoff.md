@@ -31,6 +31,13 @@ The Monday email is the product for most customers. It's the thing that makes Ch
 - Run `bash scripts/preflight-check.sh`
 - Branch: sandbox (never push to main)
 
+## Known Workspace Issues (NOT YOUR FAULT, DO NOT FIX)
+- `src/controllers/admin-organizations/AdminOrganizationsController.ts` has a `trial_start_at` TypeScript error. Pre-existing from another session. Filter it out of tsc output: `npx tsc --noEmit 2>&1 | grep -v "AdminOrganizationsController\|trial_start_at"`
+- `frontend/src/pages/admin/OrganizationDetail.tsx` has a `patientpath_status` error. Same situation. Filter: `grep -v "OrganizationDetail\|patientpath_status"`
+- `frontend/src/components/PMS/PMSUploadModal.tsx` has uncommitted changes from another session that cause the preflight script to report a frontend build failure. Not related to Monday email work.
+- `src/routes/admin/agentCanon.ts` was modified by the linter to consolidate an import. This is intentional, do not revert.
+- The `npm run build` script in frontend runs `tsc -b && vite build`. The `tsc -b` may fail on the OrganizationDetail error. Use `npx vite build` directly to verify the Vite build passes, and `npx tsc -b --force 2>&1 | grep -v OrganizationDetail` for TypeScript checking.
+
 ## What Was Already Built Tonight (DO NOT REDO)
 The previous session built:
 - Canon governance system with 3-level gate (FAIL/PENDING/PASS with observe mode)
@@ -39,11 +46,42 @@ The previous session built:
 - Agent Auditor (daily self-audit of all agents)
 - Team Pulse (5-card war room on Dream Team board)
 - Event schema registry (TypeScript-enforced inter-agent contracts)
-- Monday Email already wired through agentRuntime + Go/No-Go poll
+- Monday Email already wired through agentRuntime + Go/No-Go poll (see sendAllMondayEmails in src/jobs/mondayEmail.ts, the calls are at the top and bottom of the function)
 - CS Agent wired through agentRuntime
 - CS Coach event type fixed from cs_agent.% to cs.%
 - Schedule row for monday_email already added
 - 39 agents with identity definitions, Canon specs, playbooks, and gold questions
+
+## What NOT to Touch
+- src/workers/processors/scheduler.processor.ts (7-layer security stack, done and tested)
+- src/services/agents/agentIdentity.ts (Canon functions, 39 AGENT_DEFINITIONS, done)
+- src/services/agents/agentRuntime.ts (auto-write to agent_results, done)
+- src/services/agents/csAgent.ts (runtime wiring, done)
+- src/services/agents/csCoach.ts (event type fix, done)
+- src/services/agents/agentAuditor.ts (done)
+- src/services/agents/eventSchema.ts (done)
+- src/services/agentRegistry.ts (39 handlers registered, done)
+- src/routes/admin/agentCanon.ts (6 endpoints + pulse + roster, done)
+- All frontend Canon/Pulse/Banner components (done)
+- All migration files (done)
+
+Only touch: src/jobs/mondayEmail.ts, src/emails/templates/MondayBriefEmail.ts, src/emails/templates/CleanWeekEmail.ts
+
+## Important: Runtime Wiring Already in sendAllMondayEmails
+The previous session added these calls to sendAllMondayEmails. They are already in the code. Do not add them again:
+- `prepareAgentContext` at the top of the function (checks orchestrator)
+- `pollForDelivery(org.id, "monday_email")` inside the for loop (4-voter Go/No-Go before each send)
+- `recordAgentAction` after successful send (routes through System Conductor)
+- `closeLoop` at the bottom (feedback for Learning Agent)
+
+For Fix 6 (Conductor before send), you need to MOVE the recordAgentAction call to BEFORE the sendMondayBriefEmail call, and make the send conditional on the Conductor clearing the content. The Go/No-Go poll stays where it is (before the Conductor check). The correct sequence is:
+1. Go/No-Go poll (is the data ready?) -- already wired
+2. Build email content (assemble subject, headline, body, action)
+3. Conductor gate (is the content quality OK?) -- you're adding this
+4. If cleared: sendMondayBriefEmail
+5. If held: createMondayBriefFallbackNotification with hold reason
+6. recordAgentAction (log what happened) -- move to after the decision
+7. closeLoop at the end -- already wired
 
 ## The Monday Email Scorecard: 8/20 PASS, 12/20 FAIL
 

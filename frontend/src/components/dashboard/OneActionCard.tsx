@@ -178,8 +178,8 @@ function resolveAction(props: OneActionCardProps): OneAction {
   const compName = props.topCompetitorName || "your nearest competitor";
   return {
     severity: "default",
-    title: `Ask your next 3 customers for a Google review.`,
-    detail: `Each review closes the gap with ${compName}. Text the link right after their visit, they remember you best in the first hour.`,
+    title: `Your position held steady. Here's how to widen the lead.`,
+    detail: `Ask your next 3 customers for a Google review. Each one closes the gap with ${compName}. Text the link right after their visit, they remember you best in the first hour.`,
     cta: "Send a review request",
     ctaLink: "/dashboard/reviews",
     icon: Star,

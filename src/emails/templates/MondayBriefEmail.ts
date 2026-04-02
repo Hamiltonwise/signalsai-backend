@@ -3,7 +3,7 @@
  *
  * Weekly intelligence brief sent every Monday morning.
  * Contains: ranking position, competitor activity, dollar figure,
- * specific findings, one action. Subject uses doctor's name + finding.
+ * specific findings, one action. Subject uses owner's name + finding.
  *
  * This is the recurring "how did they know that?" moment.
  * The email that makes them check Alloro before checking anything else.
@@ -22,9 +22,9 @@ import {
 
 export interface MondayBriefData {
   recipientEmail: string;
-  practiceName: string;
-  doctorName: string;
-  doctorLastName: string;
+  businessName: string;
+  ownerName: string;
+  ownerLastName: string;
   subjectLine: string;
   findingHeadline: string;
   findingBody: string;
@@ -39,8 +39,8 @@ export interface MondayBriefData {
 export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boolean> {
   const {
     recipientEmail,
-    practiceName,
-    doctorName,
+    businessName,
+    ownerName,
     findingHeadline,
     findingBody,
     dollarFigure,
@@ -75,10 +75,10 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
   const content = `
     <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Your Monday Brief</p>
     <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND_COLORS.darkGray}; line-height: 1.5;">
-      ${doctorName.split(" ")[0] || doctorName}, your business has been talking this week. Here's what it said.
+      ${ownerName.split(" ")[0] || ownerName}, your business has been talking this week. Here's what it said.
     </p>
     <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND_COLORS.navy};">${findingHeadline}</h1>
-    <p style="margin: 0 0 20px; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">${practiceName} &middot; ${rankingUpdate}</p>
+    <p style="margin: 0 0 20px; font-size: 13px; color: ${BRAND_COLORS.mediumGray};">${businessName} &middot; ${rankingUpdate}</p>
 
     ${createDivider()}
 
@@ -95,10 +95,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
     ${referralSection}
 
     <p style="margin: 24px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5;">
-      You're not doing this alone. Same time next Monday.
-    </p>
-    <p style="margin: 12px 0 0; font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5;">
-      If any of this is off, reply to this email anytime.
+      ${data.founderLine || "Built by Corey, after watching business owners work harder than they should have to. If any of this is off, reply. I read every one."}
     </p>
     <p style="margin: 8px 0 0; font-size: 13px; font-weight: 600; color: ${BRAND_COLORS.navy};">
       Corey

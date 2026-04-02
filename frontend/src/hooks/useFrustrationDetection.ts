@@ -20,6 +20,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { apiPost } from "@/api/index";
 
 interface FrustrationSignal {
   type: "rage_click" | "idle" | "navigation_loop" | "error_page";
@@ -59,6 +60,12 @@ export function useFrustrationDetection(options?: {
       setHelpMessage(message);
       setShowHelp(true);
       onFrustrationDetected?.(signal);
+
+      // Log to backend so Bug Triage Agent sees patterns
+      apiPost({
+        path: "/user/help/signal",
+        passedData: { type: signal.type, page: signal.page, detail: signal.detail },
+      }).catch(() => {}); // Fire and forget
 
       // Auto-dismiss after 10 seconds
       setTimeout(() => setShowHelp(false), 10000);

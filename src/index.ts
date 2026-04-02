@@ -150,6 +150,7 @@ import agentIdentityRoutes from "./routes/admin/agentIdentity";
 import agentCanonRoutes from "./routes/admin/agentCanon";
 import analyticsRoutes from "./routes/admin/analytics";
 import dataExportRoutes from "./routes/user/dataExport";
+import helpRoutes from "./routes/user/help";
 import mailgunEventsRoutes from "./routes/webhooks/mailgunEvents";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
@@ -353,6 +354,7 @@ app.use("/api/admin/aae-dashboard", aaeDashboardRoutes); // AAE 2026 conference 
 app.use("/api/admin/case-studies", adminCaseStudiesRoutes); // T6: Case study CRUD + publish
 app.use("/api/partner", gpDiscoveryRoutes); // T5: GP Discovery + referral form
 app.use("/api/admin/billing", billingAdminRoutes); // WO-BILLING-RECOVERY: at-risk accounts
+app.use("/api/user", helpRoutes); // HelpButton -> dream_team_task + behavioral_event
 app.use("/api/user/export", userExportRoutes); // WO-EXPORT-API: rankings CSV, referrals CSV, checkup JSON
 app.use("/api/user", userProgressReportRoutes); // Enhanced progress report data
 app.use("/api/admin/search", adminSearchRoutes); // WO-ADMIN-SEARCH: cross-collection search for HQ

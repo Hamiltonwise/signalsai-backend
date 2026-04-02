@@ -110,8 +110,8 @@ export interface CheckupResults {
 
 function getScoreLabel(score: number): string {
   if (score >= 80) return "Strong Position";
-  if (score >= 60) return "Getting There";
-  return "Room to Grow";
+  if (score >= 60) return "Building Momentum";
+  return "Your Starting Point";
 }
 
 function getScoreLabelColor(score: number): string {
@@ -227,13 +227,13 @@ function ScoreCelebrationText({ score }: { score: number }) {
   if (score >= 40) {
     return (
       <p className="text-sm text-slate-500 text-center -mt-1 animate-fade-in">
-        Room to grow, and we know exactly where.
+        Alloro already sees where to move the needle.
       </p>
     );
   }
   return (
     <p className="text-sm text-slate-500 text-center -mt-1 animate-fade-in">
-      There&apos;s a clear path forward. Let&apos;s start.
+      This is your starting point. Alloro knows exactly what to do first.
     </p>
   );
 }

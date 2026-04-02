@@ -1,7 +1,10 @@
 /**
- * Monday Email BullMQ Cron — WO33
+ * Monday Email BullMQ Cron, WO33
  *
- * Schedule: Monday 7:00 AM in practice's local timezone.
+ * Schedule: Monday 7:00 AM in the business's local timezone.
+ * TODO: Timezone-aware sending not yet implemented. All orgs are processed
+ * in one batch with no timezone grouping. Long-term: store timezone per org
+ * from GBP listing data, group orgs by timezone in sendAllMondayEmails.
  * Sends intelligence brief via n8n webhook.
  *
  * UNTESTABLE until Dave confirms:
@@ -34,6 +37,15 @@ import {
   closeLoop,
 } from "../services/agents/agentRuntime";
 import { pollForDelivery } from "../services/agents/goNoGo";
+import { conductorGate } from "../services/agents/systemConductor";
+
+/**
+ * Strip em-dashes from any string before it reaches a client inbox.
+ * Unicode U+2014 (em-dash) replaced with comma-space, U+2013 (en-dash) with hyphen.
+ */
+function stripEmDashes(text: string): string {
+  return text.replace(/\u2014/g, ", ").replace(/\u2013/g, "-");
+}
 
 /**
  * Fallback: When Monday email fails to send, create an in-app notification
@@ -168,25 +180,30 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
     firstWeekBody += "Alloro is now monitoring your market. Next Monday, you'll see what changed.";
 
-    // 5-minute fix for first week
+    // 5-minute fix for first week (never reference dashboard for first-week users)
     const firstWeekFix = "5-MINUTE FIX: Open your Google Business Profile and make sure your hours, photos, and services are complete. This is the fastest way to improve your score.";
     firstWeekBody += `\n\n${firstWeekFix}`;
+
+    const hasLoggedInFirst = !!(user.last_login_at || user.first_login_at);
+    const firstWeekAction = hasLoggedInFirst
+      ? "Open your dashboard"
+      : "Open your Google Business Profile and respond to any unanswered reviews";
 
     const founderLine = "Built by Corey, after watching business owners work harder than they should have to. If any of this is off, reply. I read every one.";
 
     try {
       const success = await sendMondayBriefEmail({
         recipientEmail: user.email,
-        practiceName: org.name,
-        doctorName: ownerName,
-        doctorLastName: ownerLastName,
-        subjectLine: firstWeekSubject,
-        findingHeadline: firstWeekHeadline,
-        findingBody: firstWeekBody,
+        businessName: org.name,
+        ownerName,
+        ownerLastName,
+        subjectLine: stripEmDashes(firstWeekSubject),
+        findingHeadline: stripEmDashes(firstWeekHeadline),
+        findingBody: stripEmDashes(firstWeekBody),
         dollarFigure: checkupData.totalImpact || 0,
-        actionText: "Open your dashboard",
-        rankingUpdate: market.rank ? `#${market.rank} in ${market.city || "your market"}` : "Ranking data available in your dashboard",
-        competitorNote: topComp ? `${topComp.name} is the #1 competitor in your area` : "",
+        actionText: firstWeekAction,
+        rankingUpdate: market.rank ? `#${market.rank} in ${market.city || "your market"}` : "Your ranking data is being collected",
+        competitorNote: topComp ? stripEmDashes(`${topComp.name} is the #1 competitor in your area`) : "",
         referralLine: null,
         founderLine,
       });
@@ -195,16 +212,20 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         console.log(`[MondayEmail] Sent first-week email to ${user.email} for ${org.name}`);
 
         // Record feedback loop outcome for first-week email (GBP optimize is the default first action)
-        const firstWeekActionType: ActionType = "gbp_optimize";
-        const baseline = await getBaselineMetric(orgId, firstWeekActionType);
-        await recordEmailOutcome({
-          org_id: orgId,
-          email_sent_at: new Date(),
-          action_type: firstWeekActionType,
-          recommended_action: firstWeekFix,
-          metric_name: getMetricNameForAction(firstWeekActionType),
-          metric_baseline: baseline,
-        });
+        try {
+          const firstWeekActionType: ActionType = "gbp_optimize";
+          const baseline = await getBaselineMetric(orgId, firstWeekActionType);
+          await recordEmailOutcome({
+            org_id: orgId,
+            email_sent_at: new Date(),
+            action_type: firstWeekActionType,
+            recommended_action: firstWeekFix,
+            metric_name: getMetricNameForAction(firstWeekActionType),
+            metric_baseline: baseline,
+          });
+        } catch (outcomeErr: any) {
+          console.error(`[MondayEmail] recordEmailOutcome failed for first-week ${org.name} (non-blocking):`, outcomeErr.message);
+        }
       }
       return success;
     } catch (err: any) {
@@ -229,6 +250,19 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     const clientRevs = snapshot.client_review_count || 0;
     const city = snapshot.keyword?.split(" in ")?.[1] || "";
 
+    // Look up avgCaseValue for bio-economic lens
+    let avgCaseValue = 1500;
+    try {
+      const vocabCfg = await db("vocabulary_configs").where({ org_id: orgId }).first();
+      if (vocabCfg?.vertical) {
+        const defaults = await db("vocabulary_defaults").where({ vertical: vocabCfg.vertical }).first();
+        if (defaults?.config) {
+          const parsed = typeof defaults.config === "string" ? JSON.parse(defaults.config) : defaults.config;
+          if (parsed.avgCaseValue) avgCaseValue = parsed.avgCaseValue;
+        }
+      }
+    } catch { /* vocabulary tables may not exist yet */ }
+
     if (pos === 1) {
       rawBullets.push(`You're #1${city ? " in " + city : ""}. That visibility is protecting your referral pipeline.`);
       if (compName) rawBullets.push(`${compName} is closest behind you with ${compReviews} reviews${clientRevs ? " to your " + clientRevs : ""}.`);
@@ -236,7 +270,10 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       rawBullets.push(`You're #${pos}${city ? " in " + city : ""}. ${compName ? compName + " holds #1 with " + compReviews + " reviews." : ""}`);
       if (clientRevs && compReviews > clientRevs) {
         const gap = compReviews - clientRevs;
-        rawBullets.push(`The gap is ${gap} reviews. At 3 reviews per week, you close it in about ${Math.ceil(gap / 3)} weeks.`);
+        // Bio-economic lens: name the dollar consequence and human need
+        const annualAtRisk = Math.round(gap * 0.3 * avgCaseValue);
+        rawBullets.push(`The gap is ${gap} reviews. That gap represents approximately $${annualAtRisk.toLocaleString()} in annual revenue at risk. Your team's livelihood depends on that visibility.`);
+        rawBullets.push(`At 3 reviews per week, you close it in about ${Math.ceil(gap / 3)} weeks.`);
       }
     }
 
@@ -319,7 +356,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     try {
       const success = await sendCleanWeekEmail({
         recipientEmail: user.email,
-        practiceName: org.name,
+        businessName: org.name,
         firstName: user.first_name || ownerName,
         position: snapshot.position || null,
         totalCompetitors,
@@ -434,12 +471,35 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
           // behavioral_events table may not exist yet
         }
 
-        // Use real counts if available, otherwise use reasonable minimums from the snapshot data
-        const compDisplay = competitorCount || (snapshot.competitor_name ? 5 : 3);
-        const sourceDisplay = sourceCount || 2;
-        const dirDisplay = directoryCount || 4;
+        // If all real counts are zero, there's nothing real to report. Route to clean-week email.
+        if (competitorCount === 0 && sourceCount === 0 && directoryCount === 0) {
+          const orgDataCW = await db("organizations").where({ id: orgId }).select("checkup_data").first();
+          const parsedCW = orgDataCW?.checkup_data ? (typeof orgDataCW.checkup_data === "string" ? JSON.parse(orgDataCW.checkup_data) : orgDataCW.checkup_data) : null;
+          const cityCW = parsedCW?.market?.city || snapshot.keyword?.split(" in ")?.[1] || null;
+          const totalCompetitorsCW = parsedCW?.market?.totalCompetitors || null;
 
-        findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. This week Alloro scanned ${compDisplay} competitors, checked ${sourceDisplay} review sources, and monitored ${dirDisplay} directories for your business. No urgent changes, which means your position is holding.`;
+          try {
+            const success = await sendCleanWeekEmail({
+              recipientEmail: user.email,
+              businessName: org.name,
+              firstName: user.first_name || ownerName,
+              position: snapshot.position || null,
+              totalCompetitors: totalCompetitorsCW,
+              city: cityCW,
+            });
+            if (success) {
+              console.log(`[MondayEmail] Sent clean week email (steady, no activity) to ${user.email} for ${org.name}`);
+            }
+            return success;
+          } catch (err: any) {
+            console.error(`[MondayEmail] Clean week email (steady) failed for ${org.name}:`, err.message);
+            await createMondayBriefFallbackNotification(orgId, org.name, "Your weekly update", "Your market position is steady this week. No urgent changes detected.");
+            return false;
+          }
+        }
+
+        // Only show real, verified counts
+        findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. This week Alloro scanned ${competitorCount} competitors, checked ${sourceCount} review sources, and monitored ${directoryCount} directories for your business. No urgent changes, which means your position is holding.`;
       }
     }
   }
@@ -461,17 +521,21 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
   findingBody += `\n\n${fiveMinuteFix}`;
 
-  // Action text
+  // Action text: never reference "dashboard" for clients who have never logged in
+  const hasLoggedIn = !!(user.last_login_at || user.first_login_at);
+  const dashboardFallback = hasLoggedIn
+    ? "Open your dashboard"
+    : "Open your Google Business Profile and respond to any unanswered reviews";
   const actionText = reviewGap > 0
     ? "Send review requests now"
     : snapshot.dollar_figure > 0
       ? `Close the $${snapshot.dollar_figure.toLocaleString()} gap`
-      : "Open your dashboard";
+      : dashboardFallback;
 
   // Ranking update line
   const rankingUpdate = snapshot.position
     ? `#${snapshot.position} in your market`
-    : "Ranking data available in your dashboard";
+    : "Ranking data being collected";
 
   // Enrich competitor note with recent Competitive Scout movements (last 7 days)
   let competitorNote = snapshot.competitor_note || "";
@@ -505,20 +569,55 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   // Flanagan craft-remains-human: the founder's voice in every touchpoint
   const founderLine = "Built by Corey, after watching business owners work harder than they should have to. If any of this is off, reply. I read every one.";
 
+  // Sanitize all dynamic content before sending
+  const sanitizedHeadline = stripEmDashes(findingHeadline);
+  const sanitizedBody = stripEmDashes(findingBody);
+  const sanitizedSubject = stripEmDashes(subjectLine);
+  const sanitizedCompetitorNote = stripEmDashes(competitorNote);
+  const sanitizedAction = stripEmDashes(actionText);
+  const sanitizedRanking = stripEmDashes(rankingUpdate);
+
+  // Conductor gate: check content quality BEFORE sending to client
+  try {
+    const conductorResult = await conductorGate({
+      agentName: "monday_email",
+      orgId,
+      outputType: "email",
+      headline: sanitizedHeadline,
+      body: sanitizedBody,
+      humanNeed: "safety",
+      economicConsequence: "Weekly engagement reduces 30-day churn risk",
+    });
+
+    if (!conductorResult.cleared) {
+      console.log(`[MondayEmail] Conductor HELD for ${org.name}: gate=${conductorResult.gate}, reason=${conductorResult.reason}`);
+      await createMondayBriefFallbackNotification(
+        orgId,
+        org.name,
+        sanitizedSubject,
+        `Email held by quality gate (${conductorResult.gate}): ${conductorResult.reason}`,
+      );
+      return false;
+    }
+  } catch (conductorErr: any) {
+    // Conductor failure is non-blocking: log and continue with send
+    console.error(`[MondayEmail] Conductor gate error for ${org.name} (non-blocking):`, conductorErr.message);
+  }
+
   // Send via email service
   try {
     const success = await sendMondayBriefEmail({
       recipientEmail: user.email,
-      practiceName: org.name,
-      doctorName: ownerName,
-      doctorLastName: ownerLastName,
-      subjectLine,
-      findingHeadline,
-      findingBody,
+      businessName: org.name,
+      ownerName,
+      ownerLastName,
+      subjectLine: sanitizedSubject,
+      findingHeadline: sanitizedHeadline,
+      findingBody: sanitizedBody,
       dollarFigure: snapshot.dollar_figure || 0,
-      actionText,
-      rankingUpdate,
-      competitorNote,
+      actionText: sanitizedAction,
+      rankingUpdate: sanitizedRanking,
+      competitorNote: sanitizedCompetitorNote,
       referralLine,
       founderLine,
     });
@@ -542,24 +641,29 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         recentSnapshots[0].position > (recentSnapshots[1]?.position ?? recentSnapshots[0].position);
       const emailActionType = detectActionType(reviewGap, hasDriftGP, hasRankingDrop);
       const baseline = await getBaselineMetric(orgId, emailActionType);
-      await recordEmailOutcome({
-        org_id: orgId,
-        email_sent_at: new Date(),
-        action_type: emailActionType,
-        recommended_action: fiveMinuteFix,
-        metric_name: getMetricNameForAction(emailActionType),
-        metric_baseline: baseline,
-      });
+      try {
+        await recordEmailOutcome({
+          org_id: orgId,
+          email_sent_at: new Date(),
+          action_type: emailActionType,
+          recommended_action: fiveMinuteFix,
+          metric_name: getMetricNameForAction(emailActionType),
+          metric_baseline: baseline,
+        });
+      } catch (outcomeErr: any) {
+        // Fix 7: recordEmailOutcome failure must not affect delivery status
+        console.error(`[MondayEmail] recordEmailOutcome failed for ${org.name} (non-blocking):`, outcomeErr.message);
+      }
     } else {
       console.error(`[MondayEmail] Email service returned failure for ${org.name}`);
       // Fallback: create in-app notification so the client still gets the brief
-      await createMondayBriefFallbackNotification(orgId, org.name, subjectLine, findingBody);
+      await createMondayBriefFallbackNotification(orgId, org.name, sanitizedSubject, sanitizedBody);
     }
     return success;
   } catch (err: any) {
     console.error(`[MondayEmail] Failed for ${org.name}:`, err.message);
     // Fallback: create in-app notification so the client still gets the brief
-    await createMondayBriefFallbackNotification(orgId, org.name, subjectLine, findingBody);
+    await createMondayBriefFallbackNotification(orgId, org.name, sanitizedSubject, sanitizedBody);
     return false;
   }
 }
@@ -580,6 +684,10 @@ export async function sendAllMondayEmails(): Promise<{ sent: number; total: numb
   }
 
   // Include subscribed orgs AND Checkup-originated signups (billing after TTFV, not at Step 4)
+  // Filter out test/demo accounts to prevent real emails to test data
+  const TEST_ORG_PATTERNS = /\b(test|demo|smoke|seed|example|localhost)\b/i;
+  const INTERNAL_EMAIL_DOMAINS = ["getalloro.com", "alloro.io", "example.com", "test.com"];
+
   const orgs = await db("organizations")
     .where(function () {
       this.where({ subscription_status: "active" })
@@ -590,8 +698,28 @@ export async function sendAllMondayEmails(): Promise<{ sent: number; total: numb
 
   let sent = 0;
   let held = 0;
+  let skippedTest = 0;
   for (const org of orgs) {
     try {
+      // Skip test/demo orgs
+      if (TEST_ORG_PATTERNS.test(org.name)) {
+        skippedTest++;
+        continue;
+      }
+      // Check admin user email domain
+      const adminUser = await db("organization_users")
+        .join("users", "users.id", "organization_users.user_id")
+        .where({ organization_id: org.id, role: "admin" })
+        .select("users.email")
+        .first();
+      if (adminUser?.email) {
+        const domain = adminUser.email.split("@")[1]?.toLowerCase();
+        if (domain && INTERNAL_EMAIL_DOMAINS.includes(domain)) {
+          skippedTest++;
+          continue;
+        }
+      }
+
       // Go/No-Go poll: 4 voters must all say GO before this email ships
       // Intelligence (findings ready?), Score Recalc (score fresh?),
       // Safety (PII check), Orchestrator (rate limit)
@@ -632,6 +760,6 @@ export async function sendAllMondayEmails(): Promise<{ sent: number; total: numb
       : undefined,
   });
 
-  console.log(`[MondayEmail] Sent ${sent}/${orgs.length} emails (${held} held by Go/No-Go)`);
+  console.log(`[MondayEmail] Sent ${sent}/${orgs.length} emails (${held} held by Go/No-Go, ${skippedTest} test orgs skipped)`);
   return { sent, total: orgs.length };
 }

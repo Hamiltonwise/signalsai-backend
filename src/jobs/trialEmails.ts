@@ -27,8 +27,8 @@ const TRIAL_SEQUENCE: TrialEmail[] = [
   { sequenceNumber: 3, delayHours: 48,  subject: "The competitor you should know about.",   emailType: "competitor" },
   { sequenceNumber: 4, delayHours: 72,  subject: "What happens Monday morning.",            emailType: "monday_preview" },
   { sequenceNumber: 5, delayHours: 96,  subject: "One question.",                           emailType: "one_question" },
-  { sequenceNumber: 6, delayHours: 120, subject: "Your market this week.",                  emailType: "market_update" },
-  { sequenceNumber: 7, delayHours: 144, subject: "Your trial ends in 24 hours.",            emailType: "trial_ending" },
+  { sequenceNumber: 6, delayHours: 120, subject: "Here's what moved this week.",              emailType: "market_update" },
+  { sequenceNumber: 7, delayHours: 144, subject: "Your Monday emails start here.",           emailType: "trial_ending" },
 ];
 
 // ─── Enqueue Trial Chain ────────────────────────────────────────────
@@ -241,8 +241,8 @@ function getActionText(seq: number): string {
     case 3: return "See the comparison";
     case 4: return "Preview your Monday brief";
     case 5: return "Answer one question";
-    case 6: return "Check your market";
-    case 7: return "Keep your intelligence active";
+    case 6: return "See what changed";
+    case 7: return "Keep your Monday emails coming";
     default: return "Open your dashboard";
   }
 }
