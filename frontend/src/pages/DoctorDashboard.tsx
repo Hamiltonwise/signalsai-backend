@@ -306,11 +306,11 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
         )}
       </div>
 
-      <div className="mt-3">
-        <span className="text-5xl font-black text-[#212D40]" style={{ animation: 'score-reveal 0.6s ease-out' }}>
+      <div className="mt-4">
+        <span className="text-[40px] font-normal text-[#1A1D23] tracking-tight" style={{ fontVariantNumeric: 'tabular-nums', animation: 'score-reveal 0.6s ease-out' }}>
           #<AnimatedNumber value={ranking.rankPosition} duration={600} />
         </span>
-        <span className="text-lg text-[#212D40]/30 ml-2 font-medium">
+        <span className="text-base text-[#1A1D23]/25 ml-2">
           of <AnimatedNumber value={ranking.totalCompetitors || 0} duration={800} />
         </span>
       </div>
