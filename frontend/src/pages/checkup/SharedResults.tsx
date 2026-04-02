@@ -41,7 +41,7 @@ export default function SharedResults() {
   }, [shareId]);
 
   return (
-    <div className="min-h-dvh bg-[#FAFAF8] flex flex-col">
+    <div className="min-h-dvh bg-[#F7F8FA] flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-center pt-10 pb-6 px-4">
         <Link to="/" className="flex items-center gap-2">
@@ -50,7 +50,7 @@ export default function SharedResults() {
               <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
             </svg>
           </div>
-          <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+          <span className="text-[22px] font-bold tracking-tight text-[#1A1D23]">
             alloro
           </span>
         </Link>
@@ -66,10 +66,10 @@ export default function SharedResults() {
 
         {error && (
           <div className="max-w-md text-center mt-20">
-            <h1 className="text-2xl font-bold text-[#212D40] mb-4">
+            <h1 className="text-2xl font-bold text-[#1A1D23] mb-4">
               This link has expired
             </h1>
-            <p className="text-base text-[#212D40]/60 mb-8">
+            <p className="text-base text-[#1A1D23]/60 mb-8">
               Run your own free Checkup to see your market.
             </p>
             <Link
@@ -85,10 +85,10 @@ export default function SharedResults() {
         {card && (
           <div className="max-w-md w-full mt-8">
             {/* Context — competitive framing */}
-            <p className="text-center text-base font-semibold text-[#212D40] mb-1">
+            <p className="text-center text-base font-semibold text-[#1A1D23] mb-1">
               A colleague scored {card.score}. Where do you rank?
             </p>
-            <p className="text-center text-sm text-[#212D40]/50 mb-6">
+            <p className="text-center text-sm text-[#1A1D23]/50 mb-6">
               {card.specialty} in {card.city}
             </p>
 
@@ -108,8 +108,8 @@ export default function SharedResults() {
                       }}
                     />
                     <div className="flex flex-col items-center">
-                      <span className="text-4xl font-semibold text-[#212D40]">{card.score}</span>
-                      <span className="text-xs font-semibold text-[#212D40]/50">/ 100</span>
+                      <span className="text-4xl font-semibold text-[#1A1D23]">{card.score}</span>
+                      <span className="text-xs font-semibold text-[#1A1D23]/50">/ 100</span>
                     </div>
                   </div>
                 </div>
@@ -129,25 +129,25 @@ export default function SharedResults() {
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <div className="text-center">
                     <BarChart3 className="w-4 h-4 text-[#D56753] mx-auto mb-1" />
-                    <p className="text-lg font-bold text-[#212D40]">#{card.rank}</p>
-                    <p className="text-xs text-[#212D40]/50 uppercase">Rank</p>
+                    <p className="text-lg font-bold text-[#1A1D23]">#{card.rank}</p>
+                    <p className="text-xs text-[#1A1D23]/50 uppercase">Rank</p>
                   </div>
                   <div className="text-center">
                     <Users className="w-4 h-4 text-[#D56753] mx-auto mb-1" />
-                    <p className="text-lg font-bold text-[#212D40]">{card.totalCompetitors}</p>
-                    <p className="text-xs text-[#212D40]/50 uppercase">Competitors</p>
+                    <p className="text-lg font-bold text-[#1A1D23]">{card.totalCompetitors}</p>
+                    <p className="text-xs text-[#1A1D23]/50 uppercase">Competitors</p>
                   </div>
                   <div className="text-center">
                     <Star className="w-4 h-4 text-[#D56753] mx-auto mb-1" />
-                    <p className="text-lg font-bold text-[#212D40]">{card.score}</p>
-                    <p className="text-xs text-[#212D40]/50 uppercase">Score</p>
+                    <p className="text-lg font-bold text-[#1A1D23]">{card.score}</p>
+                    <p className="text-xs text-[#1A1D23]/50 uppercase">Score</p>
                   </div>
                 </div>
 
                 {card.topCompetitorName && (
-                  <p className="text-sm text-[#212D40]/60 text-center mb-6 leading-relaxed">
+                  <p className="text-sm text-[#1A1D23]/60 text-center mb-6 leading-relaxed">
                     The top competitor in this market is{" "}
-                    <span className="font-semibold text-[#212D40]">{card.topCompetitorName}</span>.
+                    <span className="font-semibold text-[#1A1D23]">{card.topCompetitorName}</span>.
                   </p>
                 )}
 
@@ -160,12 +160,12 @@ export default function SharedResults() {
                     Check your score
                     <ArrowRight className="w-4 h-4" />
                   </Link>
-                  <p className="text-center text-xs text-[#212D40]/40 mt-3">
+                  <p className="text-center text-xs text-[#1A1D23]/40 mt-3">
                     Free. 60 seconds. No one sees your results but you.
                   </p>
 
                   {/* Competitive nudge */}
-                  <p className="text-center text-sm font-bold text-[#212D40] mt-4">
+                  <p className="text-center text-sm font-bold text-[#1A1D23] mt-4">
                     Can you beat {card.score}?
                   </p>
                 </div>

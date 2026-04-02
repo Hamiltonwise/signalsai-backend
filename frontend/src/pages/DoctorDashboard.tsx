@@ -581,7 +581,7 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
         <input
           readOnly
           value={link}
-          className="flex-1 rounded-xl border border-[#212D40]/8 bg-[#FAFAF8] px-3 py-2.5 text-xs text-gray-500 truncate"
+          className="flex-1 rounded-xl border border-[#212D40]/8 bg-[#F7F8FA] px-3 py-2.5 text-xs text-gray-500 truncate"
         />
         <button
           onClick={async () => {

@@ -129,7 +129,7 @@ export default function ReviewRequestCard({
       <div className="card-supporting">
         <div className="flex items-center gap-2 mb-2">
           <Star className="w-5 h-5 text-[#D56753]" />
-          <TailorText editKey="dashboard.reviews.title" defaultText="Get More Reviews" as="h3" className="text-base font-bold text-[#1A1D23]" />
+          <TailorText editKey="dashboard.reviews.title" defaultText="Get More Reviews" as="h3" className="text-base font-semibold text-[#1A1D23]" />
         </div>
         <p className="text-sm text-gray-500">
           <TailorText editKey="dashboard.reviews.connect" defaultText="Connect your Google Business Profile to start sending review requests." as="span" className="" />
@@ -144,7 +144,7 @@ export default function ReviewRequestCard({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Star className="w-5 h-5 text-[#D56753]" />
-          <TailorText editKey="dashboard.reviews.request" defaultText="Request a Review" as="h3" className="text-base font-bold text-[#1A1D23]" />
+          <TailorText editKey="dashboard.reviews.request" defaultText="Request a Review" as="h3" className="text-base font-semibold text-[#1A1D23]" />
         </div>
         {stats && stats.total > 0 && (
           <div className="flex items-center gap-3 text-xs text-gray-400">

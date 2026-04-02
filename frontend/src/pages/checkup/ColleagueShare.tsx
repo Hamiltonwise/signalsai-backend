@@ -113,7 +113,7 @@ export default function ColleagueShare() {
           <div className="flex flex-col items-center gap-2">
             <div className="relative">
               <div className="w-20 h-20 rounded-full border-[3px] border-slate-100 flex items-center justify-center">
-                <span className="text-3xl font-semibold text-[#212D40]">
+                <span className="text-3xl font-semibold text-[#1A1D23]">
                   {checkupScore}
                 </span>
               </div>
@@ -128,7 +128,7 @@ export default function ColleagueShare() {
 
         {/* Headline */}
         <div className="space-y-3">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-[#212D40] tracking-tight leading-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight leading-tight">
             Know someone who should see theirs?
           </h1>
           <p className="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">
@@ -141,7 +141,7 @@ export default function ColleagueShare() {
           <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase mb-3">
             Your message
           </p>
-          <p className="text-sm text-[#212D40] leading-relaxed">
+          <p className="text-sm text-[#1A1D23] leading-relaxed">
             "I just found out where I rank in my market. Took 60 seconds. You should see yours:{" "}
             <span className="text-[#D56753] font-medium break-all">{checkupLink}</span>"
           </p>
@@ -171,7 +171,7 @@ export default function ColleagueShare() {
             />
             <button
               onClick={handleCopy}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-[#212D40] hover:bg-slate-50 transition-colors"
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-[#1A1D23] hover:bg-slate-50 transition-colors"
             >
               {copied ? (
                 <>
@@ -194,7 +194,7 @@ export default function ColleagueShare() {
             <p className="text-xs font-semibold text-[#D56753] uppercase tracking-wide mb-1">
               Rise Together
             </p>
-            <p className="text-sm text-[#212D40] leading-relaxed">
+            <p className="text-sm text-[#1A1D23] leading-relaxed">
               When they join, you both pay $1,000 instead of $2,000 for the first 3 months.
             </p>
           </div>

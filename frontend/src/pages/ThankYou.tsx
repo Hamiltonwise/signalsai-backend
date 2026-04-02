@@ -58,7 +58,7 @@ export default function ThankYou() {
   const showBooth = isConferenceMode() || searchParams.get("source") === "aae2026";
 
   return (
-    <div className="min-h-dvh bg-[#FAFAF8]">
+    <div className="min-h-dvh bg-[#F7F8FA]">
       {/* Header */}
       <header className="bg-[#212D40] text-white py-4 px-5">
         <div className="mx-auto max-w-lg flex items-center gap-2">

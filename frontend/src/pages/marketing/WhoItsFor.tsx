@@ -160,7 +160,7 @@ export default function WhoItsFor() {
 
 function VerticalCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-[#FAFAF8] p-5">
+    <div className="rounded-xl border border-gray-200 bg-[#F7F8FA] p-5">
       <div className="flex items-start gap-3">
         <div className="shrink-0 mt-0.5">{icon}</div>
         <div>

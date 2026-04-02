@@ -34,7 +34,7 @@ export default function GBPConnectCard({ gbpConnected, orgId }: GBPConnectCardPr
         </div>
 
         <div className="flex-1 min-w-0">
-          <TailorText editKey="dashboard.gbp.title" defaultText="Go deeper with live Google data" as="p" className="text-sm font-bold text-[#1A1D23]" />
+          <TailorText editKey="dashboard.gbp.title" defaultText="Go deeper with live Google data" as="p" className="text-sm font-semibold text-[#1A1D23]" />
           <TailorText editKey="dashboard.gbp.body" defaultText="Your checkup already mapped your market. Connect Google to add live ranking tracking, review alerts, and automatic website updates." as="p" className="text-sm text-gray-500 mt-1 leading-relaxed" />
 
           <a

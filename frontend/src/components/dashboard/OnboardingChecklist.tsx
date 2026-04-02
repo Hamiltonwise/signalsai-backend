@@ -166,7 +166,7 @@ export default function OnboardingChecklist({
       {/* Header -- IKEA effect: "building", not "completing" */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <TailorText editKey="dashboard.checklist.title" defaultText="Getting started" as="p" className="text-sm font-bold text-[#1A1D23]" />
+          <TailorText editKey="dashboard.checklist.title" defaultText="Getting started" as="p" className="text-sm font-semibold text-[#1A1D23]" />
           <p className="text-xs text-[#D56753]/50 mt-1 font-medium">
             {completed} of {steps.length} complete
           </p>

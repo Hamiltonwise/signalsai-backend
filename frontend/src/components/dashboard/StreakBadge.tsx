@@ -73,7 +73,7 @@ export default function StreakBadge({ type, count, label }: StreakBadgeProps) {
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className={`text-xs font-bold ${config.color} uppercase tracking-wide`}>
+        <p className={`text-xs font-semibold ${config.color} uppercase tracking-wide`}>
           Week streak
         </p>
         <p className="text-xs text-gray-500 truncate">

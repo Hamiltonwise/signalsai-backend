@@ -232,7 +232,7 @@ export default function OneActionCard(props: OneActionCardProps) {
           <action.icon className={`h-5 w-5 ${styles.iconColor}`} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-[#1A1D23] leading-snug">
+          <p className="text-sm font-semibold text-[#1A1D23] leading-snug">
             {action.title}
           </p>
           <p className="text-xs text-gray-500 leading-relaxed mt-1.5">
