@@ -198,11 +198,37 @@ function buildHomepageSections(
     || category
     || "";
 
-  // Photos from Google Places
-  const photos = checkupData?.place?.photos || [];
-  const heroPhotoUrl = photos.length > 0
-    ? `https://places.googleapis.com/v1/${photos[0].name}/media?maxWidthPx=1200&key=GOOGLE_API_KEY`
+  // Photos from Google Places API v1
+  // Each photo has: name (resource path), widthPx, heightPx, authorAttributions
+  // To serve: GET https://places.googleapis.com/v1/{name}/media?maxWidthPx=1200&key={API_KEY}
+  const photos: Array<{ name?: string; widthPx?: number; heightPx?: number }> = checkupData?.place?.photos || [];
+  const apiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_PLACES_API_KEY || "";
+
+  // Pick the best hero photo: prefer landscape orientation, highest resolution
+  const heroPhoto = photos.length > 0
+    ? [...photos]
+        .filter((p) => p.name) // must have resource name
+        .sort((a, b) => {
+          // Prefer landscape (wider than tall)
+          const aLandscape = (a.widthPx || 0) >= (a.heightPx || 0) ? 1 : 0;
+          const bLandscape = (b.widthPx || 0) >= (b.heightPx || 0) ? 1 : 0;
+          if (bLandscape !== aLandscape) return bLandscape - aLandscape;
+          // Then prefer highest resolution
+          return ((b.widthPx || 0) * (b.heightPx || 0)) - ((a.widthPx || 0) * (a.heightPx || 0));
+        })[0]
+    : null;
+
+  const heroPhotoUrl = heroPhoto?.name && apiKey
+    ? `https://places.googleapis.com/v1/${heroPhoto.name}/media?maxWidthPx=1200&key=${apiKey}`
     : "";
+
+  // Photo quality assessment for the photo brief
+  const photoCount = photos.length;
+  const hasHighResPhotos = photos.some((p) => (p.widthPx || 0) >= 800);
+  const photoQuality: "good" | "low" | "none" =
+    photoCount >= 5 && hasHighResPhotos ? "good"
+    : photoCount > 0 ? "low"
+    : "none";
 
   const sections: Array<{ name: string; content: string }> = [];
 
@@ -390,6 +416,65 @@ function buildWrapper(orgName: string): string {
 // Main: generate website project + homepage
 // -----------------------------------------------------------------------
 
+// -----------------------------------------------------------------------
+// Photo Quality Assessment + Brief
+// The Canon says: photo brief is a PRODUCT OUTPUT, not a request.
+// The practice receives specific, plain-English directions for
+// 3-5 photos to take with an iPhone.
+// -----------------------------------------------------------------------
+
+function assessPhotoQuality(checkupData: any): {
+  quality: "good" | "low" | "none";
+  count: number;
+  hasHighRes: boolean;
+  brief: string[] | null;
+} {
+  const photos: Array<{ widthPx?: number; heightPx?: number }> =
+    checkupData?.place?.photos || [];
+  const count = photos.length;
+  const hasHighRes = photos.some((p) => (p.widthPx || 0) >= 800);
+
+  if (count >= 5 && hasHighRes) {
+    return { quality: "good", count, hasHighRes, brief: null };
+  }
+
+  // Generate specific, plain-English photo directions
+  // Not photography jargon. Just: take this photo, of this, in this location.
+  const brief: string[] = [];
+
+  if (count === 0) {
+    brief.push(
+      "Take a photo of the whole team together. Natural light if possible. Smiling, not posed. This becomes your homepage hero image.",
+      "Take a photo of your front entrance or lobby during a normal day. People want to see what they're walking into.",
+      "Take a photo of your main workspace or treatment area. Clean, well-lit, modern equipment visible.",
+    );
+  } else {
+    // Has some photos but needs more or better quality
+    if (!hasHighRes) {
+      brief.push(
+        "Your current photos are low resolution. Retake with your iPhone in good lighting. Hold the phone steady and tap to focus.",
+      );
+    }
+    if (count < 3) {
+      brief.push(
+        "Add a team photo. Real people build more trust than a logo or building exterior.",
+      );
+    }
+    if (count < 5) {
+      brief.push(
+        "Add a photo of your workspace. Show people what the experience feels like.",
+      );
+    }
+  }
+
+  return {
+    quality: count > 0 ? "low" : "none",
+    count,
+    hasHighRes,
+    brief: brief.length > 0 ? brief : null,
+  };
+}
+
 export async function generateInstantWebsite(input: CheckupWebsiteInput): Promise<{
   projectId: string;
   hostname: string;
@@ -449,10 +534,13 @@ export async function generateInstantWebsite(input: CheckupWebsiteInput): Promis
 
   const previewUrl = `https://${hostname}.sites.getalloro.com`;
 
-  // Update org with website status
+  // Update org with website status + photo quality for dashboard photo brief
+  const photoAssessment = assessPhotoQuality(checkupData || {});
   await db("organizations").where({ id: orgId }).update({
     patientpath_status: "preview_ready",
     patientpath_preview_url: previewUrl,
+    // Store photo assessment so the dashboard can show the photo brief
+    ...(photoAssessment.brief ? { photo_brief: JSON.stringify(photoAssessment) } : {}),
   });
 
   // Write notification
