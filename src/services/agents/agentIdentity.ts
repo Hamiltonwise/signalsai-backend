@@ -161,28 +161,41 @@ export const AGENT_DEFINITIONS: Omit<AgentIdentity, "id" | "createdAt" | "lastRu
   { slug: "aeo_monitor", displayName: "AEO Monitor", group: "intelligence", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.intelligence], maxTokenBudget: 30000, schedule: "0 5 * * 1", description: "Monitors AI search presence across ChatGPT, Grok, Claude" },
   { slug: "market_signal_scout", displayName: "Market Signal Scout", group: "intelligence", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.intelligence], maxTokenBudget: 30000, schedule: "0 6 * * *", description: "Detects market shifts and new entrants" },
   { slug: "proofline_agent", displayName: "Proofline Agent", group: "intelligence", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.intelligence], maxTokenBudget: 30000, schedule: "0 6 * * *", description: "Generates verified proof points from GBP data" },
+  { slug: "ranking", displayName: "Practice Ranking", group: "intelligence", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.intelligence, "practice_rankings:write"], maxTokenBudget: 50000, schedule: null, description: "Competitive ranking analysis via Google Places, scores and ranks all competitors" },
+  { slug: "rankings_intelligence", displayName: "Rankings Intelligence", group: "intelligence", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.intelligence], maxTokenBudget: 30000, schedule: "0 23 * * 0", description: "Weekly snapshot with plain-English bullets for each org's ranking" },
+  { slug: "strategic_intelligence", displayName: "Strategic Intelligence", group: "intelligence", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.intelligence], maxTokenBudget: 30000, schedule: "0 5 * * 3", description: "Weekly strategic signals: macro trends, partnerships, market shifts" },
 
   // ── Content Group ──
   { slug: "cmo_agent", displayName: "CMO Agent", group: "content", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.content], maxTokenBudget: 80000, schedule: "0 6 * * 1", description: "Weekly content briefs and topic recommendations" },
   { slug: "content_performance", displayName: "Content Performance", group: "content", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.content], maxTokenBudget: 30000, schedule: "0 18 * * 0", description: "Measures content ROI and platform metrics" },
   { slug: "ghost_writer", displayName: "Ghost Writer", group: "content", trustLevel: "yellow", scopes: [...GROUP_BASE_SCOPES.content, "email:send"], maxTokenBudget: 50000, schedule: null, description: "Drafts content (human approval required before publish)" },
   { slug: "programmatic_seo", displayName: "Programmatic SEO Agent", group: "content", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.content], maxTokenBudget: 30000, schedule: "0 4 * * 1", description: "Generates location-specific SEO pages" },
+  { slug: "weekly_digest", displayName: "Weekly Digest", group: "content", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.content], maxTokenBudget: 30000, schedule: "0 14 * * 5", description: "Friday summary of the week's activity, agent outputs, and competitive moves" },
 
   // ── Operations Group ──
   { slug: "nothing_gets_lost", displayName: "Nothing Gets Lost", group: "operations", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.operations], maxTokenBudget: 30000, schedule: "0 7 * * *", description: "Daily orphan scans for unreferenced documents" },
   { slug: "bug_triage", displayName: "Bug Triage", group: "operations", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.operations], maxTokenBudget: 30000, schedule: "0 * * * *", description: "Hourly error log analysis and task creation" },
   { slug: "technology_horizon", displayName: "Technology Horizon", group: "operations", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.operations], maxTokenBudget: 30000, schedule: "5 6 * * *", description: "Scans tech landscape for relevant capabilities" },
+  { slug: "foundation_operations", displayName: "Foundation Operations", group: "operations", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.operations], maxTokenBudget: 30000, schedule: "0 3 * * 1", description: "Weekly Heroes & Founders Foundation ops: RISE Program, grants, sponsor outreach" },
 
   // ── Client Group ──
   { slug: "client_monitor", displayName: "Client Monitor", group: "client", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.client], maxTokenBudget: 30000, schedule: "0 6 * * *", description: "Daily client health scoring (GREEN/AMBER/RED)" },
   { slug: "cs_agent", displayName: "CS Agent", group: "client", trustLevel: "yellow", scopes: [...GROUP_BASE_SCOPES.client, "email:send"], maxTokenBudget: 30000, schedule: "30 7 * * *", description: "Proactive client interventions (human approval for outbound)" },
   { slug: "cs_coach", displayName: "CS Coach", group: "client", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.client], maxTokenBudget: 30000, schedule: "0 20 * * 0", description: "Weekly CS pattern analysis and training" },
+  { slug: "cs_expander", displayName: "CS Expander", group: "client", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.client], maxTokenBudget: 30000, schedule: "30 7 * * *", description: "Daily expansion opportunity detection: upsell and cross-sell signals" },
   { slug: "dreamweaver", displayName: "Dreamweaver", group: "client", trustLevel: "yellow", scopes: [...GROUP_BASE_SCOPES.client], maxTokenBudget: 30000, schedule: "15 7 * * *", description: "Hospitality moments for healthy accounts" },
   { slug: "monday_email", displayName: "Monday Email", group: "client", trustLevel: "yellow", scopes: [...GROUP_BASE_SCOPES.client, "email:send"], maxTokenBudget: 20000, schedule: "0 7 * * 1", description: "Weekly intelligence brief delivery" },
+  { slug: "week1_win", displayName: "Week 1 Win", group: "client", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.client], maxTokenBudget: 15000, schedule: "0 16 * * *", description: "Daily check for new accounts, delivers the single most valuable quick win within 7 days" },
 
   // ── Growth Group ──
   { slug: "conversion_optimizer", displayName: "Conversion Optimizer", group: "growth", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.growth], maxTokenBudget: 30000, schedule: "0 6 * * 1", description: "Weekly funnel analysis and A/B test proposals" },
   { slug: "learning_agent", displayName: "Learning Agent", group: "growth", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.growth], maxTokenBudget: 30000, schedule: "0 21 * * 0", description: "Weekly heuristic calibration from outcome data" },
+  { slug: "feedback_loop", displayName: "Feedback Loop", group: "growth", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.growth], maxTokenBudget: 15000, schedule: "0 15 * * 2", description: "Measures Monday email outcomes after 7 days, aggregates which action types drive improvement" },
+  { slug: "vertical_readiness", displayName: "Vertical Readiness", group: "growth", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.growth], maxTokenBudget: 30000, schedule: "0 3 * * 3", description: "Weekly vertical expansion readiness: scores new verticals on TAM, fit, and effort" },
+  { slug: "human_deployment_scout", displayName: "Human Deployment Scout", group: "growth", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.growth], maxTokenBudget: 30000, schedule: "0 3 * * 4", description: "Weekly hiring signal detection: when to hire, what roles, cost impact" },
+  { slug: "trend_scout", displayName: "Trend Scout", group: "growth", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.growth], maxTokenBudget: 30000, schedule: "0 5 * * 5", description: "Weekly trend detection in client industries and adjacent markets" },
+  { slug: "podcast_scout", displayName: "Podcast Scout", group: "growth", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.growth], maxTokenBudget: 30000, schedule: "0 3 * * 5", description: "Weekly podcast opportunity detection: shows, pitch angles, booking windows" },
+  { slug: "real_estate_agent", displayName: "Real Estate Agent", group: "growth", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.growth], maxTokenBudget: 30000, schedule: "0 3 * * 6", description: "Weekly commercial real estate trend scan for client expansion" },
 
   // ── Financial Group ──
   { slug: "cfo_agent", displayName: "CFO Agent", group: "financial", trustLevel: "yellow", scopes: [...GROUP_BASE_SCOPES.financial], maxTokenBudget: 30000, schedule: "0 8 1 * *", description: "Monthly financial projections and cost analysis" },
@@ -191,8 +204,6 @@ export const AGENT_DEFINITIONS: Omit<AgentIdentity, "id" | "createdAt" | "lastRu
   { slug: "system_conductor", displayName: "System Conductor", group: "governance", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.governance, "client_facing:output"], maxTokenBudget: 30000, schedule: null, description: "Gates all client-facing output (PASS/HOLD/ESCALATE)" },
   { slug: "clo_agent", displayName: "CLO Agent", group: "governance", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.governance], maxTokenBudget: 30000, schedule: "0 9 * * 1", description: "Legal/IP monitoring and compliance flags" },
   { slug: "morning_briefing", displayName: "Morning Briefing", group: "governance", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.governance], maxTokenBudget: 25000, schedule: "30 6 * * *", description: "Daily synthesis of overnight signals for Corey" },
-
-  // ── Governance Group (continued) ──
   { slug: "agent_auditor", displayName: "Agent Auditor", group: "governance", trustLevel: "green", scopes: [...GROUP_BASE_SCOPES.governance], maxTokenBudget: 30000, schedule: "0 23 * * *", description: "Daily audit of all agents: broken contracts, drift signals, missing wiring, Canon compliance" },
 
   // ── Personal Group ──
