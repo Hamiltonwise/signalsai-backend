@@ -161,9 +161,12 @@ export async function getPmsSummary(req: Request, res: Response) {
  */
 export async function getKeyData(req: Request, res: Response) {
   try {
-    const organizationId = parseInt(String(req.query.organization_id), 10);
+    // Use query param if provided, fall back to authenticated org ID
+    const queryOrgId = parseInt(String(req.query.organization_id || ""), 10);
+    const authOrgId = (req as any).organizationId;
+    const organizationId = (!isNaN(queryOrgId) && queryOrgId > 0) ? queryOrgId : authOrgId;
 
-    if (!organizationId || isNaN(organizationId)) {
+    if (!organizationId) {
       return res.status(400).json({
         success: false,
         error: "Missing or invalid organization_id parameter",
