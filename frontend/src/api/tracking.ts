@@ -7,7 +7,7 @@
 let _sessionId: string | null = null;
 
 /** Get or create a session ID for this browser session */
-function getSessionId(): string {
+export function getSessionId(): string {
   if (!_sessionId) {
     _sessionId = crypto.randomUUID();
   }

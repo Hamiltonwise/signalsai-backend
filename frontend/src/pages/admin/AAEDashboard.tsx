@@ -43,9 +43,22 @@ interface AAEFinding {
   created_at: string;
 }
 
+interface AAEFunnel {
+  scansStarted: number;
+  scansCompleted: number;
+  accountsCreated: number;
+  scanToCompleteRate: number;
+  completeToAccountRate: number;
+  startToAccountRate: number;
+}
+
 interface AAEData {
   success: boolean;
   counts: AAECounts;
+  funnel?: {
+    today: AAEFunnel;
+    last7days: AAEFunnel;
+  };
   recentEvents: AAEEvent[];
   topFindings: AAEFinding[];
   mrr: {
@@ -372,14 +385,51 @@ export default function AAEDashboard() {
                   </div>
                 ))}
               </div>
-              {counts.scans > 0 && (
-                <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
-                    Scan-to-account rate
-                  </span>
-                  <span className="text-sm font-semibold text-[#D56753]">
-                    {Math.round((counts.accounts / counts.scans) * 100)}%
-                  </span>
+              {/* Conversion rates from funnel service */}
+              {data?.funnel?.today && counts.scans > 0 && (
+                <div className="mt-4 pt-3 border-t border-white/[0.06] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      Completion rate
+                    </span>
+                    <span className="text-sm font-semibold text-blue-400">
+                      {data.funnel.today.scanToCompleteRate}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      Complete to account
+                    </span>
+                    <span className="text-sm font-semibold text-emerald-400">
+                      {data.funnel.today.completeToAccountRate}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      Scan to account (end to end)
+                    </span>
+                    <span className="text-sm font-semibold text-[#D56753]">
+                      {data.funnel.today.startToAccountRate}%
+                    </span>
+                  </div>
+                </div>
+              )}
+              {/* 7-day trend */}
+              {data?.funnel?.last7days && data.funnel.last7days.scansStarted > 0 && (
+                <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-2">
+                    7-Day Trend
+                  </p>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">
+                      {data.funnel.last7days.scansStarted} scanned,{" "}
+                      {data.funnel.last7days.scansCompleted} completed,{" "}
+                      {data.funnel.last7days.accountsCreated} accounts
+                    </span>
+                    <span className="font-semibold text-gray-400">
+                      {data.funnel.last7days.startToAccountRate}%
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

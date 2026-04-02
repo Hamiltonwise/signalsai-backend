@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import type { PlaceDetails } from "../../api/places";
 import { sendCheckupEmail, triggerBuild, createCompetitorInvite } from "../../api/checkup";
-import { trackEvent } from "../../api/tracking";
+import { trackEvent, getSessionId } from "../../api/tracking";
 import { withTimeout, getSourceChannel } from "./conferenceFallback";
 
 // ---------------------------------------------------------------------------
@@ -786,6 +786,7 @@ export default function ResultsScreen() {
             relationship,
             agreedToTerms,
             checkup_score: score.composite,
+            session_id: getSessionId(),
             source_channel: getSourceChannel() || new URLSearchParams(window.location.search).get("ref") || undefined,
             checkup_data: {
               score,

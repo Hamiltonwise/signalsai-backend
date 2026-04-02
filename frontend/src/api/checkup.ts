@@ -1,6 +1,8 @@
 /**
- * Checkup API — Free Referral Base Checkup analysis
+ * Checkup API -- Free Referral Base Checkup analysis
  */
+
+import { getSessionId } from "./tracking";
 
 export interface CheckupScore {
   composite: number;
@@ -104,7 +106,7 @@ export async function analyzeCheckup(params: {
     const response = await fetch("/api/checkup/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(params),
+      body: JSON.stringify({ ...params, session_id: getSessionId() }),
       signal: controller.signal,
     });
 

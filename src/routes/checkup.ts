@@ -137,7 +137,7 @@ checkupRoutes.get("/geo", async (req, res) => {
  */
 checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res) => {
   try {
-    const { name, city, state, category, types, rating, reviewCount, placeId, location } =
+    const { name, city, state, category, types, rating, reviewCount, placeId, location, session_id } =
       req.body;
 
     if (!name || !city) {
@@ -149,9 +149,10 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
 
     const marketLocation = state ? `${city}, ${state}` : city;
 
-    // Log scan start (funnel measurement)
+    // Log scan start (funnel measurement) -- session_id links to downstream events
     BehavioralEventModel.create({
       event_type: "checkup.scan_started",
+      session_id: session_id || null,
       properties: { name, city, category: category || null, placeId: placeId || null },
     }).catch(() => {});
     const specialty = deriveSpecialtyFromName(name, category || "");
@@ -1119,9 +1120,10 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     const highConfidenceFindings = surpriseFindings.filter((f) => f.confidence === "high");
     const mediumConfidenceFindings = surpriseFindings.filter((f) => f.confidence === "medium");
 
-    // Log scan completed (funnel measurement)
+    // Log scan completed (funnel measurement) -- session_id links to scan_started
     BehavioralEventModel.create({
       event_type: "checkup.scan_completed",
+      session_id: session_id || null,
       properties: {
         name, city, score: compositeScore, rank, competitors: otherCompetitors.length,
         topCompetitor: topCompetitor?.name || null,
@@ -1585,10 +1587,11 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
     // Generate JWT
     const token = generateToken(user.id, normalizedEmail, true);
 
-    // Track event
+    // Track event -- session_id links account creation back to scan_started
     BehavioralEventModel.create({
       event_type: "checkup.account_created",
       org_id: org.id,
+      session_id: req.body.session_id || null,
       properties: {
         practice_name,
         place_id,

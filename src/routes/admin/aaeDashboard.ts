@@ -21,6 +21,7 @@ import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";
 import { db } from "../../database/connection";
 import { getMRRFromDB } from "../../services/businessMetrics";
+import { calculateCheckupFunnel } from "../../services/checkupFunnel";
 
 const aaeDashboardRoutes = express.Router();
 
@@ -210,9 +211,19 @@ aaeDashboardRoutes.get(
         // If orgs table doesn't exist or query fails, use 0
       }
 
+      // Funnel conversion rates (today + 7-day window)
+      const [funnelToday, funnel7d] = await Promise.all([
+        calculateCheckupFunnel({ since: todayStart }),
+        calculateCheckupFunnel({ days: 7 }),
+      ]);
+
       return res.json({
         success: true,
         counts,
+        funnel: {
+          today: funnelToday,
+          last7days: funnel7d,
+        },
         recentEvents: formattedEvents,
         topFindings: findings.slice(0, 10),
         mrr: {
