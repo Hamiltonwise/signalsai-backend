@@ -16,7 +16,7 @@ import { processSchedulerTick } from "./processors/scheduler.processor";
 import { processWebsiteBackup } from "./processors/websiteBackup.processor";
 import { processWebsiteRestore } from "./processors/websiteRestore.processor";
 import { processPmDailyBrief } from "./processors/pmDailyBrief.processor";
-import { runDreamweaver } from "../services/dreamweaverAgent";
+import { runDreamweaver } from "../services/agents/dreamweaver";
 import { runCollectiveIntelligence } from "../services/collectiveIntelligence";
 import { runProductEvolution } from "../jobs/productEvolution";
 import { processWeeklyScoreRecalc } from "./processors/weeklyScoreRecalc.processor";
@@ -483,6 +483,27 @@ async function setupFeedbackLoopSchedule(): Promise<void> {
   }
 }
 
+// Set up Dreamweaver schedule (daily 6 AM UTC, before morning briefing)
+async function setupDreamweaverSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("dreamweaver");
+    await queue.add(
+      "daily-dreamweaver",
+      {},
+      {
+        repeat: {
+          pattern: "0 6 * * *", // 6 AM UTC daily
+          tz: "UTC",
+        },
+        jobId: "daily-dreamweaver",
+      }
+    );
+    console.log("[MINDS-WORKER] Dreamweaver scheduled (6 AM UTC daily)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Dreamweaver schedule:", err);
+  }
+}
+
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
@@ -493,5 +514,6 @@ setupCollectiveIntelligenceSchedule();
 setupProductEvolutionSchedule();
 setupWeeklyScoreRecalcSchedule();
 setupFeedbackLoopSchedule();
+setupDreamweaverSchedule();
 
 console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
