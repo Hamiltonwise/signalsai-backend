@@ -20,7 +20,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Flag, CheckCircle2 } from "lucide-react";
+import { Flag, CheckCircle2, X } from "lucide-react";
 import { apiPost, apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
@@ -45,9 +45,10 @@ export function useBlueTapeMode() {
 
 interface BlueTapeOverlayProps {
   active: boolean;
+  onExit: () => void;
 }
 
-export function BlueTapeOverlay({ active }: BlueTapeOverlayProps) {
+export function BlueTapeOverlay({ active, onExit }: BlueTapeOverlayProps) {
   const [flags, setFlags] = useState<BlueTapeFlag[]>([]);
   const [placingFlag, setPlacingFlag] = useState<{ x: number; y: number } | null>(null);
   const [note, setNote] = useState("");
@@ -132,8 +133,15 @@ export function BlueTapeOverlay({ active }: BlueTapeOverlayProps) {
       data-bluetape
     >
       {/* Blue tape indicator bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-blue-500 text-white text-center py-1.5 text-xs font-semibold" data-bluetape>
-        Blue Tape Mode: Click anywhere to flag an issue. Click the X to exit.
+      <div className="fixed top-0 left-0 right-0 z-50 bg-blue-500 text-white flex items-center justify-center gap-3 py-2 text-xs font-semibold" data-bluetape>
+        <span>Blue Tape: Click anywhere to flag an issue</span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onExit(); }}
+          className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+          data-bluetape
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Existing flags */}
