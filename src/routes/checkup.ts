@@ -1515,11 +1515,23 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       // Mark email as verified (skip verification for Checkup gate)
       await trx("users").where({ id: newUser.id }).update({ email_verified: true });
 
-      // Create organization
-      const newOrg = await OrganizationModel.create({
-        name: practice_name || `${normalizedEmail.split("@")[0]}'s Practice`,
-        referral_code: await generateReferralCode(),
-      }, trx);
+      // Dedup: if an org already exists with this place_id, reuse it instead of creating a duplicate
+      // This prevents ghost orgs from double-submissions, back-button, or timeout retries
+      let newOrg: any = null;
+      if (place_id) {
+        const existingOrg = await trx("organizations")
+          .whereRaw("checkup_data::text LIKE ?", [`%${place_id}%`])
+          .first();
+        if (existingOrg) {
+          newOrg = existingOrg;
+        }
+      }
+      if (!newOrg) {
+        newOrg = await OrganizationModel.create({
+          name: practice_name || `${normalizedEmail.split("@")[0]}'s Practice`,
+          referral_code: await generateReferralCode(),
+        }, trx);
+      }
 
       // Set trial period: 7 days from now
       const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
