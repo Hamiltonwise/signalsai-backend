@@ -60,10 +60,8 @@ export function TaskCard({ task, onClick, onDelete, isBacklog = false }: TaskCar
         opacity: isDragging ? 0.9 : 1,
         cursor: isDragging ? "grabbing" : "grab",
       }}
-      layout
       initial={false}
       exit={{ opacity: 0, scale: 0.95, height: 0, marginBottom: 0 }}
-      transition={{ layout: { duration: 0.2, ease: "easeOut" } }}
       onClick={onClick}
       {...attributes}
       {...listeners}

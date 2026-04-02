@@ -25,7 +25,7 @@ interface PmState {
   // Task actions
   createTask: (projectId: string, data: CreateTaskInput) => Promise<void>;
   updateTask: (taskId: string, data: Partial<PmTask>) => Promise<void>;
-  moveTask: (taskId: string, columnId: string, position: number) => Promise<void>;
+  moveTask: (taskId: string, columnId: string, position: number, rollbackSnapshot?: PmProjectDetail | null) => Promise<void>;
   assignTask: (taskId: string, userId: number | null) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
 
@@ -124,16 +124,19 @@ export const usePmStore = create<PmState>((set, get) => ({
     });
   },
 
-  moveTask: async (taskId: string, columnId: string, position: number) => {
-    // Save snapshot for rollback
-    const snapshot = get().activeProject;
+  moveTask: async (taskId: string, columnId: string, position: number, rollbackSnapshot?: PmProjectDetail | null) => {
+    // If a pre-drag snapshot was provided (from handleDragOver flow), use it for rollback.
+    // Otherwise, save the current state and do the optimistic move here (non-drag callers).
+    const snapshot = rollbackSnapshot !== undefined ? rollbackSnapshot : get().activeProject;
 
-    // Optimistic update
-    const task = snapshot?.columns
-      .flatMap((c) => c.tasks)
-      .find((t) => t.id === taskId);
-    if (task) {
-      get().optimisticMoveTask(taskId, task.column_id, columnId, position);
+    if (rollbackSnapshot === undefined) {
+      // Called outside drag flow — do optimistic update
+      const task = snapshot?.columns
+        .flatMap((c) => c.tasks)
+        .find((t) => t.id === taskId);
+      if (task) {
+        get().optimisticMoveTask(taskId, task.column_id, columnId, position);
+      }
     }
 
     try {

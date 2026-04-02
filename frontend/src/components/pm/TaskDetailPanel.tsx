@@ -18,9 +18,10 @@ const PRIORITIES = [
 interface TaskDetailPanelProps {
   task: PmTask | null;
   onClose: () => void;
+  isBacklog?: boolean;
 }
 
-export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
+export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelProps) {
   const updateTask = usePmStore((s) => s.updateTask);
   const deleteTask = usePmStore((s) => s.deleteTask);
   const [title, setTitle] = useState("");
@@ -160,27 +161,38 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
               </div>
 
               {/* Priority */}
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
-                  Priority
-                </label>
-                <div className="flex gap-2">
-                  {PRIORITIES.map((p) => (
-                    <button
-                      key={p.value}
-                      onClick={() => handlePriorityChange(p.value)}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
-                        priority === p.value
-                          ? "bg-pm-bg-hover text-pm-text-primary ring-1 ring-pm-border-hover"
-                          : "text-pm-text-muted hover:bg-pm-bg-hover"
-                      }`}
-                    >
-                      <PriorityTriangle priority={p.value as any} size={12} />
-                      {p.label}
-                    </button>
-                  ))}
+              {isBacklog ? (
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
+                    Priority
+                  </label>
+                  <p className="text-xs text-pm-text-muted">
+                    Move out of Backlog to set priority
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
+                    Priority
+                  </label>
+                  <div className="flex gap-2">
+                    {PRIORITIES.map((p) => (
+                      <button
+                        key={p.value}
+                        onClick={() => handlePriorityChange(p.value)}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+                          priority === p.value
+                            ? "bg-pm-bg-hover text-pm-text-primary ring-1 ring-pm-border-hover"
+                            : "text-pm-text-muted hover:bg-pm-bg-hover"
+                        }`}
+                      >
+                        <PriorityTriangle priority={p.value as any} size={12} />
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Deadline */}
               <div>
