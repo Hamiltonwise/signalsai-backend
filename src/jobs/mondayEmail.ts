@@ -208,10 +208,43 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     }
   }
 
-  // Parse bullets
-  const bullets = typeof snapshot.bullets === "string"
+  // Parse bullets -- if LLM analysis didn't run, generate from raw ranking data
+  let bullets = typeof snapshot.bullets === "string"
     ? JSON.parse(snapshot.bullets)
     : snapshot.bullets || [];
+
+  // Fallback: when LLM bullets are empty but ranking data exists, build them from raw data
+  // This ensures every Monday email has real intelligence, even without ANTHROPIC_API_KEY
+  if ((!bullets || bullets.length === 0) && snapshot.position != null) {
+    const rawBullets: string[] = [];
+    const pos = snapshot.position;
+    const total = snapshot.total_competitors || 0;
+    const compName = snapshot.top_competitor_name;
+    const compReviews = snapshot.top_competitor_reviews || 0;
+    const clientRevs = snapshot.client_review_count || 0;
+    const city = snapshot.keyword?.split(" in ")?.[1] || "";
+
+    if (pos === 1) {
+      rawBullets.push(`You're #1${city ? " in " + city : ""}${total ? " out of " + total + " competitors" : ""}. That visibility is protecting your referral pipeline.`);
+      if (compName) rawBullets.push(`${compName} is closest behind you with ${compReviews} reviews${clientRevs ? " to your " + clientRevs : ""}.`);
+    } else {
+      rawBullets.push(`You're #${pos}${total ? " of " + total : ""}${city ? " in " + city : ""}. ${compName ? compName + " holds #1 with " + compReviews + " reviews." : ""}`);
+      if (clientRevs && compReviews > clientRevs) {
+        const gap = compReviews - clientRevs;
+        rawBullets.push(`The gap is ${gap} reviews. At 3 reviews per week, you close it in about ${Math.ceil(gap / 3)} weeks.`);
+      }
+    }
+
+    if (rawBullets.length > 0) {
+      bullets = rawBullets;
+      // Also set a finding headline from the data
+      if (!snapshot.finding_headline) {
+        snapshot.finding_headline = pos === 1
+          ? `holding #1${city ? " in " + city : ""}`
+          : `#${pos} in ${city || "your market"}${compName ? ", " + compName + " leads" : ""}`;
+      }
+    }
+  }
 
   // 2. Build payload
   const weekNumber = Math.min(4, Math.ceil(new Date().getDate() / 7));
