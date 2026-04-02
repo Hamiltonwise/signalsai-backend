@@ -240,17 +240,22 @@ function buildHomepageSections(
       </div>`
     : "";
 
+  // Hero photo as background (if available and high enough quality)
+  const heroBg = heroPhotoUrl
+    ? `background-image: linear-gradient(to bottom, rgba(26,29,35,0.7), rgba(26,29,35,0.85)), url('${heroPhotoUrl}'); background-size: cover; background-position: center;`
+    : "background: linear-gradient(135deg, #1A1D23 0%, #212D40 100%);";
+
   sections.push({
     name: "hero",
-    content: `<section class="relative bg-gradient-to-br from-[#212D40] to-[#2a3a50] text-white py-24 px-6">
-  <div class="max-w-4xl mx-auto text-center">
-    <h1 class="text-4xl font-semibold tracking-tight mb-4">${escapedName}</h1>
-    <p class="text-lg text-gray-300 max-w-2xl mx-auto">${escapeHtml(tagline)}</p>
+    content: `<section class="relative text-white py-20 sm:py-28 px-6" style="${heroBg}">
+  <div class="max-w-3xl mx-auto text-center relative">
+    ${phone ? `<a href="tel:${escapeHtml(phone)}" class="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white mb-6 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>${escapeHtml(phone)}</a>` : ""}
+    <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">${escapedName}</h1>
+    <p class="text-base sm:text-lg text-white/60 mt-4 max-w-xl mx-auto leading-relaxed">${escapeHtml(tagline)}</p>
     ${ratingStars}
-    ${specialty ? `<p class="mt-3 text-sm text-gray-400 uppercase tracking-widest">${escapeHtml(specialty)}</p>` : ""}
-    <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-      ${phone ? `<a href="tel:${escapeHtml(phone)}" class="inline-flex items-center justify-center px-8 py-3 bg-[#D56753] text-white font-semibold rounded-xl hover:brightness-110 transition-all">Call Now</a>` : ""}
-      <a href="#contact" class="inline-flex items-center justify-center px-8 py-3 border-2 border-white/30 text-white font-semibold rounded-xl hover:bg-white/10 transition-all">Get in Touch</a>
+    <div class="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+      ${phone ? `<a href="tel:${escapeHtml(phone)}" class="inline-flex items-center justify-center px-6 py-3 bg-[#D56753] text-white font-semibold rounded-lg shadow-sm hover:bg-[#C45A46] transition-all text-sm">Call ${escapeHtml(phone)}</a>` : ""}
+      <a href="#contact" class="inline-flex items-center justify-center px-6 py-3 border border-white/20 text-white/80 font-medium rounded-lg hover:bg-white/10 transition-all text-sm">Request appointment</a>
     </div>
   </div>
 </section>`,
@@ -260,21 +265,21 @@ function buildHomepageSections(
   if (testimonials.length > 0) {
     const testimonialCards = testimonials
       .map(
-        (t) => `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-      <div class="text-yellow-400 mb-3">${"★".repeat(t.rating)}</div>
-      <p class="text-gray-700 mb-4 leading-relaxed">"${escapeHtml(t.text)}"</p>
-      <p class="text-sm font-semibold text-[#212D40]">${escapeHtml(t.author)}</p>
+        (t) => `<div class="bg-white rounded-xl p-6" style="border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+      <div class="flex items-center gap-1 mb-3">${Array.from({ length: t.rating }).map(() => '<svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>').join("")}</div>
+      <p class="text-sm text-[#1A1D23]/80 leading-relaxed mb-4">"${escapeHtml(t.text)}"</p>
+      <p class="text-xs font-medium text-[#1A1D23]/50">${escapeHtml(t.author)}</p>
     </div>`,
       )
       .join("\n    ");
 
     sections.push({
       name: "testimonials",
-      content: `<section class="py-20 px-6 bg-gray-50">
-  <div class="max-w-6xl mx-auto">
-    <h2 class="text-3xl font-semibold text-[#1A1D23] text-center mb-4">What people say about ${escapedName}</h2>
-    <p class="text-gray-500 text-center mb-12 max-w-xl mx-auto">From Google Reviews. Real words from real people.</p>
-    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      content: `<section class="py-16 sm:py-20 px-6" style="background: #F7F8FA;">
+  <div class="max-w-5xl mx-auto">
+    <h2 class="text-2xl sm:text-3xl font-semibold text-[#1A1D23] text-center mb-2">What people say</h2>
+    <p class="text-sm text-gray-400 text-center mb-10">From Google Reviews. Real words from real people.</p>
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     ${testimonialCards}
     </div>
   </div>
