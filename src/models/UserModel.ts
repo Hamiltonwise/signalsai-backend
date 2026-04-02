@@ -13,6 +13,7 @@ export interface IUser {
   email_verification_expires_at: Date | null;
   password_reset_code: string | null;
   password_reset_expires_at: Date | null;
+  force_password_change: boolean;
   created_at: Date;
   updated_at: Date;
 }

@@ -26,6 +26,7 @@ export interface IOrganization {
   gbp_refresh_token: string | null;
   gbp_account_id: string | null;
   gbp_connected_at: Date | null;
+  account_type: "prospect" | "paying" | "partner" | "foundation" | "case_study" | "internal" | null;
   created_at: Date;
   updated_at: Date;
 }
