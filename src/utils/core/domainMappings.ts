@@ -119,4 +119,13 @@ export const domainMappings: DomainMapping[] = [
     clarity_projectId: "",
     completed: false,
   },
+
+  // Alloro (our own site)
+  {
+    displayName: "Alloro",
+    domain: "getalloro.com",
+    gbp_accountId: "114810842911950437772",
+    gbp_locationId: "667121957835818884",
+    completed: true,
+  },
 ];
