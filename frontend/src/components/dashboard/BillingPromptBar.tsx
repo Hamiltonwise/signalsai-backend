@@ -138,7 +138,7 @@ export default function BillingPromptBar({ orgId, score, finding }: BillingPromp
         )}
 
         {/* TTFV signals */}
-        {ttfvData && ttfvData.signals.length > 0 && (
+        {ttfvData && ttfvData.signals && ttfvData.signals.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
             {ttfvData.signals.map((signal) => (
               <span
