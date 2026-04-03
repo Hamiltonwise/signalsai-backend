@@ -218,7 +218,7 @@ Verify:  Has any Monday email EVER been delivered? Check behavioral_events for "
 
 ## What Comes Next
 
-1. **Dashboard nav switch**: Wire 5-icon bottom nav, make /home the default. V1 stays at /dashboard as rollback. Frontend session closing this now.
+1. ~~Dashboard nav switch~~: DONE. /home is default. 5-icon nav live. V1 at /dashboard as rollback.
 2. **Verify real data rendering**: Login as Garrison/One Endo on sandbox, confirm Home page shows real position, score, action card with actual data.
 3. **Referral data into Monday email bullets**: Pipe connected but email body still reads ranking snapshots only. Wire referral drift into bullets. THE Oz moment.
 4. **Monday email verification**: confirm one real email sends to one real customer on sandbox
