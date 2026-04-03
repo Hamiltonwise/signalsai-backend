@@ -11,6 +11,8 @@ Read this before touching anything. Update this before closing any session.
 
 A business intelligence platform that tells business owners what their business is trying to tell them. Push, not pull. The Monday email IS the product. The dashboard IS the email, live.
 
+**The tribe:** Local service businesses whose customers find them on Google. Dentists, orthodontists, chiropractors, veterinarians, med spas, plumbers, electricians, optometrists, dermatologists, salons, restaurants, auto repair. People who serve their community from a physical location. If a customer Googles them before calling, Alloro is for them. If not, it isn't. Yet.
+
 ---
 
 ## Architecture (30-second version)
