@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, Trash2, Calendar } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import type { PmTask } from "../../types/pm";
 import { usePmStore } from "../../stores/pmStore";
 import { fetchPmUsers } from "../../api/pm";
@@ -279,6 +280,14 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
                     )}
                   </div>
                 </div>
+              )}
+
+              {/* Metadata */}
+              {(task.creator_name || task.created_at) && (
+                <p className="text-[11px]" style={{ color: "var(--color-pm-text-muted)" }}>
+                  {task.creator_name && <>Created by <span className="font-medium">{task.creator_name}</span></>}
+                  {task.created_at && <> · {formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}</>}
+                </p>
               )}
 
               {/* Delete */}

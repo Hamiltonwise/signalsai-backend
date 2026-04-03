@@ -75,6 +75,7 @@ export function TaskCard({ task, onClick, onDelete, isBacklog = false }: TaskCar
         <p
           className="flex-1 text-[13px] font-semibold leading-snug truncate"
           style={{ color: "var(--color-pm-text-primary)" }}
+          title={task.title}
         >
           {task.title}
         </p>

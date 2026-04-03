@@ -41,10 +41,17 @@ export function MeTaskCard({ task, isHighlighted }: MeTaskCardProps) {
         </p>
       </div>
 
-      {/* Row 2: Project name */}
-      <p className="text-[11px] mb-1.5" style={{ color: "var(--color-pm-text-muted)" }}>
-        {task.project_name}
-      </p>
+      {/* Row 2: Project name + assignee */}
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <p className="text-[11px]" style={{ color: "var(--color-pm-text-muted)" }}>
+          {task.project_name}
+        </p>
+        {task.assignee_name && (
+          <span className="text-[11px]" style={{ color: "var(--color-pm-text-muted)" }}>
+            · → {task.assignee_name}
+          </span>
+        )}
+      </div>
 
       {/* Row 3: Deadline */}
       {deadline && (

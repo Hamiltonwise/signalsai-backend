@@ -185,6 +185,7 @@ export async function getMyStats(req: AuthRequest, res: Response): Promise<any> 
       .count("* as count");
     const focusCount = parseInt(focusResult.count as string, 10) || 0;
 
+    // This Week: P3 (3 days) and P4 (this week) — excludes P1/P2 (already in Focus Today) and P5 (next week)
     const [weekResult] = await db("pm_tasks")
       .join("pm_projects", "pm_tasks.project_id", "pm_projects.id")
       .where("pm_projects.status", "active")

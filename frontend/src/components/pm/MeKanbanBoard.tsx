@@ -61,11 +61,11 @@ function DroppableColumn({
 
       <div
         ref={setNodeRef}
-        className="min-h-[120px] rounded-xl p-2 transition-colors duration-150"
+        className="min-h-[120px] rounded-xl p-2 transition-all duration-150"
         style={{
-          backgroundColor: isDraggingOver
-            ? "var(--color-pm-bg-hover)"
-            : "var(--color-pm-bg-secondary)",
+          backgroundColor: isDraggingOver ? "var(--color-pm-bg-hover)" : "var(--color-pm-bg-secondary)",
+          border: isDraggingOver ? "2px solid rgba(214,104,83,0.5)" : "2px solid transparent",
+          transform: isDraggingOver ? "scale(1.01)" : "scale(1)",
         }}
       >
         {tasks.length === 0 ? (
