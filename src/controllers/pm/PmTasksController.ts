@@ -4,11 +4,46 @@ import { PmTaskModel } from "../../models/PmTaskModel";
 import { PmColumnModel } from "../../models/PmColumnModel";
 import { db } from "../../database/connection";
 import { logPmActivity } from "./pmActivityLogger";
+import type { QueryContext } from "../../models/BaseModel";
+
+async function insertNotification(
+  ctx: QueryContext,
+  payload: {
+    user_id: number;
+    type: "task_assigned" | "task_unassigned" | "assignee_completed_task";
+    task_id: string;
+    actor_user_id: number;
+    metadata: Record<string, unknown>;
+  }
+): Promise<void> {
+  await (ctx as any)("pm_notifications").insert(payload);
+}
 
 function handleError(res: Response, error: unknown, operation: string): Response {
   console.error(`[PM-TASKS] ${operation} failed:`, error);
   const message = error instanceof Error ? error.message : String(error);
   return res.status(500).json({ success: false, error: message });
+}
+
+async function enrichTask(task: any): Promise<any> {
+  const row = await db("pm_tasks")
+    .where("pm_tasks.id", task.id)
+    .leftJoin("users as creators", "pm_tasks.created_by", "creators.id")
+    .leftJoin("users as assignees", "pm_tasks.assigned_to", "assignees.id")
+    .select(
+      "pm_tasks.*",
+      "creators.email as creator_email",
+      "assignees.email as assignee_email"
+    )
+    .first();
+  if (!row) return task;
+  return {
+    ...row,
+    creator_name: row.creator_email ? row.creator_email.split("@")[0] : null,
+    assignee_name: row.assignee_email ? row.assignee_email.split("@")[0] : null,
+    creator_email: undefined,
+    assignee_email: undefined,
+  };
 }
 
 // POST /api/pm/projects/:id/tasks
@@ -70,7 +105,7 @@ export async function createTask(req: AuthRequest, res: Response): Promise<any> 
       return created;
     });
 
-    return res.status(201).json({ success: true, data: task });
+    return res.status(201).json({ success: true, data: await enrichTask(task) });
   } catch (error) {
     return handleError(res, error, "createTask");
   }
@@ -209,7 +244,7 @@ export async function moveTask(req: AuthRequest, res: Response): Promise<any> {
         trx
       );
 
-      // If moved to Done, also log completion
+      // If moved to Done, also log completion + notify creator
       if (targetCol?.name === "Done" && !existing.completed_at) {
         await logPmActivity(
           {
@@ -220,6 +255,29 @@ export async function moveTask(req: AuthRequest, res: Response): Promise<any> {
           },
           trx
         );
+
+        // Notify creator if task has an assignee and creator != assignee
+        if (
+          existing.assigned_to &&
+          existing.created_by !== existing.assigned_to
+        ) {
+          const [project, actorUser] = await Promise.all([
+            trx("pm_projects").where("id", existing.project_id).select("name").first(),
+            trx("users").where("id", existing.assigned_to).select("email").first(),
+          ]);
+          const actorName = actorUser?.email ? actorUser.email.split("@")[0] : `user ${existing.assigned_to}`;
+          await insertNotification(trx, {
+            user_id: existing.created_by,
+            type: "assignee_completed_task",
+            task_id: id,
+            actor_user_id: existing.assigned_to,
+            metadata: {
+              task_title: existing.title,
+              project_name: project?.name ?? "",
+              actor_name: actorName,
+            },
+          });
+        }
       }
     });
 
@@ -235,27 +293,62 @@ export async function assignTask(req: AuthRequest, res: Response): Promise<any> 
   try {
     const { id } = req.params;
     const { assigned_to } = req.body;
+    const newAssignee: number | null = assigned_to || null;
 
     const existing = await PmTaskModel.findById(id);
     if (!existing) {
       return res.status(404).json({ success: false, error: "Task not found" });
     }
 
-    await PmTaskModel.updateById(id, { assigned_to: assigned_to || null });
+    const oldAssignee: number | null = existing.assigned_to;
 
-    await logPmActivity({
-      project_id: existing.project_id,
-      task_id: id,
-      user_id: req.user!.userId,
-      action: "task_assigned",
-      metadata: {
-        old_assignee: existing.assigned_to,
-        new_assignee: assigned_to || null,
-      },
+    await db.transaction(async (trx) => {
+      await PmTaskModel.updateById(id, { assigned_to: newAssignee }, trx);
+
+      await logPmActivity(
+        {
+          project_id: existing.project_id,
+          task_id: id,
+          user_id: req.user!.userId,
+          action: "task_assigned",
+          metadata: { old_assignee: oldAssignee, new_assignee: newAssignee },
+        },
+        trx
+      );
+
+      // Fetch project name + actor name for notification metadata
+      const [project, actorUser] = await Promise.all([
+        trx("pm_projects").where("id", existing.project_id).select("name").first(),
+        trx("users").where("id", req.user!.userId).select("email").first(),
+      ]);
+      const actorName = actorUser?.email ? actorUser.email.split("@")[0] : `user ${req.user!.userId}`;
+      const meta = { task_title: existing.title, project_name: project?.name ?? "", actor_name: actorName };
+
+      // Notify new assignee
+      if (newAssignee && newAssignee !== oldAssignee) {
+        await insertNotification(trx, {
+          user_id: newAssignee,
+          type: "task_assigned",
+          task_id: id,
+          actor_user_id: req.user!.userId,
+          metadata: meta,
+        });
+      }
+
+      // Notify old assignee they were removed
+      if (oldAssignee && oldAssignee !== newAssignee) {
+        await insertNotification(trx, {
+          user_id: oldAssignee,
+          type: "task_unassigned",
+          task_id: id,
+          actor_user_id: req.user!.userId,
+          metadata: meta,
+        });
+      }
     });
 
     const updated = await PmTaskModel.findById(id);
-    return res.json({ success: true, data: updated });
+    return res.json({ success: true, data: await enrichTask(updated) });
   } catch (error) {
     return handleError(res, error, "assignTask");
   }

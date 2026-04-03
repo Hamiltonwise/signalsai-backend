@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { db } from "../../database/connection";
 
 function placeholder(_req: Request, res: Response): any {
   return res.json({ success: true, data: [] });
@@ -31,11 +32,21 @@ export async function listUsers(_req: Request, res: Response): Promise<any> {
       .map((e) => e.trim().toLowerCase())
       .filter((e) => e.length > 0);
 
-    const users = emails.map((email, i) => ({
-      id: i + 1,
-      email,
-      display_name: email.split("@")[0],
-    }));
+    const dbUsers = await db("users")
+      .whereIn("email", emails)
+      .select("id", "email");
+
+    const userMap = new Map<string, number>(
+      dbUsers.map((u: any) => [u.email.toLowerCase(), u.id])
+    );
+
+    const users = emails
+      .map((email) => ({
+        id: userMap.get(email) ?? null,
+        email,
+        display_name: email.split("@")[0],
+      }))
+      .filter((u) => u.id !== null);
 
     return res.json({ success: true, data: users });
   } catch (error) {

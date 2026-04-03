@@ -7,5 +7,7 @@ const router = express.Router();
 
 router.get("/", authenticateToken, superAdminMiddleware, controller.getStats);
 router.get("/velocity", authenticateToken, superAdminMiddleware, controller.getVelocity);
+router.get("/me", authenticateToken, superAdminMiddleware, controller.getMyStats);
+router.get("/velocity/me", authenticateToken, superAdminMiddleware, controller.getMyVelocity);
 
 export default router;

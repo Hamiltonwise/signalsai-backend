@@ -27,7 +27,6 @@ import MindDetail from "./admin/MindDetail";
 import AlloroPostsDocs from "./admin/AlloroPostsDocs";
 import ProjectsDashboard from "./admin/ProjectsDashboard";
 import ProjectBoard from "./admin/ProjectBoard";
-import BriefHistory from "./admin/BriefHistory";
 import { PmErrorBoundary } from "@/components/pm/PmErrorBoundary";
 
 function WebDevEngine() {
@@ -98,7 +97,6 @@ function AdminWithLayout() {
         <Route path="settings" element={<AdminSettings />} />
         <Route path="sentry-test" element={<SentryTest />} />
         <Route path="pm" element={<PmErrorBoundary><ProjectsDashboard /></PmErrorBoundary>} />
-        <Route path="pm/briefs" element={<PmErrorBoundary><BriefHistory /></PmErrorBoundary>} />
         <Route path="pm/:projectId" element={<PmErrorBoundary><ProjectBoard /></PmErrorBoundary>} />
       </Routes>
     </AdminLayout>

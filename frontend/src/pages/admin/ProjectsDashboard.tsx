@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FolderPlus, Plus } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { usePmStore } from "../../stores/pmStore";
 import { CreateProjectModal } from "../../components/pm/CreateProjectModal";
 import { CreateTaskModal } from "../../components/pm/CreateTaskModal";
-import { DailyBriefCard } from "../../components/pm/DailyBriefCard";
 import { StatsRow } from "../../components/pm/StatsRow";
 import { VelocityChart } from "../../components/pm/VelocityChart";
 import { ActivityTimeline } from "../../components/pm/ActivityTimeline";
 import { ActivityModal } from "../../components/pm/ActivityModal";
+import { FloatingClock } from "../../components/pm/FloatingClock";
+import { MeTabView } from "../../components/pm/MeTabView";
 import { formatDeadline } from "../../utils/pmDateFormat";
 
 const containerVariants = {
@@ -35,6 +36,8 @@ export default function ProjectsDashboard() {
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeView = searchParams.get("view") === "me" ? "me" : "overview";
 
   useEffect(() => {
     fetchProjects();
@@ -45,6 +48,36 @@ export default function ProjectsDashboard() {
       className="min-h-screen px-8 pt-7 pb-24"
       style={{ backgroundColor: "var(--color-pm-bg-primary)" }}
     >
+      {/* Tab switcher */}
+      <div className="flex items-center max-w-[1400px] mx-auto mb-6 gap-1">
+        <button
+          onClick={() => setSearchParams({})}
+          className="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150"
+          style={{
+            backgroundColor: activeView === "overview" ? "var(--color-pm-bg-hover)" : "transparent",
+            color: activeView === "overview" ? "var(--color-pm-text-primary)" : "var(--color-pm-text-muted)",
+          }}
+        >
+          Overview
+        </button>
+        <button
+          onClick={() => setSearchParams({ view: "me" })}
+          className="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150"
+          style={{
+            backgroundColor: activeView === "me" ? "var(--color-pm-bg-hover)" : "transparent",
+            color: activeView === "me" ? "var(--color-pm-text-primary)" : "var(--color-pm-text-muted)",
+          }}
+        >
+          Me
+        </button>
+      </div>
+
+      {/* ME tab */}
+      {activeView === "me" && <MeTabView />}
+
+      {/* OVERVIEW tab */}
+      {activeView === "overview" && <>
+
       {/* Header actions */}
       <div className="flex justify-end max-w-[1400px] mx-auto mb-2">
         <button
@@ -60,9 +93,6 @@ export default function ProjectsDashboard() {
 
       {/* Sections */}
       <div className="space-y-6 max-w-[1400px] mx-auto">
-        {/* Daily Brief */}
-        <DailyBriefCard />
-
         {/* Stats + Velocity in one row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <StatsRow />
@@ -275,28 +305,36 @@ export default function ProjectsDashboard() {
         </div>
       </div>
 
-      {/* FAB — New Task */}
-      <div className="fixed bottom-6 right-6 z-30 group">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowCreateTask(true)}
-          className="flex h-14 w-14 items-center justify-center rounded-full text-white transition-colors duration-150"
-          style={{ backgroundColor: "#D66853", boxShadow: "var(--pm-shadow-fab)" }}
-        >
-          <Plus className="h-6 w-6" strokeWidth={2} />
-        </motion.button>
-        <div className="pointer-events-none absolute right-[68px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          <div className="whitespace-nowrap rounded-lg bg-[#1A1715] px-3 py-1.5 text-[12px] font-medium text-white shadow-lg">
-            New Task
-            <div className="absolute right-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 rotate-45 bg-[#1A1715]" />
-          </div>
-        </div>
-      </div>
-
       <CreateProjectModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
       <CreateTaskModal isOpen={showCreateTask} onClose={() => setShowCreateTask(false)} />
       <ActivityModal isOpen={showActivityModal} onClose={() => setShowActivityModal(false)} />
+      </>}
+
+      {/* Floating Clock — always visible */}
+      <div className="fixed bottom-6 right-24 z-30">
+        <FloatingClock />
+      </div>
+
+      {/* FAB — New Task (overview only) */}
+      {activeView === "overview" && (
+        <div className="fixed bottom-6 right-6 z-30 group">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowCreateTask(true)}
+            className="flex h-14 w-14 items-center justify-center rounded-full text-white transition-colors duration-150"
+            style={{ backgroundColor: "#D66853", boxShadow: "var(--pm-shadow-fab)" }}
+          >
+            <Plus className="h-6 w-6" strokeWidth={2} />
+          </motion.button>
+          <div className="pointer-events-none absolute right-[68px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div className="whitespace-nowrap rounded-lg bg-[#1A1715] px-3 py-1.5 text-[12px] font-medium text-white shadow-lg">
+              New Task
+              <div className="absolute right-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 rotate-45 bg-[#1A1715]" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

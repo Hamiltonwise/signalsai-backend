@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, Trash2, Calendar } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import type { PmTask } from "../../types/pm";
 import { usePmStore } from "../../stores/pmStore";
-import { formatDeadline } from "../../utils/pmDateFormat";
+import { fetchPmUsers } from "../../api/pm";
+import { formatDeadline, endOfDayPST } from "../../utils/pmDateFormat";
 import { PriorityTriangle } from "./PriorityTriangle";
 import { RichTextEditor } from "./RichTextEditor";
 
@@ -23,12 +25,15 @@ interface TaskDetailPanelProps {
 
 export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelProps) {
   const updateTask = usePmStore((s) => s.updateTask);
+  const assignTask = usePmStore((s) => s.assignTask);
   const deleteTask = usePmStore((s) => s.deleteTask);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string>("P3");
   const [deadline, setDeadline] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [assignedTo, setAssignedTo] = useState<number | null>(null);
+  const [users, setUsers] = useState<Array<{ id: number; display_name: string; email: string }>>([]);
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -36,10 +41,15 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
       setTitle(task.title);
       setDescription(task.description || "");
       setPriority(task.priority ?? "P3");
-      setDeadline(task.deadline ? task.deadline.slice(0, 10) : "");
+      setDeadline(task.deadline ? new Date(task.deadline).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }) : "");
+      setAssignedTo(task.assigned_to ?? null);
       setShowDeleteConfirm(false);
     }
   }, [task]);
+
+  useEffect(() => {
+    fetchPmUsers().then(setUsers).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -68,9 +78,9 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
     setPriority(p);
     // Auto-set deadline to today for P1/P2 if no deadline
     if (["P1", "P2"].includes(p) && !deadline) {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
       setDeadline(today);
-      updateTask(task.id, { priority: p, deadline: new Date(today).toISOString() } as any);
+      updateTask(task.id, { priority: p, deadline: endOfDayPST(today) } as any);
     } else {
       updateTask(task.id, { priority: p } as any);
     }
@@ -79,7 +89,7 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
   const handleDeadlineChange = (value: string) => {
     setDeadline(value);
     updateTask(task.id, {
-      deadline: value ? new Date(value).toISOString() : null,
+      deadline: value ? endOfDayPST(value) : null,
     } as any);
   };
 
@@ -88,7 +98,11 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
     onClose();
   };
 
-  const deadlineDisplay = formatDeadline(task.deadline);
+  const deadlineDisplay = task.completed_at ? null : formatDeadline(task.deadline);
+
+  const isCompletedLate = !!task.completed_at && !!task.deadline && (
+    new Date(task.completed_at).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }) > task.deadline.slice(0, 10)
+  );
 
   return (
     <AnimatePresence>
@@ -158,6 +172,30 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
                   minHeight={140}
                   placeholder="Add a description..."
                 />
+              </div>
+
+              {/* Assigned To */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-pm-text-secondary">
+                  Assigned To
+                </label>
+                <select
+                  value={assignedTo ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const userId = val ? parseInt(val, 10) : null;
+                    setAssignedTo(userId);
+                    assignTask(task.id, userId);
+                  }}
+                  className="w-full rounded-lg border border-pm-border bg-pm-bg-primary py-2 px-3 text-sm text-pm-text-primary focus:border-pm-accent focus:outline-none focus:ring-1 focus:ring-pm-accent"
+                >
+                  <option value="">Unassigned</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.display_name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Priority */}
@@ -232,15 +270,24 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
                         year: "numeric",
                         hour: "numeric",
                         minute: "2-digit",
+                        timeZone: "America/Los_Angeles",
                       })}
                     </span>
-                    {task.deadline && new Date(task.completed_at) > new Date(task.deadline) && (
+                    {isCompletedLate && (
                       <span className="text-[11px] font-semibold text-[#C43333] ml-auto">
                         completed late
                       </span>
                     )}
                   </div>
                 </div>
+              )}
+
+              {/* Metadata */}
+              {(task.creator_name || task.created_at) && (
+                <p className="text-[11px]" style={{ color: "var(--color-pm-text-muted)" }}>
+                  {task.creator_name && <>Created by <span className="font-medium">{task.creator_name}</span></>}
+                  {task.created_at && <> · {formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}</>}
+                </p>
               )}
 
               {/* Delete */}

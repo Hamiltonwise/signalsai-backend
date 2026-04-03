@@ -151,15 +151,20 @@ export async function getProject(req: AuthRequest, res: Response): Promise<any> 
       .orderBy("position", "asc");
 
     const tasks = await db("pm_tasks")
-      .select("pm_tasks.*", "users.email as creator_email")
-      .leftJoin("users", "pm_tasks.created_by", "users.id")
+      .select(
+        "pm_tasks.*",
+        "creators.email as creator_email",
+        "assignees.email as assignee_email"
+      )
+      .leftJoin("users as creators", "pm_tasks.created_by", "creators.id")
+      .leftJoin("users as assignees", "pm_tasks.assigned_to", "assignees.id")
       .where("pm_tasks.project_id", id)
       .orderBy("pm_tasks.position", "asc");
 
-    // Add creator_name derived from email
     const enrichedTasks = tasks.map((t: any) => ({
       ...t,
       creator_name: t.creator_email ? t.creator_email.split("@")[0] : null,
+      assignee_name: t.assignee_email ? t.assignee_email.split("@")[0] : null,
     }));
 
     const columnsWithTasks = columns.map((col: any) => ({
