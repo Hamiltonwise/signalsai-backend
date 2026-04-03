@@ -63,6 +63,7 @@ const HomePage = React.lazy(() => import("./pages/HomePage"));
 const ComparePage = React.lazy(() => import("./pages/ComparePage"));
 const ReviewsPage = React.lazy(() => import("./pages/ReviewsPage"));
 const PresencePage = React.lazy(() => import("./pages/PresencePage"));
+const FivePageLayout = React.lazy(() => import("./components/FivePageLayout"));
 
 // --- Marketing site rebuild (WO-13) ---
 const MarketingHome = React.lazy(() => import("./pages/marketing/HomePage"));
@@ -380,15 +381,26 @@ function App() {
                 }
               />
 
-              {/* ── Five-Page Dashboard (v2) ── */}
-              <Route element={<ProtectedLayout />}>
+              {/* ── Five-Page Dashboard (v2) -- One Alloro ── */}
+              <Route element={
+                <ProtectedRoute>
+                  <AppProviders>
+                    <React.Suspense fallback={<LoadingFallback />}>
+                      <FivePageLayout />
+                    </React.Suspense>
+                  </AppProviders>
+                </ProtectedRoute>
+              }>
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/compare" element={<ComparePage />} />
                 <Route path="/reviews" element={<ReviewsPage />} />
                 <Route path="/presence" element={<PresencePage />} />
               </Route>
 
-              {/* Protected routes with shared AppProviders - V1 dashboard (preserved) */}
+              {/* Default route: send to Home */}
+              <Route path="/" element={<Navigate to="/home" replace />} />
+
+              {/* V1 dashboard (preserved for rollback -- one line reverts) */}
               <Route element={<ProtectedLayout />}>
                 <Route path="/dashboard" element={<DoctorDashboard />} />
                 <Route path="/dashboard/progress" element={<ProgressReport />} />
