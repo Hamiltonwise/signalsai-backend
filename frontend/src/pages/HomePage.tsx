@@ -20,12 +20,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, MessageCircle } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
-import OneActionCard from "@/components/dashboard/OneActionCard";
 import OnboardingChecklist from "@/components/dashboard/OnboardingChecklist";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import CardCapture from "@/components/dashboard/CardCapture";
@@ -161,7 +160,7 @@ export default function HomePage() {
       const locParam = selectedLocation?.id ? `&locationId=${selectedLocation.id}` : "";
       const token = getPriorityItem("auth_token") || getPriorityItem("token");
       const res = await fetch(
-        `/api/practice-ranking/latest?googleAccountId=${userProfile?.googleAccountId || ""}${locParam}`,
+        `/api/practice-ranking/latest?googleAccountId=${orgId || ""}${locParam}`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
       if (!res.ok) return null;
@@ -372,7 +371,10 @@ export default function HomePage() {
         )}
 
         {visiblePrompts.has("billing") && (
-          <CardCapture />
+          <CardCapture
+            trialDaysRemaining={ctx?.org?.trial_end_at ? Math.max(0, Math.ceil((new Date(ctx.org.trial_end_at).getTime() - Date.now()) / 86400000)) : 7}
+            isSubscribed={!!billingStatus?.hasStripeSubscription}
+          />
         )}
 
         {/* ── Community Proof ── */}

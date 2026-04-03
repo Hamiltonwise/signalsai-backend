@@ -122,7 +122,7 @@ export default function PresencePage() {
 
         {/* GBP Connection (if not connected) */}
         {!hasGoogleConnection && (
-          <GBPConnectCard />
+          <GBPConnectCard gbpConnected={!!hasGoogleConnection} orgId={orgId} />
         )}
 
         {/* Website */}

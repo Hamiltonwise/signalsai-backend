@@ -204,7 +204,7 @@ export default function ReviewsPage() {
         {/* Send Review Requests */}
         <Section title="Request Reviews" icon={Send} defaultOpen={false}>
           <ReviewRequestCard
-            placeId={place?.placeId || null}
+            placeId={checkupData?.placeId || checkupData?.place?.id || null}
             practiceName={ctx?.org?.name || "Your Business"}
           />
         </Section>

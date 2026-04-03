@@ -68,7 +68,7 @@ export default function ComparePage() {
       const locParam = selectedLocation?.id ? `&locationId=${selectedLocation.id}` : "";
       const token = getPriorityItem("auth_token") || getPriorityItem("token");
       const res = await fetch(
-        `/api/practice-ranking/latest?googleAccountId=${userProfile?.googleAccountId || ""}${locParam}`,
+        `/api/practice-ranking/latest?googleAccountId=${orgId || ""}${locParam}`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
       if (!res.ok) return null;
@@ -183,7 +183,7 @@ export default function ComparePage() {
         {/* Referral Sources */}
         {referralData && (
           <Section title="Referral Sources" defaultOpen={false}>
-            <ReferralMatrices data={referralData as ReferralEngineData} />
+            <ReferralMatrices referralData={referralData as ReferralEngineData} />
           </Section>
         )}
 
