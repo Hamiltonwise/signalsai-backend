@@ -12,6 +12,7 @@ import { OrganizationModel } from "../../../models/OrganizationModel";
 import { detectSelfSufficientOperator } from "../../../services/operatorDetection";
 import { preprocessPmsData, type PreprocessResult } from "./pms-preprocessor.service";
 import { needsVisionParsing, parseWithVision } from "./pms-vision-parser.service";
+import { syncReferralSourcesFromPmsJob } from "../../../services/referralSourceSync";
 
 /**
  * Process a manual PMS data entry.
@@ -362,6 +363,13 @@ export async function processFileUpload(
     );
 
     console.log(`[PMS] Parser webhook responded for job ${jobId}:`, response.status);
+
+    // Sync referral sources to referral_sources table (powers Monday email, GP discovery, drift detection)
+    if (organizationId && jsonData.length > 0) {
+      syncReferralSourcesFromPmsJob(organizationId, jsonData as Record<string, string>[]).catch((err) => {
+        console.error(`[PMS] Referral source sync failed for job ${jobId} (non-blocking):`, err instanceof Error ? err.message : err);
+      });
+    }
   } catch (webhookError: any) {
     console.error(`[PMS] Parser webhook failed for job ${jobId}:`, webhookError.message);
 
@@ -401,6 +409,11 @@ export async function processFileUpload(
     }
 
     console.warn(`[PMS] Job ${jobId} marked for retry. Customer sees preprocessor results immediately.`);
+
+    // Sync referral sources even on webhook failure (the data is local, pipe it through)
+    if (organizationId && jsonData.length > 0) {
+      syncReferralSourcesFromPmsJob(organizationId, jsonData as Record<string, string>[]).catch(() => {});
+    }
 
     // Use preprocessor results for instant finding when available (more accurate than raw extraction)
     const instantFinding = preprocessResult?.referralSummary?.length
