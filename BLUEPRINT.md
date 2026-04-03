@@ -29,16 +29,23 @@ Hosting:  Sandbox: sandbox.getalloro.com | Production: app.getalloro.com (Dave's
 
 ## What's Working (verified on sandbox)
 
+- **22/22 endpoints healthy** (onboarding, dashboard, one-action, agents, billing, admin, system)
 - Checkup flow: entry -> scanning -> results -> account creation (end to end)
 - Google Places API v1: autocomplete, details, competitor discovery
 - PostgreSQL: all 191 migrations run, tables exist
 - Redis + BullMQ: 16 active job queues processing
 - Stripe test mode: checkout, portal, webhook
-- Auth: signup, signin, password reset, JWT
+- Auth: signup, signin, password reset, JWT (admin password reset no longer needs Mailgun)
 - Anthropic API: CEO chat, NL website editor, Oz moments
-- HelpButton -> dream_team_tasks + behavioral_events (wired today)
-- Frustration detection -> behavioral_events (wired today)
-- Lemonis Protocol -> archetype detection -> Monday email tone (wired today)
+- Mission Control: 50 agents visible. 16 nominal, 1 failed, 33 idle.
+- PMS -> referral_sources: McPherson verified (50 sources, Heart of Texas: 96 referrals, $110K)
+- User activity tracking: login + dashboard views -> behavioral_events
+- HelpButton -> dream_team_tasks + behavioral_events
+- Frustration detection -> behavioral_events
+- Lemonis Protocol -> archetype detection -> Monday email tone
+- Sidebar upload visible for all customers
+- GBP prompts read live data, not stale checkup
+- Notification dedup prevents spam
 
 ## What's Broken (known issues)
 
@@ -53,6 +60,11 @@ Hosting:  Sandbox: sandbox.getalloro.com | Production: app.getalloro.com (Dave's
 - ~~43 of 53 event types never written, 45 ghost types~~ FIXED Apr 2 (71 types registered, schema consolidated)
 - ~~SQL injection in agentExecutor~~ FIXED Apr 2
 - ~~60+ unprotected admin endpoints~~ FIXED Apr 2
+- ~~Pilot mode token (empty dashboards)~~ FIXED Apr 2
+- ~~Dream Team /tasks route collision~~ FIXED Apr 2
+- ~~Mission Control wrong table name~~ FIXED Apr 2
+- ~~Notification dedup (spam)~~ FIXED Apr 2
+- ~~agentCanon.ts missing import (server crash)~~ FIXED Apr 2
 - 7 more route files still need auth (agentsV2, practiceRanking, clarity, rag, audit, notifications, monday)
 - 33 endpoints leak err.message to clients
 - GBP OAuth redirect URI mismatch between sandbox and production
