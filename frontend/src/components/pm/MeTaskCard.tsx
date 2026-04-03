@@ -7,21 +7,20 @@ import { PriorityTriangle } from "./PriorityTriangle";
 interface MeTaskCardProps {
   task: PmMyTask;
   isHighlighted?: boolean;
-  onClick?: () => void;
 }
 
-export function MeTaskCard({ task, isHighlighted, onClick }: MeTaskCardProps) {
+export function MeTaskCard({ task, isHighlighted }: MeTaskCardProps) {
   const deadline = task.completed_at ? null : formatDeadline(task.deadline);
 
   return (
     <motion.div
-      onClick={onClick}
       className="rounded-lg p-3 mb-2 transition-colors duration-150 hover:translate-y-[-1px]"
-      style={{ cursor: onClick ? "pointer" : "default" }}
       style={{
         backgroundColor: "var(--color-pm-bg-tertiary)",
         border: isHighlighted ? "1px solid #D66853" : "1px solid var(--color-pm-border)",
         boxShadow: isHighlighted ? "0 0 0 3px rgba(214,104,83,0.2)" : "var(--pm-shadow-card)",
+        userSelect: "none",
+        cursor: "pointer",
       }}
       animate={
         isHighlighted
@@ -34,8 +33,9 @@ export function MeTaskCard({ task, isHighlighted, onClick }: MeTaskCardProps) {
       <div className="flex items-start gap-2 mb-2">
         <PriorityTriangle priority={task.priority} size={12} />
         <p
-          className="flex-1 text-[13px] font-semibold leading-snug"
+          className="flex-1 text-[13px] font-semibold leading-snug truncate"
           style={{ color: "var(--color-pm-text-primary)" }}
+          title={task.title}
         >
           {task.title}
         </p>

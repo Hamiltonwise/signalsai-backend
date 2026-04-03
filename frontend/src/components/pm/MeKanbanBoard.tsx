@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
-  pointerWithin,
+  rectIntersection,
   PointerSensor,
   useSensor,
   useSensors,
@@ -10,6 +10,7 @@ import {
   useDraggable,
   type DragStartEvent,
   type DragEndEvent,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { usePmStore } from "../../stores/pmStore";
@@ -100,11 +101,32 @@ function DraggableCard({
     id: task.id,
     data: { task },
   });
+  const didDrag = useRef(false);
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
 
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.4 : 1,
     touchAction: "none",
+    userSelect: "none" as const,
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    didDrag.current = false;
+    pointerStart.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!pointerStart.current) return;
+    const dx = Math.abs(e.clientX - pointerStart.current.x);
+    const dy = Math.abs(e.clientY - pointerStart.current.y);
+    if (dx > 5 || dy > 5) didDrag.current = true;
+  };
+
+  const handleClick = () => {
+    if (!didDrag.current && onCardClick) onCardClick(task);
+    didDrag.current = false;
+    pointerStart.current = null;
   };
 
   return (
@@ -112,17 +134,23 @@ function DraggableCard({
       ref={setNodeRef}
       id={`me-task-${task.id}`}
       style={style}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onClick={handleClick}
       {...listeners}
       {...attributes}
     >
-      <MeTaskCard
-        task={task}
-        isHighlighted={isHighlighted}
-        onClick={onCardClick ? () => onCardClick(task) : undefined}
-      />
+      <MeTaskCard task={task} isHighlighted={isHighlighted} />
     </div>
   );
 }
+
+// Only consider the 3 column droppables for collision — more reliable than pointerWithin for edge columns
+const columnOnlyCollision: CollisionDetection = (args) => {
+  const columnKeys = new Set(COLUMNS.map((c) => c.key));
+  const columnContainers = args.droppableContainers.filter((c) => columnKeys.has(c.id as string));
+  return rectIntersection({ ...args, droppableContainers: columnContainers });
+};
 
 // ── Board ─────────────────────────────────────────────────────────────────────
 export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId, onCardClick }: MeKanbanBoardProps) {
@@ -188,7 +216,7 @@ export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId, onCardClick
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={pointerWithin}
+      collisionDetection={columnOnlyCollision}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}

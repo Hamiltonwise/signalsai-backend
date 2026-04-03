@@ -25,6 +25,27 @@ function handleError(res: Response, error: unknown, operation: string): Response
   return res.status(500).json({ success: false, error: message });
 }
 
+async function enrichTask(task: any): Promise<any> {
+  const row = await db("pm_tasks")
+    .where("pm_tasks.id", task.id)
+    .leftJoin("users as creators", "pm_tasks.created_by", "creators.id")
+    .leftJoin("users as assignees", "pm_tasks.assigned_to", "assignees.id")
+    .select(
+      "pm_tasks.*",
+      "creators.email as creator_email",
+      "assignees.email as assignee_email"
+    )
+    .first();
+  if (!row) return task;
+  return {
+    ...row,
+    creator_name: row.creator_email ? row.creator_email.split("@")[0] : null,
+    assignee_name: row.assignee_email ? row.assignee_email.split("@")[0] : null,
+    creator_email: undefined,
+    assignee_email: undefined,
+  };
+}
+
 // POST /api/pm/projects/:id/tasks
 export async function createTask(req: AuthRequest, res: Response): Promise<any> {
   try {
@@ -84,7 +105,7 @@ export async function createTask(req: AuthRequest, res: Response): Promise<any> 
       return created;
     });
 
-    return res.status(201).json({ success: true, data: task });
+    return res.status(201).json({ success: true, data: await enrichTask(task) });
   } catch (error) {
     return handleError(res, error, "createTask");
   }
@@ -240,10 +261,11 @@ export async function moveTask(req: AuthRequest, res: Response): Promise<any> {
           existing.assigned_to &&
           existing.created_by !== existing.assigned_to
         ) {
-          const project = await trx("pm_projects")
-            .where("id", existing.project_id)
-            .select("name")
-            .first();
+          const [project, actorUser] = await Promise.all([
+            trx("pm_projects").where("id", existing.project_id).select("name").first(),
+            trx("users").where("id", existing.assigned_to).select("email").first(),
+          ]);
+          const actorName = actorUser?.email ? actorUser.email.split("@")[0] : `user ${existing.assigned_to}`;
           await insertNotification(trx, {
             user_id: existing.created_by,
             type: "assignee_completed_task",
@@ -252,6 +274,7 @@ export async function moveTask(req: AuthRequest, res: Response): Promise<any> {
             metadata: {
               task_title: existing.title,
               project_name: project?.name ?? "",
+              actor_name: actorName,
             },
           });
         }
@@ -293,12 +316,13 @@ export async function assignTask(req: AuthRequest, res: Response): Promise<any> 
         trx
       );
 
-      // Fetch project name for notification metadata
-      const project = await trx("pm_projects")
-        .where("id", existing.project_id)
-        .select("name")
-        .first();
-      const meta = { task_title: existing.title, project_name: project?.name ?? "" };
+      // Fetch project name + actor name for notification metadata
+      const [project, actorUser] = await Promise.all([
+        trx("pm_projects").where("id", existing.project_id).select("name").first(),
+        trx("users").where("id", req.user!.userId).select("email").first(),
+      ]);
+      const actorName = actorUser?.email ? actorUser.email.split("@")[0] : `user ${req.user!.userId}`;
+      const meta = { task_title: existing.title, project_name: project?.name ?? "", actor_name: actorName };
 
       // Notify new assignee
       if (newAssignee && newAssignee !== oldAssignee) {
@@ -324,7 +348,7 @@ export async function assignTask(req: AuthRequest, res: Response): Promise<any> 
     });
 
     const updated = await PmTaskModel.findById(id);
-    return res.json({ success: true, data: updated });
+    return res.json({ success: true, data: await enrichTask(updated) });
   } catch (error) {
     return handleError(res, error, "assignTask");
   }

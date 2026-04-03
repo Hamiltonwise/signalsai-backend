@@ -40,7 +40,7 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
       setTitle(task.title);
       setDescription(task.description || "");
       setPriority(task.priority ?? "P3");
-      setDeadline(task.deadline ? task.deadline.slice(0, 10) : "");
+      setDeadline(task.deadline ? new Date(task.deadline).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }) : "");
       setAssignedTo(task.assigned_to ?? null);
       setShowDeleteConfirm(false);
     }
