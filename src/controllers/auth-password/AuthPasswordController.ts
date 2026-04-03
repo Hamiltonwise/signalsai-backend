@@ -12,6 +12,8 @@
 
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
+import { trackUserActivity } from "../../services/userActivityTracker";
+import { db } from "../../database/connection";
 
 import { UserModel } from "../../models/UserModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
@@ -239,6 +241,12 @@ export async function login(req: Request, res: Response) {
     res.cookie("auth_token", token, buildAuthCookieOptions());
 
     console.log(`[AUTH] User logged in: ${normalizedEmail} (remember: ${!!rememberMe})`);
+
+    // Track login as behavioral event + update last_activity_at
+    if (orgUser?.organization_id) {
+      trackUserActivity(orgUser.organization_id, "user.login", { email: normalizedEmail }).catch(() => {});
+      db("organizations").where({ id: orgUser.organization_id }).update({ last_activity_at: new Date() }).catch(() => {});
+    }
 
     return res.json({
       success: true,

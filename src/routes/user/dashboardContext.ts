@@ -13,6 +13,7 @@ import { authenticateToken } from "../../middleware/auth";
 import { rbacMiddleware } from "../../middleware/rbac";
 import { db } from "../../database/connection";
 import { detectPreset } from "../../services/vocabularyAutoMapper";
+import { trackUserActivity } from "../../services/userActivityTracker";
 
 const dashboardContextRoutes = express.Router();
 
@@ -69,6 +70,9 @@ dashboardContextRoutes.get(
           })
           .update({ last_activity_at: new Date() });
       } catch { /* non-blocking */ }
+
+      // Record dashboard view event (debounced by trackUserActivity, max once per 5 min)
+      trackUserActivity(orgId, "dashboard.viewed").catch(() => {});
 
       // Only include checkup context if data exists
       let checkupContext = null;
