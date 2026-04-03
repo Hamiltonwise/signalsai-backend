@@ -19,7 +19,7 @@ router.get(
       return res.json({ success: true, flags });
     } catch (err: any) {
       console.error("[FEATURE-FLAGS] List error:", err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   },
 );
@@ -61,7 +61,7 @@ router.patch(
       return res.json({ success: true, flag: updated });
     } catch (err: any) {
       console.error("[FEATURE-FLAGS] Update error:", err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   },
 );
@@ -97,7 +97,7 @@ router.get(
       return res.json({ success: true, flags: enabledFlags });
     } catch (err: any) {
       console.error("[FEATURE-FLAGS] Org flags error:", err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   },
 );

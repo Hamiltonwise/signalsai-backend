@@ -33,7 +33,7 @@ router.get(
       return res.json({ success: true, events, count: events.length });
     } catch (err: any) {
       console.error("[AUDIT-LOG] Query error:", err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   },
 );

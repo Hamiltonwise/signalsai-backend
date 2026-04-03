@@ -40,7 +40,7 @@ router.get(
       return res.json({ success: true, users: enriched });
     } catch (err: any) {
       console.error("[USER-MGMT] List error:", err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   },
 );
@@ -113,7 +113,7 @@ router.post(
       return res.status(201).json({ success: true, user });
     } catch (err: any) {
       console.error("[USER-MGMT] Create error:", err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   },
 );
@@ -148,7 +148,7 @@ router.patch(
       return res.json({ success: true, user: { ...user, role } });
     } catch (err: any) {
       console.error("[USER-MGMT] Update error:", err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   },
 );
@@ -207,7 +207,7 @@ router.delete(
       return res.json({ success: true, message: `User ${user.email} deactivated` });
     } catch (err: any) {
       console.error("[USER-MGMT] Deactivate error:", err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   },
 );

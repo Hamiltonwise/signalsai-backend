@@ -50,7 +50,7 @@ healthRoutes.get("/detailed", async (_req, res) => {
     await db.raw("SELECT 1");
     checks.database = { status: "ok", latency_ms: Date.now() - start };
   } catch (err: any) {
-    checks.database = { status: "error", error: err.message };
+    checks.database = { status: "error", error: "Service unavailable" };
   }
 
   // 2. Redis / BullMQ (uses shared self-healing connection)
@@ -81,7 +81,7 @@ healthRoutes.get("/detailed", async (_req, res) => {
 
     checks.redis = { status: "ok", latency_ms: latency, queued_jobs: queuedJobs, failed_jobs: failedJobs };
   } catch (err: any) {
-    checks.redis = { status: "error", error: err.message };
+    checks.redis = { status: "error", error: "Service unavailable" };
   }
 
   // 3. Google Places API (check last successful call from behavioral_events)
@@ -99,7 +99,7 @@ healthRoutes.get("/detailed", async (_req, res) => {
         : "never",
     };
   } catch (err: any) {
-    checks.places_api = { status: "error", error: err.message };
+    checks.places_api = { status: "error", error: "Service unavailable" };
   }
 
   // 4. Claude API (check last successful agent call)
@@ -117,7 +117,7 @@ healthRoutes.get("/detailed", async (_req, res) => {
         : "never",
     };
   } catch (err: any) {
-    checks.claude_api = { status: "error", error: err.message };
+    checks.claude_api = { status: "error", error: "Service unavailable" };
   }
 
   // 5. BullMQ (summarize from redis check)

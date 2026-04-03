@@ -42,7 +42,7 @@ clarityMetricsRoutes.get(
       const anomalies = await detectAnomalies(snapshot);
       return res.json({ success: true, snapshot, anomalies });
     } catch (err: any) {
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   }
 );
@@ -70,7 +70,7 @@ clarityMetricsRoutes.get(
 
       return res.json({ success: true, trend });
     } catch (err: any) {
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   }
 );
@@ -86,7 +86,7 @@ clarityMetricsRoutes.post(
       const anomalies = await detectAnomalies(snapshot);
       return res.json({ success: true, snapshot, anomalies });
     } catch (err: any) {
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   }
 );

@@ -61,7 +61,7 @@ agentRunnerRoutes.get(
       });
       return res.json({ success: true, agents });
     } catch (err: any) {
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   },
 );
@@ -120,7 +120,7 @@ agentRunnerRoutes.post(
       });
     } catch (err: any) {
       console.error("[AgentRunner] Error:", err.message);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ success: false, error: "Internal error" });
     }
   },
 );

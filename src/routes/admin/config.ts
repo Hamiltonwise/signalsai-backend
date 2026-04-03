@@ -21,7 +21,7 @@ router.get("/", async (_req: Request, res: Response) => {
     }));
     res.json({ success: true, entries });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: "Internal error" });
   }
 });
 
@@ -32,7 +32,7 @@ router.get("/:key", async (req: Request, res: Response) => {
     const value = await getConfig(def.key, def.defaultValue);
     res.json({ success: true, key: def.key, value, definition: def });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: "Internal error" });
   }
 });
 
@@ -45,7 +45,7 @@ router.put("/:key", async (req: Request, res: Response) => {
     await setConfig(def.key, value);
     res.json({ success: true, key: def.key, value });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: "Internal error" });
   }
 });
 
@@ -56,7 +56,7 @@ router.delete("/:key", async (req: Request, res: Response) => {
     await deleteConfig(def.key);
     res.json({ success: true, key: def.key, value: def.defaultValue, isDefault: true });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: "Internal error" });
   }
 });
 
