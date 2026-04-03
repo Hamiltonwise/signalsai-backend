@@ -445,9 +445,10 @@ function buildCheckupIntelligence(ctx: any): string[] {
 // ═══════════════════════════════════════════════════════════════════
 
 function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFinding[]; checkupCtx?: any }) {
-  const checkupInsights = findings.length === 0 ? buildCheckupIntelligence(checkupCtx) : [];
+  const safeFindings = findings || [];
+  const checkupInsights = safeFindings.length === 0 ? buildCheckupIntelligence(checkupCtx) : [];
 
-  if (findings.length === 0 && checkupInsights.length === 0) {
+  if (safeFindings.length === 0 && checkupInsights.length === 0) {
     return (
       <div className="card-preparing">
         <div className="flex items-center gap-3 mb-4">
@@ -466,7 +467,7 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
     );
   }
 
-  if (findings.length === 0 && checkupInsights.length > 0) {
+  if (safeFindings.length === 0 && checkupInsights.length > 0) {
     return (
       <div className="card-supporting">
         <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
@@ -495,7 +496,7 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
         This Week's Findings
       </p>
       <div className="space-y-3.5">
-        {findings.slice(0, 3).map((f, i) => (
+        {safeFindings.slice(0, 3).map((f, i) => (
           <div key={i} className="flex gap-3" style={{ animation: `fade-in-up 0.4s ease-out ${i * 0.1}s both` }}>
             <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
               {i + 1}
