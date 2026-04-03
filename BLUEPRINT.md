@@ -212,10 +212,17 @@ Verify:  Has any Monday email EVER been delivered? Check behavioral_events for "
 ## What Comes Next
 
 1. **Dashboard build**: 5-page structure (Home, Compare, Reviews, Presence, Settings). Frontend session building now.
-2. **Monday email verification**: confirm one real email sends to one real customer on sandbox
-3. **Phase 2 security remaining**: 7 unprotected routes, 33 error message leaks, rate limiting
-4. **Fill customer org_ids**: query sandbox DB, update table above
-5. **Dave handoff**: cherry-pick to production once sandbox is verified
+2. **Referral data into Monday email bullets**: The pipe is connected (referral_sources populated) but the email body still only reads ranking snapshots. Wire referral drift into email bullets. "Heart of Texas sent 96 referrals worth $110K but dropped from 14/month to 5/month." THE Oz moment.
+3. **Monday email verification**: confirm one real email sends to one real customer on sandbox
+4. **Phase 2 security remaining**: 7 unprotected routes, 33 error message leaks, rate limiting
+5. **Fill customer org_ids**: query sandbox DB, update table above
+6. **Dave handoff**: cherry-pick to production once sandbox is verified
+
+## Corey Action Items (not code)
+
+- Force password reset for Jay and Rosanna (DentalEMR). Passwords in git history (dentalemr2026).
+- Valley Endo demo account configuration
+- Artful PMS data: coordinate with Dave to copy from production to sandbox
 
 ---
 
