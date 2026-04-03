@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -117,8 +117,14 @@ function DraggableCard({
 // ── Board ─────────────────────────────────────────────────────────────────────
 export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId }: MeKanbanBoardProps) {
   const moveTask = usePmStore((s) => s.moveTask);
+  const [localTasks, setLocalTasks] = useState<PmMyTasksResponse>(tasks);
   const [activeTask, setActiveTask] = useState<PmMyTask | null>(null);
   const [overColumn, setOverColumn] = useState<keyof PmMyTasksResponse | null>(null);
+
+  // Sync local state when parent refresh resolves
+  useEffect(() => {
+    setLocalTasks(tasks);
+  }, [tasks]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -133,7 +139,7 @@ export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId }: MeKanbanB
     setOverColumn(overId && COLUMNS.some((c) => c.key === overId) ? overId : null);
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const task = event.active.data.current?.task as PmMyTask | undefined;
     const targetKey = event.over?.id as keyof PmMyTasksResponse | undefined;
 
@@ -152,9 +158,21 @@ export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId }: MeKanbanB
     const targetColId = colMap[targetKey];
     if (!targetColId || task.column_id === targetColId) return;
 
-    const position = tasks[targetKey].length;
-    await moveTask(task.id, targetColId, position);
-    onRefresh();
+    // Optimistic update — move card immediately in local state
+    const updatedTask: PmMyTask = { ...task, column_id: targetColId };
+    setLocalTasks((prev) => {
+      const sourceKey = COLUMNS.find((c) => c.key !== targetKey && prev[c.key].some((t) => t.id === task.id))?.key;
+      if (!sourceKey) return prev;
+      return {
+        ...prev,
+        [sourceKey]: prev[sourceKey].filter((t) => t.id !== task.id),
+        [targetKey]: [...prev[targetKey], updatedTask],
+      };
+    });
+
+    // Persist in background
+    const position = localTasks[targetKey].length;
+    moveTask(task.id, targetColId, position).then(onRefresh);
   };
 
   return (
@@ -171,7 +189,7 @@ export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId }: MeKanbanB
             key={key}
             columnKey={key}
             label={label}
-            tasks={tasks[key]}
+            tasks={localTasks[key]}
             highlightedTaskId={highlightedTaskId}
             isDraggingOver={overColumn === key}
           />
