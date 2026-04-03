@@ -311,13 +311,17 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
         <span className="text-[40px] font-normal text-[#1A1D23] tracking-tight" style={{ fontVariantNumeric: 'tabular-nums', animation: 'score-reveal 0.6s ease-out' }}>
           #<AnimatedNumber value={ranking.rankPosition} duration={600} />
         </span>
-        <span className="text-base text-[#1A1D23]/25 ml-2">
-          of <AnimatedNumber value={ranking.totalCompetitors || 0} duration={800} />
-        </span>
+        {ranking.totalCompetitors && ranking.totalCompetitors >= 5 && (
+          <span className="text-base text-[#1A1D23]/25 ml-2">
+            of <AnimatedNumber value={ranking.totalCompetitors} duration={800} />
+          </span>
+        )}
       </div>
 
       <p className="text-sm text-gray-500 mt-2">
-        {ranking.totalCompetitors} {ranking.specialty || "competitor"}s in {(ranking.location && ranking.location !== "unknown") ? ranking.location : "your market"}
+        {ranking.totalCompetitors && ranking.totalCompetitors >= 5
+          ? `${ranking.totalCompetitors} ${ranking.specialty || "competitor"}s in ${(ranking.location && ranking.location !== "unknown") ? ranking.location : "your market"}`
+          : `${(ranking.location && ranking.location !== "unknown") ? ranking.location : "your market"}`}
       </p>
 
       {ranking.rankScore != null && (
