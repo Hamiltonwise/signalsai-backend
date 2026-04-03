@@ -6,7 +6,6 @@ import * as LucideIcons from "lucide-react";
 import { usePmStore } from "../../stores/pmStore";
 import { CreateProjectModal } from "../../components/pm/CreateProjectModal";
 import { CreateTaskModal } from "../../components/pm/CreateTaskModal";
-import { DailyBriefCard } from "../../components/pm/DailyBriefCard";
 import { StatsRow } from "../../components/pm/StatsRow";
 import { VelocityChart } from "../../components/pm/VelocityChart";
 import { ActivityTimeline } from "../../components/pm/ActivityTimeline";
@@ -94,9 +93,6 @@ export default function ProjectsDashboard() {
 
       {/* Sections */}
       <div className="space-y-6 max-w-[1400px] mx-auto">
-        {/* Daily Brief */}
-        <DailyBriefCard />
-
         {/* Stats + Velocity in one row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <StatsRow />

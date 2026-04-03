@@ -81,17 +81,6 @@ export interface PmVelocityData {
   data: Array<{ label: string; period_start: string; completed: number; overdue: number }>;
 }
 
-export interface PmDailyBrief {
-  id: string;
-  brief_date: string;
-  summary_html: string | null;
-  tasks_completed_yesterday: number;
-  tasks_overdue: number;
-  tasks_due_today: number;
-  recommended_tasks: Array<{ task_id: string; title: string; reason: string }> | null;
-  generated_at: string | null;
-}
-
 export interface CreateProjectInput {
   name: string;
   description?: string;

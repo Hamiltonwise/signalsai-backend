@@ -8,7 +8,6 @@ import type {
   PmMyTasksResponse,
   PmNotification,
   PmActivityEntry,
-  PmDailyBrief,
   CreateProjectInput,
   CreateTaskInput,
   PmAiSynthBatch,
@@ -140,23 +139,6 @@ export async function fetchProjectActivity(
 
 export async function clearActivity(): Promise<void> {
   await apiDelete({ path: "/pm/activity" });
-}
-
-// --- Daily Brief ---
-
-export async function fetchLatestBrief(): Promise<PmDailyBrief | null> {
-  const res = await apiGet({ path: "/pm/daily-brief" });
-  return res.data;
-}
-
-export async function fetchBriefHistory(
-  limit: number = 10,
-  offset: number = 0
-): Promise<{ data: PmDailyBrief[]; total: number }> {
-  const res = await apiGet({
-    path: `/pm/daily-brief/history?limit=${limit}&offset=${offset}`,
-  });
-  return res;
 }
 
 // --- Users ---
