@@ -185,8 +185,69 @@ dashboardContextRoutes.get(
         } catch { /* ignore parse errors */ }
       }
 
+      // ── One Alloro: role-aware context seed ──
+      // The role field is the foundation for universal five-page dashboard.
+      // Each role gets the same five pages with different data.
+      const orgUser = await db("organization_users")
+        .where({ organization_id: orgId, user_id: req.user?.id || req.userId })
+        .select("role")
+        .first()
+        .catch(() => null);
+
+      const user = await db("users")
+        .where({ id: req.user?.id || req.userId })
+        .select("first_name", "last_name", "email")
+        .first()
+        .catch(() => null);
+
+      // Owner profile (Lemonis Protocol answers)
+      let ownerProfile = null;
+      let ownerArchetype = null;
+      let archetypeConfidence = null;
+      try {
+        const profileOrg = await db("organizations")
+          .where({ id: orgId })
+          .select("owner_profile", "owner_archetype", "archetype_confidence")
+          .first();
+        if (profileOrg) {
+          ownerProfile = typeof profileOrg.owner_profile === "string"
+            ? JSON.parse(profileOrg.owner_profile)
+            : profileOrg.owner_profile;
+          ownerArchetype = profileOrg.owner_archetype;
+          archetypeConfidence = profileOrg.archetype_confidence;
+        }
+      } catch { /* columns may not exist yet */ }
+
+      // Account type + subscription status for Home page rendering
+      const orgMeta = await db("organizations")
+        .where({ id: orgId })
+        .select("subscription_status", "account_type", "referral_code")
+        .first()
+        .catch(() => null);
+
       return res.json({
         success: true,
+        // One Alloro seed: role + user + org identity
+        role: orgUser?.role || "admin",
+        user: {
+          first_name: user?.first_name || null,
+          last_name: user?.last_name || null,
+          email: user?.email || null,
+        },
+        org: {
+          id: orgId,
+          name: org.name,
+          created_at: org.created_at,
+          checkup_score: org.checkup_score,
+          checkup_data: typeof org.checkup_data === "string" ? JSON.parse(org.checkup_data) : org.checkup_data,
+          subscription_status: orgMeta?.subscription_status || null,
+          account_type: orgMeta?.account_type || null,
+          trial_end_at: org.trial_end_at || null,
+          referral_code: orgMeta?.referral_code || null,
+          owner_archetype: ownerArchetype,
+          archetype_confidence: archetypeConfidence,
+          owner_profile: ownerProfile,
+        },
         checkup_context: checkupContext,
         research_findings: researchFindings,
         patientpath_status: org.patientpath_status || null,
