@@ -58,6 +58,12 @@ const Changelog = React.lazy(() => import("./pages/Changelog"));
 const ReferralProgram = React.lazy(() => import("./pages/ReferralProgram"));
 const MessagesPage = React.lazy(() => import("./pages/Messages").then(m => ({ default: m.Messages })));
 
+// --- Five-Page Dashboard (v2) ---
+const HomePage = React.lazy(() => import("./pages/HomePage"));
+const ComparePage = React.lazy(() => import("./pages/ComparePage"));
+const ReviewsPage = React.lazy(() => import("./pages/ReviewsPage"));
+const PresencePage = React.lazy(() => import("./pages/PresencePage"));
+
 // --- Marketing site rebuild (WO-13) ---
 const MarketingHome = React.lazy(() => import("./pages/marketing/HomePage"));
 const HowItWorks = React.lazy(() => import("./pages/marketing/HowItWorks"));
@@ -374,7 +380,15 @@ function App() {
                 }
               />
 
-              {/* Protected routes with shared AppProviders - prevents remounting on navigation */}
+              {/* ── Five-Page Dashboard (v2) ── */}
+              <Route element={<ProtectedLayout />}>
+                <Route path="/home" element={<HomePage />} />
+                <Route path="/compare" element={<ComparePage />} />
+                <Route path="/reviews" element={<ReviewsPage />} />
+                <Route path="/presence" element={<PresencePage />} />
+              </Route>
+
+              {/* Protected routes with shared AppProviders - V1 dashboard (preserved) */}
               <Route element={<ProtectedLayout />}>
                 <Route path="/dashboard" element={<DoctorDashboard />} />
                 <Route path="/dashboard/progress" element={<ProgressReport />} />
