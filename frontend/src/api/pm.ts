@@ -4,6 +4,9 @@ import type {
   PmProjectDetail,
   PmTask,
   PmStats,
+  PmMyStats,
+  PmMyTasksResponse,
+  PmNotification,
   PmActivityEntry,
   PmDailyBrief,
   CreateProjectInput,
@@ -163,6 +166,34 @@ export async function fetchPmUsers(): Promise<
 > {
   const res = await apiGet({ path: "/pm/users" });
   return res.data;
+}
+
+// --- ME tab ---
+
+export async function fetchMyStats(): Promise<PmMyStats> {
+  const res = await apiGet({ path: "/pm/stats/me" });
+  return res.data;
+}
+
+export async function fetchMyVelocity(range: "7d" | "4w" | "3m" = "7d"): Promise<PmVelocityData> {
+  const res = await apiGet({ path: `/pm/stats/velocity/me?range=${range}` });
+  return res.data;
+}
+
+export async function fetchMyTasks(): Promise<PmMyTasksResponse> {
+  const res = await apiGet({ path: "/pm/tasks/mine" });
+  return res.data;
+}
+
+// --- Notifications ---
+
+export async function fetchNotifications(): Promise<PmNotification[]> {
+  const res = await apiGet({ path: "/pm/notifications" });
+  return res.data;
+}
+
+export async function markNotificationsRead(): Promise<void> {
+  await apiPut({ path: "/pm/notifications/read-all", passedData: {} });
 }
 
 // --- AI Synth Batches ---
