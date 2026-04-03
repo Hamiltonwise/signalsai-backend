@@ -218,6 +218,71 @@ Verify:  Has any Monday email EVER been delivered? Check behavioral_events for "
 5. **Fill customer org_ids**: query sandbox DB, update table above
 6. **Dave handoff**: cherry-pick to production once sandbox is verified
 
+## Dave's Migration Guide
+
+When sandbox is ready, this is the checklist. One item at a time. Verify before moving to the next.
+
+**Prerequisites (run once):**
+```bash
+# 1. Pull sandbox
+git fetch origin sandbox
+git checkout sandbox
+git pull
+
+# 2. Run migrations on production
+npx knex migrate:latest --env production
+
+# 3. Verify
+curl https://app.getalloro.com/api/health/db
+```
+
+**Migration order (cherry-pick by priority):**
+
+| # | What | Files | Verify | Risk |
+|---|------|-------|--------|------|
+| 1 | Homepage | frontend/src/pages/marketing/HomePage.tsx | Visit getalloro.com, check copy and layout | LOW (pure frontend) |
+| 2 | Checkup flow | frontend/src/pages/checkup/*.tsx, src/routes/checkup.ts | Run checkup for "Artful Orthodontics Winter Garden FL", confirm score | LOW (public route, no auth) |
+| 3 | Dashboard (5-page rebuild) | frontend/src/pages/DoctorDashboard*.tsx, new page files | Login as test account, verify Home page loads | MEDIUM (major UI change) |
+| 4 | Monday email fixes | src/jobs/mondayEmail.ts, src/emails/templates/*.ts | Trigger manual send for one org, verify email arrives | MEDIUM (needs Mailgun) |
+| 5 | Scoring + economics | src/routes/checkup.ts (economics), src/services/ozMoment.ts | Run checkup for orthodontist, verify $5,500 not $800 | LOW (data only) |
+| 6 | HelpButton + bug pipeline | src/routes/user/help.ts, frontend/src/components/HelpButton.tsx | Click help button, verify task appears in admin | LOW (new route) |
+| 7 | Foundation self-serve | src/routes/foundation.ts, frontend/src/pages/foundation/*.tsx | Submit test application, verify auto-login | LOW (new flow) |
+
+**What NOT to move (sandbox-only for now):**
+- Agent Canon governance (agent_canon tables, verdict system) -- still maturing
+- Mission Control admin page -- internal only, not customer-facing
+- 32 dormant agent queues -- no value until activated and verified
+- BlueTape internal QA system -- team only
+
+**Architecture note:**
+Production has separate servers for homepage (getalloro.com), audit/checkup (audit.getalloro.com), and app (app.getalloro.com). Homepage changes need to go to the homepage repo, not the app repo. Dave knows this. Checkup changes may need the audit subdomain redirect he mentioned (getalloro.com/checkup -> audit.getalloro.com).
+
+**After each migration step:**
+```bash
+# Verify health
+curl https://app.getalloro.com/api/health/db
+
+# Verify frontend loads
+# Open in browser, check for console errors
+
+# Verify one customer
+# Login as Garrison or Pawlak, confirm dashboard shows real data
+```
+
+**The 5 agents that matter (all PASS Canon):**
+
+| Agent | What it does | Infrastructure needed |
+|-------|-------------|----------------------|
+| monday_email | Weekly intelligence email, THE product | BullMQ, Redis, Mailgun |
+| client_monitor | Daily GREEN/AMBER/RED health scoring | BullMQ, Redis, DB |
+| intelligence_agent | Generates findings from ranking data | BullMQ, Redis, Anthropic API |
+| cs_agent | Proactive chat when users are stuck | Anthropic API, DB |
+| dreamweaver | "While you were away" moments | BullMQ, Redis, DB |
+
+All 5 need Redis + BullMQ running on production. Dave confirmed both work.
+
+---
+
 ## Corey Action Items (not code)
 
 - Force password reset for Jay and Rosanna (DentalEMR). Passwords in git history (dentalemr2026).
