@@ -31,7 +31,7 @@ export function TaskCard({ task, onClick, onDelete, isBacklog = false }: TaskCar
     transition,
   };
 
-  const deadline = formatDeadline(task.deadline);
+  const deadline = task.completed_at ? null : formatDeadline(task.deadline);
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -129,11 +129,14 @@ export function TaskCard({ task, onClick, onDelete, isBacklog = false }: TaskCar
         ) : (
           <span className="text-[11px]" style={{ color: "var(--color-pm-text-muted)" }}>—</span>
         )}
-        {((task as any).creator_name || task.created_by) && (
-          <span className="text-[10px]" style={{ color: "var(--color-pm-text-muted)" }}>
-            by {(task as any).creator_name || task.created_by}
-          </span>
-        )}
+        <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--color-pm-text-muted)" }}>
+          {(task.creator_name || task.created_by) && (
+            <span>by {task.creator_name || task.created_by}</span>
+          )}
+          {task.assignee_name && task.assignee_name !== task.creator_name && (
+            <span>→ {task.assignee_name}</span>
+          )}
+        </span>
       </div>
     </motion.div>
   );
