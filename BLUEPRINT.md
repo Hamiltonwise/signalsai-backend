@@ -1,7 +1,7 @@
 # BLUEPRINT.md -- The State of Alloro
 
-Updated: April 2, 2026 (end of session)
-Updated by: Claude (PM session)
+Updated: April 2, 2026 (end of day)
+Updated by: Claude (PM/Coordinator session)
 
 Read this before touching anything. Update this before closing any session.
 
@@ -105,7 +105,11 @@ Rules:
 
 ### Frontend (frontend/src/)
 ```
-pages/DoctorDashboard.tsx    -- THE client dashboard (being rebuilt)
+pages/DoctorDashboard.tsx    -- V1 client dashboard (preserved as rollback)
+pages/HomePage.tsx           -- V2 Home ("Am I okay?") LIVE on /home
+pages/ComparePage.tsx        -- V2 Compare ("How do I compare?") LIVE on /compare
+pages/ReviewsPage.tsx        -- V2 Reviews ("What are people saying?") LIVE on /reviews
+pages/PresencePage.tsx       -- V2 Presence ("Online presence") LIVE on /presence
 pages/checkup/               -- 7 screens: entry, scanning, results, building, share, etc.
 pages/marketing/HomePage.tsx -- Public homepage
 pages/foundation/            -- Heroes & Founders application (self-serve, wired today)
@@ -142,17 +146,18 @@ docs/SANDBOX-CATALOG.md      -- Full page/route/agent/data audit (snapshot from 
 
 ## Session Log
 
-### April 2 (PM session - Claude, coordinating)
-- Analyzed Merideth + Dave transcripts from Fireflies
-- Wired Lemonis Protocol into Monday email + clean week (archetype-aware tone)
+### April 2 (PM/Coordinator session - Claude)
+- Analyzed Merideth + Dave transcripts from Fireflies (read both in full)
+- Wired Lemonis Protocol into Monday email + clean week (archetype-aware, confidence-gated, safe personalGoal rendering)
 - Built all 7 structural items (person layer, trial rewrite, nothing-to-do state, community proof, generous cancellation, unified onboarding, Foundation self-serve)
 - Fixed 7 percentage displays (real numbers, not unverifiable stats)
 - Wired bug pipeline (HelpButton -> tasks + events, frustration -> events)
-- Fixed website editor email targeting bug
-- Created SANDBOX-CATALOG.md (full audit)
+- Fixed website editor email targeting bug + OneActionCard server override bug
+- Created SANDBOX-CATALOG.md (full audit) and BLUEPRINT.md
 - Researched dashboard psychology (10 findings, 27 sources)
-- Vision: 3-page dashboard (Scoreboard, Deep Dive, Your Business). Spec in progress.
-- Created BLUEPRINT.md
+- Coordinated 3 parallel sessions: frontend (5-page build), backend (4-phase plumbing), plumbing (person layer gaps)
+- Spec agreed: 5 pages replacing 16. V1 preserved. Nav switch in progress.
+- Key lesson: "Match pace. Think with Corey, not ahead of him. Trace data before code."
 
 ### April 2 (Plumbing session)
 - 71 unregistered event types added to eventSchema.ts
@@ -213,12 +218,18 @@ Verify:  Has any Monday email EVER been delivered? Check behavioral_events for "
 
 ## What Comes Next
 
-1. **Dashboard build**: 5-page structure (Home, Compare, Reviews, Presence, Settings). Frontend session building now.
-2. **Referral data into Monday email bullets**: The pipe is connected (referral_sources populated) but the email body still only reads ranking snapshots. Wire referral drift into email bullets. "Heart of Texas sent 96 referrals worth $110K but dropped from 14/month to 5/month." THE Oz moment.
-3. **Monday email verification**: confirm one real email sends to one real customer on sandbox
-4. **Phase 2 security remaining**: 7 unprotected routes, 33 error message leaks, rate limiting
-5. **Fill customer org_ids**: query sandbox DB, update table above
-6. **Dave handoff**: cherry-pick to production once sandbox is verified
+1. **Dashboard nav switch**: Wire 5-icon bottom nav, make /home the default. V1 stays at /dashboard as rollback. Frontend session closing this now.
+2. **Verify real data rendering**: Login as Garrison/One Endo on sandbox, confirm Home page shows real position, score, action card with actual data.
+3. **Referral data into Monday email bullets**: Pipe connected but email body still reads ranking snapshots only. Wire referral drift into bullets. THE Oz moment.
+4. **Monday email verification**: confirm one real email sends to one real customer on sandbox
+5. **Phase 2 security remaining**: 7 unprotected routes, 33 error message leaks, rate limiting
+6. **Fill customer org_ids**: query sandbox DB, update table above
+7. **Dave handoff**: cherry-pick to production once sandbox is verified
+
+## North Star (longer term)
+
+- **One Alloro**: Same 5 questions for everyone (customers, team, partners). Role determines data, not page structure. Jo gets a grid. Dave gets a terminal. Pawlak gets calm. Same philosophy, personal rendering. Customers first.
+- **Vertical config**: DentalEMR (SaaS) needs different data sources behind the same 5 pages. Vocabulary handles language. Vertical config handles data routing.
 
 ## Dave's Migration Guide
 
