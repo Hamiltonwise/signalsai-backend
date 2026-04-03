@@ -216,7 +216,7 @@ export function MeTabView() {
       )}
 
       {/* Task detail panel */}
-      <TaskDetailPanel task={selectedTask} onClose={() => setSelectedTask(null)} />
+      <TaskDetailPanel task={selectedTask} onClose={() => { setSelectedTask(null); loadData(); }} />
     </div>
   );
 }
