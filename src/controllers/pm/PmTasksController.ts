@@ -4,6 +4,20 @@ import { PmTaskModel } from "../../models/PmTaskModel";
 import { PmColumnModel } from "../../models/PmColumnModel";
 import { db } from "../../database/connection";
 import { logPmActivity } from "./pmActivityLogger";
+import type { QueryContext } from "../../models/BaseModel";
+
+async function insertNotification(
+  ctx: QueryContext,
+  payload: {
+    user_id: number;
+    type: "task_assigned" | "task_unassigned" | "assignee_completed_task";
+    task_id: string;
+    actor_user_id: number;
+    metadata: Record<string, unknown>;
+  }
+): Promise<void> {
+  await (ctx as any)("pm_notifications").insert(payload);
+}
 
 function handleError(res: Response, error: unknown, operation: string): Response {
   console.error(`[PM-TASKS] ${operation} failed:`, error);
@@ -209,7 +223,7 @@ export async function moveTask(req: AuthRequest, res: Response): Promise<any> {
         trx
       );
 
-      // If moved to Done, also log completion
+      // If moved to Done, also log completion + notify creator
       if (targetCol?.name === "Done" && !existing.completed_at) {
         await logPmActivity(
           {
@@ -220,6 +234,27 @@ export async function moveTask(req: AuthRequest, res: Response): Promise<any> {
           },
           trx
         );
+
+        // Notify creator if task has an assignee and creator != assignee
+        if (
+          existing.assigned_to &&
+          existing.created_by !== existing.assigned_to
+        ) {
+          const project = await trx("pm_projects")
+            .where("id", existing.project_id)
+            .select("name")
+            .first();
+          await insertNotification(trx, {
+            user_id: existing.created_by,
+            type: "assignee_completed_task",
+            task_id: id,
+            actor_user_id: existing.assigned_to,
+            metadata: {
+              task_title: existing.title,
+              project_name: project?.name ?? "",
+            },
+          });
+        }
       }
     });
 
@@ -235,23 +270,57 @@ export async function assignTask(req: AuthRequest, res: Response): Promise<any> 
   try {
     const { id } = req.params;
     const { assigned_to } = req.body;
+    const newAssignee: number | null = assigned_to || null;
 
     const existing = await PmTaskModel.findById(id);
     if (!existing) {
       return res.status(404).json({ success: false, error: "Task not found" });
     }
 
-    await PmTaskModel.updateById(id, { assigned_to: assigned_to || null });
+    const oldAssignee: number | null = existing.assigned_to;
 
-    await logPmActivity({
-      project_id: existing.project_id,
-      task_id: id,
-      user_id: req.user!.userId,
-      action: "task_assigned",
-      metadata: {
-        old_assignee: existing.assigned_to,
-        new_assignee: assigned_to || null,
-      },
+    await db.transaction(async (trx) => {
+      await PmTaskModel.updateById(id, { assigned_to: newAssignee }, trx);
+
+      await logPmActivity(
+        {
+          project_id: existing.project_id,
+          task_id: id,
+          user_id: req.user!.userId,
+          action: "task_assigned",
+          metadata: { old_assignee: oldAssignee, new_assignee: newAssignee },
+        },
+        trx
+      );
+
+      // Fetch project name for notification metadata
+      const project = await trx("pm_projects")
+        .where("id", existing.project_id)
+        .select("name")
+        .first();
+      const meta = { task_title: existing.title, project_name: project?.name ?? "" };
+
+      // Notify new assignee
+      if (newAssignee && newAssignee !== oldAssignee) {
+        await insertNotification(trx, {
+          user_id: newAssignee,
+          type: "task_assigned",
+          task_id: id,
+          actor_user_id: req.user!.userId,
+          metadata: meta,
+        });
+      }
+
+      // Notify old assignee they were removed
+      if (oldAssignee && oldAssignee !== newAssignee) {
+        await insertNotification(trx, {
+          user_id: oldAssignee,
+          type: "task_unassigned",
+          task_id: id,
+          actor_user_id: req.user!.userId,
+          metadata: meta,
+        });
+      }
     });
 
     const updated = await PmTaskModel.findById(id);
