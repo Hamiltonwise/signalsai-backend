@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Bell, Check, X, CheckCheck, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PmNotification } from "../../types/pm";
-import { fetchNotifications, markNotificationsRead, deleteAllNotifications } from "../../api/pm";
+import { fetchNotifications, markNotificationsRead, deleteAllNotifications, fetchPmUsers } from "../../api/pm";
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -14,8 +14,8 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function notificationMessage(n: PmNotification): string {
-  const actor = n.metadata?.actor_name ?? "Someone";
+function notificationMessage(n: PmNotification, userMap: Map<number, string>): string {
+  const actor = n.metadata?.actor_name ?? userMap.get(n.actor_user_id) ?? "Someone";
   const task = n.metadata?.task_title ?? "a task";
   if (n.type === "task_assigned") return `${actor} assigned you "${task}"`;
   if (n.type === "task_unassigned") return `${actor} unassigned you from "${task}"`;
@@ -34,13 +34,15 @@ interface NotificationCardProps {
 
 export function NotificationCard({ onTaskClick }: NotificationCardProps) {
   const [notifications, setNotifications] = useState<PmNotification[]>([]);
+  const [userMap, setUserMap] = useState<Map<number, string>>(new Map());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const load = useCallback(async () => {
     try {
-      const data = await fetchNotifications();
+      const [data, users] = await Promise.all([fetchNotifications(), fetchPmUsers()]);
       setNotifications(data.slice(0, 10));
+      setUserMap(new Map(users.map((u) => [u.id, u.display_name])));
     } catch {
       // silent
     }
@@ -177,7 +179,7 @@ export function NotificationCard({ onTaskClick }: NotificationCardProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] leading-snug truncate" style={{ color: "var(--color-pm-text-primary)" }}>
-                    {notificationMessage(n)}
+                    {notificationMessage(n, userMap)}
                     {project && (
                       <span className="text-[10px] ml-1" style={{ color: "var(--color-pm-text-muted)" }}>
                         · {project}
