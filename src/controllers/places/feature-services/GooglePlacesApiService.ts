@@ -87,13 +87,22 @@ export async function getSearchPlaceDetails(placeId: string): Promise<any> {
 export async function textSearch(
   textQuery: string,
   maxResultCount: number = 20,
+  locationBias?: { lat: number; lng: number; radiusMeters?: number },
 ): Promise<any[]> {
+  const body: Record<string, unknown> = { textQuery, maxResultCount };
+
+  if (locationBias) {
+    body.locationBias = {
+      circle: {
+        center: { latitude: locationBias.lat, longitude: locationBias.lng },
+        radius: locationBias.radiusMeters ?? 40234, // default 25 miles
+      },
+    };
+  }
+
   const response = await axios.post(
     `${PLACES_API_BASE}/places:searchText`,
-    {
-      textQuery,
-      maxResultCount,
-    },
+    body,
     {
       headers: {
         "Content-Type": "application/json",

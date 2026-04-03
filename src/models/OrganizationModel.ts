@@ -4,6 +4,7 @@ export interface IOrganization {
   id: number;
   name: string;
   domain: string | null;
+  referral_code: string | null;
   organization_type: "health" | "saas" | null;
   subscription_tier: "DWY" | "DFY" | null;
   subscription_status: "active" | "inactive" | "trial" | "cancelled";
@@ -43,10 +44,17 @@ export class OrganizationModel extends BaseModel {
   }
 
   static async create(
-    data: { name: string; domain?: string },
+    data: { name: string; domain?: string; referral_code?: string; referred_by_org_id?: number },
     trx?: QueryContext
   ): Promise<IOrganization> {
     return super.create(data as Record<string, unknown>, trx);
+  }
+
+  static async findByReferralCode(
+    code: string,
+    trx?: QueryContext
+  ): Promise<IOrganization | undefined> {
+    return this.table(trx).where({ referral_code: code }).first();
   }
 
   static async updateById(

@@ -46,6 +46,7 @@ import practiceRankingRoutes from "./routes/practiceRanking";
 import supportRoutes from "./routes/support";
 import scraperRoutes from "./routes/scraper";
 import placesRoutes from "./routes/places";
+import checkupRoutes from "./routes/checkup";
 import auditRoutes from "./routes/audit";
 import importsRoutes from "./routes/imports";
 import websiteContactRoutes from "./routes/websiteContact";
@@ -175,6 +176,7 @@ app.use("/api/admin", adminAuthRoutes);
 app.use("/api/support", supportRoutes); // Help form / support inquiries
 app.use("/api/scraper", scraperRoutes); // Website scraper for n8n webhooks
 app.use("/api/places", placesRoutes); // Google Places API for GBP search
+app.use("/api/checkup", checkupRoutes); // Public checkup flow for audit.getalloro.com
 app.use("/api/audit", auditRoutes); // Audit process tracking for leadgen tool
 app.use("/api/imports", importsRoutes); // Public file serving for self-hosted imports
 app.use("/api/websites", websiteContactRoutes); // Public contact form for rendered sites
