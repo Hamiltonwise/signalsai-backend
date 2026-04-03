@@ -147,7 +147,7 @@ export interface PmNotification {
   type: "task_assigned" | "task_unassigned" | "assignee_completed_task";
   task_id: string | null;
   actor_user_id: number;
-  metadata: { task_title?: string; project_name?: string } | null;
+  metadata: { task_title?: string; project_name?: string; actor_name?: string } | null;
   is_read: boolean;
   created_at: string;
 }

@@ -134,7 +134,7 @@ export function TaskCard({ task, onClick, onDelete, isBacklog = false }: TaskCar
           {(task.creator_name || task.created_by) && (
             <span>by {task.creator_name || task.created_by}</span>
           )}
-          {task.assignee_name && task.assignee_name !== task.creator_name && (
+          {task.assignee_name && (
             <span>→ {task.assignee_name}</span>
           )}
         </span>

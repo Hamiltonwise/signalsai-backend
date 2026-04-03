@@ -2,6 +2,36 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.11] - April 2026
+
+### PM QA Bug Fixes + UX Polish
+
+Full Playwright QA pass on the PM feature surfaced five confirmed bugs and five friction points. All fixed before production rollout.
+
+**Bug Fixes:**
+- Task cards now immediately show "by dave" (creator name) and "→ dave" (assignee name) on creation and assignment — backend `createTask` and `assignTask` responses now enrich with LEFT JOIN on users
+- Deadline panel display no longer shows the wrong date (off-by-one) — changed from `.slice(0, 10)` on a UTC ISO string to `toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" })` to get the correct PST date
+- ME kanban card clicks now open the task detail panel — moved click handler to outer draggable div with a `didDrag` ref to distinguish click vs drag
+- Text no longer selects during ME kanban drag — added `userSelect: "none"` to draggable elements
+- ME kanban drag to DONE column now works reliably — replaced `pointerWithin` collision detection with `rectIntersection` filtered to column droppables only
+- Fixed missing `format` import in `pmDateFormat.ts` that would crash for far-future deadlines
+
+**UX Improvements:**
+- Truncated task titles show full text as native browser tooltip (`title` attribute) on both kanban and ME kanban cards
+- Task detail panel now shows "Created by {name} · X ago" metadata row at the bottom
+- ME kanban columns show an orange border ring + subtle scale on drag-over for clearer drop targeting
+- ME task cards show assignee name (`→ name`) when set
+- Old notifications without `actor_name` in metadata are now enriched server-side via actor email fallback
+
+**Commits:**
+- `src/controllers/pm/PmTasksController.ts` — `enrichTask()` helper, applied to createTask + assignTask
+- `frontend/src/components/pm/TaskDetailPanel.tsx` — PST deadline display fix, creator metadata row
+- `frontend/src/components/pm/MeKanbanBoard.tsx` — click vs drag fix, column collision detection, drop zone ring
+- `frontend/src/components/pm/MeTaskCard.tsx` — no-select on drag, assignee display, title tooltip
+- `frontend/src/components/pm/TaskCard.tsx` — title tooltip
+- `frontend/src/utils/pmDateFormat.ts` — `format` import fix
+- `src/controllers/pm/PmNotificationsController.ts` — server-side actor_name enrichment
+
 ## [0.0.10] - April 2026
 
 ### Session Expired Crash Fix (ALLORO-FRONTEND-Q)

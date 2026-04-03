@@ -147,7 +147,7 @@ function DraggableCard({
 
 // Only consider the 3 column droppables for collision — more reliable than pointerWithin for edge columns
 const columnOnlyCollision: CollisionDetection = (args) => {
-  const columnKeys = new Set(COLUMNS.map((c) => c.key));
+  const columnKeys = new Set<string>(COLUMNS.map((c) => c.key));
   const columnContainers = args.droppableContainers.filter((c) => columnKeys.has(c.id as string));
   return rectIntersection({ ...args, droppableContainers: columnContainers });
 };
