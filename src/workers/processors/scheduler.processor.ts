@@ -22,6 +22,7 @@ import { getAgentHandler } from "../../services/agentRegistry";
 import { checkGateStatus, startRun, endRun } from "../../services/agents/agentIdentity";
 import { checkCircuit, recordSuccess, recordFailure } from "../../services/agents/circuitBreaker";
 import { isKillSwitchActive } from "../../services/agents/killSwitch";
+import { db } from "../../database/connection";
 
 function computeNextRunAt(schedule: ISchedule): Date {
   if (schedule.schedule_type === "cron" && schedule.cron_expression) {
@@ -132,6 +133,15 @@ export async function processSchedulerTick(_job: Job): Promise<void> {
       // ── Layer 6: Record success ──
       recordSuccess(schedule.agent_key);
 
+      // Update dream_team_nodes health_status so Mission Control reflects reality
+      try {
+        await db("dream_team_nodes")
+          .where({ agent_key: schedule.agent_key, is_active: true })
+          .update({ health_status: "green", updated_at: new Date() });
+      } catch {
+        // Non-critical: node may not exist for this agent
+      }
+
       if (identityRun) {
         try {
           await endRun(identityRun.agentId, identityRun.runId, true, "Completed successfully");
@@ -155,6 +165,15 @@ export async function processSchedulerTick(_job: Job): Promise<void> {
 
       // ── Layer 6: Record failure ──
       recordFailure(schedule.agent_key, errorMsg);
+
+      // Update dream_team_nodes to red so Mission Control shows the failure
+      try {
+        await db("dream_team_nodes")
+          .where({ agent_key: schedule.agent_key, is_active: true })
+          .update({ health_status: "red", updated_at: new Date() });
+      } catch {
+        // Non-critical
+      }
 
       if (identityRun) {
         try {
