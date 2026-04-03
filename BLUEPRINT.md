@@ -73,8 +73,28 @@ Hosting:  Sandbox: sandbox.getalloro.com | Production: app.getalloro.com (Dave's
 
 ## What's Being Rebuilt
 
-- Dashboard: reducing to 3 pages (Scoreboard, Deep Dive, Your Business). Spec in progress.
-- Backend plumbing: 4 phases (data pipes, security, integrity, self-awareness). In progress.
+**Dashboard: 5 pages replacing 16.** Spec AGREED. Build starting.
+
+| Page | Question | What's on it |
+|------|----------|-------------|
+| Home | "Am I okay?" + "What should I do?" | Greeting, One Action Card, position line, score, surprise moments |
+| Compare | "How do I compare?" | Score breakdown, rankings over time, competitors, referral sources |
+| Reviews | "What are people saying?" | Recent reviews, AI response drafts, velocity, review requests |
+| Presence | "What does my online presence look like?" | Website editor, GBP profile, search presence, compliance |
+| Settings | Touch once, forget | Account, billing, integrations, team, notifications, export |
+
+Rules:
+- Home: max 2 temporary prompts at once (stack in sequence, not parallel)
+- Monday Preview: CUT (email is the surprise, preview kills anticipation)
+- Referral card: earned moment after first win, not permanent
+- Home must degrade gracefully: always shows something, even with zero data
+- Surprise moments (Dreamweaver, milestone, win): appear when earned, vanish when seen
+
+**Backend plumbing: Phase 1 COMPLETE. Phase 2 partial.**
+- Phase 1 (data pipes): DONE. PMS -> referral_sources, user activity tracking.
+- Phase 2 (security): PARTIAL. SQL injection closed, 60+ endpoints secured. 7 routes + error leaks remain.
+- Phase 3 (integrity): next week
+- Phase 4 (self-awareness): agent health status update in progress
 
 ---
 
