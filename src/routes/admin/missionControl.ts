@@ -2,7 +2,7 @@
  * Agent Mission Control API
  *
  * GET /api/admin/mission-control -- real-time status of all 50 agents.
- * Queries behavioral_events + agent_schedules + dream_team_nodes
+ * Queries behavioral_events + schedules + dream_team_nodes
  * to compute status, circuit state, weekly stats, and cost per agent.
  */
 
@@ -99,8 +99,8 @@ missionControlRoutes.get(
         .where("is_active", true)
         .select("id", "role_title", "display_name", "agent_key", "health_status");
 
-      // 2. Get all schedules
-      const schedules = await db("agent_schedules")
+      // 2. Get all schedules (table is "schedules", not "schedules")
+      const schedules = await db("schedules")
         .select("agent_key", "enabled", "last_run_at", "next_run_at");
       const scheduleMap = new Map(schedules.map((s: any) => [s.agent_key, s]));
 
@@ -173,10 +173,10 @@ missionControlRoutes.get(
 
       // 5. Also pull schedule runs for agents
       const recentRuns = await db("schedule_runs")
-        .join("agent_schedules", "schedule_runs.schedule_id", "agent_schedules.id")
+        .join("schedules", "schedule_runs.schedule_id", "schedules.id")
         .where("schedule_runs.started_at", ">=", oneWeekAgo)
         .select(
-          "agent_schedules.agent_key",
+          "schedules.agent_key",
           "schedule_runs.status",
           "schedule_runs.started_at",
           "schedule_runs.duration_ms",
@@ -276,9 +276,9 @@ missionControlRoutes.get(
       };
 
       return res.json({ success: true, agents, byTeam, summary });
-    } catch (err) {
-      console.error("Mission Control error:", err);
-      return res.status(500).json({ success: false, error: "Failed to load mission control" });
+    } catch (err: any) {
+      console.error("Mission Control error:", err?.message, err?.stack?.split("\n").slice(0, 3).join(" | "));
+      return res.status(500).json({ success: false, error: "Failed to load mission control", detail: err?.message });
     }
   }
 );

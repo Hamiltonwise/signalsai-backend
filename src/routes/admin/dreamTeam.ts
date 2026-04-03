@@ -77,12 +77,17 @@ dreamTeamRoutes.get(
 );
 
 // ─── GET /:id — Single node detail ─────────────────────────────────
+// NOTE: Must skip sub-route names that Express would otherwise match as :id
 
 dreamTeamRoutes.get(
   "/:id",
   authenticateToken,
   superAdminMiddleware,
-  async (req, res) => {
+  async (req, res, next) => {
+    // Skip if :id matches a named sub-route (Express matches /:id before /tasks)
+    const reserved = ["tasks", "health", "status"];
+    if (reserved.includes(req.params.id)) return next();
+
     try {
       const { id } = req.params;
 
