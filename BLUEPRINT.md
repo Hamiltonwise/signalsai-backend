@@ -161,11 +161,13 @@ docs/SANDBOX-CATALOG.md      -- Full page/route/agent/data audit (snapshot from 
 - 50+ standing rule violations fixed (font sizes, weights, colors, language)
 - Closed 5 person-layer gaps (personalGoal rendering, backend clear state, Day 7 rewrite, Dashboard.tsx guard, community proof in Monday Brief)
 
-### April 2 (Infrastructure session) -- 11 commits pushed
-- Phase 1 COMPLETE: PMS -> referral_sources pipe connected (McPherson: 50 sources, $110K Heart of Texas verified). User activity tracking wired (login + dashboard views -> behavioral_events).
-- Phase 2 PARTIAL: SQL injection closed, 60+ admin endpoints secured, composite index on behavioral_events, checkup dedup preventing ghost orgs. Remaining: 7 unprotected route files, 33 error message leaks, rate limiting.
-- 3 structural bugs fixed: days_since_login, competitor self-filter, score recalc
-- 71 event types registered, 24 gray dots resolved, 50+ style violations fixed
+### April 2 (Infrastructure session) -- all 4 phases complete
+- Phase 1: PMS -> referral_sources connected (McPherson verified). User activity tracking wired.
+- Phase 2: SQL injection closed, 60+ endpoints secured, checkup dedup, composite index.
+- Phase 3: 18 ghost orgs archived, timestamps on 4 tables.
+- Phase 4: 5 critical agents PASS Canon (monday_email, client_monitor, intelligence_agent, cs_agent, dreamweaver). Agent health status auto-updates on run.
+- Root causes found: pilot token = empty dashboards, notification spam, GBP stale prompts, dream team route collision, mission control wrong table.
+- Key lesson from session: "The building produced features. The listening produced fixes. The fixes mattered more."
 
 ---
 
