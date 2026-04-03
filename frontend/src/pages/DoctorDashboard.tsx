@@ -761,6 +761,10 @@ function useLemonisGuard(orgId: number | null) {
   useEffect(() => {
     if (!orgId) { setChecked(true); return; }
 
+    // Skip guard in pilot mode (admin viewing as client)
+    const isPilotMode = typeof window !== "undefined" && (window.sessionStorage?.getItem("pilot_mode") === "true" || !!window.sessionStorage?.getItem("pilot_org_id"));
+    if (isPilotMode) { setChecked(true); return; }
+
     const skipCount = parseInt(localStorage.getItem(OWNER_PROFILE_SKIP_KEY) || "0", 10);
     if (skipCount >= MAX_GENTLE_PROMPTS) { setChecked(true); return; }
 
