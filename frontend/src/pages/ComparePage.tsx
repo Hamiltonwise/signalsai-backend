@@ -73,7 +73,7 @@ export default function ComparePage() {
       );
       if (!res.ok) return null;
       const data = await res.json();
-      return data?.results?.[0] || null;
+      return data?.rankings?.[0] || data?.results?.[0] || null;
     },
     enabled: !!orgId,
     staleTime: 60_000,

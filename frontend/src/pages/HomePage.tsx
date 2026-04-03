@@ -50,6 +50,7 @@ interface DashboardContext {
     checkup_data?: any;
     subscription_status?: string;
     trial_end_at?: string | null;
+    referral_code?: string | null;
   };
   user?: { first_name?: string; last_name?: string; email?: string };
 }
@@ -165,7 +166,7 @@ export default function HomePage() {
       );
       if (!res.ok) return null;
       const data = await res.json();
-      return data?.results?.[0] || null;
+      return data?.rankings?.[0] || data?.results?.[0] || null;
     },
     enabled: !!orgId,
     staleTime: 60_000,
@@ -347,9 +348,9 @@ export default function HomePage() {
             transition={{ delay: 0.3 }}
           >
             <StreakBadge
-              streakType={streak.type}
-              streakCount={streak.count}
-              streakLabel={streak.label}
+              type={streak.type}
+              count={streak.count}
+              label={streak.label}
             />
           </motion.div>
         )}
@@ -357,8 +358,13 @@ export default function HomePage() {
         {/* ── Temporary Prompts (max 2) ── */}
         {visiblePrompts.has("onboarding") && (
           <OnboardingChecklist
-            setupProgress={setupProgress}
-            orgId={orgId}
+            checkupScore={score}
+            gbpConnected={!!hasGoogleConnection}
+            pmsUploaded={!!setupProgress?.step2_pms_uploaded}
+            referralShared={false}
+            referralCode={ctx?.org?.referral_code || null}
+            onStepComplete={() => {}}
+            onDismiss={() => {}}
           />
         )}
 
