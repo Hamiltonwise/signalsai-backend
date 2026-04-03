@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Bell, Check, X, CheckCheck, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PmNotification } from "../../types/pm";
-import { fetchNotifications, fetchPmUsers, markNotificationsRead, deleteAllNotifications } from "../../api/pm";
+import { fetchNotifications, markNotificationsRead, deleteAllNotifications } from "../../api/pm";
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -14,14 +14,12 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function notificationMessage(
-  n: PmNotification,
-  actorName: string
-): string {
+function notificationMessage(n: PmNotification): string {
+  const actor = n.metadata?.actor_name ?? "Someone";
   const task = n.metadata?.task_title ?? "a task";
-  if (n.type === "task_assigned") return `${actorName} assigned you "${task}"`;
-  if (n.type === "task_unassigned") return `${actorName} unassigned you from "${task}"`;
-  return `${actorName} completed "${task}" you assigned`;
+  if (n.type === "task_assigned") return `${actor} assigned you "${task}"`;
+  if (n.type === "task_unassigned") return `${actor} unassigned you from "${task}"`;
+  return `${actor} completed "${task}" you assigned`;
 }
 
 const TYPE_ICON: Record<PmNotification["type"], React.ReactNode> = {
@@ -36,15 +34,13 @@ interface NotificationCardProps {
 
 export function NotificationCard({ onTaskClick }: NotificationCardProps) {
   const [notifications, setNotifications] = useState<PmNotification[]>([]);
-  const [userMap, setUserMap] = useState<Map<number, string>>(new Map());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const load = useCallback(async () => {
     try {
-      const [data, users] = await Promise.all([fetchNotifications(), fetchPmUsers()]);
+      const data = await fetchNotifications();
       setNotifications(data.slice(0, 10));
-      setUserMap(new Map(users.map((u) => [u.id, u.display_name])));
     } catch {
       // silent
     }
@@ -157,7 +153,6 @@ export function NotificationCard({ onTaskClick }: NotificationCardProps) {
       ) : (
         <div className="space-y-0.5 overflow-y-auto" style={{ maxHeight: 220 }}>
           {notifications.map((n) => {
-            const actorName = userMap.get(n.actor_user_id) ?? `user ${n.actor_user_id}`;
             const project = n.metadata?.project_name;
             const isClickable = !!n.task_id && !!onTaskClick;
 
@@ -182,7 +177,7 @@ export function NotificationCard({ onTaskClick }: NotificationCardProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] leading-snug truncate" style={{ color: "var(--color-pm-text-primary)" }}>
-                    {notificationMessage(n, actorName)}
+                    {notificationMessage(n)}
                     {project && (
                       <span className="text-[10px] ml-1" style={{ color: "var(--color-pm-text-muted)" }}>
                         · {project}
