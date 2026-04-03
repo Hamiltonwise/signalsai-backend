@@ -47,6 +47,9 @@ export interface PmTask {
   source: "manual" | "ai_synth";
   created_at: string;
   updated_at: string;
+  // Enriched fields from getProject
+  creator_name?: string | null;
+  assignee_name?: string | null;
 }
 
 export interface PmProjectDetail extends PmProject {
@@ -130,5 +133,32 @@ export interface PmAiSynthBatchTask {
   deadline_hint: string | null;
   status: "pending" | "approved" | "rejected";
   created_task_id: string | null;
+  created_at: string;
+}
+
+export interface PmMyStats {
+  focus_today: { count: number; subtitle: string; severity: "green" | "amber" | "red" };
+  this_week: { count: number; subtitle: string };
+}
+
+export interface PmMyTask extends PmTask {
+  project_name: string;
+  project_column_ids: { todo_id: string; in_progress_id: string; done_id: string };
+}
+
+export interface PmMyTasksResponse {
+  todo: PmMyTask[];
+  in_progress: PmMyTask[];
+  done: PmMyTask[];
+}
+
+export interface PmNotification {
+  id: string;
+  user_id: number;
+  type: "task_assigned" | "task_unassigned" | "assignee_completed_task";
+  task_id: string | null;
+  actor_user_id: number;
+  metadata: { task_title?: string; project_name?: string } | null;
+  is_read: boolean;
   created_at: string;
 }
