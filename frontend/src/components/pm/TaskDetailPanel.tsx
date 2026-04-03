@@ -31,6 +31,7 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
   const [priority, setPriority] = useState<string>("P3");
   const [deadline, setDeadline] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [assignedTo, setAssignedTo] = useState<number | null>(null);
   const [users, setUsers] = useState<Array<{ id: number; display_name: string; email: string }>>([]);
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +41,7 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
       setDescription(task.description || "");
       setPriority(task.priority ?? "P3");
       setDeadline(task.deadline ? task.deadline.slice(0, 10) : "");
+      setAssignedTo(task.assigned_to ?? null);
       setShowDeleteConfirm(false);
     }
   }, [task]);
@@ -177,10 +179,12 @@ export function TaskDetailPanel({ task, onClose, isBacklog }: TaskDetailPanelPro
                   Assigned To
                 </label>
                 <select
-                  value={task.assigned_to ?? ""}
+                  value={assignedTo ?? ""}
                   onChange={(e) => {
                     const val = e.target.value;
-                    assignTask(task.id, val ? parseInt(val, 10) : null);
+                    const userId = val ? parseInt(val, 10) : null;
+                    setAssignedTo(userId);
+                    assignTask(task.id, userId);
                   }}
                   className="w-full rounded-lg border border-pm-border bg-pm-bg-primary py-2 px-3 text-sm text-pm-text-primary focus:border-pm-accent focus:outline-none focus:ring-1 focus:ring-pm-accent"
                 >
