@@ -41,8 +41,8 @@ export function NotificationCard({ onTaskClick }: NotificationCardProps) {
   const load = useCallback(async () => {
     try {
       const [data, users] = await Promise.all([fetchNotifications(), fetchPmUsers()]);
-      setNotifications(data.slice(0, 10));
-      setUserMap(new Map(users.map((u) => [u.id, u.display_name])));
+      setNotifications((data ?? []).slice(0, 10));
+      setUserMap(new Map((users ?? []).map((u: { id: number; display_name: string }) => [u.id, u.display_name])));
     } catch {
       // silent
     }
