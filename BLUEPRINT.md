@@ -50,26 +50,16 @@ Hosting:  Sandbox: sandbox.getalloro.com | Production: app.getalloro.com (Dave's
 ## What's Broken (known issues)
 
 - Monday email: has likely NEVER been delivered to a paying client (unverified)
-- ~~days_since_login: calculated from first_login_at~~ FIXED Apr 2 (infra session)
-- ~~Competitor filter: self-comparison~~ FIXED Apr 2 (infra session)
-- ~~Score recalc: previous_clarity_score = 0~~ FIXED Apr 2 (infra session)
 - PMS parser: improved (local fallback when n8n fails) but core parser still fragile
-- ~~PMS referral data: disconnected from referral_sources~~ FIXED Apr 2 (infra session, McPherson verified)
-- ~~Behavioral events: backend blind to user actions~~ FIXED Apr 2 (login + dashboard views now tracked)
-- 30 of 40 registered agents have never executed
-- ~~43 of 53 event types never written, 45 ghost types~~ FIXED Apr 2 (71 types registered, schema consolidated)
-- ~~SQL injection in agentExecutor~~ FIXED Apr 2
-- ~~60+ unprotected admin endpoints~~ FIXED Apr 2
-- ~~Pilot mode token (empty dashboards)~~ FIXED Apr 2
-- ~~Dream Team /tasks route collision~~ FIXED Apr 2
-- ~~Mission Control wrong table name~~ FIXED Apr 2
-- ~~Notification dedup (spam)~~ FIXED Apr 2
-- ~~agentCanon.ts missing import (server crash)~~ FIXED Apr 2
-- 7 more route files still need auth (agentsV2, practiceRanking, clarity, rag, audit, notifications, monday)
+- 30 of 40 registered agents have never executed (5 critical ones now PASS Canon)
+- 7 route files still need auth (agentsV2, practiceRanking, clarity, rag, audit, notifications, monday)
 - 33 endpoints leak err.message to clients
 - GBP OAuth redirect URI mismatch between sandbox and production
-- GA4/GSC: columns re-added, but data fetch depends on per-org OAuth tokens
-- Dashboard: 28 potential elements, 120 clickable items, 16 pages (being rebuilt to 3)
+- GA4/GSC: columns exist, data fetch depends on per-org OAuth tokens
+- DentalEMR: SaaS vertical, GBP/local-SEO features don't apply. Needs vertical config for data sources.
+- Artful, McPherson, Caswell: PMS data in production only, empty on sandbox
+
+(15 items fixed Apr 2. See git log for details.)
 
 ## What's Being Rebuilt
 
@@ -179,14 +169,53 @@ docs/SANDBOX-CATALOG.md      -- Full page/route/agent/data audit (snapshot from 
 
 ---
 
+## Monday Email Pipeline (THE product)
+
+```
+Trigger: BullMQ cron, Monday 7 AM (timezone-unaware, all orgs in batch)
+Data:    organizations + weekly_ranking_snapshots + behavioral_events + owner_profile
+Flow:    sendMondayEmailForOrg(orgId) in src/jobs/mondayEmail.ts
+         -> loads org, user, vocabulary, owner profile (archetype)
+         -> fetches latest ranking snapshot
+         -> if clean week (no movement): sendCleanWeekEmail()
+         -> if findings exist: builds bullets + 5-minute fix
+         -> archetype modulates tone (survivor=reassurance, builder=momentum, craftsman=lifestyle)
+         -> personalGoal reflected in clean week ("extra time for your kids")
+         -> community count ("clean week for you and 89 others")
+         -> sends via sendMondayBriefEmail() (Mailgun)
+         -> fallback: in-app notification if email fails
+Needs:   MAILGUN_API_KEY, MAILGUN_DOMAIN (confirmed working on sandbox)
+         ANTHROPIC_API_KEY (for surprise findings during steady state)
+Verify:  Has any Monday email EVER been delivered? Check behavioral_events for "monday_email.sent"
+```
+
+## Customer Org IDs (sandbox)
+
+| Customer | org_id | Score | Position | Notes |
+|----------|--------|-------|----------|-------|
+| Garrison | TBD | 89.52 | #6/18 West Orange NJ | Clean |
+| DentalEMR | TBD | 50.46 | #1/1 | SaaS, no real competitors in GBP |
+| Artful (Pawlak) | TBD | 89.46 | #6/20 | PMS empty (prod only) |
+| McPherson | TBD | 87.35 | #1/15 | PMS empty, website not live |
+| Caswell | TBD | 90.56 | #3/16 | PMS empty (prod only) |
+| One Endo | TBD | 45.00 | #1/1 | PMS has data (Fredericksburg) |
+
+(Fill in org_ids from database for debugging)
+
+## Required Environment Variables
+
+**Will crash without:** JWT_SECRET, DB_HOST/PORT/NAME/USER/PASSWORD
+**Features break without:** ANTHROPIC_API_KEY (AI chat, Oz moments, NL editor), GOOGLE_PLACES_API (checkup, autocomplete), STRIPE_SECRET_KEY (billing)
+**Email breaks without:** MAILGUN_API_KEY, MAILGUN_DOMAIN
+**Optional:** REDIS_HOST (defaults localhost), SENTRY_DSN, GITHUB_TOKEN, ALLORO_N8N_WEBHOOK_URL, SUPER_ADMIN_EMAILS
+
 ## What Comes Next
 
-1. **Dashboard spec** (PM session): finalize 3-page Scoreboard/DeepDive/YourBusiness spec
-2. **Phase 1 plumbing** (infra sessions): PMS -> referral_sources pipe, behavioral event logging for user actions
-3. **Phase 2 security**: remaining unprotected routes, error message leaks, rate limiting
-4. **Monday email verification**: confirm one real email sends to one real customer on sandbox
-5. **Dashboard build**: implement spec once plumbing is verified
-6. **Dave handoff**: cherry-pick to production once sandbox is verified
+1. **Dashboard build**: 5-page structure (Home, Compare, Reviews, Presence, Settings). Frontend session building now.
+2. **Monday email verification**: confirm one real email sends to one real customer on sandbox
+3. **Phase 2 security remaining**: 7 unprotected routes, 33 error message leaks, rate limiting
+4. **Fill customer org_ids**: query sandbox DB, update table above
+5. **Dave handoff**: cherry-pick to production once sandbox is verified
 
 ---
 
