@@ -18,6 +18,7 @@ import type { PmProjectDetail, PmTask } from "../../types/pm";
 import { usePmStore } from "../../stores/pmStore";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
+import { showWarningToast } from "../../lib/toast";
 
 interface KanbanBoardProps {
   project: PmProjectDetail;
@@ -184,6 +185,20 @@ export function KanbanBoard({
     if (targetColumnId === originalCol?.id && targetPosition === (originalCol?.tasks.find((t) => t.id === taskId)?.position ?? -1)) {
       preDragSnapshot.current = null;
       return;
+    }
+
+    // Assignment catch: block Backlog → non-Backlog if no assignee
+    if (originalCol?.name === "Backlog") {
+      const targetColObj = currentProject.columns.find((c) => c.id === targetColumnId);
+      const originalTask = preDragSnapshot.current?.columns
+        .flatMap((c) => c.tasks)
+        .find((t) => t.id === taskId);
+      if (targetColObj?.name !== "Backlog" && !originalTask?.assigned_to) {
+        usePmStore.setState({ activeProject: preDragSnapshot.current });
+        preDragSnapshot.current = null;
+        showWarningToast("Assign someone first", "Assign someone to this task before moving it out of Backlog");
+        return;
+      }
     }
 
     // Cross-column: handleDragOver already did the optimistic update, pass snapshot for rollback.
