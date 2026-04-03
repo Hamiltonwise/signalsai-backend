@@ -203,7 +203,10 @@ export default function ReviewsPage() {
 
         {/* Send Review Requests */}
         <Section title="Request Reviews" icon={Send} defaultOpen={false}>
-          <ReviewRequestCard />
+          <ReviewRequestCard
+            placeId={place?.placeId || null}
+            practiceName={ctx?.org?.name || "Your Business"}
+          />
         </Section>
 
         {/* Sentiment Summary */}

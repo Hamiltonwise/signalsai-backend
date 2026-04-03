@@ -360,9 +360,12 @@ export default function HomePage() {
           <OnboardingChecklist
             checkupScore={score}
             gbpConnected={!!hasGoogleConnection}
-            pmsUploaded={!!setupProgress?.step2_pms_uploaded}
-            referralShared={false}
+            pmsUploaded={!!setupProgress?.step2_pms_uploaded || !!setupProgress?.checklist_pms}
+            referralShared={!!setupProgress?.checklist_share}
             referralCode={ctx?.org?.referral_code || null}
+            checkupRank={ranking?.rankPosition}
+            checkupTotal={ranking?.totalCompetitors}
+            checkupCity={city}
             onStepComplete={() => {}}
             onDismiss={() => {}}
           />
@@ -385,7 +388,11 @@ export default function HomePage() {
       </div>
 
       {/* ── Billing Prompt Bar (global, system-level) ── */}
-      <BillingPromptBar />
+      <BillingPromptBar
+        orgId={orgId}
+        score={score}
+        finding={action?.headline || null}
+      />
     </div>
   );
 }

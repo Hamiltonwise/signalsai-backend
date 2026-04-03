@@ -137,10 +137,7 @@ export default function ComparePage() {
                 <span className="text-4xl font-semibold text-[#1A1D23]">{score}</span>
                 <span className="text-sm text-gray-400">/100</span>
               </div>
-              <ScoreImprovementPlan
-                checkupData={checkupData}
-                rankingData={rankingRaw}
-              />
+              <ScoreImprovementPlan />
             </div>
           ) : (
             <p className="text-sm text-gray-500">Your score is being calculated. Check back after your first Monday email.</p>
@@ -149,7 +146,17 @@ export default function ComparePage() {
 
         {/* Position Over Time */}
         <Section title="Position Over Time" defaultOpen={true}>
-          <GrowthChart orgId={orgId} locationId={selectedLocation?.id} />
+          {rankingRaw?.rawData?.positionHistory ? (
+            <GrowthChart
+              data={rankingRaw.rawData.positionHistory}
+              competitor_data={rankingRaw.rawData.competitorHistory}
+              practice_name={ctx?.org?.name || "Your Business"}
+            />
+          ) : (
+            <p className="text-sm text-gray-500">
+              Position tracking begins after your first Monday email. Check back next week.
+            </p>
+          )}
         </Section>
 
         {/* Competitors */}
@@ -159,12 +166,15 @@ export default function ComparePage() {
               <CompetitorComparison
                 key={comp.id || comp.placeId}
                 competitor={comp}
-                clientReviews={rankingRaw?.rawData?.clientReviews || 0}
-                clientRating={rankingRaw?.rawData?.clientRating || 0}
+                clientRating={rankingRaw?.rawData?.clientRating || checkupData?.place?.rating || 0}
+                clientReviews={rankingRaw?.rawData?.clientReviews || checkupData?.place?.reviewCount || 0}
+                clientPhotos={rankingRaw?.rawData?.clientPhotos || checkupData?.place?.photos?.length || 0}
+                clientLastReviewDays={null}
               />
             ))}
             <AddCompetitor
-              orgId={orgId}
+              currentCount={competitors?.competitors?.length || 0}
+              maxCount={3}
               onAdded={() => refetchCompetitors()}
             />
           </div>
@@ -179,10 +189,7 @@ export default function ComparePage() {
 
         {/* Score Simulator */}
         <Section title="What If?" defaultOpen={false}>
-          <ScoreSimulator
-            checkupData={checkupData}
-            currentScore={score}
-          />
+          <ScoreSimulator />
         </Section>
 
       </div>

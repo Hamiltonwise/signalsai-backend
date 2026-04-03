@@ -210,7 +210,7 @@ export default function PresencePage() {
 
         {/* Search Presence */}
         <Section title="Search Presence" icon={Search} defaultOpen={false}>
-          <FocusKeywords orgId={orgId} />
+          <FocusKeywords />
         </Section>
 
         {/* Compliance */}
