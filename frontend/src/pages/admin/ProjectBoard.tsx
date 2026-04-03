@@ -16,6 +16,7 @@ import {
 import type { PmTask } from "../../types/pm";
 import { usePmStore } from "../../stores/pmStore";
 import { KanbanBoard } from "../../components/pm/KanbanBoard";
+import { FloatingClock } from "../../components/pm/FloatingClock";
 import { TaskDetailPanel } from "../../components/pm/TaskDetailPanel";
 import { AISynthModal } from "../../components/pm/AISynthModal";
 import { CreateTaskModal } from "../../components/pm/CreateTaskModal";
@@ -358,6 +359,11 @@ export default function ProjectBoard() {
         onClose={() => setShowCommandPalette(false)}
         onToggleFocusMode={() => setFocusMode((v) => !v)}
       />
+
+      {/* Floating Clock */}
+      <div className="fixed bottom-6 right-24 z-30">
+        <FloatingClock />
+      </div>
 
       {/* FAB — New Task */}
       <div className="fixed bottom-6 right-6 z-30">

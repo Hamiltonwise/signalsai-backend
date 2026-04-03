@@ -10,11 +10,25 @@ export function useIsPmRoute() {
   return location.pathname.startsWith("/admin/pm");
 }
 
+function getAdminDisplayName(): string {
+  try {
+    const token = localStorage.getItem("auth_token");
+    if (!token) return "Admin Account";
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const email: string = payload.email || "";
+    const name = email.split("@")[0];
+    return name ? name.charAt(0).toUpperCase() + name.slice(1) : "Admin Account";
+  } catch {
+    return "Admin Account";
+  }
+}
+
 export function AdminTopBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const isPm = useIsPmRoute();
+  const displayName = getAdminDisplayName();
 
   const toggleMenu = () => setIsMenuOpen((value) => !value);
 
@@ -102,7 +116,7 @@ export function AdminTopBar() {
                 </span>
                 <div className="flex flex-col items-start">
                   <span className="text-sm font-semibold text-white">
-                    Admin Account
+                    {displayName}
                   </span>
                 </div>
                 <ChevronDown

@@ -5,11 +5,27 @@ import {
   differenceInDays,
   differenceInHours,
   isThisWeek,
-  format,
   addWeeks,
   startOfWeek,
   endOfWeek,
 } from "date-fns";
+
+/** Returns the ISO string for 11:59:00 PM in America/Los_Angeles on the given date string (YYYY-MM-DD). */
+export function endOfDayPST(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  // Sample at noon UTC to determine the PST/PDT offset for this date (DST-safe)
+  const noon = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const pstHour = parseInt(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles",
+      hour: "numeric",
+      hour12: false,
+    }).format(noon)
+  );
+  const offsetHours = 12 - pstHour; // 7 for PDT (summer), 8 for PST (winter)
+  // 23:59:00 PST = 23:59 + offsetHours in UTC; JS Date.UTC normalises hour overflow
+  return new Date(Date.UTC(y, m - 1, d, 23 + offsetHours, 59, 0)).toISOString();
+}
 
 export interface DeadlineDisplay {
   text: string;
@@ -22,7 +38,15 @@ export function formatDeadline(date: string | Date | null): DeadlineDisplay | nu
 
   const d = typeof date === "string" ? new Date(date) : date;
   const now = new Date();
-  const tooltip = format(d, "MMMM d, yyyy 'at' h:mm a");
+  const tooltip = d.toLocaleString("en-US", {
+    timeZone: "America/Los_Angeles",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
 
   // Past and not today = overdue
   if (isPast(d) && !isToday(d)) {
