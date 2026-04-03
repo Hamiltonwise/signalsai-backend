@@ -43,18 +43,21 @@ Hosting:  Sandbox: sandbox.getalloro.com | Production: app.getalloro.com (Dave's
 ## What's Broken (known issues)
 
 - Monday email: has likely NEVER been delivered to a paying client (unverified)
-- days_since_login: calculated from first_login_at (never updates), not actual last activity
-- Competitor filter: sometimes compares practices to themselves or wrong specialty
-- Score recalc: previous_clarity_score = 0 for many orgs, making deltas meaningless
-- PMS parser: fragile, Kuda gave up on it
-- PMS referral data: $413K of intelligence in pms_jobs.response_log never reaches referral_sources
-- Behavioral events: backend doesn't log logins, page views, or feature usage (system half-blind)
+- ~~days_since_login: calculated from first_login_at~~ FIXED Apr 2 (infra session)
+- ~~Competitor filter: self-comparison~~ FIXED Apr 2 (infra session)
+- ~~Score recalc: previous_clarity_score = 0~~ FIXED Apr 2 (infra session)
+- PMS parser: improved (local fallback when n8n fails) but core parser still fragile
+- ~~PMS referral data: disconnected from referral_sources~~ FIXED Apr 2 (infra session, McPherson verified)
+- ~~Behavioral events: backend blind to user actions~~ FIXED Apr 2 (login + dashboard views now tracked)
 - 30 of 40 registered agents have never executed
-- 43 of 53 registered event types have never been written
-- 45 "ghost" event types being written that aren't in the registry
+- ~~43 of 53 event types never written, 45 ghost types~~ FIXED Apr 2 (71 types registered, schema consolidated)
+- ~~SQL injection in agentExecutor~~ FIXED Apr 2
+- ~~60+ unprotected admin endpoints~~ FIXED Apr 2
+- 7 more route files still need auth (agentsV2, practiceRanking, clarity, rag, audit, notifications, monday)
+- 33 endpoints leak err.message to clients
 - GBP OAuth redirect URI mismatch between sandbox and production
 - GA4/GSC: columns re-added, but data fetch depends on per-org OAuth tokens
-- Dashboard: 28 potential elements, 120 clickable items, 16 pages (Cheesecake Factory)
+- Dashboard: 28 potential elements, 120 clickable items, 16 pages (being rebuilt to 3)
 
 ## What's Being Rebuilt
 
@@ -136,12 +139,11 @@ docs/SANDBOX-CATALOG.md      -- Full page/route/agent/data audit (snapshot from 
 - 50+ standing rule violations fixed (font sizes, weights, colors, language)
 - Closed 5 person-layer gaps (personalGoal rendering, backend clear state, Day 7 rewrite, Dashboard.tsx guard, community proof in Monday Brief)
 
-### April 2 (Infrastructure session)
-- SQL injection fixes, 60+ admin endpoints secured
-- Checkup dedup preventing ghost orgs
-- Client health scoring, engagement scoring verified
-- Identified: days_since_login bug, PMS pipe disconnected, competitor self-filter, event schema fiction
-- Phase 1-4 plan proposed (data pipes, security, integrity, self-awareness)
+### April 2 (Infrastructure session) -- 11 commits pushed
+- Phase 1 COMPLETE: PMS -> referral_sources pipe connected (McPherson: 50 sources, $110K Heart of Texas verified). User activity tracking wired (login + dashboard views -> behavioral_events).
+- Phase 2 PARTIAL: SQL injection closed, 60+ admin endpoints secured, composite index on behavioral_events, checkup dedup preventing ghost orgs. Remaining: 7 unprotected route files, 33 error message leaks, rate limiting.
+- 3 structural bugs fixed: days_since_login, competitor self-filter, score recalc
+- 71 event types registered, 24 gray dots resolved, 50+ style violations fixed
 
 ---
 
