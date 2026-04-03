@@ -747,56 +747,15 @@ function ModeToggle({ mode, onChange }: { mode: "standard" | "growth"; onChange:
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════
 
-// ─── Lemonis Protocol Guard ──────────────────────────────────────
-// The five questions shape every piece of intelligence. Without them,
-// the product knows the business but not the person. Three gentle
-// prompts, then respect their decision.
-const OWNER_PROFILE_SKIP_KEY = "owner_profile_skip_count";
-const MAX_GENTLE_PROMPTS = 3;
-
-function useLemonisGuard(orgId: number | null) {
-  const navigate = useNavigate();
-  const [checked, setChecked] = useState(false);
-
-  useEffect(() => {
-    if (!orgId) { setChecked(true); return; }
-
-    // Skip guard in pilot mode (admin viewing as client)
-    const isPilotMode = typeof window !== "undefined" && (window.sessionStorage?.getItem("pilot_mode") === "true" || !!window.sessionStorage?.getItem("pilot_org_id"));
-    if (isPilotMode) { setChecked(true); return; }
-
-    const skipCount = parseInt(localStorage.getItem(OWNER_PROFILE_SKIP_KEY) || "0", 10);
-    if (skipCount >= MAX_GENTLE_PROMPTS) { setChecked(true); return; }
-
-    // Check if profile already exists
-    const isPilot = typeof window !== "undefined" && (window.sessionStorage?.getItem("pilot_mode") === "true" || !!window.sessionStorage?.getItem("token")); const token = isPilot ? window.sessionStorage.getItem("token") : (getPriorityItem("auth_token") || getPriorityItem("token"));
-    fetch("/api/user/owner-profile", {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.success && data?.profile?.vision_3yr) {
-          // Profile exists, proceed to dashboard
-          setChecked(true);
-        } else {
-          // Profile not filled out, gently redirect
-          navigate("/owner-profile", { replace: true });
-        }
-      })
-      .catch(() => setChecked(true));
-  }, [orgId, navigate]);
-
-  return checked;
-}
+// Lemonis Protocol questions are optional. Surfaced at day 30 or through
+// CS conversation. Never a gate. The product delivers value from day 1
+// without asking the owner to answer questions they may not know the answer to.
 
 export default function DoctorDashboard() {
   const { userProfile, billingStatus, hasGoogleConnection } = useAuth();
   const { selectedLocation } = useLocationContext();
 
   const orgId = userProfile?.organizationId || null;
-
-  // Lemonis Protocol: ensure the 5 questions are answered before showing dashboard
-  const lemonisReady = useLemonisGuard(orgId);
 
   const locationId = selectedLocation?.id ?? null;
   const practiceName = selectedLocation?.name || userProfile?.practiceName || "Your Business";
@@ -1023,9 +982,6 @@ export default function DoctorDashboard() {
   // This prevents the "popcorn" effect where cards pop in one by one.
   const isInitialLoading = isRankingLoading || isAgentLoading || isSetupLoading;
   const isLoading = isInitialLoading;
-
-  // Lemonis Protocol guard: wait for check to complete before rendering
-  if (!lemonisReady) return null;
 
   return (
     <>
