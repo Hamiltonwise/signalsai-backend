@@ -243,7 +243,7 @@ function narrativeSubhead(
   if (win && win.daysAgo <= 3 && win.detail) return win.detail;
   if (streak && streak.count >= 12) return `${streak.count} weeks of ${streak.label}. Here's what moved.`;
   if (streak && streak.count >= 4) return `Here's what changed for ${practiceName}.`;
-  if (checkupCompetitor) return `${checkupCompetitor} is ahead. Here's what to do about it.`;
+  if (checkupCompetitor) return `Here's how you compare to ${checkupCompetitor}.`;
   if (practiceName && practiceName !== "Your Business") return `Here's what's happening for ${practiceName}.`;
   return "Here's what changed in your market.";
 }

@@ -260,8 +260,8 @@ export async function getSubscriptionStatus(
     }
   }
 
-  // Check Foundation status
-  const isFoundation = org.account_type === "foundation";
+  // Check Foundation or Partner status (suppress billing prompts)
+  const isFoundation = org.account_type === "foundation" || org.account_type === "partner";
 
   return {
     tier: org.subscription_tier,
