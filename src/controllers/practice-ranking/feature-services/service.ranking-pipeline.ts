@@ -298,6 +298,10 @@ export async function processLocationRanking(
       photosCount: 0,
     }));
     usedCache = true;
+
+    // Always filter cached competitors by specialty -- cached data may predate filter improvements
+    discoveredCompetitors = filterBySpecialty(discoveredCompetitors, specialty);
+    log(`[RANKING] [${rankingId}] Cached competitors after specialty re-filter: ${discoveredCompetitors.length}`);
     await updateStatus(
       rankingId,
       "processing",

@@ -222,6 +222,9 @@ export function formatAccountsList(accounts: any[]) {
 // =====================================================================
 
 export function formatLatestRanking(ranking: any, previous: any | null) {
+  // googlePosition comes from weekly_ranking_snapshots (real Google search position)
+  // rankPosition comes from Alloro's competitive model (internal fitness score)
+  // The dashboard should display googlePosition (what the customer can verify)
   return {
     id: ranking.id,
     organizationId: ranking.organization_id,
@@ -234,7 +237,8 @@ export function formatLatestRanking(ranking: any, previous: any | null) {
     observedAt: ranking.observed_at,
     status: ranking.status,
     rankScore: ranking.rank_score,
-    rankPosition: ranking.rank_position,
+    rankPosition: ranking.google_position ?? ranking.rank_position,
+    alloroCompetitiveRank: ranking.rank_position,
     totalCompetitors: ranking.total_competitors,
     rankingFactors: parseJsonField(ranking.ranking_factors),
     rawData: parseJsonField(ranking.raw_data),
@@ -270,7 +274,8 @@ export function formatLegacyLatestRanking(ranking: any) {
     observedAt: ranking.observed_at,
     status: ranking.status,
     rankScore: ranking.rank_score,
-    rankPosition: ranking.rank_position,
+    rankPosition: ranking.google_position ?? ranking.rank_position,
+    alloroCompetitiveRank: ranking.rank_position,
     totalCompetitors: ranking.total_competitors,
     rankingFactors: parseJsonField(ranking.ranking_factors),
     rawData: parseJsonField(ranking.raw_data),

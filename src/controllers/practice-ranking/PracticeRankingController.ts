@@ -983,6 +983,15 @@ export async function getLatestRankings(
         });
       }
 
+      // Attach Google position from snapshot
+      const legacySnapshot = await db("weekly_ranking_snapshots")
+        .where({ org_id: Number(googleAccountId) })
+        .orderBy("week_start", "desc")
+        .first();
+      if (legacySnapshot?.position) {
+        legacyRanking.google_position = legacySnapshot.position;
+      }
+
       // Return legacy single ranking in array format for consistency
       return res.json({
         success: true,
@@ -1015,7 +1024,7 @@ export async function getLatestRankings(
       `[GET /latest] Found ${batchRankings.length} rankings in batch ${latestBatchId}`,
     );
 
-    // Step 3: For each ranking in the batch, get the previous analysis for trend comparison
+    // Step 3: For each ranking in the batch, get the previous analysis + Google position
     const rankingsWithPrevious = await Promise.all(
       batchRankings.map(async (ranking) => {
         // Get the previous completed ranking for this location (excluding current batch)
@@ -1028,6 +1037,15 @@ export async function getLatestRankings(
           .whereNot({ batch_id: latestBatchId })
           .orderBy("created_at", "desc")
           .first();
+
+        // Get the real Google position from weekly snapshot (what the customer can verify by Googling)
+        const snapshot = await db("weekly_ranking_snapshots")
+          .where({ org_id: Number(googleAccountId) })
+          .orderBy("week_start", "desc")
+          .first();
+        if (snapshot?.position) {
+          ranking.google_position = snapshot.position;
+        }
 
         return formatLatestRanking(ranking, previous || null);
       }),
