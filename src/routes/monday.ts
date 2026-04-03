@@ -8,8 +8,12 @@ import {
   handleAddTaskComment,
   handleDiagBoards,
 } from "../controllers/monday/MondayController";
+import { authenticateToken } from "../middleware/auth";
+import { superAdminMiddleware } from "../middleware/superAdmin";
 
 const mondayRoutes = express.Router();
+
+mondayRoutes.use(authenticateToken, superAdminMiddleware);
 
 // Task CRUD
 mondayRoutes.post("/createTask", handleCreateTask);

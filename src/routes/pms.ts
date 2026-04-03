@@ -3,6 +3,7 @@ import * as controller from "../controllers/pms/PmsController";
 import { upload } from "../controllers/pms/pms-utils/file-upload.config";
 import { authenticateToken } from "../middleware/auth";
 import { rbacMiddleware } from "../middleware/rbac";
+import { superAdminMiddleware } from "../middleware/superAdmin";
 
 const pmsRoutes = express.Router();
 
@@ -27,14 +28,14 @@ pmsRoutes.get("/jobs/:id/automation-status", authenticateToken, rbacMiddleware, 
 pmsRoutes.get("/automation/active", authenticateToken, rbacMiddleware, controller.getActiveAutomations);
 
 // =====================================================================
-// ADMIN ENDPOINTS (No auth — accessed from admin dashboard)
+// ADMIN ENDPOINTS (Require superAdmin auth)
 // =====================================================================
 
-pmsRoutes.get("/jobs", controller.listJobs);
-pmsRoutes.patch("/jobs/:id/approval", controller.approveJob);
-pmsRoutes.patch("/jobs/:id/response", controller.updateResponseLog);
-pmsRoutes.delete("/jobs/:id", controller.deleteJob);
-pmsRoutes.post("/jobs/:id/retry", controller.retryJob);
-pmsRoutes.post("/jobs/:id/restart", controller.restartJob);
+pmsRoutes.get("/jobs", authenticateToken, superAdminMiddleware, controller.listJobs);
+pmsRoutes.patch("/jobs/:id/approval", authenticateToken, superAdminMiddleware, controller.approveJob);
+pmsRoutes.patch("/jobs/:id/response", authenticateToken, superAdminMiddleware, controller.updateResponseLog);
+pmsRoutes.delete("/jobs/:id", authenticateToken, superAdminMiddleware, controller.deleteJob);
+pmsRoutes.post("/jobs/:id/retry", authenticateToken, superAdminMiddleware, controller.retryJob);
+pmsRoutes.post("/jobs/:id/restart", authenticateToken, superAdminMiddleware, controller.restartJob);
 
 export default pmsRoutes;

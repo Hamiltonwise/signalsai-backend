@@ -17,8 +17,12 @@
 
 import express from "express";
 import * as controller from "../controllers/practice-ranking/PracticeRankingController";
+import { authenticateToken } from "../middleware/auth";
+import { superAdminMiddleware } from "../middleware/superAdmin";
 
 const router = express.Router();
+
+router.use(authenticateToken, superAdminMiddleware);
 
 // Trigger analysis
 router.post("/trigger", controller.triggerBatchAnalysis);

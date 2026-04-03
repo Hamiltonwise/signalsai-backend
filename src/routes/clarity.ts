@@ -5,8 +5,12 @@ import {
   getKeyData,
   getAIReadyData,
 } from "../controllers/clarity/ClarityController";
+import { authenticateToken } from "../middleware/auth";
+import { superAdminMiddleware } from "../middleware/superAdmin";
 
 const clarityRoutes = express.Router();
+
+clarityRoutes.use(authenticateToken, superAdminMiddleware);
 
 clarityRoutes.get("/diag/projects", getDiagProjects);
 clarityRoutes.post("/fetch", fetch);

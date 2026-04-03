@@ -2,6 +2,7 @@ import express from "express";
 import { NotificationsController } from "../controllers/notifications/NotificationsController";
 import { authenticateToken } from "../middleware/auth";
 import { rbacMiddleware, locationScopeMiddleware } from "../middleware/rbac";
+import { superAdminMiddleware } from "../middleware/superAdmin";
 
 const notificationRoutes = express.Router();
 
@@ -14,11 +15,11 @@ notificationRoutes.patch("/mark-all-read", authenticateToken, rbacMiddleware, lo
 notificationRoutes.delete("/delete-all", authenticateToken, rbacMiddleware, locationScopeMiddleware, NotificationsController.deleteAll);
 
 // =====================================================================
-// ADMIN ENDPOINTS (Unrestricted Access)
+// ADMIN ENDPOINTS (Require superAdmin auth)
 // =====================================================================
-notificationRoutes.get("/admin/list", NotificationsController.getAdminNotifications);
-notificationRoutes.post("/", NotificationsController.createNotification);
-notificationRoutes.delete("/:id", NotificationsController.deleteNotification);
+notificationRoutes.get("/admin/list", authenticateToken, superAdminMiddleware, NotificationsController.getAdminNotifications);
+notificationRoutes.post("/", authenticateToken, superAdminMiddleware, NotificationsController.createNotification);
+notificationRoutes.delete("/:id", authenticateToken, superAdminMiddleware, NotificationsController.deleteNotification);
 
 // =====================================================================
 // HEALTH CHECK

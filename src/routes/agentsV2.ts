@@ -13,6 +13,15 @@
  * - POST /guardian-governance-agents-run    - Monthly Guardian & Governance agents
  * - POST /process-all                      - DEPRECATED: use /proofline-run
  * - GET  /latest/:googleAccountId          - Latest agent outputs for dashboard
+ *
+ * All endpoints require superAdmin auth.
+ */
+
+// Auth imports injected by security audit
+import { authenticateToken } from "../middleware/auth";
+import { superAdminMiddleware } from "../middleware/superAdmin";
+
+/*
  * - GET  /getLatestReferralEngineOutput/:googleAccountId - Latest Referral Engine output
  * - GET  /health                           - Health check
  */
@@ -21,6 +30,8 @@ import express from "express";
 import * as controller from "../controllers/agents/AgentsController";
 
 const router = express.Router();
+
+router.use(authenticateToken, superAdminMiddleware);
 
 // Production endpoints
 router.post("/proofline-run", controller.runProoflineAgent);
