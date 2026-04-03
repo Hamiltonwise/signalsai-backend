@@ -4,10 +4,11 @@ import { Target, CalendarRange, TrendingUp } from "lucide-react";
 import {
   LineChart, Line, XAxis, Tooltip, ResponsiveContainer, Area,
 } from "recharts";
-import type { PmMyStats, PmMyTasksResponse, PmVelocityData } from "../../types/pm";
+import type { PmMyStats, PmMyTask, PmMyTasksResponse, PmVelocityData } from "../../types/pm";
 import { fetchMyStats, fetchMyVelocity, fetchMyTasks } from "../../api/pm";
 import { MeKanbanBoard } from "./MeKanbanBoard";
 import { NotificationCard } from "./NotificationCard";
+import { TaskDetailPanel } from "./TaskDetailPanel";
 
 const RANGES = ["7d", "4w", "3m"] as const;
 type Range = typeof RANGES[number];
@@ -47,11 +48,11 @@ export function MeTabView() {
   const [tasks, setTasks] = useState<PmMyTasksResponse | null>(null);
   const [velocityRange, setVelocityRange] = useState<Range>("7d");
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<PmMyTask | null>(null);
 
   const handleTaskClick = useCallback((taskId: string) => {
     setHighlightedTaskId(taskId);
     setTimeout(() => setHighlightedTaskId(null), 2000);
-    // Scroll kanban into view
     document.getElementById(`me-task-${taskId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
 
@@ -205,7 +206,17 @@ export function MeTabView() {
       </div>
 
       {/* Kanban */}
-      {tasks && <MeKanbanBoard tasks={tasks} onRefresh={loadData} highlightedTaskId={highlightedTaskId} />}
+      {tasks && (
+        <MeKanbanBoard
+          tasks={tasks}
+          onRefresh={loadData}
+          highlightedTaskId={highlightedTaskId}
+          onCardClick={(task) => setSelectedTask(task)}
+        />
+      )}
+
+      {/* Task detail panel */}
+      <TaskDetailPanel task={selectedTask} onClose={() => setSelectedTask(null)} />
     </div>
   );
 }

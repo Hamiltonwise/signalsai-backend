@@ -13,13 +13,27 @@ export async function getNotifications(req: AuthRequest, res: Response): Promise
   try {
     const userId = req.user!.userId;
 
-    const notifications = await db("pm_notifications")
-      .where("user_id", userId)
-      .orderBy("created_at", "desc")
+    const notifications = await db("pm_notifications as n")
+      .leftJoin("users as u", "n.actor_user_id", "u.id")
+      .where("n.user_id", userId)
+      .orderBy("n.created_at", "desc")
       .limit(50)
-      .select("*");
+      .select("n.*", "u.email as actor_email");
 
-    return res.json({ success: true, data: notifications });
+    const enriched = notifications.map((n: any) => {
+      const hasActorName = n.metadata?.actor_name;
+      if (!hasActorName && n.actor_email) {
+        return {
+          ...n,
+          actor_email: undefined,
+          metadata: { ...(n.metadata ?? {}), actor_name: n.actor_email.split("@")[0] },
+        };
+      }
+      const { actor_email: _, ...rest } = n;
+      return rest;
+    });
+
+    return res.json({ success: true, data: enriched });
   } catch (error) {
     return handleError(res, error, "getNotifications");
   }

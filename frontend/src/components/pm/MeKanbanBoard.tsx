@@ -20,6 +20,7 @@ interface MeKanbanBoardProps {
   tasks: PmMyTasksResponse;
   onRefresh: () => void;
   highlightedTaskId?: string | null;
+  onCardClick?: (task: PmMyTask) => void;
 }
 
 const COLUMNS: { key: keyof PmMyTasksResponse; label: string }[] = [
@@ -35,12 +36,14 @@ function DroppableColumn({
   tasks,
   highlightedTaskId,
   isDraggingOver,
+  onCardClick,
 }: {
   columnKey: keyof PmMyTasksResponse;
   label: string;
   tasks: PmMyTask[];
   highlightedTaskId?: string | null;
   isDraggingOver: boolean;
+  onCardClick?: (task: PmMyTask) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: columnKey });
 
@@ -74,6 +77,7 @@ function DroppableColumn({
               key={task.id}
               task={task}
               isHighlighted={highlightedTaskId === task.id}
+              onCardClick={onCardClick}
             />
           ))
         )}
@@ -86,9 +90,11 @@ function DroppableColumn({
 function DraggableCard({
   task,
   isHighlighted,
+  onCardClick,
 }: {
   task: PmMyTask;
   isHighlighted: boolean;
+  onCardClick?: (task: PmMyTask) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
@@ -109,13 +115,17 @@ function DraggableCard({
       {...listeners}
       {...attributes}
     >
-      <MeTaskCard task={task} isHighlighted={isHighlighted} />
+      <MeTaskCard
+        task={task}
+        isHighlighted={isHighlighted}
+        onClick={onCardClick ? () => onCardClick(task) : undefined}
+      />
     </div>
   );
 }
 
 // ── Board ─────────────────────────────────────────────────────────────────────
-export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId }: MeKanbanBoardProps) {
+export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId, onCardClick }: MeKanbanBoardProps) {
   const moveTask = usePmStore((s) => s.moveTask);
   const [localTasks, setLocalTasks] = useState<PmMyTasksResponse>(tasks);
   const [activeTask, setActiveTask] = useState<PmMyTask | null>(null);
@@ -192,6 +202,7 @@ export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId }: MeKanbanB
             tasks={localTasks[key]}
             highlightedTaskId={highlightedTaskId}
             isDraggingOver={overColumn === key}
+            onCardClick={onCardClick}
           />
         ))}
       </div>
