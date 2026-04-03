@@ -178,6 +178,10 @@ export async function markNotificationsRead(): Promise<void> {
   await apiPut({ path: "/pm/notifications/read-all", passedData: {} });
 }
 
+export async function deleteAllNotifications(): Promise<void> {
+  await apiDelete({ path: "/pm/notifications" });
+}
+
 // --- AI Synth Batches ---
 
 export async function extractBatch(

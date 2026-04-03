@@ -46,6 +46,14 @@ export function MeTabView() {
   const [velocity, setVelocity] = useState<PmVelocityData | null>(null);
   const [tasks, setTasks] = useState<PmMyTasksResponse | null>(null);
   const [velocityRange, setVelocityRange] = useState<Range>("7d");
+  const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
+
+  const handleTaskClick = useCallback((taskId: string) => {
+    setHighlightedTaskId(taskId);
+    setTimeout(() => setHighlightedTaskId(null), 2000);
+    // Scroll kanban into view
+    document.getElementById(`me-task-${taskId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
 
   const loadData = useCallback(async () => {
     const [s, v, t] = await Promise.allSettled([
@@ -139,7 +147,7 @@ export function MeTabView() {
         </motion.div>
 
         {/* Notification Card */}
-        <NotificationCard />
+        <NotificationCard onTaskClick={handleTaskClick} />
       </div>
 
       {/* Velocity chart */}
@@ -197,7 +205,7 @@ export function MeTabView() {
       </div>
 
       {/* Kanban */}
-      {tasks && <MeKanbanBoard tasks={tasks} onRefresh={loadData} />}
+      {tasks && <MeKanbanBoard tasks={tasks} onRefresh={loadData} highlightedTaskId={highlightedTaskId} />}
     </div>
   );
 }

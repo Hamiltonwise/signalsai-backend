@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { Calendar } from "lucide-react";
 import type { PmMyTask } from "../../types/pm";
 import { formatDeadline } from "../../utils/pmDateFormat";
@@ -5,19 +6,26 @@ import { PriorityTriangle } from "./PriorityTriangle";
 
 interface MeTaskCardProps {
   task: PmMyTask;
+  isHighlighted?: boolean;
 }
 
-export function MeTaskCard({ task }: MeTaskCardProps) {
+export function MeTaskCard({ task, isHighlighted }: MeTaskCardProps) {
   const deadline = task.completed_at ? null : formatDeadline(task.deadline);
 
   return (
-    <div
-      className="rounded-lg p-3 mb-2 transition-all duration-150 hover:translate-y-[-1px]"
+    <motion.div
+      className="rounded-lg p-3 mb-2 transition-colors duration-150 hover:translate-y-[-1px]"
       style={{
         backgroundColor: "var(--color-pm-bg-tertiary)",
-        border: "1px solid var(--color-pm-border)",
-        boxShadow: "var(--pm-shadow-card)",
+        border: isHighlighted ? "1px solid #D66853" : "1px solid var(--color-pm-border)",
+        boxShadow: isHighlighted ? "0 0 0 3px rgba(214,104,83,0.2)" : "var(--pm-shadow-card)",
       }}
+      animate={
+        isHighlighted
+          ? { boxShadow: ["0 0 0 3px rgba(214,104,83,0.3)", "0 0 0 6px rgba(214,104,83,0.1)", "0 0 0 3px rgba(214,104,83,0.3)"] }
+          : {}
+      }
+      transition={isHighlighted ? { duration: 0.6, repeat: 2, ease: "easeInOut" } : {}}
     >
       {/* Row 1: Priority + Title */}
       <div className="flex items-start gap-2 mb-2">
@@ -42,6 +50,6 @@ export function MeTaskCard({ task }: MeTaskCardProps) {
           <span className={`text-[11px] font-medium ${deadline.colorClass}`}>{deadline.text}</span>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

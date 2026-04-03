@@ -5,6 +5,7 @@ import { MeTaskCard } from "./MeTaskCard";
 interface MeKanbanBoardProps {
   tasks: PmMyTasksResponse;
   onRefresh: () => void;
+  highlightedTaskId?: string | null;
 }
 
 const COLUMNS: { key: keyof PmMyTasksResponse; label: string }[] = [
@@ -13,7 +14,7 @@ const COLUMNS: { key: keyof PmMyTasksResponse; label: string }[] = [
   { key: "done", label: "DONE" },
 ];
 
-export function MeKanbanBoard({ tasks, onRefresh }: MeKanbanBoardProps) {
+export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId }: MeKanbanBoardProps) {
   const moveTask = usePmStore((s) => s.moveTask);
 
   const handleMoveTask = async (task: PmMyTask, targetKey: keyof PmMyTasksResponse) => {
@@ -58,8 +59,8 @@ export function MeKanbanBoard({ tasks, onRefresh }: MeKanbanBoardProps) {
               </p>
             ) : (
               tasks[key].map((task) => (
-                <div key={task.id} className="group/task relative">
-                  <MeTaskCard task={task} />
+                <div key={task.id} id={`me-task-${task.id}`} className="group/task relative">
+                  <MeTaskCard task={task} isHighlighted={highlightedTaskId === task.id} />
                   {/* Move buttons — shown on hover */}
                   <div className="absolute top-2 right-2 hidden group-hover/task:flex gap-1">
                     {COLUMNS.filter((c) => c.key !== key).map(({ key: targetKey, label: targetLabel }) => (

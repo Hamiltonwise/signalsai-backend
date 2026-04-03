@@ -39,3 +39,16 @@ export async function markAllRead(req: AuthRequest, res: Response): Promise<any>
     return handleError(res, error, "markAllRead");
   }
 }
+
+// DELETE /api/pm/notifications
+export async function deleteAll(req: AuthRequest, res: Response): Promise<any> {
+  try {
+    const userId = req.user!.userId;
+
+    await db("pm_notifications").where("user_id", userId).delete();
+
+    return res.json({ success: true, data: { deleted: true } });
+  } catch (error) {
+    return handleError(res, error, "deleteAll");
+  }
+}
