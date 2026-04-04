@@ -28,6 +28,7 @@ import { getPlaceDetails } from "../controllers/places/feature-services/GooglePl
 
 // Scoring config imported from single source of truth
 import { REVIEW_VOLUME_BENCHMARKS, COMPETITIVE_RADII_MILES, getScoreLabel } from "../services/businessMetrics";
+import { calculateClarityScore } from "../services/clarityScoring";
 
 /**
  * Derive the real specialty from the business name.
@@ -637,9 +638,32 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       competitiveDataLimited = false;
     }
 
-    // Composite score (sum of sub-scores, 0-100)
-    const compositeScore = trustSignal + firstImpression + responsiveness + competitiveEdge;
-    const scoreLabel = getScoreLabel(compositeScore);
+    // Composite score via single source of truth (clarityScoring.ts)
+    const clarityResult = calculateClarityScore(
+      {
+        rating: clientRating,
+        reviewCount: clientReviews,
+        photosCount: enrichedPhotosCount,
+        hasHours: !!(enrichedHours
+          ? (enrichedHours.periods?.length || 0) > 0 || (enrichedHours.weekdayDescriptions?.length || 0) > 0
+          : enrichedHasHours),
+        hasPhone: !!enrichedPhone,
+        hasWebsite: !!enrichedWebsite,
+        hasEditorialSummary: !!enrichedEditorialSummary,
+        businessStatus: enrichedBusinessStatus || "OPERATIONAL",
+        reviews: googleReviews,
+      },
+      otherCompetitors.map((c) => ({
+        name: c.name,
+        totalScore: c.totalScore ?? 0,
+        reviewsCount: c.reviewsCount ?? 0,
+        photosCount: c.photosCount ?? 0,
+      })),
+      specialty,
+      rank,
+    );
+    const compositeScore = clarityResult.composite;
+    const scoreLabel = clarityResult.scoreLabel;
 
     // Build findings — framed as: "Here's what a prospect sees when they compare you to alternatives"
     const findings: Array<{
@@ -1157,11 +1181,11 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       success: true,
       score: {
         composite: compositeScore,
-        // Three-score model (April 3 2026)
-        googlePosition: rank === 1 ? 34 : rank === 2 ? 28 : rank === 3 ? 22 : rank <= 5 ? 16 : rank <= 10 ? 10 : rank <= 20 ? 5 : 2,
-        reviewHealth: Math.min(33, trustSignal + Math.min(8, responsiveness)),
-        gbpCompleteness: Math.min(33, firstImpression),
-        // Legacy sub-scores
+        // Three-score model from single source of truth (clarityScoring.ts)
+        googlePosition: clarityResult.subScores.googlePosition,
+        reviewHealth: clarityResult.subScores.reviewHealth,
+        gbpCompleteness: clarityResult.subScores.gbpCompleteness,
+        // Legacy sub-scores for backwards compatibility
         trustSignal,
         firstImpression,
         responsiveness,
