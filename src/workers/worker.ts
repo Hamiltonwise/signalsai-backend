@@ -21,6 +21,7 @@ import { runCollectiveIntelligence } from "../services/collectiveIntelligence";
 import { runProductEvolution } from "../jobs/productEvolution";
 import { processWeeklyScoreRecalc } from "./processors/weeklyScoreRecalc.processor";
 import { processFeedbackLoop } from "./processors/feedbackLoop.processor";
+import { processMondayEmail } from "./processors/mondayEmail.processor";
 import { getMindsQueue, getPmQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 import { getSharedRedis, closeSharedRedis } from "../services/redis";
@@ -264,6 +265,14 @@ const weeklyScoreRecalcWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// Monday Email (Monday 12 PM UTC = 7 AM ET)
+// The heartbeat. Every Monday, every paying customer gets their brief.
+const mondayEmailWorker = new Worker(
+  "minds-monday-email",
+  async (job) => { await processMondayEmail(job); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // Feedback Loop (Tuesday 3 PM UTC = 8 AM PT, 24h after Monday email)
 // The Karpathy Loop: measures whether recommended actions improved metrics.
 const feedbackLoopWorker = new Worker(
@@ -273,7 +282,7 @@ const feedbackLoopWorker = new Worker(
 );
 
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker, weeklyScoreRecalcWorker, feedbackLoopWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker, weeklyScoreRecalcWorker, mondayEmailWorker, feedbackLoopWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -305,6 +314,7 @@ async function shutdown(): Promise<void> {
   await collectiveIntelligenceWorker.close();
   await productEvolutionWorker.close();
   await weeklyScoreRecalcWorker.close();
+  await mondayEmailWorker.close();
   await feedbackLoopWorker.close();
   await closeWbQueues();
   await closeSharedRedis();
@@ -462,6 +472,27 @@ async function setupWeeklyScoreRecalcSchedule(): Promise<void> {
   }
 }
 
+// Set up Monday Email schedule (Monday 12 PM UTC = 7 AM ET)
+async function setupMondayEmailSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("monday-email");
+    await queue.add(
+      "weekly-monday-email",
+      {},
+      {
+        repeat: {
+          pattern: "0 12 * * 1", // Monday 12 PM UTC = 7 AM ET
+          tz: "UTC",
+        },
+        jobId: "weekly-monday-email",
+      }
+    );
+    console.log("[MINDS-WORKER] Monday email scheduled (Monday 12 PM UTC / 7 AM ET)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up Monday email schedule:", err);
+  }
+}
+
 // Set up Feedback Loop schedule (Tuesday 3 PM UTC = 8 AM PT, 24h after Monday email)
 async function setupFeedbackLoopSchedule(): Promise<void> {
   try {
@@ -513,6 +544,7 @@ setupPmDailyBriefSchedule();
 setupCollectiveIntelligenceSchedule();
 setupProductEvolutionSchedule();
 setupWeeklyScoreRecalcSchedule();
+setupMondayEmailSchedule();
 setupFeedbackLoopSchedule();
 setupDreamweaverSchedule();
 
