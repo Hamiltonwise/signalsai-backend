@@ -93,6 +93,7 @@ async function analyzePractice(
       hasWebsite: !!place.websiteUri,
       hasEditorialSummary: !!place.editorialSummary,
       businessStatus: place.businessStatus || "OPERATIONAL",
+      reviews: place.reviews || [],
     },
     otherCompetitors.map((c) => ({
       name: c.name,
