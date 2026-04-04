@@ -481,12 +481,61 @@ const startServer = async () => {
       console.log(
         `📊 Database health check: http://localhost:${port}/api/health/db`,
       );
+
+      // On startup: recalculate stale scores (older than 7 days).
+      // This is the system fix: no human button, no cron dependency.
+      // Every deploy catches stale scores automatically.
+      catchUpStaleScores().catch((err) =>
+        console.error("[Startup] Stale score catch-up failed (non-blocking):", err.message)
+      );
     });
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);
   }
 };
+
+/**
+ * Catch up stale scores on server startup.
+ * Any org with a score older than 7 days gets recalculated.
+ * Non-blocking. Runs in background. No human intervention.
+ */
+async function catchUpStaleScores(): Promise<void> {
+  try {
+    const { recalculateScore } = await import("./services/weeklyScoreRecalc");
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    // Find orgs with stale or missing scores
+    const staleOrgs = await db("organizations")
+      .whereNotNull("checkup_data")
+      .where(function () {
+        this.whereNull("score_updated_at")
+          .orWhere("score_updated_at", "<", sevenDaysAgo);
+      })
+      .select("id", "name", "score_updated_at");
+
+    if (staleOrgs.length === 0) {
+      console.log("[Startup] All scores are fresh. No catch-up needed.");
+      return;
+    }
+
+    console.log(`[Startup] Found ${staleOrgs.length} orgs with stale scores. Recalculating...`);
+    let updated = 0;
+    for (const org of staleOrgs) {
+      try {
+        await recalculateScore(org.id);
+        updated++;
+      } catch (err: any) {
+        console.error(`[Startup] Score recalc failed for ${org.name}:`, err.message);
+      }
+      // Small delay to avoid hammering Places API
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    console.log(`[Startup] Score catch-up complete: ${updated}/${staleOrgs.length} updated.`);
+  } catch (err: any) {
+    console.error("[Startup] Score catch-up error:", err.message);
+  }
+}
 
 // Prevent crash from non-critical module load failures (e.g. sharp native binaries)
 process.on("uncaughtException", (error) => {
