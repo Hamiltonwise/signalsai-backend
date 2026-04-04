@@ -26,10 +26,10 @@ export default function NotFound() {
           <ArrowRight className="h-4 w-4" />
         </button>
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/home")}
           className="mt-3 text-sm text-gray-400 hover:text-[#1A1D23] transition-colors"
         >
-          Go to dashboard
+          Go home
         </button>
       </div>
     </MarketingLayout>

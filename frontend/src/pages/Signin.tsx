@@ -49,7 +49,7 @@ export default function SignIn() {
           // Super admins go to HQ Command Center, everyone else to dashboard
           destination = isSuperAdminEmail(email)
             ? "/hq/command"
-            : "/dashboard";
+            : "/home";
         }
 
         setTimeout(() => {

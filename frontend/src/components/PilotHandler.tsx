@@ -19,9 +19,9 @@ export function PilotHandler() {
         sessionStorage.setItem("user_role", userRole);
       }
 
-      // Clean URL and navigate to dashboard
+      // Clean URL and navigate to home
       // Use replace to prevent going back to the token URL
-      navigate("/dashboard", { replace: true });
+      navigate("/home", { replace: true });
 
       // Force reload to ensure all auth contexts re-initialize with the new token
       window.location.reload();

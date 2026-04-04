@@ -128,7 +128,7 @@ export default function ForgotPassword() {
 
         setMessage("Password reset! Redirecting...");
         setTimeout(() => {
-          window.location.href = "/dashboard";
+          window.location.href = "/home";
         }, 800);
       } else {
         setError(

@@ -34,7 +34,7 @@ export function DFYRoute({ children }: DFYRouteProps) {
         } else {
           console.error("[DFYRoute] Tier check failed:", error);
         }
-        navigate("/dashboard", { replace: true });
+        navigate("/home", { replace: true });
       } finally {
         setChecking(false);
       }

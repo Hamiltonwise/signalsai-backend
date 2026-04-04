@@ -443,7 +443,7 @@ export default function Demo() {
           if (data.user?.role) {
             localStorage.setItem("user_role", data.user.role);
           }
-          navigate("/dashboard", { replace: true });
+          navigate("/home", { replace: true });
         } else {
           setAutoLoginFailed(true);
           setLoading(false);

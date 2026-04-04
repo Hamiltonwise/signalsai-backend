@@ -215,7 +215,7 @@ export default function NewAccountOnboarding() {
         {/* Skip option */}
         <div className="text-center mt-8">
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/home")}
             className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-alloro-orange transition-colors font-medium"
           >
             <span>Skip for now and go to dashboard</span>

@@ -159,8 +159,8 @@ export function OnboardingWizardProvider({ children }: { children: ReactNode }) 
       await onboarding.completeWizard();
       setIsWizardActive(false);
       setWizardCompleted(true);
-      // Navigate to dashboard after skipping
-      navigate("/dashboard");
+      // Navigate to home after skipping
+      navigate("/home");
     } catch (error) {
       console.error("Failed to skip wizard:", error);
     }
@@ -171,8 +171,8 @@ export function OnboardingWizardProvider({ children }: { children: ReactNode }) 
       await onboarding.completeWizard();
       setIsWizardActive(false);
       setWizardCompleted(true);
-      // Navigate to dashboard after completing
-      navigate("/dashboard");
+      // Navigate to home after completing
+      navigate("/home");
     } catch (error) {
       console.error("Failed to complete wizard:", error);
     }

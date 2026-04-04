@@ -14,7 +14,6 @@ import SignIn from "./pages/Signin";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
-import DoctorDashboard from "./pages/DoctorDashboard";
 import NotFound from "./pages/NotFound";
 import CheckupLayout from "./pages/checkup/CheckupLayout";
 import EntryScreen from "./pages/checkup/EntryScreen";
@@ -402,7 +401,7 @@ function App() {
 
               {/* V1 dashboard (preserved for rollback -- one line reverts) */}
               <Route element={<ProtectedLayout />}>
-                <Route path="/dashboard" element={<DoctorDashboard />} />
+                <Route path="/dashboard" element={<Navigate to="/home" replace />} />
                 <Route path="/dashboard/progress" element={<ProgressReport />} />
                 <Route path="/dashboard/rankings" element={<RankingsScreen />} />
                 <Route path="/dashboard/referrals" element={<ReferralIntelligence />} />

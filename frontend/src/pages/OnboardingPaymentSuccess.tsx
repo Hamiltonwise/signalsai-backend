@@ -65,7 +65,7 @@ export default function OnboardingPaymentSuccess() {
         setPageState("success");
         // Brief pause to show success state, then redirect
         setTimeout(() => {
-          window.location.href = "/dashboard";
+          window.location.href = "/home";
         }, 1500);
       } else {
         throw new Error(response.message || "Failed to complete onboarding");

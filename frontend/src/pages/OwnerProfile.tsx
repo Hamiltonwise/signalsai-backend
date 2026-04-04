@@ -74,14 +74,14 @@ export default function OwnerProfile() {
   const handleSubmit = async () => {
     setSubmitting(true);
     await apiPost({ path: "/user/owner-profile", passedData: answers }).catch(() => {});
-    navigate("/dashboard", { replace: true });
+    navigate("/home", { replace: true });
   };
 
   const handleSkip = async () => {
     // Increment skip count. After 3 skips, dashboard stops redirecting here.
     const current = parseInt(localStorage.getItem("owner_profile_skip_count") || "0", 10);
     localStorage.setItem("owner_profile_skip_count", String(current + 1));
-    navigate("/dashboard", { replace: true });
+    navigate("/home", { replace: true });
   };
 
   return (
