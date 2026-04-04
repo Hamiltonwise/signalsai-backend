@@ -58,6 +58,7 @@ import referralIntelligenceRoutes from "./routes/referralIntelligence";
 import intelligenceIntakeRoutes from "./routes/admin/intelligenceIntake";
 import intelligencePanelRoutes from "./routes/admin/intelligencePanel";
 import rankingsSnapshotRoutes from "./routes/admin/rankingsSnapshot";
+import scoringConfigRoutes from "./routes/admin/scoringConfig";
 import patientpathBuildRoutes from "./routes/admin/patientpathBuild";
 import demoLoginRoutes from "./routes/demoLogin";
 import bootstrapRoutes from "./routes/bootstrap";
@@ -300,6 +301,7 @@ app.use("/api/referral-intelligence", referralIntelligenceRoutes); // GP referra
 app.use("/api/admin/intelligence", intelligenceIntakeRoutes); // Founder Mode intelligence intake
 app.use("/api/admin/intelligence", intelligencePanelRoutes); // WO-8: SEO/AEO/CRO panel endpoints
 app.use("/api/admin", rankingsSnapshotRoutes); // WO31/33: rankings snapshot + Monday email manual triggers
+app.use("/api/admin/scoring-config", scoringConfigRoutes); // Scoring weight config (admin panel)
 app.use("/api/admin/patientpath", patientpathBuildRoutes); // WO19: PatientPath build pipeline
 app.use("/api/demo", demoLoginRoutes); // WO-DEMO: auto-login for AAE demo
 app.use("/api/bootstrap", bootstrapRoutes); // One-time team setup

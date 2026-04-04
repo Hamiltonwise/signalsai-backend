@@ -5,6 +5,8 @@
  * POST /api/admin/rankings/run-all     — trigger all orgs (cron equivalent)
  * POST /api/admin/monday-email/run-now — manual trigger Monday email for one org
  * POST /api/admin/monday-email/run-all — trigger all orgs
+ * POST /api/admin/score-recalc/run-now — manual trigger score recalc for one org
+ * POST /api/admin/score-recalc/run-all — trigger all orgs (weekly cron equivalent)
  */
 
 import express from "express";
@@ -12,6 +14,7 @@ import { authenticateToken } from "../../middleware/auth";
 import { superAdminMiddleware } from "../../middleware/superAdmin";
 import { generateSnapshotForOrg, generateAllSnapshots } from "../../services/rankingsIntelligence";
 import { sendMondayEmailForOrg, sendAllMondayEmails } from "../../jobs/mondayEmail";
+import { recalculateScore, recalculateAllScores } from "../../services/weeklyScoreRecalc";
 
 const rankingsSnapshotRoutes = express.Router();
 
@@ -95,6 +98,59 @@ rankingsSnapshotRoutes.post(
     } catch (error: any) {
       console.error("[MondayEmail] Run-all error:", error.message);
       return res.status(500).json({ success: false, error: "Failed to send emails" });
+    }
+  },
+);
+
+// -- Score Recalc manual triggers ───────────────────────────────────
+
+rankingsSnapshotRoutes.post(
+  "/score-recalc/run-now",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const { org_id } = req.body;
+      if (!org_id) {
+        return res.status(400).json({ success: false, error: "org_id required" });
+      }
+
+      const result = await recalculateScore(Number(org_id));
+      if (!result) {
+        return res.json({
+          success: true,
+          recalculated: false,
+          message: "Org skipped (no checkup_data, no placeId, or Google returned nothing)",
+        });
+      }
+
+      return res.json({
+        success: true,
+        recalculated: true,
+        previousScore: result.previousScore,
+        newScore: result.newScore,
+        delta: result.delta,
+        changes: result.changes,
+        subScores: result.subScores,
+      });
+    } catch (error: any) {
+      console.error("[ScoreRecalc] Run-now error:", error.message);
+      return res.status(500).json({ success: false, error: "Failed to recalculate score" });
+    }
+  },
+);
+
+rankingsSnapshotRoutes.post(
+  "/score-recalc/run-all",
+  authenticateToken,
+  superAdminMiddleware,
+  async (_req, res) => {
+    try {
+      const result = await recalculateAllScores();
+      return res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("[ScoreRecalc] Run-all error:", error.message);
+      return res.status(500).json({ success: false, error: "Failed to recalculate scores" });
     }
   },
 );

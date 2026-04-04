@@ -286,7 +286,7 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
 
     if (weakest.key === "localVisibility" && comp?.name) {
       return {
-        headline: `${comp.name} is outranking you because of one thing you can fix today.`,
+        headline: `${comp.name} is more visible on Google because of one thing you can fix today.`,
         body: `Your local visibility score is ${weakest.score}/${weakest.max}. The fastest fix: add your complete services list to your Google Business Profile. It takes 10 minutes and directly impacts how you appear in "${checkup.market.city} specialist" searches.`,
         action_text: "Fix this now",
         action_url: "/settings/integrations",
