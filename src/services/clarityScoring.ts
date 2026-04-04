@@ -1,31 +1,26 @@
 /**
  * Clarity Scoring Engine -- Business Clarity Score
  *
- * Napkin math. Every calculation is one sentence. Every input is verifiable by Googling.
+ * This is a blood panel, not an algorithm.
  *
- * Three factors from public Google data:
- * 1. Review Health (0-33): Rating + count vs competitor + response rate + recency
- * 2. GBP Completeness (0-33): Description, photos, website, phone, hours
- * 3. Online Activity (0-34): Posts, review responses, content freshness
+ * Every number is a raw reading from Google. No transformation.
+ * No weights. No formulas. The customer can verify every number
+ * by Googling themselves. We read the results. We don't create them.
  *
- * Total: 0-100.
- *
- * DFY/DWY split: ~70 points are influenced by Alloro's automated actions.
- * ~30 points require owner input (rating, review count, phone, hours).
- * The GLP-1 model: score climbs without the owner changing behavior.
+ * Six readings, each graded: Healthy / Needs Attention / Critical
+ * Score = count of healthy readings. Simple. Undeniable.
  *
  * Research backing:
- * - GBP signals: 32% of local ranking weight (Whitespark 2026)
- * - Review signals: 20% of local ranking weight (Whitespark 2026)
- * - Google Ask Maps reads review WORDS, not just stars (Google, March 2026)
- * - Complete GBP profiles: 2.7x more reputable, 70% more visits (Google)
- * - Photo freshness: 30+ days without photo = visibility decay (BrightLocal)
- * - Review recency: 74% of consumers only care about last 3 months (BrightLocal 2026)
+ * - GBP signals: 32% of local ranking (Whitespark 2026)
+ * - Review signals: 20% of local ranking (Whitespark 2026)
+ * - Complete profiles: 2.7x more reputable (Google)
+ * - Review recency: 74% only care about last 3 months (BrightLocal 2026)
+ * - Photo freshness: 30+ days = visibility decay (BrightLocal)
+ * - Response rate: improves ranking + 35% more revenue (Womply)
  */
 
 import { getScoreLabel } from "./businessMetrics";
 
-// Re-export for backwards compatibility
 export { REVIEW_VOLUME_BENCHMARKS } from "./businessMetrics";
 
 export interface PlaceData {
@@ -48,11 +43,21 @@ export interface CompetitorData {
   placeId?: string;
 }
 
+export type ReadingStatus = "healthy" | "attention" | "critical";
+
+export interface Reading {
+  name: string;
+  value: string;           // The raw number, human readable
+  status: ReadingStatus;
+  context: string;         // Why this status (the doctor's note)
+  verifyBy: string;        // How the customer checks it
+  canAlloroFix: boolean;   // DFY or DWY?
+}
+
 export interface SubScores {
-  googlePosition: number;  // Legacy alias for onlineActivity
+  googlePosition: number;
   reviewHealth: number;
   gbpCompleteness: number;
-  // Legacy aliases for backwards compatibility with stored checkup_data
   trust?: number;
   impression?: number;
   responsiveness?: number;
@@ -63,58 +68,31 @@ export interface ScoringResult {
   composite: number;
   subScores: SubScores;
   scoreLabel: string;
+  readings: Reading[];
 }
 
-// Scoring config type (for admin preview/override)
+// Config types for admin preview compatibility
 export type ScoringConfig = Record<string, number>;
 
-// Config cache
 let cachedConfig: ScoringConfig | null = null;
 let cacheTimestamp = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
-// Defaults: the napkin math, documented
 const DEFAULTS: ScoringConfig = {
-  // Sub-score maxes
   review_health_max: 33,
   gbp_completeness_max: 33,
   online_activity_max: 34,
-
-  // Review Health components
-  rating_max_pts: 8,          // (rating / 5) * 8
-  count_vs_competitor_max_pts: 10, // min(1, yours / theirs) * 10
-  response_rate_max_pts: 10,  // (responses / total) * 10 -- DFY
-  recency_pts: 5,             // review in last 30 days = 5, else 0
-
-  // GBP Completeness components (weighted by DFY controllability)
-  description_pts: 10,        // DFY: Alloro writes it
-  photos_pts: 8,              // DFY: Alloro can post from library
-  website_pts: 8,             // DFY: PatientPath builds it
-  phone_pts: 4,               // DWY: owner enters it
-  hours_pts: 3,               // DWY: owner enters it
-
-  // Online Activity components (all DFY)
-  posts_0_pts: 0,
-  posts_1_pts: 8,
-  posts_2_plus_pts: 14,       // GBP posts in last 30 days
-  review_responses_pts: 10,   // any review responses in last 30 days
-  content_freshness_pts: 10,  // website content updated in last 30 days
 };
 
 export async function loadScoringConfig(): Promise<ScoringConfig> {
   const now = Date.now();
-  if (cachedConfig && now - cacheTimestamp < CACHE_TTL_MS) {
-    return cachedConfig;
-  }
-
+  if (cachedConfig && now - cacheTimestamp < CACHE_TTL_MS) return cachedConfig;
   try {
     const { db } = await import("../database/connection");
     const rows = await db("scoring_config").select("key", "value");
     if (rows && rows.length > 0) {
       const fromDb: ScoringConfig = {};
-      for (const row of rows) {
-        fromDb[row.key] = Number(row.value);
-      }
+      for (const row of rows) fromDb[row.key] = Number(row.value);
       cachedConfig = { ...DEFAULTS, ...fromDb };
     } else {
       cachedConfig = { ...DEFAULTS };
@@ -122,120 +100,202 @@ export async function loadScoringConfig(): Promise<ScoringConfig> {
   } catch {
     cachedConfig = { ...DEFAULTS };
   }
-
   cacheTimestamp = now;
   return cachedConfig;
 }
 
-export function getScoringConfigSync(): ScoringConfig {
-  return cachedConfig ?? { ...DEFAULTS };
-}
-
-export function getScoringDefaults(): ScoringConfig {
-  return { ...DEFAULTS };
-}
-
-export function clearScoringConfigCache(): void {
-  cachedConfig = null;
-  cacheTimestamp = 0;
-}
+export function getScoringConfigSync(): ScoringConfig { return cachedConfig ?? { ...DEFAULTS }; }
+export function getScoringDefaults(): ScoringConfig { return { ...DEFAULTS }; }
+export function clearScoringConfigCache(): void { cachedConfig = null; cacheTimestamp = 0; }
 
 /**
- * Calculate the Business Clarity Score.
+ * Read the blood panel.
  *
- * Every calculation is one line. Every input is Googleable.
- * This is the single source of truth. No other file calculates scores.
+ * Six readings. Each graded by range. No formulas. No weights.
+ * The score is how many readings are healthy (0-100 scale).
  */
 export function calculateClarityScore(
   place: PlaceData,
   competitors: CompetitorData[],
   _specialty: string,
   _googlePosition?: number | null,
-  configOverrides?: ScoringConfig,
+  _configOverrides?: ScoringConfig,
 ): ScoringResult {
-  const cfg = { ...getScoringConfigSync(), ...(configOverrides || {}) };
+  const readings: Reading[] = [];
 
   const rating = place.rating ?? 0;
   const reviewCount = place.reviewCount ?? 0;
   const topCompetitorReviews = competitors.length > 0
     ? Math.max(...competitors.map(c => c.reviewsCount || 0), 1)
-    : reviewCount || 1; // If no competitors, compare against self (score = full)
+    : 1;
+  const topCompetitorName = competitors.length > 0
+    ? competitors.reduce((top, c) => (c.reviewsCount || 0) > (top.reviewsCount || 0) ? c : top, competitors[0]).name
+    : null;
 
-  // Extract review signals from place.reviews (when available)
+  // Extract review signals
   const reviews: any[] = place.reviews || [];
   const reviewsWithResponse = reviews.filter((r: any) => !!r.ownerResponse);
-  const responseRate = reviews.length > 0
-    ? reviewsWithResponse.length / reviews.length
-    : 0;
+  const responseRate = reviews.length > 0 ? Math.round((reviewsWithResponse.length / reviews.length) * 100) : null;
 
   let hasRecentReview = false;
-  if (reviews.length > 0) {
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    for (const r of reviews) {
-      if (r.publishTime) {
-        const pubDate = new Date(r.publishTime).getTime();
-        if (!isNaN(pubDate) && pubDate >= thirtyDaysAgo) {
-          hasRecentReview = true;
-          break;
-        }
-      }
-      // Fallback: relative time descriptions
-      const desc = r.relativePublishTimeDescription || "";
-      if (desc.includes("week ago") || desc.includes("days ago") || desc.includes("yesterday") || desc.includes("hour")) {
-        hasRecentReview = true;
-        break;
-      }
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  for (const r of reviews) {
+    if (r.publishTime) {
+      const pubDate = new Date(r.publishTime).getTime();
+      if (!isNaN(pubDate) && pubDate >= thirtyDaysAgo) { hasRecentReview = true; break; }
+    }
+    const desc = r.relativePublishTimeDescription || "";
+    if (desc.includes("week ago") || desc.includes("days ago") || desc.includes("yesterday") || desc.includes("hour")) {
+      hasRecentReview = true; break;
     }
   }
 
-  // ─── FACTOR 1: REVIEW HEALTH (0-33) ─────────────────────────────
-  // Napkin: rating/5 * 8 + min(1, yours/theirs) * 10 + responseRate * 10 + recentBonus
-  const ratingPts = Math.round((rating / 5) * cfg.rating_max_pts);
-  const countPts = Math.round(Math.min(1, reviewCount / topCompetitorReviews) * cfg.count_vs_competitor_max_pts);
-  const responsePts = Math.round(responseRate * cfg.response_rate_max_pts);
-  const recencyPts = hasRecentReview ? cfg.recency_pts : 0;
+  // ─── READING 1: Star Rating ─────────────────────────────────────
+  // Range: 4.5+ = healthy, 4.0-4.4 = attention, below 4.0 = critical
+  // Research: 68% of consumers require 4+ stars (BrightLocal 2026)
+  readings.push({
+    name: "Star Rating",
+    value: `${rating} stars`,
+    status: rating >= 4.5 ? "healthy" : rating >= 4.0 ? "attention" : "critical",
+    context: rating >= 4.5
+      ? "Above the threshold where most consumers will choose you"
+      : rating >= 4.0
+        ? "68% of consumers require 4+ stars. You qualify, but higher is better"
+        : "68% of consumers require 4+ stars. Below that threshold.",
+    verifyBy: "Google your business name",
+    canAlloroFix: false,
+  });
 
-  const reviewHealth = Math.min(cfg.review_health_max, ratingPts + countPts + responsePts + recencyPts);
+  // ─── READING 2: Review Count vs Competitor ──────────────────────
+  // Range: >= competitor = healthy, >= 50% = attention, < 50% = critical
+  const reviewRatio = topCompetitorReviews > 0 ? reviewCount / topCompetitorReviews : 1;
+  readings.push({
+    name: "Review Volume",
+    value: `${reviewCount} reviews`,
+    status: reviewRatio >= 1 ? "healthy" : reviewRatio >= 0.5 ? "attention" : "critical",
+    context: topCompetitorName
+      ? `${topCompetitorName} has ${topCompetitorReviews}. ${reviewCount >= topCompetitorReviews ? "You lead." : `Gap: ${topCompetitorReviews - reviewCount} reviews.`}`
+      : `${reviewCount} reviews in your market`,
+    verifyBy: topCompetitorName ? `Google "${topCompetitorName}"` : "Google your specialty + city",
+    canAlloroFix: false,
+  });
 
-  // ─── FACTOR 2: GBP COMPLETENESS (0-33) ──────────────────────────
-  // Napkin: each field present = its point value. Sum them.
-  const descriptionPts = place.hasEditorialSummary ? cfg.description_pts : 0;
-  const photosPts = place.photosCount > 0 ? cfg.photos_pts : 0;
-  const websitePts = place.hasWebsite ? cfg.website_pts : 0;
-  const phonePts = place.hasPhone ? cfg.phone_pts : 0;
-  const hoursPts = place.hasHours ? cfg.hours_pts : 0;
+  // ─── READING 3: Review Recency ─────────────────────────────────
+  // Range: review in last 30 days = healthy, none = attention
+  // Research: 74% only care about last 3 months (BrightLocal 2026)
+  if (reviews.length > 0) {
+    readings.push({
+      name: "Review Recency",
+      value: hasRecentReview ? "Active (last 30 days)" : "No recent reviews",
+      status: hasRecentReview ? "healthy" : "attention",
+      context: hasRecentReview
+        ? "Fresh reviews signal an active business to Google and to patients"
+        : "74% of consumers only care about reviews from the last 3 months",
+      verifyBy: "Check the dates on your most recent Google reviews",
+      canAlloroFix: false,
+    });
+  }
 
-  const gbpCompleteness = Math.min(cfg.gbp_completeness_max, descriptionPts + photosPts + websitePts + phonePts + hoursPts);
+  // ─── READING 4: GBP Profile Completeness ───────────────────────
+  // Range: 5/5 = healthy, 3-4 = attention, 0-2 = critical
+  // Research: Complete profiles 2.7x more reputable (Google)
+  const gbpFields = [
+    { name: "phone", present: place.hasPhone },
+    { name: "hours", present: place.hasHours },
+    { name: "website", present: place.hasWebsite },
+    { name: "photos", present: place.photosCount > 0 },
+    { name: "description", present: place.hasEditorialSummary },
+  ];
+  const complete = gbpFields.filter(f => f.present).length;
+  const missing = gbpFields.filter(f => !f.present).map(f => f.name);
 
-  // ─── FACTOR 3: ONLINE ACTIVITY (0-34) ───────────────────────────
-  // Napkin: posts in 30 days + review responses in 30 days + content freshness
-  // These are all DFY signals Alloro can control.
-  // For now: estimate from available data. When GBP OAuth provides post data,
-  // this becomes exact.
-  const hasAnyResponses = responsePts > 0;
-  const hasWebsiteContent = place.hasWebsite;
-  // Posts: we don't have direct GBP post count yet. Score 0 until DFY engine runs.
-  const postPts = 0; // Will become cfg.posts_1_pts or posts_2_plus_pts when data exists
-  const activityResponsePts = hasAnyResponses ? cfg.review_responses_pts : 0;
-  const contentPts = hasWebsiteContent ? cfg.content_freshness_pts : 0;
+  readings.push({
+    name: "Profile Completeness",
+    value: `${complete}/5 fields`,
+    status: complete >= 5 ? "healthy" : complete >= 3 ? "attention" : "critical",
+    context: missing.length > 0
+      ? `Missing: ${missing.join(", ")}. Complete profiles are 2.7x more reputable.`
+      : "All fields complete. Your profile signals credibility to Google.",
+    verifyBy: "Open your Google Business Profile and check each field",
+    canAlloroFix: missing.some(f => f === "description" || f === "photos" || f === "website"),
+  });
 
-  const onlineActivity = Math.min(cfg.online_activity_max, postPts + activityResponsePts + contentPts);
+  // ─── READING 5: Review Response Rate ───────────────────────────
+  // Range: 80%+ = healthy, 1-79% = attention, 0% = critical
+  // Research: Responding improves ranking + 35% more revenue (Womply)
+  if (responseRate !== null) {
+    readings.push({
+      name: "Review Responses",
+      value: `${responseRate}% responded`,
+      status: responseRate >= 80 ? "healthy" : responseRate >= 1 ? "attention" : "critical",
+      context: responseRate >= 80
+        ? "Strong response rate signals active management to Google"
+        : responseRate >= 1
+          ? "Businesses that respond to reviews earn 35% more revenue"
+          : "No responses found. Each response signals activity to Google.",
+      verifyBy: "Check your Google reviews for owner responses",
+      canAlloroFix: true,
+    });
+  }
 
-  // ─── COMPOSITE ──────────────────────────────────────────────────
-  const composite = reviewHealth + gbpCompleteness + onlineActivity;
+  // ─── READING 6: Photos ─────────────────────────────────────────
+  // Range: 10+ = healthy, 1-9 = attention, 0 = critical
+  // Research: 100+ photos = 520% more calls (BrightLocal)
+  const photoCount = place.photosCount ?? 0;
+  readings.push({
+    name: "Photos",
+    value: `${photoCount} photos`,
+    status: photoCount >= 10 ? "healthy" : photoCount >= 1 ? "attention" : "critical",
+    context: photoCount >= 10
+      ? "Strong photo presence. Businesses with many photos get significantly more engagement."
+      : photoCount >= 1
+        ? "More photos = more engagement. Businesses with 100+ photos get 520% more calls."
+        : "No photos found. This significantly reduces your visibility.",
+    verifyBy: "Check the photos section of your Google Business Profile",
+    canAlloroFix: true,
+  });
+
+  // ─── COMPOSITE SCORE ───────────────────────────────────────────
+  // Score = percentage of readings that are healthy
+  // Simple. No weights. No formulas. Just: how much of your blood panel is green?
+  const healthyCount = readings.filter(r => r.status === "healthy").length;
+  const totalReadings = readings.length;
+  const composite = Math.round((healthyCount / totalReadings) * 100);
+
+  // Map to sub-scores for backwards compatibility
+  // These are simplified mappings for code that expects the old interface
+  const reviewReadings = readings.filter(r =>
+    r.name === "Star Rating" || r.name === "Review Volume" || r.name === "Review Recency"
+  );
+  const gbpReadings = readings.filter(r =>
+    r.name === "Profile Completeness" || r.name === "Photos"
+  );
+  const activityReadings = readings.filter(r =>
+    r.name === "Review Responses"
+  );
+
+  const reviewHealthScore = Math.round(
+    (reviewReadings.filter(r => r.status === "healthy").length / Math.max(reviewReadings.length, 1)) * 33
+  );
+  const gbpScore = Math.round(
+    (gbpReadings.filter(r => r.status === "healthy").length / Math.max(gbpReadings.length, 1)) * 33
+  );
+  const activityScore = Math.round(
+    (activityReadings.filter(r => r.status === "healthy").length / Math.max(activityReadings.length, 1)) * 34
+  );
 
   return {
     composite,
     subScores: {
-      googlePosition: onlineActivity, // Legacy alias
-      reviewHealth,
-      gbpCompleteness,
-      // Legacy aliases
-      trust: reviewHealth,
-      impression: gbpCompleteness,
-      responsiveness: responsePts,
-      edge: onlineActivity,
+      googlePosition: activityScore,
+      reviewHealth: reviewHealthScore,
+      gbpCompleteness: gbpScore,
+      trust: reviewHealthScore,
+      impression: gbpScore,
+      responsiveness: activityScore,
+      edge: activityScore,
     },
     scoreLabel: getScoreLabel(composite),
+    readings,
   };
 }
