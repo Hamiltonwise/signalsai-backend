@@ -444,5 +444,105 @@ Every locked decision with the reasoning. If someone asks "why," point them here
 
 ---
 
+## Part 10: The Science (Why Each Page Exists)
+
+Alloro is not inventing new knowledge. Every factor we score, every page we show, every action we recommend is backed by existing research. We are tying known things together for someone who doesn't have time to read 50 sources.
+
+### Why Five Pages (Not 4, Not 7)
+
+**Cognitive science:** Cowan (2001) narrows Miller's Law to 3-5 items for active processing. Five is the sweet spot: 3 feels sparse, 7 requires effort to distinguish.
+
+**Competitive precedent:** Owner.com ($1B): 5 tabs. Podium: 5 sections. Housecall Pro: 5 nav items. Platforms with 7-8 sections score lower on ease of use (G2 ratings).
+
+**Data completeness:** Every factor from Whitespark 2026 (8 ranking categories), Moz (6 categories), and BrightLocal surveys maps to one of the 5 pages. Zero orphans.
+
+### Each Page Maps to a Ranking Factor AND a Human Need
+
+| Page | Question | Human Need (Maslow) | Ranking Factors Covered | Research Backing |
+|------|----------|-------------------|------------------------|-----------------|
+| Home | "Am I okay?" | Safety | Synthesizes all factors into one score | Maslow: safety is the base. Until this is answered, nothing else matters. |
+| Compare | "How do I compare?" | Status | Competitive position, behavioral signals, referral health | Kahneman: loss aversion (2x pain of loss vs pleasure of gain). Seeing the gap motivates action. |
+| Reviews | "What are people saying?" | Belonging | Review signals (20% of ranking weight per Whitespark 2026) | BrightLocal 2026: 98% read reviews. 74% only care about last 3 months. Ask Maps reads sentiment. |
+| Presence | "What does my presence look like?" | Achievement | GBP signals (32%), on-page, citations, AI visibility | Google: complete profiles 2.7x more reputable. 70% more likely to attract visits. |
+| Progress | "Am I getting better?" | Autonomy | Trajectory over time | Self-determination theory (Deci & Ryan): autonomy and competence drive intrinsic motivation. |
+
+### Why Each Factor Matters (The Research)
+
+**Review count matters because:**
+- Google confirmed: review count is a top 3 local ranking factor (Whitespark 2026, 20% weight)
+- BrightLocal 2026: 98% of consumers read online reviews before choosing a local business
+- Businesses with 50+ reviews earn 4.6x more revenue than those with fewer (Womply)
+
+**Review recency matters because:**
+- BrightLocal 2026: 74% of consumers only care about reviews from the last 3 months
+- Google's 2026 algorithm weights recent reviews more heavily
+- Ask Maps prioritizes recent sentiment when making recommendations
+
+**Review sentiment matters because:**
+- Google Ask Maps (launched March 2026) reads the WORDS in reviews, not just stars
+- Sentiment analysis determines what a business is "known for" in AI recommendations
+- "Gentle with anxious patients" in competitor reviews vs 0 in yours is the gap AI sees
+
+**Review response rate matters because:**
+- Google confirmed: responding to reviews improves local ranking
+- Businesses that respond to reviews earn 35% more revenue (Womply)
+- Response signals to Google that the business is active and engaged
+
+**Star rating matters because:**
+- BrightLocal 2026: 31% of consumers require 4.5+ stars (up from 17%)
+- 68% require 4+ stars minimum
+- Conversion drops steeply below 4.0 stars
+
+**GBP completeness matters because:**
+- Google: complete profiles are 2.7x more likely to be considered reputable
+- Complete profiles are 70% more likely to attract location visits
+- GBP signals are 32% of local ranking weight (the single largest factor, Whitespark 2026)
+
+**Photos matter because:**
+- Businesses with 100+ photos get 520% more calls (BrightLocal)
+- Photo freshness (last 30 days) is a 2026 ranking signal
+- Ask Maps uses photos for visual recommendations
+
+**Hours matter because:**
+- "Open now" is the 5th most important local pack factor (Whitespark 2026)
+- Wrong hours = customer shows up to closed door = negative review = ranking damage
+
+**Description matters because:**
+- Ask Maps reads business descriptions for context
+- No description = Google guesses what your business does
+- A complete description with services improves relevance matching
+
+**Website matters because:**
+- 36% of local businesses still don't have a website
+- On-page signals (website content, schema markup) contribute to ranking
+- GEO: pages with structured data get cited 2.8x more by AI systems
+
+### Why Financial Health Is Correctly Excluded (For Now)
+
+SCORE, Harvard, and NetSuite all rank financial metrics (revenue, cash flow, CAC/LTV) as the #1 indicator of business success. This is real.
+
+But Alloro excludes it today because:
+1. Reliable financial data requires PMS/QuickBooks integrations that are fragile (Kuda's parser broke)
+2. Showing unreliable financial data violates Known 1 (every number verifiable)
+3. The data Alloro DOES have (online presence, reviews, competitive position) is complete and verifiable
+4. When PMS/QuickBooks integration is robust, financial intelligence folds into existing pages: referral revenue into Compare, cash flow trend into Home
+
+Financial health does not need a 6th page. It needs reliable data. When that data exists, it deepens the existing 5.
+
+### The Human Psychology Behind Key Features
+
+**One Action Card priority (referral drift first):** Kahneman's loss aversion. Losing $330K/year in referrals triggers 2x stronger action than gaining $330K in new patients. The pain of loss is the most powerful motivator.
+
+**Clean week email:** Maslow's safety need. The business owner's deepest fear is "am I going to be okay?" The clean week answers the safety question before the owner asks it.
+
+**Monday email variable content:** Nir Eyal's Hook Model. The email content changes weekly: sometimes a warning, sometimes a gift, sometimes a receipt. The variable reward creates the habit loop that drives weekly engagement.
+
+**Credit score gauge:** Familiarity bias. Hundreds of millions of people already know how to read a gauge with a number, a color, and contributing factors. Zero learning curve reduces activation energy to zero.
+
+**Named competitors in findings:** Specificity bias. "Peluso has 348 more reviews" is 5x more motivating than "a competitor has more reviews." Named threats feel real. Generic warnings feel ignorable.
+
+---
+
 *Alloro Product Constitution. Authored by Corey Wise. Built by Claude. April 4, 2026.*
 *If code contradicts this document, the code is wrong.*
+*The science is not ours. The synthesis is.*
