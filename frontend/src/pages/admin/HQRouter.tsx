@@ -17,6 +17,42 @@ import IntegratorView from "./IntegratorView";
 import BuildView from "./BuildView";
 import MorningBrief from "./MorningBrief";
 
+function RefreshRankingsButton() {
+  const [state, setState] = useState<"idle" | "running" | "done" | "error">("idle");
+  const run = async () => {
+    setState("running");
+    try {
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch("/api/admin/rankings/run-all", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setState("done");
+      setTimeout(() => setState("idle"), 3000);
+      alert(`Refreshed: ${data.generated || 0} snapshots generated for ${data.total || 0} orgs`);
+    } catch {
+      setState("error");
+      setTimeout(() => setState("idle"), 3000);
+    }
+  };
+  return (
+    <button
+      onClick={run}
+      disabled={state === "running"}
+      className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ml-auto ${
+        state === "running" ? "bg-amber-500/30 text-amber-200 cursor-wait"
+        : state === "done" ? "bg-emerald-500/30 text-emerald-200"
+        : state === "error" ? "bg-red-500/30 text-red-200"
+        : "bg-white/10 text-white/60 hover:bg-white/20"
+      }`}
+    >
+      {state === "running" ? "Refreshing..." : state === "done" ? "Done" : state === "error" ? "Failed" : "Refresh All Rankings"}
+    </button>
+  );
+}
+
 const ROLE_MAP: Record<string, "visionary" | "integrator" | "build"> = {
   "corey@getalloro.com": "visionary",
   "info@getalloro.com": "visionary",
@@ -59,6 +95,7 @@ export default function HQRouter() {
               {opt.label}
             </button>
           ))}
+          <RefreshRankingsButton />
         </div>
       )}
       {activeRole === "visionary" || activeRole === null && isSuperAdmin ? (
