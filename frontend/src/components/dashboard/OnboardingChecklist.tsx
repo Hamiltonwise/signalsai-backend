@@ -101,8 +101,8 @@ export default function OnboardingChecklist({
     },
     {
       id: "pms",
-      title: "Upload your scheduling data",
-      anxiety: "See which referral sources drive revenue",
+      title: "Upload your business data",
+      anxiety: "See which sources drive revenue",
       complete: pmsUploaded,
       cta: "Upload data",
       action: () => { onStepComplete?.("pms"); navigate("/dashboard/referrals"); },

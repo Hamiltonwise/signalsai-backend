@@ -14,6 +14,14 @@
 
 import { db } from "../database/connection";
 
+/**
+ * Clean competitor name: strip parenthetical location info like "(Winter Garden)"
+ * Google Places sometimes appends city/neighborhood to business names.
+ */
+function cleanCompetitorName(name: string): string {
+  return name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
 export interface OneActionCard {
   headline: string;
   body: string;
@@ -148,7 +156,7 @@ async function checkReviewGap(orgId: number): Promise<OneActionCard | null> {
 
   const clientReviews = latest.client_review_count || 0;
   const compReviews = latest.competitor_review_count || 0;
-  const compName = latest.competitor_name;
+  const compName = cleanCompetitorName(latest.competitor_name || "");
 
   if (!compName || compReviews <= clientReviews) return null;
 
@@ -190,7 +198,7 @@ async function checkRankingDrop(orgId: number): Promise<OneActionCard | null> {
   if (current.position <= previous.position) return null; // position went up or held
 
   const drop = current.position - previous.position;
-  const compName = current.competitor_name || "A competitor";
+  const compName = cleanCompetitorName(current.competitor_name || "") || "A competitor";
   const compReviews = current.competitor_review_count || 0;
   const clientReviews = current.client_review_count || 0;
   const reviewDiff = compReviews - clientReviews;
@@ -233,13 +241,25 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
 
   if (latest?.position && latest.competitor_name) {
     const gap = (latest.competitor_review_count || 0) - (latest.client_review_count || 0);
-    const city = latest.keyword || "your market";
+    // keyword may be "Artful Orthodontics in Winter Garden" or just "orthodontist"
+    // Extract the city: take everything after " in " if present, otherwise use org's checkup data
+    const rawKeyword = latest.keyword || "";
+    let city = "your market";
+    if (rawKeyword.includes(" in ")) {
+      city = rawKeyword.split(" in ").pop()!.trim();
+    } else {
+      // Fall back to org's checkup data for city
+      const orgData = await db("organizations").where({ id: orgId }).select("checkup_data").first();
+      const parsed = orgData?.checkup_data ? (typeof orgData.checkup_data === "string" ? tryParseJSON(orgData.checkup_data) : orgData.checkup_data) : null;
+      city = parsed?.market?.city || parsed?.city || "your market";
+    }
+    const compName = cleanCompetitorName(latest.competitor_name || "");
 
     return {
       headline: `You held #${latest.position} in ${city} this week.`,
       body: gap > 0 && gap <= 50
-        ? `${latest.competitor_name} is ${gap} reviews ahead. ${gap} reviews between you and the next position.`
-        : `${latest.competitor_name} is ${gap > 0 ? `${gap} reviews ahead` : "close behind"}. Consistent week.`,
+        ? `${compName} is ${gap} reviews ahead. ${gap} reviews between you and the next position.`
+        : `${compName} is ${gap > 0 ? `${gap} reviews ahead` : "close behind"}. Consistent week.`,
       action_text: null,
       action_url: null,
       priority_level: 5,
@@ -400,7 +420,7 @@ async function getCompetitorVelocityData(orgId: number): Promise<OneActionIntell
   const current = snapshots[0];
   const previous = snapshots[1];
 
-  const compName = current.competitor_name;
+  const compName = cleanCompetitorName(current.competitor_name || "");
   if (!compName) return null;
 
   const compReviewsCurrent = current.competitor_review_count || 0;

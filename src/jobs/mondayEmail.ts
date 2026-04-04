@@ -48,6 +48,14 @@ function stripEmDashes(text: string): string {
 }
 
 /**
+ * Clean competitor name: strip parenthetical location info like "(Winter Garden)"
+ * Google Places sometimes appends city/neighborhood to business names.
+ */
+function cleanCompetitorName(name: string): string {
+  return name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
+/**
  * Fallback: When Monday email fails to send, create an in-app notification
  * so the client still receives their weekly brief when they next open the dashboard.
  */
@@ -268,7 +276,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   if ((!bullets || bullets.length === 0) && snapshot.position != null) {
     const rawBullets: string[] = [];
     const pos = snapshot.position;
-    const compName = snapshot.competitor_name;
+    const compName = cleanCompetitorName(snapshot.competitor_name || "");
     const compReviews = snapshot.competitor_review_count || 0;
     const clientRevs = snapshot.client_review_count || 0;
     const city = snapshot.keyword?.split(" in ")?.[1] || "";
@@ -413,7 +421,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
   // Add autonomous action line
   if (snapshot.position && snapshot.competitor_name) {
-    findingBody += `\n\nAlloro tracked your competitive position against ${snapshot.competitor_name} on ${new Date().toLocaleDateString()}.`;
+    findingBody += `\n\nAlloro tracked your competitive position against ${cleanCompetitorName(snapshot.competitor_name)} on ${new Date().toLocaleDateString()}.`;
   } else {
     findingBody += "\n\nAlloro monitored your market this week. No urgent changes.";
   }
@@ -473,7 +481,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       // Fallback to original review delta analysis
       const reviewDelta = (snapshot.client_review_count || 0) - (recentSnapshots[3]?.client_review_count || snapshot.client_review_count || 0);
       if (reviewDelta !== 0) {
-        findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. In that time, you ${reviewDelta > 0 ? "gained" : "lost"} ${Math.abs(reviewDelta)} reviews. ${snapshot.competitor_name || "Your top competitor"} ${reviewDelta > 0 ? "gained fewer" : "gained more"}.`;
+        findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. In that time, you ${reviewDelta > 0 ? "gained" : "lost"} ${Math.abs(reviewDelta)} reviews. ${cleanCompetitorName(snapshot.competitor_name || "") || "Your top competitor"} ${reviewDelta > 0 ? "gained fewer" : "gained more"}.`;
       } else {
         // No surprise finding AND no review delta. Prove the system is working.
         // Silence erodes trust. Activity proof maintains it.
@@ -543,10 +551,10 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     if (archetype === "survivor" || (confidenceScore !== null && confidenceScore <= 4)) {
       fiveMinuteFix = `5-MINUTE FIX: Text ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} from this week for a review. This is proven: 3 reviews per week closes a ${reviewGap}-review gap in ${gapWeeks} weeks. Predictable and reliable.`;
     } else if (archetype === "builder") {
-      fiveMinuteFix = `5-MINUTE FIX: Send ${needed} review request${needed !== 1 ? "s" : ""}. You're ${reviewGap} behind ${snapshot.competitor_name || competitorFallback}. At 3/week, you pass them in ${gapWeeks} weeks. That momentum compounds.`;
+      fiveMinuteFix = `5-MINUTE FIX: Send ${needed} review request${needed !== 1 ? "s" : ""}. You're ${reviewGap} behind ${cleanCompetitorName(snapshot.competitor_name || "") || competitorFallback}. At 3/week, you pass them in ${gapWeeks} weeks. That momentum compounds.`;
     } else {
       // craftsman or legacy
-      fiveMinuteFix = `5-MINUTE FIX: Text ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} from this week for a review. Takes 3 minutes. You're ${reviewGap} behind ${snapshot.competitor_name || competitorFallback}, and 3/week closes it in ${gapWeeks} weeks.`;
+      fiveMinuteFix = `5-MINUTE FIX: Text ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} from this week for a review. Takes 3 minutes. You're ${reviewGap} behind ${cleanCompetitorName(snapshot.competitor_name || "") || competitorFallback}, and 3/week closes it in ${gapWeeks} weeks.`;
     }
   } else if (reviewGap > 15) {
     const targetDate = new Date(Date.now() + Math.ceil(reviewGap / 3) * 7 * 86400000).toLocaleDateString("en-US", { month: "long", year: "numeric" });
