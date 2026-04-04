@@ -22,6 +22,7 @@ import { runProductEvolution } from "../jobs/productEvolution";
 import { processWeeklyScoreRecalc } from "./processors/weeklyScoreRecalc.processor";
 import { processFeedbackLoop } from "./processors/feedbackLoop.processor";
 import { processMondayEmail } from "./processors/mondayEmail.processor";
+import { generateAllSnapshots } from "../services/rankingsIntelligence";
 import { getMindsQueue, getPmQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 import { getSharedRedis, closeSharedRedis } from "../services/redis";
@@ -257,8 +258,18 @@ const productEvolutionWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// Weekly Ranking Snapshots (Sunday 11 PM UTC = Sunday 6 PM ET)
+// Refreshes Google position + competitor data for every customer.
+// Runs BEFORE score recalc so scores use fresh position data.
+const weeklyRankingSnapshotWorker = new Worker(
+  "minds-weekly-ranking-snapshot",
+  async () => { await generateAllSnapshots(); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // Weekly Score Recalculation (Sunday 10 PM ET = Monday 3 AM UTC)
 // Makes the Business Clarity Score alive. Runs before Monday email.
+// Depends on fresh snapshots from the ranking snapshot worker above.
 const weeklyScoreRecalcWorker = new Worker(
   "minds-weekly-score-recalc",
   async (job) => { await processWeeklyScoreRecalc(job); },
@@ -282,7 +293,7 @@ const feedbackLoopWorker = new Worker(
 );
 
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker, weeklyScoreRecalcWorker, mondayEmailWorker, feedbackLoopWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker, weeklyRankingSnapshotWorker, weeklyScoreRecalcWorker, mondayEmailWorker, feedbackLoopWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -313,6 +324,7 @@ async function shutdown(): Promise<void> {
   await dreamweaverWorker.close();
   await collectiveIntelligenceWorker.close();
   await productEvolutionWorker.close();
+  await weeklyRankingSnapshotWorker.close();
   await weeklyScoreRecalcWorker.close();
   await mondayEmailWorker.close();
   await feedbackLoopWorker.close();
@@ -472,6 +484,28 @@ async function setupWeeklyScoreRecalcSchedule(): Promise<void> {
   }
 }
 
+// Set up Weekly Ranking Snapshot (Sunday 11 PM UTC = 6 PM ET)
+// This is the data foundation. Without fresh snapshots, scores and emails use stale data.
+async function setupWeeklyRankingSnapshotSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("weekly-ranking-snapshot");
+    await queue.add(
+      "weekly-ranking-snapshot",
+      {},
+      {
+        repeat: {
+          pattern: "0 23 * * 0", // Sunday 11 PM UTC = 6 PM ET
+          tz: "UTC",
+        },
+        jobId: "weekly-ranking-snapshot",
+      }
+    );
+    console.log("[MINDS-WORKER] Weekly ranking snapshot scheduled (Sunday 11 PM UTC / 6 PM ET)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up weekly ranking snapshot:", err);
+  }
+}
+
 // Set up Monday Email schedule (Monday 12 PM UTC = 7 AM ET)
 async function setupMondayEmailSchedule(): Promise<void> {
   try {
@@ -543,6 +577,7 @@ setupSchedulerTick();
 setupPmDailyBriefSchedule();
 setupCollectiveIntelligenceSchedule();
 setupProductEvolutionSchedule();
+setupWeeklyRankingSnapshotSchedule();
 setupWeeklyScoreRecalcSchedule();
 setupMondayEmailSchedule();
 setupFeedbackLoopSchedule();
