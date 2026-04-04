@@ -151,6 +151,14 @@ export async function recalculateScore(orgId: number): Promise<RecalcResult | nu
       }
     }
 
+    // 2b. Fetch latest Google position from snapshot
+    const latestSnapshot = await db("weekly_ranking_snapshots")
+      .where({ org_id: orgId })
+      .orderBy("week_start", "desc")
+      .select("position", "google_position")
+      .first();
+    const googlePosition = latestSnapshot?.google_position ?? latestSnapshot?.position ?? null;
+
     // 3. Run the scoring algorithm
     const result = calculateClarityScore(
       {
@@ -171,6 +179,7 @@ export async function recalculateScore(orgId: number): Promise<RecalcResult | nu
         photosCount: c.photosCount ?? 0,
       })),
       specialty,
+      googlePosition,
     );
 
     const newScore = result.composite;
@@ -210,6 +219,10 @@ export async function recalculateScore(orgId: number): Promise<RecalcResult | nu
       },
       score: {
         composite: newScore,
+        googlePosition: result.subScores.googlePosition,
+        reviewHealth: result.subScores.reviewHealth,
+        gbpCompleteness: result.subScores.gbpCompleteness,
+        // Legacy aliases for backwards compatibility
         trustSignal: result.subScores.trust,
         firstImpression: result.subScores.impression,
         responsiveness: result.subScores.responsiveness,

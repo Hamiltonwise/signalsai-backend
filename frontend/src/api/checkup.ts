@@ -6,17 +6,20 @@ import { getSessionId } from "./tracking";
 
 export interface CheckupScore {
   composite: number;
-  reputation: number;
-  visibility: number;
-  competitive: number;
-  // Extended sub-scores (populated when available)
+  // New three-score model (April 3 2026)
+  googlePosition?: number;
+  reviewHealth?: number;
+  gbpCompleteness?: number;
+  // Legacy aliases (backwards compatibility with stored data)
+  reputation?: number;
+  visibility?: number;
+  competitive?: number;
   trustSignal?: number;
   firstImpression?: number;
   responsiveness?: number;
   competitiveEdge?: number;
   localVisibility?: number;
   onlinePresence?: number;
-  reviewHealth?: number;
 }
 
 export interface CheckupCompetitor {

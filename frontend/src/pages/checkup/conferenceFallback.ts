@@ -33,6 +33,9 @@ export const CONFERENCE_ANALYSIS = {
   success: true as const,
   score: {
     composite: 61,
+    googlePosition: 22,
+    reviewHealth: 20,
+    gbpCompleteness: 19,
     trustSignal: 18,
     firstImpression: 20,
     responsiveness: 13,
@@ -137,6 +140,9 @@ export const BARBER_DEMO_ANALYSIS = {
   success: true as const,
   score: {
     composite: 54,
+    googlePosition: 16,
+    reviewHealth: 20,
+    gbpCompleteness: 18,
     trustSignal: 16,
     firstImpression: 18,
     responsiveness: 10,
@@ -297,13 +303,16 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
 
   // Composite 38-72 (realistic range for most practices)
   const composite = 38 + Math.abs(seed % 35);
-  // New First Impression sub-scores (trust /30, impression /30, response /20, edge /20)
-  const trustSignal = 8 + Math.abs((seed >> 4) % 14); // 8-21
-  const firstImpression = 8 + Math.abs((seed >> 8) % 14); // 8-21
-  const responsiveness = 4 + Math.abs((seed >> 12) % 10); // 4-13
-  const competitiveEdge = Math.max(3, composite - trustSignal - firstImpression - responsiveness);
-
+  // Three sub-scores: position /34, reviews /33, gbp /33
   const rank = 2 + Math.abs((seed >> 12) % 4); // #2 through #5
+  const googlePosition = rank === 2 ? 28 : rank === 3 ? 22 : 16;
+  const reviewHealth = 8 + Math.abs((seed >> 4) % 14); // 8-21
+  const gbpCompleteness = Math.max(5, composite - googlePosition - reviewHealth);
+  // Legacy aliases
+  const trustSignal = reviewHealth;
+  const firstImpression = gbpCompleteness;
+  const responsiveness = 4 + Math.abs((seed >> 8) % 10);
+  const competitiveEdge = googlePosition;
   const totalCompetitors = 4 + Math.abs((seed >> 16) % 4); // 4-7
 
   const topReviews = (place.reviewCount || 61) + 80 + Math.abs((seed >> 6) % 200);
@@ -316,11 +325,13 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
     ...CONFERENCE_ANALYSIS,
     score: {
       composite,
+      googlePosition,
+      reviewHealth,
+      gbpCompleteness,
       trustSignal,
       firstImpression,
       responsiveness,
       competitiveEdge,
-      // Legacy aliases
       visibility: trustSignal,
       reputation: firstImpression,
       competitive: responsiveness,

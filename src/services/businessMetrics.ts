@@ -157,8 +157,7 @@ export const COMPETITIVE_RADII_MILES: Record<string, number> = {
 
 // Score label thresholds (used by clarity scoring and checkup)
 export function getScoreLabel(score: number): string {
-  if (score >= 80) return "Strong first impression";
-  if (score >= 60) return "Solid foundation";
-  if (score >= 40) return "Room to grow";
-  return "Needs attention";
+  if (score >= 80) return "Strong Position";
+  if (score >= 60) return "Building Momentum";
+  return "Your Starting Point";
 }

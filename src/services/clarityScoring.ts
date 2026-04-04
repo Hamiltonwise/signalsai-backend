@@ -1,16 +1,18 @@
 /**
- * Clarity Scoring Engine -- Shared First Impression scoring algorithm
+ * Clarity Scoring Engine -- Business Clarity Score
  *
- * Extracted from checkup.ts so the same logic can run during:
- * 1. Initial checkup (checkup.ts)
- * 2. Weekly score recalculation (weeklyScoreRecalc.ts)
+ * Three sub-scores from public Google data:
+ * 1. Google Position (0-34): Where you show up in search results
+ * 2. Review Health (0-33): Rating, volume, recency, response rate
+ * 3. GBP Completeness (0-33): Photos, hours, phone, website, description
  *
- * The scoring algorithm answers: "When a qualified prospect sees your
- * Google profile, do they choose you or swipe past?"
+ * Total: 0-100. Publicly verifiable. No Puppeteer. No assumptions.
+ *
+ * Aligned to Master Build Spec (April 3 2026) and Competitive Market Definition (March 24).
  */
 
 // Benchmarks imported from single source of truth
-import { REVIEW_VOLUME_BENCHMARKS } from "./businessMetrics";
+import { REVIEW_VOLUME_BENCHMARKS, getScoreLabel } from "./businessMetrics";
 export { REVIEW_VOLUME_BENCHMARKS };
 
 export interface PlaceData {
@@ -34,10 +36,14 @@ export interface CompetitorData {
 }
 
 export interface SubScores {
-  trust: number;
-  impression: number;
-  responsiveness: number;
-  edge: number;
+  googlePosition: number;
+  reviewHealth: number;
+  gbpCompleteness: number;
+  // Legacy aliases for backwards compatibility with stored checkup_data
+  trust?: number;
+  impression?: number;
+  responsiveness?: number;
+  edge?: number;
 }
 
 export interface ScoringResult {
@@ -46,26 +52,26 @@ export interface ScoringResult {
   scoreLabel: string;
 }
 
-import { getScoreLabel } from "./businessMetrics";
-
 /**
- * Calculate the Business Clarity Score from place data and competitors.
+ * Calculate the Business Clarity Score from place data, competitors, and position.
  *
  * This is the single source of truth for scoring. Both the initial checkup
  * and the weekly recalculation call this function.
+ *
+ * @param place - The business's Google Places data
+ * @param competitors - Array of competitor data
+ * @param specialty - Business specialty (for review volume benchmarks)
+ * @param googlePosition - Optional: actual Google search position (1-based). If not provided, estimated from competitor ranking.
  */
 export function calculateClarityScore(
   place: PlaceData,
   competitors: CompetitorData[],
   specialty: string,
+  googlePosition?: number | null,
 ): ScoringResult {
   const specKey = specialty.toLowerCase();
   const clientRating = place.rating ?? 0;
   const clientReviews = place.reviewCount ?? 0;
-
-  // Competitor averages
-  const compCount = competitors.length || 1;
-  const avgRating = competitors.reduce((s, c) => s + c.totalScore, 0) / compCount;
 
   // --- Extract review signals ---
   let reviewResponseRate = 0;
@@ -118,98 +124,121 @@ export function calculateClarityScore(
     }
   }
 
-  // TRUST SIGNAL (0-30)
-  let ratingStrengthPts = 1;
-  if (clientRating >= 5.0) ratingStrengthPts = 12;
-  else if (clientRating >= 4.8) ratingStrengthPts = 10;
-  else if (clientRating >= 4.5) ratingStrengthPts = 7;
-  else if (clientRating >= 4.0) ratingStrengthPts = 4;
+  // =====================================================================
+  // SUB-SCORE 1: GOOGLE POSITION (0-34)
+  // From Places API text search. Verifiable by Googling.
+  // =====================================================================
 
+  let googlePositionScore = 0;
+  const pos = googlePosition ?? null;
+
+  if (pos !== null && pos > 0) {
+    if (pos === 1) googlePositionScore = 34;
+    else if (pos === 2) googlePositionScore = 28;
+    else if (pos === 3) googlePositionScore = 22;
+    else if (pos <= 5) googlePositionScore = 16;
+    else if (pos <= 10) googlePositionScore = 10;
+    else if (pos <= 20) googlePositionScore = 5;
+    else googlePositionScore = 2;
+  } else {
+    // Position unknown: assign neutral score (not penalized, not rewarded)
+    googlePositionScore = 17;
+  }
+
+  // =====================================================================
+  // SUB-SCORE 2: REVIEW HEALTH (0-33)
+  // Rating strength + Review volume + Recency + Response rate
+  // =====================================================================
+
+  // Rating strength (0-10)
+  let ratingPts = 1;
+  if (clientRating >= 5.0) ratingPts = 10;
+  else if (clientRating >= 4.8) ratingPts = 8;
+  else if (clientRating >= 4.5) ratingPts = 6;
+  else if (clientRating >= 4.0) ratingPts = 4;
+  else if (clientRating >= 3.5) ratingPts = 2;
+
+  // Review volume (0-8)
   const benchmark = REVIEW_VOLUME_BENCHMARKS[specKey] || 50;
   const volumeRatio = clientReviews / benchmark;
-  let reviewVolumePts = 0;
-  if (volumeRatio >= 3) reviewVolumePts = 10;
-  else if (volumeRatio >= 2) reviewVolumePts = 9;
-  else if (volumeRatio >= 1.5) reviewVolumePts = 8;
-  else if (volumeRatio >= 1) reviewVolumePts = 7;
-  else if (volumeRatio >= 0.5) reviewVolumePts = 5;
-  else if (volumeRatio >= 0.25) reviewVolumePts = 3;
-  else if (volumeRatio > 0) reviewVolumePts = 1;
+  let volumePts = 0;
+  if (volumeRatio >= 3) volumePts = 8;
+  else if (volumeRatio >= 2) volumePts = 7;
+  else if (volumeRatio >= 1.5) volumePts = 6;
+  else if (volumeRatio >= 1) volumePts = 5;
+  else if (volumeRatio >= 0.5) volumePts = 4;
+  else if (volumeRatio >= 0.25) volumePts = 2;
+  else if (volumeRatio > 0) volumePts = 1;
 
+  // Recency (0-7)
   let recencyPts = 0;
-  if (lastReviewDaysAgo <= 7) recencyPts = 8;
-  else if (lastReviewDaysAgo <= 14) recencyPts = 6;
-  else if (lastReviewDaysAgo <= 30) recencyPts = 4;
-  else if (lastReviewDaysAgo <= 60) recencyPts = 2;
+  if (lastReviewDaysAgo <= 7) recencyPts = 7;
+  else if (lastReviewDaysAgo <= 14) recencyPts = 5;
+  else if (lastReviewDaysAgo <= 30) recencyPts = 3;
+  else if (lastReviewDaysAgo <= 60) recencyPts = 1;
 
-  const trustSignal = Math.min(30, ratingStrengthPts + reviewVolumePts + recencyPts);
+  // Response rate (0-8)
+  let responsePts = 0;
+  if (!responseDataAvailable) {
+    responsePts = 4; // Neutral when we can't verify
+  } else {
+    if (reviewResponseRate >= 80) responsePts = 8;
+    else if (reviewResponseRate >= 50) responsePts = 6;
+    else if (reviewResponseRate >= 20) responsePts = 3;
+    else if (reviewResponseRate >= 1) responsePts = 1;
 
-  // FIRST IMPRESSION (0-30)
+    // Bonus for responding to negative reviews
+    if (!allReviewsPositive && hasRespondedToNegative) responsePts = Math.min(8, responsePts + 2);
+  }
+
+  const reviewHealth = Math.min(33, ratingPts + volumePts + recencyPts + responsePts);
+
+  // =====================================================================
+  // SUB-SCORE 3: GBP COMPLETENESS (0-33)
+  // Photos + Hours/Phone/Website + Editorial summary + Status
+  // =====================================================================
+
+  // Photos (0-10)
   const clientPhotos = place.photosCount;
   let photoPts = 0;
-  if (clientPhotos >= 8) photoPts = 10;
-  else if (clientPhotos >= 5) photoPts = 8;
-  else if (clientPhotos >= 2) photoPts = 5;
-  else if (clientPhotos >= 1) photoPts = 3;
+  if (clientPhotos >= 10) photoPts = 10;
+  else if (clientPhotos >= 8) photoPts = 9;
+  else if (clientPhotos >= 5) photoPts = 7;
+  else if (clientPhotos >= 2) photoPts = 4;
+  else if (clientPhotos >= 1) photoPts = 2;
 
+  // Core info completeness: hours + phone + website (0-12)
   const completenessCount = [place.hasHours, place.hasPhone, place.hasWebsite].filter(Boolean).length;
   let completenessPts = 0;
   if (completenessCount === 3) completenessPts = 12;
   else if (completenessCount === 2) completenessPts = 8;
   else if (completenessCount === 1) completenessPts = 4;
 
-  const editorialPts = place.hasEditorialSummary ? 3 : 0;
-  const statusPts = (place.businessStatus === "OPERATIONAL" || place.businessStatus === "OPEN") ? 5 : 0;
+  // Editorial summary / Google AI description (0-5)
+  const editorialPts = place.hasEditorialSummary ? 5 : 0;
 
-  const firstImpression = Math.min(30, photoPts + completenessPts + editorialPts + statusPts);
+  // Business status (0-6)
+  const statusPts = (place.businessStatus === "OPERATIONAL" || place.businessStatus === "OPEN") ? 6 : 0;
 
-  // RESPONSIVENESS (0-20)
-  let responseRatePts = 0;
-  let negativeResponsePts = 0;
+  const gbpCompleteness = Math.min(33, photoPts + completenessPts + editorialPts + statusPts);
 
-  if (!responseDataAvailable) {
-    responseRatePts = 9;
-    negativeResponsePts = 5;
-  } else {
-    if (reviewResponseRate >= 80) responseRatePts = 12;
-    else if (reviewResponseRate >= 50) responseRatePts = 8;
-    else if (reviewResponseRate >= 20) responseRatePts = 5;
-    else if (reviewResponseRate >= 1) responseRatePts = 2;
+  // =====================================================================
+  // COMPOSITE
+  // =====================================================================
 
-    if (allReviewsPositive) negativeResponsePts = 4;
-    else if (hasRespondedToNegative) negativeResponsePts = 8;
-  }
-
-  const responsiveness = Math.min(20, responseRatePts + negativeResponsePts);
-
-  // COMPETITIVE EDGE (0-20)
-  let competitiveEdge = 10; // Neutral default when no competitors
-
-  if (competitors.length > 0) {
-    const ratingAdvantage = clientRating - avgRating;
-    const ratingAdvantagePts = Math.round(Math.min(8, Math.max(0, (ratingAdvantage + 0.5) * 8)));
-
-    const maxReviews = Math.max(...competitors.map((c) => c.reviewsCount), 1);
-    const volumeAdvantage = clientReviews / maxReviews;
-    let volumeAdvantagePts = 0;
-    if (volumeAdvantage >= 3) volumeAdvantagePts = 12;
-    else if (volumeAdvantage >= 2) volumeAdvantagePts = 10;
-    else if (volumeAdvantage >= 1) volumeAdvantagePts = 8;
-    else if (volumeAdvantage >= 0.5) volumeAdvantagePts = 4;
-    else volumeAdvantagePts = Math.round(volumeAdvantage * 4);
-
-    competitiveEdge = Math.min(20, ratingAdvantagePts + volumeAdvantagePts);
-  }
-
-  const composite = trustSignal + firstImpression + responsiveness + competitiveEdge;
+  const composite = googlePositionScore + reviewHealth + gbpCompleteness;
 
   return {
     composite,
     subScores: {
-      trust: trustSignal,
-      impression: firstImpression,
-      responsiveness,
-      edge: competitiveEdge,
+      googlePosition: googlePositionScore,
+      reviewHealth,
+      gbpCompleteness,
+      // Legacy aliases so old code doesn't break during transition
+      trust: reviewHealth,
+      impression: gbpCompleteness,
+      responsiveness: responsePts,
+      edge: googlePositionScore,
     },
     scoreLabel: getScoreLabel(composite),
   };

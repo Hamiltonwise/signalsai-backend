@@ -14,10 +14,8 @@ import {
   Copy,
   Share2,
   Zap,
-  Shield,
   Image,
   Reply,
-  Swords,
 } from "lucide-react";
 import type { PlaceDetails } from "../../api/places";
 import { sendCheckupEmail, triggerBuild, createCompetitorInvite } from "../../api/checkup";
@@ -68,15 +66,17 @@ export interface CheckupResults {
   place: PlaceDetails;
   score: {
     composite: number;
-    // New First Impression sub-scores
-    trustSignal: number;
-    firstImpression: number;
-    responsiveness: number;
-    competitiveEdge: number;
-    // Legacy aliases (backend sends both during transition)
-    localVisibility: number;
-    onlinePresence: number;
-    reviewHealth: number;
+    // Three-score model (April 3 2026)
+    googlePosition?: number;
+    reviewHealth?: number;
+    gbpCompleteness?: number;
+    // Legacy aliases (backwards compatibility with stored data)
+    trustSignal?: number;
+    firstImpression?: number;
+    responsiveness?: number;
+    competitiveEdge?: number;
+    localVisibility?: number;
+    onlinePresence?: number;
   };
   scoreLabel?: string;
   competitiveDataLimited?: boolean;
@@ -962,65 +962,56 @@ export default function ResultsScreen() {
           {state.scoreLabel && (
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
               score.composite >= 80 ? "bg-emerald-50 text-emerald-700" :
+              score.composite >= 80 ? "bg-emerald-50 text-emerald-700" :
               score.composite >= 60 ? "bg-blue-50 text-blue-700" :
-              score.composite >= 40 ? "bg-amber-50 text-amber-700" :
-              "bg-red-50 text-red-700"
+              "bg-amber-50 text-amber-700"
             }`}>{state.scoreLabel}</span>
           )}
         </div>
 
-        {/* Trust Signal */}
+        {/* Google Position */}
         <div className="space-y-2">
-          <SubScoreBar label="Trust Signal" score={score.trustSignal ?? score.localVisibility} maxScore={30} icon={Shield} />
+          <SubScoreBar label="Google Position" score={score.googlePosition ?? score.competitiveEdge ?? 17} maxScore={34} icon={MapPin} />
+          <p className="text-xs text-slate-500 leading-relaxed pl-11">
+            {market?.rank ? (
+              <>
+                You are <span className="font-semibold text-slate-700">#{market.rank}</span> when people search in {market.city || "your area"}.
+                {topCompetitor && <> <span className="font-semibold text-slate-700">{topCompetitor.name}</span> holds #1.</>}
+              </>
+            ) : (
+              <>Your position in local search results. Google yourself to verify.</>
+            )}
+          </p>
+        </div>
+
+        {/* Review Health */}
+        <div className="space-y-2">
+          <SubScoreBar label="Review Health" score={score.reviewHealth ?? score.trustSignal ?? score.localVisibility ?? 0} maxScore={33} icon={Star} />
           <p className="text-xs text-slate-500 leading-relaxed pl-11">
             {place.rating ? (
               <>
-                Your <span className="font-semibold text-slate-700">{place.rating}-star rating</span> with{" "}
+                <span className="font-semibold text-slate-700">{place.rating} stars</span> across{" "}
                 <span className="font-semibold text-slate-700">{place.reviewCount} review{place.reviewCount !== 1 ? "s" : ""}</span>.
+                {" "}Rating, volume, recency, and how you respond.
                 {market && market.avgRating > 0 && (
                   place.rating >= market.avgRating
-                    ? <> People see a rating above the {market.city} average of {market.avgRating.toFixed(1)}.</>
-                    : <> The {market.city} average is {market.avgRating.toFixed(1)}. Every improvement matters.</>
+                    ? <> Above the {market.city} average of {market.avgRating.toFixed(1)}.</>
+                    : <> The {market.city} average is {market.avgRating.toFixed(1)}.</>
                 )}
               </>
             ) : (
-              <>Rating and review data is being analyzed.</>
+              <>Rating, review volume, recency, and response rate.</>
             )}
           </p>
         </div>
 
-        {/* First Impression */}
+        {/* GBP Completeness */}
         <div className="space-y-2">
-          <SubScoreBar label="First Impression" score={score.firstImpression ?? score.onlinePresence} maxScore={30} icon={Image} />
+          <SubScoreBar label="GBP Completeness" score={score.gbpCompleteness ?? score.firstImpression ?? score.onlinePresence ?? 0} maxScore={33} icon={Globe} />
           <p className="text-xs text-slate-500 leading-relaxed pl-11">
-            Photos, business hours, contact info, and description completeness.
-            {!place.websiteUri && <> No website linked on your profile, which reduces trust.</>}
+            Photos, business hours, phone, website, and description.
+            {!place.websiteUri && <> No website linked on your profile.</>}
             {" "}People decide in seconds whether to call or scroll past.
-          </p>
-        </div>
-
-        {/* Responsiveness */}
-        <div className="space-y-2">
-          <SubScoreBar label="Responsiveness" score={score.responsiveness ?? score.reviewHealth} maxScore={20} icon={Reply} />
-          <p className="text-xs text-slate-500 leading-relaxed pl-11">
-            How actively you engage with reviews. People notice when owners respond, especially to negative feedback.
-          </p>
-        </div>
-
-        {/* Competitive Edge */}
-        <div className="space-y-2">
-          <SubScoreBar label="Competitive Edge" score={score.competitiveEdge ?? 10} maxScore={20} icon={Swords} />
-          <p className="text-xs text-slate-500 leading-relaxed pl-11">
-            {state.competitiveDataLimited ? (
-              <>Competitive data limited in your area. This score reflects your profile strength alone.</>
-            ) : market && market.totalCompetitors > 0 ? (
-              <>
-                How you compare to <span className="font-semibold text-slate-700">{market.totalCompetitors}</span> nearby alternatives.
-                {topCompetitor && <> <span className="font-semibold text-slate-700">{topCompetitor.name}</span> is the closest comparison.</>}
-              </>
-            ) : (
-              <>Profile strength score. Connect your account for competitive intelligence.</>
-            )}
           </p>
         </div>
       </div>

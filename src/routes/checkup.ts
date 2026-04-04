@@ -1157,12 +1157,15 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       success: true,
       score: {
         composite: compositeScore,
-        // New First Impression sub-scores
+        // Three-score model (April 3 2026)
+        googlePosition: rank === 1 ? 34 : rank === 2 ? 28 : rank === 3 ? 22 : rank <= 5 ? 16 : rank <= 10 ? 10 : rank <= 20 ? 5 : 2,
+        reviewHealth: Math.min(33, trustSignal + Math.min(8, responsiveness)),
+        gbpCompleteness: Math.min(33, firstImpression),
+        // Legacy sub-scores
         trustSignal,
         firstImpression,
         responsiveness,
         competitiveEdge,
-        // Legacy aliases for frontend compatibility during transition
         visibility: trustSignal,
         reputation: firstImpression,
         competitive: responsiveness,
