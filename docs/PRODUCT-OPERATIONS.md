@@ -74,6 +74,8 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 3, 2026, Corey Wise.
 **Override requires:** Corey only.
 
+**Active violation (April 4):** Monday email fallback bullets still calculate `annualAtRisk = Math.round(gap * 0.3 * avgCaseValue)` from review count projections. This is a formula with assumptions, not real revenue data. Needs code fix to comply.
+
 ---
 
 ### Known 5: The Recipe
@@ -184,15 +186,17 @@ The Business Clarity Score is the sum of three factors. Each must be independent
 
 ### Factor 3: Google Visibility (0-34, Medium Impact)
 
-**What it measures:** Search presence signals derived from photo count, review response activity, posting frequency, and website presence.
+**What it currently measures:** Estimated from Google Places API position data. This is the least verifiable factor because Places API results don't match what customers see on Google Search.
 
-**What the customer sees:** "Strong search presence" / "Moderate search presence" / "Low search visibility."
+**Target state:** Replace with verifiable signals: photo count, review response rate, posting frequency, website presence. All checkable by the customer on their own GBP.
 
-**How they verify:** Check their GBP photos, responses, and posts.
+**What the customer sees:** "Strong search presence" / "Moderate search presence" / "Low search visibility." No position number.
+
+**How they verify (target):** Check their GBP photos, responses, and posts.
 
 **Status color logic:** Green if score >= 23. Yellow if >= 12. Red if below 12.
 
-**Note:** This factor is hidden until the current scoring algorithm has run (weekly recalc). It does NOT show a Google search position number (see Known 3).
+**Note:** This factor is hidden until the current scoring algorithm has run (weekly recalc). It does NOT show a Google search position number (see Known 3). The transition from position-based to activity-based inputs is a pending code change.
 
 ---
 
@@ -284,9 +288,35 @@ Five pages. Five questions. One product.
 
 ---
 
-## Part 6: Design Knowns
+## Part 6: Process Knowns
 
-### Known 11: Warm, not clinical
+### Known 11: Check the map
+
+**Rule:** Before every commit, walk through what each affected customer-facing page will show. Describe it in the conversation. If you can't describe it with certainty, you haven't verified it and you don't commit.
+
+**Test:** Is there a Customer Reality Check in the conversation before the commit message? Does it describe what the customer sees on each affected page?
+
+**Violation:** Code pushed after "TypeScript compiles" without describing the customer experience. Code pushed after saying "I'm not confident." Screenshots from Corey revealing problems that should have been caught.
+
+**Locked:** April 4, 2026, Corey Wise.
+**Override requires:** Corey only.
+
+---
+
+### Known 12: Customer Reality Check before every build
+
+**Rule:** Before touching code, write a Customer Reality Check: what the customer sees now, what they should see after, what could go wrong, what you're confident about, what you're not confident about.
+
+**Test:** Is there a CRC in the conversation before the first code change? Does it reference specific Knowns from this document?
+
+**Violation:** Code changes start without describing the current or target customer experience. Assumptions made without stating them. Problems discovered after commit that were predictable.
+
+**Locked:** April 4, 2026, Corey Wise.
+**Override requires:** Corey only.
+
+---
+
+### Known 13: Warm, not clinical
 
 **Rule:** Background is #F8F6F2 (warm off-white). Never pure white. Never cold blue. The product feels like a private study, not a hospital dashboard.
 
@@ -296,7 +326,7 @@ Five pages. Five questions. One product.
 
 ---
 
-### Known 12: Brand constants
+### Known 14: Brand constants
 
 **Rule:**
 - Terracotta #D56753: CTAs and accents only
@@ -312,7 +342,7 @@ Five pages. Five questions. One product.
 
 ---
 
-### Known 13: Max 2 temporary prompts
+### Known 15: Max 2 temporary prompts
 
 **Rule:** The Home page shows at most 2 conditional/temporary elements (billing prompt, milestone card, onboarding). The core experience (gauge + factors + action card) is always visible. Temporary prompts never push core content below the fold.
 
@@ -411,19 +441,6 @@ Every locked decision with the reasoning. If someone asks "why," point them here
 **To change a Known:** Write the proposed change, the reason, and get the override approval listed in that Known. Add the old decision and the new one to the Key Decisions Log with dates. Knowns are constitutional. They don't change casually.
 
 **Check the map:** Before every commit, walk through what the customer sees. Reference this document. If something contradicts a Known, the code is wrong.
-
----
-
-*Alloro Product Constitution. Authored by Corey Wise. Built by Claude. April 4, 2026.*
-*If code contradicts this document, the code is wrong.*
-
-**Before building:** Read the relevant Knowns. Write a Customer Reality Check that references them. If your build would violate a Known, stop.
-
-**Before committing:** Check each Known your changes touch. Run the test. If it fails, fix it before pushing.
-
-**Before handing off:** Point to this document. The receiver reads it and knows exactly how the product is intended to work and what tests to run.
-
-**To change a Known:** Write the proposed change, the reason, and get the override approval listed in that Known. Add the old decision and the new one to the Key Decisions Log with dates. Knowns are constitutional. They don't change casually.
 
 ---
 
