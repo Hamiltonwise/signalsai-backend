@@ -37,7 +37,7 @@ class PresenceErrorBoundary extends Component<{ children: ReactNode }, { hasErro
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="min-h-screen bg-[#F8F6F2] flex items-center justify-center">
           <div className="text-center max-w-sm">
             <AlertCircle className="w-8 h-8 text-gray-300 mx-auto mb-3" />
             <p className="text-sm text-gray-500">Your presence data is loading. Try refreshing in a moment.</p>
@@ -141,7 +141,7 @@ function PresencePageInner() {
   const profileComplete = profileItems.filter(i => i.has).length;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8F6F2]">
       <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-4">
 
         {/* Header */}

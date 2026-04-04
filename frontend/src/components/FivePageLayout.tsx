@@ -22,7 +22,7 @@ const NAV_ITEMS = [
 
 export default function FivePageLayout() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20 sm:pb-0">
+    <div className="min-h-screen bg-[#F8F6F2] pb-20 sm:pb-0">
       {/* Page content */}
       <main>
         <Outlet />

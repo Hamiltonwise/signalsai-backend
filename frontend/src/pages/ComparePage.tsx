@@ -113,7 +113,7 @@ export default function ComparePage() {
   const topCompetitor = rankingRaw?.rawData?.topCompetitor || null;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8F6F2]">
       <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-4">
 
         {/* Header */}
