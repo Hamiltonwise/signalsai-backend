@@ -757,16 +757,31 @@ export async function sendAllMondayEmails(): Promise<{ sent: number; total: numb
         .orWhereNotNull("checkup_score")
         .orWhere("onboarding_completed", true);
     })
-    .select("id", "name");
+    .select("id", "name", "utc_offset_minutes");
+
+  // Timezone-aware delivery: only send to orgs whose local time is 7 AM right now.
+  // UTC hour = 7 - (offset / 60). If cron runs at UTC hour H, org's local hour = H + offset/60.
+  // We want local hour = 7, so: H + offset/60 = 7 => offset/60 = 7 - H => offset = (7 - H) * 60
+  const currentUtcHour = new Date().getUTCHours();
 
   let sent = 0;
   let held = 0;
   let skippedTest = 0;
+  let skippedTimezone = 0;
   for (const org of orgs) {
     try {
       // Skip test/demo orgs
       if (TEST_ORG_PATTERNS.test(org.name)) {
         skippedTest++;
+        continue;
+      }
+
+      // Timezone filter: skip orgs whose local time is not 7 AM (within this hour)
+      // If no timezone stored, default to US Eastern (UTC-5 / UTC-4 depending on DST)
+      const offsetMinutes = org.utc_offset_minutes ?? -300; // Default Eastern (-5h = -300min)
+      const localHour = (currentUtcHour + offsetMinutes / 60 + 24) % 24;
+      if (Math.floor(localHour) !== 7) {
+        skippedTimezone++;
         continue;
       }
       // Check admin user email domain
@@ -826,6 +841,6 @@ export async function sendAllMondayEmails(): Promise<{ sent: number; total: numb
       : undefined,
   });
 
-  console.log(`[MondayEmail] Sent ${sent}/${orgs.length} emails (${held} held by Go/No-Go, ${skippedTest} test orgs skipped)`);
+  console.log(`[MondayEmail] Sent ${sent}/${orgs.length} emails (${skippedTimezone} not in 7AM window, ${skippedTest} test orgs skipped)`);
   return { sent, total: orgs.length };
 }

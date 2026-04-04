@@ -506,7 +506,9 @@ async function setupWeeklyRankingSnapshotSchedule(): Promise<void> {
   }
 }
 
-// Set up Monday Email schedule (Monday 12 PM UTC = 7 AM ET)
+// Set up Monday Email schedule (every hour on Mondays, timezone-aware)
+// Each run sends only to orgs whose local time is 7 AM.
+// A customer in New York gets it at 7 AM ET. A customer in LA gets it at 7 AM PT.
 async function setupMondayEmailSchedule(): Promise<void> {
   try {
     const queue = getMindsQueue("monday-email");
@@ -515,13 +517,13 @@ async function setupMondayEmailSchedule(): Promise<void> {
       {},
       {
         repeat: {
-          pattern: "0 12 * * 1", // Monday 12 PM UTC = 7 AM ET
+          pattern: "0 * * * 1", // Every hour on Mondays
           tz: "UTC",
         },
         jobId: "weekly-monday-email",
       }
     );
-    console.log("[MINDS-WORKER] Monday email scheduled (Monday 12 PM UTC / 7 AM ET)");
+    console.log("[MINDS-WORKER] Monday email scheduled (every hour on Mondays, timezone-aware)");
   } catch (err: any) {
     console.error("[MINDS-WORKER] Failed to set up Monday email schedule:", err);
   }

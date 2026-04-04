@@ -1606,6 +1606,11 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
           checkup_data: checkup_data || null,
         });
 
+        // Store timezone from Places API for timezone-aware email delivery
+        if (checkup_data?.place?.utcOffsetMinutes != null) {
+          checkupUpdates.utc_offset_minutes = checkup_data.place.utcOffsetMinutes;
+        }
+
         await trx("organizations").where({ id: newOrg.id }).update(checkupUpdates);
       }
 
