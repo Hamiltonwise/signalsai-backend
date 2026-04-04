@@ -137,8 +137,7 @@ function ComparePageInner() {
 
   const checkupData = ctx?.org?.checkup_data || null;
   const score = ctx?.org?.current_clarity_score || ctx?.org?.checkup_score || rankingRaw?.rankScore || null;
-  const position = rankingRaw?.rankPosition || null;
-  const city = rankingRaw?.location?.split(",")[0]?.trim() || null;
+  // position/city removed from display: Places API rank doesn't match Google Search
   const topCompetitor = rankingRaw?.rawData?.topCompetitor || null;
 
   return (
@@ -151,9 +150,9 @@ function ComparePageInner() {
           animate={{ opacity: 1, y: 0 }}
         >
           <h1 className="text-lg font-semibold text-[#1A1D23]">How You Compare</h1>
-          {position && city && (
+          {topCompetitor && (
             <p className="text-sm text-gray-500 mt-1">
-              #{position} in {city}{topCompetitor ? ` -- ${topCompetitor.name} leads with ${topCompetitor.reviewCount} reviews` : ""}
+              {topCompetitor.name} leads your market with {topCompetitor.reviewCount} reviews
             </p>
           )}
         </motion.div>

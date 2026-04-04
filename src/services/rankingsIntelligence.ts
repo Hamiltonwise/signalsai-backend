@@ -63,32 +63,48 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
   let topCompetitorReviews = 0;
   let clientReviews = 0;
 
+  // Look up client placeId from checkup_data for accurate matching
+  let clientPlaceId: string | null = null;
+  try {
+    const orgData = await db("organizations").where({ id: orgId }).select("checkup_data").first();
+    const parsed = orgData?.checkup_data
+      ? (typeof orgData.checkup_data === "string" ? JSON.parse(orgData.checkup_data) : orgData.checkup_data)
+      : null;
+    clientPlaceId = parsed?.placeId || null;
+  } catch { /* non-blocking */ }
+
   try {
     const query = `${specialty} near ${address}`.trim();
     if (query.length > 10) {
       const results = await textSearch(query, 10);
       const orgNameLower = org.name.toLowerCase();
 
+      // Match self: prefer placeId (exact), fall back to name matching
       for (let i = 0; i < results.length; i++) {
-        const placeName = (results[i].displayName?.text || "").toLowerCase();
-        if (placeName.includes(orgNameLower) || orgNameLower.includes(placeName)) {
+        const rPlaceId = results[i].id || null;
+        if (clientPlaceId && rPlaceId === clientPlaceId) {
           currentPosition = i + 1;
           clientReviews = results[i].userRatingCount || 0;
           break;
         }
       }
 
-      // Top competitor = first result that isn't us or a multi-location variant
-      // Look up client placeId from checkup_data for accurate filtering
-      let clientPlaceId: string | null = null;
-      try {
-        const orgData = await db("organizations").where({ id: orgId }).select("checkup_data").first();
-        const parsed = orgData?.checkup_data
-          ? (typeof orgData.checkup_data === "string" ? JSON.parse(orgData.checkup_data) : orgData.checkup_data)
-          : null;
-        clientPlaceId = parsed?.placeId || null;
-      } catch { /* non-blocking */ }
+      // If placeId didn't match, try name matching (stricter: require both directions or exact)
+      if (currentPosition === null) {
+        for (let i = 0; i < results.length; i++) {
+          const placeName = (results[i].displayName?.text || "").toLowerCase();
+          // Require the place name to contain the org name (not just the reverse)
+          // This prevents "My Orthodontist" matching "Garrison Orthodontics"
+          if (placeName.includes(orgNameLower)) {
+            currentPosition = i + 1;
+            clientReviews = results[i].userRatingCount || 0;
+            console.log(`[RankingsIntel] Name match for ${org.name}: "${results[i].displayName?.text}" at position ${i + 1}`);
+            break;
+          }
+        }
+      }
 
+      // Top competitor = first result that isn't us
       for (const result of results) {
         const rName = (result.displayName?.text || "").toLowerCase();
         const rPlaceId = result.id || null;
@@ -107,14 +123,15 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
     console.error(`[RankingsIntel] Places API error for org ${orgId}:`, err.message);
   }
 
-  // Fall back to practice_rankings if Places API didn't find us
+  // Fall back to practice_rankings for competitor data only (not position).
+  // rank_position from practice_rankings is Alloro's internal scoring algorithm,
+  // NOT the real Google position. Never display it as a Google rank.
   if (currentPosition === null) {
     const latestRanking = await db("practice_rankings")
       .where({ organization_id: orgId, status: "completed" })
       .orderBy("created_at", "desc")
       .first();
     if (latestRanking) {
-      currentPosition = latestRanking.rank_position;
       const rawData = typeof latestRanking.raw_data === "string"
         ? JSON.parse(latestRanking.raw_data) : latestRanking.raw_data || {};
       clientReviews = rawData?.client_gbp?.totalReviewCount || 0;
@@ -123,6 +140,9 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
         topCompetitorName = comps[0].name || comps[0].displayName?.text || null;
         topCompetitorReviews = comps[0].userRatingCount || comps[0].reviewCount || 0;
       }
+      // Use the internal rank only if we have no other source, and log it
+      currentPosition = latestRanking.rank_position;
+      console.log(`[RankingsIntel] WARNING: Using internal rank_position (${currentPosition}) for ${org.name}, not real Google position. PlaceId: ${clientPlaceId || "none"}`);
     }
   }
 
@@ -139,20 +159,18 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
   let bullets: string[] = [];
   try {
     const client = getAnthropic();
-    const prevPos = prevSnapshot?.position || null;
     const prevReviews = prevSnapshot?.client_review_count || 0;
     const reviewDelta = clientReviews - prevReviews;
 
     const response = await client.messages.create({
       model: LLM_MODEL,
       max_tokens: 500,
-      system: `Generate exactly 3 bullets about what changed in this practice's competitive position this week. Format: WHAT happened + RESULT for the practice. Never say HOW (no SEO, schema, keywords). Be specific. Be brief. Use the practice's actual competitor names.`,
+      system: `Generate exactly 3 bullets about what changed in this practice's competitive position this week. Format: WHAT happened + RESULT for the practice. Never say HOW (no SEO, schema, keywords). Never claim a specific Google ranking number (e.g. "#1" or "#3") because our position data is approximate. Focus on review counts, review gaps, and competitor activity, which are verifiable. Be specific. Be brief. Use the practice's actual competitor names.`,
       messages: [{
         role: "user",
         content: `Practice: ${org.name}
-Current position: #${currentPosition}${prevPos ? ` (was #${prevPos})` : " (first week)"}
 Reviews: ${clientReviews}${prevReviews ? ` (was ${prevReviews}, delta: ${reviewDelta >= 0 ? "+" : ""}${reviewDelta})` : ""}
-Top competitor: ${topCompetitorName || "Unknown"} at #1 with ${topCompetitorReviews} reviews
+Top competitor: ${topCompetitorName || "Unknown"} with ${topCompetitorReviews} reviews
 Market: ${address || specialty}`,
       }],
     });
@@ -160,11 +178,15 @@ Market: ${address || specialty}`,
     const text = response.content[0]?.type === "text" ? response.content[0].text : "";
     bullets = text.split("\n").map(b => b.replace(/^[-•*]\s*/, "").trim()).filter(Boolean).slice(0, 3);
   } catch {
-    // Fallback to template bullets
+    // Fallback to template bullets (verifiable data only, no position claims)
     bullets = [
-      `Your ranking is #${currentPosition} this week.`,
-      `You have ${clientReviews} reviews.${topCompetitorName ? ` ${topCompetitorName} has ${topCompetitorReviews}.` : ""}`,
-      topCompetitorName ? `${topCompetitorName} holds the #1 position.` : "Position tracked.",
+      `You have ${clientReviews} reviews this week.${topCompetitorName ? ` ${topCompetitorName} has ${topCompetitorReviews}.` : ""}`,
+      topCompetitorName && topCompetitorReviews > clientReviews
+        ? `${topCompetitorName} leads by ${topCompetitorReviews - clientReviews} reviews.`
+        : topCompetitorName
+          ? `${topCompetitorName} is your closest competitor.`
+          : "Your market is being tracked.",
+      "Alloro is monitoring your competitive landscape weekly.",
     ];
   }
 
@@ -175,15 +197,18 @@ Market: ${address || specialty}`,
   const velocityGap = Math.max(0, compVelocity - clientVelocity);
   const dollarFigure = Math.round(velocityGap * 0.3 * avgCaseValue / 100) * 100;
 
-  // 5. Finding headline
-  const prevPos = prevSnapshot?.position;
-  const findingHeadline = prevPos && currentPosition !== prevPos
-    ? `Ranking ${currentPosition < prevPos ? "improved" : "declined"}: #${prevPos} → #${currentPosition}`
-    : `Holding position #${currentPosition}`;
+  // 5. Finding headline (verifiable data, no position claims)
+  const prevReviewCount = prevSnapshot?.client_review_count || 0;
+  const reviewChange = clientReviews - prevReviewCount;
+  const findingHeadline = topCompetitorName
+    ? reviewChange > 0
+      ? `${reviewChange} new review${reviewChange !== 1 ? "s" : ""}, ${topCompetitorName} has ${topCompetitorReviews}`
+      : `${topCompetitorName} leads with ${topCompetitorReviews} reviews`
+    : `${clientReviews} reviews tracked this week`;
 
-  // 6. Competitor note
+  // 6. Competitor note (verifiable data only)
   const competitorNote = topCompetitorName
-    ? `${topCompetitorName} holds #1 with ${topCompetitorReviews} reviews this week.`
+    ? `${topCompetitorName} has ${topCompetitorReviews} reviews this week.`
     : null;
 
   // Store
@@ -204,17 +229,18 @@ Market: ${address || specialty}`,
 
   console.log(`[RankingsIntel] Snapshot: ${org.name} → #${currentPosition}, $${dollarFigure}`);
 
-  // Write ranking change notification if position moved (feeds the bell popover)
-  if (prevSnapshot?.position && currentPosition !== prevSnapshot.position) {
-    const improved = currentPosition < prevSnapshot.position;
+  // Write ranking change notification if review landscape shifted (feeds the bell popover)
+  if (prevSnapshot?.client_review_count && clientReviews !== prevSnapshot.client_review_count) {
+    const gained = clientReviews > prevSnapshot.client_review_count;
+    const delta = Math.abs(clientReviews - prevSnapshot.client_review_count);
     await db("notifications").insert({
       organization_id: orgId,
-      title: improved
-        ? `Ranking improved to #${currentPosition}`
-        : `Ranking shifted to #${currentPosition}`,
-      message: improved
-        ? `You moved up from #${prevSnapshot.position} to #${currentPosition}. ${competitorNote || ""}`
-        : `You were #${prevSnapshot.position} last week, now #${currentPosition}. ${competitorNote || ""}`,
+      title: gained
+        ? `${delta} new review${delta !== 1 ? "s" : ""} this week`
+        : `Market update`,
+      message: gained
+        ? `You gained ${delta} review${delta !== 1 ? "s" : ""} this week. ${competitorNote || ""}`
+        : `Your competitive landscape shifted. ${competitorNote || ""}`,
       type: "ranking",
       read: false,
       metadata: JSON.stringify({

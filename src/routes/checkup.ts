@@ -1784,6 +1784,25 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       console.error(`[Checkup] Failed to seed snapshot:`, snapErr.message);
     }
 
+    // Enqueue instant snapshot refresh (5 min delay so seed data shows immediately,
+    // then fresh Google Places data replaces it). No 6-day wait.
+    try {
+      const snapQueue = getMindsQueue("instant-snapshot");
+      await snapQueue.add(
+        `instant:snap:${org.id}`,
+        { orgId: org.id },
+        {
+          jobId: `instant-snap-${org.id}-${Date.now()}`,
+          delay: 5 * 60 * 1000, // 5 minutes
+          attempts: 2,
+          backoff: { type: "exponential", delay: 60000 },
+        },
+      );
+      console.log(`[Checkup] Enqueued instant snapshot refresh for org ${org.id}`);
+    } catch (isErr: any) {
+      console.error(`[Checkup] Failed to enqueue instant snapshot:`, isErr.message);
+    }
+
     // Enqueue Welcome Intelligence (fires 4 hours later with new insights)
     try {
       const parsed = typeof checkup_data === "string" ? JSON.parse(checkup_data) : checkup_data;

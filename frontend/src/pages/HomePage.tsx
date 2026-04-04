@@ -177,8 +177,7 @@ export default function HomePage() {
   const action = actionData?.card || null;
   const greeting = buildGreeting(ctx || null, ranking);
   const score = ctx?.org?.current_clarity_score || ctx?.org?.checkup_score || null;
-  const position = ranking?.rankPosition || null;
-  const city = ranking?.location?.split(",")[0]?.trim() || null;
+  // position/city removed from display: Places API rank doesn't match Google Search
   const milestone = milestoneData?.card || null;
   const streak = streakData?.topStreak || null;
   const win = streakData?.latestWin || null;
@@ -217,14 +216,10 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Position: context below the score */}
-          {position && city && (
-            <p className="text-base text-[#1A1D23]">
-              <span className="font-semibold">#{position}</span>
-              <span className="text-gray-400 mx-1.5">in</span>
-              <span className="font-semibold">{city}</span>
-            </p>
-          )}
+          {/* Position removed: Places API position doesn't match what
+              customers see on Google Search. Showing an inaccurate rank
+              destroys trust instantly. The score and action card use
+              verifiable data (reviews, GBP completeness, photos). */}
         </motion.div>
 
         <div className="space-y-6">

@@ -9,6 +9,7 @@ import express from "express";
 import { authenticateToken } from "../../middleware/auth";
 import { rbacMiddleware, type RBACRequest } from "../../middleware/rbac";
 import { db } from "../../database/connection";
+import { approveAndPostReview } from "../../services/gbpReviewReply";
 
 const reviewDraftRoutes = express.Router();
 
@@ -71,13 +72,17 @@ reviewDraftRoutes.patch(
       if (!review) return res.status(404).json({ success: false, error: "Review not found" });
 
       if (action === "approve") {
-        await db("review_notifications").where({ id }).update({
-          status: "responded",
-          ai_response: editedResponse || review.ai_response,
-          updated_at: new Date(),
+        const replyText = editedResponse || review.ai_response;
+        const result = await approveAndPostReview(orgId, Number(id), replyText);
+
+        if (result.posted) {
+          return res.json({ success: true, message: "Response posted to Google.", posted: true });
+        }
+        return res.json({
+          success: true,
+          message: result.error || "Response approved.",
+          posted: false,
         });
-        // TODO: Post to Google via GBP API when connected
-        return res.json({ success: true, message: "Response approved. It will be posted to Google when GBP is connected." });
       }
 
       if (action === "skip" || action === "dismiss") {

@@ -47,11 +47,9 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
 
   const subjectLine = `${firstName}, clean week. Nothing moved against you.`;
 
-  const rankLine = position && totalCompetitors && city
-    ? `You rank #${position} of ${totalCompetitors} in ${city}. Same as last week. That is what consistency looks like.`
-    : position && city
-      ? `You rank #${position} in ${city}. Same as last week. That is what consistency looks like.`
-      : "Your position held. Same as last week. That is what consistency looks like.";
+  const rankLine = city
+    ? `No one gained ground on you in ${city}. Same as last week. That is what consistency looks like.`
+    : "No competitor gained ground. Same as last week. That is what consistency looks like.";
 
   const content = `
     <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Monday Brief</p>
@@ -61,7 +59,7 @@ export async function sendCleanWeekEmail(data: CleanWeekData): Promise<boolean> 
     ${createDivider()}
 
     <p style="margin: 0 0 16px; color: ${BRAND_COLORS.darkGray}; font-size: 15px; line-height: 1.6;">
-      Your market held steady this week. No competitor gained ground. No referral sources went quiet. Your team served your community and your position held.
+      Your market held steady this week. No competitor gained ground. No referral sources went quiet. Your team served your community and your market held.
     </p>
 
     <p style="margin: 0 0 16px; color: ${BRAND_COLORS.darkGray}; font-size: 15px; line-height: 1.6;">

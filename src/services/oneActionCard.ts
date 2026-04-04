@@ -77,11 +77,11 @@ export async function getOneActionCard(orgId: number): Promise<OneActionCard> {
   if (clearCheck.length >= 2) {
     const curr = clearCheck[0];
     const prev = clearCheck[1];
-    // Position held or improved, and we have data
+    // Market stable, and we have data
     if (curr.position && prev.position && curr.position <= prev.position) {
       return {
         headline: "Your business is steady. Nothing needs you right now.",
-        body: "Your position held. No competitor gained ground. Alloro is watching your market and will tell you when something changes.",
+        body: "No competitor gained ground this week. Alloro is watching your market and will tell you when something changes.",
         action_text: null,
         action_url: null,
         priority_level: 0,
@@ -197,10 +197,10 @@ async function checkRankingDrop(orgId: number): Promise<OneActionCard | null> {
   const reviewDiff = compReviews - clientReviews;
 
   return {
-    headline: `Your ranking dropped from #${previous.position} to #${current.position} this week.`,
-    body: `${compName} has ${reviewDiff > 0 ? `${reviewDiff} more reviews than you` : "been more active this week"}. The fastest recovery is reviews. Ask 3 customers this week.`,
+    headline: `${compName} gained ground on you this week.`,
+    body: `${reviewDiff > 0 ? `They have ${reviewDiff} more reviews than you` : "They've been more active this week"}. The fastest recovery is reviews. Ask 3 customers this week.`,
     action_text: "See what changed",
-    action_url: "/dashboard/rankings",
+    action_url: "/compare",
     priority_level: 3,
   };
 }
@@ -249,9 +249,9 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
     const compName = cleanCompetitorName(latest.competitor_name || "");
 
     return {
-      headline: `You held #${latest.position} in ${city} this week.`,
+      headline: `Steady week in ${city}. No competitor gained ground.`,
       body: gap > 0 && gap <= 50
-        ? `${compName} is ${gap} reviews ahead. ${gap} reviews between you and the next position.`
+        ? `${compName} is ${gap} reviews ahead. Consistent reviews close that gap.`
         : `${compName} is ${gap > 0 ? `${gap} reviews ahead` : "close behind"}. Consistent week.`,
       action_text: null,
       action_url: null,

@@ -288,27 +288,29 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       }
     } catch { /* vocabulary tables may not exist yet */ }
 
-    if (pos === 1) {
-      rawBullets.push(`You're #1${city ? " in " + city : ""}. That visibility is protecting your referral pipeline.`);
-      if (compName) rawBullets.push(`${compName} is closest behind you with ${compReviews} reviews${clientRevs ? " to your " + clientRevs : ""}.`);
-    } else {
-      rawBullets.push(`You're #${pos}${city ? " in " + city : ""}. ${compName ? compName + " holds #1 with " + compReviews + " reviews." : ""}`);
-      if (clientRevs && compReviews > clientRevs) {
+    if (compName && compReviews > 0) {
+      if (clientRevs >= compReviews) {
+        rawBullets.push(`You have ${clientRevs} reviews${city ? " in " + city : ""}. That volume is protecting your visibility.`);
+        rawBullets.push(`${compName} is your closest competitor with ${compReviews} reviews.`);
+      } else {
         const gap = compReviews - clientRevs;
+        rawBullets.push(`${compName} leads${city ? " in " + city : ""} with ${compReviews} reviews${clientRevs ? " to your " + clientRevs : ""}.`);
         // Bio-economic lens: name the dollar consequence and human need
         const annualAtRisk = Math.round(gap * 0.3 * avgCaseValue);
         rawBullets.push(`The gap is ${gap} reviews. That gap represents approximately $${annualAtRisk.toLocaleString()} in annual revenue at risk. Your team's livelihood depends on that visibility.`);
         rawBullets.push(`At 3 reviews per week, you close it in about ${Math.ceil(gap / 3)} weeks.`);
       }
+    } else {
+      rawBullets.push(`Your market${city ? " in " + city : ""} is being tracked. Alloro is building your competitive picture.`);
     }
 
     if (rawBullets.length > 0) {
       bullets = rawBullets;
       // Also set a finding headline from the data
       if (!snapshot.finding_headline) {
-        snapshot.finding_headline = pos === 1
-          ? `holding #1${city ? " in " + city : ""}`
-          : `#${pos} in ${city || "your market"}${compName ? ", " + compName + " leads" : ""}`;
+        snapshot.finding_headline = compName
+          ? `${compName} leads${city ? " in " + city : ""} with ${compReviews} reviews`
+          : `your market${city ? " in " + city : ""} this week`;
       }
     }
   }
@@ -463,7 +465,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
         const mondayFinding = pickMondayFinding(allFindings);
         if (mondayFinding) {
-          findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. But here's what changed in your market:\n\n${mondayFinding.headline}\n\n${mondayFinding.detail}`;
+          findingBody = `Your market has been steady for ${steadyWeeks} weeks. But here's what changed:\n\n${mondayFinding.headline}\n\n${mondayFinding.detail}`;
           usedSurpriseFinding = true;
         }
       }
@@ -475,7 +477,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       // Fallback to original review delta analysis
       const reviewDelta = (snapshot.client_review_count || 0) - (recentSnapshots[3]?.client_review_count || snapshot.client_review_count || 0);
       if (reviewDelta !== 0) {
-        findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. In that time, you ${reviewDelta > 0 ? "gained" : "lost"} ${Math.abs(reviewDelta)} reviews. ${cleanCompetitorName(snapshot.competitor_name || "") || "Your top competitor"} ${reviewDelta > 0 ? "gained fewer" : "gained more"}.`;
+        findingBody = `Your market has been steady for ${steadyWeeks} weeks. In that time, you ${reviewDelta > 0 ? "gained" : "lost"} ${Math.abs(reviewDelta)} reviews. ${cleanCompetitorName(snapshot.competitor_name || "") || "Your top competitor"} ${reviewDelta > 0 ? "gained fewer" : "gained more"}.`;
       } else {
         // No surprise finding AND no review delta. Prove the system is working.
         // Silence erodes trust. Activity proof maintains it.
@@ -530,7 +532,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         }
 
         // Only show real, verified counts
-        findingBody = `Your position has been steady at #${snapshot.position} for ${steadyWeeks} weeks. This week Alloro scanned ${competitorCount} competitors, checked ${sourceCount} review sources, and monitored ${directoryCount} directories for your business. No urgent changes, which means your position is holding.`;
+        findingBody = `Your market has been steady for ${steadyWeeks} weeks. This week Alloro scanned ${competitorCount} competitors, checked ${sourceCount} review sources, and monitored ${directoryCount} directories for your business. No urgent changes detected.`;
       }
     }
   }
@@ -584,10 +586,11 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       ? `Close the $${snapshot.dollar_figure.toLocaleString()} gap`
       : dashboardFallback;
 
-  // Ranking update line
-  const rankingUpdate = snapshot.position
-    ? `#${snapshot.position} in your market`
-    : "Ranking data being collected";
+  // Market status line (no position claims, verifiable data only)
+  const compNameForUpdate = cleanCompetitorName(snapshot.competitor_name || "");
+  const rankingUpdate = compNameForUpdate
+    ? `${snapshot.client_review_count || 0} reviews vs ${compNameForUpdate}'s ${snapshot.competitor_review_count || 0}`
+    : "Market data being collected";
 
   // Enrich competitor note with recent Competitive Scout movements (last 7 days)
   let competitorNote = snapshot.competitor_note || "";

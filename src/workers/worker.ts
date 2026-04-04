@@ -22,7 +22,8 @@ import { runProductEvolution } from "../jobs/productEvolution";
 import { processWeeklyScoreRecalc } from "./processors/weeklyScoreRecalc.processor";
 import { processFeedbackLoop } from "./processors/feedbackLoop.processor";
 import { processMondayEmail } from "./processors/mondayEmail.processor";
-import { generateAllSnapshots } from "../services/rankingsIntelligence";
+import { generateAllSnapshots, generateSnapshotForOrg } from "../services/rankingsIntelligence";
+import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
 import { getMindsQueue, getPmQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
 import { getSharedRedis, closeSharedRedis } from "../services/redis";
@@ -292,8 +293,25 @@ const feedbackLoopWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// Welcome Intelligence (fires 4h after signup, the second "how did they know?" moment)
+const welcomeIntelligenceWorker = new Worker(
+  "minds-welcome-intelligence",
+  async (job) => { await processWelcomeIntelligence(job); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
+// Instant Snapshot (fires immediately on signup, so new customers don't wait 6 days)
+const instantSnapshotWorker = new Worker(
+  "minds-instant-snapshot",
+  async (job) => {
+    const { orgId } = job.data;
+    if (orgId) await generateSnapshotForOrg(Number(orgId), true);
+  },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker, weeklyRankingSnapshotWorker, weeklyScoreRecalcWorker, mondayEmailWorker, feedbackLoopWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker, weeklyRankingSnapshotWorker, weeklyScoreRecalcWorker, mondayEmailWorker, feedbackLoopWorker, welcomeIntelligenceWorker, instantSnapshotWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -328,6 +346,8 @@ async function shutdown(): Promise<void> {
   await weeklyScoreRecalcWorker.close();
   await mondayEmailWorker.close();
   await feedbackLoopWorker.close();
+  await welcomeIntelligenceWorker.close();
+  await instantSnapshotWorker.close();
   await closeWbQueues();
   await closeSharedRedis();
   console.log("[MINDS-WORKER] Workers shut down");

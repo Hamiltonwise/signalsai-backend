@@ -19,73 +19,14 @@ import {
   discoverCompetitorsViaPlaces,
   filterBySpecialty,
 } from "../../controllers/practice-ranking/feature-services/service.places-competitor-discovery";
+import { calculateClarityScore } from "../../services/clarityScoring";
 
 const batchCheckupRoutes = express.Router();
 
 const MAX_PRACTICES = 100;
 
-// ─── Scoring logic (duplicated from checkup.ts to avoid circular deps) ──
-
-function computeScore(
-  clientRating: number,
-  clientReviews: number,
-  competitors: { totalScore: number; reviewsCount: number; name: string }[],
-  practiceName: string,
-) {
-  const compCount = competitors.length || 1;
-  const avgRating = competitors.reduce((s, c) => s + c.totalScore, 0) / compCount;
-  const avgReviews = competitors.reduce((s, c) => s + c.reviewsCount, 0) / compCount;
-  const maxReviews = Math.max(...competitors.map((c) => c.reviewsCount), 1);
-
-  const allWithClient = [
-    { name: practiceName, reviewsCount: clientReviews, totalScore: clientRating },
-    ...competitors,
-  ].sort((a, b) =>
-    b.reviewsCount !== a.reviewsCount
-      ? b.reviewsCount - a.reviewsCount
-      : b.totalScore - a.totalScore,
-  );
-  const rank = allWithClient.findIndex(
-    (c) => c.name.toLowerCase() === practiceName.toLowerCase(),
-  ) + 1;
-  const totalInMarket = allWithClient.length;
-
-  const rankPct = (totalInMarket - rank) / Math.max(totalInMarket - 1, 1);
-  const reviewRatio = clientReviews / maxReviews;
-  const localVisibility = Math.round(Math.min(40, Math.max(0, (rankPct * 0.5 + reviewRatio * 0.5) * 40)));
-
-  const ratingDiff = clientRating - avgRating;
-  const ratingPct = Math.min(1, Math.max(0, 0.5 + ratingDiff * 0.2 + (clientRating >= 4.5 ? 0.1 : 0)));
-  const onlinePresence = Math.round(Math.min(40, Math.max(0, ratingPct * 40)));
-
-  const reviewHealthPct = avgReviews > 0 ? Math.min(1, clientReviews / avgReviews) : 0.5;
-  const reviewHealth = Math.round(Math.min(20, Math.max(0, reviewHealthPct * 20)));
-
-  const composite = localVisibility + onlinePresence + reviewHealth;
-  const topCompetitor = competitors[0] || null;
-
-  // Primary gap description
-  let primaryGap = "";
-  if (topCompetitor) {
-    const reviewGap = topCompetitor.reviewsCount - clientReviews;
-    if (reviewGap > 0) {
-      primaryGap = `${topCompetitor.name} has ${reviewGap} more reviews`;
-    } else if (clientRating < avgRating) {
-      primaryGap = `Rating ${clientRating}★ below market avg ${avgRating.toFixed(1)}★`;
-    } else {
-      primaryGap = `Rank #${rank} of ${totalInMarket}`;
-    }
-  }
-
-  return {
-    composite,
-    rank,
-    totalInMarket,
-    topCompetitorName: topCompetitor?.name || null,
-    topCompetitorReviews: topCompetitor?.reviewsCount || 0,
-    primaryGap,
-  };
-}
+// Scoring uses the single source of truth: clarityScoring.ts
+// No duplicate algorithm. One function. One score.
 
 // ─── Analyze a single practice ──────────────────────────────────────
 
@@ -141,20 +82,42 @@ async function analyzePractice(
     (c) => c.placeId !== firstPlaceId && c.name.toLowerCase() !== name.toLowerCase(),
   );
 
-  // 4. Score
-  const result = computeScore(
-    place.rating ?? 0,
-    place.reviewCount ?? 0,
-    otherCompetitors,
-    name,
+  // 4. Score using the single source of truth
+  const scoringResult = calculateClarityScore(
+    {
+      rating: place.rating ?? 0,
+      reviewCount: place.reviewCount ?? 0,
+      photosCount: place.photos?.length ?? 0,
+      hasHours: !!place.regularOpeningHours,
+      hasPhone: !!place.phone,
+      hasWebsite: !!place.websiteUri,
+      hasEditorialSummary: !!place.editorialSummary,
+      businessStatus: place.businessStatus || "OPERATIONAL",
+    },
+    otherCompetitors.map((c) => ({
+      name: c.name,
+      totalScore: c.totalScore || 0,
+      reviewsCount: c.reviewsCount || 0,
+      photosCount: c.photosCount,
+      placeId: c.placeId,
+    })),
+    specialty,
   );
 
+  const topComp = otherCompetitors[0] || null;
+  const reviewGap = topComp ? Math.max(0, (topComp.reviewsCount || 0) - (place.reviewCount ?? 0)) : 0;
+  const primaryGap = topComp
+    ? reviewGap > 0
+      ? `${topComp.name} has ${reviewGap} more reviews`
+      : `${topComp.name} is your closest competitor`
+    : "";
+
   return {
-    score: result.composite,
-    topCompetitorName: result.topCompetitorName,
-    topCompetitorReviews: result.topCompetitorReviews,
+    score: scoringResult.composite,
+    topCompetitorName: topComp?.name || null,
+    topCompetitorReviews: topComp?.reviewsCount || 0,
     practiceReviews: place.reviewCount ?? 0,
-    primaryGap: result.primaryGap,
+    primaryGap,
     placeId: firstPlaceId,
   };
 }
