@@ -35,6 +35,8 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
+**Last tested:** UNTESTED. Score of 90 displayed for Garrison when data suggests ~36. Startup catch-up deployed but not yet run. Requires deploy + browser verification.
+
 ---
 
 ### Known 2: One scoring algorithm
@@ -47,6 +49,8 @@ These never bend. No exceptions. No "just this once."
 
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
+
+**Last tested:** PASS. April 4, 2026. `grep -r "computeScore" src/` returns zero. Old duplicate in batchCheckup.ts deleted. All callers trace to clarityScoring.ts.
 
 ---
 
@@ -61,6 +65,8 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only. Requires a new, verified data source that matches Google Search results.
 
+**Last tested:** PARTIAL PASS. April 4, 2026. Position removed from HomePage, ComparePage, action cards, Monday email, clean week email, snapshot bullets, notifications. Secondary surfaces (milestoneDetector, ozMoment, trialEmails, tierGating, csAgent) still have position references. Primary customer touchpoints clean.
+
 ---
 
 ### Known 4: No fabricated dollar figures
@@ -74,7 +80,7 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 3, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Active violation (April 4):** Monday email fallback bullets still calculate `annualAtRisk = Math.round(gap * 0.3 * avgCaseValue)` from review count projections. This is a formula with assumptions, not real revenue data. Needs code fix to comply.
+**Last tested:** FAIL. April 4, 2026. Monday email fallback bullets still calculate `annualAtRisk = Math.round(gap * 0.3 * avgCaseValue)` from review count projections. This is a formula with assumptions, not real revenue data. Code fix needed.
 
 ---
 
@@ -89,6 +95,8 @@ These never bend. No exceptions. No "just this once."
 **Locked:** March 25, 2026, Corey Wise.
 **Override requires:** Corey only.
 
+**Last tested:** PARTIAL PASS. April 4, 2026. Action card names specific competitors and uses specific numbers. Some Monday email fallback bullets use generic language when LLM analysis fails.
+
 ---
 
 ### Known 6: The credit score pattern
@@ -101,6 +109,8 @@ These never bend. No exceptions. No "just this once."
 
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
+
+**Last tested:** UNTESTED. Gauge component built April 4, pushed to sandbox. Never rendered in a browser. Requires deploy + visual verification.
 
 ---
 
@@ -115,6 +125,8 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
+**Last tested:** UNTESTED. Factor card logic built April 4 with verifiable-data-only status colors. Sub-scores hidden until recalc runs. Never rendered in browser. Requires deploy + visual verification.
+
 ---
 
 ### Known 8: Monday email is the product
@@ -127,6 +139,8 @@ These never bend. No exceptions. No "just this once."
 
 **Locked:** April 3, 2026, Corey Wise.
 **Override requires:** Corey only.
+
+**Last tested:** UNTESTED. Monday email code exists and has sent in testing. Not verified from a real customer's inbox perspective. Position claims removed from email text April 4.
 
 ---
 
@@ -141,6 +155,8 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 3, 2026, Corey Wise.
 **Override requires:** Corey only.
 
+**Last tested:** UNTESTED. Clean week email template exists. Copy reviewed April 4: no upsell, no action items. Not verified from a real customer's inbox.
+
 ---
 
 ### Known 10: Scoring weights live in the database
@@ -153,6 +169,8 @@ These never bend. No exceptions. No "just this once."
 
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
+
+**Last tested:** UNTESTED. Migration created April 4, not yet run on sandbox. API endpoints built. Scoring engine reads from DB with fallback to hardcoded defaults. Requires: `npx knex migrate:latest` on sandbox, then `GET /api/admin/scoring-config` to verify.
 
 ---
 
@@ -301,6 +319,8 @@ Five pages. Five questions. One product.
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
+**Last tested:** FAIL. April 4, 2026. Multiple commits pushed before this Known was established. First commit (004b64ff) pushed after stating "I'm not confident." Process established mid-session. Future sessions test against this.
+
 ---
 
 ### Known 12: Customer Reality Check before every build
@@ -314,6 +334,8 @@ Five pages. Five questions. One product.
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
+**Last tested:** PARTIAL PASS. April 4, 2026. CRC written before scoring engine simplification and gauge build. Not written before earlier commits (position removal, DFY wiring). Process established mid-session.
+
 ---
 
 ### Known 13: Warm, not clinical
@@ -323,6 +345,8 @@ Five pages. Five questions. One product.
 **Test:** Take a screenshot. Does it feel warm? Would you show it at a dinner party?
 
 **Violation:** Pure white background. Blue-gray enterprise aesthetic. Cold, clinical feel.
+
+**Last tested:** PARTIAL PASS. April 4, 2026. All 5 page backgrounds use #F8F6F2. Section cards on Compare, Reviews, Presence still use bg-white. Home page uses bg-stone-50 (warm). Not fully compliant.
 
 ---
 
@@ -340,6 +364,8 @@ Five pages. Five questions. One product.
 
 **Violation:** Navy text on a page. 10px fine print. Bold headlines screaming.
 
+**Last tested:** PASS. April 4, 2026. Preflight grep for font-black, font-extrabold, text-[10px], text-[11px] returns zero in customer-facing code. text-[#212D40] returns zero. No em-dashes in customer-facing strings.
+
 ---
 
 ### Known 15: Max 2 temporary prompts
@@ -349,6 +375,8 @@ Five pages. Five questions. One product.
 **Test:** Count visible prompts on the Home page. Never more than 2.
 
 **Violation:** Three banners stacked above the gauge. Score pushed off screen by notifications.
+
+**Last tested:** PASS. April 4, 2026. Code review confirms `limitPrompts()` function caps visible prompts at 2. Logic verified in HomePage.tsx.
 
 ---
 
