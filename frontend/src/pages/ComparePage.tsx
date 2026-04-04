@@ -12,7 +12,7 @@
  * 5. Score simulator ("what if")
  */
 
-import { useState } from "react";
+import { useState, Component, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -54,9 +54,38 @@ function Section({ title, defaultOpen = true, children }: {
   );
 }
 
+// ─── Error Boundary ────────────────────────────────────────────────
+
+class CompareErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error) { console.error("[ComparePage] Render error:", error); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#F8F6F2] flex items-center justify-center">
+          <div className="text-center max-w-sm">
+            <p className="text-base font-semibold text-[#1A1D23] mb-2">Comparison loading</p>
+            <p className="text-sm text-gray-500">Your competitive data is being prepared. Try refreshing in a moment.</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ─── Component ──────────────────────────────────────────────────────
 
 export default function ComparePage() {
+  return (
+    <CompareErrorBoundary>
+      <ComparePageInner />
+    </CompareErrorBoundary>
+  );
+}
+
+function ComparePageInner() {
   const { userProfile } = useAuth();
   const { selectedLocation } = useLocationContext();
   const orgId = userProfile?.organizationId || null;
