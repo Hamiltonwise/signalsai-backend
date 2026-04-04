@@ -87,6 +87,19 @@ Without this spec, Alloro is a dashboard that shows you data. With this spec, Al
 - PatientPath website live (for SEO/AEO content publishing)
 - Organization active (not cancelled, not paused)
 
+### GBP Connection Funnel (How the First Customer Connects)
+
+GBP OAuth is the gate to the entire DFY engine. Zero customers are connected today. The connection must be pulled by value, not pushed by a settings page.
+
+**When to surface:** At the moment the DWY layer produces something the owner wants to act on. Examples:
+- Checkup shows a finding: "You have 3 unanswered reviews." CTA: "Connect your Google profile and Alloro will respond for you."
+- Monday email reports a competitor posted: "Peluso posted 2 GBP updates this week. You posted zero." CTA: "Connect and Alloro handles this."
+- Dashboard shows drafted review response: "We wrote this response to Sarah's review. Connect to post it."
+
+**Where NOT to surface:** Settings page buried behind 3 clicks. Generic onboarding wizard. Pop-up on first login.
+
+**The principle:** Show the work Alloro would do, then offer the connection as the last step. Value first, permission second. Same pattern as Owner.com: the restaurant sees the website before they pay.
+
 ### Weekly Automated Actions
 
 **Action 1: GBP Post (Weekly)**
@@ -103,6 +116,8 @@ Format: 150-300 words. One photo from GBP library (select highest quality). Link
 
 Publishing: Google Business Profile API, `accounts.locations.localPosts` endpoint. OAuth required.
 
+Quality gate: System Conductor reviews every post before publishing. PASS = publish. HOLD = draft saved for owner approval in Monday email. Gate criteria: no generic language, no fabricated claims, references something real about the practice, passes Human Authenticity check (no AI fingerprints, no em-dashes).
+
 Verification: After publishing, confirm post appears on GBP. Log to behavioral_events as `dfy.gbp_post_published`.
 
 **Action 2: Review Response Drafting (Continuous)**
@@ -111,9 +126,10 @@ Trigger: New review detected via GBP API polling (daily check).
 
 Process:
 1. AI drafts a response using the review text, rating, and practice context
-2. For 4-5 star reviews: auto-post the response (owner pre-approved this category during GBP connection)
-3. For 1-3 star reviews: draft saved, owner notified via Monday email ("1 review response needs your approval"), one-tap approve in dashboard
-4. Response follows practice voice (warm, professional, specific to what the reviewer mentioned)
+2. For 4-5 star reviews during trust-building period (first 10 responses): draft saved for owner approval, same as negative reviews. This teaches the AI the owner's voice and builds confidence in the system.
+3. For 4-5 star reviews after trust-building (response 11+): auto-post the response (owner pre-approved this category during GBP connection)
+4. For 1-3 star reviews: always draft saved, owner notified via Monday email ("1 review response needs your approval"), one-tap approve in dashboard
+5. Response follows practice voice (warm, professional, specific to what the reviewer mentioned)
 
 Good: "Thank you, Sarah. We're glad the procedure went smoothly and that you felt comfortable throughout. We'll see you at your follow-up."
 
@@ -133,6 +149,8 @@ Content: AI-generated FAQ page or service page published to PatientPath website.
 - Seasonal relevance (back-to-school for orthodontists, etc.)
 
 Format: One page. 500-800 words. Schema markup (FAQ structured data for AEO). Published to PatientPath site automatically.
+
+Quality gate: Same as GBP posts. System Conductor reviews before publish. PASS = live. HOLD = draft saved. No content publishes without Conductor clearance.
 
 Verification: Page live, indexed check after 48 hours. Log as `dfy.seo_content_published`.
 
