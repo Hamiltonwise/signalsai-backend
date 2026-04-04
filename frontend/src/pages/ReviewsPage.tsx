@@ -14,12 +14,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Star, Send, MessageSquare, TrendingUp, ChevronDown, ChevronRight } from "lucide-react";
+import { Star, MessageSquare, TrendingUp, ChevronDown, ChevronRight } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
-
-// Import existing components from parts shelf
-import ReviewRequestCard from "@/components/dashboard/ReviewRequestCard";
 
 // ─── Collapsible Section ────────────────────────────────────────────
 
@@ -83,9 +80,10 @@ export default function ReviewsPage() {
     staleTime: 120_000,
   });
 
-  const checkupData = typeof ctx?.org?.checkup_data === "string"
-    ? JSON.parse(ctx.org.checkup_data)
-    : ctx?.org?.checkup_data;
+  let checkupData = ctx?.org?.checkup_data || null;
+  if (typeof checkupData === "string") {
+    try { checkupData = JSON.parse(checkupData); } catch { checkupData = null; }
+  }
 
   const reviews = checkupData?.place?.reviews || [];
   const reviewCount = checkupData?.place?.reviewCount || checkupData?.reviewCount || 0;
@@ -145,9 +143,13 @@ export default function ReviewsPage() {
                 </div>
               ))}
             </div>
+          ) : reviewCount > 0 ? (
+            <p className="text-sm text-gray-500">
+              You have {reviewCount} reviews at {rating} stars on Google. Individual review details will appear here after your next ranking scan.
+            </p>
           ) : (
             <p className="text-sm text-gray-500">
-              Your reviews will appear here once your Google Business Profile is connected.
+              Review data will appear here after your first ranking scan.
             </p>
           )}
         </Section>
@@ -201,13 +203,7 @@ export default function ReviewsPage() {
           )}
         </Section>
 
-        {/* Send Review Requests */}
-        <Section title="Request Reviews" icon={Send} defaultOpen={false}>
-          <ReviewRequestCard
-            placeId={checkupData?.placeId || checkupData?.place?.id || null}
-            practiceName={ctx?.org?.name || "Your Business"}
-          />
-        </Section>
+        {/* Review Request removed: ICP uses their PMS system for review requests */}
 
         {/* Sentiment Summary */}
         {sentimentWords.length > 0 && (

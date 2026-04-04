@@ -128,12 +128,15 @@ function PresencePageInner() {
   const websiteUrl = website?.liveUrl || (website?.generated_hostname ? `https://${website.generated_hostname}.sites.getalloro.com` : null);
 
   // GBP profile completeness
+  // checkup_data stores boolean flags (hasPhone, hasHours, etc.)
+  // Places API returns raw fields (nationalPhoneNumber, regularOpeningHours, etc.)
+  // Check both formats
   const profileItems = [
-    { label: "Phone", has: !!place.phone },
-    { label: "Website", has: !!place.website || hasWebsite },
-    { label: "Hours", has: !!place.regularOpeningHours },
-    { label: "Photos", has: (place.photos?.length || 0) > 0 },
-    { label: "Description", has: !!place.editorialSummary },
+    { label: "Phone", has: !!place.hasPhone || !!place.phone || !!place.nationalPhoneNumber || !!place.internationalPhoneNumber },
+    { label: "Website", has: !!place.hasWebsite || !!place.website || !!place.websiteUri || hasWebsite },
+    { label: "Hours", has: !!place.hasHours || !!place.regularOpeningHours },
+    { label: "Photos", has: (place.photosCount || place.photoCount || place.photos?.length || 0) > 0 },
+    { label: "Description", has: !!place.hasEditorialSummary || !!place.editorialSummary },
   ];
   const profileComplete = profileItems.filter(i => i.has).length;
 
