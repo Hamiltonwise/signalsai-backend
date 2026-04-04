@@ -357,10 +357,65 @@ Every locked decision with the reasoning. If someone asks "why," point them here
 | 8 | Email is receipt not advice | "Here's what we did" > "here's what you should do" | Apr 3 2026 | Corey |
 | 9 | No fabricated dollar figures | Projections aren't data | Apr 3 2026 | Corey |
 | 10 | Clean week is a gift | Not a sales opportunity. Pure relief. | Apr 3 2026 | Corey |
+| 11 | The metric is what AI says about you | Google Ask Maps reads review words, not stars. Position is dying. What the AI says when someone asks is the new visibility. | Apr 4 2026 | Corey |
+| 12 | First-party data is the moat | Google shows profiles. Alloro connects referral sources, revenue, retention, competitive intelligence. Every week of data deepens the moat. Leaving Alloro = knowledge loss. | Apr 4 2026 | Corey |
+| 13 | Review sentiment > review count | Google reads what reviews SAY. "Gentle with anxious patients" in 14 competitor reviews vs 0 in yours is the gap that matters. Count is table stakes. Themes are the edge. | Apr 4 2026 | Corey |
+| 14 | Three things Google will never do | Show competitors' data. Connect internal to external data. Tell you what to DO. Alloro does all three. This is permanent. | Apr 4 2026 | Corey |
+| 15 | Alloro replaces the question, not the search | Google replaced the library. Alloro replaces the question. The owner doesn't search, doesn't ask, doesn't know they needed to know. The answer arrives Monday morning. | Mar 25 2026 | Corey |
+
+---
+
+## Part 9: The Strategic Edge
+
+### Where Google Is Going (and Why It Matters)
+
+**Ask Maps (launched March 2026):** Google's AI reads 500 million reviews and answers natural language questions about local businesses. "Where can I find a good orthodontist near West Orange?" gets a conversational answer based on review sentiment, GBP attributes, and photos. Not a list of links. A recommendation.
+
+**Zero-click reality:** 80%+ of searches end without a click. 78% of local "near me" searches are zero-click. Traffic is dying. Intent is concentrating. The people who DO click convert at 23x the rate of traditional organic.
+
+**AI search fragmentation:** 45% of consumers now use AI tools (ChatGPT, Gemini, Perplexity) for local services. Up from 6% one year ago. Very little overlap in what each AI recommends. A business visible on Google may be invisible on ChatGPT.
+
+### What This Means for Alloro's Product
+
+**The old metric (dying):** "You rank #3 for orthodontist in West Orange."
+**The new metric (building):** "When someone asks Google's AI for an orthodontist in West Orange, here's what it says about you vs Peluso. Here's the gap. Here's what to do about it."
+
+**The old moat (shallow):** Dashboard showing Google data anyone can get.
+**The new moat (deep):** First-party business data + longitudinal competitive intelligence + automated actions. Every week of data makes it harder to replicate. Every action compounds.
+
+### The Five-Layer Moat
+
+1. **First-party operations data.** Referral sources, revenue per source, retention, case acceptance. No public API has this. It comes from PMS integrations and owner input.
+2. **Longitudinal competitive intelligence.** Any tool can snapshot today. Only Alloro has been watching for 26 weeks. "Competitor's review velocity increased 300% starting in October" is intelligence that requires time to build.
+3. **The action layer (DFY).** Data is not a moat. Dashboards are not a moat. Automated actions based on proprietary data ARE a moat. Auto-posted review responses. Auto-generated GBP content. Auto-flagged referral declines.
+4. **The compound flywheel.** More data makes better intelligence. Better intelligence drives actions. Actions produce results. Results produce engagement. Engagement produces more data.
+5. **Multi-surface AI visibility.** What ChatGPT, Perplexity, Gemini, and Google all say about the business. Since there's almost no overlap between what each AI cites, the business invisible on one surface is losing customers it doesn't know about.
+
+### What to Build Next (Strategic Priority)
+
+1. **Review sentiment comparison.** "Patients describe Peluso as 'gentle with anxious kids' in 14 reviews. You have 0 reviews mentioning this." Undeniable. Verifiable. Actionable. Nobody else shows this.
+2. **"What Google Says About You" report.** Weekly snapshot of how AI systems describe the business vs competitors. The new ranking report.
+3. **Cross-AI visibility monitoring.** What does ChatGPT say? Perplexity? Gemini? Track all surfaces. The AEO Monitor agent's original purpose, now mission-critical.
+4. **GEO optimization for PatientPath sites.** Structured data, FAQ schema, sequential headings. Pages with proper structure get cited 2.8x more by AI systems.
 
 ---
 
 ## How to Use This Document
+
+**Before building:** Read the relevant Knowns. Write a Customer Reality Check that references them. If your build would violate a Known, stop.
+
+**Before committing:** Check each Known your changes touch. Run the test. If it fails, fix it before pushing.
+
+**Before handing off:** Point to this document. The receiver reads it and knows exactly how the product is intended to work and what tests to run.
+
+**To change a Known:** Write the proposed change, the reason, and get the override approval listed in that Known. Add the old decision and the new one to the Key Decisions Log with dates. Knowns are constitutional. They don't change casually.
+
+**Check the map:** Before every commit, walk through what the customer sees. Reference this document. If something contradicts a Known, the code is wrong.
+
+---
+
+*Alloro Product Constitution. Authored by Corey Wise. Built by Claude. April 4, 2026.*
+*If code contradicts this document, the code is wrong.*
 
 **Before building:** Read the relevant Knowns. Write a Customer Reality Check that references them. If your build would violate a Known, stop.
 
