@@ -84,49 +84,13 @@ function getTimeGreeting(): string {
 
 function buildGreeting(
   ctx: DashboardContext | null,
-  ranking: RankingData | null,
+  _ranking: RankingData | null,
 ): string {
   const firstName = ctx?.user?.first_name || null;
-  const archetype = ctx?.org?.owner_archetype || null;
-  const confidence = ctx?.org?.archetype_confidence || 0;
-  const score = ctx?.org?.current_clarity_score || ctx?.org?.checkup_score || null;
-  const position = ranking?.rankPosition || null;
-  const city = ranking?.location?.split(",")[0]?.trim() || null;
-  const competitor = ranking?.topCompetitor?.name || null;
-  const prevPosition = ranking?.previousPosition || null;
-  const checkupData = ctx?.org?.checkup_data;
-  const checkupCompetitor = typeof checkupData === "object"
-    ? checkupData?.topCompetitor?.name
-    : null;
-
-  const name = firstName
-    ? `${getTimeGreeting()}, ${firstName}.`
-    : `${getTimeGreeting()}.`;
-
-  // Level 1: Full data (archetype + ranking + score)
-  if (position && city && confidence >= 0.5 && archetype) {
-    const positionChange = prevPosition && prevPosition !== position
-      ? position < prevPosition ? "Moving up." : "Slipped a spot."
-      : "Holding steady.";
-
-    return `${name} You're #${position} in ${city}. ${positionChange}`;
-  }
-
-  // Level 2: Ranking + score, no archetype
-  if (position && city) {
-    return `${name} Your business is #${position} in ${city}. Score: ${score || "calculating"}.`;
-  }
-
-  // Level 3: Score only (day 1, checkup done)
-  if (score) {
-    const compLine = checkupCompetitor || competitor
-      ? ` ${checkupCompetitor || competitor} is your closest competitor.`
-      : "";
-    return `${name} Your Business Clarity Score is ${score}.${compLine} First Monday email arrives soon.`;
-  }
-
-  // Level 4: Nothing yet
-  return `${name} Welcome. Alloro is scanning your market. We will have your first finding ready soon.`;
+  // The greeting is warm and short. One sentence. The score and position
+  // are displayed visually below, not crammed into the greeting.
+  if (firstName) return `${getTimeGreeting()}, ${firstName}.`;
+  return `${getTimeGreeting()}.`;
 }
 
 // ─── Prompt Limiter (max 2 temporary prompts) ───────────────────────
@@ -232,31 +196,50 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
-      <div className="max-w-[640px] mx-auto px-5 sm:px-8 py-10 sm:py-14 space-y-8">
+      <div className="max-w-[640px] mx-auto px-5 sm:px-8 py-10 sm:py-14">
 
-        {/* ── Greeting ── */}
+        {/* ── Greeting + Score Hero ── */}
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="space-y-2"
+          transition={{ duration: 0.6 }}
+          className="text-center mb-10"
         >
-          <p className="text-xl sm:text-2xl font-semibold text-[#1A1D23] leading-snug tracking-tight">
-            {greeting}
-          </p>
+          <p className="text-base text-gray-500 mb-6">{greeting}</p>
+
+          {/* Score: the centerpiece. 40% of viewport per Apple Principle. */}
+          {score != null && (
+            <div className="mb-4">
+              <p className="text-7xl sm:text-8xl font-semibold text-[#1A1D23] tracking-tight leading-none">
+                {score}
+              </p>
+              <p className="text-sm text-gray-400 mt-2">Business Clarity Score</p>
+            </div>
+          )}
+
+          {/* Position: context below the score */}
+          {position && city && (
+            <p className="text-base text-[#1A1D23]">
+              <span className="font-semibold">#{position}</span>
+              <span className="text-gray-400 mx-1.5">in</span>
+              <span className="font-semibold">{city}</span>
+            </p>
+          )}
         </motion.div>
 
-        {/* ── One Action Card (Von Restorff: visually distinct from everything) ── */}
+        <div className="space-y-6">
+
+        {/* ── One Action Card (Von Restorff: the ONE thing that demands attention) ── */}
         {action && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
           >
             <div className={`rounded-2xl p-6 sm:p-8 ${
               action.clear
                 ? "bg-emerald-50/80 border border-emerald-200/60"
-                : "bg-[#212D40] text-white shadow-lg"
+                : "bg-[#212D40] shadow-lg"
             }`}>
               <p className={`text-lg font-semibold leading-snug ${
                 action.clear ? "text-emerald-800" : "text-white"
@@ -283,33 +266,6 @@ export default function HomePage() {
               )}
             </div>
           </motion.div>
-        )}
-
-        {/* ── Position + Score ── */}
-        {(position || score) && (
-          <motion.button
-            onClick={() => navigate("/compare")}
-            className="w-full text-left rounded-2xl bg-white/80 border border-gray-200/60 p-6 hover:border-[#D56753]/30 hover:shadow-md transition-all"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="space-y-1.5">
-                {position && city && (
-                  <p className="text-base font-semibold text-[#1A1D23]">
-                    #{position} in {city}
-                  </p>
-                )}
-                {score && (
-                  <p className="text-sm text-gray-500">
-                    Business Clarity Score: {score}/100
-                  </p>
-                )}
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-300" />
-            </div>
-          </motion.button>
         )}
 
         {/* ── Surprise Moments (appear when earned, vanish when seen) ── */}
@@ -372,6 +328,7 @@ export default function HomePage() {
 
         {/* ── Community Proof (shown only at 100+ customers per spec) ── */}
 
+        </div>
       </div>
 
       {/* ── Billing Prompt Bar (global, system-level) ── */}
