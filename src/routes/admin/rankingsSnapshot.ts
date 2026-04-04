@@ -28,11 +28,12 @@ rankingsSnapshotRoutes.post(
         return res.status(400).json({ success: false, error: "org_id required" });
       }
 
-      const created = await generateSnapshotForOrg(Number(org_id));
+      const force = req.body.force !== false; // Default to force refresh
+      const created = await generateSnapshotForOrg(Number(org_id), force);
       return res.json({
         success: true,
         created,
-        message: created ? "Snapshot generated" : "Snapshot already exists for this week",
+        message: created ? "Snapshot generated" : "Snapshot already exists for this week (use force: true to overwrite)",
       });
     } catch (error: any) {
       console.error("[RankingsSnapshot] Run-now error:", error.message);
@@ -47,7 +48,8 @@ rankingsSnapshotRoutes.post(
   superAdminMiddleware,
   async (_req, res) => {
     try {
-      const result = await generateAllSnapshots();
+      const force = _req.body?.force !== false; // Default to force refresh
+      const result = await generateAllSnapshots(force);
       return res.json({ success: true, ...result });
     } catch (error: any) {
       console.error("[RankingsSnapshot] Run-all error:", error.message);

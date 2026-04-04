@@ -31,14 +31,18 @@ function getWeekStart(): string {
 /**
  * Generate snapshot for a single org.
  */
-export async function generateSnapshotForOrg(orgId: number): Promise<boolean> {
+export async function generateSnapshotForOrg(orgId: number, force = false): Promise<boolean> {
   const weekStart = getWeekStart();
 
-  // Already generated?
+  // Already generated? Skip unless force refresh requested.
   const existing = await db("weekly_ranking_snapshots")
     .where({ org_id: orgId, week_start: weekStart })
     .first();
-  if (existing) return false;
+  if (existing && !force) return false;
+  // If force and existing, we'll delete and recreate with fresh data
+  if (existing && force) {
+    await db("weekly_ranking_snapshots").where({ id: existing.id }).delete();
+  }
 
   const org = await db("organizations").where({ id: orgId }).first();
   if (!org) return false;
@@ -236,7 +240,7 @@ Market: ${address || specialty}`,
 /**
  * Generate snapshots for ALL active orgs.
  */
-export async function generateAllSnapshots(): Promise<{ generated: number; total: number }> {
+export async function generateAllSnapshots(force = false): Promise<{ generated: number; total: number }> {
   // Include subscribed orgs AND Checkup-originated signups (have checkup_score but no subscription yet)
   const orgs = await db("organizations")
     .where(function () {
@@ -249,7 +253,7 @@ export async function generateAllSnapshots(): Promise<{ generated: number; total
   let generated = 0;
   for (const org of orgs) {
     try {
-      const created = await generateSnapshotForOrg(org.id);
+      const created = await generateSnapshotForOrg(org.id, force);
       if (created) generated++;
     } catch (err: any) {
       console.error(`[RankingsIntel] Failed for ${org.name}:`, err.message);
