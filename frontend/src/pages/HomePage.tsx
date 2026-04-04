@@ -242,21 +242,25 @@ function FactorCard({
   detail,
   competitorContext,
   status,
+  showScore,
 }: {
   name: string;
   impact: "High Impact" | "Medium Impact";
-  score: number;
+  score: number | null;
   maxScore: number;
   detail: string;
   competitorContext?: string | null;
   status: "green" | "yellow" | "red";
+  showScore: boolean;
 }) {
   const statusColors = {
     green: "bg-emerald-500",
     yellow: "bg-amber-400",
     red: "bg-red-500",
   };
-  const pct = maxScore > 0 ? Math.min(100, (factorScore / maxScore) * 100) : 0;
+  const pct = showScore && factorScore != null && maxScore > 0
+    ? Math.min(100, (factorScore / maxScore) * 100)
+    : 0;
 
   return (
     <div className="rounded-xl bg-stone-50 border border-stone-200/60 p-4">
@@ -269,20 +273,24 @@ function FactorCard({
           {impact}
         </span>
       </div>
-      {/* Progress bar */}
-      <div className="w-full h-1.5 rounded-full bg-gray-200 mb-2">
-        <div
-          className={`h-1.5 rounded-full ${statusColors[status]}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+      {/* Progress bar: only show when score is from current algorithm */}
+      {showScore && (
+        <div className="w-full h-1.5 rounded-full bg-gray-200 mb-2">
+          <div
+            className={`h-1.5 rounded-full ${statusColors[status]}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
       <p className="text-sm text-[#1A1D23]">{detail}</p>
       {competitorContext && (
         <p className="text-xs text-gray-400 mt-1">{competitorContext}</p>
       )}
-      <p className="text-xs text-gray-400 mt-1 font-semibold">
-        {factorScore}/{maxScore}
-      </p>
+      {showScore && factorScore != null && (
+        <p className="text-xs text-gray-400 mt-1 font-semibold">
+          {factorScore}/{maxScore}
+        </p>
+      )}
     </div>
   );
 }
@@ -455,6 +463,8 @@ export default function HomePage() {
   const previousScore = (ctx as any)?.previous_clarity_score ?? null;
   const scoreUpdatedAt = (ctx as any)?.score_updated_at ?? null;
   const factors = extractFactors(ctx || null);
+  // Only show sub-score numbers when current_clarity_score exists (recalc has run with new algorithm)
+  const hasRecalculatedScore = ctx?.org?.current_clarity_score != null;
 
   const isTrialActive = ctx?.org?.subscription_status === "active" && ctx?.org?.trial_end_at;
   const needsOnboarding = setupProgress && !setupProgress.completed && !setupProgress.dismissed;
@@ -500,12 +510,14 @@ export default function HomePage() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8"
           >
-            {factors.reviewHealth.score != null && (
+            {/* Review Health: always show verifiable data, sub-score only after recalc */}
+            {factors.reviewHealth.reviewCount != null && (
               <FactorCard
                 name="Review Health"
                 impact="High Impact"
-                score={factors.reviewHealth.score}
+                score={hasRecalculatedScore ? factors.reviewHealth.score : null}
                 maxScore={33}
+                showScore={hasRecalculatedScore}
                 detail={
                   factors.reviewHealth.rating && factors.reviewHealth.reviewCount != null
                     ? `${factors.reviewHealth.reviewCount} reviews at ${factors.reviewHealth.rating} stars`
@@ -513,45 +525,49 @@ export default function HomePage() {
                 }
                 competitorContext={
                   factors.reviewHealth.competitorName && factors.reviewHealth.competitorReviewCount
-                    ? `Top competitor has ${factors.reviewHealth.competitorReviewCount}`
+                    ? `${factors.reviewHealth.competitorName} has ${factors.reviewHealth.competitorReviewCount}`
                     : null
                 }
                 status={
-                  factors.reviewHealth.score >= 22
-                    ? "green"
-                    : factors.reviewHealth.score >= 11
-                      ? "yellow"
-                      : "red"
+                  factors.reviewHealth.competitorReviewCount && factors.reviewHealth.reviewCount != null
+                    ? factors.reviewHealth.reviewCount >= factors.reviewHealth.competitorReviewCount
+                      ? "green"
+                      : factors.reviewHealth.reviewCount >= factors.reviewHealth.competitorReviewCount * 0.5
+                        ? "yellow"
+                        : "red"
+                    : "yellow"
                 }
               />
             )}
-            {factors.gbpCompleteness.score != null && (
-              <FactorCard
-                name="GBP Completeness"
-                impact="High Impact"
-                score={factors.gbpCompleteness.score}
-                maxScore={33}
-                detail={`${factors.gbpCompleteness.complete}/5 fields complete`}
-                competitorContext={
-                  factors.gbpCompleteness.missing.length > 0
-                    ? `Missing: ${factors.gbpCompleteness.missing.join(", ")}`
-                    : "All fields complete"
-                }
-                status={
-                  factors.gbpCompleteness.score >= 22
-                    ? "green"
-                    : factors.gbpCompleteness.score >= 11
-                      ? "yellow"
-                      : "red"
-                }
-              />
-            )}
-            {factors.googleVisibility.score != null && (
+            {/* GBP Completeness: always show verifiable field count */}
+            <FactorCard
+              name="GBP Completeness"
+              impact="High Impact"
+              score={hasRecalculatedScore ? factors.gbpCompleteness.score : null}
+              maxScore={33}
+              showScore={hasRecalculatedScore}
+              detail={`${factors.gbpCompleteness.complete}/5 fields complete`}
+              competitorContext={
+                factors.gbpCompleteness.missing.length > 0
+                  ? `Missing: ${factors.gbpCompleteness.missing.join(", ")}`
+                  : "All fields complete"
+              }
+              status={
+                factors.gbpCompleteness.complete >= 4
+                  ? "green"
+                  : factors.gbpCompleteness.complete >= 2
+                    ? "yellow"
+                    : "red"
+              }
+            />
+            {/* Google Visibility: sub-score only after recalc */}
+            {hasRecalculatedScore && factors.googleVisibility.score != null && (
               <FactorCard
                 name="Google Visibility"
                 impact="Medium Impact"
                 score={factors.googleVisibility.score}
                 maxScore={34}
+                showScore={true}
                 detail={
                   factors.googleVisibility.score >= 23
                     ? "Strong search presence"
