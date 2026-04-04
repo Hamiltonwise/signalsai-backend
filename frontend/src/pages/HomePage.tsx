@@ -46,6 +46,7 @@ interface DashboardContext {
       personal_goal?: string;
     } | null;
     checkup_score?: number | null;
+    current_clarity_score?: number | null;
     checkup_data?: any;
     subscription_status?: string;
     trial_end_at?: string | null;
@@ -88,7 +89,7 @@ function buildGreeting(
   const firstName = ctx?.user?.first_name || null;
   const archetype = ctx?.org?.owner_archetype || null;
   const confidence = ctx?.org?.archetype_confidence || 0;
-  const score = ctx?.org?.checkup_score || null;
+  const score = ctx?.org?.current_clarity_score || ctx?.org?.checkup_score || null;
   const position = ranking?.rankPosition || null;
   const city = ranking?.location?.split(",")[0]?.trim() || null;
   const competitor = ranking?.topCompetitor?.name || null;
@@ -211,7 +212,7 @@ export default function HomePage() {
   // ── Derived State ──
   const action = actionData?.card || null;
   const greeting = buildGreeting(ctx || null, ranking);
-  const score = ctx?.org?.checkup_score || null;
+  const score = ctx?.org?.current_clarity_score || ctx?.org?.checkup_score || null;
   const position = ranking?.rankPosition || null;
   const city = ranking?.location?.split(",")[0]?.trim() || null;
   const milestone = milestoneData?.card || null;

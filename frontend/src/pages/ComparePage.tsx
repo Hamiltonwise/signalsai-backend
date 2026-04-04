@@ -107,7 +107,7 @@ export default function ComparePage() {
   });
 
   const checkupData = ctx?.org?.checkup_data || null;
-  const score = ctx?.org?.checkup_score || rankingRaw?.rankScore || null;
+  const score = ctx?.org?.current_clarity_score || ctx?.org?.checkup_score || rankingRaw?.rankScore || null;
   const position = rankingRaw?.rankPosition || null;
   const city = rankingRaw?.location?.split(",")[0]?.trim() || null;
   const topCompetitor = rankingRaw?.rawData?.topCompetitor || null;
