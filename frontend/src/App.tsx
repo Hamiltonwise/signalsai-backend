@@ -270,7 +270,7 @@ function App() {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/changelog" element={<Changelog />} />
               <Route path="/referral-program" element={<ReferralProgram />} />
-              <Route path="/compare" element={<Compare />} />
+              <Route path="/compare-businesses" element={<Compare />} />
               {/* <Route path="/about" element={<About />} /> -- not built yet */}
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />

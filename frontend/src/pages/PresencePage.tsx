@@ -10,7 +10,7 @@
  * 4. Compliance check (FTC-risky claims flagged)
  */
 
-import { useState } from "react";
+import { useState, Component, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -21,12 +21,33 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronRight,
+  AlertCircle,
 } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 
 // Import existing components from parts shelf
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
+
+// Error boundary to prevent page crash from taking out the entire layout
+class PresenceErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error) { console.error("[PresencePage] Render error:", error); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+          <div className="text-center max-w-sm">
+            <AlertCircle className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm text-gray-500">Your presence data is loading. Try refreshing in a moment.</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import FocusKeywords from "@/components/dashboard/FocusKeywords";
 
 // ─── Collapsible Section ────────────────────────────────────────────
@@ -61,6 +82,14 @@ function Section({ title, icon: Icon, defaultOpen = true, children }: {
 // ─── Component ──────────────────────────────────────────────────────
 
 export default function PresencePage() {
+  return (
+    <PresenceErrorBoundary>
+      <PresencePageInner />
+    </PresenceErrorBoundary>
+  );
+}
+
+function PresencePageInner() {
   const { userProfile, hasGoogleConnection } = useAuth();
   const orgId = userProfile?.organizationId || null;
 
@@ -88,9 +117,10 @@ export default function PresencePage() {
     staleTime: 300_000,
   });
 
-  const checkupData = typeof ctx?.org?.checkup_data === "string"
-    ? JSON.parse(ctx.org.checkup_data)
-    : ctx?.org?.checkup_data;
+  let checkupData = ctx?.org?.checkup_data || null;
+  if (typeof checkupData === "string") {
+    try { checkupData = JSON.parse(checkupData); } catch { checkupData = null; }
+  }
 
   const place = checkupData?.place || {};
   const website = websiteData?.website || null;
