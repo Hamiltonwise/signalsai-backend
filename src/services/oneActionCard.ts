@@ -13,14 +13,7 @@
  */
 
 import { db } from "../database/connection";
-
-/**
- * Clean competitor name: strip parenthetical location info like "(Winter Garden)"
- * Google Places sometimes appends city/neighborhood to business names.
- */
-function cleanCompetitorName(name: string): string {
-  return name.replace(/\s*\([^)]*\)\s*$/, "").trim();
-}
+import { cleanCompetitorName } from "../utils/textCleaning";
 
 export interface OneActionCard {
   headline: string;

@@ -49,7 +49,7 @@ router.get("/google", gbpAuthLimiter, (req: Request, res: Response) => {
     res.redirect(authUrl);
   } catch (err: any) {
     console.error("[GBP-AUTH] Failed to generate auth URL:", err.message);
-    res.redirect("/dashboard?gbp=failed");
+    res.redirect("/home?gbp=failed");
   }
 });
 
@@ -62,7 +62,7 @@ router.get("/google/callback", async (req: Request, res: Response) => {
     const code = req.query.code as string | undefined;
     if (!code) {
       console.error("[GBP-AUTH] No authorization code in callback");
-      return res.redirect("/dashboard?gbp=failed");
+      return res.redirect("/home?gbp=failed");
     }
 
     // Decode state to recover orgId
@@ -79,7 +79,7 @@ router.get("/google/callback", async (req: Request, res: Response) => {
 
     if (!orgId) {
       console.error("[GBP-AUTH] No orgId in state -- cannot store tokens");
-      return res.redirect("/dashboard?gbp=failed");
+      return res.redirect("/home?gbp=failed");
     }
 
     // Exchange code for tokens
@@ -88,7 +88,7 @@ router.get("/google/callback", async (req: Request, res: Response) => {
 
     if (!tokens.access_token) {
       console.error("[GBP-AUTH] No access token received from Google");
-      return res.redirect("/dashboard?gbp=failed");
+      return res.redirect("/home?gbp=failed");
     }
 
     // Fetch the GBP account ID from the My Business Account Management API
@@ -198,10 +198,10 @@ router.get("/google/callback", async (req: Request, res: Response) => {
       console.warn("[GBP-AUTH] Failed to generate ranking snapshot:", err.message);
     }
 
-    return res.redirect("/dashboard?gbp=connected");
+    return res.redirect("/home?gbp=connected");
   } catch (err: any) {
     console.error("[GBP-AUTH] Callback error:", err.message);
-    return res.redirect("/dashboard?gbp=failed");
+    return res.redirect("/home?gbp=failed");
   }
 });
 

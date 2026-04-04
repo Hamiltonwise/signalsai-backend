@@ -29,6 +29,7 @@ import { getPlaceDetails } from "../controllers/places/feature-services/GooglePl
 // Scoring config imported from single source of truth
 import { REVIEW_VOLUME_BENCHMARKS, COMPETITIVE_RADII_MILES, getScoreLabel } from "../services/businessMetrics";
 import { calculateClarityScore } from "../services/clarityScoring";
+import { cleanCompetitorName } from "../utils/textCleaning";
 
 /**
  * Derive the real specialty from the business name.
@@ -1587,7 +1588,7 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
         }
         if (checkup_data) checkupUpdates.checkup_data = JSON.stringify(checkup_data);
         if (checkup_data?.topCompetitor?.name) {
-          checkupUpdates.top_competitor_name = checkup_data.topCompetitor.name;
+          checkupUpdates.top_competitor_name = cleanCompetitorName(checkup_data.topCompetitor.name);
         }
         // Baseline review count for First Win Attribution (WO-22)
         if (checkup_data?.reviewCount != null) {
@@ -1765,7 +1766,7 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
           keyword: `${practice_name || "specialist"} in ${marketCity}`,
           bullets: JSON.stringify(richBullets),
           finding_headline: richHeadline,
-          competitor_name: competitorName,
+          competitor_name: cleanCompetitorName(competitorName),
           competitor_review_count: competitorReviewCount,
           client_review_count: clientReviewCount,
           dollar_figure: parsed.totalImpact || null,

@@ -47,13 +47,7 @@ function stripEmDashes(text: string): string {
   return text.replace(/\u2014/g, ", ").replace(/\u2013/g, "-");
 }
 
-/**
- * Clean competitor name: strip parenthetical location info like "(Winter Garden)"
- * Google Places sometimes appends city/neighborhood to business names.
- */
-function cleanCompetitorName(name: string): string {
-  return name.replace(/\s*\([^)]*\)\s*$/, "").trim();
-}
+import { cleanCompetitorName } from "../utils/textCleaning";
 
 /**
  * Fallback: When Monday email fails to send, create an in-app notification

@@ -96,7 +96,7 @@ export default function AnniversaryReport() {
       <div className="mx-auto max-w-2xl px-4 py-12 text-center">
         <p className="text-gray-500">Unable to load your anniversary report.</p>
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/home")}
           className="mt-4 text-sm font-medium text-[#D56753] hover:underline"
         >
           Back to Dashboard
@@ -110,7 +110,7 @@ export default function AnniversaryReport() {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16">
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/home")}
           className="mb-8 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 print:hidden"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
@@ -146,7 +146,7 @@ export default function AnniversaryReport() {
       {/* Navigation */}
       <div className="mb-8 flex items-center justify-between print:hidden">
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/home")}
           className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
         >
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard

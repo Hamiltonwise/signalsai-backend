@@ -147,7 +147,7 @@ export default function ThankYou() {
         {/* Dashboard CTA */}
         <div className="text-center">
           <Link
-            to="/dashboard"
+            to="/home"
             className="btn-primary btn-press inline-flex items-center gap-2 text-base px-8 py-4"
           >
             See your dashboard

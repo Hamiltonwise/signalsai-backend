@@ -7,6 +7,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "../database/connection";
+import { cleanCompetitorName } from "../utils/textCleaning";
 import { textSearch } from "../controllers/places/feature-services/GooglePlacesApiService";
 import { checkFirstWinAttribution } from "./firstWinAttribution";
 import { computeAllVelocities } from "./reviewVelocity";
@@ -192,7 +193,7 @@ Market: ${address || specialty}`,
     finding_headline: findingHeadline,
     dollar_figure: dollarFigure,
     competitor_position: 1,
-    competitor_name: topCompetitorName,
+    competitor_name: cleanCompetitorName(topCompetitorName),
     competitor_review_count: topCompetitorReviews,
     client_review_count: clientReviews,
   });
@@ -216,7 +217,7 @@ Market: ${address || specialty}`,
         source: "ranking_snapshot",
         old_position: prevSnapshot.position,
         new_position: currentPosition,
-        competitor_name: topCompetitorName,
+        competitor_name: cleanCompetitorName(topCompetitorName),
       }),
       created_at: new Date(),
       updated_at: new Date(),
