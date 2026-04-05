@@ -178,55 +178,25 @@ These never bend. No exceptions. No "just this once."
 
 No score. No gauge. Raw readings from Google, each with a verification link. The doctor reads the blood panel and tells you what it means.
 
-### Factor 1: Review Health (0-33, High Impact)
+### Reading: Star Rating
+**What they see:** "5.0 stars" with a verify link to Google.
+**Status:** Healthy (4.5+), Attention (4.0-4.4), Critical (below 4.0). Based on: 68% of consumers require 4+ stars (BrightLocal 2026).
 
-**What it measures:** Star rating, review count relative to competitors and specialty benchmarks, recency of reviews, review response rate.
+### Reading: Review Volume
+**What they see:** "36 reviews. My Orthodontist has 342. Gap: 306." with verify links for both.
+**Status:** Healthy (>= competitor), Attention (>= 50% of competitor), Critical (< 50%).
 
-**What the customer sees:** "72 reviews at 5 stars" with "Peluso has 420."
+### Reading: Profile Completeness
+**What they see:** "3/5 fields complete. Missing: hours, phone." with verify link to GBP.
+**Status:** Healthy (5/5), Attention (3-4), Critical (0-2). Based on: Complete profiles 2.7x more reputable (Google).
 
-**How they verify:** Google their business. Google the competitor. Count the reviews. Check the stars.
+### Reading: Review Responses
+**What they see:** "0% responded" with verify link to check reviews for owner responses.
+**Status:** Healthy (80%+), Attention (1-79%), Critical (0%). Based on: Responding earns 35% more revenue (Womply).
 
-**Status color logic:** Green if review count >= competitor's. Yellow if >= 50% of competitor's. Red if less than 50%.
-
----
-
-### Factor 2: GBP Completeness (0-33, High Impact)
-
-**What it measures:** Five fields present on Google Business Profile: phone, hours, website, photos, description.
-
-**What the customer sees:** "2/5 fields complete. Missing: hours, phone, description."
-
-**How they verify:** Open their Google Business Profile. Check each field.
-
-**Status color logic:** Green if 4-5 complete. Yellow if 2-3 complete. Red if 0-1 complete.
-
----
-
-### Factor 3: Google Visibility (0-34, Medium Impact)
-
-**What it currently measures:** Estimated from Google Places API position data. This is the least verifiable factor because Places API results don't match what customers see on Google Search.
-
-**Target state:** Replace with verifiable signals: photo count, review response rate, posting frequency, website presence. All checkable by the customer on their own GBP.
-
-**What the customer sees:** "Strong search presence" / "Moderate search presence" / "Low search visibility." No position number.
-
-**How they verify (target):** Check their GBP photos, responses, and posts.
-
-**Status color logic:** Green if score >= 23. Yellow if >= 12. Red if below 12.
-
-**Note:** This factor is hidden until the current scoring algorithm has run (weekly recalc). It does NOT show a Google search position number (see Known 3). The transition from position-based to activity-based inputs is a pending code change.
-
----
-
-### Score Labels
-
-| Range | Label | Gauge Color | What It Means |
-|-------|-------|-------------|--------------|
-| 90-100 | Exceptional | Deep green | Top of market across all three factors |
-| 75-89 | Strong | Green | Ahead of most competitors |
-| 55-74 | Good | Yellow-green | Competitive, room to improve |
-| 35-54 | Developing | Amber | Gaps in one or more factors |
-| 0-34 | Needs Attention | Red | Significant gaps, competitors are ahead |
+### Reading: Your Market
+**What they see:** "Orthodontist in West Orange. Top competitor: My Orthodontist." with verify link to Google search.
+**Status:** Context reading. Shows the competitive landscape.
 
 ---
 
@@ -298,11 +268,11 @@ Five pages. Five questions. One product.
 
 | Page | Question | What They See | What's Verifiable |
 |------|----------|--------------|------------------|
-| Home | "Am I okay?" | Gauge + factors + one action | Every number Googleable |
-| Compare | "How do I compare?" | Score plan + competitors + simulator | Competitor names and review counts |
-| Reviews | "What are people saying?" | Individual reviews + AI response drafts | Their own Google reviews |
-| Presence | "What does my presence look like?" | Website + GBP completeness + keywords | Their own GBP listing |
-| Progress | "Am I getting better?" | 365-day view, milestones, trajectory | Review count growth over time |
+| Home | "Am I okay?" | Readings with verify links + one action card | Every number links to Google |
+| Compare | "How do I compare?" | Side-by-side raw numbers + competitors + referrals | Every number links to Google |
+| Reviews | "What are people saying?" | Individual reviews + AI response drafts with approve | Their own Google reviews |
+| Presence | "What does my presence look like?" | Website + GBP completeness | Their own GBP listing |
+| Progress | "Am I getting better?" | Reading trends (start vs now) + proof of work | Every trend verifiable on Google |
 
 ---
 
@@ -408,7 +378,7 @@ Every locked decision with the reasoning. If someone asks "why," point them here
 | 1 | No position claims | Places API != Google Search. Disproved in 10 seconds. | Apr 4 2026 | Corey |
 | 2 | One scoring algorithm | Two algorithms = two scores = confusion | Apr 4 2026 | Corey |
 | 3 | Weights in database | 10,000 customers, no deploys for tuning | Apr 4 2026 | Corey |
-| 4 | Credit score gauge | Zero learning curve, billions of prior impressions | Apr 4 2026 | Corey |
+| 4 | No scores, readings with verify links | Scores are algorithm output. Readings are Google's numbers. Supersedes credit score gauge decision. | Apr 4 2026 | Corey |
 | 5 | Verifiable factors only | If they can't Google it, don't show it | Apr 4 2026 | Corey |
 | 6 | "More visible" not "outranking" | Can't claim ranking we can't prove | Apr 4 2026 | Corey |
 | 7 | Review replies as first DFY | Verifiable: they see the response on Google | Apr 4 2026 | Corey |
@@ -471,7 +441,7 @@ Every product decision answers one of these. If it doesn't answer any, it doesn'
 Read Google data (exists) -> Analyze for intelligence they can't see (building) -> Take automated actions (wired, untested) -> Deliver without login (Monday email, exists) -> Show proof when they log in (building).
 
 **Question 3: What do things cost and what will people pay?**
-Agencies charge $2-5K/month for work customers can't verify. Alloro does the same work for $997, and every result is verifiable by Googling. The pitch: "You're paying $3,000/month for a black box. Alloro does it for $997 and you can check every result yourself."
+Agencies charge $3-5K/month for work customers can't verify. Alloro does the same work for $2,000/month, and every result is verifiable by Googling. The pitch: "You're paying $3-5K/month for a black box. Alloro does it for $2,000 and you can check every result yourself."
 
 ---
 
@@ -489,7 +459,7 @@ Agencies charge $2-5K/month for work customers can't verify. Alloro does the sam
 
 ---
 
-## Part 10: The Science (Why Each Page Exists)
+## Part 11: The Science (Why Each Page Exists)
 
 Alloro is not inventing new knowledge. Every factor we score, every page we show, every action we recommend is backed by existing research. We are tying known things together for someone who doesn't have time to read 50 sources.
 
@@ -505,7 +475,7 @@ Alloro is not inventing new knowledge. Every factor we score, every page we show
 
 | Page | Question | Human Need (Maslow) | Ranking Factors Covered | Research Backing |
 |------|----------|-------------------|------------------------|-----------------|
-| Home | "Am I okay?" | Safety | Synthesizes all factors into one score | Maslow: safety is the base. Until this is answered, nothing else matters. |
+| Home | "Am I okay?" | Safety | Readings with verify links, one action card | Maslow: safety is the base. Until this is answered, nothing else matters. |
 | Compare | "How do I compare?" | Status | Competitive position, behavioral signals, referral health | Kahneman: loss aversion (2x pain of loss vs pleasure of gain). Seeing the gap motivates action. |
 | Reviews | "What are people saying?" | Belonging | Review signals (20% of ranking weight per Whitespark 2026) | BrightLocal 2026: 98% read reviews. 74% only care about last 3 months. Ask Maps reads sentiment. |
 | Presence | "What does my presence look like?" | Achievement | GBP signals (32%), on-page, citations, AI visibility | Google: complete profiles 2.7x more reputable. 70% more likely to attract visits. |
@@ -582,7 +552,7 @@ Financial health does not need a 6th page. It needs reliable data. When that dat
 
 **Monday email variable content:** Nir Eyal's Hook Model. The email content changes weekly: sometimes a warning, sometimes a gift, sometimes a receipt. The variable reward creates the habit loop that drives weekly engagement.
 
-**Credit score gauge:** Familiarity bias. Hundreds of millions of people already know how to read a gauge with a number, a color, and contributing factors. Zero learning curve reduces activation energy to zero.
+**Readings with verify links:** Every number links to where you check it. The customer doesn't have to trust Alloro. They click the link and see the same number on Google. Trust through verification, not through design.
 
 **Named competitors in findings:** Specificity bias. "Peluso has 348 more reviews" is 5x more motivating than "a competitor has more reviews." Named threats feel real. Generic warnings feel ignorable.
 
