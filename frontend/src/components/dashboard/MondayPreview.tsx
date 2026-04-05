@@ -67,7 +67,7 @@ function buildPreview(data: MondayData, _practiceName: string, _firstName: strin
       body = `You have ${data.reviewCount} reviews. ${data.competitorName} has ${data.competitorReviewCount}. You're ahead, and every new review compounds that lead.`;
     }
   } else if (data.score) {
-    body = `Your Business Clarity Score is ${data.score}. This reflects how trustworthy your online presence looks to someone searching for you right now.`;
+    body = `Your Google Health Check shows ${data.reviewCount || "your"} reviews. This reflects how your online presence looks to someone searching for you right now.`;
   } else {
     body = `Alloro scanned your market this week. Your full report is in your dashboard.`;
   }

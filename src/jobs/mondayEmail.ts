@@ -143,12 +143,12 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     if (previousScoreVal != null && previousScoreVal !== currentScore) {
       const scoreDelta = currentScore - previousScoreVal;
       if (scoreDelta > 0) {
-        scoreDeltaLine = `Your Business Clarity Score: ${previousScoreVal} -> ${currentScore} (+${scoreDelta} this week)`;
+        scoreDeltaLine = `Your Google Health Check improved this week (${previousScoreVal} -> ${currentScore})`;
       } else {
-        scoreDeltaLine = `Your Business Clarity Score: ${previousScoreVal} -> ${currentScore} (${scoreDelta})`;
+        scoreDeltaLine = `Your Google Health Check shifted this week (${previousScoreVal} -> ${currentScore})`;
       }
     } else {
-      scoreDeltaLine = `Your Business Clarity Score: ${currentScore} (holding steady)`;
+      scoreDeltaLine = `Your Google Health Check: holding steady`;
     }
   }
 
@@ -186,11 +186,10 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     const market = checkupData.market || {};
     const topComp = checkupData.topCompetitor || null;
 
-    const firstWeekHeadline = "your first Business Clarity report";
-    const firstWeekSubject = `${ownerLastName}, your first Business Clarity report`;
+    const firstWeekHeadline = "your first Google Health Check";
+    const firstWeekSubject = `${ownerLastName}, your first Google Health Check`;
 
     let firstWeekBody = "Here's what we found when we first analyzed your market:\n\n";
-    firstWeekBody += `Your Business Clarity Score: ${checkupScore}/100\n\n`;
 
     if (findings.length > 0) {
       for (const f of findings) {
@@ -295,9 +294,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       } else {
         const gap = compReviews - clientRevs;
         rawBullets.push(`${compName} leads${city ? " in " + city : ""} with ${compReviews} reviews${clientRevs ? " to your " + clientRevs : ""}.`);
-        // Bio-economic lens: name the dollar consequence and human need
-        const annualAtRisk = Math.round(gap * 0.3 * avgCaseValue);
-        rawBullets.push(`The gap is ${gap} reviews. That gap represents approximately $${annualAtRisk.toLocaleString()} in annual revenue at risk. Your team's livelihood depends on that visibility.`);
+        rawBullets.push(`The gap is ${gap} reviews. Every review you add closes that gap and improves how Google surfaces your business.`);
         rawBullets.push(`At 3 reviews per week, you close it in about ${Math.ceil(gap / 3)} weeks.`);
       }
     } else {

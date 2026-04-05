@@ -263,7 +263,7 @@ export function generateUpgradeContext(
 
   // Find the most compelling reason to upgrade based on THEIR data
   if (!data.hasWebsite && data.rankPosition && data.rankPosition > 3) {
-    return `You're #${data.rankPosition} in your market without a website. We can build one from your reviews and have it ranking within a week.`;
+    return `You don't have a website yet. We can build one from your reviews and start improving your Google visibility this week.`;
   }
 
   if (data.competitorReviewCount > data.reviewCount * 1.5) {

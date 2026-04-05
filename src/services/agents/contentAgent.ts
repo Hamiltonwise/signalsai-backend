@@ -210,7 +210,7 @@ function generateTemplateContent(input: ContentInput): ContentResult {
     title: topic,
     body: `# ${topic}
 
-${topic.endsWith("?") ? "The short answer:" : "Here is what you need to know:"} your market position matters more than most ${specialtyText} practices${cityText} realize. The average specialist loses 3-4 new cases per month to a competitor ranking above them. That is $${(1200 * 3.5).toFixed(0)} in monthly revenue, invisible until you measure it.
+${topic.endsWith("?") ? "The short answer:" : "Here is what you need to know:"} your online visibility matters more than most ${specialtyText} practices${cityText} realize. When potential patients search for your specialty, the businesses with more reviews, complete profiles, and active engagement appear first.
 
 ## Why This Matters
 

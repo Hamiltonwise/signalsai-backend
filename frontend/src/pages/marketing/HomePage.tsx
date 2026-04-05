@@ -157,7 +157,7 @@ export default function HomePage() {
           </div>
 
           <p className="mt-4 text-xs text-white/20">
-            Free. 60 seconds. See your score instantly.
+            Free. 60 seconds. See your readings instantly.
           </p>
         </div>
       </section>
@@ -360,7 +360,7 @@ export default function HomePage() {
               <img src="/product-checkup.png" alt="Alloro Checkup: See where you rank in 60 seconds" className="w-full" loading="lazy" />
               <div className="p-4 bg-gradient-to-b from-white to-[#FFF9F7]">
                 <p className="text-sm font-bold text-[#212D40]">Your Checkup</p>
-                <p className="text-xs text-[#212D40]/50 mt-1">Type your name. See your score, your competitors, and your first action. 60 seconds.</p>
+                <p className="text-xs text-[#1A1D23]/50 mt-1">Type your name. See your readings, your competitors, and your first action. 60 seconds.</p>
               </div>
             </div>
             <div className="rounded-2xl overflow-hidden shadow-warm border border-[#D56753]/8 hover:shadow-warm-lg transition-all duration-300">
@@ -559,7 +559,7 @@ export default function HomePage() {
               {
                 "@type": "FAQPage",
                 mainEntity: [
-                  { "@type": "Question", name: "What is a Business Clarity Score?", acceptedAnswer: { "@type": "Answer", text: "A composite rating (0-100) of your local visibility, online presence, and review health compared to every competitor in your market. Calculated from public Google data in 60 seconds." } },
+                  { "@type": "Question", name: "What is a Google Health Check?", acceptedAnswer: { "@type": "Answer", text: "A set of readings from your Google Business Profile -- star rating, review count, profile completeness, and competitive comparison -- each with a link so you can verify the data yourself. Ready in 60 seconds." } },
                   { "@type": "Question", name: "How much does Alloro cost?", acceptedAnswer: { "@type": "Answer", text: "Alloro is $2,000/month with no contracts. Cancel anytime. Veterans, active duty spouses, first responders, and Gold Star family members get Alloro free forever through the Heroes and Founders Foundation. First-year business owners pay $400/month." } },
                   { "@type": "Question", name: "What does Alloro do?", acceptedAnswer: { "@type": "Answer", text: "Alloro translates your business. AI agents monitor your competitive position, build your website, track reviews and referral sources, and deliver one specific finding every Monday morning. You run your business. Alloro runs the rest." } },
                   { "@type": "Question", name: "Do I need to do anything after signing up?", acceptedAnswer: { "@type": "Answer", text: "No. Alloro automatically builds your website, monitors competitors, and sends weekly intelligence. The system runs without your involvement." } },

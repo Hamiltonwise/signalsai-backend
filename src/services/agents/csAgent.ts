@@ -328,8 +328,8 @@ async function checkFeatureNonAdoption(org: any): Promise<Intervention | null> {
     orgName: org.name || "Your practice",
     triggerType: "feature_non_adoption",
     message:
-      `You are currently ranked #${position} in your market with ${reviewCount} reviews. ` +
-      `See how you compare to your closest competitors and what it would take to move up.`,
+      `You have ${reviewCount} reviews in your market. ` +
+      `See how you compare to your closest competitors and what it would take to close the gap.`,
     humanNeed: "purpose",
     retentionValue: `Feature adoption is driven by showing the client their own data in context. Estimated conversion lift: 40% when users engage with rankings.`,
   };

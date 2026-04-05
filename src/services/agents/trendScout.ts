@@ -88,7 +88,7 @@ const TOPIC_KEYWORDS: Array<{
   angle: string;
 }> = [
   { keyword: "referral", weight: 5, wound: "Safety: invisible loss of referral sources", angle: "How Alloro tracks referral network shifts in real time" },
-  { keyword: "online reviews", weight: 4, wound: "Status: competitors outranking you with more reviews", angle: "The review gap and what it costs per month" },
+  { keyword: "online reviews", weight: 4, wound: "Status: competitors more visible on Google with more reviews", angle: "The review gap and what it means for your visibility" },
   { keyword: "practice growth", weight: 4, wound: "Purpose: bought a practice for freedom, got a second job", angle: "Growth that does not require the owner to do the marketing" },
   { keyword: "patient acquisition", weight: 4, wound: "Safety: new patients going to competitors", angle: "Where your next 10 patients are actually coming from" },
   { keyword: "small business owner", weight: 3, wound: "Purpose: trained for years in a craft, ended up managing a business", angle: "Business clarity without a business degree" },

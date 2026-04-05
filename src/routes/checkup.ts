@@ -1369,7 +1369,7 @@ checkupRoutes.post("/email", emailLimiter, async (req, res) => {
           competitor_name: topCompetitorName || null,
           subject: topCompetitorName
             ? `Your score vs ${topCompetitorName} in ${city}`
-            : `Your Business Clarity Score: ${compositeScore}`,
+            : `Your Google Health Check is ready`,
         },
       }).catch(() => {}); // Fire-and-forget
 
@@ -1753,7 +1753,7 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
           if (detail) richBullets.push(detail);
         }
         if (richBullets.length === 0) {
-          richBullets.push(`Your Business Clarity Score: ${checkup_score || "N/A"}/100.`);
+          richBullets.push(`Your Google Health Check is ready. See your readings in the dashboard.`);
           if (competitorName) richBullets.push(`${competitorName} leads your market with ${competitorReviewCount || "many"} reviews.`);
           richBullets.push("Your full competitive analysis updates next Monday.");
         }

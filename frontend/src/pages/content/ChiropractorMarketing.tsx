@@ -187,7 +187,7 @@ export default function ChiropractorMarketing() {
               <ArrowRight className="h-5 w-5" />
             </button>
             <p className="text-xs text-gray-400 mt-3">
-              Free checkup. See your score instantly. 60 seconds.
+              Free checkup. See your readings instantly. 60 seconds.
             </p>
           </div>
         </main>

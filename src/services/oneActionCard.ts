@@ -126,14 +126,12 @@ async function checkGPDrift(orgId: number): Promise<OneActionCard | null> {
 
       if (daysSilent >= 60) {
         // Get avg case value from vocabulary config
-        const avgCaseValue = await getAvgCaseValue(orgId);
-        const annualAtRisk = Math.round(priorMonthly * 12 * avgCaseValue);
         const gpName = source.gp_name || source.name || "A referring provider";
         const totalReferrals = source.total_referrals || Math.round(priorMonthly * 3);
 
         return {
           headline: `${gpName} sent you ${totalReferrals} referrals. They've been quiet for ${daysSilent} days.`,
-          body: `A call this week could recover an estimated $${annualAtRisk.toLocaleString()}/year. This is your highest-value relationship at risk right now.`,
+          body: `They averaged ${Math.round(priorMonthly)} referrals per month before going silent. A call this week could reopen your highest-value relationship.`,
           action_text: "See referral details",
           action_url: "/dashboard/referrals",
           priority_level: 1,
@@ -337,7 +335,7 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
     if (weakest.key === "localVisibility" && comp?.name) {
       return {
         headline: `${comp.name} is more visible on Google because of one thing you can fix today.`,
-        body: `Your local visibility score is ${weakest.score}/${weakest.max}. The fastest fix: add your complete services list to your Google Business Profile. It takes 10 minutes and directly impacts how you appear in "${checkup.market.city} specialist" searches.`,
+        body: `The fastest fix: add your complete services list to your Google Business Profile. It takes 10 minutes and directly impacts how you appear in "${checkup.market.city} specialist" searches.`,
         action_text: "Fix this now",
         action_url: "/settings/integrations",
         priority_level: 4,
@@ -390,7 +388,7 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
     }
 
     return {
-      headline: `Your Business Clarity Score is ${fallbackScore}.`,
+      headline: `Your Google health check is ready.`,
       body: `Connect Google to start tracking your market in real time. Your Monday brief will show exactly where you stand and what to do next.`,
       action_text: "Connect Google",
       action_url: "/settings/integrations",

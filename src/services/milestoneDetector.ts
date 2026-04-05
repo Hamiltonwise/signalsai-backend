@@ -82,10 +82,8 @@ export async function detectMilestones(
     const positionsGained = prevPosition - input.currentPosition;
     milestones.push({
       type: "rank_up",
-      headline: `You moved up to #${input.currentPosition} in ${input.city}`,
-      detail: positionsGained === 1
-        ? `You gained 1 position — you were #${prevPosition} last time.`
-        : `You jumped ${positionsGained} positions — from #${prevPosition} to #${input.currentPosition} of ${input.totalCompetitors}.`,
+      headline: `You're more visible in ${input.city} this week`,
+      detail: `Your Google presence improved. Reviews, profile completeness, and recent activity all contribute to visibility.`,
       competitorName: null,
       oldValue: prevPosition,
       newValue: input.currentPosition,
@@ -108,11 +106,7 @@ export async function detectMilestones(
           headline: `You just passed ${comp.name} in review count`,
           detail: isTied
             ? `You're now tied at ${input.currentReviewCount} reviews.`
-            : `You now have ${input.currentReviewCount} reviews vs their ${comp.reviewCount}. ${
-                input.currentPosition <= comp.position
-                  ? `You're now ahead at position #${input.currentPosition}.`
-                  : `Keep building — position changes follow review momentum.`
-              }`,
+            : `You now have ${input.currentReviewCount} reviews vs their ${comp.reviewCount}. Keep building -- review momentum drives visibility.`,
           competitorName: comp.name,
           oldValue: prevReviewCount,
           newValue: input.currentReviewCount,

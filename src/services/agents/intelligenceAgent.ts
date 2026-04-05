@@ -512,9 +512,9 @@ function generateTemplateFindings(context: OrgContext): IntelligenceFinding[] {
       detail: `Consistent review growth signals trust to both patients and search algorithms. Practices that add 3+ reviews per week rank higher and convert more new patients than those with sporadic reviews. Set a team goal of asking every patient at checkout. The compound effect over 90 days is significant.`,
       humanNeed: "purpose",
       economicConsequence: {
-        thirtyDay: `$${cv * 2} from improved local visibility`,
-        ninetyDay: `$${cv * 8} from sustained review momentum`,
-        yearDay: `$${cv * 24} from the compounding visibility effect`,
+        thirtyDay: `Improved visibility from consistent review growth`,
+        ninetyDay: `Sustained review momentum compounds over time`,
+        yearDay: `Review velocity becomes a durable competitive advantage`,
       },
     });
   }

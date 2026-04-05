@@ -178,7 +178,7 @@ export default function WhatIsBusinessClarity() {
               <ArrowRight className="h-5 w-5" />
             </button>
             <p className="text-xs text-gray-400 mt-3">
-              free market scan. See your score instantly. 60 seconds.
+              free market scan. See your readings instantly. 60 seconds.
             </p>
           </div>
         </div>

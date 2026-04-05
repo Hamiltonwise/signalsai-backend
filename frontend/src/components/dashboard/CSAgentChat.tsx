@@ -11,14 +11,12 @@ import { sendChatMessage, type ChatMessage } from "../../api/csAgent";
 
 interface CSAgentChatProps {
   practiceName: string;
-  score: number | null;
   locationId?: number | null;
   hasReferralData?: boolean;
 }
 
 export default function CSAgentChat({
   practiceName,
-  score,
   locationId,
   hasReferralData = false,
 }: CSAgentChatProps) {
@@ -88,9 +86,7 @@ export default function CSAgentChat({
 
   // Starter prompts — contextual to their data
   const starters = [
-    score != null
-      ? `Why is my score ${score}?`
-      : "What data do you have on my business?",
+    "What do my readings mean?",
     ...(hasReferralData ? ["Who are my top referring GPs?"] : []),
     "What should I do this week?",
   ];

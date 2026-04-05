@@ -49,7 +49,7 @@ const SCHEMA = {
           name: "How can a small business owner get business clarity?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Run a free Business Clarity Checkup at getalloro.com/checkup. In 60 seconds you see your competitors by name, your market position, and the one move that changes it. See your score instantly.",
+            text: "Run a free Google Health Check at getalloro.com/checkup. In 60 seconds you see your competitors by name, your readings from Google, and the one move that changes it.",
           },
         },
         {
@@ -80,10 +80,10 @@ export default function BusinessClarity() {
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="mx-auto max-w-2xl text-center">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">
             What is Business Clarity?
           </h1>
-          <p className="text-base sm:text-lg text-[#212D40]/70 leading-relaxed mt-6 max-w-xl mx-auto">
+          <p className="text-base sm:text-lg text-[#1A1D23]/70 leading-relaxed mt-6 max-w-xl mx-auto">
             {DEFINITION}
           </p>
         </div>
@@ -99,7 +99,7 @@ export default function BusinessClarity() {
             <p className="text-sm font-semibold text-[#D56753] uppercase tracking-wider mb-2">
               The Enemy
             </p>
-            <p className="text-base text-[#212D40] font-medium leading-relaxed">
+            <p className="text-base text-[#1A1D23] font-medium leading-relaxed">
               The built-in enemy is opacity. The business speaking a language the owner was never taught.
             </p>
           </div>
@@ -109,10 +109,10 @@ export default function BusinessClarity() {
       {/* Social proof */}
       <section className="px-5 py-10" style={{ backgroundColor: "rgba(213, 103, 83, 0.04)" }}>
         <div className="max-w-xl mx-auto text-center">
-          <blockquote className="text-lg font-medium text-[#212D40] leading-relaxed italic">
+          <blockquote className="text-lg font-medium text-[#1A1D23] leading-relaxed italic">
             "Can I trust this person? That's the only question on the site in 55 seconds."
           </blockquote>
-          <p className="mt-3 text-sm text-[#212D40]/50">
+          <p className="mt-3 text-sm text-[#1A1D23]/50">
             Dr. Kargoli, 1 Endodontics
           </p>
         </div>
@@ -147,14 +147,14 @@ export default function BusinessClarity() {
       {/* What it looks like */}
       <section className="px-5 py-16 sm:py-20">
         <div className="max-w-xl mx-auto text-center">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#212D40] mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#1A1D23] mb-6">
             What Business Clarity looks like
           </h2>
-          <p className="text-base text-[#212D40]/70 leading-relaxed">
+          <p className="text-base text-[#1A1D23]/70 leading-relaxed">
             You type your business name. In 60 seconds, you see every
-            competitor in your market by name. You see your score. You see
-            the diagnosis in plain English. You see the one move that changes
-            your position. No login. No sales call. Just the truth about
+            competitor in your market by name. You see your readings from
+            Google, each one verifiable. You see the one thing that matters
+            most right now. No login. No sales call. Just the truth about
             where you stand.
           </p>
         </div>
@@ -163,20 +163,20 @@ export default function BusinessClarity() {
       {/* Monday Brief preview */}
       <section className="px-5 py-12 sm:py-16 bg-white">
         <div className="max-w-xl mx-auto">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#212D40] text-center mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#1A1D23] text-center mb-8">
             What arrives Monday morning
           </h2>
           <div className="rounded-2xl border border-[#212D40]/20 bg-[#FAFAF8] overflow-hidden shadow-sm">
             <div className="h-1 bg-[#D56753]" />
             <div className="p-6 space-y-4">
               <div className="border-l-2 border-[#D56753] pl-4">
-                <p className="text-sm text-[#212D40]/80 leading-relaxed">
+                <p className="text-sm text-[#1A1D23]/80 leading-relaxed">
                   Your closest competitor gained 11 reviews last week. You gained 0.
-                  At this pace, they close the gap to rank #1 in your market within 8 weeks.
+                  At this pace, they become more visible on Google within 8 weeks.
                 </p>
               </div>
               <div className="border-l-2 border-[#212D40]/20 pl-4">
-                <p className="text-sm text-[#212D40]/60 leading-relaxed">
+                <p className="text-sm text-[#1A1D23]/60 leading-relaxed">
                   Your top referring source hasn't sent a case in 34 days.
                   This is the longest gap in 14 months. Worth a call this week.
                 </p>
@@ -185,7 +185,7 @@ export default function BusinessClarity() {
                 <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-1">
                   This week
                 </p>
-                <p className="text-sm text-[#212D40]/80">
+                <p className="text-sm text-[#1A1D23]/80">
                   Request reviews from 10 recent clients. Takes 8 minutes.
                 </p>
               </div>
@@ -209,13 +209,13 @@ export default function BusinessClarity() {
           </p>
           <Link
             to="/checkup"
-            className="inline-flex items-center gap-2 rounded-xl bg-white text-[#212D40] text-base font-semibold px-8 py-4 hover:bg-gray-50 active:scale-[0.98] transition-all"
+            className="inline-flex items-center gap-2 rounded-xl bg-white text-[#1A1D23] text-base font-semibold px-8 py-4 hover:bg-gray-50 active:scale-[0.98] transition-all"
           >
             Run your free Business Clarity Checkup
             <ArrowRight className="h-4 w-4" />
           </Link>
           <p className="text-xs text-white/50 mt-3">
-            See your score instantly. Free. 60 seconds.
+            See your readings instantly. Free. 60 seconds.
           </p>
         </div>
       </section>
@@ -226,7 +226,7 @@ export default function BusinessClarity() {
 function ExampleCard({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-[#FAFAF8] p-6">
-      <p className="text-sm text-[#212D40]/70 leading-relaxed">{children}</p>
+      <p className="text-sm text-[#1A1D23]/70 leading-relaxed">{children}</p>
     </div>
   );
 }

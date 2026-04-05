@@ -148,8 +148,7 @@ I ran a free competitive analysis on {businessName}. Two things stood out:
 
 2. {ozMoment2}
 
-Your Business Clarity Score: {score}/100
-Full analysis: {link}
+Your Google Health Check is ready: {link}
 
 Corey Wise
 Alloro, Bend OR`,

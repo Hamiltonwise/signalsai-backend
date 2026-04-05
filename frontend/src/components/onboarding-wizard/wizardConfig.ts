@@ -66,7 +66,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     targetSelector: "[data-wizard-target='dashboard-ranking']",
     title: "Local Ranking Strategy",
     description:
-      "See how you rank against local competitors. Your visibility score and patient sentiment are updated regularly based on Google data.",
+      "See how you compare to local competitors. Your reviews, profile completeness, and market data are updated regularly from Google.",
     scrollToElement: true,
   },
   {
@@ -158,9 +158,9 @@ export const WIZARD_STEPS: WizardStep[] = [
     id: "rankings-score",
     page: "rankings",
     targetSelector: "[data-wizard-target='rankings-score']",
-    title: "Ranking Score Overview",
+    title: "Your Readings",
     description:
-      "Your overall ranking position, visibility score, review count, and star rating at a glance.",
+      "Your star rating, review count, profile completeness, and market comparison at a glance.",
     scrollToElement: true,
   },
   {

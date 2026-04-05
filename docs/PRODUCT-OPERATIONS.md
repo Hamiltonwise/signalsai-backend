@@ -65,7 +65,7 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only. Requires a new, verified data source that matches Google Search results.
 
-**Last tested:** PARTIAL PASS. April 4, 2026. Position removed from HomePage, ComparePage, action cards, Monday email, clean week email, snapshot bullets, notifications. Secondary surfaces (milestoneDetector, ozMoment, trialEmails, tierGating, csAgent) still have position references. Primary customer touchpoints clean.
+**Last tested:** PASS. April 4, 2026. Position claims removed from all surfaces: HomePage, ComparePage, action cards, Monday email, clean week email, snapshot bullets, notifications, milestoneDetector, ozMoment, tierGating, csAgent, contentAgent, trendScout. All use "more visible on Google" language instead of position numbers.
 
 ---
 
@@ -80,7 +80,7 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 3, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** FAIL. April 4, 2026. Monday email fallback bullets still calculate `annualAtRisk = Math.round(gap * 0.3 * avgCaseValue)` from review count projections. This is a formula with assumptions, not real revenue data. Code fix needed.
+**Last tested:** PASS. April 4, 2026. `annualAtRisk` removed from Monday email fallback bullets and oneActionCard referral drift card. Replaced with verifiable language ("every review you add closes that gap," "they averaged X referrals per month before going silent"). No fabricated dollar figures remain in customer-facing output.
 
 ---
 
@@ -110,7 +110,7 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** PASS. April 4, 2026. All 5 customer-facing pages rebuilt. Gauge removed. Composite score removed. "Business Clarity Score" removed. All pages show raw readings with verification links. BillingPromptBar score display removed. ScoreImprovementPlan removed. ScoreSimulator removed. Progress page score/100 removed.
+**Last tested:** PASS. April 4, 2026. All 5 customer-facing pages rebuilt. Gauge removed. Composite score removed. "Business Clarity Score" replaced with "Google Health Check" across all surfaces: customer pages, marketing pages (20+ content pages), email templates, Monday email, checkup flow, action cards, onboarding wizard, trial emails, MondayPreview. No composite score displayed anywhere. All pages show raw readings with verification links.
 
 ---
 
@@ -229,8 +229,8 @@ What Alloro does FOR the customer, not just what it tells them.
 
 | Action | Status | What Happens | Customer Verification |
 |--------|--------|-------------|----------------------|
-| Review response posting | WIRED | Customer approves AI draft, posts to GBP | Google their reviews, see the response |
-| Instant snapshot on signup | WIRED | Fresh data 5 min after account creation | Score and factors appear on first login |
+| Review response posting | SEVERED | Customer approves AI draft, saved to DB but NOT posted to GBP. Route does not call gbpReviewReply.ts. | Requires: wire reviewDrafts.ts approve route to call approveAndPostReview() |
+| Instant snapshot on signup | WIRED | Fresh data 5 min after account creation | Readings appear on first login |
 | Welcome intelligence email | WIRED | Second surprise 4 hours after signup | Check inbox |
 | Weekly snapshot | WORKING | Sunday refresh of all competitor data | Monday email reflects current reality |
 | Weekly score recalc | WORKING | Fresh score from current algorithm | Score changes week to week |

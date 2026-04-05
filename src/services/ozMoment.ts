@@ -142,7 +142,7 @@ export async function generateOzMoments(data: OzMomentData): Promise<OzMoment[]>
     `LOCATION: ${data.clientCity}`,
     `CATEGORY: ${data.clientCategory}`,
     `RATING: ${data.clientRating}★ (${data.clientReviewCount} reviews)`,
-    `MARKET RANK: #${data.marketRank} of ${data.totalCompetitors}`,
+    `MARKET: ${data.totalCompetitors} competitors tracked`,
     `MARKET AVG: ${data.avgRating}★ rating, ${data.avgReviews} reviews`,
     `WEBSITE: ${data.clientHasWebsite ? "Yes" : "No website listed"}`,
     `PHOTOS: ${data.clientPhotoCount} on Google profile`,
@@ -335,8 +335,8 @@ function buildTemplateFallback(data: OzMomentData): OzMoment[] {
   // Market position
   if (data.marketRank && data.totalCompetitors && data.marketRank > 1) {
     moments.push({
-      hook: `You're #${data.marketRank} of ${data.totalCompetitors} in your market. ${comp} holds #1.`,
-      implication: `Position #1 gets 3x more clicks than position #3. The businesses above you aren't necessarily better. They're more visible.`,
+      hook: `${comp} is the most visible business in your market. You have ${data.totalCompetitors} competitors.`,
+      implication: `The most visible businesses aren't necessarily better. They have more reviews, more photos, and more complete profiles.`,
       action: `Visibility is closable. Reviews, photos, and profile completeness are the three levers.`,
       shareability: 7,
     });

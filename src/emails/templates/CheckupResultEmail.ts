@@ -153,11 +153,11 @@ export async function sendCheckupResultEmail(data: CheckupResultEmailData) {
 
   // Subject uses real competitor name per WO7 spec
   const subject = data.topCompetitorName
-    ? `Your score vs ${data.topCompetitorName} in ${data.city}`
-    : `Your Business Clarity Score: ${data.compositeScore}`;
+    ? `Your readings vs ${data.topCompetitorName} in ${data.city}`
+    : `Your Google Health Check is ready`;
 
   const body = wrapInBaseTemplate(content, {
-    preheader: `${data.practiceName} scored ${data.compositeScore}/100. Here's what we found.`,
+    preheader: `${data.practiceName} -- your Google Health Check is ready. Here's what we found.`,
     showFooterLinks: false,
   });
 

@@ -128,7 +128,7 @@ export default function GoogleReviewsGuide() {
 
           {/* Review Gap Calculation */}
           <div className="mt-12 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold text-[#212D40] mb-2">
+            <p className="text-sm font-semibold text-[#1A1D23] mb-2">
               The review gap calculation
             </p>
             <p className="text-sm text-gray-700 leading-relaxed">
@@ -146,7 +146,7 @@ export default function GoogleReviewsGuide() {
               <ArrowRight className="h-5 w-5" />
             </button>
             <p className="text-xs text-gray-400 mt-3">
-              Free checkup. See your score instantly. 60 seconds.
+              Free checkup. See your readings instantly. 60 seconds.
             </p>
           </div>
         </main>

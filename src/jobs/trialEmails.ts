@@ -236,7 +236,7 @@ async function updateSequencePosition(orgId: number, position: number): Promise<
 
 function getActionText(seq: number): string {
   switch (seq) {
-    case 1: return "See your score";
+    case 1: return "See your readings";
     case 2: return "View your finding";
     case 3: return "See the comparison";
     case 4: return "Preview your Monday brief";
