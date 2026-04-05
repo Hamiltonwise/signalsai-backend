@@ -162,7 +162,7 @@ anniversaryReportRoutes.get(
         topMoments.push({
           title: "First competitive analysis",
           date: new Date(earliestRanking.created_at).toISOString(),
-          detail: `Ranked #${earliestRanking.rank_position || "?"} in your market`,
+          detail: `${earliestRanking.total_competitors || "Multiple"} competitors tracked in your market`,
         });
       }
 

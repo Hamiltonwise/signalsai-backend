@@ -220,7 +220,7 @@ Generate exactly 2 insights. Each must:
 
 CRITICAL RULE: Never lead with "you have fewer reviews." That's the most obvious finding and the least surprising. Dig deeper. The Oz effect comes from saying something the owner CANNOT discover by looking at their own Google profile. Cross-reference two data points to create one private-feeling insight.
 
-PATTERN FROM OUR DATA (use if applicable): 67% of businesses we analyze have a PERFECT or near-perfect rating but rank 4th-6th in their market. If this business has a high rating but low rank, lead with: "You have a [X]-star rating. You're ranked #[Y]. Here's why rating alone doesn't win." This breaks their assumption that quality = visibility. It's the most powerful Oz moment we've found.
+PATTERN FROM OUR DATA (use if applicable): 67% of businesses we analyze have a PERFECT or near-perfect rating but are less visible than competitors with more reviews. If this business has a high rating but low review count relative to the top competitor, lead with: "You have a [X]-star rating, but [Competitor] has [Y] more reviews. Here's why reviews matter more than rating for visibility." This breaks their assumption that quality = visibility. It's the most powerful Oz moment we've found. NEVER claim a specific ranking number.
 
 SPECIALIST VS GENERALIST: In 78% of markets, the top-review competitor is a GENERALIST (general dentist, general clinic). The Alloro customer is usually a SPECIALIST. Frame this: "You're not losing to a better business. You're being outshown by a louder one." This reframes competition from threatening to solvable.
 

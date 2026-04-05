@@ -68,11 +68,7 @@ async function buildSystemPrompt(orgId: number, locationId?: number): Promise<st
 
   // Competitor info from ranking raw_data
   let competitorInfo = "";
-  let scoreInfo = "";
-  let rankInfo = "";
   if (ranking) {
-    scoreInfo = `Score: ${ranking.rank_score}/100.`;
-    rankInfo = `Ranked #${ranking.rank_position} of ${ranking.total_competitors} in the market.`;
 
     try {
       const rawData = typeof ranking.raw_data === "string"
@@ -87,7 +83,7 @@ async function buildSystemPrompt(orgId: number, locationId?: number): Promise<st
       }
       const clientGbp = rawData?.client_gbp;
       if (clientGbp) {
-        scoreInfo += ` ${clientGbp.totalReviewCount || 0} reviews, ${clientGbp.averageRating || "N/A"}★ rating.`;
+        // review/rating data used in system prompt readings section below
       }
     } catch { /* skip */ }
 
