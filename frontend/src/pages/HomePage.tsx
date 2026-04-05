@@ -103,13 +103,15 @@ function ReadingCard({
   const s = statusStyles[status];
 
   return (
-    <div className={`rounded-xl bg-stone-50/80 border ${s.bg} p-4`}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
+    <div className={`rounded-2xl bg-stone-50/80 border ${s.bg} p-5 sm:p-6`}>
+      <div className="flex items-center gap-2.5 mb-3">
+        <span className={`w-3 h-3 rounded-full ${s.dot} ring-4 ring-opacity-20 ${
+          status === "healthy" ? "ring-emerald-500" : status === "attention" ? "ring-amber-400" : "ring-red-500"
+        }`} />
         <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{label}</span>
       </div>
-      <p className="text-lg font-semibold text-[#1A1D23] leading-snug">{value}</p>
-      <p className="text-sm text-gray-500 mt-1 leading-relaxed">{context}</p>
+      <p className="text-2xl font-semibold text-[#1A1D23] leading-snug">{value}</p>
+      <p className="text-sm text-gray-500 mt-2 leading-relaxed">{context}</p>
       {verifyUrl && (
         <a
           href={verifyUrl}
@@ -351,12 +353,16 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-8"
+          className="mb-10"
         >
-          <p className="text-base text-gray-500 mb-2">{greeting}</p>
+          <h1 className="text-2xl font-semibold text-[#1A1D23] mb-1">{greeting}</h1>
           {readings && totalCount > 0 && (
-            <p className="text-sm text-gray-400">
-              {healthyCount} of {totalCount} readings healthy
+            <p className="text-base text-gray-400">
+              {healthyCount === totalCount
+                ? "All readings healthy. Nothing needs you."
+                : healthyCount === 0
+                  ? `${totalCount} readings need attention.`
+                  : `${healthyCount} of ${totalCount} readings healthy. ${totalCount - healthyCount} need attention.`}
             </p>
           )}
         </motion.div>
