@@ -71,7 +71,7 @@ export default function BuildingScreen() {
     return <Navigate to="/checkup" replace />;
   }
 
-  const { businessName, email, checkupScore } = state;
+  const { businessName, email } = state;
 
   return (
     <div className="w-full max-w-md mt-4 sm:mt-12 text-center space-y-8">
@@ -85,20 +85,15 @@ export default function BuildingScreen() {
         </h2>
       </div>
 
-      {/* Score reminder: bridge from checkup to dashboard */}
-      {checkupScore != null && checkupScore > 0 && (
-        <div className="card-primary text-center py-6">
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-[0.05em] mb-2">
-            Your Business Clarity Score
-          </p>
-          <p className="text-[40px] font-normal text-[#1A1D23] tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {checkupScore}
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            This is already in your dashboard. It updates every week.
-          </p>
-        </div>
-      )}
+      {/* Dashboard bridge */}
+      <div className="card-primary text-center py-6">
+        <p className="text-xs font-medium text-gray-400 uppercase tracking-[0.05em] mb-2">
+          Your Google Health Check
+        </p>
+        <p className="text-sm text-gray-500 mt-2">
+          Your readings are in your dashboard. They update every week.
+        </p>
+      </div>
 
       {/* What's real: no fake progress, just honest next steps */}
       <div className="space-y-3 text-left">
@@ -107,7 +102,7 @@ export default function BuildingScreen() {
             <CheckCircle2 className="w-3 h-3 text-emerald-500" />
           </span>
           <p className="text-sm text-gray-500 leading-relaxed">
-            Your competitors have been mapped and your score is live
+            Your competitors have been mapped and your readings are live
           </p>
         </div>
         <div className="flex items-start gap-3">

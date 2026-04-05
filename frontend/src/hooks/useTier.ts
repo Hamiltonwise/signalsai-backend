@@ -82,7 +82,7 @@ const TIER_FEATURES: Record<AlloroTier, Set<string>> = {
 };
 
 const TIER_LABELS: Record<AlloroTier, string> = {
-  free: "Business Clarity Score",
+  free: "Google Health Check",
   dwy: "Clarity",
   dfy: "Clarity + Freedom",
   foundation: "Heroes & Founders",

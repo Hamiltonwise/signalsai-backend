@@ -27,7 +27,7 @@ const FALLBACK: VocabularyConfig = {
   referralTerm: "referral source",
   caseType: "new customer",
   primaryMetric: "customer acquisition",
-  healthScoreLabel: "Business Clarity Score",
+  healthScoreLabel: "Google Health Check",
   competitorTerm: "competitor",
   providerTerm: "owner",
   locationTerm: "business",
