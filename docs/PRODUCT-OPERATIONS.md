@@ -458,6 +458,23 @@ Every locked decision with the reasoning. If someone asks "why," point them here
 
 ---
 
+## Part 10: The Three Questions
+
+Every product decision answers one of these. If it doesn't answer any, it doesn't get built.
+
+**Question 1: What do local service business owners want and need?**
+1. Where they stand in their community. Not data they know. Intelligence they can't find by Googling.
+2. Clarity in their numbers. Raw readings with the doctor's interpretation.
+3. What is being done on their behalf. Proof of work. The receipt.
+
+**Question 2: What needs to happen technically?**
+Read Google data (exists) -> Analyze for intelligence they can't see (building) -> Take automated actions (wired, untested) -> Deliver without login (Monday email, exists) -> Show proof when they log in (building).
+
+**Question 3: What do things cost and what will people pay?**
+Agencies charge $2-5K/month for work customers can't verify. Alloro does the same work for $997, and every result is verifiable by Googling. The pitch: "You're paying $3,000/month for a black box. Alloro does it for $997 and you can check every result yourself."
+
+---
+
 ## How to Use This Document
 
 **Before building:** Read the relevant Knowns. Write a Customer Reality Check that references them. If your build would violate a Known, stop.
