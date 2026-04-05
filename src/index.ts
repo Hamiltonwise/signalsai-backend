@@ -488,6 +488,12 @@ const startServer = async () => {
       catchUpStaleScores().catch((err) =>
         console.error("[Startup] Stale score catch-up failed (non-blocking):", err.message)
       );
+
+      // On startup: poll reviews for all orgs with a placeId.
+      // Catches new Google reviews, generates AI drafts, sends notifications.
+      pollReviewsOnStartup().catch((err) =>
+        console.error("[Startup] Review poll failed (non-blocking):", err.message)
+      );
     });
   } catch (error) {
     console.error("Failed to start server:", error);
@@ -534,6 +540,100 @@ async function catchUpStaleScores(): Promise<void> {
     console.log(`[Startup] Score catch-up complete: ${updated}/${staleOrgs.length} updated.`);
   } catch (err: any) {
     console.error("[Startup] Score catch-up error:", err.message);
+  }
+}
+
+/**
+ * Poll Google reviews on server startup.
+ * Finds all orgs with a placeId in checkup_data, skips any polled in the last 24h,
+ * then fetches new reviews and generates AI response drafts.
+ * Non-blocking. Runs in background. 2s delay between orgs for API limits.
+ */
+async function pollReviewsOnStartup(): Promise<void> {
+  try {
+    const { pollPracticeReviews } = await import("./services/reviewMonitor");
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Find all orgs that have a placeId in their checkup_data
+    const orgs = await db("organizations")
+      .whereNotNull("checkup_data")
+      .select("id", "name", "specialty", "checkup_data");
+
+    const eligible: Array<{
+      id: number;
+      name: string;
+      placeId: string;
+      specialty: string;
+    }> = [];
+
+    for (const org of orgs) {
+      const data = typeof org.checkup_data === "string"
+        ? JSON.parse(org.checkup_data)
+        : org.checkup_data;
+
+      const placeId = data?.placeId || data?.place?.placeId;
+      if (!placeId) continue;
+
+      const specialty =
+        data?.market?.specialty || data?.specialty || org.specialty || "practice";
+
+      eligible.push({ id: org.id, name: org.name, placeId, specialty });
+    }
+
+    if (eligible.length === 0) {
+      console.log("[Startup] No orgs with placeId found. Skipping review poll.");
+      return;
+    }
+
+    // Filter out orgs polled in the last 24 hours
+    const recentPolls = await db("review_notifications")
+      .select("organization_id")
+      .where("created_at", ">=", twentyFourHoursAgo)
+      .groupBy("organization_id");
+
+    const recentOrgIds = new Set(recentPolls.map((r: any) => r.organization_id));
+    const toPoll = eligible.filter((org) => !recentOrgIds.has(org.id));
+
+    if (toPoll.length === 0) {
+      console.log(
+        `[Startup] All ${eligible.length} orgs polled within 24h. Skipping review poll.`
+      );
+      return;
+    }
+
+    console.log(
+      `[Startup] Polling reviews for ${toPoll.length} org(s) (${eligible.length - toPoll.length} skipped, polled <24h ago)...`
+    );
+
+    let polled = 0;
+    let totalNew = 0;
+
+    for (const org of toPoll) {
+      try {
+        const result = await pollPracticeReviews(
+          org.id,
+          null,
+          org.placeId,
+          org.name,
+          org.specialty,
+        );
+        polled++;
+        totalNew += result.newReviews;
+      } catch (err: any) {
+        console.error(
+          `[Startup] Review poll failed for ${org.name}:`,
+          err.message,
+        );
+      }
+      // 2s delay between orgs to respect Google API limits
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+
+    console.log(
+      `[Startup] Review poll complete: ${polled}/${toPoll.length} orgs polled, ${totalNew} new review(s) found.`
+    );
+  } catch (err: any) {
+    console.error("[Startup] Review poll error:", err.message);
   }
 }
 
