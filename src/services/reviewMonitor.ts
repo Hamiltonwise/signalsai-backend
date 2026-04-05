@@ -13,6 +13,8 @@
 import axios from "axios";
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "../database/connection";
+import { createOAuth2ClientForConnection } from "../auth/oauth2Helper";
+import { buildAuthHeaders } from "../controllers/gbp/gbp-services/gbp-api.service";
 
 const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API;
 const PLACES_API_BASE = "https://places.googleapis.com/v1";
@@ -171,6 +173,121 @@ async function sendSlackNotification(
   }
 }
 
+// ─── Insert review notification (shared by both paths) ─────────────
+
+async function insertReviewNotification(params: {
+  orgId: number;
+  locationId: number | null;
+  placeId: string;
+  reviewerName: string;
+  starRating: number;
+  reviewText: string;
+  aiResponse: string;
+  googleId: string;
+  publishedAt: string | null;
+  postable: boolean;
+}): Promise<void> {
+  const { orgId, locationId, placeId, reviewerName, starRating, reviewText, aiResponse, googleId, publishedAt, postable } = params;
+
+  await db("review_notifications").insert({
+    organization_id: orgId,
+    location_id: locationId,
+    place_id: placeId,
+    reviewer_name: reviewerName,
+    star_rating: starRating,
+    review_text: reviewText,
+    ai_response: aiResponse,
+    status: "new",
+    review_google_id: googleId,
+    review_published_at: publishedAt,
+    slack_notified: false,
+    postable: postable,
+  });
+
+  const stars = "\u2605".repeat(starRating) + "\u2606".repeat(5 - starRating);
+  await db("notifications").insert({
+    organization_id: orgId,
+    location_id: locationId,
+    title: `New ${starRating}-star review from ${reviewerName}`,
+    message: reviewText
+      ? `${stars}  ${reviewText.slice(0, 200)}${reviewText.length > 200 ? "..." : ""}`
+      : `${stars}  ${reviewerName} left a ${starRating}-star review.`,
+    type: "pms",
+    read: false,
+    metadata: JSON.stringify({
+      source: "review_monitor",
+      reviewer_name: reviewerName,
+      star_rating: starRating,
+      review_google_id: googleId,
+    }),
+    created_at: new Date(),
+    updated_at: new Date(),
+  }).catch(() => {});
+}
+
+// ─── Fetch reviews via MyBusiness API (OAuth, postable IDs) ────────
+
+const STAR_TO_NUM: Record<string, number> = {
+  ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5,
+};
+
+interface MyBusinessReview {
+  name: string; // accounts/X/locations/Y/reviews/Z (the postable format)
+  starRating: number | string;
+  comment?: string;
+  reviewer?: { displayName?: string };
+  createTime?: string;
+  reviewReply?: { comment?: string };
+}
+
+async function fetchMyBusinessReviews(
+  orgId: number,
+): Promise<{ reviews: MyBusinessReview[]; postable: boolean }> {
+  try {
+    // Find the GBP connection and selected property for this org
+    const connection = await db("google_connections")
+      .where({ organization_id: orgId })
+      .first();
+
+    if (!connection) return { reviews: [], postable: false };
+
+    const property = await db("google_properties")
+      .where({ google_connection_id: connection.id, type: "gbp", selected: true })
+      .first();
+
+    if (!property?.account_id || !property?.external_id) {
+      return { reviews: [], postable: false };
+    }
+
+    const auth = await createOAuth2ClientForConnection(connection.id);
+    const headers = await buildAuthHeaders(auth);
+    const parentPath = `accounts/${property.account_id}/locations/${property.external_id}`;
+
+    const allReviews: MyBusinessReview[] = [];
+    let pageToken: string | undefined;
+
+    do {
+      const { data } = await axios.get(
+        `https://mybusiness.googleapis.com/v4/${parentPath}/reviews`,
+        {
+          params: { pageSize: 50, pageToken, orderBy: "updateTime desc" },
+          headers,
+        },
+      );
+
+      for (const r of data.reviews || []) {
+        if (r.name) allReviews.push(r);
+      }
+      pageToken = data.nextPageToken || undefined;
+    } while (pageToken);
+
+    return { reviews: allReviews, postable: true };
+  } catch (err: any) {
+    console.error(`[ReviewMonitor] MyBusiness API failed for org ${orgId}:`, err.message);
+    return { reviews: [], postable: false };
+  }
+}
+
 // ─── Poll reviews for a single practice ─────────────────────────────
 
 export interface PollResult {
@@ -187,19 +304,64 @@ export async function pollPracticeReviews(
   practiceName: string,
   specialty: string,
 ): Promise<PollResult> {
-  const reviews = await fetchPlaceReviews(placeId);
+  // Try MyBusiness API first (gives postable review IDs for reply)
+  // Fall back to Places API (view-only, no posting)
+  const myBiz = await fetchMyBusinessReviews(orgId);
 
   let newCount = 0;
 
+  if (myBiz.reviews.length > 0) {
+    // MyBusiness path: review_google_id is postable format
+    for (const review of myBiz.reviews) {
+      const googleId = review.name;
+      if (!googleId) continue;
+
+      const existing = await db("review_notifications")
+        .where({ review_google_id: googleId })
+        .first();
+      if (existing) continue;
+
+      const starRating = typeof review.starRating === "number"
+        ? review.starRating
+        : (STAR_TO_NUM[review.starRating] ?? 0);
+      const reviewerName = review.reviewer?.displayName || "Anonymous";
+      const reviewText = review.comment || "";
+      const publishedAt = review.createTime || null;
+      const hasReply = !!(review.reviewReply?.comment);
+
+      // Skip reviews that already have a reply on Google
+      if (hasReply) continue;
+
+      const aiResponse = reviewText
+        ? await generateResponse(practiceName, specialty, reviewerName, starRating, reviewText)
+        : "";
+
+      await insertReviewNotification({
+        orgId, locationId, placeId, reviewerName, starRating,
+        reviewText, aiResponse, googleId, publishedAt, postable: true,
+      });
+
+      await sendSlackNotification(practiceName, reviewerName, starRating, reviewText, aiResponse);
+      await db("review_notifications").where({ review_google_id: googleId }).update({ slack_notified: true });
+
+      newCount++;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    console.log(`[ReviewMonitor] ${practiceName}: ${newCount} new review(s) of ${myBiz.reviews.length} total (MyBusiness API, postable)`);
+    return { orgId, practiceName, newReviews: newCount, totalReviews: myBiz.reviews.length };
+  }
+
+  // Fallback: Places API (read-only, no posting)
+  const reviews = await fetchPlaceReviews(placeId);
+
   for (const review of reviews) {
-    const googleId = review.name; // unique review resource name
+    const googleId = review.name;
     if (!googleId) continue;
 
-    // Check if we already have this review
     const existing = await db("review_notifications")
       .where({ review_google_id: googleId })
       .first();
-
     if (existing) continue;
 
     const reviewerName = review.authorAttribution?.displayName || "Anonymous";
@@ -207,58 +369,19 @@ export async function pollPracticeReviews(
     const reviewText = review.text?.text || "";
     const publishedAt = review.publishTime || null;
 
-    // Generate AI response
     const aiResponse = reviewText
       ? await generateResponse(practiceName, specialty, reviewerName, starRating, reviewText)
       : "";
 
-    // Store
-    await db("review_notifications").insert({
-      organization_id: orgId,
-      location_id: locationId,
-      place_id: placeId,
-      reviewer_name: reviewerName,
-      star_rating: starRating,
-      review_text: reviewText,
-      ai_response: aiResponse,
-      status: "new",
-      review_google_id: googleId,
-      review_published_at: publishedAt,
-      slack_notified: false,
+    await insertReviewNotification({
+      orgId, locationId, placeId, reviewerName, starRating,
+      reviewText, aiResponse, googleId, publishedAt, postable: false,
     });
 
-    // Write to notifications table (feeds the bell popover)
-    const stars = "\u2605".repeat(starRating) + "\u2606".repeat(5 - starRating);
-    await db("notifications").insert({
-      organization_id: orgId,
-      location_id: locationId,
-      title: `New ${starRating}-star review from ${reviewerName}`,
-      message: reviewText
-        ? `${stars}  ${reviewText.slice(0, 200)}${reviewText.length > 200 ? "..." : ""}`
-        : `${stars}  ${reviewerName} left a ${starRating}-star review.`,
-      type: "pms",
-      read: false,
-      metadata: JSON.stringify({
-        source: "review_monitor",
-        reviewer_name: reviewerName,
-        star_rating: starRating,
-        review_google_id: googleId,
-      }),
-      created_at: new Date(),
-      updated_at: new Date(),
-    }).catch(() => {});
-
-    // Send Slack notification
     await sendSlackNotification(practiceName, reviewerName, starRating, reviewText, aiResponse);
-
-    // Mark as notified
-    await db("review_notifications")
-      .where({ review_google_id: googleId })
-      .update({ slack_notified: true });
+    await db("review_notifications").where({ review_google_id: googleId }).update({ slack_notified: true });
 
     newCount++;
-
-    // Small delay between API calls
     await new Promise((r) => setTimeout(r, 300));
   }
 

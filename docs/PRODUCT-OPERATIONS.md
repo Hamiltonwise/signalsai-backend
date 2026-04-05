@@ -229,7 +229,7 @@ What Alloro does FOR the customer, not just what it tells them.
 
 | Action | Status | What Happens | Customer Verification |
 |--------|--------|-------------|----------------------|
-| Review response posting | BLOCKED | AI drafts shown with "copy and post" instruction. Approve button removed. Root cause: reviewMonitor stores Places API review IDs but gbpReviewReply uses MyBusiness API which expects different ID format. Cannot post until ID mapping is resolved. | Requires: map Places API review names to MyBusiness resource names, or switch review fetching to MyBusiness API |
+| Review response posting | WIRED | Customer sees AI draft, taps "Approve and Post," response posts to GBP. Uses MyBusiness API (OAuth) for connected orgs (postable IDs). Falls back to Places API for non-connected orgs (view-only, copy instruction). Button only appears when posting is possible. Errors shown honestly. | Google their reviews, see the response. Requires: migration for `postable` column + OAuth connection. |
 | Instant snapshot on signup | WIRED | Fresh data 5 min after account creation | Readings appear on first login |
 | Welcome intelligence email | WIRED | Second surprise 4 hours after signup | Check inbox |
 | Weekly snapshot | WORKING | Sunday refresh of all competitor data | Monday email reflects current reality |

@@ -39,6 +39,7 @@ reviewDraftRoutes.get(
           "review_text",
           "ai_response",
           "status",
+          "postable",
           "review_published_at",
           "created_at"
         );

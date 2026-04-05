@@ -16,7 +16,7 @@
  */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Star,
@@ -27,7 +27,7 @@ import {
   Check,
   Sparkles,
 } from "lucide-react";
-import { apiGet } from "@/api/index";
+import { apiGet, apiPatch } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -39,6 +39,7 @@ interface ReviewNotification {
   review_text: string | null;
   ai_response: string | null;
   status: string;
+  postable: boolean;
   review_published_at: string | null;
   created_at: string;
 }
@@ -110,8 +111,14 @@ function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
 
 function NotificationReviewCard({
   review,
+  onApprove,
+  approveError,
+  isApproving,
 }: {
   review: ReviewNotification;
+  onApprove: (id: number) => void;
+  approveError: string | null;
+  isApproving: boolean;
 }) {
   const publishDate = review.review_published_at || review.created_at;
   const formattedDate = publishDate
@@ -154,9 +161,25 @@ function NotificationReviewCard({
           <p className="text-sm text-[#1A1D23]/70 leading-relaxed">
             {review.ai_response}
           </p>
-          <p className="text-xs text-[#1A1D23]/40 pt-1">
-            Copy this response and post it on your Google Business Profile.
-          </p>
+          {review.postable ? (
+            <div className="pt-1 space-y-1.5">
+              <button
+                onClick={() => onApprove(review.id)}
+                disabled={isApproving}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D56753] text-white text-xs font-medium hover:bg-[#C05A48] transition-colors disabled:opacity-50"
+              >
+                <Check className="w-3 h-3" />
+                {isApproving ? "Posting..." : "Approve and Post"}
+              </button>
+              {approveError && (
+                <p className="text-xs text-red-500">{approveError}</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-[#1A1D23]/40 pt-1">
+              Copy this response and post it on your Google Business Profile.
+            </p>
+          )}
         </div>
       )}
 
@@ -204,6 +227,28 @@ function CheckupReviewCard({ review }: { review: CheckupReview }) {
 export default function ReviewsPage() {
   const { userProfile } = useAuth();
   const orgId = userProfile?.organizationId || null;
+  const queryClient = useQueryClient();
+  const [approveError, setApproveError] = useState<string | null>(null);
+
+  // Approve mutation -- only fires for postable reviews
+  const approveMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiPatch({ path: `/user/review-drafts/${id}`, passedData: { action: "approve" } });
+      return res as { success: boolean; posted?: boolean; message?: string };
+    },
+    onSuccess: (data) => {
+      if (data?.posted) {
+        setApproveError(null);
+        queryClient.invalidateQueries({ queryKey: ["review-drafts", orgId] });
+      } else {
+        setApproveError(data?.message || "Could not post to Google. Try again later.");
+      }
+    },
+    onError: () => {
+      setApproveError("Could not post to Google. Try again later.");
+    },
+  });
+
   // Aggregate review data from checkup
   const { data: ctx } = useQuery<Record<string, unknown>>({
     queryKey: ["reviews-context", orgId],
@@ -294,6 +339,9 @@ export default function ReviewsPage() {
                 <NotificationReviewCard
                   key={review.id}
                   review={review}
+                  onApprove={(id) => { setApproveError(null); approveMutation.mutate(id); }}
+                  approveError={approveError}
+                  isApproving={approveMutation.isPending}
                 />
               ))}
             </div>
