@@ -21,7 +21,7 @@ interface TTFVSignals {
   score: number;
 }
 
-export default function BillingPromptBar({ orgId, score, finding }: BillingPromptProps) {
+export default function BillingPromptBar({ orgId, score: _score, finding }: BillingPromptProps) {
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [ttfvData, setTtfvData] = useState<TTFVSignals | null>(null);
@@ -133,9 +133,7 @@ export default function BillingPromptBar({ orgId, score, finding }: BillingPromp
           <X className="h-4 w-4" />
         </button>
 
-        {score != null && (
-          <p className="text-3xl font-semibold mb-1">{score}<span className="text-lg text-white/50">/100</span></p>
-        )}
+        {/* Score display removed per Known 6: no composite scores */}
 
         {/* TTFV signals */}
         {ttfvData && ttfvData.signals && ttfvData.signals.length > 0 && (
