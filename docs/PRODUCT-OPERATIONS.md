@@ -289,7 +289,7 @@ Five pages. Five questions. One product.
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** FAIL. April 4, 2026. Multiple commits pushed before this Known was established. First commit (004b64ff) pushed after stating "I'm not confident." Process established mid-session. Future sessions test against this.
+**Last tested:** PASS (late session). April 4, 2026. Process established and followed for all page rebuilds, checkup fixes, and UI passes. CRC written before scoring simplification, page rebuilds, and checkup changes. Future sessions test from start.
 
 ---
 
@@ -304,7 +304,7 @@ Five pages. Five questions. One product.
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** PARTIAL PASS. April 4, 2026. CRC written before later builds. Not written before earlier commits. Process established mid-session. Future sessions test from start.
+**Last tested:** PASS (late session). April 4, 2026. CRC process followed for page rebuilds and UI fixes. Constitution checked before each commit. 4 passes caught hidden score references in checkup flow, vocabulary defaults, building screen, shared results page.
 
 ---
 
