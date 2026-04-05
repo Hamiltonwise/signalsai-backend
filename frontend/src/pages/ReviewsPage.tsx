@@ -320,11 +320,11 @@ export default function ReviewsPage() {
       <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-4">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-lg font-semibold text-[#1A1D23]">
+          <h1 className="text-2xl font-semibold text-[#1A1D23]">
             What People Are Saying
           </h1>
           {rating && reviewCount > 0 && (
-            <p className="text-sm text-[#1A1D23]/50 mt-1">
+            <p className="text-base font-medium text-[#1A1D23]/60 mt-1">
               {rating} stars across {reviewCount} reviews
             </p>
           )}
@@ -351,11 +351,14 @@ export default function ReviewsPage() {
               ))}
             </div>
           ) : reviewCount > 0 ? (
-            <p className="text-sm text-[#1A1D23]/50">
-              You have {reviewCount} reviews at {rating} stars on Google.
-              Individual review details will appear here after your next
-              ranking scan.
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-[#1A1D23]">
+                You have {reviewCount} reviews at {rating} stars on Google.
+              </p>
+              <p className="text-sm text-[#1A1D23]/50">
+                Alloro is syncing your Google reviews. They will appear here with AI-drafted responses you can approve with one tap.
+              </p>
+            </div>
           ) : (
             <p className="text-sm text-[#1A1D23]/50">
               Review data will appear here after your first ranking scan.

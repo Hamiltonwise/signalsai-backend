@@ -150,7 +150,7 @@ function ComparePageInner() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-lg font-semibold text-[#1A1D23]">How You Compare</h1>
+          <h1 className="text-2xl font-semibold text-[#1A1D23]">How You Compare</h1>
           {competitorName && (
             <p className="text-sm text-gray-500 mt-1">
               Your top competitor: {competitorName}
@@ -167,33 +167,33 @@ function ComparePageInner() {
         {competitorName && (
           <Section title="You vs Your Top Competitor" defaultOpen={true}>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-stone-200">
-                    <th className="text-left py-3 text-gray-400 font-semibold text-xs uppercase tracking-wider">Reading</th>
-                    <th className="text-right py-3 text-gray-400 font-semibold text-xs uppercase tracking-wider">You</th>
-                    <th className="text-right py-3 text-gray-400 font-semibold text-xs uppercase tracking-wider">{competitorName.split(/\s/).slice(0, 2).join(" ")}</th>
+                    <th className="text-left py-4 px-2 text-gray-400 font-semibold text-xs uppercase tracking-wider">Reading</th>
+                    <th className="text-right py-4 px-2 text-gray-400 font-semibold text-xs uppercase tracking-wider">You</th>
+                    <th className="text-right py-4 px-2 text-gray-400 font-semibold text-xs uppercase tracking-wider">{competitorName.split(/\s/).slice(0, 2).join(" ")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
                   <tr>
-                    <td className="py-3 text-[#1A1D23]">Star Rating</td>
-                    <td className="py-3 text-right font-semibold text-[#1A1D23]">{clientRating || "N/A"}</td>
-                    <td className="py-3 text-right text-gray-500">{topCompetitor?.rating || "N/A"}</td>
+                    <td className="py-4 px-2 text-[#1A1D23]">Star Rating</td>
+                    <td className="py-4 px-2 text-right font-semibold text-[#1A1D23]">{clientRating || "N/A"}</td>
+                    <td className="py-4 px-2 text-right text-gray-500">{topCompetitor?.rating || "N/A"}</td>
                   </tr>
                   <tr>
-                    <td className="py-3 text-[#1A1D23]">Reviews</td>
-                    <td className={`py-3 text-right font-semibold ${clientReviews >= (competitorReviews || 0) ? "text-emerald-600" : "text-red-500"}`}>
+                    <td className="py-4 px-2 text-[#1A1D23]">Reviews</td>
+                    <td className={`py-4 px-2 text-right font-semibold ${clientReviews >= (competitorReviews || 0) ? "text-emerald-600" : "text-red-500"}`}>
                       {clientReviews || 0}
                     </td>
-                    <td className="py-3 text-right text-gray-500">{competitorReviews || "N/A"}</td>
+                    <td className="py-4 px-2 text-right text-gray-500">{competitorReviews || "N/A"}</td>
                   </tr>
                   <tr>
-                    <td className="py-3 text-[#1A1D23]">Photos</td>
-                    <td className={`py-3 text-right font-semibold ${clientPhotos >= (topCompetitor?.photosCount || 0) ? "text-emerald-600" : "text-amber-500"}`}>
+                    <td className="py-4 px-2 text-[#1A1D23]">Photos</td>
+                    <td className={`py-4 px-2 text-right font-semibold ${clientPhotos >= (topCompetitor?.photosCount || 0) ? "text-emerald-600" : "text-amber-500"}`}>
                       {clientPhotos || 0}
                     </td>
-                    <td className="py-3 text-right text-gray-500">{topCompetitor?.photosCount || "N/A"}</td>
+                    <td className="py-4 px-2 text-right text-gray-500">{topCompetitor?.photosCount || "N/A"}</td>
                   </tr>
                 </tbody>
               </table>
@@ -217,13 +217,13 @@ function ComparePageInner() {
 
         {/* What to Do */}
         <Section title="What to Focus On" defaultOpen={true}>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {clientReviews < (competitorReviews || 0) && (
               <div className="flex items-start gap-3">
-                <span className="w-2 h-2 rounded-full bg-red-500 mt-2 shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-red-500 mt-2.5 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-[#1A1D23]">Close the review gap</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 mt-1">
                     You have {clientReviews} reviews. {competitorName} has {competitorReviews}.
                     Ask your 3 most recent clients for a review this week.
                   </p>
@@ -232,10 +232,10 @@ function ComparePageInner() {
             )}
             {clientPhotos < 10 && (
               <div className="flex items-start gap-3">
-                <span className="w-2 h-2 rounded-full bg-amber-400 mt-2 shrink-0" />
+                <span className="w-2 h-2 rounded-full bg-amber-400 mt-2.5 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-[#1A1D23]">Add photos to your profile</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 mt-1">
                     You have {clientPhotos} photos. Businesses with 10+ photos get significantly more engagement.
                   </p>
                 </div>
@@ -245,6 +245,12 @@ function ComparePageInner() {
               <p className="text-sm text-gray-500">
                 You're ahead on all comparable readings. Keep the momentum.
               </p>
+            )}
+            {!competitorName && clientReviews === 0 && clientPhotos === 0 && (
+              <div className="text-sm text-gray-500">
+                <p className="font-semibold text-[#1A1D23] mb-1">Track a competitor to unlock this section</p>
+                <p>When you add a competitor below, Alloro compares your Google reviews, star rating, and photos side by side so you can see exactly where you lead and where to close the gap.</p>
+              </div>
             )}
           </div>
         </Section>

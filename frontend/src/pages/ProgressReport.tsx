@@ -147,7 +147,7 @@ export default function ProgressReport() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-lg font-semibold text-[#1A1D23]">Your Progress</h1>
+          <h1 className="text-2xl font-semibold text-[#1A1D23]">Your Progress</h1>
           {daysActive && (
             <p className="text-sm text-gray-500 mt-1">
               {daysActive} day{daysActive !== 1 ? "s" : ""} with Alloro
@@ -175,7 +175,7 @@ export default function ProgressReport() {
                 </div>
                 <div className="flex items-baseline gap-3 mb-1">
                   <span className="text-gray-400 text-xs">Start: {trend.startValue}</span>
-                  <span className="text-[#1A1D23] font-semibold">Now: {trend.currentValue}</span>
+                  <span className="text-2xl text-[#1A1D23] font-semibold">Now: {trend.currentValue}</span>
                 </div>
                 <p className="text-sm text-gray-500">{trend.context}</p>
                 {trend.verifyUrl && (
@@ -198,7 +198,7 @@ export default function ProgressReport() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mt-8"
+          className="mt-10"
         >
           <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">What Alloro Has Done</p>
           <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4 space-y-3">
@@ -210,7 +210,10 @@ export default function ProgressReport() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-gray-500">Alloro is building your competitive picture. Check back after your first Monday email.</p>
+              <div className="space-y-2">
+                <p className="text-sm text-[#1A1D23] font-semibold">Alloro is working behind the scenes</p>
+                <p className="text-sm text-gray-500">We are scanning your Google profile, tracking your competitors, and building your competitive picture. As actions happen (review responses, profile updates, content published), they will appear here so you can see exactly what Alloro has done for you.</p>
+              </div>
             )}
           </div>
         </motion.div>
