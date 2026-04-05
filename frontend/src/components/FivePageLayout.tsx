@@ -28,6 +28,17 @@ export default function FivePageLayout() {
 
   return (
     <div className="min-h-screen bg-[#F8F6F2] pb-20 sm:pb-0">
+      {/* Mobile settings gear */}
+      <div className="sm:hidden fixed top-3 right-3 z-40">
+        <NavLink
+          to="/settings"
+          className="w-9 h-9 rounded-full bg-white/80 border border-stone-200/60 flex items-center justify-center text-gray-400 hover:text-[#1A1D23] transition-colors"
+          aria-label="Settings"
+        >
+          <Settings className="w-4 h-4" />
+        </NavLink>
+      </div>
+
       {/* Page content */}
       <main>
         <Outlet />
