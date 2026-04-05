@@ -54,7 +54,7 @@ function getChecklistItems(category?: string | null): string[] {
     "Counting their reviews",
     "Checking local search rankings",
     "Measuring online presence",
-    "Calculating your score...",
+    "Building your report...",
   ];
 }
 

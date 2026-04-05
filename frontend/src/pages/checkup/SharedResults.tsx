@@ -2,16 +2,16 @@
  * SharedResults -- /checkup/shared/:shareId
  *
  * Public page that renders a shared Checkup result card.
- * Shows market data only (no practice name). Prompts visitor
- * to run their own Checkup. Viral loop.
+ * Shows market data only (no practice name, no score).
+ * Prompts visitor to run their own Checkup. Viral loop.
  */
 
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowRight, Loader2, BarChart3, Users, Star } from "lucide-react";
+import { ArrowRight, Loader2, Users, ExternalLink } from "lucide-react";
 
 interface SharedCard {
-  score: number;
+  score: number; // Still passed from backend, not displayed
   city: string;
   specialty: string;
   rank: number;
@@ -41,8 +41,7 @@ export default function SharedResults() {
   }, [shareId]);
 
   return (
-    <div className="min-h-dvh bg-[#F7F8FA] flex flex-col">
-      {/* Header */}
+    <div className="min-h-dvh bg-[#F8F6F2] flex flex-col">
       <header className="flex items-center justify-center pt-10 pb-6 px-4">
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center">
@@ -50,7 +49,7 @@ export default function SharedResults() {
               <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
             </svg>
           </div>
-          <span className="text-[22px] font-bold tracking-tight text-[#1A1D23]">
+          <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
             alloro
           </span>
         </Link>
@@ -66,11 +65,11 @@ export default function SharedResults() {
 
         {error && (
           <div className="max-w-md text-center mt-20">
-            <h1 className="text-2xl font-bold text-[#1A1D23] mb-4">
+            <h1 className="text-2xl font-semibold text-[#1A1D23] mb-4">
               This link has expired
             </h1>
-            <p className="text-base text-[#1A1D23]/60 mb-8">
-              Run your own free Checkup to see your market.
+            <p className="text-base text-gray-500 mb-8">
+              Run your own free Checkup to see how you compare in your market.
             </p>
             <Link
               to="/checkup"
@@ -84,89 +83,55 @@ export default function SharedResults() {
 
         {card && (
           <div className="max-w-md w-full mt-8">
-            {/* Context — competitive framing */}
             <p className="text-center text-base font-semibold text-[#1A1D23] mb-1">
-              A colleague scored {card.score}. Where do you rank?
+              A colleague just checked their market. Have you?
             </p>
-            <p className="text-center text-sm text-[#1A1D23]/50 mb-6">
+            <p className="text-center text-sm text-gray-500 mb-6">
               {card.specialty} in {card.city}
             </p>
 
-            {/* Score card */}
-            <div className="rounded-2xl border-2 border-[#212D40]/10 bg-white overflow-hidden shadow-sm">
+            <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 overflow-hidden">
               <div className="h-1.5 bg-[#D56753]" />
-              <div className="p-6">
-                {/* Score ring — large and prominent */}
-                <div className="flex justify-center mb-3">
-                  <div className="w-36 h-36 rounded-full flex items-center justify-center relative">
-                    <div
-                      className="absolute inset-0 rounded-full"
-                      style={{
-                        background: `conic-gradient(${card.score >= 75 ? "#10b981" : card.score >= 40 ? "#f59e0b" : "#D56753"} ${card.score * 3.6}deg, #f1f5f9 0deg)`,
-                        mask: "radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px))",
-                        WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px))",
-                      }}
-                    />
-                    <div className="flex flex-col items-center">
-                      <span className="text-4xl font-semibold text-[#1A1D23]">{card.score}</span>
-                      <span className="text-xs font-semibold text-[#1A1D23]/50">/ 100</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Score tier message */}
-                <p className={`text-sm text-center font-medium mb-5 ${
-                  card.score >= 75 ? "text-emerald-600" : card.score >= 40 ? "text-amber-600" : "text-[#D56753]"
-                }`}>
-                  {card.score >= 75
-                    ? "Strong foundation."
-                    : card.score >= 40
-                      ? "Room to grow, and we know exactly where."
-                      : "There's a clear path forward."}
-                </p>
-
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="text-center">
-                    <BarChart3 className="w-4 h-4 text-[#D56753] mx-auto mb-1" />
-                    <p className="text-lg font-bold text-[#1A1D23]">#{card.rank}</p>
-                    <p className="text-xs text-[#1A1D23]/50 uppercase">Rank</p>
-                  </div>
-                  <div className="text-center">
-                    <Users className="w-4 h-4 text-[#D56753] mx-auto mb-1" />
-                    <p className="text-lg font-bold text-[#1A1D23]">{card.totalCompetitors}</p>
-                    <p className="text-xs text-[#1A1D23]/50 uppercase">Competitors</p>
-                  </div>
-                  <div className="text-center">
-                    <Star className="w-4 h-4 text-[#D56753] mx-auto mb-1" />
-                    <p className="text-lg font-bold text-[#1A1D23]">{card.score}</p>
-                    <p className="text-xs text-[#1A1D23]/50 uppercase">Score</p>
+              <div className="p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-[#D56753]" />
+                  <div>
+                    <p className="text-lg font-semibold text-[#1A1D23]">
+                      {card.totalCompetitors} competitors
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      in the {card.city} {card.specialty.toLowerCase()} market
+                    </p>
                   </div>
                 </div>
 
                 {card.topCompetitorName && (
-                  <p className="text-sm text-[#1A1D23]/60 text-center mb-6 leading-relaxed">
-                    The top competitor in this market is{" "}
-                    <span className="font-semibold text-[#1A1D23]">{card.topCompetitorName}</span>.
-                  </p>
+                  <div className="rounded-xl bg-[#F8F6F2] p-4">
+                    <p className="text-sm text-gray-500">Top competitor in this market:</p>
+                    <p className="text-base font-semibold text-[#1A1D23] mt-0.5">
+                      {card.topCompetitorName}
+                    </p>
+                    <a
+                      href={`https://www.google.com/search?q=${encodeURIComponent(card.topCompetitorName)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold mt-1.5 hover:underline"
+                    >
+                      Verify on Google <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 )}
 
-                {/* CTA */}
-                <div className="border-t border-gray-100 pt-6">
+                <div className="border-t border-stone-200/60 pt-4">
                   <Link
                     to="/checkup"
                     className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#D56753] text-white text-base font-semibold px-6 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
                   >
-                    Check your score
+                    See how you compare
                     <ArrowRight className="w-4 h-4" />
                   </Link>
-                  <p className="text-center text-xs text-[#1A1D23]/40 mt-3">
+                  <p className="text-center text-xs text-gray-400 mt-3">
                     Free. 60 seconds. No one sees your results but you.
-                  </p>
-
-                  {/* Competitive nudge */}
-                  <p className="text-center text-sm font-bold text-[#1A1D23] mt-4">
-                    Can you beat {card.score}?
                   </p>
                 </div>
               </div>
@@ -175,9 +140,9 @@ export default function SharedResults() {
         )}
       </main>
 
-      <footer className="py-8 text-center border-t border-slate-100">
-        <p className="text-xs font-medium tracking-wide text-slate-300 uppercase">
-          Alloro &middot; Business Clarity
+      <footer className="py-8 text-center border-t border-stone-100">
+        <p className="text-xs font-semibold tracking-wide text-gray-300 uppercase">
+          Alloro
         </p>
       </footer>
     </div>

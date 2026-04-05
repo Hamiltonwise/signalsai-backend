@@ -379,7 +379,7 @@ export default function EntryScreen() {
         <div className="mt-6 flex flex-wrap gap-2 justify-center">
           {[
             "Who's beating me in my market?",
-            "What's my online presence score?",
+            "How does my online presence compare?",
             "How do I get more customers?",
           ].map((label) => (
             <button
@@ -442,7 +442,7 @@ export default function EntryScreen() {
 
       {/* Trust signals — refined */}
       <div className="mt-12 flex items-center justify-center gap-4">
-        {["Free", "60 seconds", "See your score instantly"].map((text, i) => (
+        {["Free", "60 seconds", "See how you compare"].map((text, i) => (
           <span key={text} className="flex items-center gap-1.5 text-xs text-slate-400">
             {i > 0 && <span className="w-1 h-1 rounded-full bg-slate-300" />}
             {text}

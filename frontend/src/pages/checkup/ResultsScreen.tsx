@@ -411,7 +411,7 @@ function CompetitorInviteSection({
         ))}
       </div>
       <p className="text-xs text-gray-400 mt-3">
-        They'll see their own score. Your data is never shared.
+        They'll see their own results. Your data is never shared.
       </p>
     </div>
   );
@@ -1167,7 +1167,7 @@ export default function ResultsScreen() {
                     onChange={(e) => setWeeklyUpdates(e.target.checked)}
                     className="w-4 h-4 rounded text-[#D56753] border-slate-300 focus:ring-[#D56753]/20"
                   />
-                  <span className="text-xs text-slate-600">Send me a weekly update on my score and competitors</span>
+                  <span className="text-xs text-slate-600">Send me a weekly update on my market and competitors</span>
                 </label>
                 {topCompetitor && (
                   <p className="text-xs text-slate-400">
