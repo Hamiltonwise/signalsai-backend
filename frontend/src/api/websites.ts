@@ -497,14 +497,14 @@ export const publishPage = async (
  */
 export const createBlankPage = async (
   projectId: string,
-  data: { path: string; display_name?: string },
+  data: { path: string; display_name?: string; sections?: Section[] },
 ): Promise<{ success: boolean; data: WebsitePage }> => {
   const response = await fetch(`${API_BASE}/${projectId}/pages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       path: data.path,
-      sections: [],
+      sections: data.sections ?? [],
       display_name: data.display_name,
     }),
   });

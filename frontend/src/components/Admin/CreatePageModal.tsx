@@ -62,6 +62,7 @@ export default function CreatePageModal({
   const [displayName, setDisplayName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useAsIs, setUseAsIs] = useState(false);
 
   // Color picker state (pre-loaded from project defaults, customizable per page)
   const [pagePrimaryColor, setPagePrimaryColor] = useState(defaultPrimaryColor);
@@ -187,11 +188,22 @@ export default function CreatePageModal({
     if (!selectedPageId || !templateId || submitting) return;
     if (!validateSlug(slug)) return;
 
-    const effectiveGbpData = overrideGbpData || gbpData;
-
     try {
       setSubmitting(true);
       setError(null);
+
+      if (useAsIs) {
+        const selectedPage = templatePages.find((p) => p.id === selectedPageId);
+        await createBlankPage(projectId, {
+          path: slug,
+          display_name: displayName.trim() || undefined,
+          sections: selectedPage?.sections ?? [],
+        });
+        onSuccess();
+        return;
+      }
+
+      const effectiveGbpData = overrideGbpData || gbpData;
       await startPipeline({
         projectId,
         templateId,
@@ -447,6 +459,20 @@ export default function CreatePageModal({
                   )}
                 </div>
 
+                {/* Use as-is toggle */}
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={useAsIs}
+                    onChange={(e) => setUseAsIs(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-alloro-orange accent-alloro-orange cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-gray-700">Use template sections as-is</span>
+                    <p className="text-xs text-gray-400 mt-0.5">Skip AI generation — copies template sections directly to the page.</p>
+                  </div>
+                </label>
+
                 {/* Slug input */}
                 <div className="space-y-1.5">
                   <label className="block text-sm font-semibold text-gray-700">
@@ -473,7 +499,7 @@ export default function CreatePageModal({
                 </div>
 
                 {/* Page context */}
-                <div className="space-y-1.5">
+                {!useAsIs && <div className="space-y-1.5">
                   <label className="block text-sm font-semibold text-gray-700">
                     Page Context
                   </label>
@@ -488,10 +514,10 @@ export default function CreatePageModal({
                     Add details about this page so the AI generates relevant,
                     specific content instead of generic filler.
                   </p>
-                </div>
+                </div>}
 
                 {/* Brand colors (per-page override) */}
-                <div className="space-y-1.5">
+                {!useAsIs && <div className="space-y-1.5">
                   <label className="block text-sm font-semibold text-gray-700">
                     Brand Colors
                   </label>
@@ -510,10 +536,10 @@ export default function CreatePageModal({
                   <p className="text-xs text-gray-400">
                     Pre-loaded from the project. Adjust per-page if needed.
                   </p>
-                </div>
+                </div>}
 
                 {/* Overrides section */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                {!useAsIs && <div className="border border-gray-200 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setShowOverrides(!showOverrides)}
                     className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
@@ -634,7 +660,7 @@ export default function CreatePageModal({
                       </div>
                     </div>
                   )}
-                </div>
+                </div>}
               </>
             ) : mode === "blank" ? (
               <>
