@@ -75,7 +75,7 @@ export const CONFERENCE_ANALYSIS = {
     {
       type: "market_rank",
       title: "Market Position",
-      detail: "You rank #3 of 5 specialists in Salt Lake City. People searching see Summit and Pioneer before you.",
+      detail: "5 specialists in Salt Lake City. Summit and Pioneer have more reviews and are more visible on Google.",
       value: 3,
       impact: 0,
     },
@@ -180,8 +180,8 @@ export const BARBER_DEMO_ANALYSIS = {
     },
     {
       type: "market_rank",
-      title: "You rank #3 of 4 barbers on South Congress",
-      detail: "People searching see South Congress Cuts and Finley's before you.",
+      title: "4 barbers on South Congress compete for visibility",
+      detail: "South Congress Cuts and Finley's have more reviews and are more visible on Google.",
       value: 3,
       impact: 0,
     },
@@ -359,7 +359,7 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
       {
         type: "market_rank",
         title: "Market Position",
-        detail: `You rank #${rank} of ${totalCompetitors} specialists in ${city}. People searching see ${rank - 1} business${rank > 2 ? "es" : ""} before you.`,
+        detail: `${totalCompetitors} specialists in ${city} compete for the same searches. Reviews, photos, and profile completeness determine who appears first.`,
         value: rank,
         impact: 0,
       },

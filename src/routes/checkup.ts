@@ -701,7 +701,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings.push({
         type: "review_gap",
         title: "People See Fewer Reviews",
-        detail: `When a prospect compares you to ${topCompetitor.name}, they see ${gap} fewer reviews on your profile. Improving this gap could generate an estimated $${annualImpact.toLocaleString()} in additional inquiries per year.`,
+        detail: `When a prospect compares you to ${topCompetitor.name}, they see ${gap} fewer reviews on your profile. Every review you add closes that gap and improves how Google surfaces your business.`,
         value: gap,
         impact: annualImpact,
       });
@@ -721,7 +721,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings.push({
         type: "rating_gap",
         title: "Rating Below What People Expect",
-        detail: `People see a ${clientRating}★ rating while nearby alternatives average ${avgRating.toFixed(1)}★. Improving your rating could generate an estimated $${starImpact.toLocaleString()} in additional inquiries per year.`,
+        detail: `People see a ${clientRating}★ rating while nearby alternatives average ${avgRating.toFixed(1)}★. 68% of consumers require 4+ stars. Every positive review moves your average.`,
         value: avgRating - clientRating,
         impact: starImpact,
       });
@@ -753,7 +753,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings.push({
         type: "recency_stale",
         title: "Review Activity Has Slowed",
-        detail: `Based on your most recent Google reviews, activity has slowed. Fresh reviews signal to people searching that your business is active and could generate an estimated $${recencyImpact.toLocaleString()} in additional inquiries per year.`,
+        detail: `Based on your most recent Google reviews, activity has slowed. Fresh reviews signal to people searching that your business is active. 74% of consumers only care about reviews from the last 3 months.`,
         value: lastReviewDaysAgo,
         impact: recencyImpact,
       });
@@ -769,7 +769,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
         findings.push({
           type: "response_gap",
           title: "People See Unanswered Reviews",
-          detail: `You've responded to ${reviewResponseRate}% of your reviews. People notice when the owner engages. Improving response rate could generate an estimated $${responseImpact.toLocaleString()} in additional inquiries per year.`,
+          detail: `You've responded to ${reviewResponseRate}% of your reviews. People notice when the owner engages. Businesses that respond to reviews earn 35% more revenue.`,
           value: reviewResponseRate,
           impact: responseImpact,
         });
@@ -1007,7 +1007,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       findings.push({
         type: "photo_gap",
         title: "People See More Photos on Alternatives",
-        detail: `${topCompetitor.name} has ${topCompPhotos} photos. You have ${clientPhotos || "none"}. Improving your photo count could generate an estimated $${photoImpact.toLocaleString()} in additional inquiries per year.`,
+        detail: `${topCompetitor.name} has ${topCompPhotos} photos. You have ${clientPhotos || "none"}. Businesses with 100+ photos get 520% more calls.`,
         value: topCompPhotos - clientPhotos,
         impact: photoImpact,
       });

@@ -204,7 +204,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     firstWeekBody += "Alloro is now monitoring your market. Next Monday, you'll see what changed.";
 
     // 5-minute fix for first week (never reference dashboard for first-week users)
-    const firstWeekFix = "5-MINUTE FIX: Open your Google Business Profile and make sure your hours, photos, and services are complete. This is the fastest way to improve your score.";
+    const firstWeekFix = "5-MINUTE FIX: Open your Google Business Profile and make sure your hours, photos, and services are complete. Complete profiles are 2.7x more reputable to Google.";
     firstWeekBody += `\n\n${firstWeekFix}`;
 
     const hasLoggedInFirst = !!(user.last_login_at || user.first_login_at);

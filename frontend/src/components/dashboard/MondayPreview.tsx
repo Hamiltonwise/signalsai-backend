@@ -49,8 +49,8 @@ function buildPreview(data: MondayData, _practiceName: string, _firstName: strin
     } else {
       subject = `You lead ${data.competitorName} by ${Math.abs(gap)} reviews`;
     }
-  } else if (data.rankPosition && data.location) {
-    subject = `You're #${data.rankPosition} in ${data.location}`;
+  } else if (data.location) {
+    subject = `Your market in ${data.location} moved this week`;
   } else {
     subject = `Your market moved this week`;
   }

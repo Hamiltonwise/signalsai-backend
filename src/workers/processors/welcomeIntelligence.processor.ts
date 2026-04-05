@@ -301,7 +301,7 @@ function buildWelcomeIntelligenceEmail(params: {
         We kept digging after your Checkup.
       </h1>
       <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
-        ${practiceName} scored ${checkupScore || "N/A"}/100 yesterday. Here's what we found since then.
+        We kept analyzing your market after your Google Health Check. Here's what we found.
       </p>
 
       ${nearbyGPs.length > 0 ? `

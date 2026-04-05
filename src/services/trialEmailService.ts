@@ -124,7 +124,7 @@ export async function sendTrialDay1(orgId: number): Promise<void> {
         Welcome to Alloro, ${escapeHtml(ctx.practiceName)}.
       </h1>
       <p style="color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 24px;">
-        Your Business Health Checkup scored your practice ${ctx.score || "N/A"}/100.
+        Your Google Health Check is ready.
         Here is what we found in the first scan of your market.
       </p>
 
@@ -156,7 +156,7 @@ export async function sendTrialDay1(orgId: number): Promise<void> {
   `;
 
   await sendEmail({
-    subject: `${ctx.practiceName} scored ${ctx.score || "N/A"}/100. Here is what it means.`,
+    subject: `${ctx.practiceName} -- your Google Health Check is ready`,
     body: wrapInBaseTemplate(html, { preheader: "Your free trial has started.", showFooterLinks: false }),
     recipients: [ctx.email],
   });
@@ -322,7 +322,7 @@ export async function sendTrialDay7(orgId: number): Promise<void> {
   valueItems.push("Delivered your first Monday Intelligence Brief");
   if (ctx.recentReviewGrowth > 0) valueItems.push(`Watched your business grow ${ctx.recentReviewGrowth} new review${ctx.recentReviewGrowth > 1 ? "s" : ""}`);
   valueItems.push("Monitored your market for competitive shifts");
-  if (ctx.score) valueItems.push(`Scored your Business Clarity at ${ctx.score}/100`);
+  valueItems.push("Checked your Google readings against your competitors");
 
   const valueList = valueItems
     .map((item) => `<li style="color: #1A1D23; font-size: 14px; line-height: 1.8;">${item}</li>`)
