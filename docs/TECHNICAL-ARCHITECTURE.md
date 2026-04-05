@@ -56,25 +56,25 @@ Monday hourly (all day)        Monday Email
 
 ---
 
-## All Scheduled Jobs
+## Active Workers (The Essential 7)
+
+Only workers that serve paying customers are active. All others are disabled until verified and needed. Simple and guaranteed over incredible most of the time.
 
 | Job | Schedule | Queue Name | Source | What It Does |
 |-----|----------|-----------|--------|-------------|
-| Daily Analytics Fetch | 5 AM UTC daily | minds-daily-analytics | src/services/analyticsService.ts | Pulls GA4 + GSC data for connected orgs |
-| Daily Review Sync | 4 AM UTC daily | minds-review-sync | src/workers/processors/reviewSync.processor.ts | Fetches GBP reviews for all connected locations |
-| Daily Discovery | 6 AM UTC daily | minds-discovery | src/workers/processors/discovery.processor.ts | Scans for new competitive signals |
-| Dreamweaver | 6 AM UTC daily | minds-dreamweaver | src/services/agents/dreamweaver.ts | Scans for hospitality patterns |
-| Skill Trigger Check | Every 5 min | minds-skill-triggers | src/workers/processors/skillTrigger.processor.ts | Checks DB for triggered agent skills |
-| Dead Letter Check | Every 10 min | minds-skill-triggers | src/workers/processors/skillTrigger.processor.ts | Cleans up stuck/failed jobs |
-| Scheduler Tick | Every 60 sec | minds-scheduler | src/workers/processors/scheduler.processor.ts | Checks DB for due scheduled tasks |
 | Weekly Ranking Snapshot | Sun 11 PM UTC | minds-weekly-ranking-snapshot | src/services/rankingsIntelligence.ts | Refreshes Google position + competitor data |
 | Weekly Score Recalc | Mon 3 AM UTC | minds-weekly-score-recalc | src/workers/processors/weeklyScoreRecalc.processor.ts | Recalculates all scores |
 | Monday Email | Hourly on Mondays | minds-monday-email | src/jobs/mondayEmail.ts | Sends weekly intelligence email |
-| Feedback Loop | Tue 3 PM UTC | minds-feedback-loop | src/workers/processors/feedbackLoop.processor.ts | Measures if recommended actions improved metrics |
-| Works Digest | Sun 3 AM UTC | minds-works-digest | src/workers/processors/worksDigest.processor.ts | Weekly summary of system activity |
-| Collective Intelligence | Mon 4 AM UTC | minds-collective-intelligence | src/services/collectiveIntelligence.ts | Cross-account pattern analysis |
-| Product Evolution | Mon 7 AM UTC | minds-product-evolution | src/jobs/productEvolution.ts | Self-improvement proposals |
-| PM Daily Brief | 10 PM UTC daily | pm-daily-brief | src/workers/processors/pmDailyBrief.processor.ts | Dave's daily briefing |
+| Daily Review Sync | 4 AM UTC daily | minds-review-sync | src/workers/processors/reviewSync.processor.ts | Fetches GBP reviews for all connected locations |
+| Daily Analytics Fetch | 5 AM UTC daily | minds-daily-analytics | src/services/analyticsService.ts | Pulls GA4 + GSC data for connected orgs |
+| Welcome Intelligence | 4h after signup | minds-welcome-intelligence | src/workers/processors/welcomeIntelligence.processor.ts | Referral sources + competitor velocity email |
+| Instant Snapshot | On signup | minds-instant-snapshot | src/services/rankingsIntelligence.ts | Fresh data for new customers |
+
+### Disabled Workers
+
+These are built but not serving customers. Code is in worker.ts as comments. Re-enable when the feature is verified and needed.
+
+Scrape & Compare, Compile & Publish, Discovery, Skill Trigger (every 5 min), Dead Letter Check (every 10 min), Works Digest, SEO Bulk Generate, Scheduler Tick (every 60 sec), Website Backup/Restore, PM Daily Brief, Dreamweaver, Collective Intelligence, Product Evolution, Feedback Loop.
 
 ---
 

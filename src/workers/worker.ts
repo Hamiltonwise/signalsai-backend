@@ -1,307 +1,85 @@
+/**
+ * Minds Worker -- The Essential 7
+ *
+ * Only workers that serve the 5 paying customers run here.
+ * Everything else is disabled until verified and needed.
+ *
+ * Simple and guaranteed > incredible most of the time.
+ *
+ * To re-enable a worker: move it from the "DISABLED" section
+ * back to active, add it to the workers array, shutdown array,
+ * and schedule setup calls at the bottom.
+ */
+
 import * as dotenv from "dotenv";
 dotenv.config();
 
 import { Worker } from "bullmq";
-import { processScrapeCompare } from "./processors/scrapeCompare.processor";
-import { processCompilePublish } from "./processors/compilePublish.processor";
-import { processDiscovery } from "./processors/discovery.processor";
-import {
-  processSkillTrigger,
-  processDeadLetterCheck,
-} from "./processors/skillTrigger.processor";
-import { processWorksDigest } from "./processors/worksDigest.processor";
-import { processSeoBulkGenerate } from "./processors/seoBulkGenerate.processor";
 import { processReviewSync } from "./processors/reviewSync.processor";
-import { processSchedulerTick } from "./processors/scheduler.processor";
-import { processWebsiteBackup } from "./processors/websiteBackup.processor";
-import { processWebsiteRestore } from "./processors/websiteRestore.processor";
-import { processPmDailyBrief } from "./processors/pmDailyBrief.processor";
-import { runDreamweaver } from "../services/agents/dreamweaver";
-import { runCollectiveIntelligence } from "../services/collectiveIntelligence";
-import { runProductEvolution } from "../jobs/productEvolution";
 import { processWeeklyScoreRecalc } from "./processors/weeklyScoreRecalc.processor";
-import { processFeedbackLoop } from "./processors/feedbackLoop.processor";
 import { processMondayEmail } from "./processors/mondayEmail.processor";
 import { generateAllSnapshots, generateSnapshotForOrg } from "../services/rankingsIntelligence";
 import { fetchAnalyticsForAllOrgs } from "../services/analyticsService";
 import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
-import { getMindsQueue, getPmQueue } from "./queues";
-import { closeWbQueues } from "./wb-queues";
+import { getMindsQueue } from "./queues";
 import { getSharedRedis, closeSharedRedis } from "../services/redis";
 
-console.log("[MINDS-WORKER] Starting Minds worker process...");
+console.log("[MINDS-WORKER] Starting worker process (Essential 7)...");
 
-// Shared self-healing Redis connection with exponential backoff.
-// Workers survive Redis restarts and reconnect automatically.
 const connection = getSharedRedis();
 
-// Scrape & Compare worker
-const scrapeCompareWorker = new Worker(
-  "minds-scrape-compare",
-  async (job) => {
-    await processScrapeCompare(job);
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{minds}',
-  }
-);
+// ─── ESSENTIAL WORKERS (serve paying customers) ───────────────────
 
-// Compile & Publish worker
-const compilePublishWorker = new Worker(
-  "minds-compile-publish",
-  async (job) => {
-    await processCompilePublish(job);
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{minds}',
-  }
-);
-
-// Discovery worker
-const discoveryWorker = new Worker(
-  "minds-discovery",
-  async (job) => {
-    await processDiscovery(job);
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{minds}',
-  }
-);
-
-// Skill Trigger worker
-const skillTriggerWorker = new Worker(
-  "minds-skill-triggers",
-  async (job) => {
-    if (job.name === "dead-letter-check") {
-      await processDeadLetterCheck(job);
-    } else {
-      await processSkillTrigger(job);
-    }
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{minds}',
-  }
-);
-
-// Works Digest worker
-const worksDigestWorker = new Worker(
-  "minds-works-digest",
-  async (job) => {
-    await processWorksDigest(job);
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{minds}',
-  }
-);
-
-// SEO Bulk Generate worker
-const seoBulkGenerateWorker = new Worker(
-  "minds-seo-bulk-generate",
-  async (job) => {
-    await processSeoBulkGenerate(job);
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{minds}',
-  }
-);
-
-// Set up repeatable discovery job (every 24 hours)
-async function setupDiscoverySchedule(): Promise<void> {
-  try {
-    const queue = getMindsQueue("discovery");
-    await queue.add(
-      "daily-discovery",
-      {},
-      {
-        repeat: {
-          pattern: "0 6 * * *", // 6 AM UTC daily
-          tz: "UTC",
-        },
-        jobId: "daily-discovery",
-      }
-    );
-    console.log("[MINDS-WORKER] Daily discovery job scheduled (6 AM UTC)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up discovery schedule:", err);
-  }
-}
-
-// Set up skill trigger schedule (every 5 minutes) + dead letter check (every 10 minutes)
-async function setupSkillTriggerSchedule(): Promise<void> {
-  try {
-    const queue = getMindsQueue("skill-triggers");
-    await queue.add(
-      "skill-trigger-check",
-      {},
-      {
-        repeat: {
-          pattern: "*/5 * * * *", // Every 5 minutes
-          tz: "UTC",
-        },
-        jobId: "skill-trigger-check",
-      }
-    );
-    await queue.add(
-      "dead-letter-check",
-      {},
-      {
-        repeat: {
-          pattern: "*/10 * * * *", // Every 10 minutes
-          tz: "UTC",
-        },
-        jobId: "dead-letter-check",
-      }
-    );
-    console.log("[MINDS-WORKER] Skill trigger + dead letter check scheduled");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up skill trigger schedule:", err);
-  }
-}
-
-// Review Sync worker
-const reviewSyncWorker = new Worker(
-  "minds-review-sync",
-  async (job) => {
-    await processReviewSync(job);
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{minds}',
-  }
-);
-
-// Scheduler worker (ticks every 60s, checks DB for due schedules)
-const schedulerWorker = new Worker(
-  "minds-scheduler",
-  async (job) => {
-    await processSchedulerTick(job);
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{minds}',
-  }
-);
-
-// Website Builder — Backup worker
-const wbBackupWorker = new Worker(
-  "wb-backup",
-  async (job) => {
-    await processWebsiteBackup(job);
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{wb}',
-  }
-);
-
-// Website Builder — Restore worker
-const wbRestoreWorker = new Worker(
-  "wb-restore",
-  async (job) => {
-    await processWebsiteRestore(job);
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{wb}',
-  }
-);
-
-// PM Daily Brief worker
-const pmDailyBriefWorker = new Worker(
-  "pm-daily-brief",
-  async (job) => {
-    await processPmDailyBrief(job);
-  },
-  {
-    connection,
-    concurrency: 1,
-    prefix: '{pm}',
-  }
-);
-
-// Dreamweaver Agent: scans for hospitality legends (daily 6 AM, before morning briefing)
-const dreamweaverWorker = new Worker(
-  "minds-dreamweaver",
-  async () => { await runDreamweaver(); },
-  { connection, concurrency: 1, prefix: '{minds}' }
-);
-
-// Collective Intelligence Engine (weekly Sunday 8 PM PT)
-// Layer 5: analyzes patterns across ALL accounts. Discovers heuristics
-// no individual business could find alone. Feeds into Oz moments.
-const collectiveIntelligenceWorker = new Worker(
-  "minds-collective-intelligence",
-  async () => { await runCollectiveIntelligence(); },
-  { connection, concurrency: 1, prefix: '{minds}' }
-);
-
-// Product Evolution Engine (weekly Sunday 11 PM PT)
-// Layer 4: reads its own usage data, identifies friction,
-// reads source code, drafts improvement proposals for Dave.
-const productEvolutionWorker = new Worker(
-  "minds-product-evolution",
-  async () => { await runProductEvolution(); },
-  { connection, concurrency: 1, prefix: '{minds}' }
-);
-
-// Weekly Ranking Snapshots (Sunday 11 PM UTC = Sunday 6 PM ET)
-// Refreshes Google position + competitor data for every customer.
-// Runs BEFORE score recalc so scores use fresh position data.
+// 1. Weekly Ranking Snapshots (Sunday 11 PM UTC = 6 PM ET)
+// The data foundation. Without fresh snapshots, scores and emails use stale data.
 const weeklyRankingSnapshotWorker = new Worker(
   "minds-weekly-ranking-snapshot",
   async () => { await generateAllSnapshots(); },
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
-// Weekly Score Recalculation (Sunday 10 PM ET = Monday 3 AM UTC)
-// Makes the Business Clarity Score alive. Runs before Monday email.
-// Depends on fresh snapshots from the ranking snapshot worker above.
+// 2. Weekly Score Recalculation (Monday 3 AM UTC = Sunday 10 PM ET)
+// Recalculates scores using fresh snapshot data. Runs before Monday email.
 const weeklyScoreRecalcWorker = new Worker(
   "minds-weekly-score-recalc",
   async (job) => { await processWeeklyScoreRecalc(job); },
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
-// Monday Email (Monday 12 PM UTC = 7 AM ET)
-// The heartbeat. Every Monday, every paying customer gets their brief.
+// 3. Monday Email (every hour on Mondays, timezone-aware)
+// THE product. Sends to orgs whose local time = 7 AM.
 const mondayEmailWorker = new Worker(
   "minds-monday-email",
   async (job) => { await processMondayEmail(job); },
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
-// Feedback Loop (Tuesday 3 PM UTC = 8 AM PT, 24h after Monday email)
-// The Karpathy Loop: measures whether recommended actions improved metrics.
-const feedbackLoopWorker = new Worker(
-  "minds-feedback-loop",
-  async (job) => { await processFeedbackLoop(job); },
+// 4. Daily Review Sync (4 AM UTC daily)
+// Fetches GBP reviews for all connected locations.
+const reviewSyncWorker = new Worker(
+  "minds-review-sync",
+  async (job) => { await processReviewSync(job); },
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
-// Welcome Intelligence (fires 4h after signup, the second "how did they know?" moment)
+// 5. Daily Analytics Fetch (5 AM UTC daily)
+// Pulls GA4 + GSC data for connected orgs.
+const dailyAnalyticsWorker = new Worker(
+  "minds-daily-analytics",
+  async () => { await fetchAnalyticsForAllOrgs(); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
+// 6. Welcome Intelligence (event-triggered, 4h after signup)
+// The second "how did they know?" moment.
 const welcomeIntelligenceWorker = new Worker(
   "minds-welcome-intelligence",
   async (job) => { await processWelcomeIntelligence(job); },
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
-// Instant Snapshot (fires immediately on signup, so new customers don't wait 6 days)
+// 7. Instant Snapshot (event-triggered, immediately after signup)
+// Fresh data so new customers see readings on first login.
 const instantSnapshotWorker = new Worker(
   "minds-instant-snapshot",
   async (job) => {
@@ -311,16 +89,19 @@ const instantSnapshotWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
-// Daily Analytics Fetch (5 AM UTC daily)
-// Pulls GA4 + GSC data for all connected orgs. Feeds CRO Engine.
-const dailyAnalyticsWorker = new Worker(
-  "minds-daily-analytics",
-  async () => { await fetchAnalyticsForAllOrgs(); },
-  { connection, concurrency: 1, prefix: '{minds}' }
-);
+// ─── EVENT HANDLERS ───────────────────────────────────────────────
 
-// Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker, weeklyRankingSnapshotWorker, weeklyScoreRecalcWorker, mondayEmailWorker, feedbackLoopWorker, welcomeIntelligenceWorker, instantSnapshotWorker, dailyAnalyticsWorker]) {
+const activeWorkers = [
+  weeklyRankingSnapshotWorker,
+  weeklyScoreRecalcWorker,
+  mondayEmailWorker,
+  reviewSyncWorker,
+  dailyAnalyticsWorker,
+  welcomeIntelligenceWorker,
+  instantSnapshotWorker,
+];
+
+for (const worker of activeWorkers) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -334,31 +115,13 @@ for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker
   });
 }
 
-// Graceful shutdown
+// ─── GRACEFUL SHUTDOWN ────────────────────────────────────────────
+
 async function shutdown(): Promise<void> {
   console.log("[MINDS-WORKER] Shutting down workers...");
-  await scrapeCompareWorker.close();
-  await compilePublishWorker.close();
-  await discoveryWorker.close();
-  await skillTriggerWorker.close();
-  await worksDigestWorker.close();
-  await seoBulkGenerateWorker.close();
-  await reviewSyncWorker.close();
-  await schedulerWorker.close();
-  await wbBackupWorker.close();
-  await wbRestoreWorker.close();
-  await pmDailyBriefWorker.close();
-  await dreamweaverWorker.close();
-  await collectiveIntelligenceWorker.close();
-  await productEvolutionWorker.close();
-  await weeklyRankingSnapshotWorker.close();
-  await weeklyScoreRecalcWorker.close();
-  await mondayEmailWorker.close();
-  await feedbackLoopWorker.close();
-  await welcomeIntelligenceWorker.close();
-  await instantSnapshotWorker.close();
-  await dailyAnalyticsWorker.close();
-  await closeWbQueues();
+  for (const worker of activeWorkers) {
+    await worker.close();
+  }
   await closeSharedRedis();
   console.log("[MINDS-WORKER] Workers shut down");
   process.exit(0);
@@ -367,275 +130,98 @@ async function shutdown(): Promise<void> {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-// Set up works digest schedule (weekly — 3 AM UTC Sundays)
-async function setupWorksDigestSchedule(): Promise<void> {
-  try {
-    const queue = getMindsQueue("works-digest");
-    await queue.add(
-      "weekly-works-digest",
-      {},
-      {
-        repeat: {
-          pattern: "0 3 * * 0", // 3 AM UTC every Sunday
-          tz: "UTC",
-        },
-        jobId: "weekly-works-digest",
-      }
-    );
-    console.log("[MINDS-WORKER] Weekly works digest job scheduled (3 AM UTC Sundays)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up works digest schedule:", err);
-  }
-}
+// ─── SCHEDULES ────────────────────────────────────────────────────
 
-// Set up review sync schedule (daily — 4 AM UTC)
 async function setupReviewSyncSchedule(): Promise<void> {
   try {
     const queue = getMindsQueue("review-sync");
-    await queue.add(
-      "daily-review-sync",
-      {},
-      {
-        repeat: {
-          pattern: "0 4 * * *", // 4 AM UTC daily
-          tz: "UTC",
-        },
-        jobId: "daily-review-sync",
-      }
-    );
-    console.log("[MINDS-WORKER] Daily review sync job scheduled (4 AM UTC)");
+    await queue.add("daily-review-sync", {}, {
+      repeat: { pattern: "0 4 * * *", tz: "UTC" },
+      jobId: "daily-review-sync",
+    });
+    console.log("[MINDS-WORKER] Review sync scheduled (4 AM UTC daily)");
   } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up review sync schedule:", err);
+    console.error("[MINDS-WORKER] Failed to schedule review sync:", err);
   }
 }
 
-// Set up scheduler tick (every 60 seconds)
-async function setupSchedulerTick(): Promise<void> {
-  try {
-    const queue = getMindsQueue("scheduler");
-    await queue.add(
-      "scheduler-tick",
-      {},
-      {
-        repeat: {
-          pattern: "* * * * *", // Every minute
-          tz: "UTC",
-        },
-        jobId: "scheduler-tick",
-      }
-    );
-    console.log("[MINDS-WORKER] Scheduler tick scheduled (every 60s)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up scheduler tick:", err);
-  }
-}
-
-// Set up PM daily brief schedule (22:00 UTC = 6:00 AM PHT)
-async function setupPmDailyBriefSchedule(): Promise<void> {
-  try {
-    const queue = getPmQueue("daily-brief");
-    await queue.add(
-      "pm-daily-brief",
-      {},
-      {
-        repeat: {
-          pattern: "0 22 * * *", // 22:00 UTC = 6 AM PHT
-          tz: "UTC",
-        },
-        jobId: "pm-daily-brief",
-      }
-    );
-    console.log("[MINDS-WORKER] PM daily brief job scheduled (22:00 UTC / 6 AM PHT)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up PM daily brief schedule:", err);
-  }
-}
-
-// Set up Collective Intelligence schedule (Sunday 8 PM PT = Monday 4 AM UTC)
-async function setupCollectiveIntelligenceSchedule(): Promise<void> {
-  try {
-    const queue = getMindsQueue("collective-intelligence");
-    await queue.add(
-      "collective-intelligence",
-      {},
-      {
-        repeat: {
-          pattern: "0 4 * * 1", // Monday 4 AM UTC = Sunday 8 PM PT
-          tz: "UTC",
-        },
-        jobId: "collective-intelligence-weekly",
-      }
-    );
-    console.log("[MINDS-WORKER] Collective Intelligence scheduled (Sunday 8 PM PT)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up Collective Intelligence:", err);
-  }
-}
-
-// Set up Product Evolution schedule (Sunday 11 PM PT = Monday 7 AM UTC)
-async function setupProductEvolutionSchedule(): Promise<void> {
-  try {
-    const queue = getMindsQueue("product-evolution");
-    await queue.add(
-      "product-evolution",
-      {},
-      {
-        repeat: {
-          pattern: "0 7 * * 1", // Monday 7 AM UTC = Sunday 11 PM PT
-          tz: "UTC",
-        },
-        jobId: "product-evolution-weekly",
-      }
-    );
-    console.log("[MINDS-WORKER] Product Evolution scheduled (Sunday 11 PM PT)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up Product Evolution:", err);
-  }
-}
-
-// Set up Weekly Score Recalculation (Sunday 10 PM ET = Monday 3 AM UTC)
-async function setupWeeklyScoreRecalcSchedule(): Promise<void> {
-  try {
-    const queue = getMindsQueue("weekly-score-recalc");
-    await queue.add(
-      "weekly-score-recalc",
-      {},
-      {
-        repeat: {
-          pattern: "0 3 * * 1", // Monday 3 AM UTC = Sunday 10 PM ET
-          tz: "UTC",
-        },
-        jobId: "weekly-score-recalc",
-      }
-    );
-    console.log("[MINDS-WORKER] Weekly score recalc scheduled (Sunday 10 PM ET / Monday 3 AM UTC)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up weekly score recalc:", err);
-  }
-}
-
-// Set up Weekly Ranking Snapshot (Sunday 11 PM UTC = 6 PM ET)
-// This is the data foundation. Without fresh snapshots, scores and emails use stale data.
-async function setupWeeklyRankingSnapshotSchedule(): Promise<void> {
-  try {
-    const queue = getMindsQueue("weekly-ranking-snapshot");
-    await queue.add(
-      "weekly-ranking-snapshot",
-      {},
-      {
-        repeat: {
-          pattern: "0 23 * * 0", // Sunday 11 PM UTC = 6 PM ET
-          tz: "UTC",
-        },
-        jobId: "weekly-ranking-snapshot",
-      }
-    );
-    console.log("[MINDS-WORKER] Weekly ranking snapshot scheduled (Sunday 11 PM UTC / 6 PM ET)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up weekly ranking snapshot:", err);
-  }
-}
-
-// Set up Monday Email schedule (every hour on Mondays, timezone-aware)
-// Each run sends only to orgs whose local time is 7 AM.
-// A customer in New York gets it at 7 AM ET. A customer in LA gets it at 7 AM PT.
-async function setupMondayEmailSchedule(): Promise<void> {
-  try {
-    const queue = getMindsQueue("monday-email");
-    await queue.add(
-      "weekly-monday-email",
-      {},
-      {
-        repeat: {
-          pattern: "0 * * * 1", // Every hour on Mondays
-          tz: "UTC",
-        },
-        jobId: "weekly-monday-email",
-      }
-    );
-    console.log("[MINDS-WORKER] Monday email scheduled (every hour on Mondays, timezone-aware)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up Monday email schedule:", err);
-  }
-}
-
-// Set up Feedback Loop schedule (Tuesday 3 PM UTC = 8 AM PT, 24h after Monday email)
-async function setupFeedbackLoopSchedule(): Promise<void> {
-  try {
-    const queue = getMindsQueue("feedback-loop");
-    await queue.add(
-      "feedback-loop",
-      {},
-      {
-        repeat: {
-          pattern: "0 15 * * 2", // Tuesday 3 PM UTC = 8 AM PT
-          tz: "UTC",
-        },
-        jobId: "feedback-loop-weekly",
-      }
-    );
-    console.log("[MINDS-WORKER] Feedback Loop scheduled (Tuesday 3 PM UTC / 8 AM PT)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up Feedback Loop:", err);
-  }
-}
-
-// Set up Dreamweaver schedule (daily 6 AM UTC, before morning briefing)
-async function setupDreamweaverSchedule(): Promise<void> {
-  try {
-    const queue = getMindsQueue("dreamweaver");
-    await queue.add(
-      "daily-dreamweaver",
-      {},
-      {
-        repeat: {
-          pattern: "0 6 * * *", // 6 AM UTC daily
-          tz: "UTC",
-        },
-        jobId: "daily-dreamweaver",
-      }
-    );
-    console.log("[MINDS-WORKER] Dreamweaver scheduled (6 AM UTC daily)");
-  } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up Dreamweaver schedule:", err);
-  }
-}
-
-// Set up Daily Analytics Fetch (5 AM UTC daily, before discovery at 6 AM)
-// Fresh GA4 + GSC data available for CRO Engine and Monday email.
 async function setupDailyAnalyticsSchedule(): Promise<void> {
   try {
     const queue = getMindsQueue("daily-analytics");
-    await queue.add(
-      "daily-analytics-fetch",
-      {},
-      {
-        repeat: {
-          pattern: "0 5 * * *", // 5 AM UTC daily
-          tz: "UTC",
-        },
-        jobId: "daily-analytics-fetch",
-      }
-    );
-    console.log("[MINDS-WORKER] Daily analytics fetch scheduled (5 AM UTC)");
+    await queue.add("daily-analytics-fetch", {}, {
+      repeat: { pattern: "0 5 * * *", tz: "UTC" },
+      jobId: "daily-analytics-fetch",
+    });
+    console.log("[MINDS-WORKER] Analytics fetch scheduled (5 AM UTC daily)");
   } catch (err: any) {
-    console.error("[MINDS-WORKER] Failed to set up daily analytics schedule:", err);
+    console.error("[MINDS-WORKER] Failed to schedule analytics fetch:", err);
   }
 }
 
-setupDailyAnalyticsSchedule();
-setupDiscoverySchedule();
-setupSkillTriggerSchedule();
-setupWorksDigestSchedule();
+async function setupWeeklyRankingSnapshotSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("weekly-ranking-snapshot");
+    await queue.add("weekly-ranking-snapshot", {}, {
+      repeat: { pattern: "0 23 * * 0", tz: "UTC" }, // Sunday 11 PM UTC = 6 PM ET
+      jobId: "weekly-ranking-snapshot",
+    });
+    console.log("[MINDS-WORKER] Ranking snapshots scheduled (Sunday 11 PM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule ranking snapshots:", err);
+  }
+}
+
+async function setupWeeklyScoreRecalcSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("weekly-score-recalc");
+    await queue.add("weekly-score-recalc", {}, {
+      repeat: { pattern: "0 3 * * 1", tz: "UTC" }, // Monday 3 AM UTC = Sunday 10 PM ET
+      jobId: "weekly-score-recalc",
+    });
+    console.log("[MINDS-WORKER] Score recalc scheduled (Monday 3 AM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule score recalc:", err);
+  }
+}
+
+async function setupMondayEmailSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("monday-email");
+    await queue.add("weekly-monday-email", {}, {
+      repeat: { pattern: "0 * * * 1", tz: "UTC" }, // Every hour on Mondays
+      jobId: "weekly-monday-email",
+    });
+    console.log("[MINDS-WORKER] Monday email scheduled (hourly on Mondays)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule Monday email:", err);
+  }
+}
+
+// Start schedules
 setupReviewSyncSchedule();
-setupSchedulerTick();
-setupPmDailyBriefSchedule();
-setupCollectiveIntelligenceSchedule();
-setupProductEvolutionSchedule();
+setupDailyAnalyticsSchedule();
 setupWeeklyRankingSnapshotSchedule();
 setupWeeklyScoreRecalcSchedule();
 setupMondayEmailSchedule();
-setupFeedbackLoopSchedule();
-setupDreamweaverSchedule();
 
-console.log("[MINDS-WORKER] All workers running. Waiting for jobs...");
+console.log("[MINDS-WORKER] Essential 7 workers running. Waiting for jobs...");
+
+// ─── DISABLED WORKERS ─────────────────────────────────────────────
+// These workers are not serving paying customers today.
+// Re-enable when the feature is verified and needed.
+//
+// Scrape & Compare:        processScrapeCompare        (minds-scrape-compare)
+// Compile & Publish:       processCompilePublish       (minds-compile-publish)
+// Discovery:               processDiscovery            (minds-discovery, daily 6 AM UTC)
+// Skill Trigger:           processSkillTrigger         (minds-skill-triggers, every 5 min)
+// Dead Letter Check:       processDeadLetterCheck      (minds-skill-triggers, every 10 min)
+// Works Digest:            processWorksDigest          (minds-works-digest, weekly Sun 3 AM)
+// SEO Bulk Generate:       processSeoBulkGenerate      (minds-seo-bulk-generate)
+// Scheduler Tick:          processSchedulerTick        (minds-scheduler, every 60s)
+// Website Backup:          processWebsiteBackup        (wb-backup)
+// Website Restore:         processWebsiteRestore       (wb-restore)
+// PM Daily Brief:          processPmDailyBrief         (pm-daily-brief, daily 10 PM UTC)
+// Dreamweaver:             runDreamweaver              (minds-dreamweaver, daily 6 AM UTC)
+// Collective Intelligence: runCollectiveIntelligence   (minds-collective-intelligence, weekly)
+// Product Evolution:       runProductEvolution         (minds-product-evolution, weekly)
+// Feedback Loop:           processFeedbackLoop         (minds-feedback-loop, Tue 3 PM UTC)
