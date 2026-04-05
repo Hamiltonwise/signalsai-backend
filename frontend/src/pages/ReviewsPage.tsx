@@ -357,12 +357,12 @@ export default function ReviewsPage() {
                 You have {reviewCount} reviews at {rating} stars on Google.
               </p>
               <p className="text-sm text-[#1A1D23]/50">
-                Alloro is syncing your Google reviews. They will appear here with AI-drafted responses you can approve with one tap.
+                Alloro syncs your Google reviews daily. Individual reviews with AI-drafted responses will appear here within 24 hours of connecting your Google Business Profile.
               </p>
             </div>
           ) : (
             <p className="text-sm text-[#1A1D23]/50">
-              Review data will appear here after your first ranking scan.
+              Connect your Google Business Profile in Settings to see your reviews here. Once connected, reviews sync daily.
             </p>
           )}
         </Section>

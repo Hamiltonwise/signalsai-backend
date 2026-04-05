@@ -93,20 +93,20 @@ export default function CSAgentChat({
 
   return (
     <>
-      {/* Floating Action Button */}
+      {/* Floating Action Button -- above mobile nav (bottom-24) or normal position on desktop (bottom-6) */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#D56753] text-white shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:shadow-[0_6px_28px_rgba(213,103,83,0.5)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
-          aria-label="Open chat"
+          className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-50 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#D56753] text-white shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:shadow-[0_6px_28px_rgba(213,103,83,0.5)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
+          aria-label="Ask Alloro"
         >
-          <MessageCircle className="w-6 h-6" />
+          <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
       )}
 
-      {/* Chat Drawer */}
+      {/* Chat Drawer -- above mobile nav on mobile, floating on desktop */}
       {isOpen && (
-        <div className="fixed bottom-0 right-0 z-50 w-full sm:w-[400px] sm:bottom-6 sm:right-6 sm:rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-[0_8px_40px_rgba(0,0,0,0.15)] flex flex-col" style={{ height: "min(600px, calc(100dvh - 48px))" }}>
+        <div className="fixed bottom-16 sm:bottom-6 right-0 sm:right-6 z-50 w-full sm:w-[400px] sm:rounded-2xl rounded-t-2xl overflow-hidden border border-gray-200 bg-white shadow-[0_8px_40px_rgba(0,0,0,0.15)] flex flex-col" style={{ height: "min(500px, calc(100dvh - 120px))" }}>
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 bg-[#212D40]">
             <div className="flex items-center gap-3">
