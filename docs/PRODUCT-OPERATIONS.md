@@ -35,7 +35,7 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** FAIL. Current product shows a composite score (90) with no verification links. Needs complete rebuild to raw readings with links.
+**Last tested:** PASS. April 4, 2026. All 5 pages show raw readings with Google verification links. No composite scores. Every number links to where the customer can verify it. Pending: verification against live data after deploy (numbers may be stale until startup catch-up runs).
 
 ---
 
@@ -110,7 +110,7 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** FAIL. Gauge and composite score still exist in sandbox code. Needs complete removal.
+**Last tested:** PASS. April 4, 2026. All 5 customer-facing pages rebuilt. Gauge removed. Composite score removed. "Business Clarity Score" removed. All pages show raw readings with verification links. BillingPromptBar score display removed. ScoreImprovementPlan removed. ScoreSimulator removed. Progress page score/100 removed.
 
 ---
 
@@ -125,7 +125,7 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** FAIL. Current scoring engine still transforms readings into sub-scores. Needs rebuild to raw readings with links and research-backed ranges.
+**Last tested:** PASS. April 4, 2026. Home page shows 5 readings (Star Rating, Review Volume, Profile Completeness, Review Responses, Your Market). Each has a verification link to Google. Status colors based on research ranges. Compare page shows side-by-side raw numbers with verify links. Progress page shows reading trends (start vs now). No transforms.
 
 ---
 
@@ -346,7 +346,7 @@ Five pages. Five questions. One product.
 
 **Violation:** Pure white background. Blue-gray enterprise aesthetic. Cold, clinical feel.
 
-**Last tested:** PARTIAL PASS. April 4, 2026. All 5 page backgrounds use #F8F6F2. Section cards on Compare, Reviews, Presence still use bg-white. Home page uses bg-stone-50 (warm). Not fully compliant.
+**Last tested:** PASS. April 4, 2026. All 5 pages use #F8F6F2 background. All cards use bg-stone-50/80. bg-white removed from Compare, Presence, and Progress section components. No pure white on any customer-facing page.
 
 ---
 
