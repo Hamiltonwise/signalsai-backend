@@ -494,6 +494,12 @@ const startServer = async () => {
       pollReviewsOnStartup().catch((err) =>
         console.error("[Startup] Review poll failed (non-blocking):", err.message)
       );
+
+      // On startup: fetch GA4 + GSC data for connected orgs.
+      // Skips orgs fetched in the last 24h. 2s delay between orgs for rate limits.
+      pollAnalyticsOnStartup().catch((err) =>
+        console.error("[Startup] Analytics poll failed (non-blocking):", err.message)
+      );
     });
   } catch (error) {
     console.error("Failed to start server:", error);
@@ -634,6 +640,84 @@ async function pollReviewsOnStartup(): Promise<void> {
     );
   } catch (err: any) {
     console.error("[Startup] Review poll error:", err.message);
+  }
+}
+
+/**
+ * Fetch GA4 + GSC analytics on server startup.
+ * Finds all orgs with GA4 or GSC properties connected, skips any fetched
+ * in the last 24 hours, then pulls fresh data and stores in google_data_store.
+ * Non-blocking. Runs in background. 2s delay between orgs for API rate limits.
+ */
+async function pollAnalyticsOnStartup(): Promise<void> {
+  try {
+    const { fetchAndStoreAnalytics } = await import("./services/analyticsService");
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Find all orgs with GA4 or GSC property IDs
+    const connections = await db("google_connections")
+      .select("organization_id", "google_property_ids")
+      .whereNotNull("refresh_token");
+
+    const eligible: Array<{ orgId: number }> = [];
+    for (const conn of connections) {
+      const pids = typeof conn.google_property_ids === "string"
+        ? JSON.parse(conn.google_property_ids || "{}")
+        : conn.google_property_ids;
+
+      if (pids?.ga4?.propertyId || pids?.gsc?.siteUrl) {
+        eligible.push({ orgId: conn.organization_id });
+      }
+    }
+
+    if (eligible.length === 0) {
+      console.log("[Startup] No orgs with GA4/GSC connected. Skipping analytics poll.");
+      return;
+    }
+
+    // Filter out orgs with a recent analytics fetch (within 24h)
+    const recentFetches = await db("google_data_store")
+      .select("organization_id")
+      .where("run_type", "analytics")
+      .where("created_at", ">=", twentyFourHoursAgo)
+      .groupBy("organization_id");
+
+    const recentOrgIds = new Set(recentFetches.map((r: any) => r.organization_id));
+    const toPoll = eligible.filter((e) => !recentOrgIds.has(e.orgId));
+
+    if (toPoll.length === 0) {
+      console.log(
+        `[Startup] All ${eligible.length} orgs fetched analytics within 24h. Skipping.`
+      );
+      return;
+    }
+
+    console.log(
+      `[Startup] Fetching analytics for ${toPoll.length} org(s) (${eligible.length - toPoll.length} skipped, fetched <24h ago)...`
+    );
+
+    let fetched = 0;
+    let ga4Count = 0;
+    let gscCount = 0;
+
+    for (const { orgId } of toPoll) {
+      try {
+        const result = await fetchAndStoreAnalytics(orgId);
+        fetched++;
+        if (result.ga4) ga4Count++;
+        if (result.gsc) gscCount++;
+      } catch (err: any) {
+        console.error(`[Startup] Analytics fetch failed for org ${orgId}:`, err.message);
+      }
+      // 2s delay between orgs to respect Google API rate limits
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+
+    console.log(
+      `[Startup] Analytics poll complete: ${fetched}/${toPoll.length} orgs, ${ga4Count} GA4, ${gscCount} GSC.`
+    );
+  } catch (err: any) {
+    console.error("[Startup] Analytics poll error:", err.message);
   }
 }
 

@@ -23,6 +23,7 @@ import { processWeeklyScoreRecalc } from "./processors/weeklyScoreRecalc.process
 import { processFeedbackLoop } from "./processors/feedbackLoop.processor";
 import { processMondayEmail } from "./processors/mondayEmail.processor";
 import { generateAllSnapshots, generateSnapshotForOrg } from "../services/rankingsIntelligence";
+import { fetchAnalyticsForAllOrgs } from "../services/analyticsService";
 import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
 import { getMindsQueue, getPmQueue } from "./queues";
 import { closeWbQueues } from "./wb-queues";
@@ -310,8 +311,16 @@ const instantSnapshotWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// Daily Analytics Fetch (5 AM UTC daily)
+// Pulls GA4 + GSC data for all connected orgs. Feeds CRO Engine.
+const dailyAnalyticsWorker = new Worker(
+  "minds-daily-analytics",
+  async () => { await fetchAnalyticsForAllOrgs(); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // Event handlers
-for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker, weeklyRankingSnapshotWorker, weeklyScoreRecalcWorker, mondayEmailWorker, feedbackLoopWorker, welcomeIntelligenceWorker, instantSnapshotWorker]) {
+for (const worker of [scrapeCompareWorker, compilePublishWorker, discoveryWorker, skillTriggerWorker, worksDigestWorker, seoBulkGenerateWorker, reviewSyncWorker, schedulerWorker, wbBackupWorker, wbRestoreWorker, pmDailyBriefWorker, dreamweaverWorker, collectiveIntelligenceWorker, productEvolutionWorker, weeklyRankingSnapshotWorker, weeklyScoreRecalcWorker, mondayEmailWorker, feedbackLoopWorker, welcomeIntelligenceWorker, instantSnapshotWorker, dailyAnalyticsWorker]) {
   worker.on("completed", (job) => {
     console.log(`[MINDS-WORKER] Job ${job?.id} completed on queue ${worker.name}`);
   });
@@ -348,6 +357,7 @@ async function shutdown(): Promise<void> {
   await feedbackLoopWorker.close();
   await welcomeIntelligenceWorker.close();
   await instantSnapshotWorker.close();
+  await dailyAnalyticsWorker.close();
   await closeWbQueues();
   await closeSharedRedis();
   console.log("[MINDS-WORKER] Workers shut down");
@@ -591,6 +601,29 @@ async function setupDreamweaverSchedule(): Promise<void> {
   }
 }
 
+// Set up Daily Analytics Fetch (5 AM UTC daily, before discovery at 6 AM)
+// Fresh GA4 + GSC data available for CRO Engine and Monday email.
+async function setupDailyAnalyticsSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("daily-analytics");
+    await queue.add(
+      "daily-analytics-fetch",
+      {},
+      {
+        repeat: {
+          pattern: "0 5 * * *", // 5 AM UTC daily
+          tz: "UTC",
+        },
+        jobId: "daily-analytics-fetch",
+      }
+    );
+    console.log("[MINDS-WORKER] Daily analytics fetch scheduled (5 AM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to set up daily analytics schedule:", err);
+  }
+}
+
+setupDailyAnalyticsSchedule();
 setupDiscoverySchedule();
 setupSkillTriggerSchedule();
 setupWorksDigestSchedule();
