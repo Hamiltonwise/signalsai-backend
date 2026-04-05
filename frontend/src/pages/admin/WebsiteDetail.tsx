@@ -31,6 +31,7 @@ import {
   Newspaper,
   Menu,
   ArrowRightLeft,
+  ArrowRight,
   Archive,
   Wrench,
 } from "lucide-react";
@@ -1734,15 +1735,18 @@ export default function WebsiteDetail() {
                                 setIsSkipping(false);
                               }
                             }}
-                            className="w-full inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-all"
+                            className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
                           >
                             {isSkipping ? (
                               <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                 Setting up...
                               </>
                             ) : (
-                              "Skip to manual setup"
+                              <>
+                                Skip to manual setup
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </>
                             )}
                           </button>
                         </div>
