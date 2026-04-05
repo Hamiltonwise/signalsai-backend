@@ -134,6 +134,7 @@ npx knex migrate:latest    # Run from repo root
 |-----------|------|----------------|
 | Org Timezone | 20260403000001_add_org_timezone.ts | Adds timezone column to organizations table |
 | Scoring Config | 20260404000001_create_scoring_config.ts | Creates scoring_config table with 16 seed rows |
+| Review Postable Flag | 20260404000002_add_review_postable_flag.ts | Adds postable boolean to review_notifications (for MyBusiness API reply posting) |
 
 **After running migrations, verify:**
 ```bash
@@ -188,6 +189,82 @@ When crons fail or you need to run something immediately:
 | `POST /api/admin/clarity-metrics/run` | Trigger clarity metrics snapshot |
 
 All require admin auth header: `Authorization: Bearer $ADMIN_TOKEN`
+
+---
+
+## Help System
+
+### Advisor Chat (CS Agent)
+- **Component:** `frontend/src/components/dashboard/CSAgentChat.tsx`
+- **Backend:** `src/routes/csAgent.ts` -- POST /api/cs-agent/chat
+- **Mounted:** In FivePageLayout, floating bubble on all five pages
+- **Context:** System prompt includes customer's readings, competitor, market, referral data, research backing for each reading, page explanations. Role: warm advisor, not help desk.
+- **Rate limit:** 60 messages/hour per IP
+
+### Help Articles
+- **Data:** `src/data/helpArticles.ts` -- 23 articles as TypeScript const
+- **API:** `src/routes/user/helpArticles.ts` -- GET /api/user/help-articles
+- **Filtering:** `?category=readings|pages|features|getting-started|troubleshooting` and `?q=search+term`
+- **Role-aware:** Admin/super_admin sees team articles. Customers see customer articles only.
+- **Categories:** Readings (5), Pages (5), Features (4), Getting Started (3), Troubleshooting (3), Team (3)
+
+### Contextual Help
+- **Reading "?":** Each ReadingCard on HomePage has expandable `whyItMatters` prop with research backing
+- **Empty states:** All set time expectations and explain what to do
+
+### Design System
+- **Rules file:** `frontend/.claude/rules/design-system.md` -- loaded automatically by Claude Code
+- **Covers:** Color tokens, typography, spacing, components, animations, Figma integration
+
+---
+
+## Customer Journey (End to End)
+
+What happens from first touch to weekly engagement:
+
+```
+1. Prospect visits getalloro.com or /checkup
+   |
+2. Types business name (EntryScreen)
+   |
+3. Google Places API scans market (ScanningTheater, ~60 seconds)
+   |
+4. Sees readings + named competitor + findings (ResultsScreen)
+   |-- Every finding uses research-backed facts, no fabricated dollars
+   |-- Verify links on every number
+   |
+5. Creates account (email + password gate on ResultsScreen)
+   |-- Stores checkup_data on organization
+   |-- Triggers instant snapshot (5 min delay via BullMQ)
+   |-- Triggers website generation (synchronous)
+   |-- Sends checkup result email
+   |
+6. BuildingScreen shows "your readings are live"
+   |
+7. ColleagueShare prompts viral sharing
+   |
+8. 4 hours later: Welcome intelligence email lands
+   |-- Referral sources, competitor velocity
+   |
+9. Customer logs into /home (five-page layout)
+   |-- Readings with verify links + "?" research backing
+   |-- One action card (waterfall priority)
+   |-- Advisor chat bubble available
+   |
+10. Sunday 11 PM UTC: Weekly ranking snapshot refreshes
+    |
+11. Monday 3 AM UTC: Score recalculates
+    |
+12. Monday 7 AM local: Monday email arrives
+    |-- One finding, one action, plain English
+    |-- Clean week = "nothing needs attention, enjoy the week"
+    |
+13. Daily 4 AM UTC: Reviews sync from Google
+    |-- AI drafts responses
+    |-- Customer taps "Approve and Post" (if connected via OAuth)
+    |
+14. Repeat weekly. Data compounds. Intelligence deepens.
+```
 
 ---
 
