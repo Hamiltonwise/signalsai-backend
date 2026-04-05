@@ -23,6 +23,8 @@ import { getPriorityItem } from "@/hooks/useLocalStorage";
 import CompetitorComparison from "@/components/dashboard/CompetitorComparison";
 import AddCompetitor from "@/components/dashboard/AddCompetitor";
 import { ReferralMatrices, type ReferralEngineData } from "@/components/PMS/ReferralMatrices";
+import { TopReferralSources } from "@/components/PMS/TopReferralSources";
+import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 
 // ─── Collapsible Section ────────────────────────────────────────────
 
@@ -84,6 +86,7 @@ function ComparePageInner() {
   const { userProfile } = useAuth();
   const { selectedLocation } = useLocationContext();
   const orgId = userProfile?.organizationId || null;
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const { data: rankingRaw } = useQuery<any>({
     queryKey: ["compare-ranking", orgId, selectedLocation?.id],
@@ -115,6 +118,14 @@ function ComparePageInner() {
       const res = await apiGet({ path: `/agents/getLatestReferralEngineOutput/${orgId}` });
       return res?.output || null;
     },
+    enabled: !!orgId,
+    staleTime: 120_000,
+  });
+
+  // Direct referral sources from PMS upload
+  const { data: referralSources } = useQuery<any>({
+    queryKey: ["compare-referral-sources", orgId],
+    queryFn: () => apiGet({ path: "/user/export" }).catch(() => null),
     enabled: !!orgId,
     staleTime: 120_000,
   });
@@ -276,12 +287,38 @@ function ComparePageInner() {
           </div>
         </Section>
 
-        {/* Referral Sources */}
-        {referralData && (
-          <Section title="Referral Sources" defaultOpen={false}>
+        {/* Referral Sources -- per constitution, Compare includes referrals */}
+        <Section title="Referral Sources" defaultOpen={!!(referralData || ctx?.hasReferralData)}>
+          {referralData ? (
             <ReferralMatrices referralData={referralData as ReferralEngineData} />
-          </Section>
-        )}
+          ) : ctx?.hasReferralData && referralSources?.referral_sources?.length > 0 ? (
+            <TopReferralSources data={referralSources.referral_sources} />
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-[#1A1D23]/60">
+                Referral tracking shows which providers and sources send you patients, who's going quiet, and where to focus your relationship-building.
+              </p>
+              <p className="text-sm text-[#1A1D23]/40">
+                Upload your practice management data to see referral sources here. This is especially valuable for specialists who depend on GP referrals.
+              </p>
+              <button
+                onClick={() => setUploadOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
+              >
+                Upload referral data
+              </button>
+            </div>
+          )}
+        </Section>
+
+        {/* PMS Upload Modal */}
+        <PMSUploadWizardModal
+          isOpen={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          clientId={String(orgId || "")}
+          locationId={selectedLocation?.id || null}
+          onSuccess={() => setUploadOpen(false)}
+        />
 
       </div>
     </div>
