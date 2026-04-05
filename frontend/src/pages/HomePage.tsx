@@ -141,12 +141,12 @@ function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | n
   const rating = place.rating || checkup.rating || null;
   const reviewCount = place.reviewCount ?? checkup.reviewCount ?? null;
 
-  // GBP fields
+  // GBP fields - check every field variant the API and checkup might store
   const gbpFields = [
-    { name: "Phone", present: !!(place.hasPhone || place.phone || place.nationalPhoneNumber) },
+    { name: "Phone", present: !!(place.hasPhone || place.phone || place.nationalPhoneNumber || place.internationalPhoneNumber) },
     { name: "Hours", present: !!(place.hasHours || place.hours || place.regularOpeningHours) },
     { name: "Website", present: !!(place.hasWebsite || place.websiteUri || place.website) },
-    { name: "Photos", present: (place.photosCount || place.photos?.length || 0) > 0 },
+    { name: "Photos", present: (place.photosCount || place.photoCount || place.photos?.length || 0) > 0 },
     { name: "Description", present: !!(place.hasEditorialSummary || place.editorialSummary) },
   ];
   const gbpComplete = gbpFields.filter(f => f.present).length;

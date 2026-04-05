@@ -16,8 +16,6 @@ import { motion } from "framer-motion";
 import {
   Globe,
   MapPin,
-  Search,
-  Shield,
   ExternalLink,
   ChevronDown,
   ChevronRight,
@@ -48,7 +46,7 @@ class PresenceErrorBoundary extends Component<{ children: ReactNode }, { hasErro
     return this.props.children;
   }
 }
-import FocusKeywords from "@/components/dashboard/FocusKeywords";
+// FocusKeywords removed: not a vital sign per constitution
 
 // ─── Collapsible Section ────────────────────────────────────────────
 
@@ -109,13 +107,7 @@ function PresencePageInner() {
     staleTime: 60_000,
   });
 
-  // Intelligence data (SEO/AEO)
-  const { data: seoData } = useQuery<any>({
-    queryKey: ["presence-seo", orgId],
-    queryFn: () => apiGet({ path: "/intelligence/seo" }).catch(() => null),
-    enabled: !!orgId,
-    staleTime: 300_000,
-  });
+  // SEO/compliance data removed: not vital signs
 
   let checkupData = ctx?.org?.checkup_data || null;
   if (typeof checkupData === "string") {
@@ -133,7 +125,7 @@ function PresencePageInner() {
   // Check both formats
   const profileItems = [
     { label: "Phone", has: !!place.hasPhone || !!place.phone || !!place.nationalPhoneNumber || !!place.internationalPhoneNumber },
-    { label: "Website", has: !!place.hasWebsite || !!place.website || !!place.websiteUri || hasWebsite },
+    { label: "Website", has: !!place.hasWebsite || !!place.website || !!place.websiteUri },
     { label: "Hours", has: !!place.hasHours || !!place.regularOpeningHours },
     { label: "Photos", has: (place.photosCount || place.photoCount || place.photos?.length || 0) > 0 },
     { label: "Description", has: !!place.hasEditorialSummary || !!place.editorialSummary },
@@ -241,30 +233,10 @@ function PresencePageInner() {
           </Section>
         )}
 
-        {/* Search Presence */}
-        <Section title="Search Presence" icon={Search} defaultOpen={false}>
-          <FocusKeywords />
-        </Section>
-
-        {/* Compliance */}
-        <Section title="Compliance Check" icon={Shield} defaultOpen={false}>
-          {seoData?.complianceFindings?.length > 0 ? (
-            <div className="space-y-2">
-              {seoData.complianceFindings.map((f: any, i: number) => (
-                <div key={i} className="rounded-lg bg-amber-50 border border-amber-100 p-3">
-                  <p className="text-sm text-amber-800">{f.claim || f.title}</p>
-                  {f.recommendation && (
-                    <p className="text-xs text-amber-600 mt-1">{f.recommendation}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">
-              No compliance concerns found on your website. Alloro scans automatically for FTC-risky marketing claims.
-            </p>
-          )}
-        </Section>
+        {/* Focus Keywords and Compliance Check removed: not vital signs.
+            The owner at 10pm doesn't check keywords or FTC compliance.
+            These were features built because they could be, not because the
+            owner needed them. */}
 
       </div>
     </div>
