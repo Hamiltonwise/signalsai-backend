@@ -296,16 +296,16 @@ function ComparePageInner() {
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-[#1A1D23]/60">
-                Referral tracking shows which providers and sources send you patients, who's going quiet, and where to focus your relationship-building.
+                Referral tracking shows who sends you business, who's going quiet, and where to focus your relationship-building.
               </p>
               <p className="text-sm text-[#1A1D23]/40">
-                Upload your practice management data to see referral sources here. This is especially valuable for specialists who depend on GP referrals.
+                Upload your business data to see referral sources here.
               </p>
               <button
                 onClick={() => setUploadOpen(true)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
               >
-                Upload referral data
+                Upload business data
               </button>
             </div>
           )}

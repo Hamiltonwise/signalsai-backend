@@ -199,7 +199,7 @@ This requires a connected Google Business Profile with OAuth.`,
     category: "features",
     summary: "A website built from your reviews and business data, live from day one.",
     audience: "customer",
-    body: `When you sign up, Alloro builds a website from your Google Business Profile data and your reviews. It captures what makes your practice special using the words your own patients use.
+    body: `When you sign up, Alloro builds a website from your Google Business Profile data and your reviews. It captures what makes your business special using the words your own customers use.
 
 The website is live at [your-practice].sites.getalloro.com. You can connect a custom domain through Settings.
 
