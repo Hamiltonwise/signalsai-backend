@@ -304,7 +304,7 @@ Five pages. Five questions. One product.
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** PARTIAL PASS. April 4, 2026. CRC written before scoring engine simplification and gauge build. Not written before earlier commits (position removal, DFY wiring). Process established mid-session.
+**Last tested:** PARTIAL PASS. April 4, 2026. CRC written before later builds. Not written before earlier commits. Process established mid-session. Future sessions test from start.
 
 ---
 
@@ -340,11 +340,11 @@ Five pages. Five questions. One product.
 
 ### Known 15: Max 2 temporary prompts
 
-**Rule:** The Home page shows at most 2 conditional/temporary elements (billing prompt, milestone card, onboarding). The core experience (gauge + factors + action card) is always visible. Temporary prompts never push core content below the fold.
+**Rule:** The Home page shows at most 2 conditional/temporary elements (billing prompt, milestone card, onboarding). The core experience (readings + action card) is always visible. Temporary prompts never push core content below the fold.
 
 **Test:** Count visible prompts on the Home page. Never more than 2.
 
-**Violation:** Three banners stacked above the gauge. Score pushed off screen by notifications.
+**Violation:** Three banners stacked above the readings. Core content pushed off screen by notifications.
 
 **Last tested:** PASS. April 4, 2026. Code review confirms `limitPrompts()` function caps visible prompts at 2. Logic verified in HomePage.tsx.
 
