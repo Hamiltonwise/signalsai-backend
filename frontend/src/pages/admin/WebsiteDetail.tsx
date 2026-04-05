@@ -1735,7 +1735,7 @@ export default function WebsiteDetail() {
                                 setIsSkipping(false);
                               }
                             }}
-                            className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
+                            className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition-all"
                           >
                             {isSkipping ? (
                               <>
