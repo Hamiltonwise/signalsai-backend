@@ -133,7 +133,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   // Load vocabulary for this org's vertical
   const vocabConfig = await db("vocabulary_configs").where({ org_id: orgId }).first();
   const customerTerm = vocabConfig?.config?.patientTerm || "customer";
-  const competitorFallback = vocabConfig?.config?.competitorTerm || "the #1 competitor";
+  const competitorFallback = vocabConfig?.config?.competitorTerm || "your top competitor";
 
   // 0. Score delta opener -- the score is alive
   let scoreDeltaLine = "";

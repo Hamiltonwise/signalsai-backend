@@ -419,9 +419,9 @@ if (isProd) {
       const share = await db("checkup_shares").where({ share_id: req.params.shareId }).first();
       if (!share) return next();
 
-      const title = share.rank && share.rank <= 3
-        ? `I scored ${share.score}/100 in ${share.city}. #${share.rank} in my market.`
-        : `I scored ${share.score}/100. Can you beat it?`;
+      const title = share.total_competitors
+        ? `${share.total_competitors} competitors in ${share.city}. How do you compare?`
+        : `I checked my Google presence. How does yours compare?`;
       const description = share.top_competitor_name
         ? `${share.total_competitors} competitors in ${share.city}. ${share.top_competitor_name} is the one to watch. Free, 60 seconds.`
         : `${share.total_competitors} competitors in ${share.city}. See where you rank. Free, 60 seconds.`;

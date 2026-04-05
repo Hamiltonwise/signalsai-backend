@@ -135,7 +135,7 @@ export async function processTrialEmail(
       checkup_score: latestRanking?.rank_score ? Number(latestRanking.rank_score) : null,
       top_competitor_name: topCompetitor?.name || topCompetitor?.displayName?.text || null,
       finding_headline: latestRanking
-        ? `Ranked #${latestRanking.rank_position || "?"} in your market`
+        ? `${latestRanking.competitor_name ? `${latestRanking.competitor_name} is your top competitor` : "Your market is being tracked"}`
         : "Your first market scan is running",
       action_text: getActionText(sequenceNumber),
       action_url: getActionUrl(sequenceNumber),

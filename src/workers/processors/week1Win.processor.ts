@@ -51,7 +51,7 @@ export async function processWeek1Win(job: Job<Week1WinData>) {
     // If rank is good, celebrate it
     if (rank && rank <= 3 && totalCompetitors >= 5) {
       headline = "Your Week 1 win.";
-      detail = `You rank #${rank} of ${totalCompetitors} in ${city}. That puts you in the top tier. Alloro is now monitoring every competitor move to keep you there.`;
+      detail = `You're among the most visible in ${city} with ${totalCompetitors} competitors. Alloro is now monitoring every competitor move to keep you there.`;
       winType = "strong_profile";
     }
     // If there's a clear review gap, surface it

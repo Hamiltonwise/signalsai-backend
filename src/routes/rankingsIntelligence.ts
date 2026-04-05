@@ -274,16 +274,13 @@ async function generateSnapshotForOrg(orgId: number, weekStart: string) {
     ? `${compName} remains at #1 with ${compReviews} reviews.`
     : null;
 
-  // Dollar figure: (comp velocity - client velocity) × 0.3 × avg_case_value
-  const compVelocity = compReviews / 104; // ~2 year estimate
-  const clientVelocity = clientReviews / 104;
-  const velocityGap = Math.max(0, compVelocity - clientVelocity);
-  const dollarFigure = Math.round(velocityGap * 0.3 * avgCaseValue / 100) * 100;
+  // Known 4: dollar_figure zeroed. Was a projection from review velocity, not real revenue data.
+  const dollarFigure = 0;
 
-  // Finding headline
-  const findingHeadline = prevPosition && currentPosition !== prevPosition
-    ? `Ranking ${currentPosition < prevPosition ? "improved" : "declined"}: #${prevPosition} → #${currentPosition}`
-    : `Holding position #${currentPosition}`;
+  // Finding headline (no position claims per Known 3)
+  const findingHeadline = compName
+    ? `${compName} is the most visible competitor in your market`
+    : "Your market is being tracked";
 
   await db("weekly_ranking_snapshots").insert({
     org_id: orgId,

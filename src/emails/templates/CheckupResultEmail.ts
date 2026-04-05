@@ -100,9 +100,9 @@ export function buildCheckupResultContent(
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 20px 0;">
       <tr>
         <td width="50%" style="padding: 12px; text-align: center; background-color: ${BRAND_COLORS.lightGray}; border-radius: 10px 0 0 10px;">
-          <p style="margin: 0; font-size: 12px; font-weight: 600; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">Your Rank</p>
-          <p style="margin: 4px 0 0 0; font-size: 22px; font-weight: 700; color: ${BRAND_COLORS.navy};">#${data.rank}</p>
-          <p style="margin: 2px 0 0 0; font-size: 12px; color: ${BRAND_COLORS.mediumGray};">of ${data.totalCompetitors} in ${escapeHtml(data.city)}</p>
+          <p style="margin: 0; font-size: 12px; font-weight: 600; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">Your Market</p>
+          <p style="margin: 4px 0 0 0; font-size: 22px; font-weight: 700; color: ${BRAND_COLORS.navy};">${data.totalCompetitors}</p>
+          <p style="margin: 2px 0 0 0; font-size: 12px; color: ${BRAND_COLORS.mediumGray};">competitors in ${escapeHtml(data.city)}</p>
         </td>
         <td width="50%" style="padding: 12px; text-align: center; background-color: ${BRAND_COLORS.lightGray}; border-radius: 0 10px 10px 0; border-left: 2px solid ${BRAND_COLORS.white};">
           <p style="margin: 0; font-size: 12px; font-weight: 600; color: ${BRAND_COLORS.mediumGray}; text-transform: uppercase; letter-spacing: 0.5px;">Reviews</p>
@@ -120,7 +120,7 @@ export function buildCheckupResultContent(
   sections.push(`
     <div style="text-align: center; margin: 28px 0 24px 0;">
       <p style="margin: 0 0 16px 0; font-size: 15px; color: ${BRAND_COLORS.darkGray};">
-        Want to see exactly what's holding your score back — and how to fix it?
+        Want to see exactly what your readings mean and what to do about it?
       </p>
       ${createButton("Talk to Us", `${APP_URL}/checkup`)}
     </div>
