@@ -14,6 +14,7 @@
 
 import { db } from "../database/connection";
 import { cleanCompetitorName } from "../utils/textCleaning";
+import { compareReviewSentiment } from "./reviewSentiment";
 
 export interface OneActionCard {
   headline: string;
@@ -54,7 +55,14 @@ export async function getOneActionCard(orgId: number): Promise<OneActionCard> {
   const reviewRace = await checkReviewGap(orgId);
   if (reviewRace) return reviewRace;
 
-  // ─── Rule 3: Ranking dropped 1+ position ────────────────────────
+  // ─── Rule 2.5: Sentiment gap (the Oz moment) ────────────────────
+  // Something the customer can't find by Googling for 60 seconds.
+  // "Patients describe your competitor as X. Nobody says that about you."
+
+  const sentimentGap = await checkSentimentGap(orgId);
+  if (sentimentGap) return sentimentGap;
+
+  // ─── Rule 3: Competitor gained ground ───────────────────────────
 
   const rankingDrop = await checkRankingDrop(orgId);
   if (rankingDrop) return rankingDrop;
@@ -174,7 +182,49 @@ async function checkReviewGap(orgId: number): Promise<OneActionCard | null> {
   return null;
 }
 
-// ─── Rule 3: Ranking Dropped ────────────────────────────────────────
+// ─── Rule 2.5: Sentiment Gap ───────────────────────────────────
+
+async function checkSentimentGap(orgId: number): Promise<OneActionCard | null> {
+  try {
+    // Get org's checkup data for placeId and competitor info
+    const org = await db("organizations").where({ id: orgId }).first();
+    if (!org?.checkup_data) return null;
+
+    const checkup = typeof org.checkup_data === "string"
+      ? JSON.parse(org.checkup_data) : org.checkup_data;
+
+    const clientPlaceId = checkup.placeId || checkup.place?.placeId || null;
+    const topCompetitor = checkup.topCompetitor;
+    const competitorPlaceId = typeof topCompetitor === "object" ? topCompetitor?.placeId : null;
+    const competitorName = typeof topCompetitor === "string" ? topCompetitor : topCompetitor?.name || null;
+
+    if (!clientPlaceId || !competitorPlaceId || !competitorName) return null;
+
+    const comparison = await compareReviewSentiment({
+      clientPlaceId,
+      clientName: org.name || "Your practice",
+      competitorPlaceId,
+      competitorName,
+    });
+
+    if (!comparison || comparison.gaps.length === 0) return null;
+
+    const topGap = comparison.gaps[0];
+    return {
+      headline: comparison.insight,
+      body: `Patients mention "${topGap.theme}" in ${topGap.competitorCount} of ${cleanCompetitorName(competitorName)}'s reviews. Your reviews don't mention this. This is what Google's AI reads when someone searches for your specialty.`,
+      action_text: "See the comparison",
+      action_url: "/compare",
+      priority_level: 2,
+    };
+  } catch (err: any) {
+    // Sentiment analysis is non-blocking. If it fails, fall through to next rule.
+    console.error(`[OneActionCard] Sentiment gap check failed for org ${orgId} (non-blocking):`, err.message);
+    return null;
+  }
+}
+
+// ─── Rule 3: Competitor Gained Ground ──────────────────────────────
 
 async function checkRankingDrop(orgId: number): Promise<OneActionCard | null> {
   const snapshots = await db("weekly_ranking_snapshots")
