@@ -482,7 +482,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                                     </span>
                                     <span className="text-sm text-gray-800 truncate">{source.name}</span>
                                     {source.internalNotes?.length > 0 && (
-                                      <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded border border-amber-200">note</span>
+                                      <span className="text-xs px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded border border-amber-200">note</span>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-3 shrink-0">
@@ -496,14 +496,14 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                                   <div className="px-3 pb-3 border-t border-gray-50">
                                     {source.internalNotes?.length > 0 && (
                                       <div className="mt-2 mb-2 px-2 py-1.5 bg-amber-50 border border-amber-100 rounded-lg">
-                                        <p className="text-[11px] text-amber-700">
+                                        <p className="text-xs text-amber-700">
                                           Internal note: {source.internalNotes.join("; ")}
                                         </p>
                                       </div>
                                     )}
                                     <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
                                       {source.details.slice(0, 30).map((d: any, j: number) => (
-                                        <div key={j} className="flex items-center justify-between text-[11px] px-2 py-1 rounded hover:bg-gray-50">
+                                        <div key={j} className="flex items-center justify-between text-xs px-2 py-1 rounded hover:bg-gray-50">
                                           <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-gray-400 w-12 shrink-0">{d.date || "N/A"}</span>
                                             <span className="text-gray-600 truncate">{d.procedure || "Visit"}</span>
@@ -515,10 +515,10 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                                         </div>
                                       ))}
                                       {source.details.length > 30 && (
-                                        <p className="text-[10px] text-gray-400 text-center py-1">+{source.details.length - 30} more</p>
+                                        <p className="text-xs text-gray-400 text-center py-1">+{source.details.length - 30} more</p>
                                       )}
                                     </div>
-                                    <p className="text-[10px] text-gray-400 mt-2 px-2">
+                                    <p className="text-xs text-gray-400 mt-2 px-2">
                                       {source.lineItems} line items across {source.uniquePatients} unique patient{source.uniquePatients !== 1 ? "s" : ""}
                                       {source.providers?.length > 1 && ` (providers: ${source.providers.join(", ")})`}
                                     </p>

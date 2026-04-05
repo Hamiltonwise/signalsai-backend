@@ -16,7 +16,7 @@ helpArticleRoutes.get(
   authenticateToken,
   rbacMiddleware,
   async (req: RBACRequest, res) => {
-    const isAdmin = req.userRole === "admin" || req.userRole === "super_admin";
+    const isAdmin = req.userRole === "admin" || (req.userRole as string) === "super_admin";
     const category = req.query.category as string | undefined;
     const search = (req.query.q as string || "").toLowerCase().trim();
 

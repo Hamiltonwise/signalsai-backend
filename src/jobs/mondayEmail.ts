@@ -223,10 +223,10 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         subjectLine: stripEmDashes(firstWeekSubject),
         findingHeadline: stripEmDashes(firstWeekHeadline),
         findingBody: stripEmDashes(firstWeekBody),
-        dollarFigure: checkupData.totalImpact || 0,
+        dollarFigure: 0, // Known 4: no fabricated dollar figures
         actionText: firstWeekAction,
-        rankingUpdate: market.rank ? `#${market.rank} in ${market.city || "your market"}` : "Your ranking data is being collected",
-        competitorNote: topComp ? stripEmDashes(`${topComp.name} is the #1 competitor in your area`) : "",
+        rankingUpdate: market.city ? `Tracking your market in ${market.city}` : "Your market data is being collected",
+        competitorNote: topComp ? stripEmDashes(`${topComp.name} is the most visible competitor in your area`) : "",
         referralLine: null,
         founderLine,
         communityCount,
@@ -338,10 +338,8 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
           : firstFinding.title || "Your competitive landscape";
       }
 
-      // Use dollar impact from checkup if snapshot doesn't have one
-      if (!snapshot.dollar_figure && checkup?.totalImpact) {
-        snapshot.dollar_figure = checkup.totalImpact;
-      }
+      // Known 4: dollar_figure from projections is fabricated. Zero it out.
+      snapshot.dollar_figure = 0;
     } catch { /* checkup data parse failed, continue with what we have */ }
   }
 
@@ -579,9 +577,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     : "Open your Google Business Profile and respond to any unanswered reviews";
   const actionText = reviewGap > 0
     ? "Send review requests now"
-    : snapshot.dollar_figure > 0
-      ? `Close the $${snapshot.dollar_figure.toLocaleString()} gap`
-      : dashboardFallback;
+    : dashboardFallback;
 
   // Market status line (no position claims, verifiable data only)
   const compNameForUpdate = cleanCompetitorName(snapshot.competitor_name || "");
@@ -636,11 +632,11 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   try {
     // Build dataPoints from real data so the accuracy gate can verify numbers
     const dataPoints: string[] = [];
-    if (snapshot.position) dataPoints.push(`Google position: #${snapshot.position}`);
+    // Known 3: no position claims. Position data used internally only, never shown to customer.
     if (snapshot.client_review_count) dataPoints.push(`Client reviews: ${snapshot.client_review_count}`);
     if (snapshot.competitor_review_count) dataPoints.push(`Competitor reviews: ${snapshot.competitor_review_count}`);
     if (snapshot.competitor_name) dataPoints.push(`Top competitor: ${snapshot.competitor_name}`);
-    if (currentScore != null) dataPoints.push(`Score: ${currentScore}`);
+    // Known 6: no composite scores shown to customers.
     if (reviewGap > 0) dataPoints.push(`Review gap: ${reviewGap}`);
 
     const conductorResult = await conductorGate({
@@ -672,7 +668,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       subjectLine: sanitizedSubject,
       findingHeadline: sanitizedHeadline,
       findingBody: sanitizedBody,
-      dollarFigure: snapshot.dollar_figure || 0,
+      dollarFigure: 0, // Known 4: no fabricated dollar figures
       actionText: sanitizedAction,
       rankingUpdate: sanitizedRanking,
       competitorNote: sanitizedCompetitorNote,
