@@ -24,18 +24,18 @@ Anyone (Claude, Dave, Jo, a new hire) can open this document, run the tests, and
 
 These never bend. No exceptions. No "just this once."
 
-### Known 1: Every customer-facing number is verifiable
+### Known 1: Every number is verifiable with a link
 
-**Rule:** Every number a customer sees can be confirmed by Googling it themselves. You can disagree with Google, but not with Alloro.
+**Rule:** Every number a customer sees links to where they can verify it on Google. No composite scores. No algorithm output. Raw readings from Google with verification links. The customer clicks the link and sees the same number.
 
-**Test:** Pick any number on any customer-facing page. Google it. It matches.
+**Test:** Click every link on every customer-facing page. The number in Alloro matches the number on Google.
 
-**Violation:** Customer sees "72 reviews" but Google shows 68. Customer sees "#3 in West Orange" but Google shows #4. Customer sees a score of 90 when their reviews are red and GBP is incomplete.
+**Violation:** A number without a verification link. A composite "score" that doesn't link to anything. A number the customer can't verify by clicking through.
 
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** UNTESTED. Score of 90 displayed for Garrison when data suggests ~36. Startup catch-up deployed but not yet run. Requires deploy + browser verification.
+**Last tested:** FAIL. Current product shows a composite score (90) with no verification links. Needs complete rebuild to raw readings with links.
 
 ---
 
@@ -99,33 +99,33 @@ These never bend. No exceptions. No "just this once."
 
 ---
 
-### Known 6: The credit score pattern
+### Known 6: No scores. Readings with links.
 
-**Rule:** The Business Clarity Score (0-100) is displayed as a semi-circular gauge with color gradient, large number, plain-English label, contributing factor cards with verifiable data, trend indicator, and source attribution. This is the pattern hundreds of millions of people already know from Credit Karma.
+**Rule:** No composite scores. No gauges. No "Business Clarity Score." The customer sees raw readings from Google, each with a link to verify. The value is the doctor's interpretation (what it means) and the work done (what Alloro did about it). Not a number.
 
-**Test:** Open the Home page. Can you read the score in under 1 second? Do the factor cards show data you can verify by Googling? Is there a trend indicator? Does it say where the data comes from?
+**Test:** Is there any composite score or gauge on any customer-facing page? If yes, it fails. Does every reading have a verification link? If not, it fails.
 
-**Violation:** Score displayed as plain text with no context. No factor breakdown. No way to understand why the number is what it is. Customer sees 90 and has no idea what it means.
+**Violation:** A gauge showing "45" or "90." A "Business Clarity Score." Any number the customer has to trust because they can't click through to verify it.
 
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** UNTESTED. Gauge component built April 4, pushed to sandbox. Never rendered in a browser. Requires deploy + visual verification.
+**Last tested:** FAIL. Gauge and composite score still exist in sandbox code. Needs complete removal.
 
 ---
 
-### Known 7: Factor cards show verifiable facts, not algorithm output
+### Known 7: Readings are raw Google data with verification links
 
-**Rule:** Factor cards display data the customer can check (review count, competitor count, GBP fields complete). Sub-score numbers (21/33) only appear after the current algorithm has calculated them. Status colors (red/yellow/green) derive from verifiable data (review count vs competitor, GBP fields out of 5), not from algorithm sub-scores.
+**Rule:** Each reading shows: the raw number, what it means (the doctor's note), a link to verify it on Google, and the status (healthy/attention/critical based on researched ranges). No algorithm transforms the number. The number IS the measurement.
 
-**Test:** Look at any factor card. Can the customer verify every piece of information shown? Is the red/yellow/green based on something they can see on Google?
+**Test:** Pick any reading. Click the link. The number matches. The status (healthy/attention/critical) is based on published research ranges (e.g., "68% of consumers require 4+ stars" makes 4.5+ healthy).
 
-**Violation:** Factor card shows "Review Health: 35/33" (score from old algorithm exceeding max). Status shows green but competitor has 5x more reviews. Numbers from different algorithms mixed on the same screen.
+**Violation:** A transformed number (rating/5 * 8 = 8). A status based on algorithm output. A reading without a verification link.
 
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** UNTESTED. Factor card logic built April 4 with verifiable-data-only status colors. Sub-scores hidden until recalc runs. Never rendered in browser. Requires deploy + visual verification.
+**Last tested:** FAIL. Current scoring engine still transforms readings into sub-scores. Needs rebuild to raw readings with links and research-backed ranges.
 
 ---
 
@@ -174,9 +174,9 @@ These never bend. No exceptions. No "just this once."
 
 ---
 
-## Part 2: The Three Factors
+## Part 2: The Readings
 
-The Business Clarity Score is the sum of three factors. Each must be independently verifiable.
+No score. No gauge. Raw readings from Google, each with a verification link. The doctor reads the blood panel and tells you what it means.
 
 ### Factor 1: Review Health (0-33, High Impact)
 
