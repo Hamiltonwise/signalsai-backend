@@ -25,6 +25,7 @@ import ColleagueShare from "./pages/checkup/ColleagueShare";
 // --- Lazy-loaded page imports ---
 const NewAccountOnboarding = React.lazy(() => import("./pages/NewAccountOnboarding"));
 const ProgressReport = React.lazy(() => import("./pages/ProgressReport"));
+const HelpPage = React.lazy(() => import("./pages/HelpPage"));
 const RankingsScreen = React.lazy(() => import("./pages/RankingsScreen"));
 const Demo = React.lazy(() => import("./pages/Demo"));
 const BusinessClarity = React.lazy(() => import("./pages/BusinessClarity"));
@@ -395,6 +396,7 @@ function App() {
                 <Route path="/reviews" element={<ReviewsPage />} />
                 <Route path="/presence" element={<PresencePage />} />
                 <Route path="/progress" element={<ProgressReport />} />
+                <Route path="/help" element={<HelpPage />} />
               </Route>
 
               {/* Default route: send to Home */}

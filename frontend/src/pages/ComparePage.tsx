@@ -11,7 +11,7 @@
  * 4. Improvement actions (what to do, no point values)
  */
 
-import { useState, Component, type ReactNode } from "react";
+import { useState, useMemo, Component, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
@@ -79,6 +79,156 @@ export default function ComparePage() {
     <CompareErrorBoundary>
       <ComparePageInner />
     </CompareErrorBoundary>
+  );
+}
+
+// ─── Referral Category Tabs ────────────────────────────────────────
+
+type ReferralCategory = "all" | "active" | "new" | "declining" | "dormant";
+
+const CATEGORY_LABELS: { key: ReferralCategory; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "active", label: "Active" },
+  { key: "new", label: "New" },
+  { key: "declining", label: "Declining" },
+  { key: "dormant", label: "Dormant" },
+];
+
+/** Maps trend_label from referral engine to our UI categories */
+function trendToCategory(trend?: string): ReferralCategory {
+  switch (trend) {
+    case "increasing":
+    case "stable":
+      return "active";
+    case "new":
+      return "new";
+    case "decreasing":
+      return "declining";
+    case "dormant":
+      return "dormant";
+    default:
+      return "active"; // default to active if no trend
+  }
+}
+
+function filterReferralData(
+  data: ReferralEngineData,
+  category: ReferralCategory
+): ReferralEngineData {
+  if (category === "all") return data;
+
+  const filterByTrend = <T extends { trend_label?: string }>(items?: T[]): T[] => {
+    if (!items) return [];
+    return items.filter((item) => trendToCategory(item.trend_label) === category);
+  };
+
+  return {
+    ...data,
+    doctor_referral_matrix: filterByTrend(data.doctor_referral_matrix),
+    non_doctor_referral_matrix: filterByTrend(data.non_doctor_referral_matrix),
+  };
+}
+
+function countByCategory(data: ReferralEngineData): Record<ReferralCategory, number> {
+  const counts: Record<ReferralCategory, number> = { all: 0, active: 0, new: 0, declining: 0, dormant: 0 };
+  const allItems = [
+    ...(data.doctor_referral_matrix || []),
+    ...(data.non_doctor_referral_matrix || []),
+  ];
+  counts.all = allItems.length;
+  for (const item of allItems) {
+    const cat = trendToCategory(item.trend_label);
+    counts[cat]++;
+  }
+  return counts;
+}
+
+function ReferralSourcesContent({
+  referralData,
+  referralSources,
+  hasReferralData,
+  onUploadClick,
+}: {
+  referralData: any;
+  referralSources: any;
+  hasReferralData: boolean;
+  onUploadClick: () => void;
+}) {
+  const [activeCategory, setActiveCategory] = useState<ReferralCategory>("all");
+
+  // Check if referral engine data has trend labels (enables categorization)
+  const hasTrendData = useMemo(() => {
+    if (!referralData) return false;
+    const allItems = [
+      ...(referralData.doctor_referral_matrix || []),
+      ...(referralData.non_doctor_referral_matrix || []),
+    ];
+    return allItems.some((item: any) => item.trend_label);
+  }, [referralData]);
+
+  const categoryCounts = useMemo(() => {
+    if (!referralData || !hasTrendData) return null;
+    return countByCategory(referralData as ReferralEngineData);
+  }, [referralData, hasTrendData]);
+
+  const filteredReferralData = useMemo(() => {
+    if (!referralData) return null;
+    if (!hasTrendData || activeCategory === "all") return referralData;
+    return filterReferralData(referralData as ReferralEngineData, activeCategory);
+  }, [referralData, activeCategory, hasTrendData]);
+
+  if (referralData) {
+    return (
+      <div className="space-y-4">
+        {/* Category tabs -- only when trend data exists */}
+        {hasTrendData && (
+          <div className="flex flex-wrap gap-2">
+            {CATEGORY_LABELS.map(({ key, label }) => {
+              const count = categoryCounts?.[key] ?? 0;
+              const isActive = activeCategory === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setActiveCategory(key)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                    isActive
+                      ? "bg-[#D56753]/10 text-[#D56753]"
+                      : "text-gray-500 hover:text-[#1A1D23] hover:bg-stone-100/80"
+                  }`}
+                >
+                  {label}
+                  {key !== "all" && count > 0 && (
+                    <span className="ml-1.5 text-xs opacity-60">({count})</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <ReferralMatrices referralData={filteredReferralData as ReferralEngineData} />
+      </div>
+    );
+  }
+
+  if (hasReferralData && referralSources?.referral_sources?.length > 0) {
+    return <TopReferralSources data={referralSources.referral_sources} />;
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-[#1A1D23]/60">
+        Referral tracking shows who sends you business, who's going quiet, and where to focus your relationship-building.
+      </p>
+      <p className="text-sm text-[#1A1D23]/40">
+        Upload your business data to see referral sources here.
+      </p>
+      <button
+        onClick={onUploadClick}
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
+      >
+        Upload business data
+      </button>
+    </div>
   );
 }
 
@@ -289,26 +439,12 @@ function ComparePageInner() {
 
         {/* Referral Sources -- per constitution, Compare includes referrals */}
         <Section title="Referral Sources" defaultOpen={!!(referralData || ctx?.hasReferralData)}>
-          {referralData ? (
-            <ReferralMatrices referralData={referralData as ReferralEngineData} />
-          ) : ctx?.hasReferralData && referralSources?.referral_sources?.length > 0 ? (
-            <TopReferralSources data={referralSources.referral_sources} />
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-[#1A1D23]/60">
-                Referral tracking shows who sends you business, who's going quiet, and where to focus your relationship-building.
-              </p>
-              <p className="text-sm text-[#1A1D23]/40">
-                Upload your business data to see referral sources here.
-              </p>
-              <button
-                onClick={() => setUploadOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
-              >
-                Upload business data
-              </button>
-            </div>
-          )}
+          <ReferralSourcesContent
+            referralData={referralData}
+            referralSources={referralSources}
+            hasReferralData={ctx?.hasReferralData}
+            onUploadClick={() => setUploadOpen(true)}
+          />
         </Section>
 
         {/* PMS Upload Modal */}
