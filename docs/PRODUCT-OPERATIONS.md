@@ -65,7 +65,7 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only. Requires a new, verified data source that matches Google Search results.
 
-**Last tested:** PASS. April 4, 2026. Position claims removed from all surfaces: HomePage, ComparePage, action cards, Monday email, clean week email, snapshot bullets, notifications, milestoneDetector, ozMoment, tierGating, csAgent, contentAgent, trendScout. All use "more visible on Google" language instead of position numbers.
+**Last tested:** PASS. April 5, 2026. Five sweeps. Position claims removed from all customer-reachable surfaces: five pages, action cards, Monday email (first-week + regular + fallback + conductor gate), clean week email, snapshot bullets, notifications, milestoneDetector, ozMoment, tierGating, csAgent, contentAgent, trendScout, checkup result email, trial emails, week1Win processor, social sharing OG meta, ClarityCard share page, MondayPreview, anniversary report, conference fallback, Oz moment LLM prompt. Remaining references only in v1 dashboard (preserved, not primary), admin pages, migrations, and scripts.
 
 ---
 
@@ -80,7 +80,7 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 3, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** PASS. April 4, 2026. `annualAtRisk` removed from Monday email fallback bullets and oneActionCard referral drift card. Replaced with verifiable language ("every review you add closes that gap," "they averaged X referrals per month before going silent"). No fabricated dollar figures remain in customer-facing output.
+**Last tested:** PASS. April 5, 2026. Five sweeps. Fabricated dollar figures removed from: Monday email (annualAtRisk, dollar_figure, totalImpact all zeroed), oneActionCard referral drift card, checkup findings (5 findings rewrote: review gap, rating gap, recency, response rate, photo gap -- all now use research-backed facts instead of projection formulas), ranking intelligence snapshot generation (dollarFigure zeroed), intelligence agent economic consequences. Remaining dollar_figure column exists in DB/exports as 0. referralIntelligence.ts still has annualValueAtRisk for referral drift alerts (from real referral data, not projections).
 
 ---
 
@@ -110,7 +110,7 @@ These never bend. No exceptions. No "just this once."
 **Locked:** April 4, 2026, Corey Wise.
 **Override requires:** Corey only.
 
-**Last tested:** PASS. April 4, 2026. All 5 customer-facing pages rebuilt. Gauge removed. Composite score removed. "Business Clarity Score" replaced with "Google Health Check" across all surfaces: customer pages, marketing pages (20+ content pages), email templates, Monday email, checkup flow, action cards, onboarding wizard, trial emails, MondayPreview. No composite score displayed anywhere. All pages show raw readings with verification links.
+**Last tested:** PASS. April 5, 2026. Five sweeps. "Business Clarity Score" replaced with "Google Health Check" across: five customer pages, 20+ marketing content pages, email templates (checkup result, welcome, Monday brief, clean week), Monday email, checkup flow, action cards, onboarding wizard, trial emails, MondayPreview, vocabulary auto-mapper (30+ vertical presets), ClarityCard share page (rebuilt from score ring to market card), social sharing OG meta. Remaining references only in v1 dashboard components (preserved, not primary), agent prompts (prPitch, bookOutline, stateOfClarity), and legal pages.
 
 ---
 
@@ -273,6 +273,27 @@ Five pages. Five questions. One product.
 | Reviews | "What are people saying?" | Individual reviews + AI response drafts with approve | Their own Google reviews |
 | Presence | "What does my presence look like?" | Website + GBP completeness | Their own GBP listing |
 | Progress | "Am I getting better?" | Reading trends (start vs now) + proof of work | Every trend verifiable on Google |
+
+### Cross-Cutting: Help & Advisor
+
+The product explains itself. When it can't, the advisor is one tap away.
+
+| Feature | Where | What It Does |
+|---------|-------|-------------|
+| Advisor Chat | Floating bubble on all five pages | Claude-powered, knows the customer's readings, competitor, market. Answers in their context, not generically. Replaces HelpButton on five-page routes. |
+| Contextual "?" | Every reading card on Home | Expandable research backing (BrightLocal, Whitespark, Womply, Google). The product explains why each reading matters without leaving the page. |
+| Help Articles | GET /api/user/help-articles | 23 articles (readings, pages, features, getting started, troubleshooting, team). Role-aware: customers see product help, team sees operational help. Redundancy backup for the chatbot. |
+| Empty State Copy | Reviews, Compare, Presence | Sets time expectations ("within 24 hours"), explains what's happening, tells the customer what to do if it doesn't resolve. |
+
+### Cross-Cutting: Business Data Upload
+
+For customers with practice management or business data (referrals, revenue, etc.):
+
+| Feature | Where | What It Does |
+|---------|-------|-------------|
+| Upload Modal | Compare page, Referral Sources section | PMSUploadWizardModal accessible via "Upload business data" button. Universal language, not medical-specific. |
+| Referral Sources | Compare page | When data exists: shows TopReferralSources or ReferralMatrices. When no data: explains what referral tracking does with upload prompt. |
+| Data Deepening | Home + Compare (planned) | Constitution: "Financial health does not need a 6th page. It needs reliable data. When that data exists, it deepens the existing 5." Practice data (referrals, production, new starts) folds into existing pages when available. |
 
 ---
 

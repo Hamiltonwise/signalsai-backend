@@ -3,6 +3,8 @@
 > How the system is built. What runs, when, and why.
 > Read `PRODUCT-OPERATIONS.md` for WHAT the product does.
 > Read this document for HOW the code implements it.
+> Read `frontend/.claude/rules/design-system.md` for visual design tokens and patterns.
+> Last updated: April 5, 2026.
 
 ---
 
