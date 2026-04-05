@@ -10,7 +10,7 @@
  */
 
 import { NavLink, Outlet } from "react-router-dom";
-import { Home, BarChart3, Star, Globe, Settings } from "lucide-react";
+import { Home, BarChart3, Star, Globe, TrendingUp, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import CSAgentChat from "@/components/dashboard/CSAgentChat";
 
@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   { to: "/compare", icon: BarChart3, label: "Compare" },
   { to: "/reviews", icon: Star, label: "Reviews" },
   { to: "/presence", icon: Globe, label: "Presence" },
-  { to: "/settings", icon: Settings, label: "Settings" },
+  { to: "/progress", icon: TrendingUp, label: "Progress" },
 ];
 
 export default function FivePageLayout() {
@@ -86,6 +86,23 @@ export default function FivePageLayout() {
             <span>{label}</span>
           </NavLink>
         ))}
+
+        {/* Settings -- accessible but not one of the five questions */}
+        <div className="mt-auto pt-4 border-t border-stone-200/40">
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                isActive
+                  ? "bg-[#D56753]/10 text-[#D56753]"
+                  : "text-gray-500 hover:text-[#1A1D23] hover:bg-stone-100/80"
+              }`
+            }
+          >
+            <Settings className="w-5 h-5 shrink-0" />
+            <span>Settings</span>
+          </NavLink>
+        </div>
       </nav>
 
       {/* Desktop content offset for side nav */}

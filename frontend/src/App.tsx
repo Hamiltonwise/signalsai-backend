@@ -394,6 +394,7 @@ function App() {
                 <Route path="/compare" element={<ComparePage />} />
                 <Route path="/reviews" element={<ReviewsPage />} />
                 <Route path="/presence" element={<PresencePage />} />
+                <Route path="/progress" element={<ProgressReport />} />
               </Route>
 
               {/* Default route: send to Home */}
