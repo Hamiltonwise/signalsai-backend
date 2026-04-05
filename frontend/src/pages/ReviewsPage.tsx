@@ -16,7 +16,7 @@
  */
 
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Star,
@@ -25,10 +25,9 @@ import {
   ChevronDown,
   ChevronRight,
   Check,
-  X,
   Sparkles,
 } from "lucide-react";
-import { apiGet, apiPatch } from "@/api/index";
+import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -111,14 +110,8 @@ function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
 
 function NotificationReviewCard({
   review,
-  onApprove,
-  onDismiss,
-  isActing,
 }: {
   review: ReviewNotification;
-  onApprove: (id: number) => void;
-  onDismiss: (id: number) => void;
-  isActing: boolean;
 }) {
   const publishDate = review.review_published_at || review.created_at;
   const formattedDate = publishDate
@@ -161,32 +154,17 @@ function NotificationReviewCard({
           <p className="text-sm text-[#1A1D23]/70 leading-relaxed">
             {review.ai_response}
           </p>
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              onClick={() => onApprove(review.id)}
-              disabled={isActing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D56753] text-white text-xs font-medium hover:bg-[#C05A48] transition-colors disabled:opacity-50"
-            >
-              <Check className="w-3 h-3" />
-              Approve and Post
-            </button>
-            <button
-              onClick={() => onDismiss(review.id)}
-              disabled={isActing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[#1A1D23]/50 text-xs hover:text-[#1A1D23]/70 hover:bg-gray-100 transition-colors disabled:opacity-50"
-            >
-              <X className="w-3 h-3" />
-              Dismiss
-            </button>
-          </div>
+          <p className="text-xs text-[#1A1D23]/40 pt-1">
+            Copy this response and post it on your Google Business Profile.
+          </p>
         </div>
       )}
 
       {/* Already responded indicator */}
       {review.status === "responded" && (
-        <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+        <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <Check className="w-3 h-3" />
-          Response posted
+          Response drafted
         </div>
       )}
     </div>
@@ -226,8 +204,6 @@ function CheckupReviewCard({ review }: { review: CheckupReview }) {
 export default function ReviewsPage() {
   const { userProfile } = useAuth();
   const orgId = userProfile?.organizationId || null;
-  const queryClient = useQueryClient();
-
   // Aggregate review data from checkup
   const { data: ctx } = useQuery<Record<string, unknown>>({
     queryKey: ["reviews-context", orgId],
@@ -259,24 +235,6 @@ export default function ReviewsPage() {
     },
     enabled: !!orgId,
     staleTime: 120_000,
-  });
-
-  // Approve mutation
-  const approveMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiPatch({ path: `/user/review-drafts/${id}`, passedData: { action: "approve" } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["review-drafts", orgId] });
-    },
-  });
-
-  // Dismiss mutation
-  const dismissMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiPatch({ path: `/user/review-drafts/${id}`, passedData: { action: "dismiss" } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["review-drafts", orgId] });
-    },
   });
 
   // Parse checkup data
@@ -313,8 +271,6 @@ export default function ReviewsPage() {
     .filter(Boolean)
     .slice(0, 5);
 
-  const isActing = approveMutation.isPending || dismissMutation.isPending;
-
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
       <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-4">
@@ -338,9 +294,6 @@ export default function ReviewsPage() {
                 <NotificationReviewCard
                   key={review.id}
                   review={review}
-                  onApprove={(id) => approveMutation.mutate(id)}
-                  onDismiss={(id) => dismissMutation.mutate(id)}
-                  isActing={isActing}
                 />
               ))}
             </div>

@@ -112,7 +112,7 @@ All are non-blocking with 2-second delays between orgs to avoid rate limits.
 | Review Sync | src/workers/processors/reviewSync.processor.ts | WORKING | Scheduled and firing |
 | Welcome Intelligence | src/workers/processors/welcomeIntelligence.processor.ts | WORKING | Triggered on signup |
 | Website Generator | src/services/instantWebsiteGenerator.ts | WORKING | Generates at signup, no ongoing updates |
-| Review Response Posting | src/services/gbpReviewReply.ts | SEVERED | Code exists but no route calls `approveAndPostReview()`. The approve button saves to DB but never posts to Google. |
+| Review Response Posting | src/services/gbpReviewReply.ts | BLOCKED | Route calls the function, but fails: reviewMonitor stores Places API IDs (`places/ChIJ.../reviews/ABC`), gbpReviewReply expects MyBusiness format (`accounts/X/locations/Y/reviews/Z`). Approve button removed from UI. AI drafts shown with "copy and post" instruction until ID mapping resolved. |
 | CRO Engine | src/services/croEngine.ts | DEAD CODE | 574 lines, complete implementation, never invoked by any route, worker, or cron |
 | Review Sentiment Comparison | src/services/reviewSentiment.ts | DEAD CODE | Compares review themes between customer and competitor. Never called. |
 | SEO Content Generation | src/services/programmaticSEO.ts | DEAD CODE | Generates city/specialty pages. Never invoked. |
@@ -222,7 +222,11 @@ All require admin auth header: `Authorization: Bearer $ADMIN_TOKEN`
 
 ### Review responses not posting to Google
 
-**Known issue.** The approve flow saves the response to the database (`review_notifications.status = 'responded'`) but does NOT call `approveAndPostReview()` from `gbpReviewReply.ts`. The posting path is severed. This requires wiring the route handler in `src/routes/user/reviewDrafts.ts` to call the GBP reply function.
+**Known issue -- BLOCKED.** The approve button has been removed from the UI. AI drafts are shown with "copy and post" instruction instead.
+
+**Root cause:** Two different Google APIs use different review ID formats. `reviewMonitor.ts` fetches reviews via Places API (New) and stores IDs like `places/ChIJ.../reviews/ABC123`. `gbpReviewReply.ts` posts replies via MyBusiness API (v4) which expects `accounts/X/locations/Y/reviews/Z`. The ID mismatch causes a 404 on every post attempt.
+
+**To fix:** Either (a) map Places API review names to MyBusiness resource names using the account/location IDs from `google_properties`, or (b) switch `reviewMonitor.ts` to fetch reviews via MyBusiness API (which `reviewSync.processor.ts` already does) and store the MyBusiness resource name as `review_google_id`.
 
 ### Scoring config not loaded
 
