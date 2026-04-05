@@ -108,185 +108,14 @@ export interface CheckupResults {
 // Score Labels — WO4: Never use "Poor", "Fair", "Good"
 // ---------------------------------------------------------------------------
 
-function getScoreLabel(score: number): string {
-  if (score >= 80) return "Strong Position";
-  if (score >= 60) return "Building Momentum";
-  return "Your Starting Point";
-}
+// getScoreLabel removed: no composite scores displayed per Known 6.
 
-function getScoreLabelColor(score: number): string {
-  if (score >= 80) return "text-emerald-600";
-  if (score >= 60) return "text-amber-600";
-  return "text-[#D56753]";
-}
+// ScoreRing, ScoreCelebrationText, SubScoreBar removed.
+// Checkup now shows readings with verification links per Known 1, 6, 7.
 
-function getScoreRingColor(score: number): string {
-  if (score >= 80) return "stroke-emerald-500";
-  if (score >= 60) return "stroke-amber-500";
-  return "stroke-[#D56753]";
-}
+// Score Ring and Celebration Text removed per Known 6 (no composite scores).
 
-// ---------------------------------------------------------------------------
-// Score Ring — animated circular gauge
-// ---------------------------------------------------------------------------
-
-function useCountUp(target: number, duration = 1500): number {
-  const [value, setValue] = useState(0);
-
-  useEffect(() => {
-    if (target <= 0) { setValue(0); return; }
-    const start = performance.now();
-    let raf: number;
-
-    function tick(now: number) {
-      const elapsed = now - start;
-      const t = Math.min(elapsed / duration, 1);
-      // ease-out cubic for a satisfying deceleration
-      const eased = 1 - Math.pow(1 - t, 3);
-      setValue(Math.round(eased * target));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    }
-
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
-
-  return value;
-}
-
-function ScoreRing({
-  score,
-  size = 140,
-  strokeWidth = 10,
-}: {
-  score: number;
-  size?: number;
-  strokeWidth?: number;
-}) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const progress = (score / 100) * circumference;
-  const displayScore = useCountUp(score, 1500);
-
-  return (
-    <div
-      className="relative"
-      style={{ width: size, height: size, animation: 'score-reveal 0.8s ease-out' }}
-    >
-      {/* Warm glow behind the ring for high scores */}
-      {score >= 75 && (
-        <div
-          className="absolute inset-0 rounded-full glow-success"
-          style={{ margin: -8 }}
-        />
-      )}
-      <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="rgba(214, 104, 83, 0.06)"
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          className={`${getScoreRingColor(score)} transition-all duration-1000 ease-out`}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference - progress}
-          strokeLinecap="round"
-          style={{ filter: score >= 75 ? 'drop-shadow(0 0 6px rgba(34, 197, 94, 0.3))' : undefined }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-4xl font-bold text-[#1A1D23]">{displayScore}</span>
-        <span className={`text-sm font-semibold ${getScoreLabelColor(score)}`}>
-          {getScoreLabel(score)}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Score Celebration Text -- delight layer beneath the ring
-// ---------------------------------------------------------------------------
-
-function ScoreCelebrationText({ score }: { score: number }) {
-  if (score >= 75) {
-    return (
-      <p className="text-sm text-emerald-600 text-center font-medium -mt-1 animate-fade-in">
-        That&apos;s a strong foundation.
-      </p>
-    );
-  }
-  if (score >= 40) {
-    return (
-      <p className="text-sm text-slate-500 text-center -mt-1 animate-fade-in">
-        Alloro already sees where to move the needle.
-      </p>
-    );
-  }
-  return (
-    <p className="text-sm text-slate-500 text-center -mt-1 animate-fade-in">
-      This is your starting point. Alloro knows exactly what to do first.
-    </p>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Sub-score Bar — shows label, points out of max, and fill bar
-// ---------------------------------------------------------------------------
-
-function SubScoreBar({
-  label,
-  score,
-  maxScore,
-  icon: Icon,
-}: {
-  label: string;
-  score: number;
-  maxScore: number;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  const pct = Math.round((score / maxScore) * 100);
-
-  return (
-    <div className="flex items-center gap-3">
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-        pct >= 80 ? "bg-emerald-50" : pct >= 60 ? "bg-amber-50" : "bg-[#D56753]/8"
-      }`}>
-        <Icon className={`w-4 h-4 ${
-          pct >= 80 ? "text-emerald-600" : pct >= 60 ? "text-amber-600" : "text-[#D56753]"
-        }`} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-sm font-medium text-[#1A1D23]/70">{label}</span>
-          <span className="text-sm font-semibold text-[#1A1D23]">
-            {score}/{maxScore}
-          </span>
-        </div>
-        <div className="h-2 bg-[#D56753]/[0.06] rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-1000 ease-out ${
-              pct >= 80
-                ? "bg-emerald-500"
-                : pct >= 60
-                  ? "bg-amber-500"
-                  : "bg-[#D56753]"
-            }`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
+// SubScoreBar removed per Known 6 (no sub-score bars with X/maxScore).
 
 // ---------------------------------------------------------------------------
 // Finding Card
@@ -937,98 +766,90 @@ export default function ResultsScreen() {
         )}
       </div>
 
-      {/* Composite Score Ring — larger, more prominent */}
-      <div className="flex justify-center py-2">
-        <ScoreRing score={score.composite} size={180} strokeWidth={12} />
-      </div>
-      <ScoreCelebrationText score={score.composite} />
+      {/* Readings — the blood panel. Every number links to verification. */}
+      <div className="space-y-3">
+        {/* Star Rating */}
+        {place.rating != null && (
+          <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`w-2.5 h-2.5 rounded-full ${place.rating >= 4.5 ? "bg-emerald-500" : place.rating >= 4.0 ? "bg-amber-400" : "bg-red-500"}`} />
+              <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Star Rating</span>
+            </div>
+            <p className="text-lg font-semibold text-[#1A1D23]">{place.rating} stars</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {place.rating >= 4.5 ? "Above the threshold most consumers require" : "68% of consumers require 4+ stars"}
+            </p>
+          </div>
+        )}
 
-      {/* Stage 1: Diagnostic sentence — the difference between a number and a diagnosis */}
-      {revealStage >= 1 && market && market.rank === 1 && topCompetitor && (
-        <p className="text-sm text-emerald-700 text-center leading-relaxed -mt-2 font-medium">
-          <span className="font-semibold">{place.name}</span> is #1 in {market.city}.
-          {place.reviewCount > topCompetitor.reviewCount
-            ? ` ${place.reviewCount - topCompetitor.reviewCount} reviews ahead of ${topCompetitor.name}.`
-            : ` ${topCompetitor.name} is close behind.`}
-        </p>
-      )}
-      {market && topCompetitor && market.rank > 1 && topCompetitor.reviewCount > place.reviewCount && (
-        <p className="text-sm text-slate-600 text-center leading-relaxed -mt-2">
-          <span className="font-semibold text-[#1A1D23]">{place.name}</span> ranks
-          #{market.rank} in {market.city}.{" "}
-          {topCompetitor.name} has{" "}
-          <span className="font-semibold text-[#D56753]">
-            {topCompetitor.reviewCount - place.reviewCount} more review{topCompetitor.reviewCount - place.reviewCount !== 1 ? "s" : ""}
-          </span>.
-          Here's the one move that changes it.
-        </p>
-      )}
-
-      {/* Sub-scores — First Impression breakdown */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] space-y-6">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Behind the Score</p>
-          {state.scoreLabel && (
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              score.composite >= 80 ? "bg-emerald-50 text-emerald-700" :
-              score.composite >= 80 ? "bg-emerald-50 text-emerald-700" :
-              score.composite >= 60 ? "bg-blue-50 text-blue-700" :
-              "bg-amber-50 text-amber-700"
-            }`}>{state.scoreLabel}</span>
+        {/* Review Volume vs Competitor */}
+        <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`w-2.5 h-2.5 rounded-full ${
+              topCompetitor && place.reviewCount >= topCompetitor.reviewCount ? "bg-emerald-500"
+              : topCompetitor && place.reviewCount >= topCompetitor.reviewCount * 0.5 ? "bg-amber-400"
+              : "bg-red-500"
+            }`} />
+            <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Review Volume</span>
+          </div>
+          <p className="text-lg font-semibold text-[#1A1D23]">{place.reviewCount} reviews</p>
+          {topCompetitor && (
+            <p className="text-sm text-gray-500 mt-0.5">
+              {topCompetitor.name} has {topCompetitor.reviewCount}.
+              {place.reviewCount >= topCompetitor.reviewCount
+                ? " You lead."
+                : ` Gap: ${topCompetitor.reviewCount - place.reviewCount} reviews.`}
+            </p>
+          )}
+          {topCompetitor && (
+            <a href={`https://www.google.com/search?q=${encodeURIComponent(topCompetitor.name)}`} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold mt-1.5 hover:underline">
+              Verify on Google <Globe className="w-3 h-3" />
+            </a>
           )}
         </div>
 
-        {/* Google Position */}
-        <div className="space-y-2">
-          <SubScoreBar label="Google Position" score={score.googlePosition ?? score.competitiveEdge ?? 17} maxScore={34} icon={MapPin} />
-          <p className="text-xs text-slate-500 leading-relaxed pl-11">
-            {market?.rank ? (
-              <>
-                You are <span className="font-semibold text-slate-700">#{market.rank}</span> when people search in {market.city || "your area"}.
-                {topCompetitor && <> <span className="font-semibold text-slate-700">{topCompetitor.name}</span> holds #1.</>}
-              </>
-            ) : (
-              <>Your position in local search results. Google yourself to verify.</>
-            )}
-          </p>
-        </div>
-
-        {/* Review Health */}
-        <div className="space-y-2">
-          <SubScoreBar label="Review Health" score={score.reviewHealth ?? score.trustSignal ?? score.localVisibility ?? 0} maxScore={33} icon={Star} />
-          <p className="text-xs text-slate-500 leading-relaxed pl-11">
-            {place.rating ? (
-              <>
-                <span className="font-semibold text-slate-700">{place.rating} stars</span> across{" "}
-                <span className="font-semibold text-slate-700">{place.reviewCount} review{place.reviewCount !== 1 ? "s" : ""}</span>.
-                {" "}Rating, volume, recency, and how you respond.
-                {market && market.avgRating > 0 && (
-                  place.rating >= market.avgRating
-                    ? <> Above the {market.city} average of {market.avgRating.toFixed(1)}.</>
-                    : <> The {market.city} average is {market.avgRating.toFixed(1)}.</>
-                )}
-              </>
-            ) : (
-              <>Rating, review volume, recency, and response rate.</>
-            )}
-          </p>
-        </div>
-
         {/* GBP Completeness */}
-        <div className="space-y-2">
-          <SubScoreBar label="GBP Completeness" score={score.gbpCompleteness ?? score.firstImpression ?? score.onlinePresence ?? 0} maxScore={33} icon={Globe} />
-          <p className="text-xs text-slate-500 leading-relaxed pl-11">
-            Photos, business hours, phone, website, and description.
-            {!place.websiteUri && <> No website linked on your profile.</>}
-            {" "}People decide in seconds whether to call or scroll past.
+        {(() => {
+          const fields = [
+            { name: "phone", has: !!(place.phone || (place as any).nationalPhoneNumber || (place as any).hasPhone) },
+            { name: "hours", has: !!(place.regularOpeningHours || (place as any).hasHours) },
+            { name: "website", has: !!(place.websiteUri || (place as any).hasWebsite) },
+            { name: "photos", has: ((place as any).photosCount || place.photos?.length || 0) > 0 },
+            { name: "description", has: !!(place.editorialSummary || (place as any).hasEditorialSummary) },
+          ];
+          const complete = fields.filter(f => f.has).length;
+          const missing = fields.filter(f => !f.has).map(f => f.name);
+          return (
+            <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`w-2.5 h-2.5 rounded-full ${complete >= 5 ? "bg-emerald-500" : complete >= 3 ? "bg-amber-400" : "bg-red-500"}`} />
+                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Profile Completeness</span>
+              </div>
+              <p className="text-lg font-semibold text-[#1A1D23]">{complete}/5 fields</p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {missing.length > 0 ? `Missing: ${missing.join(", ")}` : "All fields complete"}
+              </p>
+            </div>
+          );
+        })()}
+
+        {/* Diagnostic sentence — verifiable, no position claim */}
+        {topCompetitor && topCompetitor.reviewCount > place.reviewCount && (
+          <p className="text-sm text-[#1A1D23] text-center leading-relaxed mt-2">
+            <span className="font-semibold">{topCompetitor.name}</span> has{" "}
+            <span className="font-semibold text-[#D56753]">
+              {topCompetitor.reviewCount - place.reviewCount} more review{topCompetitor.reviewCount - place.reviewCount !== 1 ? "s" : ""}
+            </span> than you.
+            Here's what you can do about it.
           </p>
-        </div>
+        )}
       </div>
 
-      {/* Transparency — what this score is based on */}
-      <p className="text-xs text-slate-400 text-center leading-relaxed -mt-3">
-        Based on public Google data{market?.totalCompetitors ? ` and ${market.totalCompetitors} nearby alternatives` : ""}.
-        {" "}A full audit with connected accounts reveals more.
+      {/* Source attribution */}
+      <p className="text-xs text-gray-400 text-center leading-relaxed">
+        Based on public Google data. Every number above is verifiable.
+        {market?.totalCompetitors ? ` ${market.totalCompetitors} competitors in your market.` : ""}
       </p>
 
       {/* ═══ OZ MOMENTS: The jaw-drop insights from combined data ═══ */}
@@ -1416,20 +1237,30 @@ export default function ResultsScreen() {
           </p>
         </div>
 
-        {/* ═══ SHAREABLE SCORE CARD — the Spotify Wrapped artifact ═══ */}
-        {/* Designed for screenshots. The visual that gets texted to colleagues. */}
+        {/* ═══ SHAREABLE CARD — the Spotify Wrapped artifact ═══ */}
+        {/* Designed for screenshots. Uses readings, not scores. */}
         <div className="rounded-2xl overflow-hidden shadow-lg">
-          <div className="bg-[#212D40] p-6 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30 mb-3">
-              Business Clarity Score
+          <div className="bg-[#212D40] p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30 mb-3 text-center">
+              Your Google Health Check
             </p>
-            <p className="text-5xl font-semibold text-white">{score.composite}</p>
-            <p className="text-sm font-semibold text-white/60 mt-1">{place.name}</p>
-            {market && (
-              <p className="text-xs text-white/30 mt-1">
-                #{market.rank} of {market.totalCompetitors} in {market.city}
-              </p>
-            )}
+            <p className="text-lg font-semibold text-white text-center mb-4">{place.name}</p>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-white/50">Rating</span>
+                <span className="text-white font-semibold">{place.rating} stars</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-white/50">Reviews</span>
+                <span className="text-white font-semibold">{place.reviewCount}</span>
+              </div>
+              {topCompetitor && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/50">{topCompetitor.name}</span>
+                  <span className="text-white/70 font-semibold">{topCompetitor.reviewCount} reviews</span>
+                </div>
+              )}
+            </div>
           </div>
           {state.ozMoments && state.ozMoments[0] && (
             <div className="bg-[#D56753] px-6 py-4">
