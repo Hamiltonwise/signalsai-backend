@@ -16,10 +16,11 @@
  * - Everything else is conditional and temporary
  */
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronRight, ExternalLink, HelpCircle } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
@@ -87,6 +88,7 @@ function ReadingCard({
   status,
   verifyUrl,
   verifyLabel,
+  whyItMatters,
 }: {
   label: string;
   value: string;
@@ -94,7 +96,9 @@ function ReadingCard({
   status: ReadingStatus;
   verifyUrl?: string | null;
   verifyLabel?: string;
+  whyItMatters?: string;
 }) {
+  const [showWhy, setShowWhy] = useState(false);
   const statusStyles = {
     healthy: { dot: "bg-emerald-500", bg: "border-emerald-200/60" },
     attention: { dot: "bg-amber-400", bg: "border-amber-200/60" },
@@ -104,14 +108,30 @@ function ReadingCard({
 
   return (
     <div className={`rounded-2xl bg-stone-50/80 border ${s.bg} p-5 sm:p-6`}>
-      <div className="flex items-center gap-2.5 mb-3">
-        <span className={`w-3 h-3 rounded-full ${s.dot} ring-4 ring-opacity-20 ${
-          status === "healthy" ? "ring-emerald-500" : status === "attention" ? "ring-amber-400" : "ring-red-500"
-        }`} />
-        <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{label}</span>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <span className={`w-3 h-3 rounded-full ${s.dot} ring-4 ring-opacity-20 ${
+            status === "healthy" ? "ring-emerald-500" : status === "attention" ? "ring-amber-400" : "ring-red-500"
+          }`} />
+          <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{label}</span>
+        </div>
+        {whyItMatters && (
+          <button
+            onClick={() => setShowWhy(!showWhy)}
+            className="w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-[#D56753] transition-colors"
+            aria-label="Why this matters"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
       <p className="text-2xl font-semibold text-[#1A1D23] leading-snug">{value}</p>
       <p className="text-sm text-gray-500 mt-2 leading-relaxed">{context}</p>
+      {showWhy && whyItMatters && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <p className="text-xs text-gray-400 leading-relaxed">{whyItMatters}</p>
+        </div>
+      )}
       {verifyUrl && (
         <a
           href={verifyUrl}
@@ -172,6 +192,7 @@ function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | n
     status: ReadingStatus;
     verifyUrl: string | null;
     verifyLabel?: string;
+    whyItMatters?: string;
   }[] = [];
 
   // Reading 1: Star Rating
@@ -187,6 +208,7 @@ function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | n
       status: rating >= 4.5 ? "healthy" : rating >= 4.0 ? "attention" : "critical",
       verifyUrl: googleSearchUrl,
       verifyLabel: `Search "${orgName}"`,
+      whyItMatters: "68% of consumers require 4+ stars. 31% require 4.5+. Conversion drops steeply below 4.0. Every 5-star review moves your average. (BrightLocal 2026)",
     });
   }
 
@@ -202,6 +224,7 @@ function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | n
       status: ratio >= 1 ? "healthy" : ratio >= 0.5 ? "attention" : "critical",
       verifyUrl: competitorSearchUrl,
       verifyLabel: competitorName ? `Search "${competitorName}"` : "Search competitors",
+      whyItMatters: "Google uses review count as a top 3 local ranking factor. Businesses with 50+ reviews earn 4.6x more revenue. The gap vs your top competitor matters most. (Whitespark 2026, Womply)",
     });
   }
 
@@ -215,6 +238,7 @@ function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | n
     status: gbpComplete >= 5 ? "healthy" : gbpComplete >= 3 ? "attention" : "critical",
     verifyUrl: googleSearchUrl,
     verifyLabel: "Check your Google Business Profile",
+    whyItMatters: "Complete profiles are 2.7x more likely to be considered reputable and 70% more likely to attract visits. GBP signals are 32% of local ranking weight. (Google, Whitespark 2026)",
   });
 
   // Reading 4: Response Rate (if we have review data)
@@ -233,6 +257,7 @@ function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | n
       status: rate >= 80 ? "healthy" : rate >= 1 ? "attention" : "critical",
       verifyUrl: googleSearchUrl,
       verifyLabel: "Check your reviews for responses",
+      whyItMatters: "Google confirms responding to reviews improves local ranking. Businesses that respond earn 35% more revenue. A response signals your business is active and engaged. (Google, Womply)",
     });
   }
 
@@ -247,6 +272,7 @@ function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | n
       status: "attention",
       verifyUrl: marketSearchUrl,
       verifyLabel: `Search "${checkup.market?.specialty || "business"} ${city}"`,
+      whyItMatters: "Google Ask Maps reads review words, not just stars. 80%+ of searches end without a click. 45% of consumers now use AI for local services. What AI says about you is the new visibility. (Google 2026)",
     });
   }
 
@@ -384,6 +410,7 @@ export default function HomePage() {
                 status={reading.status}
                 verifyUrl={reading.verifyUrl}
                 verifyLabel={reading.verifyLabel}
+                whyItMatters={reading.whyItMatters}
               />
             ))}
           </motion.div>

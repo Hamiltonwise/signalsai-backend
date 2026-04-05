@@ -11,6 +11,8 @@
 
 import { NavLink, Outlet } from "react-router-dom";
 import { Home, BarChart3, Star, Globe, Settings } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import CSAgentChat from "@/components/dashboard/CSAgentChat";
 
 const NAV_ITEMS = [
   { to: "/home", icon: Home, label: "Home" },
@@ -21,12 +23,20 @@ const NAV_ITEMS = [
 ];
 
 export default function FivePageLayout() {
+  const { userProfile } = useAuth();
+  const practiceName = userProfile?.practiceName || "your practice";
+
   return (
     <div className="min-h-screen bg-[#F8F6F2] pb-20 sm:pb-0">
       {/* Page content */}
       <main>
         <Outlet />
       </main>
+
+      {/* Advisor chat -- replaces HelpButton on five-page routes */}
+      {userProfile && (
+        <CSAgentChat practiceName={practiceName} />
+      )}
 
       {/* Bottom nav (mobile) */}
       <nav className="fixed bottom-0 inset-x-0 z-50 bg-white border-t border-gray-100 sm:hidden">

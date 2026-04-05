@@ -33,6 +33,10 @@ export default function HelpButton() {
   // Don't show for unauthenticated users
   if (!userProfile) return null;
 
+  // Don't show on five-page routes (CSAgentChat handles help there)
+  const fivePageRoutes = ["/home", "/compare", "/reviews", "/presence", "/settings"];
+  if (fivePageRoutes.some(r => location.pathname.startsWith(r))) return null;
+
   const handleSend = async () => {
     if (!message.trim() || sending) return;
     setSending(true);
