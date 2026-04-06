@@ -18,10 +18,10 @@ import CSAgentChat from "@/components/dashboard/CSAgentChat";
 
 const NAV_ITEMS = [
   { to: "/home", icon: Home, label: "Home" },
-  { to: "/compare", icon: BarChart3, label: "Compare" },
+  { to: "/compare", icon: BarChart3, label: "Get Found" },
   { to: "/reviews", icon: Star, label: "Reviews" },
-  { to: "/presence", icon: Globe, label: "Presence" },
-  { to: "/progress", icon: TrendingUp, label: "Progress" },
+  { to: "/presence", icon: Globe, label: "Your Website" },
+  { to: "/progress", icon: TrendingUp, label: "Your Numbers" },
 ];
 
 /** Compact location picker for multi-location orgs. Light theme. */

@@ -224,7 +224,7 @@ function ReferralSourcesContent({
       </p>
       <button
         onClick={onUploadClick}
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#212D40] text-white text-sm font-medium hover:bg-[#2a3a52] transition-all"
       >
         Upload business data
       </button>
@@ -311,12 +311,13 @@ function ComparePageInner() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">How You Compare</h1>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">How Easily Patients Find You</h1>
+          <p className="text-sm text-gray-400 mt-1">Alloro tracks your ranking against every competitor in your market.</p>
           {competitorName && (
             <p className="text-sm text-gray-500 mt-1">
               Your top competitor: {competitorName}
               {competitorSearchUrl && (
-                <a href={competitorSearchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 ml-2 text-[#D56753] hover:underline">
+                <a href={competitorSearchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 ml-2 text-[#1A1D23]/40 hover:text-[#1A1D23]/60 hover:underline">
                   Verify <ExternalLink className="w-3 h-3" />
                 </a>
               )}
@@ -362,13 +363,13 @@ function ComparePageInner() {
             <div className="flex gap-3 mt-4">
               {googleSearchUrl && (
                 <a href={googleSearchUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold hover:underline">
+                  className="inline-flex items-center gap-1 text-xs text-[#1A1D23]/40 font-semibold hover:text-[#1A1D23]/60 hover:underline">
                   Verify your data <ExternalLink className="w-3 h-3" />
                 </a>
               )}
               {competitorSearchUrl && (
                 <a href={competitorSearchUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold hover:underline">
+                  className="inline-flex items-center gap-1 text-xs text-[#1A1D23]/40 font-semibold hover:text-[#1A1D23]/60 hover:underline">
                   Verify competitor <ExternalLink className="w-3 h-3" />
                 </a>
               )}

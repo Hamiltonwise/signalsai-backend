@@ -147,7 +147,8 @@ export default function ProgressReport() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Progress</h1>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Numbers</h1>
+          <p className="text-sm text-gray-400 mt-1">Alloro reads your business data and shows you what is moving.</p>
           {daysActive && (
             <p className="text-sm text-gray-500 mt-1">
               {daysActive} day{daysActive !== 1 ? "s" : ""} with Alloro
@@ -212,7 +213,7 @@ export default function ProgressReport() {
                     href={trend.verifyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold mt-2 hover:underline"
+                    className="inline-flex items-center gap-1 text-xs text-[#1A1D23]/40 font-semibold mt-2 hover:text-[#1A1D23]/60 hover:underline"
                   >
                     Verify on Google <ExternalLink className="w-3 h-3" />
                   </a>

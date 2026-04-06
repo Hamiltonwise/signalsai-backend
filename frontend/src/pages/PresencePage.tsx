@@ -155,8 +155,8 @@ function PresencePageInner() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Online Presence</h1>
-          <p className="text-base text-[#1A1D23]/40 mt-2">What people see when they search for your business.</p>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Website</h1>
+          <p className="text-sm text-gray-400 mt-1">Alloro built and maintains your patient-facing website.</p>
         </motion.div>
 
         {/* GBP Connection (if not connected) */}

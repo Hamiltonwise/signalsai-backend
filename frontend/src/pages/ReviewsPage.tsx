@@ -324,8 +324,9 @@ export default function ReviewsPage() {
           <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">
             What People Are Saying
           </h1>
+          <p className="text-sm text-gray-400 mt-1">Alloro monitors your Google reviews and drafts responses daily.</p>
           {rating && reviewCount > 0 && (
-            <p className="text-base text-[#1A1D23]/40 mt-2">
+            <p className="text-sm text-[#1A1D23]/40 mt-1">
               {rating} stars across {reviewCount} reviews
             </p>
           )}

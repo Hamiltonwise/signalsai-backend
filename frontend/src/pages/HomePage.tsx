@@ -405,126 +405,165 @@ export default function HomePage() {
 
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  // Count healthy/attention/critical readings for the summary
-  const healthyCount = readings?.filter(r => r.status === "healthy").length || 0;
-  const totalCount = readings?.length || 0;
-
-  // Overall status badge
-  const overallStatus: ReadingStatus | null = readings && readings.length > 0
-    ? healthyCount === totalCount ? "healthy"
-      : readings.some(r => r.status === "critical") ? "critical"
-      : "attention"
-    : null;
+  // Score ring data
+  const score = ctx?.org?.checkup_score ?? ctx?.org?.current_clarity_score ?? null;
+  const scoreNum = typeof score === "number" ? score : null;
+  const scoreLabel = scoreNum == null ? "GETTING STARTED"
+    : scoreNum >= 80 ? "STRONG"
+    : scoreNum >= 60 ? "GROWING"
+    : "NEEDS ATTENTION";
+  const scoreColor = scoreNum == null ? "text-gray-300 border-gray-200"
+    : scoreNum >= 80 ? "text-[#212D40] border-[#212D40]"
+    : scoreNum >= 60 ? "text-[#D56753] border-[#D56753]"
+    : "text-red-500 border-red-500";
 
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
       <div className="max-w-[640px] mx-auto px-5 sm:px-8 py-10 sm:py-14">
 
-        {/* ── Greeting + Summary ── */}
+        {/* ── Greeting ── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-12"
+          className="text-center mb-6"
         >
-          {overallStatus && (
-            <div className="mb-3">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
-                overallStatus === "healthy"
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
-                  : overallStatus === "attention"
-                    ? "bg-amber-50 text-amber-700 border border-amber-200/60"
-                    : "bg-red-50 text-red-700 border border-red-200/60"
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${
-                  overallStatus === "healthy" ? "bg-emerald-500" : overallStatus === "attention" ? "bg-amber-500" : "bg-red-500"
-                }`} />
-                {overallStatus === "healthy" ? "All Clear" : overallStatus === "attention" ? "Needs Attention" : "Action Needed"}
-              </span>
-            </div>
-          )}
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight leading-tight">{greeting}</h1>
-          {readings && totalCount > 0 && (
-            <p className="text-base text-[#1A1D23]/40 mt-2">
-              {healthyCount === totalCount
-                ? "All readings healthy. Nothing needs you."
-                : healthyCount === 0
-                  ? `${totalCount} readings need attention.`
-                  : `${healthyCount} of ${totalCount} readings healthy. ${totalCount - healthyCount} need attention.`}
-            </p>
-          )}
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight leading-tight">{greeting}</h1>
         </motion.div>
 
-        {/* ── Readings (the blood panel) ── */}
-        {readings && readings.length > 0 ? (
+        {/* ── 1. Score Ring (Hero) ── */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="flex flex-col items-center mb-8"
+        >
+          <div className={`w-40 h-40 sm:w-[200px] sm:h-[200px] rounded-full border-[6px] ${scoreColor} flex flex-col items-center justify-center`}>
+            <span className={`text-5xl sm:text-[48px] font-semibold leading-none ${scoreColor.split(" ")[0]}`}>
+              {scoreNum != null ? scoreNum : "--"}
+            </span>
+            <span className={`text-xs font-semibold uppercase tracking-widest mt-1.5 ${scoreNum == null ? "text-gray-400" : scoreColor.split(" ")[0]}`}>
+              {scoreLabel}
+            </span>
+          </div>
+        </motion.div>
+
+        {/* ── 2. One Action Card (Navy, full width) ── */}
+        {action && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="space-y-3 mb-8"
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="mb-8"
           >
-            {readings.map((reading) => (
-              <ReadingCard
-                key={reading.label}
-                label={reading.label}
-                value={reading.value}
-                delta={reading.delta}
-                context={reading.context}
-                status={reading.status}
-                verifyUrl={reading.verifyUrl}
-                verifyLabel={reading.verifyLabel}
-                whyItMatters={reading.whyItMatters}
-              />
-            ))}
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="space-y-3 mb-8"
-          >
-            {/* Skeleton reading cards */}
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6 sm:p-7 animate-pulse">
-                <div className="flex items-center gap-2.5 mb-4">
-                  <span className="w-2.5 h-2.5 rounded-full bg-gray-200" />
-                  <span className="h-3 w-24 bg-gray-200 rounded" />
-                </div>
-                <div className="h-8 w-32 bg-gray-200 rounded mb-3" />
-                <div className="h-4 w-48 bg-gray-100 rounded" />
-              </div>
-            ))}
-            <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
-              <p className="text-sm font-semibold text-[#1A1D23]">Alloro is building your health panel</p>
-              <p className="text-sm text-gray-500 mt-1">
-                Your readings appear here once your Google Business Profile data syncs. This usually takes a few minutes after signup.
+            <div className={`w-full rounded-xl p-6 ${
+              action.clear
+                ? "bg-emerald-50/60 border border-emerald-200/40"
+                : "bg-[#212D40]"
+            }`}>
+              <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${
+                action.clear ? "text-emerald-600" : "text-[#D56753]"
+              }`}>
+                YOUR NEXT MOVE
               </p>
+              <p className={`text-lg font-medium leading-snug ${
+                action.clear ? "text-emerald-800" : "text-white"
+              }`} style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {action.headline}
+              </p>
+              {action.body && (
+                <p className={`mt-2 text-sm leading-relaxed ${
+                  action.clear ? "text-emerald-700/80" : "text-white/60"
+                }`}>
+                  {action.body}
+                </p>
+              )}
+              {action.action_text && action.action_url && (
+                <button
+                  onClick={() => navigate(action.action_url!)}
+                  className={`mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
+                    action.clear
+                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                      : "bg-[#D56753] text-white hover:brightness-110 active:scale-[0.98]"
+                  }`}
+                >
+                  {action.action_text}
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </motion.div>
         )}
 
-        {/* ── Business Data Upload Prompt (when no data exists) ── */}
-        {ctx && ctx.has_referral_data === false && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.12 }}
-            className="mb-2"
-          >
-            <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 sm:p-6">
-              <p className="text-sm font-semibold text-[#1A1D23] mb-1">Have referral or revenue data?</p>
-              <p className="text-sm text-gray-500 mb-4">
-                Upload it to unlock deeper intelligence about who sends you business.
-              </p>
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
-              >
-                Upload business data
-              </button>
+        {/* ── 3. Readings (below the fold) ── */}
+        <div className="mt-6">
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-4">
+            WHAT ALLORO IS TRACKING
+          </p>
+
+          {readings && readings.length > 0 ? (
+            <div className="space-y-3">
+              {readings.map((reading) => (
+                <ReadingCard
+                  key={reading.label}
+                  label={reading.label}
+                  value={reading.value}
+                  delta={reading.delta}
+                  context={reading.context}
+                  status={reading.status}
+                  verifyUrl={reading.verifyUrl}
+                  verifyLabel={reading.verifyLabel}
+                  whyItMatters={reading.whyItMatters}
+                />
+              ))}
             </div>
-          </motion.div>
+          ) : (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6 sm:p-7 animate-pulse">
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <span className="w-2.5 h-2.5 rounded-full bg-gray-200" />
+                    <span className="h-3 w-24 bg-gray-200 rounded" />
+                  </div>
+                  <div className="h-8 w-32 bg-gray-200 rounded mb-3" />
+                  <div className="h-4 w-48 bg-gray-100 rounded" />
+                </div>
+              ))}
+              <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
+                <p className="text-sm font-semibold text-[#1A1D23]">Alloro is building your health panel</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Your readings appear here once your Google Business Profile data syncs. This usually takes a few minutes after signup.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Below readings: secondary content ── */}
+        <div className="space-y-6 mt-8">
+
+        {/* ── Latest Update ── */}
+        {orgId && (
+          <NotificationWidget
+            organizationId={orgId}
+            locationId={selectedLocation?.id || null}
+          />
+        )}
+
+        {/* ── Business Data Upload Prompt ── */}
+        {ctx && ctx.has_referral_data === false && (
+          <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 sm:p-6">
+            <p className="text-sm font-semibold text-[#1A1D23] mb-1">Have referral or revenue data?</p>
+            <p className="text-sm text-gray-500 mb-4">
+              Upload it to unlock deeper intelligence about who sends you business.
+            </p>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#212D40] text-white text-sm font-medium hover:bg-[#2a3a52] transition-all"
+            >
+              Upload business data
+            </button>
+          </div>
         )}
 
         {showUploadModal && orgId && (
@@ -537,90 +576,23 @@ export default function HomePage() {
           />
         )}
 
-        <div className="space-y-6">
-
-        {/* ── One Action Card (the doctor's note) ── */}
-        {action && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-            className="-mx-5 sm:-mx-8"
-          >
-            <div className={`px-5 sm:px-8 py-8 sm:py-10 ${
-              action.clear
-                ? "bg-emerald-50/60 border-y border-emerald-200/40"
-                : "bg-[#212D40]"
-            }`}>
-              <div className="max-w-[640px] mx-auto">
-                <p className={`text-xs font-semibold uppercase tracking-wider mb-3 ${
-                  action.clear ? "text-emerald-600" : "text-white/40"
-                }`}>
-                  Your Next Move
-                </p>
-                <p className={`text-xl font-semibold leading-snug tracking-tight ${
-                  action.clear ? "text-emerald-800" : "text-white"
-                }`}>
-                  {action.headline}
-                </p>
-                <p className={`mt-3 text-base leading-relaxed ${
-                  action.clear ? "text-emerald-700/80" : "text-white/60"
-                }`}>
-                  {action.body}
-                </p>
-                {action.action_text && action.action_url && (
-                  <button
-                    onClick={() => navigate(action.action_url!)}
-                    className={`mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all ${
-                      action.clear
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                        : "bg-[#D56753] text-white hover:brightness-110 active:scale-[0.98]"
-                    }`}
-                  >
-                    {action.action_text}
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Latest Update (Dave's NotificationWidget) ── */}
-        {orgId && (
-          <NotificationWidget
-            organizationId={orgId}
-            locationId={selectedLocation?.id || null}
-          />
-        )}
-
-        {/* ── Practice Data Summary (when data exists) ── */}
+        {/* ── Practice Data Summary ── */}
         {ctx?.has_referral_data && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Your Business Data</p>
-                  <p className="text-sm text-gray-500">
-                    {ctx?.referral_stats?.referrals_converted
-                      ? `${ctx.referral_stats.referrals_converted} referral${ctx.referral_stats.referrals_converted !== 1 ? "s" : ""} converted`
-                      : "Referral data uploaded"}
-                    {" -- "}
-                    <button
-                      onClick={() => navigate("/compare")}
-                      className="text-[#D56753] font-semibold hover:underline"
-                    >
-                      See details on Compare
-                    </button>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 sm:p-6">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Your Business Data</p>
+            <p className="text-sm text-gray-500">
+              {ctx?.referral_stats?.referrals_converted
+                ? `${ctx.referral_stats.referrals_converted} referral${ctx.referral_stats.referrals_converted !== 1 ? "s" : ""} converted`
+                : "Referral data uploaded"}
+              {" -- "}
+              <button
+                onClick={() => navigate("/compare")}
+                className="text-[#1A1D23] font-semibold hover:underline"
+              >
+                See details on Get Found
+              </button>
+            </p>
+          </div>
         )}
 
         {/* ── Surprise Moments ── */}
