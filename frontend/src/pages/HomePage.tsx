@@ -164,7 +164,7 @@ function ReadingCard({
 
 // ─── Extract Readings from Data ─────────────────────────────────────
 
-function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | null) {
+function extractReadings(ctx: DashboardContext | null, ranking: RankingData | null) {
   const checkup = ctx?.org?.checkup_data;
   if (!checkup) return null;
 
@@ -286,18 +286,30 @@ function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | n
     });
   }
 
-  // Reading 5: Market Context
+  // Reading 5: Market Context (with rank position if available)
   if (competitorName && marketSearchUrl) {
+    const rankPos = ranking?.rankPosition;
+    const totalComp = ranking?.totalCompetitors;
+    const rankLabel = rankPos && city
+      ? `Ranked #${rankPos} in ${city}`
+      : city
+        ? `${checkup.market?.specialty || "Business"} in ${city}`
+        : "Your local market";
+    const rankContext = rankPos
+      ? `${competitorName ? `Top competitor: ${competitorName}. ` : ""}Measured from the center of your market. Google rankings vary by searcher location.`
+      : competitorName
+        ? `Top competitor: ${competitorName}`
+        : "Alloro is monitoring your competitive landscape";
+
     readings.push({
       label: "Your Market",
-      value: city ? `${checkup.market?.specialty || "Business"} in ${city}` : "Your local market",
-      context: competitorName
-        ? `Top competitor: ${competitorName}`
-        : "Alloro is monitoring your competitive landscape",
-      status: "attention",
+      value: rankLabel,
+      delta: rankPos && totalComp ? `${totalComp} competitors tracked` : undefined,
+      context: rankContext,
+      status: rankPos && rankPos <= 3 ? "healthy" : "attention",
       verifyUrl: marketSearchUrl,
       verifyLabel: `Search "${checkup.market?.specialty || "business"} ${city}"`,
-      whyItMatters: "Google Ask Maps reads review words, not just stars. 80%+ of searches end without a click. 45% of consumers now use AI for local services. What AI says about you is the new visibility. (Google 2026)",
+      whyItMatters: "Alloro measures from a fixed point so your trend is always comparable week to week. Google rankings shift by location, device, and time of day. Your Alloro rank is a consistent benchmark, not a real-time Google replica.",
     });
   }
 

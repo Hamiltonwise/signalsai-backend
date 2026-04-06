@@ -373,6 +373,9 @@ function ComparePageInner() {
                 </a>
               )}
             </div>
+            <p className="text-xs text-[#1A1D23]/30 mt-4">
+              Alloro measures from a fixed point so your trend is always comparable week to week.
+            </p>
           </Section>
         )}
 

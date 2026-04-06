@@ -189,7 +189,10 @@ export default function ProgressReport() {
             transition={{ delay: 0.1 }}
             className="mt-6 space-y-3"
           >
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">Your Readings Over Time</p>
+            <div className="mb-3">
+              <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Your Readings Over Time</p>
+              <p className="text-xs text-[#1A1D23]/30 mt-1">Rankings measured weekly from the same location so movement is real, not noise.</p>
+            </div>
             {trends.map((trend) => (
               <div
                 key={trend.label}

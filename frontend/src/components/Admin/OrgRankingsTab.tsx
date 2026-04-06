@@ -110,6 +110,7 @@ export function OrgRankingsTab({
   );
   const [loadingResults, setLoadingResults] = useState<number | null>(null);
   const [deletingJob, setDeletingJob] = useState<number | null>(null);
+  const [runningManualScan, setRunningManualScan] = useState(false);
 
   const confirm = useConfirm();
 
@@ -283,6 +284,32 @@ export function OrgRankingsTab({
     return `${month} ${ordinals[week - 1]} Week`;
   };
 
+  const runManualScan = async () => {
+    setRunningManualScan(true);
+    try {
+      const token = localStorage.getItem("auth_token");
+      const response = await fetch("/api/admin/rankings/run-now", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ org_id: organizationId, force: true }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.created ? "Ranking scan complete" : "Snapshot already exists for this week");
+        invalidateForOrg(organizationId);
+      } else {
+        toast.error(data.error || "Scan failed");
+      }
+    } catch {
+      toast.error("Failed to run ranking scan");
+    } finally {
+      setRunningManualScan(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-gray-500">
@@ -313,6 +340,25 @@ export function OrgRankingsTab({
 
   return (
     <div className="space-y-6">
+      {/* Manual Scan Button */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">
+          Rankings measured from a fixed market center for consistent week-over-week comparison.
+        </p>
+        <button
+          onClick={runManualScan}
+          disabled={runningManualScan}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#212D40] text-white text-sm font-medium hover:bg-[#2a3a52] transition-colors disabled:opacity-50"
+        >
+          {runningManualScan ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+          {runningManualScan ? "Scanning..." : "Run ranking scan now"}
+        </button>
+      </div>
+
       {/* Key Metrics */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
