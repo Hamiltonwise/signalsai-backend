@@ -328,11 +328,21 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
     const weakest = subScores[0];
 
     // Velocity projection (new intelligence the checkup didn't show)
-    const gap = comp ? (comp.reviewCount || 0) - (checkup.reviewCount || 0) : 0;
+    const clientReviewCount = checkup.reviewCount || checkup.place?.reviewCount || 0;
+    const gap = comp ? (comp.reviewCount || 0) - clientReviewCount : 0;
     const avgMarketReviews = checkup.market.avgReviews || 0;
     const estimatedMonthlyGrowth = avgMarketReviews > 0 ? Math.round(avgMarketReviews / 24) : 2;
 
-    if (weakest.key === "localVisibility" && comp?.name) {
+    // GBP completeness: only recommend GBP fixes when we have enough place data
+    // to confirm fields are actually missing. If the place object has fewer than
+    // 5 keys, the checkup didn't capture completeness data -- don't assume incomplete.
+    const placeKeys = Object.keys(checkup.place || {});
+    const hasCompleteness = placeKeys.some(k =>
+      k === "hasPhone" || k === "hasHours" || k === "hasWebsite" || k === "hasEditorialSummary"
+      || k === "nationalPhoneNumber" || k === "regularOpeningHours" || k === "websiteUri"
+    );
+
+    if (weakest.key === "localVisibility" && comp?.name && hasCompleteness) {
       return {
         headline: `${comp.name} is more visible on Google because of one thing you can fix today.`,
         body: `The fastest fix: add your complete services list to your Google Business Profile. It takes 10 minutes and directly impacts how you appear in "${checkup.market.city} specialist" searches.`,
@@ -354,14 +364,24 @@ async function getSteadyState(orgId: number): Promise<OneActionCard> {
     }
 
     if (comp?.name) {
+      // If the org has a review gap, that's the most actionable intelligence
+      if (gap > 0) {
+        const weeksToClose = Math.ceil(gap / Math.max(1, estimatedMonthlyGrowth / 4));
+        return {
+          headline: `${comp.name} has ${gap} more reviews than you in ${city}.`,
+          body: `At current market pace, closing that gap takes about ${Math.min(weeksToClose, 52)} weeks. Every review you add accelerates it. Ask your last 3 customers this week.`,
+          action_text: "Request reviews",
+          action_url: "/reviews",
+          priority_level: 4,
+        };
+      }
       return {
-        headline: `Your online presence is the gap between you and ${comp.name}.`,
-        body: comp.rating && checkup.market.avgRating
-          ? `The ${city} market average rating is ${checkup.market.avgRating.toFixed(1)}. ${comp.name} has ${comp.rating}. Every 0.1-star improvement changes how Google ranks you. Connect your profile to start tracking automatically.`
-          : `Connect your Google Business Profile so Alloro can monitor your visibility against ${comp.name} every week.`,
-        action_text: "Connect Google",
-        action_url: "/settings/integrations",
-        priority_level: 4,
+        headline: `You lead ${comp.name} in ${city}. Keep the momentum.`,
+        body: `Consistent reviews keep you ahead. One review per week compounds into a moat your competitors can't close quickly.`,
+        action_text: null,
+        action_url: null,
+        priority_level: 5,
+        clear: true,
       };
     }
   }

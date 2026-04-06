@@ -405,18 +405,6 @@ export default function HomePage() {
 
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  // Score ring data
-  const score = ctx?.org?.checkup_score ?? ctx?.org?.current_clarity_score ?? null;
-  const scoreNum = typeof score === "number" ? score : null;
-  const scoreLabel = scoreNum == null ? "GETTING STARTED"
-    : scoreNum >= 80 ? "STRONG"
-    : scoreNum >= 60 ? "GROWING"
-    : "NEEDS ATTENTION";
-  const scoreColor = scoreNum == null ? "text-gray-300 border-gray-200"
-    : scoreNum >= 80 ? "text-[#212D40] border-[#212D40]"
-    : scoreNum >= 60 ? "text-[#D56753] border-[#D56753]"
-    : "text-red-500 border-red-500";
-
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
       <div className="max-w-[640px] mx-auto px-5 sm:px-8 py-10 sm:py-14">
@@ -426,29 +414,12 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-6"
+          className="mb-8"
         >
-          <h1 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight leading-tight">{greeting}</h1>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight leading-tight">{greeting}</h1>
         </motion.div>
 
-        {/* ── 1. Score Ring (Hero) ── */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="flex flex-col items-center mb-8"
-        >
-          <div className={`w-40 h-40 sm:w-[200px] sm:h-[200px] rounded-full border-[6px] ${scoreColor} flex flex-col items-center justify-center`}>
-            <span className={`text-5xl sm:text-[48px] font-semibold leading-none ${scoreColor.split(" ")[0]}`}>
-              {scoreNum != null ? scoreNum : "--"}
-            </span>
-            <span className={`text-xs font-semibold uppercase tracking-widest mt-1.5 ${scoreNum == null ? "text-gray-400" : scoreColor.split(" ")[0]}`}>
-              {scoreLabel}
-            </span>
-          </div>
-        </motion.div>
-
-        {/* ── 2. One Action Card (Navy, full width) ── */}
+        {/* ── One Action Card (Navy, full width) ── */}
         {action && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
