@@ -123,4 +123,12 @@ When you're ready, the deploy spec has the exact commands. Total time: ~15 minut
 
 ---
 
+## What Wasn't Touched
+
+Your PM system, website builder, SectionsEditor, form submissions, notification system, E2E tests, kanban boards -- none of that was modified. The sandbox changes are in different files: customer-facing pages, email templates, worker.ts, scoring services, and new documentation.
+
+Your code style (prop-driven components, domain-focused naming, pragmatic error handling) is preserved everywhere you built. The new code follows a different documentation pattern (external docs, narrative commits) but doesn't overwrite your patterns.
+
+---
+
 *This merge makes your life easier, not harder. Fewer workers to monitor. Better documentation for troubleshooting. Same infrastructure.*
