@@ -658,6 +658,35 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     console.error(`[MondayEmail] Conductor gate error for ${org.name} (non-blocking):`, conductorErr.message);
   }
 
+  // ── Proof of Work: what Alloro DID this week (the receipt) ──
+  let proofOfWork = "";
+  try {
+    const dfyEvents = await db("behavioral_events")
+      .where({ org_id: orgId })
+      .where("event_type", "like", "dfy.%")
+      .where("created_at", ">=", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+      .select("event_type", "properties")
+      .orderBy("created_at", "desc");
+
+    const receipts: string[] = [];
+    const reviewsPosted = dfyEvents.filter(e => e.event_type === "dfy.review_reply_posted").length;
+    const croRecs = dfyEvents.filter(e => e.event_type === "dfy.cro_recommendation").length;
+    const websiteUpdates = dfyEvents.filter(e => e.event_type === "dfy.website_update").length;
+
+    if (reviewsPosted > 0) receipts.push(`Responded to ${reviewsPosted} review${reviewsPosted !== 1 ? "s" : ""} on Google`);
+    if (croRecs > 0) receipts.push(`Generated ${croRecs} website optimization${croRecs !== 1 ? "s" : ""}`);
+    if (websiteUpdates > 0) receipts.push(`Updated your website ${websiteUpdates} time${websiteUpdates !== 1 ? "s" : ""}`);
+
+    // Always include competitive tracking as proof of work
+    receipts.push("Monitored your competitors and refreshed your market data");
+
+    if (receipts.length > 0) {
+      proofOfWork = "What Alloro did this week: " + receipts.join(". ") + ".";
+    }
+  } catch {
+    // behavioral_events may not exist, continue without proof of work
+  }
+
   // Send via email service
   try {
     const success = await sendMondayBriefEmail({
@@ -673,6 +702,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       rankingUpdate: sanitizedRanking,
       competitorNote: sanitizedCompetitorNote,
       referralLine,
+      proofOfWork,
       founderLine,
       communityCount,
     });

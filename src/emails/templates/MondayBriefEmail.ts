@@ -33,6 +33,7 @@ export interface MondayBriefData {
   rankingUpdate: string;
   competitorNote: string;
   referralLine: string | null;
+  proofOfWork?: string | null;
   founderLine?: string | null;
   communityCount?: number | null;
 }
@@ -73,6 +74,15 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
     `
     : "";
 
+  // Proof of work: what Alloro DID this week (the receipt)
+  const proofSection = data.proofOfWork
+    ? `
+      ${createDivider()}
+      <p style="margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Done For You</p>
+      <p style="margin: 0; font-size: 13px; color: ${BRAND_COLORS.darkGray}; line-height: 1.5;">${data.proofOfWork}</p>
+    `
+    : "";
+
   const content = `
     <p style="margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Your Monday Brief</p>
     <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND_COLORS.darkGray}; line-height: 1.5;">
@@ -94,6 +104,8 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
     </div>
 
     ${referralSection}
+
+    ${proofSection}
 
     <p style="margin: 24px 0 12px; font-size: 13px; color: ${BRAND_COLORS.mediumGray}; line-height: 1.5;">${data.communityCount && data.communityCount >= 100 ? `You and ${data.communityCount - 1} other business owners received this brief today. You're not doing this alone.` : `Business owners across the country received this brief today. You're not doing this alone.`}</p>
 
