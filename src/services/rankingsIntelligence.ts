@@ -52,10 +52,22 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
     .where({ organization_id: orgId, is_primary: true })
     .first();
 
-  // Derive search specialty from GBP category or org type
-  const gbpCategory = location?.business_data?.category || org.specialty || "";
-  const specialty = gbpCategory || (org.organization_type === "health" ? org.name : "business");
-  const address = location?.business_data?.address || org.operational_jurisdiction || "";
+  // Parse checkup_data for market info (most reliable source of specialty + city)
+  let checkupMarket: { specialty?: string; city?: string; state?: string } | null = null;
+  try {
+    const cdRaw = org.checkup_data;
+    const cd = typeof cdRaw === "string" ? JSON.parse(cdRaw) : cdRaw;
+    checkupMarket = cd?.market || null;
+  } catch { /* non-blocking */ }
+
+  // Derive search specialty: checkup_data.market.specialty > GBP category > fallback
+  // NEVER use the org name as the keyword -- that produces brand searches, not market searches
+  const gbpCategory = location?.business_data?.category || "";
+  const specialty = checkupMarket?.specialty || gbpCategory || "business";
+  const city = checkupMarket?.city || "";
+  const address = city
+    ? `${city}${checkupMarket?.state ? `, ${checkupMarket.state}` : ""}`
+    : (location?.business_data?.address || org.operational_jurisdiction || "");
 
   // 1. Query Places API for current position
   let currentPosition: number | null = null;
