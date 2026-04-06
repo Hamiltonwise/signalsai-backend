@@ -20,9 +20,13 @@ import {
   ChevronDown,
   ChevronRight,
   AlertCircle,
+  PenLine,
+  Sparkles,
+  Clock,
 } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 // Import existing components from parts shelf
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
@@ -88,6 +92,7 @@ export default function PresencePage() {
 }
 
 function PresencePageInner() {
+  const navigate = useNavigate();
   const { userProfile, hasGoogleConnection } = useAuth();
   const orgId = userProfile?.organizationId || null;
 
@@ -106,6 +111,15 @@ function PresencePageInner() {
     enabled: !!orgId,
     staleTime: 60_000,
   });
+
+  // CRO insights
+  const { data: croData } = useQuery<{ insights: any[] }>({
+    queryKey: ["cro-insights", orgId],
+    queryFn: () => apiGet({ path: "/user/cro-insights" }),
+    enabled: !!orgId,
+    staleTime: 120_000,
+  });
+  const croInsights = croData?.insights || [];
 
   // SEO/compliance data removed: not vital signs
 
@@ -159,20 +173,25 @@ function PresencePageInner() {
                   <p className="text-sm font-semibold text-[#1A1D23]">{website.generated_hostname}</p>
                   <p className="text-xs text-gray-400 capitalize">{website.status}</p>
                 </div>
-                {websiteUrl && (
-                  <a
-                    href={websiteUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => navigate("/dfy/website")}
                     className="flex items-center gap-1 text-sm font-semibold text-alloro-orange hover:text-alloro-navy transition-colors"
                   >
-                    View site <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
+                    Edit your website <PenLine className="w-3.5 h-3.5" />
+                  </button>
+                  {websiteUrl && (
+                    <a
+                      href={websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-sm font-semibold text-alloro-orange hover:text-alloro-navy transition-colors"
+                    >
+                      View site <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
               </div>
-              <p className="text-sm text-gray-500">
-                To make changes, use the chat editor on your website page or ask Alloro's concierge.
-              </p>
             </div>
           ) : (
             <p className="text-sm text-gray-500">
@@ -232,6 +251,55 @@ function PresencePageInner() {
             </div>
           </Section>
         )}
+
+        {/* Website Optimizations (CRO Insights) */}
+        <Section title="Website Optimizations" icon={Sparkles} defaultOpen={true}>
+          {croInsights.length > 0 ? (
+            <div className="space-y-3">
+              {croInsights.slice(0, 8).map((insight, i) => {
+                const changeLabels: Record<string, string> = {
+                  title: "Page title",
+                  meta_description: "Meta description",
+                  content_section: "Content",
+                  cta: "Call to action",
+                  new_page: "New page",
+                };
+                return (
+                  <div key={i} className="rounded-xl bg-[#F0EDE8] p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                        {changeLabels[insight.changeType] || insight.changeType}
+                      </span>
+                      {insight.date && (
+                        <span className="text-xs text-gray-400">
+                          {new Date(insight.date).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    {insight.rationale && (
+                      <p className="text-sm text-[#1A1D23] mb-2">{insight.rationale}</p>
+                    )}
+                    {insight.recommendedValue && (
+                      <p className="text-xs text-[#1A1D23]/60">
+                        Recommendation: {insight.recommendedValue}
+                      </p>
+                    )}
+                    {insight.pageUrl && insight.pageUrl !== "/" && (
+                      <p className="text-xs text-gray-400 mt-1">{insight.pageUrl}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-start gap-3 py-2">
+              <Clock className="w-4 h-4 text-gray-300 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-gray-500">
+                Website optimization runs weekly. Insights will appear here after your first scan.
+              </p>
+            </div>
+          )}
+        </Section>
 
         {/* Focus Keywords and Compliance Check removed: not vital signs.
             The owner at 10pm doesn't check keywords or FTC compliance.

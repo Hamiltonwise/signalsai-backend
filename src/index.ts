@@ -151,6 +151,7 @@ import agentIdentityRoutes from "./routes/admin/agentIdentity";
 import agentCanonRoutes from "./routes/admin/agentCanon";
 import analyticsRoutes from "./routes/admin/analytics";
 import dataExportRoutes from "./routes/user/dataExport";
+import croInsightsRoutes from "./routes/user/croInsights";
 import helpRoutes from "./routes/user/help";
 import helpArticleRoutes from "./routes/user/helpArticles";
 import mailgunEventsRoutes from "./routes/webhooks/mailgunEvents";
@@ -395,6 +396,7 @@ app.use("/api/admin/agent-identity", agentIdentityRoutes); // Agent identity, sc
 app.use("/api/admin/agent-canon", agentCanonRoutes); // Canon governance: spec, gold questions, gate verdicts
 app.use("/api/admin/analytics", analyticsRoutes); // GA4 + GSC analytics data pipeline
 app.use("/api/user/data-export", dataExportRoutes); // Full client data export (GDPR/compliance)
+app.use("/api/user", croInsightsRoutes); // CRO insights for Presence page
 app.use("/api/webhooks/mailgun", mailgunEventsRoutes); // Mailgun event webhooks: deliverability tracking
 
 // Sentry error handler — must be after all routes and before other error handlers
