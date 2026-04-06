@@ -31,6 +31,7 @@ import {
   Newspaper,
   Menu,
   ArrowRightLeft,
+  ArrowRight,
   Archive,
   Wrench,
 } from "lucide-react";
@@ -231,6 +232,7 @@ export default function WebsiteDetail() {
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -1686,6 +1688,69 @@ export default function WebsiteDetail() {
                             No businesses found. Try a different search.
                           </p>
                         )}
+
+                      {/* Manual setup — skip GBP */}
+                      <div className="mt-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="flex-1 h-px bg-gray-200" />
+                          <span className="text-xs text-gray-400 font-medium">or</span>
+                          <div className="flex-1 h-px bg-gray-200" />
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Already have your page data? Select a template and set up manually.
+                        </p>
+                        <div className="space-y-3">
+                          {loadingTemplates ? (
+                            <div className="flex items-center gap-2 text-sm text-gray-400 py-1">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Loading templates...
+                            </div>
+                          ) : (
+                            <select
+                              value={selectedTemplateId || ""}
+                              onChange={(e) => handleTemplateChange(e.target.value)}
+                              className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 outline-none"
+                            >
+                              <option value="" disabled>Select a template...</option>
+                              {templates.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  {t.name}{t.is_active ? " (Active)" : ""}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          <button
+                            disabled={!selectedTemplateId || isSkipping}
+                            onClick={async () => {
+                              if (!id || !selectedTemplateId || isSkipping) return;
+                              try {
+                                setIsSkipping(true);
+                                await updateWebsite(id, { template_id: selectedTemplateId, status: "LIVE" } as any);
+                                await loadWebsite();
+                                toast.success("Website ready. Create your first page.");
+                              } catch (err) {
+                                console.error("Failed to skip GBP setup:", err);
+                                toast.error("Something went wrong. Please try again.");
+                              } finally {
+                                setIsSkipping(false);
+                              }
+                            }}
+                            className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition-all"
+                          >
+                            {isSkipping ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                Setting up...
+                              </>
+                            ) : (
+                              <>
+                                Skip to manual setup
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

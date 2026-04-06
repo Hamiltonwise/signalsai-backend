@@ -187,11 +187,11 @@ export default function CreatePageModal({
     if (!selectedPageId || !templateId || submitting) return;
     if (!validateSlug(slug)) return;
 
-    const effectiveGbpData = overrideGbpData || gbpData;
-
     try {
       setSubmitting(true);
       setError(null);
+
+      const effectiveGbpData = overrideGbpData || gbpData;
       await startPipeline({
         projectId,
         templateId,
@@ -446,6 +446,17 @@ export default function CreatePageModal({
                     </div>
                   )}
                 </div>
+
+                {/* Blank canvas shortcut */}
+                <button
+                  type="button"
+                  onClick={handleSubmitBlank}
+                  disabled={submitting || !slug || !!slugError}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-alloro-orange hover:text-alloro-orange hover:bg-orange-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <FilePlus2 className="w-4 h-4" />
+                  Start with a blank canvas
+                </button>
 
                 {/* Slug input */}
                 <div className="space-y-1.5">
