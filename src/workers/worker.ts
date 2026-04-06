@@ -1,14 +1,11 @@
 /**
- * Minds Worker -- The Essential 7
+ * Minds Worker -- The Essential 8
  *
  * Only workers that serve the 5 paying customers run here.
  * Everything else is disabled until verified and needed.
  *
- * Simple and guaranteed > incredible most of the time.
- *
- * To re-enable a worker: move it from the "DISABLED" section
- * back to active, add it to the workers array, shutdown array,
- * and schedule setup calls at the bottom.
+ * The 3 core promises: GBP/SEO, Business Data, Website CRO.
+ * Every worker here serves at least one of those promises.
  */
 
 import * as dotenv from "dotenv";
@@ -21,6 +18,7 @@ import { processMondayEmail } from "./processors/mondayEmail.processor";
 import { generateAllSnapshots, generateSnapshotForOrg } from "../services/rankingsIntelligence";
 import { fetchAnalyticsForAllOrgs } from "../services/analyticsService";
 import { processWelcomeIntelligence } from "./processors/welcomeIntelligence.processor";
+import { runCROForAllOrgs } from "../services/croEngine";
 import { getMindsQueue } from "./queues";
 import { getSharedRedis, closeSharedRedis } from "../services/redis";
 
@@ -89,6 +87,15 @@ const instantSnapshotWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
+// 8. Weekly CRO Engine (Sunday 9 PM UTC = 4 PM ET)
+// Reads GSC/GA4 data + PatientPath pages, identifies optimization opportunities.
+// Runs BEFORE ranking snapshots so recommendations are fresh for Monday email.
+const weeklyCROWorker = new Worker(
+  "minds-weekly-cro",
+  async () => { await runCROForAllOrgs(); },
+  { connection, concurrency: 1, prefix: '{minds}' }
+);
+
 // ─── EVENT HANDLERS ───────────────────────────────────────────────
 
 const activeWorkers = [
@@ -99,6 +106,7 @@ const activeWorkers = [
   dailyAnalyticsWorker,
   welcomeIntelligenceWorker,
   instantSnapshotWorker,
+  weeklyCROWorker,
 ];
 
 for (const worker of activeWorkers) {
@@ -197,9 +205,23 @@ async function setupMondayEmailSchedule(): Promise<void> {
   }
 }
 
+async function setupWeeklyCROSchedule(): Promise<void> {
+  try {
+    const queue = getMindsQueue("weekly-cro");
+    await queue.add("weekly-cro", {}, {
+      repeat: { pattern: "0 21 * * 0", tz: "UTC" }, // Sunday 9 PM UTC = 4 PM ET, before snapshots
+      jobId: "weekly-cro",
+    });
+    console.log("[MINDS-WORKER] CRO engine scheduled (Sunday 9 PM UTC)");
+  } catch (err: any) {
+    console.error("[MINDS-WORKER] Failed to schedule CRO engine:", err);
+  }
+}
+
 // Start schedules
 setupReviewSyncSchedule();
 setupDailyAnalyticsSchedule();
+setupWeeklyCROSchedule();
 setupWeeklyRankingSnapshotSchedule();
 setupWeeklyScoreRecalcSchedule();
 setupMondayEmailSchedule();

@@ -155,4 +155,23 @@ rankingsSnapshotRoutes.post(
   },
 );
 
+// ─── CRO Engine Manual Trigger ─────────────────────────────────────
+
+import { runCROForAllOrgs } from "../../services/croEngine";
+
+rankingsSnapshotRoutes.post(
+  "/cro/run-all",
+  authenticateToken,
+  superAdminMiddleware,
+  async (_req, res) => {
+    try {
+      const result = await runCROForAllOrgs();
+      return res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("[CRO Engine] Run-all error:", error.message);
+      return res.status(500).json({ success: false, error: "Failed to run CRO engine" });
+    }
+  },
+);
+
 export default rankingsSnapshotRoutes;
