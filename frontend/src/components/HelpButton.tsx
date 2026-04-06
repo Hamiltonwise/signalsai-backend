@@ -34,7 +34,7 @@ export default function HelpButton() {
   if (!userProfile) return null;
 
   // Don't show on five-page routes (CSAgentChat handles help there)
-  const fivePageRoutes = ["/home", "/compare", "/reviews", "/presence", "/progress"];
+  const fivePageRoutes = ["/home", "/compare", "/reviews", "/presence", "/progress", "/help"];
   if (fivePageRoutes.some(r => location.pathname.startsWith(r))) return null;
 
   const handleSend = async () => {

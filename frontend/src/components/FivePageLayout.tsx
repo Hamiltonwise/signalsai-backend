@@ -11,7 +11,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Home, BarChart3, Star, Globe, TrendingUp, Settings, MapPin, ChevronDown, Check } from "lucide-react";
+import { Home, BarChart3, Star, Globe, TrendingUp, Settings, HelpCircle, MapPin, ChevronDown, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import CSAgentChat from "@/components/dashboard/CSAgentChat";
@@ -192,6 +192,19 @@ export default function FivePageLayout() {
           >
             <Settings className="w-5 h-5 shrink-0" />
             <span>Settings</span>
+          </NavLink>
+          <NavLink
+            to="/help"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                isActive
+                  ? "bg-[#D56753]/10 text-[#D56753]"
+                  : "text-gray-500 hover:text-[#1A1D23] hover:bg-stone-100/80"
+              }`
+            }
+          >
+            <HelpCircle className="w-5 h-5 shrink-0" />
+            <span>Help</span>
           </NavLink>
         </div>
       </nav>

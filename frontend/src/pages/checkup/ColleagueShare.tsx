@@ -5,29 +5,14 @@ import { trackEvent } from "../../api/tracking";
 
 /**
  * /checkup/share -- Colleague share screen shown immediately after account creation.
- * This is the moment of maximum excitement. The doctor just saw their Oz moment,
+ * This is the moment of maximum excitement. The owner just saw their readings,
  * created an account, and their colleague is standing 10 feet away.
  * One screen. One action. Make sharing effortless.
  */
 
 interface ShareState {
   referralCode?: string | null;
-  checkupScore?: number | null;
   businessName?: string | null;
-}
-
-function getScoreLabel(score: number): string {
-  if (score >= 80) return "Strong";
-  if (score >= 60) return "Moderate";
-  if (score >= 40) return "At Risk";
-  return "Needs Attention";
-}
-
-function getScoreColor(score: number): string {
-  if (score >= 80) return "bg-emerald-500";
-  if (score >= 60) return "bg-amber-500";
-  if (score >= 40) return "bg-orange-500";
-  return "bg-red-500";
 }
 
 export default function ColleagueShare() {
@@ -38,14 +23,13 @@ export default function ColleagueShare() {
   const [shared, setShared] = useState(false);
 
   const referralCode = state?.referralCode || null;
-  const checkupScore = state?.checkupScore || null;
 
   const checkupLink = referralCode
     ? `${window.location.origin}/checkup?ref=${referralCode}`
     : `${window.location.origin}/checkup`;
 
   const shareMessage =
-    "I just found out where I rank in my market. Took 60 seconds. You should see yours: " +
+    "I just checked my Google presence against my competitors. Took 60 seconds. You should see yours: " +
     checkupLink;
 
   const handleShare = useCallback(async () => {
@@ -65,10 +49,9 @@ export default function ColleagueShare() {
           has_referral: !!referralCode,
         });
       } catch {
-        // User cancelled or share failed, that's fine
+        // User cancelled or share failed
       }
     } else {
-      // Fallback: open SMS with pre-filled body
       const smsUrl = `sms:?&body=${encodeURIComponent(shareMessage)}`;
       window.open(smsUrl, "_self");
       trackEvent("colleague_share.completed", {
@@ -87,7 +70,6 @@ export default function ColleagueShare() {
       });
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // Clipboard API not available, select the text instead
       const input = document.querySelector<HTMLInputElement>("#share-link-input");
       if (input) {
         input.select();
@@ -106,43 +88,26 @@ export default function ColleagueShare() {
   }, [navigate, referralCode]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-[#F8F6F2] flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm text-center space-y-8">
-        {/* Score badge */}
-        {checkupScore != null && (
-          <div className="flex flex-col items-center gap-2">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-full border-[3px] border-slate-100 flex items-center justify-center">
-                <span className="text-3xl font-semibold text-[#1A1D23]">
-                  {checkupScore}
-                </span>
-              </div>
-              <div
-                className={`absolute -bottom-1 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-bold text-white uppercase tracking-wider ${getScoreColor(checkupScore)}`}
-              >
-                {getScoreLabel(checkupScore)}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Headline */}
         <div className="space-y-3">
           <h1 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight leading-tight">
             Know someone who should see theirs?
           </h1>
-          <p className="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">
-            It takes 60 seconds. Send them the link and they will see exactly where they stand in their market.
+          <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
+            It takes 60 seconds. Send them the link and they'll see how they compare in their market.
           </p>
         </div>
 
         {/* Pre-written message preview */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.06)] text-left">
-          <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase mb-3">
+        <div className="bg-stone-50/80 border border-stone-200/60 rounded-2xl p-5 text-left">
+          <p className="text-xs font-semibold tracking-wide text-gray-400 uppercase mb-3">
             Your message
           </p>
           <p className="text-sm text-[#1A1D23] leading-relaxed">
-            "I just found out where I rank in my market. Took 60 seconds. You should see yours:{" "}
+            "I just checked my Google presence against my competitors. Took 60 seconds. You should see yours:{" "}
             <span className="text-[#D56753] font-medium break-all">{checkupLink}</span>"
           </p>
         </div>
@@ -150,8 +115,7 @@ export default function ColleagueShare() {
         {/* Primary share button */}
         <button
           onClick={handleShare}
-          className="w-full py-4 px-6 rounded-2xl text-white font-bold text-lg tracking-tight shadow-lg shadow-[#D56753]/25 transition-all duration-200 active:scale-[0.97] hover:shadow-xl hover:shadow-[#D56753]/30"
-          style={{ backgroundColor: "#D56753" }}
+          className="w-full py-4 px-6 rounded-2xl bg-[#D56753] text-white font-semibold text-lg tracking-tight shadow-[0_4px_20px_rgba(213,103,83,0.4)] transition-all active:scale-[0.97] hover:brightness-105"
         >
           <span className="flex items-center justify-center gap-3">
             <Share2 className="w-5 h-5" />
@@ -159,7 +123,7 @@ export default function ColleagueShare() {
           </span>
         </button>
 
-        {/* Copy link secondary action */}
+        {/* Copy link */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <input
@@ -167,11 +131,11 @@ export default function ColleagueShare() {
               type="text"
               readOnly
               value={checkupLink}
-              className="flex-1 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 truncate focus:outline-none"
+              className="flex-1 text-xs text-gray-500 bg-stone-50/80 border border-stone-200/60 rounded-xl px-3 py-2.5 truncate focus:outline-none"
             />
             <button
               onClick={handleCopy}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-[#1A1D23] hover:bg-slate-50 transition-colors"
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-stone-200/60 bg-stone-50/80 text-sm font-semibold text-[#1A1D23] hover:bg-stone-100/80 transition-colors"
             >
               {copied ? (
                 <>
@@ -203,7 +167,7 @@ export default function ColleagueShare() {
         {/* Skip link */}
         <button
           onClick={handleSkip}
-          className="text-xs text-slate-400 hover:text-slate-500 transition-colors py-2"
+          className="text-xs text-gray-400 hover:text-gray-500 transition-colors py-2"
         >
           Skip for now
         </button>
