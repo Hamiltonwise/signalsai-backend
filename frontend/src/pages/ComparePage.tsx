@@ -409,8 +409,8 @@ function ComparePageInner() {
             )}
             {!competitorName && clientReviews === 0 && clientPhotos === 0 && (
               <div className="text-sm text-gray-500">
-                <p className="font-semibold text-[#1A1D23] mb-1">Track a competitor to unlock this section</p>
-                <p>When you add a competitor below, Alloro compares your Google reviews, star rating, and photos side by side so you can see exactly where you lead and where to close the gap.</p>
+                <p className="font-semibold text-[#1A1D23] mb-1">Your competitive picture is building</p>
+                <p>Alloro is analyzing your market. Add a competitor below to see a side-by-side comparison of reviews, star rating, and photos. You will see exactly where you lead and where to close the gap.</p>
               </div>
             )}
           </div>

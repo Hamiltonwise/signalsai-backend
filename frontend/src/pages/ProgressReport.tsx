@@ -156,6 +156,32 @@ export default function ProgressReport() {
         </motion.div>
 
         {/* Reading Trends */}
+        {trends.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mt-6 space-y-3"
+          >
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">Your Readings Over Time</p>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4 animate-pulse">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="h-4 w-28 bg-gray-200 rounded" />
+                  <div className="h-4 w-4 bg-gray-200 rounded" />
+                </div>
+                <div className="h-7 w-36 bg-gray-200 rounded mb-1" />
+                <div className="h-4 w-48 bg-gray-100 rounded" />
+              </div>
+            ))}
+            <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4">
+              <p className="text-sm font-semibold text-[#1A1D23]">Alloro is collecting your baseline readings</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Progress tracking starts once your initial Google Business Profile data syncs. You will see how your readings change over time.
+              </p>
+            </div>
+          </motion.div>
+        )}
         {trends.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}

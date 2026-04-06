@@ -45,8 +45,13 @@ export function NotificationWidget({
       const data = await fetchNotifications(organizationId, locationId);
 
       if (data.success) {
+        // Filter out notifications older than 30 days
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const recent = data.notifications.filter(
+          (n) => new Date(n.created_at).getTime() > thirtyDaysAgo
+        );
         // Get first unread notification (they're ordered by created_at DESC)
-        const unread = data.notifications.find((n) => !n.read);
+        const unread = recent.find((n) => !n.read);
         setLatestUnread(unread || null);
         setError(null);
       }
@@ -204,9 +209,9 @@ export function NotificationWidget({
   // Loading state
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-premium">
+      <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-4">
         <div className="flex items-center justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin text-alloro-orange" />
+          <Loader2 className="w-5 h-5 animate-spin text-[#D56753]" />
         </div>
       </div>
     );
@@ -215,15 +220,13 @@ export function NotificationWidget({
   // Error state
   if (error) {
     return (
-      <div className="bg-red-50 rounded-2xl p-4 border border-red-200 shadow-premium">
+      <div className="rounded-2xl bg-red-50 border border-red-200/60 p-4">
         <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center border border-red-200">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-          </div>
+          <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-red-800">Error Loading</p>
-            <p className="text-xs text-red-600 font-semibold uppercase tracking-widest mt-0.5">
-              {error}
+            <p className="text-sm font-semibold text-[#1A1D23]">Could not load updates</p>
+            <p className="text-xs text-[#1A1D23]/40 mt-0.5">
+              Try refreshing in a moment.
             </p>
           </div>
         </div>
@@ -234,17 +237,15 @@ export function NotificationWidget({
   // Empty state - no unread notifications
   if (!latestUnread) {
     return (
-      <div className="bg-white rounded-2xl p-6 shadow-premium border border-slate-100">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center border border-green-100 shadow-sm">
-            <CheckCircle2 className="w-6 h-6 text-green-600" />
-          </div>
+      <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
+        <div className="flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
           <div>
-            <p className="text-base font-semibold text-alloro-navy font-heading tracking-tight">
+            <p className="text-sm font-semibold text-[#1A1D23]">
               All caught up
             </p>
-            <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mt-1">
-              No unread notifications
+            <p className="text-xs text-gray-400 mt-0.5">
+              Alloro is monitoring your market. Updates appear here when something needs your attention.
             </p>
           </div>
         </div>
@@ -259,35 +260,34 @@ export function NotificationWidget({
   return (
     <div
       onClick={handleNotificationClick}
-      className="bg-white rounded-2xl border border-slate-200 shadow-premium overflow-hidden cursor-pointer hover:shadow-xl transition-all group relative"
+      className="rounded-2xl bg-stone-50/80 border border-stone-200/60 overflow-hidden cursor-pointer hover:bg-stone-100/50 transition-colors group"
     >
-      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-alloro-orange opacity-0 group-hover:opacity-100 transition-opacity"></div>
-      <div className="p-6 lg:p-8 flex flex-col sm:flex-row gap-6">
+      <div className="p-5 sm:p-6 flex gap-4">
         <div
-          className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border transition-all group-hover:scale-105 shadow-sm ${style.iconBg} ${style.iconColor} border-opacity-50`}
+          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.iconBg} ${style.iconColor}`}
         >
-          <Icon size={24} />
+          <Icon size={20} />
         </div>
-        <div className="flex-1 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-alloro-navy font-heading tracking-tight leading-none">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-sm font-semibold text-[#1A1D23] leading-snug">
               {latestUnread.title}
             </h3>
             <span
-              className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest border shrink-0 w-fit ${style.impactBg} ${style.impactText} ${style.impactBorder}`}
+              className={`px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border shrink-0 ${style.impactBg} ${style.impactText} ${style.impactBorder}`}
             >
               {style.impactLabel}
             </span>
           </div>
           {latestUnread.message && (
-            <p className="text-sm lg:text-base text-slate-500 font-medium leading-relaxed tracking-tight line-clamp-2">
+            <p className="text-sm text-gray-500 mt-1 leading-relaxed line-clamp-2">
               {latestUnread.message}
             </p>
           )}
-          <div className="flex items-center justify-between pt-3">
-            <div className="flex items-center gap-4 text-xs font-semibold text-slate-400 uppercase tracking-widest">
-              <span className="flex items-center gap-2">
-                <Clock size={14} className="opacity-40" />
+          <div className="flex items-center justify-between mt-3">
+            <div className="flex items-center gap-3 text-xs text-gray-400">
+              <span className="flex items-center gap-1.5">
+                <Clock size={12} />
                 {formatDistanceToNow(new Date(latestUnread.created_at), {
                   addSuffix: true,
                 })}
@@ -295,14 +295,14 @@ export function NotificationWidget({
               <button
                 onClick={handleMarkAsRead}
                 disabled={isMarking}
-                className="text-alloro-orange hover:underline disabled:opacity-50"
+                className="text-[#D56753] font-semibold hover:underline disabled:opacity-50"
               >
                 {isMarking ? "Marking..." : "Acknowledge"}
               </button>
             </div>
             <ChevronRight
-              size={20}
-              className="text-slate-200 group-hover:text-alloro-orange transition-all group-hover:translate-x-2"
+              size={16}
+              className="text-gray-300 group-hover:text-[#D56753] transition-colors"
             />
           </div>
         </div>

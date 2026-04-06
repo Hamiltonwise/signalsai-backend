@@ -194,9 +194,15 @@ function PresencePageInner() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">
-              Your website is being built from your Google reviews and business data. You will see a preview here when it is ready.
-            </p>
+            <div className="space-y-3">
+              <div className="rounded-xl bg-[#F0EDE8] p-4 animate-pulse">
+                <div className="h-4 w-48 bg-gray-200 rounded mb-2" />
+                <div className="h-3 w-32 bg-gray-200 rounded" />
+              </div>
+              <p className="text-sm text-gray-500">
+                Alloro builds your website from your Google reviews and business data. A preview will appear here when it is ready.
+              </p>
+            </div>
           )}
         </Section>
 

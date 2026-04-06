@@ -352,18 +352,34 @@ export default function ReviewsPage() {
               ))}
             </div>
           ) : reviewCount > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-sm font-semibold text-[#1A1D23]">
                 You have {reviewCount} reviews at {rating} stars on Google.
               </p>
               <p className="text-sm text-[#1A1D23]/50">
-                Alloro syncs your Google reviews daily. Individual reviews with AI-drafted responses will appear here within 24 hours of connecting your Google Business Profile.
+                Alloro syncs your Google reviews daily. Individual reviews with AI-drafted responses will appear here within 24 hours.
               </p>
+              {/* Skeleton review cards */}
+              {[1, 2].map((i) => (
+                <div key={i} className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4 animate-pulse">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex gap-0.5">
+                      {[1,2,3,4,5].map(s => <div key={s} className="w-3.5 h-3.5 bg-gray-200 rounded" />)}
+                    </div>
+                    <div className="h-3 w-20 bg-gray-200 rounded" />
+                  </div>
+                  <div className="h-4 w-full bg-gray-100 rounded mb-1" />
+                  <div className="h-4 w-3/4 bg-gray-100 rounded" />
+                </div>
+              ))}
             </div>
           ) : (
-            <p className="text-sm text-[#1A1D23]/50">
-              Connect your Google Business Profile in Settings to see your reviews here. Once connected, reviews sync daily.
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-[#1A1D23]">Your reviews will appear here</p>
+              <p className="text-sm text-[#1A1D23]/50">
+                Once your Google Business Profile is connected, Alloro syncs your reviews daily at 4 AM and generates AI-drafted responses for each one.
+              </p>
+            </div>
           )}
         </Section>
 
@@ -412,9 +428,14 @@ export default function ReviewsPage() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-[#1A1D23]/50">
-              Velocity data appears after your first week of tracking.
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-[#1A1D23]/50">
+                Review velocity compares your new reviews per month against your top competitor.
+              </p>
+              <p className="text-sm text-[#1A1D23]/40">
+                This data appears after your first week of tracking.
+              </p>
+            </div>
           )}
         </Section>
 

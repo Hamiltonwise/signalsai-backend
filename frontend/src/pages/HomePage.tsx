@@ -152,7 +152,7 @@ function ReadingCard({
           href={verifyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold mt-3 hover:underline"
+          className="inline-flex items-center gap-1 text-xs text-[#1A1D23]/40 font-semibold mt-3 hover:text-[#1A1D23]/60 hover:underline"
         >
           {verifyLabel || "Verify on Google"}
           <ExternalLink className="w-3 h-3" />
@@ -466,9 +466,30 @@ export default function HomePage() {
             ))}
           </motion.div>
         ) : (
-          <div className="text-center mb-8">
-            <p className="text-sm text-gray-400">Alloro is scanning your market.</p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="space-y-3 mb-8"
+          >
+            {/* Skeleton reading cards */}
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6 sm:p-7 animate-pulse">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <span className="w-2.5 h-2.5 rounded-full bg-gray-200" />
+                  <span className="h-3 w-24 bg-gray-200 rounded" />
+                </div>
+                <div className="h-8 w-32 bg-gray-200 rounded mb-3" />
+                <div className="h-4 w-48 bg-gray-100 rounded" />
+              </div>
+            ))}
+            <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
+              <p className="text-sm font-semibold text-[#1A1D23]">Alloro is building your health panel</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Your readings appear here once your Google Business Profile data syncs. This usually takes a few minutes after signup.
+              </p>
+            </div>
+          </motion.div>
         )}
 
         {/* ── Business Data Upload Prompt (when no data exists) ── */}
@@ -512,35 +533,43 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
+            className="-mx-5 sm:-mx-8"
           >
-            <div className={`rounded-2xl p-7 sm:p-8 ${
+            <div className={`px-5 sm:px-8 py-8 sm:py-10 ${
               action.clear
-                ? "bg-emerald-50/60 border border-emerald-200/40 shadow-[0_4px_24px_rgba(16,185,129,0.08)]"
-                : "bg-[#212D40] shadow-[0_8px_32px_rgba(33,45,64,0.3)]"
+                ? "bg-emerald-50/60 border-y border-emerald-200/40"
+                : "bg-[#212D40]"
             }`}>
-              <p className={`text-xl font-semibold leading-snug tracking-tight ${
-                action.clear ? "text-emerald-800" : "text-white"
-              }`}>
-                {action.headline}
-              </p>
-              <p className={`mt-3 text-base leading-relaxed ${
-                action.clear ? "text-emerald-700/80" : "text-white/60"
-              }`}>
-                {action.body}
-              </p>
-              {action.action_text && action.action_url && (
-                <button
-                  onClick={() => navigate(action.action_url!)}
-                  className={`mt-5 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all ${
-                    action.clear
-                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                      : "bg-[#D56753] text-white hover:brightness-110 active:scale-[0.98]"
-                  }`}
-                >
-                  {action.action_text}
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              )}
+              <div className="max-w-[640px] mx-auto">
+                <p className={`text-xs font-semibold uppercase tracking-wider mb-3 ${
+                  action.clear ? "text-emerald-600" : "text-white/40"
+                }`}>
+                  Your Next Move
+                </p>
+                <p className={`text-xl font-semibold leading-snug tracking-tight ${
+                  action.clear ? "text-emerald-800" : "text-white"
+                }`}>
+                  {action.headline}
+                </p>
+                <p className={`mt-3 text-base leading-relaxed ${
+                  action.clear ? "text-emerald-700/80" : "text-white/60"
+                }`}>
+                  {action.body}
+                </p>
+                {action.action_text && action.action_url && (
+                  <button
+                    onClick={() => navigate(action.action_url!)}
+                    className={`mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-all ${
+                      action.clear
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "bg-[#D56753] text-white hover:brightness-110 active:scale-[0.98]"
+                    }`}
+                  >
+                    {action.action_text}
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
