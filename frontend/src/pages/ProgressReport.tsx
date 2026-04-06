@@ -193,6 +193,50 @@ export default function ProgressReport() {
           </motion.div>
         )}
 
+        {/* Health Trajectory (from score history, shown as direction not number) */}
+        {ctx?.score_history && Array.isArray(ctx.score_history) && ctx.score_history.length > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mt-6"
+          >
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">Overall Health Trajectory</p>
+            <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4">
+              {(() => {
+                const history = ctx.score_history as { score: number; date: string }[];
+                const first = history[0]?.score ?? 0;
+                const latest = history[history.length - 1]?.score ?? 0;
+                const delta = latest - first;
+                const weeks = history.length;
+                return (
+                  <div className="flex items-center gap-3">
+                    {delta > 0 ? (
+                      <TrendingUp className="w-5 h-5 text-emerald-500" />
+                    ) : delta < 0 ? (
+                      <TrendingDown className="w-5 h-5 text-red-500" />
+                    ) : (
+                      <Minus className="w-5 h-5 text-gray-400" />
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-[#1A1D23]">
+                        {delta > 0 ? "Improving" : delta < 0 ? "Needs attention" : "Holding steady"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {delta > 0
+                          ? `Your online health has improved over ${weeks} week${weeks !== 1 ? "s" : ""} of tracking`
+                          : delta < 0
+                            ? `Some readings have declined over ${weeks} week${weeks !== 1 ? "s" : ""}. Check your Home page for what needs attention.`
+                            : `Stable over ${weeks} week${weeks !== 1 ? "s" : ""} of tracking`}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
+        )}
+
         {/* What Alloro Has Done */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}

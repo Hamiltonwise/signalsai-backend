@@ -27,6 +27,7 @@ import { useLocationContext } from "@/contexts/locationContext";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import CardCapture from "@/components/dashboard/CardCapture";
+import { NotificationWidget } from "@/components/dashboard/NotificationWidget";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -43,6 +44,12 @@ interface DashboardContext {
     trial_end_at?: string | null;
   };
   user?: { first_name?: string; last_name?: string; email?: string };
+  has_referral_data?: boolean;
+  referral_stats?: {
+    referral_code?: string;
+    referrals_converted?: number;
+    months_earned?: number;
+  } | null;
 }
 
 interface RankingData {
@@ -457,6 +464,43 @@ export default function HomePage() {
                   <ChevronRight className="w-4 h-4" />
                 </button>
               )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Latest Update (Dave's NotificationWidget) ── */}
+        {orgId && (
+          <NotificationWidget
+            organizationId={orgId}
+            locationId={selectedLocation?.id || null}
+          />
+        )}
+
+        {/* ── Practice Data Summary (when data exists) ── */}
+        {ctx?.has_referral_data && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Your Business Data</p>
+                  <p className="text-sm text-gray-500">
+                    {ctx?.referral_stats?.referrals_converted
+                      ? `${ctx.referral_stats.referrals_converted} referral${ctx.referral_stats.referrals_converted !== 1 ? "s" : ""} converted`
+                      : "Referral data uploaded"}
+                    {" -- "}
+                    <button
+                      onClick={() => navigate("/compare")}
+                      className="text-[#D56753] font-semibold hover:underline"
+                    >
+                      See details on Compare
+                    </button>
+                  </p>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}

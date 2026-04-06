@@ -69,15 +69,15 @@ export function NotificationWidget({
   const getNotificationPath = (type: string) => {
     switch (type) {
       case "pms":
-        return "/pmsStatistics";
+        return "/compare"; // Referral data lives on Compare page
       case "task":
-        return "/tasks";
+        return "/home";
       case "agent":
-        return "/dashboard";
+        return "/home";
       case "ranking":
-        return "/rankings";
+        return "/compare";
       default:
-        return "/dashboard";
+        return "/home";
     }
   };
 
@@ -243,7 +243,7 @@ export function NotificationWidget({
             <p className="text-base font-semibold text-alloro-navy font-heading tracking-tight">
               All caught up
             </p>
-            <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-widest mt-1">
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mt-1">
               No unread notifications
             </p>
           </div>
