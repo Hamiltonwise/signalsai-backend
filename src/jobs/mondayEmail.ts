@@ -775,7 +775,7 @@ export async function sendAllMondayEmails(): Promise<{ sent: number; total: numb
   // Include subscribed orgs AND Checkup-originated signups (billing after TTFV, not at Step 4)
   // Filter out test/demo accounts to prevent real emails to test data
   const TEST_ORG_PATTERNS = /\b(test|demo|smoke|seed|example|localhost)\b/i;
-  const INTERNAL_EMAIL_DOMAINS = ["getalloro.com", "alloro.io", "example.com", "test.com"];
+  const INTERNAL_EMAIL_DOMAINS = ["getalloro.com", "hamiltonwise.com", "alloro.io", "example.com", "test.com"];
 
   const orgs = await db("organizations")
     .where(function () {
