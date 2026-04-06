@@ -91,6 +91,7 @@ type ReadingStatus = "healthy" | "attention" | "critical";
 function ReadingCard({
   label,
   value,
+  delta,
   context,
   status,
   verifyUrl,
@@ -99,6 +100,7 @@ function ReadingCard({
 }: {
   label: string;
   value: string;
+  delta?: string;
   context: string;
   status: ReadingStatus;
   verifyUrl?: string | null;
@@ -132,7 +134,12 @@ function ReadingCard({
           </button>
         )}
       </div>
-      <p className="text-3xl font-semibold text-[#1A1D23] leading-none tracking-tight">{value}</p>
+      <div className="flex items-baseline gap-3">
+        <p className="text-3xl font-semibold text-[#1A1D23] leading-none tracking-tight">{value}</p>
+        {delta && (
+          <span className="text-sm font-semibold text-emerald-600">{delta}</span>
+        )}
+      </div>
       <p className="text-sm text-[#1A1D23]/50 mt-3 leading-relaxed">{context}</p>
       {showWhy && whyItMatters && (
         <div className="mt-4 pt-4 border-t border-[#1A1D23]/5">
@@ -192,9 +199,18 @@ function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | n
     ? `https://www.google.com/search?q=${encodeURIComponent((checkup.market?.specialty || "business") + " " + city)}`
     : null;
 
+  // Baseline review count from signup (for trend delta)
+  const baselineReviews = checkup.checkup_review_count_at_creation ?? checkup.reviewCount ?? null;
+  const reviewDelta = (reviewCount != null && baselineReviews != null) ? reviewCount - baselineReviews : null;
+
+  // Days active (for context)
+  const createdAt = ctx?.org?.created_at;
+  const daysActive = createdAt ? Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24))) : null;
+
   const readings: {
     label: string;
     value: string;
+    delta?: string;
     context: string;
     status: ReadingStatus;
     verifyUrl: string | null;
@@ -225,6 +241,7 @@ function extractReadings(ctx: DashboardContext | null, _ranking: RankingData | n
     readings.push({
       label: "Review Volume",
       value: `${reviewCount} reviews`,
+      delta: reviewDelta != null && reviewDelta > 0 ? `+${reviewDelta} since joining` : reviewDelta === 0 && daysActive && daysActive > 7 ? "Holding steady" : undefined,
       context: competitorName && competitorReviewCount
         ? `${competitorName} has ${competitorReviewCount}. ${reviewCount >= competitorReviewCount ? "You lead." : `Gap: ${competitorReviewCount - reviewCount}.`}`
         : `${reviewCount} reviews in your market`,
@@ -377,6 +394,13 @@ export default function HomePage() {
   const healthyCount = readings?.filter(r => r.status === "healthy").length || 0;
   const totalCount = readings?.length || 0;
 
+  // Overall status badge
+  const overallStatus: ReadingStatus | null = readings && readings.length > 0
+    ? healthyCount === totalCount ? "healthy"
+      : readings.some(r => r.status === "critical") ? "critical"
+      : "attention"
+    : null;
+
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
       <div className="max-w-[640px] mx-auto px-5 sm:px-8 py-10 sm:py-14">
@@ -388,6 +412,22 @@ export default function HomePage() {
           transition={{ duration: 0.6 }}
           className="mb-12"
         >
+          {overallStatus && (
+            <div className="mb-3">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                overallStatus === "healthy"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
+                  : overallStatus === "attention"
+                    ? "bg-amber-50 text-amber-700 border border-amber-200/60"
+                    : "bg-red-50 text-red-700 border border-red-200/60"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  overallStatus === "healthy" ? "bg-emerald-500" : overallStatus === "attention" ? "bg-amber-500" : "bg-red-500"
+                }`} />
+                {overallStatus === "healthy" ? "All Clear" : overallStatus === "attention" ? "Needs Attention" : "Action Needed"}
+              </span>
+            </div>
+          )}
           <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight leading-tight">{greeting}</h1>
           {readings && totalCount > 0 && (
             <p className="text-base text-[#1A1D23]/40 mt-2">
@@ -413,6 +453,7 @@ export default function HomePage() {
                 key={reading.label}
                 label={reading.label}
                 value={reading.value}
+                delta={reading.delta}
                 context={reading.context}
                 status={reading.status}
                 verifyUrl={reading.verifyUrl}
