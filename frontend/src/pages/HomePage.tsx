@@ -113,38 +113,47 @@ function ReadingCard({
   };
   const s = statusStyles[status];
 
+  // Oura-inspired: color signals state, number IS the design, progressive disclosure
+  const statusGlow = {
+    healthy: "shadow-[0_0_0_1px_rgba(16,185,129,0.1),0_4px_16px_rgba(16,185,129,0.06)]",
+    attention: "shadow-[0_0_0_1px_rgba(251,191,36,0.1),0_4px_16px_rgba(251,191,36,0.06)]",
+    critical: "shadow-[0_0_0_1px_rgba(239,68,68,0.1),0_4px_16px_rgba(239,68,68,0.06)]",
+  };
+
   return (
-    <div className={`rounded-2xl bg-stone-50/80 border ${s.bg} p-5 sm:p-6`}>
-      <div className="flex items-center justify-between mb-3">
+    <div className={`rounded-2xl bg-white/70 backdrop-blur-sm ${statusGlow[status]} p-6 sm:p-7 transition-all duration-500 hover:scale-[1.01]`}>
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
-          <span className={`w-3 h-3 rounded-full ${s.dot} ring-4 ring-opacity-20 ${
-            status === "healthy" ? "ring-emerald-500" : status === "attention" ? "ring-amber-400" : "ring-red-500"
-          }`} />
-          <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{label}</span>
+          <span className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
+          <span className="text-xs text-[#1A1D23]/40 font-semibold uppercase tracking-wider">{label}</span>
         </div>
         {whyItMatters && (
           <button
             onClick={() => setShowWhy(!showWhy)}
-            className="w-5 h-5 rounded-full flex items-center justify-center text-gray-300 hover:text-[#D56753] transition-colors"
+            className="w-6 h-6 rounded-full flex items-center justify-center text-[#1A1D23]/20 hover:text-[#D56753] hover:bg-[#D56753]/5 transition-all"
             aria-label="Why this matters"
           >
             <HelpCircle className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
-      <p className="text-2xl font-semibold text-[#1A1D23] leading-snug">{value}</p>
-      <p className="text-sm text-gray-500 mt-2 leading-relaxed">{context}</p>
+      <p className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] leading-none tracking-tight">{value}</p>
+      <p className="text-sm text-[#1A1D23]/50 mt-3 leading-relaxed">{context}</p>
       {showWhy && whyItMatters && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <p className="text-xs text-gray-400 leading-relaxed">{whyItMatters}</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="mt-4 pt-4 border-t border-[#1A1D23]/5"
+        >
+          <p className="text-xs text-[#1A1D23]/35 leading-relaxed">{whyItMatters}</p>
+        </motion.div>
       )}
       {verifyUrl && (
         <a
           href={verifyUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold mt-2 hover:underline"
+          className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold mt-3 hover:underline"
         >
           {verifyLabel || "Verify on Google"}
           <ExternalLink className="w-3 h-3" />
@@ -386,11 +395,11 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-10"
+          className="mb-12"
         >
-          <h1 className="text-2xl font-semibold text-[#1A1D23] mb-1">{greeting}</h1>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight leading-tight">{greeting}</h1>
           {readings && totalCount > 0 && (
-            <p className="text-base text-gray-400">
+            <p className="text-base text-[#1A1D23]/40 mt-2">
               {healthyCount === totalCount
                 ? "All readings healthy. Nothing needs you."
                 : healthyCount === 0
@@ -436,18 +445,18 @@ export default function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
           >
-            <div className={`rounded-2xl p-6 sm:p-8 ${
+            <div className={`rounded-2xl p-7 sm:p-8 ${
               action.clear
-                ? "bg-emerald-50/80 border border-emerald-200/60"
-                : "bg-[#212D40] shadow-lg"
+                ? "bg-emerald-50/60 border border-emerald-200/40 shadow-[0_4px_24px_rgba(16,185,129,0.08)]"
+                : "bg-[#212D40] shadow-[0_8px_32px_rgba(33,45,64,0.3)]"
             }`}>
-              <p className={`text-lg font-semibold leading-snug ${
+              <p className={`text-xl font-semibold leading-snug tracking-tight ${
                 action.clear ? "text-emerald-800" : "text-white"
               }`}>
                 {action.headline}
               </p>
               <p className={`mt-3 text-base leading-relaxed ${
-                action.clear ? "text-emerald-700" : "text-white/70"
+                action.clear ? "text-emerald-700/80" : "text-white/60"
               }`}>
                 {action.body}
               </p>

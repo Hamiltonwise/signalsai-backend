@@ -35,10 +35,10 @@ function Section({ title, defaultOpen = true, children }: {
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 overflow-hidden">
+    <div className="rounded-2xl bg-white/70 backdrop-blur-sm shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.04)] overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-stone-100/50 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-stone-50/50 transition-colors"
       >
         <h2 className="text-sm font-semibold text-[#1A1D23] uppercase tracking-wider">{title}</h2>
         {open
@@ -311,7 +311,7 @@ function ComparePageInner() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-2xl font-semibold text-[#1A1D23]">How You Compare</h1>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">How You Compare</h1>
           {competitorName && (
             <p className="text-sm text-gray-500 mt-1">
               Your top competitor: {competitorName}

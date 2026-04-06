@@ -147,7 +147,7 @@ export default function ProgressReport() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-2xl font-semibold text-[#1A1D23]">Your Progress</h1>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Progress</h1>
           {daysActive && (
             <p className="text-sm text-gray-500 mt-1">
               {daysActive} day{daysActive !== 1 ? "s" : ""} with Alloro

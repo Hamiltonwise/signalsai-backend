@@ -321,11 +321,11 @@ export default function ReviewsPage() {
       <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-4">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-semibold text-[#1A1D23]">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">
             What People Are Saying
           </h1>
           {rating && reviewCount > 0 && (
-            <p className="text-base font-medium text-[#1A1D23]/60 mt-1">
+            <p className="text-base text-[#1A1D23]/40 mt-2">
               {rating} stars across {reviewCount} reviews
             </p>
           )}
