@@ -35,7 +35,7 @@ function Section({ title, defaultOpen = true, children }: {
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl bg-white/70 backdrop-blur-sm shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.04)] overflow-hidden">
+    <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-stone-50/50 transition-colors"

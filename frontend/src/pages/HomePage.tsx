@@ -113,40 +113,31 @@ function ReadingCard({
   };
   const s = statusStyles[status];
 
-  // Oura-inspired: color signals state, number IS the design, progressive disclosure
-  const statusGlow = {
-    healthy: "shadow-[0_0_0_1px_rgba(16,185,129,0.1),0_4px_16px_rgba(16,185,129,0.06)]",
-    attention: "shadow-[0_0_0_1px_rgba(251,191,36,0.1),0_4px_16px_rgba(251,191,36,0.06)]",
-    critical: "shadow-[0_0_0_1px_rgba(239,68,68,0.1),0_4px_16px_rgba(239,68,68,0.06)]",
-  };
-
   return (
-    <div className={`rounded-2xl bg-white/70 backdrop-blur-sm ${statusGlow[status]} p-6 sm:p-7 transition-all duration-500 hover:scale-[1.01]`}>
+    <div className={`rounded-2xl bg-stone-50/80 border ${s.bg} p-6 sm:p-7`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
-          <span className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
+          <span className={`w-2.5 h-2.5 rounded-full ${s.dot} ring-4 ring-opacity-15 ${
+            status === "healthy" ? "ring-emerald-500" : status === "attention" ? "ring-amber-400" : "ring-red-500"
+          }`} />
           <span className="text-xs text-[#1A1D23]/40 font-semibold uppercase tracking-wider">{label}</span>
         </div>
         {whyItMatters && (
           <button
             onClick={() => setShowWhy(!showWhy)}
-            className="w-6 h-6 rounded-full flex items-center justify-center text-[#1A1D23]/20 hover:text-[#D56753] hover:bg-[#D56753]/5 transition-all"
+            className="w-6 h-6 rounded-full flex items-center justify-center text-[#1A1D23]/20 hover:text-[#D56753] transition-colors"
             aria-label="Why this matters"
           >
             <HelpCircle className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
-      <p className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] leading-none tracking-tight">{value}</p>
+      <p className="text-3xl font-semibold text-[#1A1D23] leading-none tracking-tight">{value}</p>
       <p className="text-sm text-[#1A1D23]/50 mt-3 leading-relaxed">{context}</p>
       {showWhy && whyItMatters && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="mt-4 pt-4 border-t border-[#1A1D23]/5"
-        >
+        <div className="mt-4 pt-4 border-t border-[#1A1D23]/5">
           <p className="text-xs text-[#1A1D23]/35 leading-relaxed">{whyItMatters}</p>
-        </motion.div>
+        </div>
       )}
       {verifyUrl && (
         <a
