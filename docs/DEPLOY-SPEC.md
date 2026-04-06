@@ -87,7 +87,7 @@ curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
 
 ## Step 5: Verify (5 minutes after Step 4)
 
-1. **Log into sandbox as Garrison** (Pilot Mode from admin)
+1. **Log into production as Garrison** (Pilot Mode from admin at app.getalloro.com/admin)
    - Home page: readings should show 5 stars, 73 reviews, 3/5+ profile completeness
    - Compare page: side-by-side vs Peluso Orthodontics (419 reviews)
    - Reviews page: should show reviews (if sync ran) or "syncing within 24 hours"

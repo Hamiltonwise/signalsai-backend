@@ -322,20 +322,26 @@ What happens from first touch to weekly engagement:
 | src/services/rankingsIntelligence.ts | Google position + competitor data |
 | src/jobs/mondayEmail.ts | Monday email generation and sending |
 | src/services/oneActionCard.ts | Home page action card waterfall logic |
-| src/services/gbpReviewReply.ts | Review response posting to Google (severed) |
+| src/services/gbpReviewReply.ts | Review response posting to Google (WIRED via MyBusiness API) |
 | src/services/croEngine.ts | CRO recommendations (dead code) |
 | src/services/reviewSentiment.ts | Sentiment comparison (dead code) |
 | src/services/instantWebsiteGenerator.ts | Website generation at signup |
+| src/services/reviewMonitor.ts | Review polling (Places API fallback + MyBusiness API for postable IDs) |
+| src/data/helpArticles.ts | 23 help articles as TypeScript const |
+| src/routes/user/helpArticles.ts | GET /api/user/help-articles (searchable, role-aware) |
+| src/routes/user/reviewDrafts.ts | PATCH approve/dismiss, calls approveAndPostReview |
 
 ### Frontend Core
 | File | Purpose |
 |------|---------|
-| frontend/src/pages/HomePage.tsx | Readings + action card (the "Am I okay?" page) |
-| frontend/src/pages/ComparePage.tsx | Side-by-side competitor comparison |
-| frontend/src/pages/ReviewsPage.tsx | Review list + AI response drafts |
+| frontend/src/pages/HomePage.tsx | Readings + action card + contextual "?" (the "Am I okay?" page) |
+| frontend/src/pages/ComparePage.tsx | Competitor comparison + referral sources with category tabs + upload |
+| frontend/src/pages/ReviewsPage.tsx | Review list + AI response drafts + approve/copy |
 | frontend/src/pages/PresencePage.tsx | Website + GBP completeness |
 | frontend/src/pages/ProgressReport.tsx | Reading trends over time |
-| frontend/src/components/FivePageLayout.tsx | Navigation (5 pages, bottom mobile, side desktop) |
+| frontend/src/pages/HelpPage.tsx | Searchable help center with 23 articles |
+| frontend/src/components/FivePageLayout.tsx | Navigation (5 pages + Settings/Help below separator), location picker, advisor chat |
+| frontend/src/components/dashboard/CSAgentChat.tsx | Floating advisor chatbot (Claude-powered) |
 
 ### Configuration
 | File | Purpose |
@@ -355,7 +361,8 @@ What happens from first touch to weekly engagement:
 | DATABASE_URL | PostgreSQL connection | All |
 | REDIS_URL | Redis connection (default: redis://localhost:6379) | minds-worker |
 | ANTHROPIC_API_KEY | Claude API for intelligence generation | Monday email, action cards, agents |
-| GOOGLE_PLACES_API_KEY | Google Places API for rankings | Rankings intelligence |
+| GOOGLE_PLACES_API | Google Places API for rankings | Rankings intelligence |
+| ALLORO_EMAIL_SERVICE_WEBHOOK | Email delivery webhook (P0) | All emails fail without this |
 | MAILGUN_API_KEY | Email sending | Monday email, welcome email, checkup results |
 | MAILGUN_DOMAIN | Email domain | All emails |
 | SENTRY_DSN | Error tracking | All |
@@ -365,4 +372,4 @@ What happens from first touch to weekly engagement:
 
 ---
 
-*Last updated: April 4, 2026. If this document contradicts the code, check the code.*
+*Last updated: April 5, 2026. If this document contradicts the code, check the code.*
