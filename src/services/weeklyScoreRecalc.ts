@@ -155,9 +155,9 @@ export async function recalculateScore(orgId: number): Promise<RecalcResult | nu
     const latestSnapshot = await db("weekly_ranking_snapshots")
       .where({ org_id: orgId })
       .orderBy("week_start", "desc")
-      .select("position", "google_position")
+      .select("position")
       .first();
-    const googlePosition = latestSnapshot?.google_position ?? latestSnapshot?.position ?? null;
+    const googlePosition = latestSnapshot?.position ?? null;
 
     // 3. Run the scoring algorithm
     const result = calculateClarityScore(
