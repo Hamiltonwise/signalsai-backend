@@ -5,11 +5,21 @@
 
 ---
 
+## Why This Is Urgent
+
+The current main is showing customers fake data. "You're ranked #1 of 15 locally" -- they click Google and don't see themselves at #1. "Visibility Score 90" -- a composite number they can't verify. Fabricated dollar figures based on projection formulas, not real data. Customers are confused, disengaged, and not referring.
+
+AAE is April 14. 9 days. We need the checkup working on the production URL for the QR codes.
+
+The sandbox fixes all of this. Every number now links to where the customer can verify it on Google. The fake scores, fake rankings, and fake dollar figures are gone. The product is simpler, more honest, and better documented than it has ever been.
+
+Your work is 15 minutes. The details are below.
+
+---
+
 ## What Happened
 
-Corey and Claude did a deep cleanup of the sandbox over April 4-5. The goal was NOT to add features. The goal was to fix what was broken, remove what was fake, and simplify what was complex.
-
-**The short version:** The product is now simpler, more honest, and better documented than it has ever been. Your infrastructure work is minimal.
+Deep cleanup of the sandbox over April 4-5. The goal was NOT to add features. The goal was to fix what was broken, remove what was fake, and simplify what was complex.
 
 ---
 
@@ -117,9 +127,9 @@ If you want to cherry-pick instead of full merge, the commits are organized by p
 
 ## Timeline
 
-No rush. The five-page layout needs a design pass before it replaces v1 for customers. Your infrastructure work (migrations, restart, env var check) can happen whenever you're ready. The code is stable and tested (TypeScript clean, build passes, verified April 5).
+AAE is April 14. Customers are paying for a product that shows data they can't verify. The sandbox fixes this. Your infrastructure work (migrations, restart, env var check) is 15 minutes. The sooner it happens, the sooner customers see honest data.
 
-When you're ready, the deploy spec has the exact commands. Total time: ~15 minutes of your time, plus 5 minutes of waiting for data refresh.
+The deploy spec (`docs/DEPLOY-SPEC.md`) has the exact commands with verification steps.
 
 ---
 
