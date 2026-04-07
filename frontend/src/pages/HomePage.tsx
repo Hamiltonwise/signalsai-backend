@@ -20,7 +20,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ExternalLink, HelpCircle } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
@@ -85,82 +85,7 @@ function buildGreeting(ctx: DashboardContext | null): string {
   return `${getTimeGreeting()}.`;
 }
 
-// ─── Reading Card ───────────────────────────────────────────────────
-
 type ReadingStatus = "healthy" | "attention" | "critical";
-
-function ReadingCard({
-  label,
-  value,
-  delta,
-  context,
-  status,
-  verifyUrl,
-  verifyLabel,
-  whyItMatters,
-}: {
-  label: string;
-  value: string;
-  delta?: string;
-  context: string;
-  status: ReadingStatus;
-  verifyUrl?: string | null;
-  verifyLabel?: string;
-  whyItMatters?: string;
-}) {
-  const [showWhy, setShowWhy] = useState(false);
-  const statusStyles = {
-    healthy: { dot: "bg-emerald-500", bg: "border-emerald-200/60" },
-    attention: { dot: "bg-amber-400", bg: "border-amber-200/60" },
-    critical: { dot: "bg-red-500", bg: "border-red-200/60" },
-  };
-  const s = statusStyles[status];
-
-  return (
-    <div className={`rounded-2xl bg-stone-50/80 border ${s.bg} p-6 sm:p-7`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <span className={`w-2.5 h-2.5 rounded-full ${s.dot} ring-4 ring-opacity-15 ${
-            status === "healthy" ? "ring-emerald-500" : status === "attention" ? "ring-amber-400" : "ring-red-500"
-          }`} />
-          <span className="text-xs text-[#1A1D23]/40 font-semibold uppercase tracking-wider">{label}</span>
-        </div>
-        {whyItMatters && (
-          <button
-            onClick={() => setShowWhy(!showWhy)}
-            className="w-6 h-6 rounded-full flex items-center justify-center text-[#1A1D23]/20 hover:text-[#D56753] transition-colors"
-            aria-label="Why this matters"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
-      <div className="flex items-baseline gap-3">
-        <p className="text-3xl font-semibold text-[#1A1D23] leading-none tracking-tight">{value}</p>
-        {delta && (
-          <span className="text-sm font-semibold text-emerald-600">{delta}</span>
-        )}
-      </div>
-      <p className="text-sm text-[#1A1D23]/50 mt-3 leading-relaxed">{context}</p>
-      {showWhy && whyItMatters && (
-        <div className="mt-4 pt-4 border-t border-[#1A1D23]/5">
-          <p className="text-xs text-[#1A1D23]/35 leading-relaxed">{whyItMatters}</p>
-        </div>
-      )}
-      {verifyUrl && (
-        <a
-          href={verifyUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-[#1A1D23]/40 font-semibold mt-3 hover:text-[#1A1D23]/60 hover:underline"
-        >
-          {verifyLabel || "Verify on Google"}
-          <ExternalLink className="w-3 h-3" />
-        </a>
-      )}
-    </div>
-  );
-}
 
 // ─── Extract Readings from Data ─────────────────────────────────────
 
@@ -417,46 +342,66 @@ export default function HomePage() {
 
   const [showUploadModal, setShowUploadModal] = useState(false);
 
+  // Status strip data from readings
+  const statusItems = readings ? readings.slice(0, 4).map(r => ({
+    label: r.label,
+    value: r.value,
+    context: r.context.split(".")[0], // First sentence only for strip
+    status: r.status,
+  })) : [];
+
+  // Market intelligence for below-fold
+  const checkupForMarket = ctx?.org?.checkup_data;
+  const marketComp = checkupForMarket?.topCompetitor;
+  const marketClientReviews = checkupForMarket?.place?.reviewCount || checkupForMarket?.reviewCount || 0;
+  const marketCompReviews = marketComp?.reviewCount || 0;
+  const marketGap = marketCompReviews - marketClientReviews;
+  const marketCity = checkupForMarket?.market?.city;
+  const marketTotalComp = checkupForMarket?.market?.totalCompetitors;
+  const marketRank = checkupForMarket?.market?.rank;
+
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
-      <div className="max-w-[640px] mx-auto px-5 sm:px-8 py-10 sm:py-14">
+      <div className="max-w-[1100px] mx-auto px-6 sm:px-10 py-10 sm:py-14">
 
-        {/* ── Greeting ── */}
+        {/* ═══ ABOVE THE FOLD ═══ */}
+
+        {/* ── 1. Greeting (ambient, light) ── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="mb-8"
         >
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight leading-tight">{greeting}</h1>
+          <h1 className="text-4xl sm:text-5xl font-light text-[#212D40] tracking-tight leading-tight">{greeting}</h1>
         </motion.div>
 
-        {/* ── One Action Card (Navy, full width) ── */}
+        {/* ── 2. One Action Card (DOMINANT) ── */}
         {action && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
             className="mb-8"
           >
-            <div className={`w-full rounded-xl p-6 ${
+            <div className={`w-full px-8 py-8 sm:py-10 ${
               action.clear
-                ? "bg-emerald-50/60 border border-emerald-200/40"
-                : "bg-[#212D40]"
+                ? "bg-[#F8F6F2] border-l-4 border-emerald-500"
+                : "bg-[#212D40] rounded-lg"
             }`}>
-              <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${
+              <p className={`text-xs font-semibold uppercase tracking-widest mb-4 ${
                 action.clear ? "text-emerald-600" : "text-[#D56753]"
               }`}>
                 YOUR NEXT MOVE
               </p>
-              <p className={`text-lg font-medium leading-snug ${
-                action.clear ? "text-emerald-800" : "text-white"
-              }`} style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              <p className={`text-2xl sm:text-3xl font-medium leading-snug tracking-tight ${
+                action.clear ? "text-[#212D40]" : "text-white"
+              }`}>
                 {action.headline}
               </p>
               {action.body && (
-                <p className={`mt-2 text-sm leading-relaxed ${
-                  action.clear ? "text-emerald-700/80" : "text-white/60"
+                <p className={`mt-3 text-base leading-relaxed ${
+                  action.clear ? "text-[#1A1D23]/50" : "text-white/50"
                 }`}>
                   {action.body}
                 </p>
@@ -464,11 +409,7 @@ export default function HomePage() {
               {action.action_text && action.action_url && (
                 <button
                   onClick={() => navigate(action.action_url!)}
-                  className={`mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all ${
-                    action.clear
-                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                      : "bg-[#D56753] text-white hover:brightness-110 active:scale-[0.98]"
-                  }`}
+                  className="mt-6 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold bg-[#D56753] text-white hover:brightness-110 active:scale-[0.98] transition-all"
                 >
                   {action.action_text}
                   <ChevronRight className="w-4 h-4" />
@@ -478,140 +419,112 @@ export default function HomePage() {
           </motion.div>
         )}
 
-        {/* ── 3. Readings (below the fold) ── */}
-        <div className="mt-6">
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-4">
-            WHAT ALLORO IS TRACKING
-          </p>
-
-          {readings && readings.length > 0 ? (
-            <div className="space-y-3">
-              {readings.map((reading) => (
-                <ReadingCard
-                  key={reading.label}
-                  label={reading.label}
-                  value={reading.value}
-                  delta={reading.delta}
-                  context={reading.context}
-                  status={reading.status}
-                  verifyUrl={reading.verifyUrl}
-                  verifyLabel={reading.verifyLabel}
-                  whyItMatters={reading.whyItMatters}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6 sm:p-7 animate-pulse">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <span className="w-2.5 h-2.5 rounded-full bg-gray-200" />
-                    <span className="h-3 w-24 bg-gray-200 rounded" />
+        {/* ── 3. Status Strip (compact horizontal, above the fold) ── */}
+        {statusItems.length > 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="mb-10"
+          >
+            <div className={`grid gap-0 ${statusItems.length >= 4 ? "grid-cols-2 sm:grid-cols-4" : statusItems.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+              {statusItems.map((item, i) => {
+                const dotColor = item.status === "healthy" ? "bg-emerald-500" : item.status === "attention" ? "bg-amber-400" : "bg-red-500";
+                return (
+                  <div key={item.label} className={`py-5 px-5 ${i > 0 ? "sm:border-l sm:border-[#1A1D23]/5" : ""}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+                      <span className="text-xs text-gray-400 font-semibold uppercase tracking-widest">{item.label}</span>
+                    </div>
+                    <p className="text-2xl sm:text-[28px] font-semibold text-[#212D40] leading-none tracking-tight">{item.value}</p>
+                    <p className="text-sm text-gray-500 mt-1.5 leading-snug">{item.context}</p>
                   </div>
-                  <div className="h-8 w-32 bg-gray-200 rounded mb-3" />
-                  <div className="h-4 w-48 bg-gray-100 rounded" />
-                </div>
-              ))}
-              <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
-                <p className="text-sm font-semibold text-[#1A1D23]">Alloro is building your health panel</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Your readings appear here once your Google Business Profile data syncs. This usually takes a few minutes after signup.
-                </p>
-              </div>
+                );
+              })}
             </div>
-          )}
-        </div>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 mb-10">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className={`py-5 px-5 animate-pulse ${i > 1 ? "sm:border-l sm:border-[#1A1D23]/5" : ""}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-gray-200" />
+                  <span className="h-3 w-20 bg-gray-200 rounded" />
+                </div>
+                <div className="h-7 w-24 bg-gray-200 rounded mb-1.5" />
+                <div className="h-4 w-32 bg-gray-100 rounded" />
+              </div>
+            ))}
+          </div>
+        )}
 
-        {/* ── What Alloro Found (from weekly snapshot) ── */}
+        {/* ═══ BELOW THE FOLD -- Intelligence Sections (no boxes) ═══ */}
+
+        {/* ── What Alloro Found ── */}
         {intelligenceData?.weeklyFinding && (
-          <div className="mt-6">
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">
-              WHAT ALLORO FOUND
-            </p>
-            <div className="rounded-2xl bg-[#212D40] p-5">
-              <p className="text-sm font-semibold text-white leading-relaxed">
-                {intelligenceData.weeklyFinding.headline}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="mb-10 pl-4 border-l-2 border-[#212D40]"
+          >
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">WHAT ALLORO FOUND</p>
+            <p className="text-xl font-semibold text-[#212D40] leading-snug">{intelligenceData.weeklyFinding.headline}</p>
+            {intelligenceData.weeklyFinding.bullets.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {intelligenceData.weeklyFinding.bullets.map((bullet, i) => (
+                  <p key={i} className="text-[15px] text-gray-700 leading-relaxed">{bullet}</p>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ── Your Market This Week ── */}
+        {marketComp?.name && marketClientReviews > 0 && (
+          <div className="mb-10 pl-4 border-l-2 border-[#D56753]/30">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">YOUR MARKET THIS WEEK</p>
+            {marketRank && marketTotalComp && marketCity && (
+              <p className="text-[15px] text-gray-700">
+                You appear #{marketRank} of {marketTotalComp} practices tracked in {marketCity}.
               </p>
-              {intelligenceData.weeklyFinding.bullets.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {intelligenceData.weeklyFinding.bullets.map((bullet, i) => (
-                    <p key={i} className="text-sm text-white/60 leading-relaxed">{bullet}</p>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
+            {marketGap > 0 && (
+              <>
+                <p className="text-lg font-semibold text-[#212D40] mt-2">
+                  The gap: {marketComp.name} has {marketCompReviews} reviews. You have {marketClientReviews}.
+                </p>
+                <p className="text-[15px] text-gray-700 mt-1">
+                  At 3 reviews per week, you close that gap in {Math.ceil(marketGap / 3)} weeks.
+                </p>
+              </>
+            )}
+            {marketGap <= 0 && (
+              <p className="text-[15px] text-gray-700 mt-1">
+                You lead {marketComp.name} by {Math.abs(marketGap)} reviews. Consistent reviews keep you ahead.
+              </p>
+            )}
+            <p className="text-sm text-gray-400 mt-2">
+              Alloro is watching this market. You will know if anything changes.
+            </p>
           </div>
         )}
 
-        {/* ── Your Market This Week (competitor intelligence) ── */}
-        {(() => {
-          const checkup = ctx?.org?.checkup_data;
-          const comp = checkup?.topCompetitor;
-          const clientReviewCount = checkup?.place?.reviewCount || checkup?.reviewCount || 0;
-          const compReviewCount = comp?.reviewCount || 0;
-          const gap = compReviewCount - clientReviewCount;
-          const city = checkup?.market?.city;
-          const totalComp = checkup?.market?.totalCompetitors;
-          const rank = checkup?.market?.rank;
-
-          if (!comp?.name || !clientReviewCount) return null;
-
-          const weeksToCloseAt3 = gap > 0 ? Math.ceil(gap / 3) : 0;
-          const weeksToCloseAt1 = gap > 0 ? gap : 0;
-
-          return (
-            <div className="mt-6">
-              <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">
-                YOUR MARKET THIS WEEK
-              </p>
-              <div className="space-y-2">
-                {rank && totalComp && city && (
-                  <p className="text-sm text-[#1A1D23]/60">
-                    You appear #{rank} of {totalComp} practices tracked in {city}.
-                  </p>
-                )}
-                {gap > 0 && (
-                  <>
-                    <p className="text-sm text-[#1A1D23]/60">
-                      The gap: {comp.name} has {compReviewCount} reviews. You have {clientReviewCount}.
-                    </p>
-                    <p className="text-sm text-[#1A1D23]/60">
-                      At 3 reviews per week, you close that gap in {weeksToCloseAt3} weeks.
-                      At your current pace (1 review per week), it closes in {weeksToCloseAt1} weeks.
-                    </p>
-                  </>
-                )}
-                {gap <= 0 && (
-                  <p className="text-sm text-[#1A1D23]/60">
-                    You lead {comp.name} by {Math.abs(gap)} reviews. Consistent reviews keep you ahead.
-                  </p>
-                )}
-                <p className="text-sm text-[#1A1D23]/40 mt-1">
-                  Alloro is watching this market. You will know if anything changes.
-                </p>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ── What Alloro Did (from behavioral_events or fallback) ── */}
+        {/* ── What Alloro Did ── */}
         {intelligenceData?.recentActions && intelligenceData.recentActions.length > 0 && (
-          <div className="mt-6">
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">
-              WHAT ALLORO DID
-            </p>
-            <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 space-y-2.5">
-              {intelligenceData.recentActions.map((action, i) => (
-                <p key={i} className="text-sm text-[#1A1D23]/60">{action}</p>
+          <div className="mb-10 pl-4 border-l-2 border-[#1A1D23]/10">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">WHAT ALLORO DID</p>
+            <div className="space-y-2">
+              {intelligenceData.recentActions.map((act, i) => (
+                <p key={i} className="text-[15px] text-gray-700">{act}</p>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── Below: secondary content ── */}
-        <div className="space-y-6 mt-8">
+        {/* ═══ SECONDARY CONTENT ═══ */}
+        <div className="space-y-6 mt-4">
 
-        {/* ── Latest Update ── */}
         {orgId && (
           <NotificationWidget
             organizationId={orgId}
@@ -619,16 +532,15 @@ export default function HomePage() {
           />
         )}
 
-        {/* ── Business Data Upload Prompt ── */}
         {ctx && ctx.has_referral_data === false && (
-          <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 sm:p-6">
+          <div className="pl-4 border-l-2 border-[#1A1D23]/10 py-3">
             <p className="text-sm font-semibold text-[#1A1D23] mb-1">Have referral or revenue data?</p>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-gray-500 mb-3">
               Upload it to unlock deeper intelligence about who sends you business.
             </p>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#212D40] text-white text-sm font-medium hover:bg-[#2a3a52] transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#212D40] text-white text-sm font-medium hover:bg-[#2a3a52] transition-all"
             >
               Upload business data
             </button>
@@ -645,26 +557,21 @@ export default function HomePage() {
           />
         )}
 
-        {/* ── Practice Data Summary ── */}
         {ctx?.has_referral_data && (
-          <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 sm:p-6">
+          <div className="pl-4 border-l-2 border-[#1A1D23]/10 py-2">
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Your Business Data</p>
             <p className="text-sm text-gray-500">
               {ctx?.referral_stats?.referrals_converted
                 ? `${ctx.referral_stats.referrals_converted} referral${ctx.referral_stats.referrals_converted !== 1 ? "s" : ""} converted`
                 : "Referral data uploaded"}
               {" -- "}
-              <button
-                onClick={() => navigate("/compare")}
-                className="text-[#1A1D23] font-semibold hover:underline"
-              >
+              <button onClick={() => navigate("/compare")} className="text-[#1A1D23] font-semibold hover:underline">
                 See details on Get Found
               </button>
             </p>
           </div>
         )}
 
-        {/* ── Surprise Moments ── */}
         <AnimatePresence>
           {visiblePrompts.has("milestone") && milestone && (
             <motion.div
@@ -672,7 +579,7 @@ export default function HomePage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 p-5"
+              className="pl-4 border-l-2 border-blue-300 py-3"
             >
               <p className="text-sm font-semibold text-blue-800">{milestone.title}</p>
               <p className="mt-1 text-sm text-blue-700">{milestone.body}</p>
@@ -680,7 +587,6 @@ export default function HomePage() {
           )}
         </AnimatePresence>
 
-        {/* ── Billing ── */}
         {visiblePrompts.has("billing") && (
           <CardCapture
             trialDaysRemaining={ctx?.org?.trial_end_at ? Math.max(0, Math.ceil((new Date(ctx.org.trial_end_at).getTime() - Date.now()) / 86400000)) : 7}
