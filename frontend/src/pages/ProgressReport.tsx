@@ -112,7 +112,7 @@ export default function ProgressReport() {
     const gap = competitorReviews - currentReviews;
     trends.push({
       label: `Gap vs ${competitorName || "Competitor"}`,
-      startValue: startReviews != null ? `${competitorReviews - startReviews} reviews` : "N/A",
+      startValue: startReviews != null ? `${competitorReviews - startReviews} reviews` : "Not tracked",
       currentValue: `${gap > 0 ? gap : 0} reviews`,
       direction: gap <= 0 ? "up" : startReviews != null && (competitorReviews - currentReviews) < (competitorReviews - startReviews) ? "up" : "flat",
       context: gap <= 0
@@ -239,25 +239,32 @@ export default function ProgressReport() {
                 const latest = history[history.length - 1]?.score ?? 0;
                 const delta = latest - first;
                 const weeks = history.length;
+
+                // Suppress false decline warnings when score sub-fields show incomplete data
+                // (googlePosition=0 means no verified position yet -- score drop is internal, not real market change)
+                const scoreData = checkup?.score;
+                const hasIncompleteInputs = scoreData && (scoreData.googlePosition === 0 || scoreData.googlePosition == null);
+                const showDecline = delta < 0 && !hasIncompleteInputs;
+
                 return (
                   <div className="flex items-center gap-3">
                     {delta > 0 ? (
                       <TrendingUp className="w-5 h-5 text-emerald-500" />
-                    ) : delta < 0 ? (
+                    ) : showDecline ? (
                       <TrendingDown className="w-5 h-5 text-red-500" />
                     ) : (
                       <Minus className="w-5 h-5 text-gray-400" />
                     )}
                     <div>
                       <p className="text-sm font-semibold text-[#1A1D23]">
-                        {delta > 0 ? "Improving" : delta < 0 ? "Needs attention" : "Holding steady"}
+                        {delta > 0 ? "Improving" : showDecline ? "Needs attention" : "All caught up"}
                       </p>
                       <p className="text-sm text-gray-500">
                         {delta > 0
                           ? `Your online health has improved over ${weeks} week${weeks !== 1 ? "s" : ""} of tracking`
-                          : delta < 0
+                          : showDecline
                             ? `Some readings have declined over ${weeks} week${weeks !== 1 ? "s" : ""}. Check your Home page for what needs attention.`
-                            : `Stable over ${weeks} week${weeks !== 1 ? "s" : ""} of tracking`}
+                            : "Alloro is monitoring your market. Your readings will update as new data comes in."}
                       </p>
                     </div>
                   </div>

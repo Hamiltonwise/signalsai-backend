@@ -290,13 +290,15 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
   if (competitorName && marketSearchUrl) {
     const rankPos = ranking?.rankPosition;
     const totalComp = ranking?.totalCompetitors;
+    const specialty = checkup.market?.specialty || "business";
+    const totalTracked = totalComp || checkup.market?.totalCompetitors || null;
     const rankLabel = rankPos && city
-      ? `Ranked #${rankPos} in ${city}`
+      ? `#${rankPos} in ${city}`
       : city
-        ? `${checkup.market?.specialty || "Business"} in ${city}`
+        ? `${specialty} in ${city}`
         : "Your local market";
-    const rankContext = rankPos
-      ? `${competitorName ? `Top competitor: ${competitorName}. ` : ""}Measured from the center of your market. Google rankings vary by searcher location.`
+    const rankContext = rankPos && city && totalTracked
+      ? `When patients search for ${specialty === "orthodontist" ? "an" : "a"} ${specialty} near ${city} in Google Maps, you appear #${rankPos} of ${totalTracked} practices tracked.`
       : competitorName
         ? `Top competitor: ${competitorName}`
         : "Alloro is monitoring your competitive landscape";
@@ -509,6 +511,29 @@ export default function HomePage() {
             </div>
           )}
         </div>
+
+        {/* ── What Alloro Did ── */}
+        {ctx?.org && (
+          <div className="mt-6">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">
+              WHAT ALLORO DID
+            </p>
+            <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 space-y-2.5">
+              {(() => {
+                const market = ctx.org.checkup_data?.market;
+                const city = market?.city || "your market";
+                const totalComp = market?.totalCompetitors || "competitors";
+                return (
+                  <>
+                    <p className="text-sm text-[#1A1D23]/60">Tracked your competitive position against {totalComp} practices in {city}</p>
+                    <p className="text-sm text-[#1A1D23]/60">Monitored your Google reviews daily</p>
+                    <p className="text-sm text-[#1A1D23]/60">Checked your Google Business Profile completeness</p>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* ── Below readings: secondary content ── */}
         <div className="space-y-6 mt-8">

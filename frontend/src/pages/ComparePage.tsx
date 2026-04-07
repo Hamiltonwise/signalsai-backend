@@ -340,22 +340,22 @@ function ComparePageInner() {
                 <tbody className="divide-y divide-stone-100">
                   <tr>
                     <td className="py-4 px-2 text-[#1A1D23]">Star Rating</td>
-                    <td className="py-4 px-2 text-right font-semibold text-[#1A1D23]">{clientRating || "N/A"}</td>
-                    <td className="py-4 px-2 text-right text-gray-500">{topCompetitor?.rating || "N/A"}</td>
+                    <td className="py-4 px-2 text-right font-semibold text-[#1A1D23]">{clientRating || "Not tracked"}</td>
+                    <td className="py-4 px-2 text-right text-gray-500">{topCompetitor?.rating || "Not tracked"}</td>
                   </tr>
                   <tr>
                     <td className="py-4 px-2 text-[#1A1D23]">Reviews</td>
                     <td className={`py-4 px-2 text-right font-semibold ${clientReviews >= (competitorReviews || 0) ? "text-emerald-600" : "text-red-500"}`}>
                       {clientReviews || 0}
                     </td>
-                    <td className="py-4 px-2 text-right text-gray-500">{competitorReviews || "N/A"}</td>
+                    <td className="py-4 px-2 text-right text-gray-500">{competitorReviews || "Not tracked"}</td>
                   </tr>
                   <tr>
                     <td className="py-4 px-2 text-[#1A1D23]">Photos</td>
                     <td className={`py-4 px-2 text-right font-semibold ${clientPhotos >= (topCompetitor?.photosCount || 0) ? "text-emerald-600" : "text-amber-500"}`}>
                       {clientPhotos || 0}
                     </td>
-                    <td className="py-4 px-2 text-right text-gray-500">{topCompetitor?.photosCount || "N/A"}</td>
+                    <td className="py-4 px-2 text-right text-gray-500">{topCompetitor?.photosCount || "Not tracked"}</td>
                   </tr>
                 </tbody>
               </table>
