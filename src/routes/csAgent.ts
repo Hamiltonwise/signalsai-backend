@@ -218,8 +218,10 @@ RULES:
  */
 csAgentRoutes.post("/chat", authenticateToken, rbacMiddleware, chatLimiter, async (req: any, res) => {
   try {
+    console.log("[CS-Agent] /chat hit. req.user:", JSON.stringify(req.user), "req.organizationId:", req.organizationId, "req.userRole:", req.userRole);
     const orgId = req.organizationId;
     if (!orgId) {
+      console.log("[CS-Agent] 401 -- orgId is falsy. req.user?.userId:", req.user?.userId);
       return res.status(401).json({ success: false, error: "Authentication required" });
     }
 
