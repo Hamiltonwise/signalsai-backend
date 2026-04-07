@@ -248,6 +248,9 @@ csAgentRoutes.post("/chat", authenticateToken, rbacMiddleware, chatLimiter, asyn
     }
     messages.push({ role: "user", content: message.trim() });
 
+    console.log("[CS-Agent] API key present:", !!process.env.ANTHROPIC_API_KEY, "key prefix:", process.env.ANTHROPIC_API_KEY?.slice(0, 10) || "MISSING");
+    console.log("[CS-Agent] systemPrompt length:", systemPrompt.length, "messages count:", messages.length);
+
     const anthropic = getClient();
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
