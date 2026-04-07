@@ -306,15 +306,16 @@ export default function ReviewsPage() {
   const notifications = reviewNotifData?.reviews || [];
   const hasNotifications = notifications.length > 0;
 
-  // Sentiment moat words from Oz moments
+  // Oz moments from checkup analysis (patterns found in reviews)
   const ozMoments = (checkupData?.ozMoments as Array<Record<string, string>>) || [];
-  const sentimentWords = ozMoments
-    .filter(
-      (m) => m.type === "sentiment_moat" || m.type === "review_theme"
-    )
-    .map((m) => m.keyword || m.title)
-    .filter(Boolean)
+  const sentimentMoments = ozMoments
+    .filter((m) => !!m.hook)
     .slice(0, 5);
+
+  // Sentiment insight summary from checkup analysis
+  const sentimentInsight = checkupData?.sentimentInsight as
+    | { summary?: string; positiveThemes?: string[]; negativeThemes?: string[] }
+    | null;
 
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
@@ -441,22 +442,25 @@ export default function ReviewsPage() {
         </Section>
 
         {/* Sentiment Summary */}
-        {sentimentWords.length > 0 && (
-          <Section title="Your Words" defaultOpen={false}>
-            <p className="text-sm text-[#1A1D23]/60 mb-3">
-              Words your customers use that competitors' customers don't.
-              These are your moat.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {sentimentWords.map((word, i) => (
-                <span
-                  key={i}
-                  className="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-sm font-medium border border-emerald-100"
-                >
-                  {word}
-                </span>
-              ))}
-            </div>
+        {(sentimentMoments.length > 0 || sentimentInsight?.summary) && (
+          <Section title="What Your Reviews Reveal" defaultOpen={true}>
+            {sentimentInsight?.summary && (
+              <p className="text-sm text-[#1A1D23]/70 leading-relaxed mb-4">
+                {sentimentInsight.summary}
+              </p>
+            )}
+            {sentimentMoments.length > 0 && (
+              <div className="space-y-3">
+                {sentimentMoments.map((moment, i) => (
+                  <div key={i} className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4">
+                    <p className="text-sm font-medium text-[#1A1D23]">{moment.hook}</p>
+                    {moment.implication && (
+                      <p className="text-sm text-[#1A1D23]/60 mt-1">{moment.implication}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </Section>
         )}
       </div>

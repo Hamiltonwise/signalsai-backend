@@ -93,32 +93,13 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
   const checkup = ctx?.org?.checkup_data;
   if (!checkup) return null;
 
-  const place = checkup.place || {};
   const topCompetitor = checkup.topCompetitor || checkup.top_competitor || null;
   const competitorName = typeof topCompetitor === "string" ? topCompetitor : topCompetitor?.name || null;
-  const competitorReviewCount = typeof topCompetitor === "object" ? topCompetitor?.reviewCount : null;
-  const orgName = ctx?.org?.name || "";
   const city = checkup.market?.city || "";
 
-  const reviewCount = place.reviewCount ?? checkup.reviewCount ?? null;
-
-  const googleSearchUrl = orgName
-    ? `https://www.google.com/search?q=${encodeURIComponent(orgName)}`
-    : null;
-  const competitorSearchUrl = competitorName
-    ? `https://www.google.com/search?q=${encodeURIComponent(competitorName)}`
-    : null;
   const marketSearchUrl = city
     ? `https://www.google.com/search?q=${encodeURIComponent((checkup.market?.specialty || "business") + " " + city)}`
     : null;
-
-  // Baseline review count from signup (for trend delta)
-  const baselineReviews = checkup.checkup_review_count_at_creation ?? checkup.reviewCount ?? null;
-  const reviewDelta = (reviewCount != null && baselineReviews != null) ? reviewCount - baselineReviews : null;
-
-  // Days active (for context)
-  const createdAt = ctx?.org?.created_at;
-  const daysActive = createdAt ? Math.max(1, Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24))) : null;
 
   const readings: {
     label: string;
@@ -131,44 +112,7 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
     whyItMatters?: string;
   }[] = [];
 
-  // Reading 1: Review Count vs Competitor
-  if (reviewCount != null) {
-    const ratio = competitorReviewCount ? reviewCount / competitorReviewCount : 1;
-    readings.push({
-      label: "Review Volume",
-      value: `${reviewCount} reviews`,
-      delta: reviewDelta != null && reviewDelta > 0 ? `+${reviewDelta} since joining` : reviewDelta === 0 && daysActive && daysActive > 7 ? "Holding steady" : undefined,
-      context: competitorName && competitorReviewCount
-        ? `${competitorName} has ${competitorReviewCount}. ${reviewCount >= competitorReviewCount ? "You lead." : `Gap: ${competitorReviewCount - reviewCount}.`}`
-        : `${reviewCount} reviews in your market`,
-      status: ratio >= 1 ? "healthy" : ratio >= 0.5 ? "attention" : "critical",
-      verifyUrl: competitorSearchUrl,
-      verifyLabel: competitorName ? `Search "${competitorName}"` : "Search competitors",
-      whyItMatters: "Google uses review count as a top 3 local ranking factor. Businesses with 50+ reviews earn 4.6x more revenue. The gap vs your top competitor matters most. (Whitespark 2026, Womply)",
-    });
-  }
-
-  // Reading 2: Response Rate (if we have review data)
-  const reviews = place.reviews || checkup.reviews || [];
-  if (reviews.length > 0) {
-    const responded = reviews.filter((r: any) => !!r.ownerResponse).length;
-    const rate = Math.round((responded / reviews.length) * 100);
-    readings.push({
-      label: "Review Responses",
-      value: `${rate}% responded`,
-      context: rate >= 80
-        ? "Strong response rate signals active management to Google"
-        : rate >= 1
-          ? "Businesses that respond to reviews earn 35% more revenue"
-          : "No responses found. Each response signals activity to Google.",
-      status: rate >= 80 ? "healthy" : rate >= 1 ? "attention" : "critical",
-      verifyUrl: googleSearchUrl,
-      verifyLabel: "Check your reviews for responses",
-      whyItMatters: "Google confirms responding to reviews improves local ranking. Businesses that respond earn 35% more revenue. A response signals your business is active and engaged. (Google, Womply)",
-    });
-  }
-
-  // Reading 5: Market Context (with rank position if available)
+  // Market Context (with rank position if available)
   if (competitorName && marketSearchUrl) {
     const rankPos = ranking?.rankPosition;
     const totalComp = ranking?.totalCompetitors;
