@@ -88,7 +88,7 @@ export default function CSAgentChat({
   const starters = [
     "What do my readings mean?",
     ...(hasReferralData ? ["Who are my top referring GPs?"] : []),
-    "What should I do this week?",
+    "How does my market compare?",
   ];
 
   return (
