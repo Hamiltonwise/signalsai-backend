@@ -101,21 +101,6 @@ async function buildSystemPrompt(orgId: number, locationId?: number): Promise<st
     } catch { /* skip */ }
   }
 
-  // Review request stats
-  const reviewStats = await db("review_requests")
-    .where({ organization_id: orgId })
-    .select("status")
-    .count("id as count")
-    .groupBy("status")
-    .catch(() => []);
-
-  const reviewCounts: Record<string, number> = {};
-  for (const r of reviewStats as any[]) {
-    reviewCounts[r.status] = Number(r.count);
-  }
-  const totalReviewRequests = Object.values(reviewCounts).reduce((s, n) => s + n, 0);
-  const reviewConversions = reviewCounts.converted || 0;
-
   // Referral source data (top referring GPs)
   let referralInfo = "";
   const hasReferralSourcesTable = await db.schema.hasTable("referral_sources").catch(() => false);
@@ -177,7 +162,6 @@ THEIR READINGS:
 - Market: ${totalTracked ? `${totalTracked} practices tracked` : "Building competitive picture"}${competitorInfo ? `. ${competitorInfo}` : ""}
 - Profile Completeness: ${profileComplete}/5 fields${profileMissing.length > 0 ? `. Missing: ${profileMissing.join(", ")}` : ""}
 - Specialty: ${specialty}${city ? ` in ${city}` : ""}
-- Review requests sent: ${totalReviewRequests}, converted: ${reviewConversions}
 
 ${referralInfo || "Referral data: activates when Alloro connects referral sources for this account."}
 
