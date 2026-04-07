@@ -8,7 +8,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "../database/connection";
 import { cleanCompetitorName } from "../utils/textCleaning";
-import { textSearch } from "../controllers/places/feature-services/GooglePlacesApiService";
+import { textSearch, getPlaceDetails } from "../controllers/places/feature-services/GooglePlacesApiService";
 import { checkFirstWinAttribution } from "./firstWinAttribution";
 import { computeAllVelocities } from "./reviewVelocity";
 
@@ -85,10 +85,26 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
     clientPlaceId = parsed?.placeId || null;
   } catch { /* non-blocking */ }
 
+  // Get practice coordinates from placeId for location-biased search
+  let practiceLat: number | null = null;
+  let practiceLng: number | null = null;
+  if (clientPlaceId) {
+    try {
+      const placeDetails = await getPlaceDetails(clientPlaceId);
+      practiceLat = placeDetails?.location?.latitude ?? null;
+      practiceLng = placeDetails?.location?.longitude ?? null;
+    } catch (err: any) {
+      console.error(`[RankingsIntel] Failed to get coordinates for ${org.name}:`, err.message);
+    }
+  }
+
   try {
     const query = `${specialty} near ${address}`.trim();
     if (query.length > 10) {
-      const results = await textSearch(query, 10);
+      const locationBias = (practiceLat && practiceLng)
+        ? { lat: practiceLat, lng: practiceLng, radiusMeters: 16093 } // 10 miles
+        : undefined;
+      const results = await textSearch(query, 10, locationBias);
       const orgNameLower = org.name.toLowerCase();
 
       // Match self: prefer placeId (exact), fall back to name matching
