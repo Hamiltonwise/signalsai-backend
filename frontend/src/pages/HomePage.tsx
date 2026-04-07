@@ -275,7 +275,21 @@ export default function HomePage() {
           <h1 className="text-4xl sm:text-5xl font-light text-[#212D40] tracking-tight leading-tight">{greeting}</h1>
         </motion.div>
 
-        {/* ── 2. One Action Card (DOMINANT) ── */}
+        {/* ── 2. Watchline ── */}
+        {action && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="text-xl sm:text-2xl font-light text-[#1A1D23]/60 mb-8"
+          >
+            {action.clear
+              ? "Nothing moved against you this week. Alloro checked."
+              : "Something changed in your market this week."}
+          </motion.p>
+        )}
+
+        {/* ── 3. One Action Card (DOMINANT) ── */}
         {action && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -389,23 +403,9 @@ export default function HomePage() {
               </p>
             )}
             {marketGap > 0 && (
-              <>
-                <p className="text-lg font-semibold text-[#212D40] mt-2">
-                  The gap: {marketComp.name} has {marketCompReviews} reviews. You have {marketClientReviews}.
-                </p>
-                <p className="text-[15px] text-gray-700 mt-1">
-                  At 3 reviews per week, you close that gap in {(() => {
-                    const weeks = Math.ceil(marketGap / 3);
-                    if (weeks <= 8) return `${weeks} week${weeks !== 1 ? "s" : ""}`;
-                    const months = Math.round(weeks / 4.33);
-                    if (months <= 12) return `about ${months} month${months !== 1 ? "s" : ""}`;
-                    const years = Math.floor(months / 12);
-                    const rem = months % 12;
-                    if (rem === 0) return `about ${years} year${years !== 1 ? "s" : ""}`;
-                    return `about ${years} year${years !== 1 ? "s" : ""} and ${rem} month${rem !== 1 ? "s" : ""}`;
-                  })()}.
-                </p>
-              </>
+              <p className="text-lg font-semibold text-[#212D40] mt-2">
+                The gap: {marketComp.name} has {marketCompReviews} reviews. You have {marketClientReviews}.
+              </p>
             )}
             {marketGap <= 0 && (
               <p className="text-[15px] text-gray-700 mt-1">

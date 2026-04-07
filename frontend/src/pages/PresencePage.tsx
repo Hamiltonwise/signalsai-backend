@@ -22,6 +22,8 @@ import {
   PenLine,
   Sparkles,
   Clock,
+  Search,
+  MousePointerClick,
 } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
@@ -103,6 +105,15 @@ function PresencePageInner() {
     staleTime: 120_000,
   });
 
+  // Form submissions
+  const { data: formData } = useQuery<{ submissions: any[] }>({
+    queryKey: ["form-submissions", orgId],
+    queryFn: () => apiGet({ path: "/user/website/form-submissions" }).catch(() => ({ submissions: [] })),
+    enabled: !!orgId && !!websiteData?.website,
+    staleTime: 120_000,
+  });
+  const formSubmissions = formData?.submissions || [];
+
   // CRO insights
   const { data: croData } = useQuery<{ insights: any[] }>({
     queryKey: ["cro-insights", orgId],
@@ -176,6 +187,50 @@ function PresencePageInner() {
               </p>
             </div>
           )}
+        </Section>
+
+        {/* Built for Search */}
+        <Section title="Built for Search" icon={Search} defaultOpen={true}>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Your site is structured so customers searching for your services near your city can find you.
+            </p>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Search performance data appears here when Google Search Console is connected.
+            </p>
+            <button
+              onClick={() => navigate("/settings/integrations")}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
+            >
+              Connect Google Search Console
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </Section>
+
+        {/* Built to Convert */}
+        <Section title="Built to Convert" icon={MousePointerClick} defaultOpen={true}>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Your site includes a contact form designed to turn visitors into inquiries.
+            </p>
+            {formSubmissions.length > 0 ? (
+              <div className="rounded-xl bg-[#F0EDE8] p-4">
+                <p className="text-sm font-semibold text-[#1A1D23]">
+                  {formSubmissions.length} form submission{formSubmissions.length !== 1 ? "s" : ""} received
+                </p>
+                {formSubmissions[0]?.created_at && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Most recent: {new Date(formSubmissions[0].created_at).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 leading-relaxed">
+                No submissions yet. Alloro is watching.
+              </p>
+            )}
+          </div>
         </Section>
 
         {/* Website Optimizations (CRO Insights) */}

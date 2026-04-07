@@ -220,7 +220,7 @@ function DemoCompetitorGap() {
         <strong>{PRACTICE.competitorName}</strong> holds #1 with a {PRACTICE.competitorRating}-star rating and {gap} more reviews than you.
       </p>
       <p className="text-xs text-[#D56753] font-medium mt-2">
-        {gap} reviews to close. At 3/week, that's {Math.ceil(gap / 3)} weeks.
+        {gap} reviews ahead of you. Alloro is tracking this.
       </p>
     </div>
   );

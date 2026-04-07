@@ -24,16 +24,11 @@ interface CompetitorDrawerProps {
 export default function CompetitorDrawer({
   competitor,
   clientReviews,
-  clientVelocityPerWeek,
   onClose,
 }: CompetitorDrawerProps) {
   if (!competitor) return null;
 
   const reviewGap = competitor.reviewCount - clientReviews;
-  const weeksToClose =
-    clientVelocityPerWeek != null && clientVelocityPerWeek > 0 && reviewGap > 0
-      ? Math.ceil(reviewGap / clientVelocityPerWeek)
-      : null;
 
   return (
     <>
@@ -117,32 +112,22 @@ export default function CompetitorDrawer({
             </div>
           </div>
 
-          {/* Gap-Closing Timeline */}
+          {/* Review Gap */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-              Gap-Closing Timeline
+              Review Gap
             </p>
             <div className="rounded-xl border border-gray-200 p-4">
               <div className="flex items-center gap-3">
                 <Clock className="h-5 w-5 text-[#D56753] shrink-0" />
                 <p className="text-sm text-[#1A1D23] leading-relaxed">
-                  {weeksToClose != null ? (
-                    <>
-                      At your current pace, you close the review gap in approximately{" "}
-                      <strong>{weeksToClose} week{weeksToClose !== 1 ? "s" : ""}</strong>.
-                    </>
-                  ) : reviewGap <= 0 ? (
+                  {reviewGap <= 0 ? (
                     "You're ahead on reviews. Keep the momentum."
                   ) : (
-                    "Add reviews to calculate your gap-closing timeline."
+                    `${reviewGap} review${reviewGap !== 1 ? "s" : ""} separate you. Alloro is tracking this.`
                   )}
                 </p>
               </div>
-              {clientVelocityPerWeek != null && clientVelocityPerWeek > 0 && (
-                <p className="text-xs text-gray-400 mt-2 ml-8">
-                  Your pace: ~{clientVelocityPerWeek.toFixed(1)} reviews/week
-                </p>
-              )}
             </div>
           </div>
         </div>

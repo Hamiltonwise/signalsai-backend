@@ -395,7 +395,7 @@ function CompetitorGap({ ranking, onCompetitorClick }: { ranking: RankingData | 
       </p>
       {reviewGap != null && reviewGap > 0 && reviewGap <= 10 && (
         <p className="text-xs text-[#D56753] font-medium mt-2">
-          {reviewGap} review{reviewGap !== 1 ? "s" : ""} to close the gap. That's {Math.ceil(reviewGap / 3)} weeks at 3 per week.
+          {reviewGap} review{reviewGap !== 1 ? "s" : ""} ahead of you.
         </p>
       )}
     </button>
