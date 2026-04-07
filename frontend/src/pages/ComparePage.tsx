@@ -420,6 +420,40 @@ function ComparePageInner() {
           </div>
         </Section>
 
+        {/* Google Business Profile completeness */}
+        <Section title="Google Business Profile" defaultOpen={true}>
+          {(() => {
+            const gbpFields = [
+              { name: "Phone", has: !!(place.hasPhone || place.phone || place.nationalPhoneNumber || place.internationalPhoneNumber) },
+              { name: "Hours", has: !!(place.hasHours || place.hours || place.regularOpeningHours) },
+              { name: "Website", has: !!(place.hasWebsite || place.websiteUri || place.website) },
+              { name: "Photos", has: (place.photosCount || place.photoCount || place.photos?.length || 0) > 0 },
+              { name: "Description", has: !!(place.hasEditorialSummary || place.editorialSummary) },
+            ];
+            const complete = gbpFields.filter(f => f.has).length;
+            const missing = gbpFields.filter(f => !f.has).map(f => f.name);
+            return (
+              <div className="space-y-2">
+                <p className="text-sm text-[#1A1D23]">
+                  Profile completeness: <span className="font-semibold">{complete}/5</span>
+                </p>
+                {missing.length > 0 && (
+                  <p className="text-sm text-gray-500">Missing: {missing.join(", ")}</p>
+                )}
+                {missing.length === 0 && (
+                  <p className="text-sm text-gray-500">All fields complete.</p>
+                )}
+                {googleSearchUrl && (
+                  <a href={googleSearchUrl} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-[#1A1D23]/40 font-semibold hover:text-[#1A1D23]/60 hover:underline mt-1">
+                    Verify on Google <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            );
+          })()}
+        </Section>
+
         {/* Competitors */}
         <Section title="Tracked Competitors" defaultOpen={true}>
           <div className="space-y-3">

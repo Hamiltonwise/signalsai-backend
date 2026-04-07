@@ -86,26 +86,6 @@ export default function ProgressReport() {
     });
   }
 
-  // GBP completeness
-  const gbpFields = [
-    place.hasPhone || place.phone,
-    place.hasHours || place.hours || place.regularOpeningHours,
-    place.hasWebsite || place.websiteUri,
-    (place.photosCount || 0) > 0,
-    place.hasEditorialSummary || place.editorialSummary,
-  ];
-  const gbpComplete = gbpFields.filter(Boolean).length;
-  trends.push({
-    label: "Profile Completeness",
-    startValue: `${gbpComplete}/5`,
-    currentValue: `${gbpComplete}/5`,
-    direction: gbpComplete >= 5 ? "up" : "flat",
-    context: gbpComplete >= 5
-      ? "All fields complete"
-      : `${5 - gbpComplete} field${5 - gbpComplete !== 1 ? "s" : ""} still missing`,
-    verifyUrl: googleSearchUrl,
-  });
-
   // Competitor gap trend
   const competitorReviews = typeof topCompetitor === "object" ? topCompetitor?.reviewCount : null;
   if (competitorReviews != null && currentReviews != null) {
@@ -148,11 +128,16 @@ export default function ProgressReport() {
           animate={{ opacity: 1, y: 0 }}
         >
           <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Numbers</h1>
-          <p className="text-sm text-gray-400 mt-1">Alloro reads your business data and shows you what is moving.</p>
           {daysActive && (
-            <p className="text-sm text-gray-500 mt-1">
-              {daysActive} day{daysActive !== 1 ? "s" : ""} with Alloro
-            </p>
+            <div className="mt-3">
+              <p className="text-base text-[#1A1D23] font-medium">
+                Alloro has been monitoring your market for {daysActive} day{daysActive !== 1 ? "s" : ""}.
+              </p>
+              <p className="text-sm text-gray-400 mt-1">Rankings measured weekly from the same location so movement is real, not noise.</p>
+            </div>
+          )}
+          {!daysActive && (
+            <p className="text-sm text-gray-400 mt-1">Alloro reads your business data and shows you what is moving.</p>
           )}
         </motion.div>
 

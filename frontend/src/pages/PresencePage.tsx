@@ -15,7 +15,6 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Globe,
-  MapPin,
   ExternalLink,
   ChevronDown,
   ChevronRight,
@@ -104,14 +103,6 @@ function PresencePageInner() {
     staleTime: 120_000,
   });
 
-  // Dashboard context for checkup/GBP data
-  const { data: ctx } = useQuery<any>({
-    queryKey: ["presence-context", orgId],
-    queryFn: () => apiGet({ path: "/user/dashboard-context" }),
-    enabled: !!orgId,
-    staleTime: 60_000,
-  });
-
   // CRO insights
   const { data: croData } = useQuery<{ insights: any[] }>({
     queryKey: ["cro-insights", orgId],
@@ -123,28 +114,9 @@ function PresencePageInner() {
 
   // SEO/compliance data removed: not vital signs
 
-  let checkupData = ctx?.org?.checkup_data || null;
-  if (typeof checkupData === "string") {
-    try { checkupData = JSON.parse(checkupData); } catch { checkupData = null; }
-  }
-
-  const place = checkupData?.place || {};
   const website = websiteData?.website || null;
   const hasWebsite = !!website;
   const websiteUrl = website?.liveUrl || (website?.generated_hostname ? `https://${website.generated_hostname}.sites.getalloro.com` : null);
-
-  // GBP profile completeness
-  // checkup_data stores boolean flags (hasPhone, hasHours, etc.)
-  // Places API returns raw fields (nationalPhoneNumber, regularOpeningHours, etc.)
-  // Check both formats
-  const profileItems = [
-    { label: "Phone", has: !!place.hasPhone || !!place.phone || !!place.nationalPhoneNumber || !!place.internationalPhoneNumber },
-    { label: "Website", has: !!place.hasWebsite || !!place.website || !!place.websiteUri },
-    { label: "Hours", has: !!place.hasHours || !!place.regularOpeningHours },
-    { label: "Photos", has: (place.photosCount || place.photoCount || place.photos?.length || 0) > 0 },
-    { label: "Description", has: !!place.hasEditorialSummary || !!place.editorialSummary },
-  ];
-  const profileComplete = profileItems.filter(i => i.has).length;
 
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
@@ -205,58 +177,6 @@ function PresencePageInner() {
             </div>
           )}
         </Section>
-
-        {/* GBP Profile */}
-        {hasGoogleConnection && (
-          <Section title="Google Business Profile" icon={MapPin} defaultOpen={true}>
-            <div className="space-y-4">
-              {/* Completeness meter */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-gray-600">Profile completeness</p>
-                  <p className="text-sm font-semibold text-[#1A1D23]">{profileComplete}/{profileItems.length}</p>
-                </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                    style={{ width: `${(profileComplete / profileItems.length) * 100}%` }}
-                  />
-                </div>
-                {profileComplete < profileItems.length && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {profileItems.filter(i => !i.has).map(i => (
-                      <span key={i.label} className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-                        Missing: {i.label}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Quick facts */}
-              <div className="grid grid-cols-3 gap-3">
-                {place.phone && (
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400">Phone</p>
-                    <p className="text-sm font-medium text-[#1A1D23]">{place.phone}</p>
-                  </div>
-                )}
-                {place.rating && (
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400">Rating</p>
-                    <p className="text-sm font-medium text-[#1A1D23]">{place.rating} stars</p>
-                  </div>
-                )}
-                {place.reviewCount > 0 && (
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400">Reviews</p>
-                    <p className="text-sm font-medium text-[#1A1D23]">{place.reviewCount}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Section>
-        )}
 
         {/* Website Optimizations (CRO Insights) */}
         <Section title="Website Optimizations" icon={Sparkles} defaultOpen={true}>

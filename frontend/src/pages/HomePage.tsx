@@ -100,21 +100,8 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
   const orgName = ctx?.org?.name || "";
   const city = checkup.market?.city || "";
 
-  const rating = place.rating || checkup.rating || null;
   const reviewCount = place.reviewCount ?? checkup.reviewCount ?? null;
 
-  // GBP fields - check every field variant the API and checkup might store
-  const gbpFields = [
-    { name: "Phone", present: !!(place.hasPhone || place.phone || place.nationalPhoneNumber || place.internationalPhoneNumber) },
-    { name: "Hours", present: !!(place.hasHours || place.hours || place.regularOpeningHours) },
-    { name: "Website", present: !!(place.hasWebsite || place.websiteUri || place.website) },
-    { name: "Photos", present: (place.photosCount || place.photoCount || place.photos?.length || 0) > 0 },
-    { name: "Description", present: !!(place.hasEditorialSummary || place.editorialSummary) },
-  ];
-  const gbpComplete = gbpFields.filter(f => f.present).length;
-  const gbpMissing = gbpFields.filter(f => !f.present).map(f => f.name);
-
-  // Build Google search URLs for verification
   const googleSearchUrl = orgName
     ? `https://www.google.com/search?q=${encodeURIComponent(orgName)}`
     : null;
@@ -144,24 +131,7 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
     whyItMatters?: string;
   }[] = [];
 
-  // Reading 1: Star Rating
-  if (rating != null) {
-    readings.push({
-      label: "Star Rating",
-      value: `${rating} stars`,
-      context: rating >= 4.5
-        ? "Above the threshold most consumers require"
-        : rating >= 4.0
-          ? "68% of consumers require 4+ stars"
-          : "Below the threshold most consumers require",
-      status: rating >= 4.5 ? "healthy" : rating >= 4.0 ? "attention" : "critical",
-      verifyUrl: googleSearchUrl,
-      verifyLabel: `Search "${orgName}"`,
-      whyItMatters: "68% of consumers require 4+ stars. 31% require 4.5+. Conversion drops steeply below 4.0. Every 5-star review moves your average. (BrightLocal 2026)",
-    });
-  }
-
-  // Reading 2: Review Count vs Competitor
+  // Reading 1: Review Count vs Competitor
   if (reviewCount != null) {
     const ratio = competitorReviewCount ? reviewCount / competitorReviewCount : 1;
     readings.push({
@@ -178,20 +148,7 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
     });
   }
 
-  // Reading 3: GBP Completeness
-  readings.push({
-    label: "Profile Completeness",
-    value: `${gbpComplete}/5 fields`,
-    context: gbpMissing.length > 0
-      ? `Missing: ${gbpMissing.join(", ")}. Complete profiles are 2.7x more reputable.`
-      : "All fields complete. Your profile signals credibility to Google.",
-    status: gbpComplete >= 5 ? "healthy" : gbpComplete >= 3 ? "attention" : "critical",
-    verifyUrl: googleSearchUrl,
-    verifyLabel: "Check your Google Business Profile",
-    whyItMatters: "Complete profiles are 2.7x more likely to be considered reputable and 70% more likely to attract visits. GBP signals are 32% of local ranking weight. (Google, Whitespark 2026)",
-  });
-
-  // Reading 4: Response Rate (if we have review data)
+  // Reading 2: Response Rate (if we have review data)
   const reviews = place.reviews || checkup.reviews || [];
   if (reviews.length > 0) {
     const responded = reviews.filter((r: any) => !!r.ownerResponse).length;
