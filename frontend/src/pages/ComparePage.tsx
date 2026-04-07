@@ -11,7 +11,7 @@
  * 4. Improvement actions (what to do, no point values)
  */
 
-import { useState, useMemo, Component, type ReactNode } from "react";
+import { useState, Component, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
@@ -20,11 +20,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 
-import CompetitorComparison from "@/components/dashboard/CompetitorComparison";
-import AddCompetitor from "@/components/dashboard/AddCompetitor";
-import { ReferralMatrices, type ReferralEngineData } from "@/components/PMS/ReferralMatrices";
-import { TopReferralSources } from "@/components/PMS/TopReferralSources";
-import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 
 // ─── Collapsible Section ────────────────────────────────────────────
 
@@ -82,161 +77,12 @@ export default function ComparePage() {
   );
 }
 
-// ─── Referral Category Tabs ────────────────────────────────────────
-
-type ReferralCategory = "all" | "active" | "new" | "declining" | "dormant";
-
-const CATEGORY_LABELS: { key: ReferralCategory; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "active", label: "Active" },
-  { key: "new", label: "New" },
-  { key: "declining", label: "Declining" },
-  { key: "dormant", label: "Dormant" },
-];
-
-/** Maps trend_label from referral engine to our UI categories */
-function trendToCategory(trend?: string): ReferralCategory {
-  switch (trend) {
-    case "increasing":
-    case "stable":
-      return "active";
-    case "new":
-      return "new";
-    case "decreasing":
-      return "declining";
-    case "dormant":
-      return "dormant";
-    default:
-      return "active"; // default to active if no trend
-  }
-}
-
-function filterReferralData(
-  data: ReferralEngineData,
-  category: ReferralCategory
-): ReferralEngineData {
-  if (category === "all") return data;
-
-  const filterByTrend = <T extends { trend_label?: string }>(items?: T[]): T[] => {
-    if (!items) return [];
-    return items.filter((item) => trendToCategory(item.trend_label) === category);
-  };
-
-  return {
-    ...data,
-    doctor_referral_matrix: filterByTrend(data.doctor_referral_matrix),
-    non_doctor_referral_matrix: filterByTrend(data.non_doctor_referral_matrix),
-  };
-}
-
-function countByCategory(data: ReferralEngineData): Record<ReferralCategory, number> {
-  const counts: Record<ReferralCategory, number> = { all: 0, active: 0, new: 0, declining: 0, dormant: 0 };
-  const allItems = [
-    ...(data.doctor_referral_matrix || []),
-    ...(data.non_doctor_referral_matrix || []),
-  ];
-  counts.all = allItems.length;
-  for (const item of allItems) {
-    const cat = trendToCategory(item.trend_label);
-    counts[cat]++;
-  }
-  return counts;
-}
-
-function ReferralSourcesContent({
-  referralData,
-  referralSources,
-  hasReferralData,
-  onUploadClick,
-}: {
-  referralData: any;
-  referralSources: any;
-  hasReferralData: boolean;
-  onUploadClick: () => void;
-}) {
-  const [activeCategory, setActiveCategory] = useState<ReferralCategory>("all");
-
-  // Check if referral engine data has trend labels (enables categorization)
-  const hasTrendData = useMemo(() => {
-    if (!referralData) return false;
-    const allItems = [
-      ...(referralData.doctor_referral_matrix || []),
-      ...(referralData.non_doctor_referral_matrix || []),
-    ];
-    return allItems.some((item: any) => item.trend_label);
-  }, [referralData]);
-
-  const categoryCounts = useMemo(() => {
-    if (!referralData || !hasTrendData) return null;
-    return countByCategory(referralData as ReferralEngineData);
-  }, [referralData, hasTrendData]);
-
-  const filteredReferralData = useMemo(() => {
-    if (!referralData) return null;
-    if (!hasTrendData || activeCategory === "all") return referralData;
-    return filterReferralData(referralData as ReferralEngineData, activeCategory);
-  }, [referralData, activeCategory, hasTrendData]);
-
-  if (referralData) {
-    return (
-      <div className="space-y-4">
-        {/* Category tabs -- only when trend data exists */}
-        {hasTrendData && (
-          <div className="flex flex-wrap gap-2">
-            {CATEGORY_LABELS.map(({ key, label }) => {
-              const count = categoryCounts?.[key] ?? 0;
-              const isActive = activeCategory === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => setActiveCategory(key)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                    isActive
-                      ? "bg-[#D56753]/10 text-[#D56753]"
-                      : "text-gray-500 hover:text-[#1A1D23] hover:bg-stone-100/80"
-                  }`}
-                >
-                  {label}
-                  {key !== "all" && count > 0 && (
-                    <span className="ml-1.5 text-xs opacity-60">({count})</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-        <ReferralMatrices referralData={filteredReferralData as ReferralEngineData} />
-      </div>
-    );
-  }
-
-  if (hasReferralData && referralSources?.referral_sources?.length > 0) {
-    return <TopReferralSources data={referralSources.referral_sources} />;
-  }
-
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-[#1A1D23]/60">
-        Referral tracking shows who sends you business, who's going quiet, and where to focus your relationship-building.
-      </p>
-      <p className="text-sm text-[#1A1D23]/40">
-        Upload your business data to see referral sources here.
-      </p>
-      <button
-        onClick={onUploadClick}
-        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#212D40] text-white text-sm font-medium hover:bg-[#2a3a52] transition-all"
-      >
-        Upload business data
-      </button>
-    </div>
-  );
-}
+// ─── Component ──────────────────────────────────────────────────────
 
 function ComparePageInner() {
   const { userProfile } = useAuth();
   const { selectedLocation } = useLocationContext();
   const orgId = userProfile?.organizationId || null;
-  const [uploadOpen, setUploadOpen] = useState(false);
 
   const { data: rankingRaw } = useQuery<any>({
     queryKey: ["compare-ranking", orgId, selectedLocation?.id],
@@ -253,31 +99,6 @@ function ComparePageInner() {
     },
     enabled: !!orgId,
     staleTime: 60_000,
-  });
-
-  const { data: competitors, refetch: refetchCompetitors } = useQuery<any>({
-    queryKey: ["compare-competitors", orgId],
-    queryFn: () => apiGet({ path: "/user/competitors" }),
-    enabled: !!orgId,
-    staleTime: 60_000,
-  });
-
-  const { data: referralData } = useQuery<any>({
-    queryKey: ["compare-referrals", orgId],
-    queryFn: async () => {
-      const res = await apiGet({ path: `/agents/getLatestReferralEngineOutput/${orgId}` });
-      return res?.output || null;
-    },
-    enabled: !!orgId,
-    staleTime: 120_000,
-  });
-
-  // Direct referral sources from PMS upload
-  const { data: referralSources } = useQuery<any>({
-    queryKey: ["compare-referral-sources", orgId],
-    queryFn: () => apiGet({ path: "/user/export" }).catch(() => null),
-    enabled: !!orgId,
-    staleTime: 120_000,
   });
 
   const { data: ctx } = useQuery<any>({
@@ -338,25 +159,27 @@ function ComparePageInner() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
-                  <tr>
-                    <td className="py-4 px-2 text-[#1A1D23]">Star Rating</td>
-                    <td className="py-4 px-2 text-right font-semibold text-[#1A1D23]">{clientRating || "Not tracked"}</td>
-                    <td className="py-4 px-2 text-right text-gray-500">{topCompetitor?.rating || "Not tracked"}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-4 px-2 text-[#1A1D23]">Reviews</td>
-                    <td className={`py-4 px-2 text-right font-semibold ${clientReviews >= (competitorReviews || 0) ? "text-emerald-600" : "text-red-500"}`}>
-                      {clientReviews || 0}
-                    </td>
-                    <td className="py-4 px-2 text-right text-gray-500">{competitorReviews || "Not tracked"}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-4 px-2 text-[#1A1D23]">Photos</td>
-                    <td className={`py-4 px-2 text-right font-semibold ${clientPhotos >= (topCompetitor?.photosCount || 0) ? "text-emerald-600" : "text-amber-500"}`}>
-                      {clientPhotos || 0}
-                    </td>
-                    <td className="py-4 px-2 text-right text-gray-500">{topCompetitor?.photosCount || "Not tracked"}</td>
-                  </tr>
+                  {clientRating > 0 && topCompetitor?.rating && (
+                    <tr>
+                      <td className="py-4 px-2 text-[#1A1D23]">Star Rating</td>
+                      <td className="py-4 px-2 text-right font-semibold text-[#1A1D23]">{clientRating}</td>
+                      <td className="py-4 px-2 text-right text-[#1A1D23]">{topCompetitor.rating}</td>
+                    </tr>
+                  )}
+                  {(clientReviews > 0 || competitorReviews) && competitorReviews && (
+                    <tr>
+                      <td className="py-4 px-2 text-[#1A1D23]">Reviews</td>
+                      <td className="py-4 px-2 text-right font-semibold text-[#1A1D23]">{clientReviews || 0}</td>
+                      <td className="py-4 px-2 text-right text-[#1A1D23]">{competitorReviews}</td>
+                    </tr>
+                  )}
+                  {clientPhotos > 0 && topCompetitor?.photosCount && (
+                    <tr>
+                      <td className="py-4 px-2 text-[#1A1D23]">Photos</td>
+                      <td className="py-4 px-2 text-right font-semibold text-[#1A1D23]">{clientPhotos}</td>
+                      <td className="py-4 px-2 text-right text-[#1A1D23]">{topCompetitor.photosCount}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -384,26 +207,20 @@ function ComparePageInner() {
         <Section title="What to Focus On" defaultOpen={true}>
           <div className="space-y-6">
             {clientReviews < (competitorReviews || 0) && (
-              <div className="flex items-start gap-3">
-                <span className="w-2 h-2 rounded-full bg-red-500 mt-2.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-[#1A1D23]">Close the review gap</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    You have {clientReviews} reviews. {competitorName} has {competitorReviews}.
-                    Ask your 3 most recent clients for a review this week.
-                  </p>
-                </div>
+              <div>
+                <p className="text-sm font-semibold text-[#1A1D23]">Close the review gap</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  You have {clientReviews} reviews. {competitorName} has {competitorReviews}.
+                  Ask your 3 most recent clients for a review this week.
+                </p>
               </div>
             )}
             {clientPhotos < 10 && (
-              <div className="flex items-start gap-3">
-                <span className="w-2 h-2 rounded-full bg-amber-400 mt-2.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-[#1A1D23]">Add photos to your profile</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    You have {clientPhotos} photos. Businesses with 10+ photos get significantly more engagement.
-                  </p>
-                </div>
+              <div>
+                <p className="text-sm font-semibold text-[#1A1D23]">Add photos to your profile</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  You have {clientPhotos} photos. Businesses with 10+ photos get significantly more engagement.
+                </p>
               </div>
             )}
             {clientReviews >= (competitorReviews || 0) && clientPhotos >= 10 && (
@@ -454,46 +271,8 @@ function ComparePageInner() {
           })()}
         </Section>
 
-        {/* Competitors */}
-        <Section title="Tracked Competitors" defaultOpen={true}>
-          <div className="space-y-3">
-            {competitors?.competitors?.map((comp: any) => (
-              <CompetitorComparison
-                key={comp.id || comp.placeId}
-                competitor={comp}
-                clientRating={clientRating}
-                clientReviews={clientReviews}
-                clientPhotos={clientPhotos}
-                clientLastReviewDays={null}
-              />
-            ))}
-            <AddCompetitor
-              currentCount={competitors?.competitors?.length || 0}
-              maxCount={3}
-              onAdded={() => refetchCompetitors()}
-            />
-          </div>
-        </Section>
-
-        {/* Referral Sources -- per constitution, Compare includes referrals */}
-        <Section title="Referral Sources" defaultOpen={!!(referralData || ctx?.hasReferralData)}>
-          <ReferralSourcesContent
-            referralData={referralData}
-            referralSources={referralSources}
-            hasReferralData={ctx?.hasReferralData}
-            onUploadClick={() => setUploadOpen(true)}
-          />
-        </Section>
 
         {/* PMS Upload Modal */}
-        <PMSUploadWizardModal
-          isOpen={uploadOpen}
-          onClose={() => setUploadOpen(false)}
-          clientId={String(orgId || "")}
-          locationId={selectedLocation?.id || null}
-          onSuccess={() => setUploadOpen(false)}
-        />
-
       </div>
     </div>
   );
