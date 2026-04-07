@@ -10,6 +10,8 @@ import express from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import rateLimit from "express-rate-limit";
 import { db } from "../database/connection";
+import { authenticateToken } from "../middleware/auth";
+import { rbacMiddleware } from "../middleware/rbac";
 
 const csAgentRoutes = express.Router();
 
@@ -214,7 +216,7 @@ RULES:
  * Body: { message, history: [{role, content}] }
  * Returns: { success, response }
  */
-csAgentRoutes.post("/chat", chatLimiter, async (req: any, res) => {
+csAgentRoutes.post("/chat", authenticateToken, rbacMiddleware, chatLimiter, async (req: any, res) => {
   try {
     const orgId = req.organizationId;
     if (!orgId) {
