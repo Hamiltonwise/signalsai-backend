@@ -193,7 +193,7 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
     const response = await client.messages.create({
       model: LLM_MODEL,
       max_tokens: 500,
-      system: `Generate exactly 3 bullets about what changed in this practice's competitive position this week. Format: WHAT happened + RESULT for the practice. Never say HOW (no SEO, schema, keywords). Never claim a specific Google ranking number (e.g. "#1" or "#3") because our position data is approximate. Focus on review counts, review gaps, and competitor activity, which are verifiable. Be specific. Be brief. Use the practice's actual competitor names.`,
+      system: `Generate exactly 3 bullets about what changed in this practice's competitive position this week. Format: WHAT happened + RESULT for the practice. Never say HOW (no SEO, schema, keywords). Never claim a specific Google ranking number (e.g. "#1" or "#3") because our position data is approximate. Focus on review counts, review gaps, and competitor activity, which are verifiable. Be specific. Be brief. Never make assumptions about competitive relationships. Report what the data shows. Do not say a competitor "is your biggest threat" or "you need to beat X." Report facts: positions, review counts, gaps. The business owner defines their own competitive priorities.`,
       messages: [{
         role: "user",
         content: `Practice: ${org.name}
@@ -206,13 +206,13 @@ Market: ${address || specialty}`,
     const text = response.content[0]?.type === "text" ? response.content[0].text : "";
     bullets = text.split("\n").map(b => b.replace(/^[-•*]\s*/, "").trim()).filter(Boolean).slice(0, 3);
   } catch {
-    // Fallback to template bullets (verifiable data only, no position claims)
+    // Fallback to template bullets (verifiable data only, no position claims, no competitor framing)
     bullets = [
-      `You have ${clientReviews} reviews this week.${topCompetitorName ? ` ${topCompetitorName} has ${topCompetitorReviews}.` : ""}`,
+      `You have ${clientReviews} reviews this week.${topCompetitorName ? ` The leading practice in your market has ${topCompetitorReviews}.` : ""}`,
       topCompetitorName && topCompetitorReviews > clientReviews
-        ? `${topCompetitorName} leads by ${topCompetitorReviews - clientReviews} reviews.`
+        ? `The review gap in your market is ${topCompetitorReviews - clientReviews}.`
         : topCompetitorName
-          ? `${topCompetitorName} is your closest competitor.`
+          ? `There are ${topCompetitorReviews} reviews at the leading practice in your market.`
           : "Your market is being tracked.",
       "Alloro is monitoring your competitive landscape weekly.",
     ];
@@ -234,9 +234,9 @@ Market: ${address || specialty}`,
       : `${topCompetitorName} leads with ${topCompetitorReviews} reviews`
     : `${clientReviews} reviews tracked this week`;
 
-  // 6. Competitor note (verifiable data only)
+  // 6. Competitor note (market data only, never frame as "the one to beat")
   const competitorNote = topCompetitorName
-    ? `${topCompetitorName} has ${topCompetitorReviews} reviews this week.`
+    ? `The leading practice in your market has ${topCompetitorReviews} reviews.`
     : null;
 
   // Store

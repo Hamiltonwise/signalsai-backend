@@ -226,7 +226,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         dollarFigure: 0, // Known 4: no fabricated dollar figures
         actionText: firstWeekAction,
         rankingUpdate: market.city ? `Tracking your market in ${market.city}` : "Your market data is being collected",
-        competitorNote: topComp ? stripEmDashes(`${topComp.name} is the most visible competitor in your area`) : "",
+        competitorNote: topComp ? stripEmDashes(`The leading practice in your market has ${topComp.reviewCount || "unknown"} reviews`) : "",
         referralLine: null,
         founderLine,
         communityCount,
