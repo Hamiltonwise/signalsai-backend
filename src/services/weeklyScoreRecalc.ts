@@ -155,7 +155,7 @@ export async function recalculateScore(orgId: number): Promise<RecalcResult | nu
     const latestSnapshot = await db("weekly_ranking_snapshots")
       .where({ org_id: orgId })
       .orderBy("week_start", "desc")
-      .select("position")
+      .select("position", "competitor_name", "competitor_review_count")
       .first();
     const googlePosition = latestSnapshot?.position ?? null;
 
@@ -208,9 +208,29 @@ export async function recalculateScore(orgId: number): Promise<RecalcResult | nu
     });
 
     // Also update the stored checkup_data with fresh place data
-    // so the dashboard shows current info
+    // so the dashboard shows current info.
+    // Sync topCompetitor from latest snapshot if available (prevents stale seeded data)
+    let topCompetitorUpdate: Record<string, unknown> = {};
+    if (latestSnapshot) {
+      const snapCompName = (latestSnapshot as any).competitor_name;
+      const snapCompReviews = (latestSnapshot as any).competitor_review_count;
+      if (snapCompName) {
+        topCompetitorUpdate = {
+          topCompetitor: { name: snapCompName, reviewCount: snapCompReviews || 0 },
+        };
+      }
+      if ((latestSnapshot as any).position) {
+        topCompetitorUpdate.market = {
+          ...(checkupData.market || {}),
+          rank: (latestSnapshot as any).position,
+        };
+      }
+    }
+
     const updatedCheckupData = {
       ...checkupData,
+      ...topCompetitorUpdate,
+      seeded: undefined, // Remove stale seeded flag if present
       place: {
         ...(checkupData.place || {}),
         rating: freshRating,

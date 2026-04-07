@@ -6,10 +6,13 @@
  * Raw readings: then vs now. What Alloro has done. What changed.
  */
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Minus, ExternalLink } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocationContext } from "@/contexts/locationContext";
+import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 import { apiGet } from "@/api/index";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -27,7 +30,9 @@ interface ReadingTrend {
 
 export default function ProgressReport() {
   const { userProfile } = useAuth();
+  const { selectedLocation } = useLocationContext();
   const orgId = userProfile?.organizationId || null;
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const { data: ctx } = useQuery<any>({
     queryKey: ["progress-context", orgId],
@@ -192,6 +197,31 @@ export default function ProgressReport() {
               </div>
             ))}
           </motion.div>
+        )}
+
+        {/* Upload Section -- unlock deeper intelligence */}
+        <div className="mt-10 pl-4 border-l-2 border-[#212D40]/20">
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">UNLOCK DEEPER INTELLIGENCE</p>
+          <p className="text-[15px] text-[#1A1D23]/70 leading-relaxed">
+            You are seeing your market position and review gap. Upload your referral or revenue data to see who is actually sending you business, and whether those relationships are growing or drifting.
+          </p>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#212D40] text-white text-sm font-medium hover:bg-[#2a3a52] transition-all"
+          >
+            Upload business data
+          </button>
+          <p className="text-sm text-gray-400 mt-2">Any format. Drag and drop. Takes 2 minutes.</p>
+        </div>
+
+        {showUploadModal && orgId && (
+          <PMSUploadWizardModal
+            isOpen={showUploadModal}
+            onClose={() => setShowUploadModal(false)}
+            clientId={String(orgId)}
+            locationId={selectedLocation?.id}
+            onSuccess={() => setShowUploadModal(false)}
+          />
         )}
 
         {/* Health Trajectory (from score history, shown as direction not number) */}

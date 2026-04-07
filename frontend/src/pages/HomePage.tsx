@@ -16,7 +16,6 @@
  * - Everything else is conditional and temporary
  */
 
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,7 +27,6 @@ import { getPriorityItem } from "@/hooks/useLocalStorage";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import CardCapture from "@/components/dashboard/CardCapture";
 import { NotificationWidget } from "@/components/dashboard/NotificationWidget";
-import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -241,7 +239,7 @@ export default function HomePage() {
     { key: "milestone", show: !!milestone },
   ]);
 
-  const [showUploadModal, setShowUploadModal] = useState(false);
+
 
   // Status strip data from readings
   const statusItems = readings ? readings.slice(0, 4).map(r => ({
@@ -439,31 +437,6 @@ export default function HomePage() {
           <NotificationWidget
             organizationId={orgId}
             locationId={selectedLocation?.id || null}
-          />
-        )}
-
-        {ctx && ctx.has_referral_data === false && (
-          <div className="pl-4 border-l-2 border-[#1A1D23]/10 py-3">
-            <p className="text-sm font-semibold text-[#1A1D23] mb-1">Have referral or revenue data?</p>
-            <p className="text-sm text-gray-500 mb-3">
-              Upload it to unlock deeper intelligence about who sends you business.
-            </p>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#212D40] text-white text-sm font-medium hover:bg-[#2a3a52] transition-all"
-            >
-              Upload business data
-            </button>
-          </div>
-        )}
-
-        {showUploadModal && orgId && (
-          <PMSUploadWizardModal
-            isOpen={showUploadModal}
-            onClose={() => setShowUploadModal(false)}
-            clientId={String(orgId)}
-            locationId={selectedLocation?.id}
-            onSuccess={() => setShowUploadModal(false)}
           />
         )}
 
