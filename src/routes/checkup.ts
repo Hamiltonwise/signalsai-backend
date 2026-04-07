@@ -906,36 +906,52 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
 
     // Gap 1: Review Race — velocity-based model to pass next competitor
     if (nextAbove && nextAbove.reviewsCount > clientReviews) {
-      const reviewsNeeded = nextAbove.reviewsCount - clientReviews + 1;
+      const reviewGap = nextAbove.reviewsCount - clientReviews;
 
-      // Estimate current velocity: assume ~2 year accumulation for both parties
-      // With no real velocity data, estimate from total count
-      const clientWeeklyVelocity = Math.max(0.2, clientReviews / 104); // ~2 years of weeks
+      // Estimate current velocity from total count (~2 year accumulation)
+      const clientWeeklyVelocity = Math.max(0.2, clientReviews / 104);
       const competitorWeeklyVelocity = Math.max(0.2, nextAbove.reviewsCount / 104);
 
-      // Net weekly gain needed: must outpace competitor's velocity + close the gap
-      const netWeeklyGain = Math.max(0.1, clientWeeklyVelocity - competitorWeeklyVelocity);
-      const weeksToPass = netWeeklyGain > 0
-        ? Math.ceil(reviewsNeeded / netWeeklyGain)
-        : null; // never catches up at current pace
+      // At 3 reviews/week (the recommended target), how long to close the gap?
+      // Account for competitor also gaining reviews at their estimated pace
+      const targetPace: number = 3;
+      const netGainAtTarget = targetPace - competitorWeeklyVelocity;
+      const weeksAtTargetPace = netGainAtTarget > 0
+        ? Math.ceil(reviewGap / netGainAtTarget)
+        : null;
 
-      // This week's target: how many reviews to ask for this week
-      const thisWeekAsk = Math.max(1, Math.ceil(competitorWeeklyVelocity + 1));
+      // At current pace, is the gap growing or shrinking?
+      const netGainAtCurrent = clientWeeklyVelocity - competitorWeeklyVelocity;
+      const weeksAtCurrentPace = netGainAtCurrent > 0
+        ? Math.ceil(reviewGap / netGainAtCurrent)
+        : null; // gap is growing at current pace
+
+      // Use the more meaningful number for display
+      const weeksToPass = weeksAtTargetPace;
+      const thisWeekAsk = targetPace;
+
+      // Format time estimate honestly
+      let timeEstimate: string;
+      if (weeksAtCurrentPace && weeksAtCurrentPace <= 52) {
+        timeEstimate = `~${weeksAtCurrentPace} weeks at your current pace`;
+      } else if (weeksAtTargetPace && weeksAtTargetPace <= 52) {
+        timeEstimate = `~${weeksAtTargetPace} weeks at ${targetPace} reviews/week`;
+      } else if (weeksAtTargetPace) {
+        const years = Math.round(weeksAtTargetPace / 52 * 10) / 10;
+        timeEstimate = `About ${years} year${years !== 1 ? "s" : ""} at ${targetPace} reviews/week`;
+      } else {
+        timeEstimate = `Gap of ${reviewGap} reviews. Increase to ${targetPace}/week to start closing it.`;
+      }
 
       gaps.push({
         id: "review_race",
-        label: `${reviewsNeeded} review${reviewsNeeded !== 1 ? "s" : ""} to pass ${nextAbove.name}`,
+        label: `${reviewGap} review${reviewGap !== 1 ? "s" : ""} to pass ${nextAbove.name}`,
         current: clientReviews,
         target: nextAbove.reviewsCount + 1,
         unit: "reviews",
         action: `Ask ${thisWeekAsk} ${customerWord}${thisWeekAsk !== 1 ? "s" : ""} for a Google review this week. Start with your most recent happy ${customerWord} — they remember you best.`,
-        timeEstimate: weeksToPass
-          ? weeksToPass <= 4 ? `~${weeksToPass} week${weeksToPass !== 1 ? "s" : ""} at current pace`
-            : weeksToPass <= 12 ? `~${Math.ceil(weeksToPass / 4)} months at current pace`
-            : `${Math.ceil(weeksToPass / 4)} months — increase to ${thisWeekAsk + 1}/week to cut that in half`
-          : `You need to increase your review pace to close this gap`,
+        timeEstimate,
         competitorName: nextAbove.name,
-        // Extra velocity fields for the frontend race display
         velocity: {
           clientWeekly: Math.round(clientWeeklyVelocity * 10) / 10,
           competitorWeekly: Math.round(competitorWeeklyVelocity * 10) / 10,
@@ -1133,7 +1149,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
             : undefined,
           websiteUri: enrichedWebsite || undefined,
         },
-        competitors: otherCompetitors.slice(0, 5).map((c) => ({
+        competitors: (sameSpecialtyCompetitors.length > 0 ? sameSpecialtyCompetitors : otherCompetitors).slice(0, 5).map((c) => ({
           name: c.name,
           totalScore: c.totalScore,
           reviewsCount: c.reviewsCount,
@@ -1147,7 +1163,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
           avgRating: Math.round(avgRating * 10) / 10,
           avgReviews: Math.round(avgReviews),
           rank,
-          totalCompetitors: otherCompetitors.length,
+          totalCompetitors: (sameSpecialtyCompetitors.length > 0 ? sameSpecialtyCompetitors : otherCompetitors).length,
         },
       });
     } catch (sfErr) {
@@ -1206,7 +1222,7 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
             location: topCompetitor.location,
           }
         : null,
-      competitors: otherCompetitors.slice(0, 5).map((c) => ({
+      competitors: (sameSpecialtyCompetitors.length > 0 ? sameSpecialtyCompetitors : otherCompetitors).slice(0, 5).map((c) => ({
         name: c.name,
         rating: c.totalScore,
         reviewCount: c.reviewsCount,
