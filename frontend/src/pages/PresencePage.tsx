@@ -196,15 +196,8 @@ function PresencePageInner() {
               Your site is structured so customers searching for your services near your city can find you.
             </p>
             <p className="text-sm text-gray-500 leading-relaxed">
-              Search performance data appears here when Google Search Console is connected.
+              Alloro monitors your search performance. Data appears here as it becomes available.
             </p>
-            <button
-              onClick={() => navigate("/settings/integrations")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
-            >
-              Connect Google Search Console
-              <ChevronRight className="w-4 h-4" />
-            </button>
           </div>
         </Section>
 
