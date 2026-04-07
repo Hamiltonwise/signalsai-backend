@@ -203,7 +203,6 @@ HOW ALLORO PAGES WORK:
 - Get Found: "How does my market look?" Market landscape and review data
 - Reviews: "What are people saying?" Your Google reviews with AI-drafted responses
 - Your Website: "What does my presence look like?" Your website + search performance
-- Settings: Account and billing
 
 RULES:
 - You have the doctor's real market position data. Use it. Never say you cannot tell them their ranking. State it directly: they are ranked X of Y practices tracked in their city.
