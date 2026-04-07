@@ -389,6 +389,16 @@ export default function HomePage() {
     staleTime: 60_000,
   });
 
+  const { data: intelligenceData } = useQuery<{
+    recentActions: string[];
+    weeklyFinding: { headline: string; bullets: string[] } | null;
+  }>({
+    queryKey: ["home-intelligence", orgId],
+    queryFn: () => apiGet({ path: "/user/home-intelligence" }),
+    enabled: !!orgId,
+    staleTime: 120_000,
+  });
+
   // ── Derived State ──
   const action = actionData?.card || null;
   const greeting = buildGreeting(ctx || null);
@@ -512,30 +522,93 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* ── What Alloro Did ── */}
-        {ctx?.org && (
+        {/* ── What Alloro Found (from weekly snapshot) ── */}
+        {intelligenceData?.weeklyFinding && (
+          <div className="mt-6">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">
+              WHAT ALLORO FOUND
+            </p>
+            <div className="rounded-2xl bg-[#212D40] p-5">
+              <p className="text-sm font-semibold text-white leading-relaxed">
+                {intelligenceData.weeklyFinding.headline}
+              </p>
+              {intelligenceData.weeklyFinding.bullets.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {intelligenceData.weeklyFinding.bullets.map((bullet, i) => (
+                    <p key={i} className="text-sm text-white/60 leading-relaxed">{bullet}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Your Market This Week (competitor intelligence) ── */}
+        {(() => {
+          const checkup = ctx?.org?.checkup_data;
+          const comp = checkup?.topCompetitor;
+          const clientReviewCount = checkup?.place?.reviewCount || checkup?.reviewCount || 0;
+          const compReviewCount = comp?.reviewCount || 0;
+          const gap = compReviewCount - clientReviewCount;
+          const city = checkup?.market?.city;
+          const totalComp = checkup?.market?.totalCompetitors;
+          const rank = checkup?.market?.rank;
+
+          if (!comp?.name || !clientReviewCount) return null;
+
+          const weeksToCloseAt3 = gap > 0 ? Math.ceil(gap / 3) : 0;
+          const weeksToCloseAt1 = gap > 0 ? gap : 0;
+
+          return (
+            <div className="mt-6">
+              <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">
+                YOUR MARKET THIS WEEK
+              </p>
+              <div className="space-y-2">
+                {rank && totalComp && city && (
+                  <p className="text-sm text-[#1A1D23]/60">
+                    You appear #{rank} of {totalComp} practices tracked in {city}.
+                  </p>
+                )}
+                {gap > 0 && (
+                  <>
+                    <p className="text-sm text-[#1A1D23]/60">
+                      The gap: {comp.name} has {compReviewCount} reviews. You have {clientReviewCount}.
+                    </p>
+                    <p className="text-sm text-[#1A1D23]/60">
+                      At 3 reviews per week, you close that gap in {weeksToCloseAt3} weeks.
+                      At your current pace (1 review per week), it closes in {weeksToCloseAt1} weeks.
+                    </p>
+                  </>
+                )}
+                {gap <= 0 && (
+                  <p className="text-sm text-[#1A1D23]/60">
+                    You lead {comp.name} by {Math.abs(gap)} reviews. Consistent reviews keep you ahead.
+                  </p>
+                )}
+                <p className="text-sm text-[#1A1D23]/40 mt-1">
+                  Alloro is watching this market. You will know if anything changes.
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── What Alloro Did (from behavioral_events or fallback) ── */}
+        {intelligenceData?.recentActions && intelligenceData.recentActions.length > 0 && (
           <div className="mt-6">
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">
               WHAT ALLORO DID
             </p>
             <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 space-y-2.5">
-              {(() => {
-                const market = ctx.org.checkup_data?.market;
-                const city = market?.city || "your market";
-                const totalComp = market?.totalCompetitors || "competitors";
-                return (
-                  <>
-                    <p className="text-sm text-[#1A1D23]/60">Tracked your competitive position against {totalComp} practices in {city}</p>
-                    <p className="text-sm text-[#1A1D23]/60">Monitored your Google reviews daily</p>
-                    <p className="text-sm text-[#1A1D23]/60">Checked your Google Business Profile completeness</p>
-                  </>
-                );
-              })()}
+              {intelligenceData.recentActions.map((action, i) => (
+                <p key={i} className="text-sm text-[#1A1D23]/60">{action}</p>
+              ))}
             </div>
           </div>
         )}
 
-        {/* ── Below readings: secondary content ── */}
+        {/* ── Below: secondary content ── */}
         <div className="space-y-6 mt-8">
 
         {/* ── Latest Update ── */}
