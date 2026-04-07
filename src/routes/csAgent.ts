@@ -266,10 +266,14 @@ csAgentRoutes.post("/chat", authenticateToken, rbacMiddleware, chatLimiter, asyn
       response: assistantMessage,
     });
   } catch (error: any) {
-    console.error("[CSAgent] Chat error:", error.message);
+    console.error("[CSAgent] Chat error:", error.message, error.status || "", error.code || "");
+    console.error("[CSAgent] Stack:", error.stack?.split("\n").slice(0, 3).join(" | "));
+    const isApiKeyIssue = error.status === 401 || error.message?.includes("API key") || error.message?.includes("authentication");
     return res.status(500).json({
       success: false,
-      error: "Something went wrong. Please try again.",
+      error: isApiKeyIssue
+        ? "Alloro Intelligence is being configured. Please try again shortly."
+        : "Something went wrong. Please try again.",
     });
   }
 });
