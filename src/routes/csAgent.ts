@@ -29,29 +29,6 @@ function getClient(): Anthropic {
   return client;
 }
 
-// Temporary diagnostic -- remove after confirming chat works
-csAgentRoutes.get("/health", async (_req, res) => {
-  const hasKey = !!process.env.ANTHROPIC_API_KEY;
-  const keyPrefix = process.env.ANTHROPIC_API_KEY?.slice(0, 10) || "MISSING";
-  const model = process.env.MINDS_LLM_MODEL || "claude-sonnet-4-6";
-  let apiOk = false;
-  let apiError = "";
-  if (hasKey) {
-    try {
-      const c = getClient();
-      const r = await c.messages.create({
-        model,
-        max_tokens: 16,
-        messages: [{ role: "user", content: "Say ok" }],
-      });
-      apiOk = r.content[0]?.type === "text";
-    } catch (e: any) {
-      apiError = `${e.status || ""} ${e.message}`.trim();
-    }
-  }
-  res.json({ hasKey, keyPrefix, model, apiOk, apiError });
-});
-
 /**
  * Build the system prompt with full account context.
  */
@@ -70,14 +47,15 @@ async function buildSystemPrompt(orgId: number, locationId?: number): Promise<st
     .orderBy("created_at", "desc")
     .first();
   if (locationId) rankingQuery = rankingQuery.where("location_id", locationId);
-  const ranking = await rankingQuery;
+  const ranking = await rankingQuery.catch(() => null);
 
   // Latest agent outputs (proofline)
   const latestOutputs = await db("agent_outputs")
     .where({ organization_id: orgId, status: "success" })
     .orderBy("created_at", "desc")
     .limit(3)
-    .select("agent_type", "agent_output", "created_at");
+    .select("agent_type", "agent_output", "created_at")
+    .catch(() => []);
 
   // Parse findings from outputs
   const findingSummaries: string[] = [];
@@ -241,10 +219,8 @@ RULES:
  */
 csAgentRoutes.post("/chat", authenticateToken, rbacMiddleware, chatLimiter, async (req: any, res) => {
   try {
-    console.log("[CS-Agent] /chat hit. req.user:", JSON.stringify(req.user), "req.organizationId:", req.organizationId, "req.userRole:", req.userRole);
     const orgId = req.organizationId;
     if (!orgId) {
-      console.log("[CS-Agent] 401 -- orgId is falsy. req.user?.userId:", req.user?.userId);
       return res.status(401).json({ success: false, error: "Authentication required" });
     }
 
@@ -271,9 +247,6 @@ csAgentRoutes.post("/chat", authenticateToken, rbacMiddleware, chatLimiter, asyn
     }
     messages.push({ role: "user", content: message.trim() });
 
-    console.log("[CS-Agent] API key present:", !!process.env.ANTHROPIC_API_KEY, "key prefix:", process.env.ANTHROPIC_API_KEY?.slice(0, 10) || "MISSING");
-    console.log("[CS-Agent] systemPrompt length:", systemPrompt.length, "messages count:", messages.length);
-
     const model = process.env.MINDS_LLM_MODEL || "claude-sonnet-4-6";
     const anthropic = getClient();
     const response = await anthropic.messages.create({
@@ -293,14 +266,10 @@ csAgentRoutes.post("/chat", authenticateToken, rbacMiddleware, chatLimiter, asyn
       response: assistantMessage,
     });
   } catch (error: any) {
-    console.error("[CSAgent] Chat error:", error.message, error.status || "", error.code || "");
-    console.error("[CSAgent] Stack:", error.stack?.split("\n").slice(0, 3).join(" | "));
-    const isApiKeyIssue = error.status === 401 || error.message?.includes("API key") || error.message?.includes("authentication");
+    console.error("[CSAgent] Chat error:", error.message);
     return res.status(500).json({
       success: false,
-      error: isApiKeyIssue
-        ? "Alloro Intelligence is being configured. Please try again shortly."
-        : "Something went wrong. Please try again.",
+      error: "Something went wrong. Please try again.",
     });
   }
 });
