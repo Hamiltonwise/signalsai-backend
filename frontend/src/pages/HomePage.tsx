@@ -396,7 +396,16 @@ export default function HomePage() {
                   The gap: {marketComp.name} has {marketCompReviews} reviews. You have {marketClientReviews}.
                 </p>
                 <p className="text-[15px] text-gray-700 mt-1">
-                  At 3 reviews per week, you close that gap in {Math.ceil(marketGap / 3)} weeks.
+                  At 3 reviews per week, you close that gap in {(() => {
+                    const weeks = Math.ceil(marketGap / 3);
+                    if (weeks <= 8) return `${weeks} week${weeks !== 1 ? "s" : ""}`;
+                    const months = Math.round(weeks / 4.33);
+                    if (months <= 12) return `about ${months} month${months !== 1 ? "s" : ""}`;
+                    const years = Math.floor(months / 12);
+                    const rem = months % 12;
+                    if (rem === 0) return `about ${years} year${years !== 1 ? "s" : ""}`;
+                    return `about ${years} year${years !== 1 ? "s" : ""} and ${rem} month${rem !== 1 ? "s" : ""}`;
+                  })()}.
                 </p>
               </>
             )}

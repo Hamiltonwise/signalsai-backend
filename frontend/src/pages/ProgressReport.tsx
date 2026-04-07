@@ -102,17 +102,6 @@ export default function ProgressReport() {
     });
   }
 
-  // What Alloro has done (proof of work)
-  const alloroActions: { label: string; detail: string }[] = [];
-  if (daysActive && daysActive > 0) {
-    alloroActions.push({
-      label: "Market monitoring",
-      detail: `Tracking your competitive landscape for ${daysActive} day${daysActive !== 1 ? "s" : ""}`,
-    });
-  }
-  // Future: pull from behavioral_events to show real DFY actions
-  // e.g., "Responded to 3 reviews", "Published 2 GBP posts", "Updated 1 website page"
-
   const DirectionIcon = ({ dir }: { dir: "up" | "down" | "flat" }) => {
     if (dir === "up") return <TrendingUp className="w-4 h-4 text-emerald-500" />;
     if (dir === "down") return <TrendingDown className="w-4 h-4 text-red-500" />;
@@ -175,10 +164,7 @@ export default function ProgressReport() {
             transition={{ delay: 0.1 }}
             className="mt-6 space-y-3"
           >
-            <div className="mb-3">
-              <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Your Readings Over Time</p>
-              <p className="text-xs text-[#1A1D23]/30 mt-1">Rankings measured weekly from the same location so movement is real, not noise.</p>
-            </div>
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">Your Readings Over Time</p>
             {trends.map((trend) => (
               <div
                 key={trend.label}
@@ -259,30 +245,6 @@ export default function ProgressReport() {
           </motion.div>
         )}
 
-        {/* What Alloro Has Done */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mt-10"
-        >
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">What Alloro Has Done</p>
-          <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4 space-y-3">
-            {alloroActions.length > 0 ? (
-              alloroActions.map((action, i) => (
-                <div key={i}>
-                  <p className="text-sm font-semibold text-[#1A1D23]">{action.label}</p>
-                  <p className="text-sm text-gray-500">{action.detail}</p>
-                </div>
-              ))
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-[#1A1D23] font-semibold">Alloro is working behind the scenes</p>
-                <p className="text-sm text-gray-500">We are scanning your Google profile, tracking your competitors, and building your competitive picture. As actions happen (review responses, profile updates, content published), they will appear here so you can see exactly what Alloro has done for you.</p>
-              </div>
-            )}
-          </div>
-        </motion.div>
 
       </div>
     </div>
