@@ -29,6 +29,29 @@ function getClient(): Anthropic {
   return client;
 }
 
+// Temporary diagnostic -- remove after confirming chat works
+csAgentRoutes.get("/health", async (_req, res) => {
+  const hasKey = !!process.env.ANTHROPIC_API_KEY;
+  const keyPrefix = process.env.ANTHROPIC_API_KEY?.slice(0, 10) || "MISSING";
+  const model = process.env.MINDS_LLM_MODEL || "claude-sonnet-4-6";
+  let apiOk = false;
+  let apiError = "";
+  if (hasKey) {
+    try {
+      const c = getClient();
+      const r = await c.messages.create({
+        model,
+        max_tokens: 16,
+        messages: [{ role: "user", content: "Say ok" }],
+      });
+      apiOk = r.content[0]?.type === "text";
+    } catch (e: any) {
+      apiError = `${e.status || ""} ${e.message}`.trim();
+    }
+  }
+  res.json({ hasKey, keyPrefix, model, apiOk, apiError });
+});
+
 /**
  * Build the system prompt with full account context.
  */
