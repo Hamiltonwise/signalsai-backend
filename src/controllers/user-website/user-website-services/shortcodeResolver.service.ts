@@ -44,6 +44,8 @@ interface PostBlockShortcode {
   order_by?: string;
   limit?: string;
   offset?: string;
+  paginate?: string;
+  per_page?: string;
 }
 
 interface ReviewBlockShortcode {
@@ -54,6 +56,8 @@ interface ReviewBlockShortcode {
   limit?: string;
   offset?: string;
   order?: string;
+  paginate?: string;
+  per_page?: string;
 }
 
 interface MenuShortcode {
