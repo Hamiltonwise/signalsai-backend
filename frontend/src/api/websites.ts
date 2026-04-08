@@ -925,6 +925,57 @@ export const deleteFormSubmission = async (
   return response.json();
 };
 
+export const sendFormSubmissionEmail = async (
+  projectId: string,
+  submissionId: string,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/form-submissions/${submissionId}/send-email`, {
+    method: "POST",
+  });
+  if (!response.ok) throw new Error("Failed to send submission");
+  return response.json();
+};
+
+export const bulkSendFormSubmissionsEmail = async (
+  projectId: string,
+  submissionIds: string[],
+): Promise<{ success: boolean; data: { sent: number; skipped: number } }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/form-submissions/bulk/send-email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ submissionIds }),
+  });
+  if (!response.ok) throw new Error("Failed to bulk send submissions");
+  return response.json();
+};
+
+export const bulkDeleteFormSubmissions = async (
+  projectId: string,
+  submissionIds: string[],
+): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/form-submissions/bulk`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ submissionIds }),
+  });
+  if (!response.ok) throw new Error("Failed to bulk delete submissions");
+  return response.json();
+};
+
+export const bulkToggleFormSubmissionsRead = async (
+  projectId: string,
+  submissionIds: string[],
+  is_read: boolean,
+): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE}/${projectId}/form-submissions/bulk/read`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ submissionIds, is_read }),
+  });
+  if (!response.ok) throw new Error("Failed to bulk update submissions");
+  return response.json();
+};
+
 /**
  * Submit a contact form from a rendered site
  */

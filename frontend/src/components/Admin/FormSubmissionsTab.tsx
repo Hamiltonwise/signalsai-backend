@@ -9,12 +9,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  EyeOff,
   X,
   Download,
   ShieldAlert,
   CheckCircle2,
   FileText,
   Image,
+  Circle,
+  CheckCircle,
+  Send,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import {
@@ -22,8 +26,13 @@ import {
   fetchFormSubmission,
   toggleFormSubmissionRead,
   deleteFormSubmission,
+  sendFormSubmissionEmail,
+  bulkSendFormSubmissionsEmail,
+  bulkDeleteFormSubmissions,
+  bulkToggleFormSubmissionsRead,
 } from "../../api/websites";
 import type { FormSubmission, FileValue, FormSection, FormContents } from "../../api/websites";
+import { BulkActionBar } from "../ui/DesignSystem";
 
 function isFileValue(value: unknown): value is FileValue {
   return (
@@ -86,6 +95,10 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
   const [detailSubmission, setDetailSubmission] = useState<FormSubmission | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -157,6 +170,7 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
     setPage(1);
     setSelectedId(null);
     setDetailSubmission(null);
+    setSelectedIds(new Set());
   };
 
   const handleToggleRead = async (sub: FormSubmission) => {
@@ -182,9 +196,96 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
         setSelectedId(null);
         setDetailSubmission(null);
       }
+      setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
       toast.success("Deleted");
     } catch {
       toast.error("Failed to delete");
+    }
+  };
+
+  const handleSendSingle = async (sub: FormSubmission, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await sendFormSubmissionEmail(projectId, sub.id);
+      toast.success("Sent successfully");
+    } catch {
+      toast.error("Failed to send");
+    }
+  };
+
+  // Multi-select helpers
+  const toggleSelectItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  // Derived bulk state
+  const selectedList = Array.from(selectedIds);
+  const anySelectedFlagged = selectedList.some(
+    (id) => submissions.find((s) => s.id === id)?.is_flagged,
+  );
+  const anySelectedUnread = selectedList.some(
+    (id) => !submissions.find((s) => s.id === id)?.is_read,
+  );
+
+  const handleBulkSend = async () => {
+    if (selectedIds.size === 0 || bulkLoading) return;
+    try {
+      setBulkLoading(true);
+      const res = await bulkSendFormSubmissionsEmail(projectId, selectedList);
+      const { sent, skipped } = res.data;
+      toast.success(`Sent ${sent} submission${sent !== 1 ? "s" : ""}${skipped > 0 ? `, skipped ${skipped}` : ""}`);
+      clearSelection();
+    } catch {
+      toast.error("Failed to send submissions");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0 || bulkLoading) return;
+    try {
+      setBulkLoading(true);
+      await bulkDeleteFormSubmissions(projectId, selectedList);
+      setSubmissions((prev) => prev.filter((s) => !selectedIds.has(s.id)));
+      setTotal((t) => Math.max(0, t - selectedIds.size));
+      if (selectedId && selectedIds.has(selectedId)) {
+        setSelectedId(null);
+        setDetailSubmission(null);
+      }
+      toast.success(`Deleted ${selectedIds.size} submission${selectedIds.size !== 1 ? "s" : ""}`);
+      clearSelection();
+    } catch {
+      toast.error("Failed to delete submissions");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkToggleRead = async (markAsRead: boolean) => {
+    if (selectedIds.size === 0 || bulkLoading) return;
+    try {
+      setBulkLoading(true);
+      await bulkToggleFormSubmissionsRead(projectId, selectedList, markAsRead);
+      setSubmissions((prev) =>
+        prev.map((s) => selectedIds.has(s.id) ? { ...s, is_read: markAsRead } : s),
+      );
+      const delta = selectedIds.size;
+      setUnreadCount((c) => markAsRead ? Math.max(0, c - delta) : c + delta);
+      toast.success(`Marked ${delta} as ${markAsRead ? "read" : "unread"}`);
+      clearSelection();
+    } catch {
+      toast.error("Failed to update submissions");
+    } finally {
+      setBulkLoading(false);
     }
   };
 
@@ -202,244 +303,322 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
 
   const currentDetail = detailSubmission && detailSubmission.id === selectedId ? detailSubmission : null;
 
+  const bulkActions = [
+    ...(anySelectedFlagged
+      ? [{
+          label: "Send",
+          icon: <Send size={14} />,
+          onClick: handleBulkSend,
+          variant: "primary" as const,
+          disabled: bulkLoading,
+        }]
+      : []),
+    {
+      label: anySelectedUnread ? "Mark Read" : "Mark Unread",
+      icon: anySelectedUnread ? <Eye size={14} /> : <EyeOff size={14} />,
+      onClick: () => handleBulkToggleRead(anySelectedUnread),
+      variant: "secondary" as const,
+      disabled: bulkLoading,
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 size={14} />,
+      onClick: handleBulkDelete,
+      variant: "danger" as const,
+      disabled: bulkLoading,
+    },
+  ];
+
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-      {/* Header */}
-      <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold text-gray-900">Form Submissions</h3>
-          <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full font-medium">
-            {total}
-          </span>
-          {unreadCount > 0 && (
-            <span className="text-xs text-white bg-alloro-orange px-2.5 py-1 rounded-full font-medium">
-              {unreadCount} new
+    <>
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        {/* Header */}
+        <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-semibold text-gray-900">Form Submissions</h3>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full font-medium">
+              {total}
             </span>
+            {unreadCount > 0 && (
+              <span className="text-xs text-white bg-alloro-orange px-2.5 py-1 rounded-full font-medium">
+                {unreadCount} new
+              </span>
+            )}
+          </div>
+          {onExport && total > 0 && (
+            <button
+              onClick={onExport}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition px-3 py-1.5 rounded-lg hover:bg-gray-100"
+            >
+              <Download size={14} />
+              Export CSV
+            </button>
           )}
         </div>
-        {onExport && total > 0 && (
+
+        {/* Tabs */}
+        <div className="border-b border-gray-100 px-5 flex gap-1">
           <button
-            onClick={onExport}
-            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition px-3 py-1.5 rounded-lg hover:bg-gray-100"
+            onClick={() => handleTabChange("all")}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition ${
+              activeTab === "all"
+                ? "border-gray-900 text-gray-900"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
           >
-            <Download size={14} />
-            Export CSV
+            All
           </button>
+          <button
+            onClick={() => handleTabChange("verified")}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
+              activeTab === "verified"
+                ? "border-emerald-500 text-emerald-600"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            <CheckCircle2 size={14} />
+            Verified
+            {verifiedCount > 0 && (
+              <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">
+                {verifiedCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => handleTabChange("flagged")}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
+              activeTab === "flagged"
+                ? "border-amber-500 text-amber-600"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            <ShieldAlert size={14} />
+            Flagged
+            {flaggedCount > 0 && (
+              <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                {flaggedCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => handleTabChange("optins")}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
+              activeTab === "optins"
+                ? "border-sky-500 text-sky-600"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            <MailCheck size={14} />
+            Confirmed Opt-ins
+            {optinsCount > 0 && (
+              <span className="text-xs bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-medium">
+                {optinsCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+        ) : submissions.length === 0 ? (
+          <div className="p-8 text-center">
+            <Inbox className="mx-auto mb-3 text-gray-300" size={32} />
+            <p className="text-gray-400 text-sm">
+              {activeTab === "verified"
+                ? "No verified submissions"
+                : activeTab === "flagged"
+                  ? "No flagged submissions"
+                  : activeTab === "optins"
+                    ? "No confirmed opt-ins yet"
+                    : "No form submissions yet"}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Table */}
+            <div className="divide-y divide-gray-100">
+              {submissions.map((sub) => {
+                const isMultiSelected = selectedIds.has(sub.id);
+                return (
+                  <div
+                    key={sub.id}
+                    className={`px-5 py-3 flex items-center gap-3 hover:bg-gray-50 cursor-pointer transition ${
+                      isMultiSelected
+                        ? "bg-blue-50 border-l-2 border-blue-400"
+                        : !sub.is_read
+                          ? "bg-alloro-orange/5"
+                          : sub.is_flagged
+                            ? "bg-amber-50/50"
+                            : ""
+                    }`}
+                    onClick={() => handleSelect(sub)}
+                  >
+                    {/* Multi-select checkbox */}
+                    <button
+                      onClick={(e) => toggleSelectItem(sub.id, e)}
+                      className="flex-shrink-0 text-gray-300 hover:text-blue-500 transition"
+                      title={isMultiSelected ? "Deselect" : "Select"}
+                    >
+                      {isMultiSelected ? (
+                        <CheckCircle size={16} className="text-blue-500" />
+                      ) : (
+                        <Circle size={16} />
+                      )}
+                    </button>
+
+                    <div className="flex-shrink-0">
+                      {sub.is_flagged ? (
+                        <ShieldAlert size={16} className="text-amber-500" />
+                      ) : sub.is_read ? (
+                        <MailOpen size={16} className="text-gray-300" />
+                      ) : (
+                        <Mail size={16} className="text-alloro-orange" />
+                      )}
+                    </div>
+
+                    <div className="w-36 flex-shrink-0">
+                      <span className={`text-sm ${!sub.is_read ? "font-semibold text-gray-900" : "text-gray-600"}`}>
+                        {sub.form_name}
+                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-400 truncate">
+                        {previewFields(sub.contents)}
+                      </p>
+                    </div>
+
+                    <div className="flex-shrink-0 text-xs text-gray-400">
+                      {relativeTime(sub.submitted_at)}
+                    </div>
+
+                    <div className="flex-shrink-0 flex items-center gap-1">
+                      {sub.is_flagged && (
+                        <button
+                          onClick={(e) => handleSendSingle(sub, e)}
+                          className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-400 hover:text-amber-600 transition"
+                          title="Send to recipients"
+                        >
+                          <Send size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleToggleRead(sub); }}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
+                        title={sub.is_read ? "Mark unread" : "Mark read"}
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(sub.id); }}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Detail panel */}
+            <AnimatePresence>
+              {currentDetail && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="border-t border-gray-200 overflow-hidden"
+                >
+                  <div className="p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{currentDetail.form_name}</h4>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {new Date(currentDetail.submitted_at).toLocaleString()}
+                          {" \u00b7 Sent to: "}
+                          {currentDetail.recipients_sent_to.join(", ")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {currentDetail.is_flagged && (
+                          <button
+                            onClick={(e) => handleSendSingle(currentDetail, e)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition text-sm font-medium border border-amber-200"
+                          >
+                            <Send size={13} />
+                            Send to recipients
+                          </button>
+                        )}
+                        <button
+                          onClick={() => { setSelectedId(null); setDetailSubmission(null); }}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {currentDetail.is_flagged && currentDetail.flag_reason && (
+                      <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 flex items-start gap-2">
+                        <ShieldAlert size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-amber-700">Flagged by AI</p>
+                          <p className="text-xs text-amber-600 mt-0.5">{currentDetail.flag_reason}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {detailLoading ? (
+                      <div className="text-sm text-gray-400 py-4">Loading file details...</div>
+                    ) : isSectionsFormat(currentDetail.contents) ? (
+                      <SectionsView sections={currentDetail.contents} />
+                    ) : (
+                      <FlatView contents={currentDetail.contents} />
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="border-t border-gray-100 px-5 py-3 flex items-center justify-between">
+                <p className="text-xs text-gray-400">
+                  Page {page} of {totalPages}
+                </p>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => { setPage((p) => Math.max(1, p - 1)); setSelectedIds(new Set()); }}
+                    disabled={page === 1}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 text-gray-500"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); setSelectedIds(new Set()); }}
+                    disabled={page === totalPages}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 text-gray-500"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-100 px-5 flex gap-1">
-        <button
-          onClick={() => handleTabChange("all")}
-          className={`px-3 py-2 text-sm font-medium border-b-2 transition ${
-            activeTab === "all"
-              ? "border-gray-900 text-gray-900"
-              : "border-transparent text-gray-400 hover:text-gray-600"
-          }`}
-        >
-          All
-        </button>
-        <button
-          onClick={() => handleTabChange("verified")}
-          className={`px-3 py-2 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === "verified"
-              ? "border-emerald-500 text-emerald-600"
-              : "border-transparent text-gray-400 hover:text-gray-600"
-          }`}
-        >
-          <CheckCircle2 size={14} />
-          Verified
-          {verifiedCount > 0 && (
-            <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">
-              {verifiedCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => handleTabChange("flagged")}
-          className={`px-3 py-2 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === "flagged"
-              ? "border-amber-500 text-amber-600"
-              : "border-transparent text-gray-400 hover:text-gray-600"
-          }`}
-        >
-          <ShieldAlert size={14} />
-          Flagged
-          {flaggedCount > 0 && (
-            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
-              {flaggedCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => handleTabChange("optins")}
-          className={`px-3 py-2 text-sm font-medium border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === "optins"
-              ? "border-sky-500 text-sky-600"
-              : "border-transparent text-gray-400 hover:text-gray-600"
-          }`}
-        >
-          <MailCheck size={14} />
-          Confirmed Opt-ins
-          {optinsCount > 0 && (
-            <span className="text-xs bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-medium">
-              {optinsCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* Content */}
-      {loading ? (
-        <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
-      ) : submissions.length === 0 ? (
-        <div className="p-8 text-center">
-          <Inbox className="mx-auto mb-3 text-gray-300" size={32} />
-          <p className="text-gray-400 text-sm">
-            {activeTab === "verified"
-              ? "No verified submissions"
-              : activeTab === "flagged"
-                ? "No flagged submissions"
-                : activeTab === "optins"
-                  ? "No confirmed opt-ins yet"
-                  : "No form submissions yet"}
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* Table */}
-          <div className="divide-y divide-gray-100">
-            {submissions.map((sub) => (
-              <div
-                key={sub.id}
-                className={`px-5 py-3 flex items-center gap-4 hover:bg-gray-50 cursor-pointer transition ${
-                  !sub.is_read ? "bg-alloro-orange/5" : ""
-                } ${sub.is_flagged ? "bg-amber-50/50" : ""}`}
-                onClick={() => handleSelect(sub)}
-              >
-                <div className="flex-shrink-0">
-                  {sub.is_flagged ? (
-                    <ShieldAlert size={16} className="text-amber-500" />
-                  ) : sub.is_read ? (
-                    <MailOpen size={16} className="text-gray-300" />
-                  ) : (
-                    <Mail size={16} className="text-alloro-orange" />
-                  )}
-                </div>
-
-                <div className="w-36 flex-shrink-0">
-                  <span className={`text-sm ${!sub.is_read ? "font-semibold text-gray-900" : "text-gray-600"}`}>
-                    {sub.form_name}
-                  </span>
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-400 truncate">
-                    {previewFields(sub.contents)}
-                  </p>
-                </div>
-
-                <div className="flex-shrink-0 text-xs text-gray-400">
-                  {relativeTime(sub.submitted_at)}
-                </div>
-
-                <div className="flex-shrink-0 flex items-center gap-1">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleToggleRead(sub); }}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
-                    title={sub.is_read ? "Mark unread" : "Mark read"}
-                  >
-                    <Eye size={14} />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(sub.id); }}
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
-                    title="Delete"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Detail panel */}
-          <AnimatePresence>
-            {currentDetail && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="border-t border-gray-200 overflow-hidden"
-              >
-                <div className="p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{currentDetail.form_name}</h4>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {new Date(currentDetail.submitted_at).toLocaleString()}
-                        {" \u00b7 Sent to: "}
-                        {currentDetail.recipients_sent_to.join(", ")}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => { setSelectedId(null); setDetailSubmission(null); }}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-
-                  {currentDetail.is_flagged && currentDetail.flag_reason && (
-                    <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 flex items-start gap-2">
-                      <ShieldAlert size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-amber-700">Flagged by AI</p>
-                        <p className="text-xs text-amber-600 mt-0.5">{currentDetail.flag_reason}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {detailLoading ? (
-                    <div className="text-sm text-gray-400 py-4">Loading file details...</div>
-                  ) : isSectionsFormat(currentDetail.contents) ? (
-                    <SectionsView sections={currentDetail.contents} />
-                  ) : (
-                    <FlatView contents={currentDetail.contents} />
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="border-t border-gray-100 px-5 py-3 flex items-center justify-between">
-              <p className="text-xs text-gray-400">
-                Page {page} of {totalPages}
-              </p>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 text-gray-500"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 text-gray-500"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+      {/* Floating bulk action bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.size}
+        totalCount={submissions.length}
+        actions={bulkActions}
+        onClear={clearSelection}
+      />
+    </>
   );
 }
 

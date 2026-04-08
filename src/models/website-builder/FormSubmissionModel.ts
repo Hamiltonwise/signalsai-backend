@@ -147,6 +147,27 @@ export class FormSubmissionModel extends BaseModel {
     return this.table(trx).where("id", id).del();
   }
 
+  static async bulkDeleteByIds(
+    ids: string[],
+    trx?: QueryContext,
+  ): Promise<number> {
+    return this.table(trx).whereIn("id", ids).del();
+  }
+
+  static async bulkMarkAsRead(
+    ids: string[],
+    trx?: QueryContext,
+  ): Promise<number> {
+    return this.table(trx).whereIn("id", ids).update({ is_read: true });
+  }
+
+  static async bulkMarkAsUnread(
+    ids: string[],
+    trx?: QueryContext,
+  ): Promise<number> {
+    return this.table(trx).whereIn("id", ids).update({ is_read: false });
+  }
+
   static async countRecentByIp(
     senderIp: string,
     windowMinutes: number,
