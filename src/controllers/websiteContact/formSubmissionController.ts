@@ -245,6 +245,9 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
     const origin = req.headers.origin || req.headers.referer;
     if (origin) {
       const allowedOrigins: string[] = [];
+      if (project.generated_hostname) {
+        allowedOrigins.push(`https://${project.generated_hostname}.sites.getalloro.com`);
+      }
       if (project.hostname) {
         allowedOrigins.push(`https://${project.hostname}.sites.getalloro.com`);
       }

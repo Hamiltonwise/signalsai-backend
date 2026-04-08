@@ -11,6 +11,7 @@ export interface IProject {
   organization_id: number | null;
   name: string;
   hostname: string | null;
+  generated_hostname: string | null;
   custom_domain: string | null;
   template_id: string | null;
   status: string;
