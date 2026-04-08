@@ -31,7 +31,7 @@ import { OnboardingWizardProvider } from "./contexts/OnboardingWizardContext.tsx
 import { WizardController } from "./components/onboarding-wizard";
 import {
   SetupProgressProvider,
-  SetupProgressWizard,
+  SetupProgressWizard as _SetupProgressWizard, // hidden — do not remove
 } from "./components/SetupProgressWizard";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PublicRoute } from "./components/PublicRoute";
