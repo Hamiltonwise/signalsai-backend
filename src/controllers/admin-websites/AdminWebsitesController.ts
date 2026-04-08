@@ -39,6 +39,8 @@ import { db } from "../../database/connection";
 import { FormSubmissionModel } from "../../models/website-builder/FormSubmissionModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { generatePresignedUrl } from "../../utils/core/s3";
+import { buildEmailBody } from "../websiteContact/websiteContact-services/emailBodyBuilder";
+import { sendEmailWebhook, WebhookError } from "../websiteContact/websiteContact-services/emailWebhookService";
 
 // =====================================================================
 // PROJECTS
@@ -2023,6 +2025,148 @@ export async function deleteFormSubmission(
   } catch (error: any) {
     console.error("[Admin Websites] Error deleting submission:", error);
     return res.status(500).json({ success: false, error: "DELETE_ERROR", message: error?.message || "Failed to delete submission" });
+  }
+}
+
+const BULK_MAX = 50;
+const FROM_EMAIL = process.env.CONTACT_FORM_FROM || "info@getalloro.com";
+
+/** POST /:id/form-submissions/:submissionId/send-email — Manually send a single submission */
+export async function sendFormSubmissionEmail(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { submissionId } = req.params;
+    const submission = await FormSubmissionModel.findById(submissionId);
+
+    if (!submission) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Submission not found" });
+    }
+    if (!submission.recipients_sent_to?.length) {
+      return res.status(400).json({ success: false, error: "NO_RECIPIENTS", message: "No recipients on file for this submission" });
+    }
+
+    const emailBody = buildEmailBody(submission.form_name, submission.contents);
+
+    await sendEmailWebhook({
+      cc: [],
+      bcc: [],
+      body: emailBody,
+      from: FROM_EMAIL,
+      subject: `New Entry From ${submission.form_name}`,
+      fromName: "Alloro Sites",
+      recipients: submission.recipients_sent_to,
+    });
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    if (error instanceof WebhookError) {
+      return res.status(502).json({ success: false, error: "WEBHOOK_ERROR", message: "Failed to send email" });
+    }
+    console.error("[Admin Websites] Error sending submission email:", error);
+    return res.status(500).json({ success: false, error: "SEND_ERROR", message: error?.message || "Failed to send email" });
+  }
+}
+
+/** POST /:id/form-submissions/bulk/send-email — Manually send multiple flagged submissions */
+export async function bulkSendFormSubmissionsEmail(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { submissionIds } = req.body;
+
+    if (!Array.isArray(submissionIds) || submissionIds.length === 0) {
+      return res.status(400).json({ success: false, error: "INVALID_PAYLOAD", message: "submissionIds must be a non-empty array" });
+    }
+    if (submissionIds.length > BULK_MAX) {
+      return res.status(400).json({ success: false, error: "TOO_MANY", message: `Max ${BULK_MAX} submissions per bulk request` });
+    }
+
+    let sent = 0;
+    let skipped = 0;
+
+    for (const id of submissionIds) {
+      const submission = await FormSubmissionModel.findById(String(id));
+      if (!submission || !submission.is_flagged || !submission.recipients_sent_to?.length) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        const emailBody = buildEmailBody(submission.form_name, submission.contents);
+        await sendEmailWebhook({
+          cc: [],
+          bcc: [],
+          body: emailBody,
+          from: FROM_EMAIL,
+          subject: `New Entry From ${submission.form_name}`,
+          fromName: "Alloro Sites",
+          recipients: submission.recipients_sent_to,
+        });
+        sent++;
+      } catch {
+        skipped++;
+      }
+    }
+
+    return res.json({ success: true, data: { sent, skipped } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error bulk sending submission emails:", error);
+    return res.status(500).json({ success: false, error: "BULK_SEND_ERROR", message: error?.message || "Failed to bulk send emails" });
+  }
+}
+
+/** DELETE /:id/form-submissions/bulk — Delete multiple submissions */
+export async function bulkDeleteFormSubmissions(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { submissionIds } = req.body;
+
+    if (!Array.isArray(submissionIds) || submissionIds.length === 0) {
+      return res.status(400).json({ success: false, error: "INVALID_PAYLOAD", message: "submissionIds must be a non-empty array" });
+    }
+    if (submissionIds.length > BULK_MAX) {
+      return res.status(400).json({ success: false, error: "TOO_MANY", message: `Max ${BULK_MAX} submissions per bulk request` });
+    }
+
+    const deleted = await FormSubmissionModel.bulkDeleteByIds(submissionIds.map(String));
+    return res.json({ success: true, data: { deleted } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error bulk deleting submissions:", error);
+    return res.status(500).json({ success: false, error: "BULK_DELETE_ERROR", message: error?.message || "Failed to bulk delete submissions" });
+  }
+}
+
+/** PATCH /:id/form-submissions/bulk/read — Toggle read status for multiple submissions */
+export async function bulkToggleFormSubmissionsRead(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const { submissionIds, is_read } = req.body;
+
+    if (!Array.isArray(submissionIds) || submissionIds.length === 0) {
+      return res.status(400).json({ success: false, error: "INVALID_PAYLOAD", message: "submissionIds must be a non-empty array" });
+    }
+    if (submissionIds.length > BULK_MAX) {
+      return res.status(400).json({ success: false, error: "TOO_MANY", message: `Max ${BULK_MAX} submissions per bulk request` });
+    }
+
+    const ids = submissionIds.map(String);
+    if (is_read) {
+      await FormSubmissionModel.bulkMarkAsRead(ids);
+    } else {
+      await FormSubmissionModel.bulkMarkAsUnread(ids);
+    }
+
+    return res.json({ success: true, data: { is_read, count: ids.length } });
+  } catch (error: any) {
+    console.error("[Admin Websites] Error bulk toggling submission read:", error);
+    return res.status(500).json({ success: false, error: "BULK_READ_ERROR", message: error?.message || "Failed to bulk update submissions" });
   }
 }
 

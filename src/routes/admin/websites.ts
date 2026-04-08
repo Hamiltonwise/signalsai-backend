@@ -299,11 +299,24 @@ router.put("/:id/recipients", controller.updateRecipients);
 // GET  /:id/form-submissions — List submissions with pagination
 router.get("/:id/form-submissions", controller.listFormSubmissions);
 
+// Bulk routes must be registered before parameterized :submissionId routes
+// POST /:id/form-submissions/bulk/send-email — Bulk send flagged submissions
+router.post("/:id/form-submissions/bulk/send-email", controller.bulkSendFormSubmissionsEmail);
+
+// DELETE /:id/form-submissions/bulk — Bulk delete submissions
+router.delete("/:id/form-submissions/bulk", controller.bulkDeleteFormSubmissions);
+
+// PATCH /:id/form-submissions/bulk/read — Bulk toggle read status
+router.patch("/:id/form-submissions/bulk/read", controller.bulkToggleFormSubmissionsRead);
+
 // GET  /:id/form-submissions/:submissionId — Get single submission
 router.get("/:id/form-submissions/:submissionId", controller.getFormSubmission);
 
 // PATCH /:id/form-submissions/:submissionId/read — Toggle read status
 router.patch("/:id/form-submissions/:submissionId/read", controller.toggleFormSubmissionRead);
+
+// POST /:id/form-submissions/:submissionId/send-email — Manually send a submission
+router.post("/:id/form-submissions/:submissionId/send-email", controller.sendFormSubmissionEmail);
 
 // DELETE /:id/form-submissions/:submissionId — Delete a submission
 router.delete("/:id/form-submissions/:submissionId", controller.deleteFormSubmission);
