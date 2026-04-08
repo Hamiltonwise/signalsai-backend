@@ -92,7 +92,8 @@ function App() {
             <Toaster position="top-right" />
             <SessionExpiredModal />
             <WizardController />
-            <SetupProgressWizard />
+            {/* SetupProgressWizard hidden — do not remove */}
+            {/* <SetupProgressWizard /> */}
             <Routes>
               <Route path="/" element={<Navigate to="/signin" replace />} />
               <Route
