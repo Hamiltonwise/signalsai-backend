@@ -186,26 +186,32 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       }
     }
 
+    // ── Security checks: accumulate flags, persist all submissions ──
+    const flagReasons: string[] = [];
+
     // ── 1. Honeypot ──
     if (_hp) {
-      return silentOk(res);
+      flagReasons.push("[honeypot] Hidden field was filled");
     }
 
     // ── 2. Timestamp / timing check (skip if not provided — multipart onboarding forms) ──
     if (_ts) {
       const ts = Number(_ts);
       if (isNaN(ts)) {
-        return res.status(400).json({ error: "Invalid request" });
-      }
-      const elapsed = Date.now() - ts;
-      if (elapsed < MIN_SUBMIT_TIME_MS || elapsed > MAX_SUBMIT_TIME_MS) {
-        return silentOk(res);
-      }
-
-      // ── 3. JS challenge verification ──
-      const jsc = Number(_jsc);
-      if (!_jsc || isNaN(jsc) || jsc !== computeJsChallenge(ts)) {
-        return silentOk(res);
+        flagReasons.push("[timing] Invalid timestamp");
+      } else {
+        const elapsed = Date.now() - ts;
+        if (elapsed < MIN_SUBMIT_TIME_MS) {
+          flagReasons.push(`[timing] Submitted too fast (${elapsed}ms)`);
+        } else if (elapsed > MAX_SUBMIT_TIME_MS) {
+          flagReasons.push(`[timing] Submission too stale (${elapsed}ms)`);
+        } else {
+          // ── 3. JS challenge verification (only if timing is valid) ──
+          const jsc = Number(_jsc);
+          if (!_jsc || isNaN(jsc) || jsc !== computeJsChallenge(ts)) {
+            flagReasons.push("[js_challenge] LCG computation mismatch");
+          }
+        }
       }
     }
 
@@ -266,7 +272,7 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
         originLower.startsWith(allowed.toLowerCase()),
       );
       if (!matched) {
-        return silentOk(res);
+        flagReasons.push(`[origin] Unrecognized origin: ${origin}`);
       }
     }
     // If no origin/referer header, skip check (privacy tools strip them)
@@ -337,14 +343,10 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
     }
 
     // ── 8. Content pattern scoring (skip for trusted form types) ──
-    let flagged = false;
-    let flagReason = "";
-
     if (!isTrustedFormType) {
       const patternResult = analyzePatterns(textContents);
       if (patternResult.score >= SPAM_THRESHOLD) {
-        flagged = true;
-        flagReason = `[content_pattern] Score ${patternResult.score}: ${patternResult.reasons.join("; ")}`;
+        flagReasons.push(`[content_pattern] Score ${patternResult.score}: ${patternResult.reasons.join("; ")}`);
       }
     }
 
@@ -359,17 +361,19 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
     const contentHash = hashContents(textContents);
     const duplicate = await isDuplicateContent(String(projectId), contentHash);
     if (duplicate) {
-      return silentOk(res);
+      flagReasons.push("[duplicate] Identical content already submitted recently");
     }
 
-    // ── 10. AI content analysis (skip for trusted form types) ──
-    if (!flagged && !isTrustedFormType) {
+    // ── 10. AI content analysis (skip for trusted form types and already-flagged) ──
+    if (flagReasons.length === 0 && !isTrustedFormType) {
       const aiResult = await analyzeContent(sanitizedFormName, textContents);
       if (aiResult.flagged) {
-        flagged = true;
-        flagReason = `[${aiResult.category}] ${aiResult.reason}`;
+        flagReasons.push(`[${aiResult.category}] ${aiResult.reason}`);
       }
     }
+
+    const flagged = flagReasons.length > 0;
+    const flagReason = flagReasons.join("; ");
 
     // ── 11. File uploads — upload to S3 ──
     const uploadedFiles = req.files as Express.Multer.File[] | undefined;
