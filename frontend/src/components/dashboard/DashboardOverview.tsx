@@ -689,9 +689,6 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
   const effectiveFirstName = isWizardActive
     ? (wizardDemoData?.userProfile?.firstName ?? "Jane")
     : userProfile?.firstName;
-  const effectiveLastName = isWizardActive
-    ? (wizardDemoData?.userProfile?.lastName ?? "Smith")
-    : userProfile?.lastName;
 
   // Get greeting based on time of day
   const getGreeting = () => {
