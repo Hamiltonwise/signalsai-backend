@@ -186,34 +186,35 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       }
     }
 
-    // ── Security checks: accumulate flags, persist all submissions ──
+    // ── Security checks: only AI analysis is active, rest disabled for debugging ──
+    // TODO: Re-enable honeypot, timing, JS challenge checks
     const flagReasons: string[] = [];
 
-    // ── 1. Honeypot ──
-    if (_hp) {
-      flagReasons.push("[honeypot] Hidden field was filled");
-    }
+    // // ── 1. Honeypot ──
+    // if (_hp) {
+    //   flagReasons.push("[honeypot] Hidden field was filled");
+    // }
 
-    // ── 2. Timestamp / timing check (skip if not provided — multipart onboarding forms) ──
-    if (_ts) {
-      const ts = Number(_ts);
-      if (isNaN(ts)) {
-        flagReasons.push("[timing] Invalid timestamp");
-      } else {
-        const elapsed = Date.now() - ts;
-        if (elapsed < MIN_SUBMIT_TIME_MS) {
-          flagReasons.push(`[timing] Submitted too fast (${elapsed}ms)`);
-        } else if (elapsed > MAX_SUBMIT_TIME_MS) {
-          flagReasons.push(`[timing] Submission too stale (${elapsed}ms)`);
-        } else {
-          // ── 3. JS challenge verification (only if timing is valid) ──
-          const jsc = Number(_jsc);
-          if (!_jsc || isNaN(jsc) || jsc !== computeJsChallenge(ts)) {
-            flagReasons.push("[js_challenge] LCG computation mismatch");
-          }
-        }
-      }
-    }
+    // // ── 2. Timestamp / timing check ──
+    // if (_ts) {
+    //   const ts = Number(_ts);
+    //   if (isNaN(ts)) {
+    //     flagReasons.push("[timing] Invalid timestamp");
+    //   } else {
+    //     const elapsed = Date.now() - ts;
+    //     if (elapsed < MIN_SUBMIT_TIME_MS) {
+    //       flagReasons.push(`[timing] Submitted too fast (${elapsed}ms)`);
+    //     } else if (elapsed > MAX_SUBMIT_TIME_MS) {
+    //       flagReasons.push(`[timing] Submission too stale (${elapsed}ms)`);
+    //     } else {
+    //       // ── 3. JS challenge verification ──
+    //       const jsc = Number(_jsc);
+    //       if (!_jsc || isNaN(jsc) || jsc !== computeJsChallenge(ts)) {
+    //         flagReasons.push("[js_challenge] LCG computation mismatch");
+    //       }
+    //     }
+    //   }
+    // }
 
     // ── 4. Resolve project: by projectId or hostname ──
     const senderIp = extractClientIp(req);
@@ -247,35 +248,33 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
         .json({ error: "contents must be a JSON object or sections array" });
     }
 
-    // ── 5. Origin validation ──
-    const origin = req.headers.origin || req.headers.referer;
-    if (origin) {
-      const allowedOrigins: string[] = [];
-      if (project.generated_hostname) {
-        allowedOrigins.push(`https://${project.generated_hostname}.sites.getalloro.com`);
-      }
-      if (project.hostname) {
-        allowedOrigins.push(`https://${project.hostname}.sites.getalloro.com`);
-      }
-      if (project.custom_domain) {
-        allowedOrigins.push(`https://${project.custom_domain}`);
-        allowedOrigins.push(`http://${project.custom_domain}`);
-      }
-      // Allow localhost in development
-      if (process.env.NODE_ENV !== "production") {
-        allowedOrigins.push("http://localhost");
-        allowedOrigins.push("http://sites.localhost");
-      }
-
-      const originLower = origin.toLowerCase();
-      const matched = allowedOrigins.some((allowed) =>
-        originLower.startsWith(allowed.toLowerCase()),
-      );
-      if (!matched) {
-        flagReasons.push(`[origin] Unrecognized origin: ${origin}`);
-      }
-    }
-    // If no origin/referer header, skip check (privacy tools strip them)
+    // TODO: Re-enable origin validation
+    // // ── 5. Origin validation ──
+    // const origin = req.headers.origin || req.headers.referer;
+    // if (origin) {
+    //   const allowedOrigins: string[] = [];
+    //   if (project.generated_hostname) {
+    //     allowedOrigins.push(`https://${project.generated_hostname}.sites.getalloro.com`);
+    //   }
+    //   if (project.hostname) {
+    //     allowedOrigins.push(`https://${project.hostname}.sites.getalloro.com`);
+    //   }
+    //   if (project.custom_domain) {
+    //     allowedOrigins.push(`https://${project.custom_domain}`);
+    //     allowedOrigins.push(`http://${project.custom_domain}`);
+    //   }
+    //   if (process.env.NODE_ENV !== "production") {
+    //     allowedOrigins.push("http://localhost");
+    //     allowedOrigins.push("http://sites.localhost");
+    //   }
+    //   const originLower = origin.toLowerCase();
+    //   const matched = allowedOrigins.some((allowed) =>
+    //     originLower.startsWith(allowed.toLowerCase()),
+    //   );
+    //   if (!matched) {
+    //     flagReasons.push(`[origin] Unrecognized origin: ${origin}`);
+    //   }
+    // }
 
     // ── 6. Sanitize form name ──
     const sanitizedFormName = sanitize(String(formName));
@@ -342,30 +341,31 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       return handleNewsletterSignup(res, project, textContents);
     }
 
-    // ── 8. Content pattern scoring (skip for trusted form types) ──
-    if (!isTrustedFormType) {
-      const patternResult = analyzePatterns(textContents);
-      if (patternResult.score >= SPAM_THRESHOLD) {
-        flagReasons.push(`[content_pattern] Score ${patternResult.score}: ${patternResult.reasons.join("; ")}`);
-      }
-    }
+    // TODO: Re-enable content pattern scoring, flood detection, duplicate detection
+    // // ── 8. Content pattern scoring ──
+    // if (!isTrustedFormType) {
+    //   const patternResult = analyzePatterns(textContents);
+    //   if (patternResult.score >= SPAM_THRESHOLD) {
+    //     flagReasons.push(`[content_pattern] Score ${patternResult.score}: ${patternResult.reasons.join("; ")}`);
+    //   }
+    // }
 
-    // ── 9. Flood detection ──
-    if (senderIp !== "unknown") {
-      const flooding = await isIpFlooding(senderIp);
-      if (flooding) {
-        return res.status(429).json({ error: "Too many submissions. Please try again later." });
-      }
-    }
+    // // ── 9. Flood detection ──
+    // if (senderIp !== "unknown") {
+    //   const flooding = await isIpFlooding(senderIp);
+    //   if (flooding) {
+    //     return res.status(429).json({ error: "Too many submissions. Please try again later." });
+    //   }
+    // }
 
     const contentHash = hashContents(textContents);
-    const duplicate = await isDuplicateContent(String(projectId), contentHash);
-    if (duplicate) {
-      flagReasons.push("[duplicate] Identical content already submitted recently");
-    }
+    // const duplicate = await isDuplicateContent(String(projectId), contentHash);
+    // if (duplicate) {
+    //   flagReasons.push("[duplicate] Identical content already submitted recently");
+    // }
 
-    // ── 10. AI content analysis (skip for trusted form types and already-flagged) ──
-    if (flagReasons.length === 0 && !isTrustedFormType) {
+    // ── 10. AI content analysis — ONLY active protection ──
+    if (!isTrustedFormType) {
       const aiResult = await analyzeContent(sanitizedFormName, textContents);
       if (aiResult.flagged) {
         flagReasons.push(`[${aiResult.category}] ${aiResult.reason}`);
@@ -433,10 +433,16 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
         flag_reason: flagged ? flagReason : undefined,
       });
     } catch (saveErr) {
-      console.error("[Form Submission] Failed to save submission:", saveErr);
+      console.error("[Form Submission] Failed to save submission:", {
+        error: saveErr instanceof Error ? saveErr.message : saveErr,
+        projectId: String(projectId),
+        formName: sanitizedFormName,
+        senderIp,
+        contentKeys: Object.keys(isSectionsFormat ? {} : (finalContents as Record<string, unknown>)),
+      });
     }
 
-    // ── 14. Email (only if not flagged) ──
+    // ── 14. Email (only if not flagged — sends even if DB save failed) ──
     if (!flagged) {
       const emailBody = buildEmailBody(sanitizedFormName, finalContents);
       const fromEmail = process.env.CONTACT_FORM_FROM || "info@getalloro.com";
