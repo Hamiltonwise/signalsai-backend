@@ -154,6 +154,15 @@ export class FormSubmissionModel extends BaseModel {
     return this.table(trx).whereIn("id", ids).del();
   }
 
+  static async markAllAsReadByProjectId(
+    projectId: string,
+    trx?: QueryContext,
+  ): Promise<number> {
+    return this.table(trx)
+      .where({ project_id: projectId, is_read: false })
+      .update({ is_read: true });
+  }
+
   static async bulkMarkAsRead(
     ids: string[],
     trx?: QueryContext,

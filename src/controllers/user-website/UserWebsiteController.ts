@@ -332,6 +332,50 @@ export async function updateRecipients(
 // FORM SUBMISSIONS
 // =====================================================================
 
+/** GET /api/user/website/form-submissions/stats */
+export async function getFormSubmissionStats(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const project = await ProjectModel.findByOrganizationId(orgId);
+    if (!project) return res.status(404).json({ error: "No website found" });
+
+    const [unreadCount, flaggedCount, verifiedCount] = await Promise.all([
+      FormSubmissionModel.countUnreadByProjectId(project.id),
+      FormSubmissionModel.countFlaggedByProjectId(project.id),
+      FormSubmissionModel.countVerifiedByProjectId(project.id),
+    ]);
+
+    return res.json({ success: true, unreadCount, flaggedCount, verifiedCount });
+  } catch (error) {
+    return handleError(res, error, "Fetch submission stats");
+  }
+}
+
+/** PATCH /api/user/website/form-submissions/mark-all-read */
+export async function markAllFormSubmissionsRead(
+  req: RBACRequest,
+  res: Response
+): Promise<Response> {
+  try {
+    const orgId = req.organizationId;
+    if (!orgId) return res.status(400).json({ error: "No organization found" });
+
+    const project = await ProjectModel.findByOrganizationId(orgId);
+    if (!project) return res.status(404).json({ error: "No website found" });
+
+    const updated = await FormSubmissionModel.markAllAsReadByProjectId(project.id);
+
+    return res.json({ success: true, updated });
+  } catch (error) {
+    return handleError(res, error, "Mark all submissions read");
+  }
+}
+
 /** GET /api/user/website/form-submissions */
 export async function listFormSubmissions(
   req: RBACRequest,

@@ -199,6 +199,13 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
   const [referralLoading, setReferralLoading] = useState(true);
   const [referralPending, setReferralPending] = useState(false);
 
+  // Submission stats state (for orgs with a website)
+  const [submissionStats, setSubmissionStats] = useState<{
+    unreadCount: number;
+    flaggedCount: number;
+    verifiedCount: number;
+  } | null>(null);
+
   // Fetch PMS data - skip during wizard mode (use demo data instead)
   useEffect(() => {
     if (isWizardActive) {
@@ -382,6 +389,35 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
 
     loadReferralData();
   }, [organizationId, locationId, isWizardActive]);
+
+  // Fetch submission stats (only if org has a website)
+  useEffect(() => {
+    if (isWizardActive) return;
+
+    const loadSubmissionStats = async () => {
+      if (!organizationId) return;
+
+      try {
+        const response = await fetch("/api/user/website/form-submissions/stats");
+        if (!response.ok) {
+          setSubmissionStats(null);
+          return;
+        }
+        const result = await response.json();
+        if (result.success) {
+          setSubmissionStats({
+            unreadCount: result.unreadCount,
+            flaggedCount: result.flaggedCount,
+            verifiedCount: result.verifiedCount,
+          });
+        }
+      } catch {
+        setSubmissionStats(null);
+      }
+    };
+
+    loadSubmissionStats();
+  }, [organizationId, isWizardActive]);
 
   // Calculate PMS metrics from latest month
   const calculatePmsMetrics = () => {
@@ -940,18 +976,46 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
             </div>
             {effectivePmsMetrics && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6">
-                <MetricCard
-                  label="New Starts"
-                  value={effectivePmsMetrics.selfReferrals}
-                  trend={
-                    effectivePmsMetrics.selfReferralChange !== 0
-                      ? `${
-                          effectivePmsMetrics.selfReferralChange >= 0 ? "+" : ""
-                        }${effectivePmsMetrics.selfReferralChange.toFixed(0)}%`
-                      : undefined
-                  }
-                  isHighlighted
-                />
+                {submissionStats ? (
+                  <div
+                    onClick={() => navigate("/dfy/website?view=submissions")}
+                    className="flex flex-col p-6 rounded-2xl border transition-all duration-500 bg-white border-alloro-orange/20 shadow-premium cursor-pointer hover:shadow-2xl hover:border-alloro-orange/30"
+                  >
+                    <span className="text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.2em] mb-4 leading-none text-left">
+                      Form Submissions
+                    </span>
+                    <div className="flex items-end justify-between">
+                      <span className="text-3xl font-black font-heading tracking-tighter leading-none text-alloro-textDark">
+                        {submissionStats.verifiedCount}
+                      </span>
+                      <div className="flex flex-col items-end gap-0.5">
+                        {submissionStats.unreadCount > 0 && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-alloro-orange/10 text-alloro-orange">
+                            {submissionStats.unreadCount} unread
+                          </span>
+                        )}
+                        {submissionStats.flaggedCount > 0 && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-600">
+                            {submissionStats.flaggedCount} flagged
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <MetricCard
+                    label="New Starts"
+                    value={effectivePmsMetrics.selfReferrals}
+                    trend={
+                      effectivePmsMetrics.selfReferralChange !== 0
+                        ? `${
+                            effectivePmsMetrics.selfReferralChange >= 0 ? "+" : ""
+                          }${effectivePmsMetrics.selfReferralChange.toFixed(0)}%`
+                        : undefined
+                    }
+                    isHighlighted
+                  />
+                )}
                 <MetricCard
                   label="Referrals"
                   value={effectivePmsMetrics.totalReferrals}

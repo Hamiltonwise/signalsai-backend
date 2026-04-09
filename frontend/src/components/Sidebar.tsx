@@ -147,6 +147,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [userTaskCount, setUserTaskCount] = useState<number>(0);
   const [unreadNotificationCount, setUnreadNotificationCount] =
     useState<number>(0);
+  const [unreadSubmissionCount, setUnreadSubmissionCount] = useState<number>(0);
 
   // Get user role from storage (sessionStorage for pilot mode, localStorage for normal)
   useEffect(() => {
@@ -251,6 +252,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
       );
     };
   }, [loadNotificationCount]);
+
+  // Fetch unread submission count for sidebar indicator
+  const loadSubmissionCount = useCallback(async () => {
+    if (!hasWebsite || !onboardingCompleted) return;
+
+    try {
+      const response = await fetch("/api/user/website/form-submissions/stats");
+      if (!response.ok) return;
+      const result = await response.json();
+      if (result.success) {
+        setUnreadSubmissionCount(result.unreadCount || 0);
+      }
+    } catch {
+      // Silent fail
+    }
+  }, [hasWebsite, onboardingCompleted]);
+
+  // Initial load and periodic refresh of submission count
+  useEffect(() => {
+    loadSubmissionCount();
+
+    const interval = setInterval(loadSubmissionCount, 30000);
+    return () => clearInterval(interval);
+  }, [loadSubmissionCount]);
+
+  // Listen for submission updates (when user opens submissions list)
+  useEffect(() => {
+    const handleSubmissionsUpdated = () => {
+      loadSubmissionCount();
+    };
+
+    window.addEventListener("submissions:updated", handleSubmissionsUpdated);
+    return () => {
+      window.removeEventListener("submissions:updated", handleSubmissionsUpdated);
+    };
+  }, [loadSubmissionCount]);
 
   const handleLogout = () => {
     disconnect();
@@ -507,6 +544,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 label="Websites"
                 active={isActive("/dfy/website")}
                 onClick={() => handleNavigate("/dfy/website")}
+                hasNotification={unreadSubmissionCount > 0}
                 isLocked={isWizardActive}
                 minimized={isMinimized}
               />
