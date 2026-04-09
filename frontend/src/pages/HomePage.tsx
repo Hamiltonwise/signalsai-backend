@@ -216,6 +216,7 @@ export default function HomePage() {
   const { data: intelligenceData } = useQuery<{
     recentActions: string[];
     weeklyFinding: { headline: string; bullets: string[] } | null;
+    watchline: string | null;
   }>({
     queryKey: ["home-intelligence", orgId],
     queryFn: () => apiGet({ path: "/user/home-intelligence" }),
@@ -276,16 +277,18 @@ export default function HomePage() {
         </motion.div>
 
         {/* ── 2. Watchline ── */}
-        {action && (
+        {(intelligenceData?.watchline || action) && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
             className="text-xl sm:text-2xl font-light text-[#1A1D23]/60 mb-8"
           >
-            {action.clear
-              ? "Nothing moved against you this week. Alloro checked."
-              : "Something changed in your market this week."}
+            {intelligenceData?.watchline
+              ? intelligenceData.watchline
+              : action?.clear
+                ? "Nothing moved against you this week. Alloro checked."
+                : "Something changed in your market this week."}
           </motion.p>
         )}
 

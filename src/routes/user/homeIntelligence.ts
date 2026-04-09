@@ -102,7 +102,29 @@ homeIntelligenceRoutes.get(
         ];
       }
 
-      // 2. Weekly finding from most recent snapshot
+      // 2. Watchline: latest proofline narrative for this org
+      let watchline: string | null = null;
+      try {
+        const prooflineRow = await db("agent_results")
+          .where({ organization_id: orgId, agent_type: "proofline" })
+          .whereNot("status", "archived")
+          .orderBy("created_at", "desc")
+          .first("agent_output");
+
+        if (prooflineRow?.agent_output) {
+          const output = typeof prooflineRow.agent_output === "string"
+            ? JSON.parse(prooflineRow.agent_output)
+            : prooflineRow.agent_output;
+          if (output?.trajectory && !output?.skipped) {
+            // Strip <hl> tags for plain-text display
+            watchline = output.trajectory.replace(/<\/?hl>/g, "");
+          }
+        }
+      } catch {
+        // agent_results query failed -- not critical
+      }
+
+      // 3. Weekly finding from most recent snapshot
       let weeklyFinding: { headline: string; bullets: string[] } | null = null;
       try {
         const snapshot = await db("weekly_ranking_snapshots")
@@ -124,7 +146,7 @@ homeIntelligenceRoutes.get(
         // Snapshot table may not exist
       }
 
-      return res.json({ recentActions, weeklyFinding });
+      return res.json({ recentActions, weeklyFinding, watchline });
     } catch (err: any) {
       console.error("[HomeIntelligence] Error:", err.message);
       return res.status(500).json({ error: "Failed to load intelligence" });
