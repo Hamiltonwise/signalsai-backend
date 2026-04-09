@@ -31,6 +31,7 @@ import { buildEmailBody } from "./websiteContact-services/emailBodyBuilder";
 import { ProjectModel } from "../../models/website-builder/ProjectModel";
 import { OrganizationUserModel } from "../../models/OrganizationUserModel";
 import { FormSubmissionModel, type FileValue, type FormSection, type FormContents } from "../../models/website-builder/FormSubmissionModel";
+import { db } from "../../database/connection";
 import { NewsletterSignupModel } from "../../models/website-builder/NewsletterSignupModel";
 import { uploadToS3 } from "../../utils/core/s3";
 
@@ -364,17 +365,6 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
     //   flagReasons.push("[duplicate] Identical content already submitted recently");
     // }
 
-    // ── 10. AI content analysis — ONLY active protection ──
-    if (!isTrustedFormType) {
-      const aiResult = await analyzeContent(sanitizedFormName, textContents);
-      if (aiResult.flagged) {
-        flagReasons.push(`[${aiResult.category}] ${aiResult.reason}`);
-      }
-    }
-
-    const flagged = flagReasons.length > 0;
-    const flagReason = flagReasons.join("; ");
-
     // ── 11. File uploads — upload to S3 ──
     const uploadedFiles = req.files as Express.Multer.File[] | undefined;
     if (uploadedFiles && uploadedFiles.length > 0) {
@@ -420,29 +410,52 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
       recipients = [FALLBACK_RECIPIENT];
     }
 
-    // ── 13. Persist submission ──
+    // ── 13. Persist submission FIRST (unflagged) — guarantees DB record before AI call ──
+    let submissionId: string | null = null;
     try {
-      await FormSubmissionModel.create({
+      const created = await FormSubmissionModel.create({
         project_id: String(projectId),
         form_name: sanitizedFormName,
         contents: finalContents,
         recipients_sent_to: recipients,
         sender_ip: senderIp,
         content_hash: contentHash,
-        is_flagged: flagged,
-        flag_reason: flagged ? flagReason : undefined,
+        is_flagged: false,
       });
+      submissionId = created.id;
     } catch (saveErr) {
       console.error("[Form Submission] Failed to save submission:", {
         error: saveErr instanceof Error ? saveErr.message : saveErr,
         projectId: String(projectId),
         formName: sanitizedFormName,
         senderIp,
-        contentKeys: Object.keys(isSectionsFormat ? {} : (finalContents as Record<string, unknown>)),
       });
     }
 
-    // ── 14. Email (only if not flagged — sends even if DB save failed) ──
+    // ── 14. AI content analysis — runs AFTER save, then updates flag or sends email ──
+    let flagged = flagReasons.length > 0;
+    let flagReason = flagReasons.join("; ");
+
+    if (!flagged && !isTrustedFormType) {
+      const aiResult = await analyzeContent(sanitizedFormName, textContents);
+      if (aiResult.flagged) {
+        flagged = true;
+        flagReason = `[${aiResult.category}] ${aiResult.reason}`;
+
+        // Update the saved record to flagged
+        if (submissionId) {
+          try {
+            await db("website_builder.form_submissions")
+              .where("id", submissionId)
+              .update({ is_flagged: true, flag_reason: flagReason });
+          } catch (updateErr) {
+            console.error("[Form Submission] Failed to update flag:", updateErr);
+          }
+        }
+      }
+    }
+
+    // ── 15. Email (only if not flagged by AI) ──
     if (!flagged) {
       const emailBody = buildEmailBody(sanitizedFormName, finalContents);
       const fromEmail = process.env.CONTACT_FORM_FROM || "info@getalloro.com";
