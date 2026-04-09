@@ -2089,7 +2089,7 @@ export async function bulkSendFormSubmissionsEmail(
 
     for (const id of submissionIds) {
       const submission = await FormSubmissionModel.findById(String(id));
-      if (!submission || !submission.is_flagged || !submission.recipients_sent_to?.length) {
+      if (!submission || !submission.recipients_sent_to?.length) {
         skipped++;
         continue;
       }
