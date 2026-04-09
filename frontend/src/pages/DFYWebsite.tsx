@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ExternalLink,
@@ -85,6 +86,7 @@ interface Usage {
 const DESKTOP_SCALE = 0.7;
 
 export function DFYWebsite() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<
     "PREPARING" | "READY" | "READ_ONLY" | null
@@ -94,9 +96,10 @@ export function DFYWebsite() {
   const [selectedPage, setSelectedPage] = useState<Page | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [showDomainModal, setShowDomainModal] = useState(false);
-  const [activeView, setActiveView] = useState<"editor" | "submissions" | "posts" | "menus">(
-    "editor",
-  );
+  const [activeView, setActiveView] = useState<"editor" | "submissions" | "posts" | "menus">(() => {
+    const view = searchParams.get("view");
+    return view === "submissions" || view === "posts" || view === "menus" ? view : "editor";
+  });
   const [viewportMode, setViewportMode] = useState<"desktop" | "mobile">(
     "desktop",
   );
@@ -133,6 +136,27 @@ export function DFYWebsite() {
   useEffect(() => {
     setCollapsed(true);
   }, [setCollapsed]);
+
+  // Mark all submissions as read when switching to submissions view
+  useEffect(() => {
+    if (activeView !== "submissions") return;
+
+    // Clean up the ?view= param from URL
+    if (searchParams.has("view")) {
+      setSearchParams({}, { replace: true });
+    }
+
+    const markAllRead = async () => {
+      try {
+        await apiPatch({ path: "/user/website/form-submissions/mark-all-read" });
+        window.dispatchEvent(new Event("submissions:updated"));
+      } catch {
+        // Silent fail — non-critical
+      }
+    };
+
+    markAllRead();
+  }, [activeView]);
 
   // Warn before closing/reloading when there are unsaved changes
   useEffect(() => {

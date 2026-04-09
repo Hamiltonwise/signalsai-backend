@@ -523,62 +523,80 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
               })}
             </div>
 
-            {/* Detail panel */}
+            {/* Detail modal */}
             <AnimatePresence>
               {currentDetail && (
                 <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="border-t border-gray-200 overflow-hidden"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                  onClick={() => { setSelectedId(null); setDetailSubmission(null); }}
                 >
-                  <div className="p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{currentDetail.form_name}</h4>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                  {/* Backdrop */}
+                  <div className="absolute inset-0 bg-black/40" />
+
+                  {/* Modal content */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                    className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Modal header */}
+                    <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+                      <div className="min-w-0">
+                        <h4 className="font-semibold text-gray-900 truncate">{currentDetail.form_name}</h4>
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">
                           {new Date(currentDetail.submitted_at).toLocaleString()}
-                          {" \u00b7 Sent to: "}
-                          {currentDetail.recipients_sent_to.join(", ")}
+                          {currentDetail.recipients_sent_to.length > 0 && (
+                            <>{" \u00b7 Sent to: "}{currentDetail.recipients_sent_to.join(", ")}</>
+                          )}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         {currentDetail.is_flagged && (
                           <button
                             onClick={(e) => handleSendSingle(currentDetail, e)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition text-sm font-medium border border-amber-200"
                           >
                             <Send size={13} />
-                            Send to recipients
+                            Send
                           </button>
                         )}
                         <button
                           onClick={() => { setSelectedId(null); setDetailSubmission(null); }}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
                         >
                           <X size={16} />
                         </button>
                       </div>
                     </div>
 
-                    {currentDetail.is_flagged && currentDetail.flag_reason && (
-                      <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 flex items-start gap-2">
-                        <ShieldAlert size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium text-amber-700">Flagged by AI</p>
-                          <p className="text-xs text-amber-600 mt-0.5">{currentDetail.flag_reason}</p>
+                    {/* Modal body */}
+                    <div className="px-5 py-4 overflow-y-auto flex-1">
+                      {currentDetail.is_flagged && currentDetail.flag_reason && (
+                        <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2.5 flex items-start gap-2">
+                          <ShieldAlert size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-amber-700">Flagged by AI</p>
+                            <p className="text-xs text-amber-600 mt-0.5">{currentDetail.flag_reason}</p>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {detailLoading ? (
-                      <div className="text-sm text-gray-400 py-4">Loading file details...</div>
-                    ) : isSectionsFormat(currentDetail.contents) ? (
-                      <SectionsView sections={currentDetail.contents} />
-                    ) : (
-                      <FlatView contents={currentDetail.contents} />
-                    )}
-                  </div>
+                      {detailLoading ? (
+                        <div className="text-sm text-gray-400 py-4">Loading file details...</div>
+                      ) : isSectionsFormat(currentDetail.contents) ? (
+                        <SectionsView sections={currentDetail.contents} />
+                      ) : (
+                        <FlatView contents={currentDetail.contents} />
+                      )}
+                    </div>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>

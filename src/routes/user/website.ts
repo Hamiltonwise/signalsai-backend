@@ -89,6 +89,22 @@ userWebsiteRoutes.put(
 
 // Form submissions
 userWebsiteRoutes.get(
+  "/form-submissions/stats",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.getFormSubmissionStats
+);
+
+userWebsiteRoutes.patch(
+  "/form-submissions/mark-all-read",
+  authenticateToken,
+  rbacMiddleware,
+  requireRole("admin", "manager"),
+  controller.markAllFormSubmissionsRead
+);
+
+userWebsiteRoutes.get(
   "/form-submissions/export",
   authenticateToken,
   rbacMiddleware,
