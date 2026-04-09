@@ -10,7 +10,7 @@ import { createHash } from "crypto";
 import { FormSubmissionModel } from "../../../models/website-builder/FormSubmissionModel";
 
 const WINDOW_MINUTES = 15;
-const MAX_PER_IP = 5;
+const MAX_PER_IP = 20;
 
 /**
  * Check if the sender IP has exceeded the submission limit within the window.
