@@ -258,10 +258,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (!hasWebsite || !onboardingCompleted) return;
 
     try {
-      const response = await fetch("/api/user/website/form-submissions/stats");
-      if (!response.ok) return;
-      const result = await response.json();
-      if (result.success) {
+      const result = await apiGet({ path: "/user/website/form-submissions/stats" });
+      if (result?.success) {
         setUnreadSubmissionCount(result.unreadCount || 0);
       }
     } catch {

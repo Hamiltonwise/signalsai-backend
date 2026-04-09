@@ -23,6 +23,7 @@ import { useAgentData } from "../../hooks/useAgentData";
 import { useAuth } from "../../hooks/useAuth";
 import { format } from "date-fns";
 import { fetchPmsKeyData, type PmsKeyDataResponse } from "../../api/pms";
+import { apiGet } from "../../api";
 import { fetchClientTasks } from "../../api/tasks";
 import type { ActionItem } from "../../types/tasks";
 import { parseHighlightTags } from "../../utils/textFormatting";
@@ -398,13 +399,8 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
       if (!organizationId) return;
 
       try {
-        const response = await fetch("/api/user/website/form-submissions/stats");
-        if (!response.ok) {
-          setSubmissionStats(null);
-          return;
-        }
-        const result = await response.json();
-        if (result.success) {
+        const result = await apiGet({ path: "/user/website/form-submissions/stats" });
+        if (result?.success) {
           setSubmissionStats({
             unreadCount: result.unreadCount,
             flaggedCount: result.flaggedCount,
