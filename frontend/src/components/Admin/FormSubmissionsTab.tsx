@@ -228,9 +228,6 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
 
   // Derived bulk state
   const selectedList = Array.from(selectedIds);
-  const anySelectedFlagged = selectedList.some(
-    (id) => submissions.find((s) => s.id === id)?.is_flagged,
-  );
   const anySelectedUnread = selectedList.some(
     (id) => !submissions.find((s) => s.id === id)?.is_read,
   );
@@ -304,15 +301,13 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
   const currentDetail = detailSubmission && detailSubmission.id === selectedId ? detailSubmission : null;
 
   const bulkActions = [
-    ...(anySelectedFlagged
-      ? [{
-          label: "Send",
-          icon: <Send size={14} />,
-          onClick: handleBulkSend,
-          variant: "primary" as const,
-          disabled: bulkLoading,
-        }]
-      : []),
+    {
+      label: "Resend",
+      icon: <Send size={14} />,
+      onClick: handleBulkSend,
+      variant: "primary" as const,
+      disabled: bulkLoading,
+    },
     {
       label: anySelectedUnread ? "Mark Read" : "Mark Unread",
       icon: anySelectedUnread ? <Eye size={14} /> : <EyeOff size={14} />,
@@ -494,15 +489,13 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
                     </div>
 
                     <div className="flex-shrink-0 flex items-center gap-1">
-                      {sub.is_flagged && (
-                        <button
-                          onClick={(e) => handleSendSingle(sub, e)}
-                          className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-400 hover:text-amber-600 transition"
-                          title="Send to recipients"
-                        >
-                          <Send size={14} />
-                        </button>
-                      )}
+                      <button
+                        onClick={(e) => handleSendSingle(sub, e)}
+                        className={`p-1.5 rounded-lg transition ${sub.is_flagged ? "hover:bg-amber-50 text-amber-400 hover:text-amber-600" : "hover:bg-gray-100 text-gray-400 hover:text-gray-600"}`}
+                        title="Resend to recipients"
+                      >
+                        <Send size={14} />
+                      </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleToggleRead(sub); }}
                         className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
@@ -558,15 +551,13 @@ export default function FormSubmissionsTab({ projectId, isAdmin: _isAdmin, fetch
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {currentDetail.is_flagged && (
-                          <button
-                            onClick={(e) => handleSendSingle(currentDetail, e)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition text-sm font-medium border border-amber-200"
-                          >
-                            <Send size={13} />
-                            Send
-                          </button>
-                        )}
+                        <button
+                          onClick={(e) => handleSendSingle(currentDetail, e)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition text-sm font-medium border ${currentDetail.is_flagged ? "bg-amber-50 text-amber-600 hover:bg-amber-100 border-amber-200" : "bg-gray-50 text-gray-600 hover:bg-gray-100 border-gray-200"}`}
+                        >
+                          <Send size={13} />
+                          Resend
+                        </button>
                         <button
                           onClick={() => { setSelectedId(null); setDetailSubmission(null); }}
                           className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"

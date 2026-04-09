@@ -28,9 +28,10 @@ const formUpload = multer({
 });
 
 router.post("/contact", handleContactSubmission);
+// TODO: Re-enable formSubmissionLimiter once protections are restored
 router.post(
   "/form-submission",
-  formSubmissionLimiter,
+  // formSubmissionLimiter,
   formUpload.array("files", 10),
   handleFormSubmission,
 );
