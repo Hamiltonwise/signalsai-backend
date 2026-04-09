@@ -685,7 +685,10 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
       "Your practice is showing <hl>strong momentum</hl> this month. New patient starts are up 12% and your local visibility continues to improve.")
     : prooflineResult?.trajectory;
 
-  // Use wizard demo user profile or real user profile for lastName
+  // Use wizard demo user profile or real user profile for name
+  const effectiveFirstName = isWizardActive
+    ? (wizardDemoData?.userProfile?.firstName ?? "Jane")
+    : userProfile?.firstName;
   const effectiveLastName = isWizardActive
     ? (wizardDemoData?.userProfile?.lastName ?? "Smith")
     : userProfile?.lastName;
@@ -930,7 +933,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           </div>
           <h1 className="text-5xl lg:text-6xl font-black font-heading text-alloro-navy tracking-tight leading-none mb-4">
             {getGreeting()}
-            {effectiveLastName ? `, Dr. ${effectiveLastName}` : ""}.
+            {effectiveFirstName ? `, ${effectiveFirstName}` : ""}.
           </h1>
           {trajectory ? (
             <div className="space-y-4">
