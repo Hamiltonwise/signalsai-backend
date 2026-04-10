@@ -292,6 +292,7 @@ export default function HomePage() {
     recentActions: string[];
     weeklyFinding: { headline: string; bullets: string[] } | null;
     watchline: string | null;
+    watchlineType: string | null;
   }>({
     queryKey: ["home-intelligence", orgId],
     queryFn: () => apiGet({ path: "/user/home-intelligence" }),
@@ -325,16 +326,6 @@ export default function HomePage() {
     status: r.status,
   })) : [];
 
-  // Market intelligence for below-fold
-  const checkupForMarket = ctx?.org?.checkup_data;
-  const marketComp = checkupForMarket?.topCompetitor;
-  const marketClientReviews = checkupForMarket?.place?.reviewCount || checkupForMarket?.reviewCount || 0;
-  const marketCompReviews = marketComp?.reviewCount || 0;
-  const marketGap = marketCompReviews - marketClientReviews;
-  const marketCity = checkupForMarket?.market?.city;
-  const marketTotalComp = checkupForMarket?.market?.totalCompetitors;
-  const marketRank = checkupForMarket?.market?.rank;
-
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
       <div className="max-w-[1100px] mx-auto px-6 sm:px-10 py-10 sm:py-14">
@@ -351,19 +342,15 @@ export default function HomePage() {
           <h1 className="text-4xl sm:text-5xl font-light text-[#1A1D23] tracking-tight leading-tight">{greeting}</h1>
         </motion.div>
 
-        {/* ── 2. Watchline ── */}
-        {(intelligenceData?.watchline || action) && (
+        {/* ── 2. Watchline -- highest-priority true signal, or nothing ── */}
+        {intelligenceData?.watchline && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
             className="text-xl sm:text-2xl font-light text-[#1A1D23]/60 mb-8"
           >
-            {intelligenceData?.watchline
-              ? intelligenceData.watchline
-              : action?.clear
-                ? "Nothing moved against you this week. Alloro checked."
-                : "Something changed in your market this week."}
+            {intelligenceData.watchline}
           </motion.p>
         )}
 
@@ -451,7 +438,7 @@ export default function HomePage() {
 
         {/* ═══ BELOW THE FOLD -- Intelligence Sections (no boxes) ═══ */}
 
-        {/* ── What Alloro Found ── */}
+        {/* ── This Week ── */}
         {intelligenceData?.weeklyFinding && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -459,7 +446,7 @@ export default function HomePage() {
             transition={{ delay: 0.2 }}
             className="mb-10 pl-4 border-l-2 border-[#212D40]"
           >
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">WHAT ALLORO FOUND</p>
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">THIS WEEK</p>
             <p className="text-xl font-semibold text-[#1A1D23] leading-snug">{intelligenceData.weeklyFinding.headline}</p>
             {intelligenceData.weeklyFinding.bullets.length > 0 && (
               <div className="mt-3 space-y-2">
@@ -471,35 +458,12 @@ export default function HomePage() {
           </motion.div>
         )}
 
-        {/* ── Your Market This Week ── */}
-        {marketComp?.name && marketClientReviews > 0 && (
-          <div className="mb-10 pl-4 border-l-2 border-[#D56753]/30">
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">YOUR MARKET THIS WEEK</p>
-            {marketRank && marketTotalComp && marketCity && (
-              <p className="text-[15px] text-gray-700">
-                You appear #{marketRank} of {marketTotalComp} practices tracked in {marketCity}.
-              </p>
-            )}
-            {marketGap > 0 && (
-              <p className="text-lg font-semibold text-[#1A1D23] mt-2">
-                The gap: {marketComp.name} has {marketCompReviews} reviews. You have {marketClientReviews}.
-              </p>
-            )}
-            {marketGap <= 0 && (
-              <p className="text-[15px] text-gray-700 mt-1">
-                You lead {marketComp.name} by {Math.abs(marketGap)} reviews. Consistent reviews keep you ahead.
-              </p>
-            )}
-            <p className="text-sm text-gray-400 mt-2">
-              Alloro is watching this market. You will know if anything changes.
-            </p>
-          </div>
-        )}
+        {/* Competitive detail lives on Get Found. Readings above the fold. */}
 
-        {/* ── What Alloro Did ── */}
+        {/* ── Working in the Background ── */}
         {intelligenceData?.recentActions && intelligenceData.recentActions.length > 0 && (
           <div className="mb-10 pl-4 border-l-2 border-[#1A1D23]/10">
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">WHAT ALLORO DID</p>
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">WORKING IN THE BACKGROUND</p>
             <div className="space-y-2">
               {intelligenceData.recentActions.map((act, i) => (
                 <p key={i} className="text-[15px] text-gray-700">{act}</p>

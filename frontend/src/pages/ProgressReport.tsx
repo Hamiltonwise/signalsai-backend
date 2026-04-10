@@ -63,8 +63,7 @@ export default function ProgressReport() {
   const orgName = ctx?.org?.name || "";
   const createdAt = ctx?.org?.created_at;
   const place = checkup?.place || {};
-  const topCompetitor = checkup?.topCompetitor;
-  const competitorName = typeof topCompetitor === "string" ? topCompetitor : topCompetitor?.name || null;
+  // topCompetitor/competitorName removed: competitive gap lives on Get Found.
 
   // Calculate days since signup
   const daysActive = createdAt
@@ -107,21 +106,8 @@ export default function ProgressReport() {
     });
   }
 
-  // Competitor gap trend
-  const competitorReviews = typeof topCompetitor === "object" ? topCompetitor?.reviewCount : null;
-  if (competitorReviews != null && currentReviews != null) {
-    const gap = competitorReviews - currentReviews;
-    trends.push({
-      label: `Gap vs ${competitorName || "Competitor"}`,
-      startValue: startReviews != null ? `${competitorReviews - startReviews} reviews` : "Not tracked",
-      currentValue: `${gap > 0 ? gap : 0} reviews`,
-      direction: gap <= 0 ? "up" : startReviews != null && (competitorReviews - currentReviews) < (competitorReviews - startReviews) ? "up" : "flat",
-      context: gap <= 0
-        ? "You lead your top competitor"
-        : `${gap} reviews behind ${competitorName || "your top competitor"}`,
-      verifyUrl: competitorName ? `https://www.google.com/search?q=${encodeURIComponent(competitorName)}` : undefined,
-    });
-  }
+  // Competitor gap removed: competitive comparison lives on Get Found.
+  // Your Numbers answers "Am I getting better?" -- trend, not comparison.
 
   const DirectionIcon = ({ dir }: { dir: "up" | "down" | "flat" }) => {
     if (dir === "up") return <TrendingUp className="w-4 h-4 text-emerald-500" />;
