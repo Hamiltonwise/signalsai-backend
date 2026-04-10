@@ -137,7 +137,7 @@ function PresencePageInner() {
           animate={{ opacity: 1, y: 0 }}
         >
           <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Website</h1>
-          <p className="text-sm text-gray-400 mt-1">Alloro built and maintains your patient-facing website.</p>
+          <p className="text-sm text-gray-400 mt-1">Alloro built and maintains your website.</p>
         </motion.div>
 
         {/* GBP Connection (if not connected) */}
@@ -257,7 +257,7 @@ function PresencePageInner() {
           <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6">
             <p className="text-sm font-semibold text-[#1A1D23] mb-2">Website not yet active</p>
             <p className="text-sm text-gray-500">
-              Alloro can build and maintain a patient-facing website for your practice. When active, this page shows your site performance, form submissions, and optimization history.
+              Alloro can build and maintain a website for your business. When active, this page shows your site performance, form submissions, and optimization history.
             </p>
           </div>
         )}

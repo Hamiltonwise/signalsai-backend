@@ -16,10 +16,11 @@
  * - Everything else is conditional and temporary
  */
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Upload } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
@@ -27,6 +28,7 @@ import { getPriorityItem } from "@/hooks/useLocalStorage";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import CardCapture from "@/components/dashboard/CardCapture";
 import { NotificationWidget } from "@/components/dashboard/NotificationWidget";
+import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -117,17 +119,14 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
 
   // 1. Market Context (with rank position if available)
   if (competitorName && marketSearchUrl) {
-    const rankPos = ranking?.rankPosition;
     const totalComp = ranking?.totalCompetitors;
     const specialty = checkup.market?.specialty || "business";
     const totalTracked = totalComp || checkup.market?.totalCompetitors || null;
-    const rankLabel = rankPos && city
-      ? `#${rankPos} in ${city}`
-      : city
-        ? `${specialty} in ${city}`
-        : "Your local market";
-    const rankContext = rankPos && city && totalTracked
-      ? `When patients search for ${specialty === "orthodontist" ? "an" : "a"} ${specialty} near ${city} in Google Maps, you appear #${rankPos} of ${totalTracked} practices tracked.`
+    const rankLabel = city
+      ? `${specialty} in ${city}`
+      : "Your local market";
+    const rankContext = competitorName && totalTracked
+      ? `${totalTracked} competitors tracked. Top competitor: ${competitorName}.`
       : competitorName
         ? `Top competitor: ${competitorName}`
         : "Alloro is monitoring your competitive landscape";
@@ -135,9 +134,9 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
     readings.push({
       label: "Your Market",
       value: rankLabel,
-      delta: rankPos && totalComp ? `${totalComp} competitors tracked` : undefined,
+      delta: totalTracked ? `${totalTracked} competitors tracked` : undefined,
       context: rankContext,
-      status: rankPos && rankPos <= 3 ? "healthy" : "attention",
+      status: competitorName ? "attention" : "healthy",
       verifyUrl: marketSearchUrl,
       verifyLabel: `Search "${checkup.market?.specialty || "business"} ${city}"`,
       whyItMatters: "Alloro measures from a fixed point so your trend is always comparable week to week. Google rankings shift by location, device, and time of day. Your Alloro rank is a consistent benchmark, not a real-time Google replica.",
@@ -230,6 +229,7 @@ function limitPrompts(prompts: Array<{ key: string; show: boolean }>): Set<strin
 // ─── Component ──────────────────────────────────────────────────────
 
 export default function HomePage() {
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const navigate = useNavigate();
   const { userProfile, billingStatus } = useAuth();
   const { selectedLocation } = useLocationContext();
@@ -482,7 +482,7 @@ export default function HomePage() {
           />
         )}
 
-        {ctx?.has_referral_data && (
+        {ctx?.has_referral_data ? (
           <div className="pl-4 border-l-2 border-[#1A1D23]/10 py-2">
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Your Business Data</p>
             <p className="text-sm text-gray-500">
@@ -495,6 +495,32 @@ export default function HomePage() {
               </button>
             </p>
           </div>
+        ) : ctx && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6"
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-[#D56753]/10 flex items-center justify-center flex-shrink-0">
+                <Upload className="w-5 h-5 text-[#D56753]" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-[#1A1D23] mb-1">See where your customers come from</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Upload a referral report from your system and Alloro will show you which sources drive the most business, which ones are declining, and what to do about it.
+                </p>
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload business data
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
 
         <AnimatePresence>
@@ -527,6 +553,15 @@ export default function HomePage() {
         score={null}
         finding={action?.headline || null}
       />
+
+      {orgId && (
+        <PMSUploadWizardModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          clientId={String(orgId)}
+          onSuccess={() => setShowUploadModal(false)}
+        />
+      )}
     </div>
   );
 }
