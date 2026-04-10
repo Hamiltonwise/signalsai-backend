@@ -333,7 +333,7 @@ function DiscoveryFeed({
   return (
     <div className="space-y-1.5 mt-5 pt-5 border-t border-slate-100 max-h-[220px] overflow-y-auto">
       {/* Business data section */}
-      <p className="text-xs font-bold tracking-widest text-slate-400 uppercase mb-2">
+      <p className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
         Your Profile
       </p>
       {businessItems.slice(0, visibleBusinessItems).map((item, i) => (
@@ -356,7 +356,7 @@ function DiscoveryFeed({
       {/* Competitors section */}
       {visibleCompetitorItems > 0 && (
         <>
-          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase mt-3 mb-2">
+          <p className="text-xs font-semibold tracking-widest text-slate-400 uppercase mt-3 mb-2">
             Competitors Found
           </p>
           {competitorItems.current.slice(0, visibleCompetitorItems).map((item, i) => {
@@ -371,7 +371,7 @@ function DiscoveryFeed({
                 <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
                   isHighlighted ? "bg-[#212D40]" : "bg-[#212D40]/20"
                 }`}>
-                  <span className="text-[8px] font-bold text-white">{i + 1}</span>
+                  <span className="text-[8px] font-semibold text-white">{i + 1}</span>
                 </div>
                 <span className={`font-semibold break-words max-w-[140px] ${isHighlighted ? "text-[#1A1D23]" : "text-slate-600"}`}>
                   {item.label}
@@ -394,7 +394,7 @@ function DiscoveryFeed({
       {/* Oz teaser findings — build anticipation for the results page */}
       {visibleOzLines > 0 && (
         <>
-          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase mt-3 mb-2">
+          <p className="text-xs font-semibold tracking-widest text-slate-400 uppercase mt-3 mb-2">
             Deep Analysis
           </p>
           {OZ_TEASER_LINES.slice(0, visibleOzLines).map((line, i) => (
@@ -485,7 +485,7 @@ function PhotoStrip({ photos }: { photos: PlacePhoto[] }) {
 
   return (
     <div className="mt-3">
-      <p className="text-xs font-bold tracking-widest text-slate-400 uppercase mb-2">
+      <p className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
         GBP Photos
       </p>
       <div className="flex gap-1.5 overflow-hidden">

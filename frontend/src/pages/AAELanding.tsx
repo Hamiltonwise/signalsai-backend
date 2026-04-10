@@ -13,7 +13,7 @@ import { Link } from "react-router-dom";
 
 const VALUE_PROPS = [
   "See every endodontist in your market by name, on a map, in 60 seconds.",
-  "Find out which GPs are referring to you, which ones stopped, and why it matters.",
+  "Find out how your reviews, ratings, and Google presence compare to theirs.",
   "Get one clear action each Monday morning, before your day starts.",
 ];
 
@@ -29,24 +29,24 @@ export default function AAELanding() {
               <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
             </svg>
           </div>
-          <span className="text-xl font-bold tracking-tight text-white">alloro</span>
+          <span className="text-xl font-semibold tracking-tight text-white">alloro</span>
         </Link>
 
         {/* Badge */}
-        <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-[#D56753] bg-[#D56753]/10 rounded-full px-4 py-1.5 mb-8">
+        <span className="inline-block text-xs font-semibold uppercase tracking-[0.2em] text-[#D56753] bg-[#D56753]/10 rounded-full px-4 py-1.5 mb-8">
           AAE 2026 -- Booth #835
         </span>
 
-        {/* Headline */}
+        {/* Headline -- mirrors the QR hook on the banner */}
         <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight leading-tight max-w-md">
-          You're at AAE 2026.
+          See who's beating you
           <br />
-          Run your free Checkup.
+          on Google.
         </h1>
 
         {/* Subhead */}
         <p className="mt-5 text-base text-white/60 leading-relaxed max-w-sm">
-          See exactly where you rank in your market. Takes 60 seconds.
+          Your competitors. Your market. Real numbers. 60 seconds.
         </p>
 
         {/* CTA */}

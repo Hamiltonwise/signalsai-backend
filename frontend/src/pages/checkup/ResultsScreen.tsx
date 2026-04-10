@@ -205,7 +205,7 @@ function ReviewRaceCard({ gap }: { gap: CheckupGapItem }) {
   return (
     <div className={`rounded-xl border p-5 ${isLeading ? "border-emerald-200 bg-emerald-50/50" : "border-[#D56753]/20 bg-white"}`}>
       {/* Race header */}
-      <p className={`text-sm font-bold leading-snug ${isLeading ? "text-emerald-800" : "text-[#1A1D23]"}`}>
+      <p className={`text-sm font-semibold leading-snug ${isLeading ? "text-emerald-800" : "text-[#1A1D23]"}`}>
         {gap.label}
       </p>
 
@@ -231,15 +231,15 @@ function ReviewRaceCard({ gap }: { gap: CheckupGapItem }) {
       {v && (
         <div className="mt-4 grid grid-cols-3 gap-1 sm:gap-2">
           <div className="bg-slate-50 rounded-lg p-2 sm:p-2.5 text-center">
-            <p className="text-base sm:text-lg font-bold text-[#1A1D23] tabular-nums">{v.clientWeekly}</p>
+            <p className="text-base sm:text-lg font-semibold text-[#1A1D23] tabular-nums">{v.clientWeekly}</p>
             <p className="text-xs text-slate-400 leading-tight">Your pace</p>
           </div>
           <div className="bg-slate-50 rounded-lg p-2 sm:p-2.5 text-center">
-            <p className="text-base sm:text-lg font-bold text-slate-500 tabular-nums">{v.competitorWeekly}</p>
+            <p className="text-base sm:text-lg font-semibold text-slate-500 tabular-nums">{v.competitorWeekly}</p>
             <p className="text-xs text-slate-400 leading-tight">Their pace</p>
           </div>
           <div className={`rounded-lg p-2 sm:p-2.5 text-center ${v.weeksToPass ? "bg-[#D56753]/5" : "bg-emerald-50"}`}>
-            <p className={`text-base sm:text-lg font-bold tabular-nums ${v.weeksToPass ? "text-[#D56753]" : "text-emerald-600"}`}>
+            <p className={`text-base sm:text-lg font-semibold tabular-nums ${v.weeksToPass ? "text-[#D56753]" : "text-emerald-600"}`}>
               {v.weeksToPass && v.weeksToPass <= 52 ? `${v.weeksToPass}w` : v.weeksToPass && v.weeksToPass > 52 ? "1yr+" : "---"}
             </p>
             <p className="text-xs text-slate-400 leading-tight">
@@ -261,7 +261,7 @@ function ReviewRaceCard({ gap }: { gap: CheckupGapItem }) {
           }`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-[#1A1D23]">
+                <p className="text-xs font-semibold text-[#1A1D23]">
                   This week's target: {v.thisWeekAsk} review{v.thisWeekAsk !== 1 ? "s" : ""}
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -310,7 +310,7 @@ function GapBar({ gap }: { gap: CheckupGapItem }) {
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className="text-xs font-bold text-[#1A1D23] shrink-0 tabular-nums">
+          <span className="text-xs font-semibold text-[#1A1D23] shrink-0 tabular-nums">
             {gap.current}/{gap.target}
           </span>
         </div>
@@ -386,7 +386,7 @@ function CompetitorInviteSection({
 
   return (
     <div className="rounded-2xl border border-dashed border-[#D56753]/20 bg-[#D56753]/[0.02] p-5">
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
         Your competitors haven't seen this yet
       </p>
       <div className="space-y-2">
@@ -422,7 +422,7 @@ function GapSection({ gaps }: { gaps: CheckupGapItem[] }) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-bold text-[#1A1D23] uppercase tracking-wide">
+      <h2 className="text-sm font-semibold text-[#1A1D23] uppercase tracking-wide">
         The Race
       </h2>
       <p className="text-xs text-slate-400 -mt-1">
@@ -544,7 +544,7 @@ export default function ResultsScreen() {
           <div className="w-14 h-14 rounded-2xl bg-[#D56753]/8 flex items-center justify-center mx-auto mb-5">
             <Globe className="w-6 h-6 text-[#D56753]" />
           </div>
-          <h2 className="text-xl font-bold text-[#1A1D23] font-heading">
+          <h2 className="text-xl font-semibold text-[#1A1D23] font-heading">
             We built this for local service businesses.
           </h2>
           <p className="text-sm text-[#1A1D23]/60 mt-4 leading-relaxed">
@@ -974,7 +974,7 @@ export default function ResultsScreen() {
 
       {/* Findings — first visible, rest blurred */}
       <div className={`space-y-3 transition-all duration-700 ${revealStage >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-        <h2 className="text-sm font-bold text-[#1A1D23] uppercase tracking-wide">Key Findings</h2>
+        <h2 className="text-sm font-semibold text-[#1A1D23] uppercase tracking-wide">Key Findings</h2>
         {state.userQuestion && (
           <div className="bg-[#D56753]/5 border border-[#D56753]/15 rounded-xl px-4 py-3 text-sm text-[#1A1D23]">
             You asked: &ldquo;{state.userQuestion}&rdquo;. Here&apos;s what we found.
@@ -998,7 +998,7 @@ export default function ResultsScreen() {
         <div className={`transition-all duration-700 ${revealStage >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
         <div className="bg-gradient-to-br from-white to-[#FFF9F7] border-2 border-[#D56753]/20 rounded-2xl p-7 shadow-warm-lg">
           <div className="mb-4">
-            <p className="text-base font-bold text-[#1A1D23] font-heading">
+            <p className="text-base font-semibold text-[#1A1D23] font-heading">
               Your full checkup is ready.
             </p>
             <p className="text-sm text-[#1A1D23]/50 mt-1">
@@ -1266,7 +1266,7 @@ export default function ResultsScreen() {
         {/* Designed for screenshots. Uses readings, not scores. */}
         <div className="rounded-2xl overflow-hidden shadow-lg">
           <div className="bg-[#212D40] p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30 mb-3 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/30 mb-3 text-center">
               Your Google Health Check
             </p>
             <p className="text-lg font-semibold text-white text-center mb-4">{place.name}</p>
@@ -1296,7 +1296,7 @@ export default function ResultsScreen() {
           )}
           <div className="bg-[#1a2533] px-6 py-3 flex items-center justify-between">
             <p className="text-xs text-white/25">getalloro.com/checkup</p>
-            <p className="text-xs font-bold text-white/25 tracking-wider">ALLORO</p>
+            <p className="text-xs font-semibold text-white/25 tracking-wider">ALLORO</p>
           </div>
         </div>
 

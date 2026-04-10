@@ -415,7 +415,7 @@ export default function EntryScreen() {
               <MapPin className="w-5 h-5 text-[#D56753]" />
             </div>
             <div className="min-w-0">
-              <p className="text-base font-bold text-[#1A1D23]">
+              <p className="text-base font-semibold text-[#1A1D23]">
                 {selectedPlace.name}
               </p>
               <p className="text-sm text-slate-500 mt-0.5">
