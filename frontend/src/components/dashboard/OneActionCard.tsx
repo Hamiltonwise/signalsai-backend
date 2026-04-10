@@ -176,19 +176,25 @@ function resolveAction(props: OneActionCardProps): OneAction {
     }
   }
 
-  // Rule 5: DEFAULT ACTION (review request)
-  // GBP connection is an optional enhancement, not a gate.
-  // Show the same healthy-state action whether or not GBP is connected.
+  // Rule 5: QUIET WEEK -- no fires, but still show intelligence
+  // Per UX vision: the product should feel alive even when nothing is urgent.
+  // Name the competitor. Show proof the system is watching.
+  const competitor = props.topCompetitorName && props.topCompetitorName !== "your top competitor"
+    ? props.topCompetitorName
+    : null;
 
-  // Rule 6: HEALTHY STATE -- the gift of "nothing needs you"
   return {
     severity: "default",
-    title: `Your business is steady. Nothing needs you right now.`,
-    detail: `Your position held. No competitor gained ground. Alloro is watching your market and will tell you when something changes.`,
-    cta: "",
-    ctaLink: undefined,
+    title: competitor
+      ? `No competitor gained ground this week. ${competitor} held steady too.`
+      : "Alloro scanned your market this week. No threats detected.",
+    detail: competitor
+      ? `Alloro is watching ${competitor} and every other competitor in your market. When something moves, this is where you'll see it.`
+      : "Rankings, reviews, and competitor activity are tracked weekly. When something changes, this card will tell you exactly what happened.",
+    cta: "See your market",
+    ctaLink: "/compare",
     icon: Star,
-    rule: "healthy_state",
+    rule: "quiet_week",
   };
 }
 

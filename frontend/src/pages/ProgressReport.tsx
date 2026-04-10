@@ -63,7 +63,13 @@ export default function ProgressReport() {
   const orgName = ctx?.org?.name || "";
   const createdAt = ctx?.org?.created_at;
   const place = checkup?.place || {};
-  // topCompetitor/competitorName removed: competitive gap lives on Get Found.
+
+  // Competitor data from ranking analysis
+  const rawData = rankingRaw?.rawData as Record<string, unknown> | undefined;
+  const competitors = (rawData?.competitors as Array<Record<string, unknown>>) || [];
+  const topCompetitor = competitors.length > 0
+    ? [...competitors].sort((a, b) => ((b.reviewCount as number) || 0) - ((a.reviewCount as number) || 0))[0]
+    : null;
 
   // Calculate days since signup
   const daysActive = createdAt
@@ -74,40 +80,93 @@ export default function ProgressReport() {
   const trends: ReadingTrend[] = [];
   const googleSearchUrl = orgName ? `https://www.google.com/search?q=${encodeURIComponent(orgName)}` : undefined;
 
-  // Review count trend
+  // Review count trend with competitor context
   const startReviews = checkup?.reviewCount ?? checkup?.checkup_review_count_at_creation ?? null;
   const currentReviews = place.reviewCount ?? startReviews;
   if (startReviews != null && currentReviews != null) {
     const delta = currentReviews - startReviews;
+    const topCompReviews = topCompetitor ? (topCompetitor.reviewCount as number) || 0 : 0;
+    const reviewGap = topCompReviews > 0 ? topCompReviews - currentReviews : 0;
+
+    let context = "";
+    if (delta > 0) {
+      context = `+${delta} review${delta !== 1 ? "s" : ""} since you joined`;
+    } else if (delta === 0) {
+      context = "No new reviews yet";
+    } else {
+      context = `${Math.abs(delta)} review${Math.abs(delta) !== 1 ? "s" : ""} removed`;
+    }
+
+    // Add competitor context if available
+    if (topCompetitor && topCompReviews > 0) {
+      const compName = (topCompetitor.name as string) || "Top competitor";
+      if (reviewGap > 0) {
+        context += `. ${compName} has ${topCompReviews} (${reviewGap} ahead)`;
+      } else if (reviewGap < 0) {
+        context += `. You lead ${compName} by ${Math.abs(reviewGap)}`;
+      } else {
+        context += `. Tied with ${compName}`;
+      }
+    }
+
     trends.push({
       label: "Reviews",
       startValue: `${startReviews}`,
       currentValue: `${currentReviews}`,
       direction: delta > 0 ? "up" : delta < 0 ? "down" : "flat",
-      context: delta > 0
-        ? `+${delta} review${delta !== 1 ? "s" : ""} since you joined`
-        : delta === 0
-          ? "No new reviews yet"
-          : `${Math.abs(delta)} review${Math.abs(delta) !== 1 ? "s" : ""} removed`,
+      context,
       verifyUrl: googleSearchUrl,
     });
   }
 
-  // Rating trend
+  // Rating trend with competitor context
   const rating = place.rating || checkup?.rating || null;
   if (rating != null) {
+    // Calculate market average from competitors
+    const competitorRatings = competitors
+      .map(c => (c.rating as number) || 0)
+      .filter(r => r > 0);
+    const marketAvg = competitorRatings.length > 0
+      ? Math.round((competitorRatings.reduce((a, b) => a + b, 0) / competitorRatings.length) * 10) / 10
+      : null;
+
+    let context = "";
+    if (rating >= 4.5) {
+      context = "Above the threshold most consumers require";
+    } else {
+      context = "Room to improve";
+    }
+    if (marketAvg) {
+      const diff = Math.round((rating - marketAvg) * 10) / 10;
+      if (diff > 0) {
+        context += `. ${diff} stars above market average (${marketAvg})`;
+      } else if (diff < 0) {
+        context += `. ${Math.abs(diff)} stars below market average (${marketAvg})`;
+      } else {
+        context += `. At market average (${marketAvg})`;
+      }
+    }
+
     trends.push({
       label: "Star Rating",
       startValue: `${rating}`,
       currentValue: `${rating}`,
       direction: "flat",
-      context: rating >= 4.5 ? "Above the threshold most consumers require" : "Room to improve",
+      context,
       verifyUrl: googleSearchUrl,
     });
   }
 
-  // Competitor gap removed: competitive comparison lives on Get Found.
-  // Your Numbers answers "Am I getting better?" -- trend, not comparison.
+  // Competitors tracked trend
+  if (competitors.length > 0) {
+    trends.push({
+      label: "Competitors Tracked",
+      startValue: `${competitors.length}`,
+      currentValue: `${competitors.length}`,
+      direction: "flat",
+      context: `Alloro monitors ${competitors.length} competitors in your market weekly`,
+    });
+  }
 
   const DirectionIcon = ({ dir }: { dir: "up" | "down" | "flat" }) => {
     if (dir === "up") return <TrendingUp className="w-4 h-4 text-emerald-500" />;
@@ -133,7 +192,7 @@ export default function ProgressReport() {
             </div>
           )}
           {!daysActive && (
-            <p className="text-sm text-gray-400 mt-1">Alloro reads your business data and shows you what is moving.</p>
+            <p className="text-sm text-gray-400 mt-1">Alloro reads your business data and shows you what is moving. Every number links to something you can verify.</p>
           )}
         </motion.div>
 
@@ -243,8 +302,16 @@ export default function ProgressReport() {
                 )}
               </div>
               <p className="text-sm text-gray-500">
-                These are real customer actions from your Google Business Profile. Each one represents someone who found you on Google and took a step toward becoming a patient.
+                Real customer actions from your Google Business Profile. Each one is someone who found you and took a step toward becoming a customer.
               </p>
+              {total > 0 && (
+                <p className="text-sm font-medium text-[#1A1D23] mt-2">
+                  {total} total action{total !== 1 ? "s" : ""} tracked.{" "}
+                  {calls > 0 && calls >= directions && calls >= clicks && "Phone calls are your top conversion channel."}
+                  {directions > 0 && directions > calls && directions >= clicks && "Directions requests are your top conversion channel."}
+                  {clicks > 0 && clicks > calls && clicks > directions && "Website clicks are your top conversion channel."}
+                </p>
+              )}
             </motion.div>
           );
         })()}
@@ -308,7 +375,7 @@ export default function ProgressReport() {
                     )}
                     <div>
                       <p className="text-sm font-semibold text-[#1A1D23]">
-                        {delta > 0 ? "Improving" : showDecline ? "Needs attention" : "All caught up"}
+                        {delta > 0 ? "Improving" : showDecline ? "Needs attention" : "Holding steady"}
                       </p>
                       <p className="text-sm text-gray-500">
                         {delta > 0

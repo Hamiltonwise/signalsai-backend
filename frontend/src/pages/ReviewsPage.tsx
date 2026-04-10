@@ -26,9 +26,12 @@ import {
   ChevronRight,
   Check,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { apiGet, apiPatch } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocationContext } from "@/contexts/locationContext";
+import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -226,6 +229,7 @@ function CheckupReviewCard({ review }: { review: CheckupReview }) {
 
 export default function ReviewsPage() {
   const { userProfile } = useAuth();
+  const { selectedLocation } = useLocationContext();
   const orgId = userProfile?.organizationId || null;
   const queryClient = useQueryClient();
   const [approveError, setApproveError] = useState<string | null>(null);
@@ -268,22 +272,39 @@ export default function ReviewsPage() {
     staleTime: 120_000,
   });
 
-  // Review velocity
+  // Review velocity from one-action-card
   const { data: velocityData } = useQuery<Record<string, number | string> | null>({
     queryKey: ["review-velocity", orgId],
     queryFn: async () => {
       const res = await apiGet({ path: `/user/one-action-card` });
-      return (res as Record<string, unknown>)?.card
-        ? ((res as Record<string, Record<string, unknown>>).card
-            .competitorVelocity as Record<string, number | string> | null)
-        : null;
+      const cardData = res as Record<string, unknown>;
+      return cardData?.competitorVelocity as Record<string, number | string> | null ?? null;
     },
     enabled: !!orgId,
     staleTime: 120_000,
   });
 
+  // Ranking data for competitor review counts
+  const { data: rankingRaw } = useQuery<Record<string, unknown> | null>({
+    queryKey: ["reviews-ranking", orgId, selectedLocation?.id],
+    queryFn: async () => {
+      const locParam = selectedLocation?.id ? `&locationId=${selectedLocation.id}` : "";
+      const token = getPriorityItem("auth_token") || getPriorityItem("token");
+      const res = await fetch(
+        `/api/practice-ranking/latest?googleAccountId=${orgId || ""}${locParam}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.rankings?.[0] || data?.results?.[0] || null;
+    },
+    enabled: !!orgId,
+    staleTime: 60_000,
+  });
+
   // Parse checkup data
   const orgData = (ctx as Record<string, Record<string, unknown>> | undefined)?.org;
+  const orgName = (orgData?.name as string) || "";
   let checkupData: Record<string, unknown> | null =
     (orgData?.checkup_data as Record<string, unknown>) || null;
   if (typeof checkupData === "string") {
@@ -317,6 +338,15 @@ export default function ReviewsPage() {
     | { summary?: string; positiveThemes?: string[]; negativeThemes?: string[] }
     | null;
 
+  // Competitor review data from ranking analysis
+  const rawData = (rankingRaw as Record<string, unknown>)?.rawData as Record<string, unknown> | undefined;
+  const competitors = (rawData?.competitors as Array<Record<string, unknown>>) || [];
+  const topCompetitors = [...competitors]
+    .sort((a, b) => ((b.reviewCount as number) || 0) - ((a.reviewCount as number) || 0))
+    .slice(0, 5);
+
+  const googleSearchUrl = orgName ? `https://www.google.com/search?q=${encodeURIComponent(orgName)}` : undefined;
+
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
       <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-4">
@@ -327,9 +357,30 @@ export default function ReviewsPage() {
           </h1>
           <p className="text-sm text-gray-400 mt-1">Alloro monitors your Google reviews daily. AI-drafted responses appear here within 24 hours of a new review.</p>
           {rating && reviewCount > 0 && (
-            <p className="text-sm text-[#1A1D23]/40 mt-1">
-              {rating} stars across {reviewCount} reviews
-            </p>
+            <div className="mt-4 flex items-center gap-4">
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-semibold text-[#1A1D23]">{rating}</span>
+                <StarRating rating={Math.round(rating)} size="md" />
+              </div>
+              <div className="w-px h-8 bg-stone-200/60" />
+              <div>
+                <p className="text-lg font-semibold text-[#1A1D23]">{reviewCount}</p>
+                <p className="text-xs text-gray-400">total reviews</p>
+              </div>
+              {googleSearchUrl && (
+                <>
+                  <div className="w-px h-8 bg-stone-200/60" />
+                  <a
+                    href={googleSearchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold hover:underline"
+                  >
+                    Verify on Google <ExternalLink className="w-3 h-3" />
+                  </a>
+                </>
+              )}
+            </div>
           )}
         </motion.div>
 
@@ -395,8 +446,8 @@ export default function ReviewsPage() {
             </div>
           )}
 
-        {/* Review Velocity */}
-        <Section title="Review Velocity" icon={TrendingUp} defaultOpen={true}>
+        {/* Review Velocity / Competitor Comparison */}
+        <Section title="Your Reviews vs. Competitors" icon={TrendingUp} defaultOpen={true}>
           {velocityData ? (
             <div className="flex items-center gap-6 text-sm">
               <div>
@@ -419,6 +470,51 @@ export default function ReviewsPage() {
                 <p className="text-xs text-[#1A1D23]/40">this month</p>
               </div>
             </div>
+          ) : topCompetitors.length > 0 && reviewCount > 0 ? (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500 mb-3">
+                How your {reviewCount} reviews compare to the top competitors in your market.
+              </p>
+              {/* You row */}
+              <div className="flex items-center justify-between rounded-xl bg-emerald-50/60 border border-emerald-200/40 p-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-[#1A1D23]">{orgName || "You"}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <StarRating rating={Math.round(rating || 0)} />
+                  <span className="text-sm text-[#1A1D23]/60">{rating}</span>
+                  <span className="text-sm font-semibold text-[#1A1D23]">{reviewCount} reviews</span>
+                </div>
+              </div>
+              {/* Competitor rows */}
+              {topCompetitors.map((comp, i) => {
+                const compReviews = (comp.reviewCount as number) || 0;
+                const compRating = (comp.rating as number) || 0;
+                const compName = (comp.name as string) || `Competitor ${i + 1}`;
+                const gap = compReviews - reviewCount;
+                return (
+                  <div key={i} className="flex items-center justify-between rounded-xl bg-stone-50/80 border border-stone-200/60 p-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <span className="text-sm text-[#1A1D23] truncate">{compName}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <StarRating rating={Math.round(compRating)} />
+                      <span className="text-sm text-[#1A1D23]/60">{compRating}</span>
+                      <span className="text-sm font-semibold text-[#1A1D23]">{compReviews} reviews</span>
+                      {gap > 0 && (
+                        <span className="text-xs text-red-500 font-medium">+{gap}</span>
+                      )}
+                      {gap < 0 && (
+                        <span className="text-xs text-emerald-500 font-medium">{gap}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <p className="text-xs text-gray-400 mt-2">
+                Alloro tracks monthly review velocity once two weeks of data have accumulated.
+              </p>
+            </div>
           ) : reviewCount > 0 ? (
             <div className="space-y-2">
               <p className="text-sm text-[#1A1D23]/70">
@@ -433,7 +529,7 @@ export default function ReviewsPage() {
         </Section>
 
         {/* Sentiment Summary */}
-        {(sentimentMoments.length > 0 || sentimentInsight?.summary) && (
+        {(sentimentMoments.length > 0 || sentimentInsight?.summary || (rating && reviewCount > 0)) && (
           <Section title="What Your Reviews Reveal" defaultOpen={true}>
             {sentimentInsight?.summary && (
               <p className="text-sm text-[#1A1D23]/70 leading-relaxed mb-4">
@@ -450,6 +546,38 @@ export default function ReviewsPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+            {sentimentMoments.length === 0 && !sentimentInsight?.summary && rating && reviewCount > 0 && (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4">
+                  <p className="text-sm font-medium text-[#1A1D23]">
+                    {rating >= 4.5
+                      ? `${rating} stars puts you above the threshold most consumers require before choosing a provider.`
+                      : rating >= 4.0
+                        ? `${rating} stars is solid. Most consumers filter for 4+ stars, so you clear the bar.`
+                        : `${rating} stars means some consumers will filter you out. Getting above 4.0 is the priority.`}
+                  </p>
+                  <p className="text-sm text-[#1A1D23]/60 mt-1">
+                    {reviewCount >= 100
+                      ? `With ${reviewCount} reviews, your rating is statistically stable. New reviews shift it slowly.`
+                      : reviewCount >= 50
+                        ? `At ${reviewCount} reviews, each new 5-star review still moves the needle. Consistent collection matters.`
+                        : `With ${reviewCount} reviews, every new review has outsized impact on your rating. This is your highest-leverage growth activity right now.`}
+                  </p>
+                </div>
+                {sentimentInsight?.positiveThemes && sentimentInsight.positiveThemes.length > 0 && (
+                  <div className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4">
+                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-2">Reviewers mention most</p>
+                    <div className="flex flex-wrap gap-2">
+                      {sentimentInsight.positiveThemes.map((theme, i) => (
+                        <span key={i} className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-medium">
+                          {theme}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </Section>

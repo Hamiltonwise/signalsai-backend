@@ -234,7 +234,7 @@ export function NotificationWidget({
     );
   }
 
-  // Empty state - no unread notifications
+  // Empty state - no unread, but show proof the system is alive
   if (!latestUnread) {
     return (
       <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
@@ -242,10 +242,10 @@ export function NotificationWidget({
           <CheckCircle2 className="w-5 h-5 text-emerald-500" />
           <div>
             <p className="text-sm font-semibold text-[#1A1D23]">
-              All caught up
+              No new alerts this week
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
-              Alloro is monitoring your market. Updates appear here when something needs your attention.
+              Your competitors, reviews, and rankings were scanned. Nothing required your attention. That's a good week.
             </p>
           </div>
         </div>

@@ -280,6 +280,70 @@ function ComparePageInner() {
           );
         })()}
 
+        {/* Full Competitor Landscape */}
+        {(() => {
+          const rawData = rankingRaw?.rawData || rankingRaw?.raw_data;
+          const allCompetitors = rawData?.competitors;
+          if (!Array.isArray(allCompetitors) || allCompetitors.length < 2) return null;
+          return (
+            <Section title={`Your Market (${allCompetitors.length} competitors)`} defaultOpen={true}>
+              <div className="space-y-3">
+                <p className="text-sm text-gray-500">
+                  Every competitor Alloro found in your market. Sorted by review volume.
+                </p>
+                <div className="space-y-2">
+                  {allCompetitors
+                    .sort((a: any, b: any) => (b.userRatingCount || b.reviewCount || 0) - (a.userRatingCount || a.reviewCount || 0))
+                    .map((c: any, i: number) => {
+                      const name = c.name || c.displayName?.text || "Unknown";
+                      const reviews = c.userRatingCount || c.reviewCount || c.totalReviews || 0;
+                      const rating = c.rating || c.averageRating || 0;
+                      const isTop = i === 0;
+                      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(name)}`;
+                      return (
+                        <div key={i} className={`flex items-center justify-between py-3 px-4 rounded-xl ${isTop ? "bg-[#D56753]/5 border border-[#D56753]/10" : "bg-white/60 border border-stone-100"}`}>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="text-xs font-semibold text-gray-400 w-5 shrink-0">{i + 1}</span>
+                            <div className="min-w-0">
+                              <p className={`text-sm font-semibold truncate ${isTop ? "text-[#D56753]" : "text-[#1A1D23]"}`}>
+                                {name}
+                              </p>
+                              {rating > 0 && (
+                                <p className="text-xs text-gray-400">{Number(rating).toFixed(1)} stars</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-[#1A1D23]">{reviews}</p>
+                              <p className="text-xs text-gray-400">reviews</p>
+                            </div>
+                            <a href={searchUrl} target="_blank" rel="noopener noreferrer"
+                              className="text-[#1A1D23]/30 hover:text-[#D56753] transition-colors">
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+                {clientReviews > 0 && (
+                  <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-semibold text-emerald-600 w-5">You</span>
+                      <p className="text-sm font-semibold text-emerald-700">{orgName || "Your practice"}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-emerald-700">{clientReviews}</p>
+                      <p className="text-xs text-emerald-500">reviews</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Section>
+          );
+        })()}
+
         {/* Google Business Profile completeness */}
         <Section title="Google Business Profile" defaultOpen={true}>
           {(() => {

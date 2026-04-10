@@ -455,12 +455,12 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
             <Star className="w-5 h-5 text-[#D56753]" />
           </div>
           <div>
-            <TailorText editKey="dashboard.findings.title" defaultText="Your agents are working" as="p" className="text-sm font-bold text-[#1A1D23]" />
-            <TailorText editKey="dashboard.findings.status" defaultText="First report: Monday morning" as="p" className="text-xs text-[#D56753] font-medium" />
+            <TailorText editKey="dashboard.findings.title" defaultText="Scanning your market" as="p" className="text-sm font-semibold text-[#1A1D23]" />
+            <TailorText editKey="dashboard.findings.status" defaultText="Named findings arrive Monday" as="p" className="text-xs text-[#D56753] font-medium" />
           </div>
         </div>
         <p className="text-sm text-gray-500 leading-relaxed">
-          <TailorText editKey="dashboard.findings.body" defaultText="Your competitors are being analyzed right now. Named findings with dollar figures arrive in your first Monday email." as="span" className="" />
+          <TailorText editKey="dashboard.findings.body" defaultText="Alloro is analyzing your competitors right now. Your first intelligence brief names competitors, shows specific gaps, and tells you exactly what to do." as="span" className="" />
         </p>
       </div>
     );
