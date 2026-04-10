@@ -428,6 +428,104 @@ export default function AlloroPostsDocs() {
         </div>
       </section>
 
+      {/* Conditional Rendering */}
+      <section className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900">
+          Conditional Rendering
+        </h2>
+        <p className="text-sm text-gray-700 leading-relaxed">
+          Wrap markup in <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">{"{{if post.X}}...{{endif}}"}</code> or{" "}
+          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">{"{{if_not post.X}}...{{endif}}"}</code>{" "}
+          to show or hide elements based on whether a field is empty. Works in
+          post blocks, single post templates, and with custom fields. Resolved
+          before token replacement.
+        </p>
+
+        <h3 className="text-sm font-semibold text-gray-800 mt-2">
+          What counts as "empty"?
+        </h3>
+        <p className="text-sm text-gray-700 leading-relaxed">
+          A field is considered empty if its value is{" "}
+          <code className="bg-gray-100 px-1 rounded text-xs">null</code>,{" "}
+          <code className="bg-gray-100 px-1 rounded text-xs">undefined</code>, or an
+          empty string <code className="bg-gray-100 px-1 rounded text-xs">""</code>.
+          The strings <code className="bg-gray-100 px-1 rounded text-xs">"0"</code>,{" "}
+          <code className="bg-gray-100 px-1 rounded text-xs">"false"</code>,
+          whitespace-only values, and the number{" "}
+          <code className="bg-gray-100 px-1 rounded text-xs">0</code> are{" "}
+          <strong>not</strong> empty.
+        </p>
+
+        <h3 className="text-sm font-semibold text-gray-800 mt-2">
+          Example 1 — Featured image with fallback
+        </h3>
+        <p className="text-sm text-gray-700 leading-relaxed">
+          Render the featured image only if set; otherwise show a fallback
+          element instead:
+        </p>
+        <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+          <pre className="text-sm text-green-400 font-mono whitespace-pre">{`{{if post.featured_image}}
+  <img src="{{post.featured_image}}" alt="{{post.title}}" />
+{{endif}}
+{{if_not post.featured_image}}
+  <div class="location-hero">...</div>
+{{endif}}`}</pre>
+        </div>
+
+        <h3 className="text-sm font-semibold text-gray-800 mt-2">
+          Example 2 — Custom field (video embed)
+        </h3>
+        <p className="text-sm text-gray-700 leading-relaxed">
+          Hide an entire video wrapper section when the <code className="bg-gray-100 px-1 rounded text-xs">video_url</code> custom field is empty:
+        </p>
+        <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+          <pre className="text-sm text-green-400 font-mono whitespace-pre">{`{{if post.custom.video_url}}
+  <div class="video-wrapper">{{post.video_embed}}</div>
+{{endif}}`}</pre>
+        </div>
+
+        <h3 className="text-sm font-semibold text-gray-800 mt-2">Rules & Limits</h3>
+        <ul className="text-sm text-gray-700 leading-relaxed list-disc pl-5 space-y-1">
+          <li>
+            <strong>Flat only.</strong> Nested conditionals (an{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">{"{{if}}"}</code>{" "}
+            inside another) are not supported in v1. If the renderer detects
+            nesting it aborts loudly — your markers will render as raw text so
+            the mistake is visible, and a warning is logged.
+          </li>
+          <li>
+            <strong>No <code className="bg-gray-100 px-1 rounded text-xs">{"{{else}}"}</code> branch.</strong>{" "}
+            Use two blocks — one{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">{"{{if}}"}</code>{" "}
+            and one <code className="bg-gray-100 px-1 rounded text-xs">{"{{if_not}}"}</code>.
+          </li>
+          <li>
+            <strong>No comparisons.</strong> Only presence/absence. You can't
+            write <code className="bg-gray-100 px-1 rounded text-xs">{"{{if post.status == 'draft'}}"}</code>.
+          </li>
+          <li>
+            <strong>Preview limitation:</strong> the editor preview treats{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">{"{{post.custom.*}}"}</code>{" "}
+            fields as empty because placeholder data doesn't model custom
+            fields. The live site reflects actual post values.
+          </li>
+          <li>
+            Supported fields: <code className="bg-gray-100 px-1 rounded text-xs">title</code>,{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">slug</code>,{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">url</code>,{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">content</code>,{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">excerpt</code>,{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">featured_image</code>,{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">categories</code>,{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">tags</code>,{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">created_at</code>,{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">updated_at</code>,{" "}
+            <code className="bg-gray-100 px-1 rounded text-xs">published_at</code>,
+            and any <code className="bg-gray-100 px-1 rounded text-xs">custom.&lt;slug&gt;</code>.
+          </li>
+        </ul>
+      </section>
+
       {/* Examples */}
       <section className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Examples</h2>

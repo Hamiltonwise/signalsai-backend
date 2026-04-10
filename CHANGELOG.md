@@ -2,6 +2,28 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.13] - April 2026
+
+### Conditional Rendering for Post Tokens
+
+Post blocks and single post templates can now hide markup when a field or custom field is empty, eliminating broken-image icons, empty labels, and orphan wrapper elements. Template authors wrap markup in `{{if post.X}}...{{endif}}` or `{{if_not post.X}}...{{endif}}` to conditionally render based on field presence. Supports standard post tokens and `post.custom.<slug>` custom fields. Evaluated before token replacement so the stripped markup never reaches the output.
+
+**Key Changes:**
+- New syntax: `{{if post.featured_image}}<img src="{{post.featured_image}}"/>{{endif}}` keeps the image only when set; pair with `{{if_not post.featured_image}}...{{endif}}` for a fallback branch
+- "Empty" is strictly `null`, `undefined`, or empty string `""`. The values `"0"`, `0`, `false`, whitespace strings, and empty arrays/objects are intentionally **not** empty — authors writing `{{if post.custom.count}}` with a zero count see the block render as expected
+- Flat only in v1 — nested conditionals trigger a `console.warn` and leave the template unchanged so the raw markers render visibly. Loud-by-design so silent template bugs don't ship
+- Custom fields supported via `{{if post.custom.<slug>}}` in both post block loops and single post templates
+- Works in five render paths with identical semantics: production post blocks, production single post pages, editor page preview with embedded post block shortcodes, editor post block template preview (client-side), and editor single post template preview (client-side)
+- Existing templates with zero `{{if}}` tokens pass through a fast-path early return — zero behavioral change for all current data
+- Known preview limitation documented in the Posts Docs page: the editor's client-side preview treats `post.custom.*` as empty because placeholder data doesn't model custom fields. Live site reflects real values.
+- Companion change in `website-builder-rebuild` (production renderer) ships the same `processConditionals` logic in `src/utils/shortcodes.ts` — required for production parity. Three source-of-truth copies are kept in sync via cross-reference header comments in each file.
+
+**Commits:**
+- `src/controllers/user-website/user-website-services/shortcodeResolver.service.ts` — added `processConditionals` helper (local, non-exported) with field resolver handling the backend's `_categories`/`_tags` naming convention and derived `url` field; wired into `renderPostBlock`'s `posts.map` body after `customFields` is parsed. Header comment names the two sibling copies.
+- `frontend/src/components/Admin/PostBlocksTab.tsx` — added `processConditionals` helper that resolves fields by looking up literal token strings in `PLACEHOLDER_POST`; invoked in both the loop path (per-post, so different preview posts can resolve differently) and the single-template fallback path of `replacePlaceholders`. Documents the custom-field preview limitation inline.
+- `frontend/src/pages/admin/AlloroPostsDocs.tsx` — new "Conditional Rendering" section between "Shortcode Syntax" and "Examples" with syntax reference, empty-definition explainer, two worked examples (featured image fallback, video embed), and a rules/limits list covering flat-only constraint, absence of `{{else}}`/comparisons, preview limitation, and the supported field list.
+- `plans/04112026-no-ticket-conditional-post-token-rendering/spec.md` — full spec covering why/what/context/constraints/risk/tasks/done for the cross-repo change.
+
 ## [0.0.12] - April 2026
 
 ### Allow Manager Role to Rename a Location

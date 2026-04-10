@@ -221,6 +221,82 @@ async function fetchFilteredPosts(
   return posts;
 }
 
+// =====================================================================
+// Conditional Rendering ({{if}} / {{if_not}} / {{endif}})
+//
+// Strip {{if post.X}}...{{endif}} and {{if_not post.X}}...{{endif}} blocks
+// based on whether the named field is empty.
+//
+// Empty = null, undefined, or "". "0", 0, false are NOT empty.
+// Flat only — nesting is detected and the input is returned unchanged with
+// a warning (loud failure).
+//
+// NOTE: This logic is duplicated in two other locations. Keep in sync:
+//   - website-builder-rebuild/src/utils/shortcodes.ts (processConditionals)
+//   - alloro/frontend/src/components/Admin/PostBlocksTab.tsx
+// =====================================================================
+
+const CONDITIONAL_BLOCK_RE =
+  /\{\{\s*(if|if_not)\s+post\.([\w.]+)\s*\}\}([\s\S]*?)\{\{\s*endif\s*\}\}/g;
+const ORPHAN_CONDITIONAL_RE =
+  /\{\{\s*(?:if|if_not)\s+[^}]*\}\}|\{\{\s*endif\s*\}\}/g;
+const NESTED_PROBE_RE = /\{\{\s*(?:if|if_not)\s+/;
+
+function isConditionalValueEmpty(value: unknown): boolean {
+  return value === null || value === undefined || value === "";
+}
+
+function resolveConditionalField(
+  post: any,
+  customFields: Record<string, unknown>,
+  field: string
+): unknown {
+  if (field.startsWith("custom.")) {
+    const slug = field.slice("custom.".length);
+    return customFields ? customFields[slug] : undefined;
+  }
+  // Backend stores categories/tags under _categories/_tags (see fetchFilteredPosts)
+  if (field === "categories") return post._categories;
+  if (field === "tags") return post._tags;
+  // url is derived at render time — non-empty iff slug is set
+  if (field === "url") return post.slug || "";
+  return post[field];
+}
+
+function processConditionals(
+  html: string,
+  post: any,
+  customFields: Record<string, unknown>
+): string {
+  if (!html.includes("{{if")) return html;
+
+  // Nesting detection — abort loudly on any nested block.
+  for (const probe of html.matchAll(CONDITIONAL_BLOCK_RE)) {
+    if (NESTED_PROBE_RE.test(probe[3])) {
+      console.warn(
+        `[shortcodeResolver] Nested conditional detected in post template (flat-only in v1). ` +
+          `Field: post.${probe[2]}. Block: ${probe[0].slice(0, 200)}`
+      );
+      return html;
+    }
+  }
+
+  // Strip-or-unwrap pass.
+  let result = html.replace(
+    CONDITIONAL_BLOCK_RE,
+    (_match, kind: string, field: string, body: string) => {
+      const value = resolveConditionalField(post, customFields, field);
+      const empty = isConditionalValueEmpty(value);
+      const keep = kind === "if" ? !empty : empty;
+      return keep ? body : "";
+    }
+  );
+
+  // Orphan cleanup.
+  result = result.replace(ORPHAN_CONDITIONAL_RE, "");
+  return result;
+}
+
 function renderPostBlock(
   blockHtml: string,
   posts: any[],
@@ -256,7 +332,9 @@ function renderPostBlock(
           })
         : "";
 
-    let html = template;
+    // Conditional rendering pass first — strip {{if}}/{{if_not}} blocks
+    // whose field is empty, before any token replacement runs.
+    let html = processConditionals(template, post, customFields);
     html = html.replace(/\{\{post\.title\}\}/g, escapeHtml(post.title || ""));
     html = html.replace(/\{\{post\.slug\}\}/g, escapeHtml(post.slug || ""));
     html = html.replace(
