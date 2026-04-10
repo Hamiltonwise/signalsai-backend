@@ -2,6 +2,22 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.12] - April 2026
+
+### Allow Manager Role to Rename a Location
+
+Manager-role users can now rename a location from Settings → Properties without escalating to an org admin. Rename is lightweight metadata and no longer requires full `canManageConnections` admin privilege. All other location management actions (Change GBP, Set Primary, Delete, Add Location, change domain) remain admin-only.
+
+**Key Changes:**
+- Backend `PUT /api/locations/:id` is now accessible to both `admin` and `manager` roles
+- Server-side field-level guard rejects non-admin attempts to modify `domain` or `is_primary` with `403` — defense in depth, the client is not authoritative
+- Frontend `PropertiesTab` exposes a distinct `canRenameLocation` flag (admin OR manager); the inline name-edit affordance uses this flag while every other action remains gated on `canManageConnections` (admin-only)
+- Viewer role remains fully read-only; no edit affordance is rendered
+
+**Commits:**
+- `src/routes/locations.ts` — widened role gate on `PUT /:id` from `admin` to `admin, manager`; added field-level guard blocking `domain`/`is_primary` modification for non-admin roles
+- `frontend/src/components/settings/PropertiesTab.tsx` — added `canRenameLocation` flag; swapped `canManageConnections` → `canRenameLocation` on the two call sites that gate the name-edit UI (click handler and hover pencil icon)
+
 ## [0.0.11] - April 2026
 
 ### PM QA Bug Fixes + UX Polish
