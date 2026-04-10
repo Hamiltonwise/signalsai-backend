@@ -180,12 +180,12 @@ function DriftAlerts({ alerts }: { alerts: DriftAlert[] }) {
               </div>
               <div className="text-right shrink-0">
                 <p className="text-xs font-medium text-[#D56753] uppercase tracking-wide">
-                  Annual Revenue at Risk
+                  Referral Status
                 </p>
-                <p className="text-xl font-bold text-[#D56753]">
-                  {a.annualValueAtRisk != null && !isNaN(a.annualValueAtRisk) ? `$${a.annualValueAtRisk.toLocaleString()}` : "$--"}
+                <p className="text-lg font-semibold text-[#D56753]">
+                  {a.daysSinceLastReferral > 90 ? "Gone quiet" : "Slowing"}
                 </p>
-                <p className="text-xs text-gray-400">estimated per year</p>
+                <p className="text-xs text-gray-400">{a.priorReferrals} prior referral{a.priorReferrals !== 1 ? "s" : ""}</p>
               </div>
             </div>
           </div>

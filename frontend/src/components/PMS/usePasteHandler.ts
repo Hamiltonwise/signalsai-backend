@@ -208,7 +208,7 @@ export function usePasteHandler({
         onParsed(buckets);
       } else {
         console.warn("[PMS-Paste] Sanitization failed, using raw parsed data:", sanitizeResult.error);
-        allWarnings.push("Data cleaning could not complete — using unprocessed results.");
+        allWarnings.push("Data cleaning could not complete. Using unprocessed results.");
         const buckets = rowsToBuckets(allRows);
         onParsed(buckets);
       }

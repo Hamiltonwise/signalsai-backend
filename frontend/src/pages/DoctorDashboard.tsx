@@ -149,12 +149,11 @@ function narrativeGreeting(
 
   // Familiar tone gets a warmer greeting
   if (tone?.formality === "familiar" && firstName) {
-    if (checkupRank && checkupCity) return `${firstName}, you're #${checkupRank} in ${checkupCity}.`;
+    if (checkupRank && checkupCity) return `${firstName}, Alloro is watching ${checkupCity}.`;
     return `${getGreeting()}, ${firstName}.`;
   }
 
-  if (checkupRank && checkupRank > 1 && checkupCity) return `You're #${checkupRank} in ${checkupCity}${name}.`;
-  if (checkupRank === 1 && checkupCity) return `${getGreeting()}${name}. Alloro is watching ${checkupCity}.`;
+  if (checkupRank && checkupCity) return `Alloro is watching ${checkupCity}${name}.`;
   if (!hasRanking) return `Alloro already found something${name}.`;
   return `${getGreeting()}${name}.`;
 }
@@ -328,7 +327,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
         <div className="mt-4 flex items-center gap-2">
           <span className={`badge-warm transition-all duration-700`}>
             <span className="inline-block w-2 h-2 rounded-full bg-current opacity-50 animate-pulse" />
-            Business Clarity Score: {ranking.rankScore}/100
+            Clarity Reading: {ranking.rankScore}/100
           </span>
         </div>
       )}
@@ -430,9 +429,9 @@ function buildCheckupIntelligence(ctx: any): string[] {
   }
 
   // Priority 3: Market context (only if we don't have enough from above)
-  if (insights.length < 2 && topCompetitor?.reviewCount && market?.rank) {
+  if (insights.length < 2 && topCompetitor?.reviewCount && market?.totalCompetitors) {
     insights.push(
-      `You rank #${market.rank} of ${market.totalCompetitors} in ${market.city || "your market"}. ${topCompetitor.name} holds #1 with ${topCompetitor.reviewCount} reviews.`
+      `${market.totalCompetitors} competitors mapped in ${market.city || "your market"}. ${topCompetitor.name} leads with ${topCompetitor.reviewCount} reviews.`
     );
   }
 
@@ -1097,8 +1096,8 @@ export default function DoctorDashboard() {
             {checkupCtx?.data?.place?.rating
               ? `${checkupCtx.data.place.rating} average`
               : null}
-            {effectiveRanking?.rankPosition
-              ? `. Ranked #${effectiveRanking.rankPosition} of ${effectiveRanking.totalCompetitors || "?"} in ${effectiveRanking.location || "your market"}.`
+            {effectiveRanking?.totalCompetitors
+              ? `. ${effectiveRanking.totalCompetitors} competitors tracked in ${effectiveRanking.location || "your market"}.`
               : ". Live monitoring is on."}
           </p>
           <p className="text-xs text-emerald-600 mt-2">

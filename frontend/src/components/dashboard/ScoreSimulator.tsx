@@ -2,7 +2,7 @@
  * "What If" Score Simulator
  *
  * Interactive component that lets the business owner see how
- * specific actions would change their Business Clarity Score.
+ * specific actions would change their clarity reading.
  *
  * Client-side calculation only, no API calls needed.
  * Uses the same sub-score weights as the backend scoring engine.
@@ -179,7 +179,7 @@ export default function ScoreSimulator() {
               {delta > 0 ? "+" : ""}{delta}
             </span>
           </div>
-          <p className="text-xs text-center text-gray-400 mt-1.5">Projected Business Clarity Score</p>
+          <p className="text-xs text-center text-gray-400 mt-1.5">Projected clarity reading</p>
         </div>
       )}
 

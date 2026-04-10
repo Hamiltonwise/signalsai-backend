@@ -1,7 +1,7 @@
 /**
  * Score History Chart
  *
- * Small sparkline showing the Business Clarity Score over time.
+ * Small sparkline showing the clarity reading over time.
  * Data comes from the score_history JSONB column on organizations.
  *
  * X axis: weeks

@@ -74,7 +74,7 @@ export default function OnboardingChecklist({
     {
       id: "analyzed",
       title: hasCheckup && checkupRank
-        ? `You're #${checkupRank} of ${checkupTotal || "?"} in ${checkupCity || "your market"}`
+        ? `Alloro mapped ${checkupTotal || "?"} competitors in ${checkupCity || "your market"}`
         : hasCheckup
           ? "Alloro analyzed your competitive position"
           : "See your competitive position",

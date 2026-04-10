@@ -76,7 +76,7 @@ function buildFormScript(projectId: string): string {
           window.location.href=formType==='newsletter'?'/newsletter-success':'/success';
         })
         .catch(function(){
-          if(btn){btn.textContent='Error — Try Again';btn.style.backgroundColor='#dc2626';}
+          if(btn){btn.textContent='Error. Try Again';btn.style.backgroundColor='#dc2626';}
           setTimeout(function(){if(btn){btn.disabled=false;btn.textContent=origText;btn.style.backgroundColor='';}},3000);
         });
       });

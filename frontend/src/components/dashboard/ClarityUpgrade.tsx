@@ -43,10 +43,10 @@ export default function ClarityUpgrade({
 
   if (!hasWebsite && rankPosition && rankPosition > 3) {
     headline = "We could build your website this week.";
-    detail = `You're #${rankPosition} in your market without one. We'd build it from your reviews, index it, and have it ranking. You wouldn't touch it.`;
+    detail = `You don't have a website and ${rankPosition - 1} competitors do. We'd build it from your reviews, index it, and have it ranking. You wouldn't touch it.`;
   } else if (competitorReviewCount > reviewCount * 1.5) {
     const gap = competitorReviewCount - reviewCount;
-    headline = `${gap} reviews stand between you and #1.`;
+    headline = `${gap} reviews separate you from the top competitor.`;
     detail = "We could send review requests to your customers automatically. Personalized. One at a time. You'd never think about it.";
   } else if (rankPosition && rankPosition > 1) {
     headline = "We found the gaps. We could close them.";

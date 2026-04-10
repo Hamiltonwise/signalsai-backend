@@ -155,10 +155,10 @@ function LocationCard({
         <div className="flex items-center gap-3 shrink-0">
           {location.ranking_position != null && (
             <div className="text-right">
-              <p className="text-lg font-semibold text-[#212D40]">
-                {location.ranking_position ? `#${location.ranking_position}` : "Unranked"}
+              <p className="text-lg font-semibold text-[#1A1D23]">
+                {location.ranking_position ? `${location.ranking_position}` : "Unranked"}
               </p>
-              <p className="text-xs text-gray-400 uppercase font-bold">
+              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">
                 Position
               </p>
             </div>

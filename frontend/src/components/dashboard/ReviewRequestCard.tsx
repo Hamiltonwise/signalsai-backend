@@ -190,7 +190,7 @@ export default function ReviewRequestCard({
                   ? "bg-[#D56753] text-white"
                   : "bg-white text-gray-500 hover:bg-gray-50"
               }${!smsConfigured ? " opacity-50" : ""}`}
-              title={!smsConfigured ? "SMS not configured — add Twilio credentials" : ""}
+              title={!smsConfigured ? "SMS not configured. Add Twilio credentials." : ""}
             >
               <Phone className="w-3.5 h-3.5" />
               SMS

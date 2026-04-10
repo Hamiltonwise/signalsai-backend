@@ -126,7 +126,7 @@ export default function BusinessClarity() {
           </h2>
           <div className="space-y-6">
             <ExampleCard>
-              The specialist who watched a competitor outrank them for two years
+              The specialist who watched a competitor pull ahead for two years
               without being able to see exactly why. Every agency said "improve your SEO."
               Nobody said "they have 535 more people vouching for them online."
             </ExampleCard>

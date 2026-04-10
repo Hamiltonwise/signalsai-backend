@@ -187,7 +187,7 @@ export function DoctorPanel({
                 type="text"
                 value={doc.credentials}
                 onChange={(e) => onEditCredentials(doc.id, e.target.value)}
-                placeholder="DDS, MS — Credentials"
+                placeholder="DDS, MS, Credentials"
                 className="w-full text-xs text-gray-500 bg-transparent border-none p-0 focus:outline-none focus:ring-0 placeholder:text-gray-300 mt-0.5"
               />
             </div>

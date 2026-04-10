@@ -60,7 +60,7 @@ interface PMSVisualPillarsProps {
 
 const formatMonthLabel = (value: string): string => {
   if (!value) {
-    return "—";
+    return "-";
   }
 
   const date = new Date(`${value}-01T00:00:00`);
@@ -97,7 +97,7 @@ const MetricCard = ({
         : "bg-white/60 border-slate-100 hover:bg-white"
     }`}
   >
-    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">
+    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">
       {label}
     </span>
     <div className="flex items-center justify-between mb-2">
@@ -114,7 +114,7 @@ const MetricCard = ({
       )}
       {!isLoading && trend && (
         <span
-          className={`text-[9px] font-bold flex items-center gap-0.5 ${
+          className={`text-xs font-bold flex items-center gap-0.5 ${
             trend.startsWith("+") ? "text-green-600" : "text-red-500"
           }`}
         >
@@ -1255,13 +1255,13 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                   PMS Sync Verified
                 </span>
                 {latestTimestamp && (
                   <>
                     <span className="text-slate-300 mx-1">•</span>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                       Updated {latestTimestamp.toLocaleDateString()}
                     </span>
                   </>
@@ -1584,10 +1584,10 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                   </div>
 
                   <div className="flex flex-wrap items-center justify-center gap-6 pt-2">
-                    <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                       <Lock size={14} className="text-slate-300" /> HIPAA SECURE
                     </div>
-                    <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
                       <ShieldCheck size={14} className="text-green-500" /> ENCRYPTED
                     </div>
                   </div>

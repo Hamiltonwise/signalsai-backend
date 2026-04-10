@@ -151,7 +151,7 @@ function resolveAction(props: OneActionCardProps): OneAction {
     if (positions >= 2) {
       return {
         severity: "amber",
-        title: `You dropped from #${drop.previousPosition} to #${drop.currentPosition}${drop.keyword ? ` for ${drop.keyword}` : ""} this week.`,
+        title: `You dropped ${positions} position${positions !== 1 ? "s" : ""}${drop.keyword ? ` for "${drop.keyword}"` : ""} this week.`,
         detail: "A 2+ position drop means a competitor made a move or your profile lost a signal. Check what changed.",
         cta: "See why",
         ctaLink: "/rankings",

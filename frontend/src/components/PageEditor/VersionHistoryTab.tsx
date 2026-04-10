@@ -119,7 +119,7 @@ export default function VersionHistoryTab({
       {isPreviewMode && (
         <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-200">
           <p className="text-xs text-amber-700 font-medium">
-            Preview mode — editing disabled
+            Preview mode, editing disabled
           </p>
           <button
             onClick={onExitPreview}

@@ -17,6 +17,11 @@
     "sync:agents": "tsx src/scripts/syncAgentRegistry.ts",
     "benchmark:baseline": "tsx src/scripts/captureBaseline.ts",
     "smoke": "tsx src/scripts/smokeTest.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:knowns": "vitest run tests/known-compliance.test.ts",
+    "test:scoring": "vitest run tests/scoring-logic.test.ts",
+    "test:all": "vitest run && echo '--- E2E (requires live server) ---' && echo 'Run: npm run test:e2e'",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
   },
@@ -73,6 +78,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/archiver": "^7.0.0",
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
@@ -84,7 +92,9 @@
     "@types/unzipper": "^0.10.11",
     "@types/uuid": "^9.0.8",
     "@types/xlsx": "^0.0.36",
+    "happy-dom": "^20.8.9",
     "qrcode": "^1.5.4",
-    "tsx": "^4.20.6"
+    "tsx": "^4.20.6",
+    "vitest": "^3.1.4"
   }
 }

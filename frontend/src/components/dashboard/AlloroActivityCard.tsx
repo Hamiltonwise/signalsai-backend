@@ -18,7 +18,7 @@ function describeEvent(type: string, meta: Record<string, any>): string | null {
     case "ranking.scanned":
       return `Scanned ${meta.competitors || "your"} market competitors`;
     case "ranking.position_changed":
-      return `Your ranking moved to #${meta.new_position}`;
+      return `Your market position changed (${meta.new_position} of ${meta.total || "?"} competitors)`;
     case "competitor.review_surge":
       return `${meta.competitor || "A competitor"} added ${meta.reviews_added || "several"} reviews`;
     case "gbp.post_published":

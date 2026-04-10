@@ -428,7 +428,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               </div>
               <div className="flex flex-col text-left">
                 <TailorText editKey="rankings.header.title" defaultText="Market Intelligence" as="h1" className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
-                <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+                <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                   Loading data...
                 </span>
               </div>
@@ -499,7 +499,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
                 </div>
                 <div className="flex flex-col text-left">
                   <TailorText editKey="rankings.header.title" defaultText="Market Intelligence" as="h1" className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
-                  <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+                  <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                     From your initial checkup
                   </span>
                 </div>
@@ -511,14 +511,14 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
             {/* Score + Position KPIs */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <KPICard
-                label="Business Clarity Score"
-                value={`${Math.round(checkupSnapshot.score)}`}
-                sub="out of 100"
+                label="Your Reviews"
+                value={`${checkupSnapshot.reviewCount}`}
+                sub={checkupSnapshot.rating ? `${checkupSnapshot.rating} avg rating` : "total reviews"}
               />
               {checkupSnapshot.rank > 0 && (
                 <KPICard
                   label="Market Position"
-                  value={`#${checkupSnapshot.rank}`}
+                  value={`${checkupSnapshot.rank}`}
                   sub={`of ${checkupSnapshot.totalCompetitors} in ${checkupSnapshot.city}`}
                 />
               )}
@@ -787,7 +787,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
             </div>
             <div className="flex flex-col text-left">
               <TailorText editKey="rankings.header.title" defaultText="Local Rankings" as="h1" className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none" />
-              <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+              <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 How you compare to others
               </span>
             </div>
@@ -935,9 +935,9 @@ function PerformanceDashboard({
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
       >
         <KPICard
-          label="Local Rank"
-          value={`#${result.rankPosition}`}
-          sub={`of ${result.totalCompetitors} Competitors`}
+          label="Market Position"
+          value={`${result.rankPosition}`}
+          sub={`of ${result.totalCompetitors} competitors mapped`}
           trend={rankTrend?.value}
           dir={rankTrend?.dir}
         />
@@ -982,7 +982,7 @@ function PerformanceDashboard({
         <div className="px-10 py-8 border-b border-black/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="text-left">
             <TailorText editKey="rankings.competitors.heading" defaultText="Nearby Competitors" as="h2" className="text-xl font-semibold font-heading text-alloro-navy tracking-tight" />
-            <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1.5">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mt-1.5">
               How you compare to the neighbors
             </p>
           </div>
@@ -1078,11 +1078,11 @@ function PerformanceDashboard({
                           {comp.name}
                         </span>
                         {comp.isClient ? (
-                          <span className="text-[9px] font-semibold bg-alloro-orange text-white px-2 py-0.5 rounded uppercase tracking-widest w-fit mt-1.5 leading-none">
+                          <span className="text-xs font-semibold bg-alloro-orange text-white px-2 py-0.5 rounded uppercase tracking-widest w-fit mt-1.5 leading-none">
                             You
                           </span>
                         ) : (
-                          <span className="text-[9px] font-semibold text-slate-300 uppercase tracking-widest w-fit mt-1.5 leading-none">
+                          <span className="text-xs font-semibold text-slate-300 uppercase tracking-widest w-fit mt-1.5 leading-none">
                             Competitor
                           </span>
                         )}

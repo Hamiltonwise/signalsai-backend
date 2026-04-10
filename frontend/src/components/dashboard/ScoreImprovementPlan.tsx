@@ -1,7 +1,7 @@
 /**
  * Score Improvement Plan
  *
- * Shows EXACTLY how to improve the Business Clarity Score.
+ * Shows EXACTLY how to improve the clarity reading.
  * Identifies the 3 biggest point gaps and gives specific,
  * actionable steps with estimated gains.
  *

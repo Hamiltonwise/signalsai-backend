@@ -178,7 +178,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     targetSelector: "[data-wizard-target='rankings-competitors']",
     title: "Competitor Analysis",
     description:
-      "See how you stack up against local competitors. Understand their strengths and find opportunities to outrank them.",
+      "See how you compare to local competitors. Understand their strengths and find opportunities to close the gap.",
     scrollToElement: true,
   },
 

@@ -49,8 +49,8 @@ export function CardSkeleton({ height = "7rem" }: { height?: string }) {
   );
 }
 
-/** Pre-built skeleton for the score ring area */
-export function ScoreRingSkeleton() {
+/** Pre-built skeleton for the reading summary area */
+export function ReadingSummarySkeleton() {
   return (
     <div className="flex justify-center py-4">
       <div className="w-[180px] h-[180px] rounded-full border-[12px] border-[#D56753]/[0.06] skeleton-shimmer" />

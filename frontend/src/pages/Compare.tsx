@@ -178,13 +178,13 @@ export default function Compare() {
               <MetricCell
                 icon={Trophy}
                 label="Position"
-                value={`#${p.rank}`}
+                value={`${p.rank}`}
                 highlight={p.rank <= (c.rank ?? Infinity)}
               />
               <MetricCell
                 icon={Trophy}
                 label="Position"
-                value={`#${c.rank}`}
+                value={`${c.rank}`}
                 highlight={(c.rank ?? Infinity) < p.rank}
               />
             </>
