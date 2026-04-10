@@ -25,7 +25,11 @@
 
 import { db } from "../database/connection";
 import { cleanCompetitorName } from "../utils/textCleaning";
-import { compareReviewSentiment } from "./reviewSentiment";
+// NOTE: compareReviewSentiment intentionally NOT imported here.
+// It calls the Claude API + Google Places API, which is too expensive
+// for every Home page load. Sentiment gap detection should be pre-computed
+// at checkup scan time and stored in a column. Until that cache exists,
+// checkSentimentSurprise returns null.
 
 export interface OzEngineResult {
   headline: string;
@@ -121,34 +125,18 @@ async function buildOrgSnapshot(orgId: number): Promise<OrgSnapshot | null> {
 }
 
 // ── Signal 1: Sentiment Surprise (highest possible surprise) ──────────
+//
+// DISABLED for real-time use. compareReviewSentiment calls Claude API +
+// Google Places on every invocation. Running it per page load would add
+// 3-10s latency and significant API cost.
+//
+// TODO: Pre-compute sentiment gaps at checkup scan time, store in a
+// `sentiment_gap` column on organizations or weekly_ranking_snapshots,
+// then read that column here. Until then, this returns null.
+//
 
-async function checkSentimentSurprise(s: OrgSnapshot): Promise<OzEngineResult | null> {
-  try {
-    if (!s.clientPlaceId || !s.competitorPlaceId || !s.competitorName) return null;
-
-    const comparison = await compareReviewSentiment({
-      clientPlaceId: s.clientPlaceId,
-      clientName: s.orgName || "Your practice",
-      competitorPlaceId: s.competitorPlaceId,
-      competitorName: s.competitorName,
-    });
-
-    if (!comparison || comparison.gaps.length === 0) return null;
-
-    const topGap = comparison.gaps[0];
-    return {
-      headline: comparison.insight,
-      context: `Customers mention "${topGap.theme}" in ${topGap.competitorCount} of ${s.competitorName}'s reviews. Yours don't mention this. This is what Google's AI reads when someone searches for ${s.specialty || "your specialty"}.`,
-      status: "attention",
-      verifyUrl: s.marketSearchUrl,
-      surprise: 9,
-      actionText: "See the comparison",
-      actionUrl: "/compare",
-      signalType: "sentiment_gap",
-    };
-  } catch {
-    return null;
-  }
+async function checkSentimentSurprise(_s: OrgSnapshot): Promise<OzEngineResult | null> {
+  return null;
 }
 
 // ── Signal 2: Referral Drift ──────────────────────────────────────────

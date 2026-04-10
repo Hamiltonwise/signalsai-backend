@@ -110,7 +110,7 @@ function renderReadingCard(r: Reading): string {
         <tr>
           <td style="padding-bottom: 6px;">
             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${dot}; vertical-align: middle;"></span>
-            <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.textTertiary}; vertical-align: middle; padding-left: 6px;">${r.label}</span>
+            <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.textTertiary}; vertical-align: middle; padding-left: 6px;">${r.label}</span>
           </td>
         </tr>
         <tr>
@@ -170,7 +170,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
               <tr>
                 <td style="padding-bottom: 16px;">
                   <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${heroDot}; vertical-align: middle;"></span>
-                  <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.textTertiary}; vertical-align: middle; padding-left: 8px;">${heroLabel}</span>
+                  <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.textTertiary}; vertical-align: middle; padding-left: 8px;">${heroLabel}</span>
                 </td>
               </tr>
               <tr>
@@ -201,7 +201,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: ${COLORS.terracottaWash}; border-radius: 16px; margin-bottom: 24px;">
         <tr>
           <td style="padding: 32px;">
-            <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.textTertiary};">THIS WEEK</p>
+            <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.textTertiary};">THIS WEEK</p>
             <h1 style="margin: 0 0 12px; font-size: 24px; font-weight: 600; color: ${COLORS.textPrimary}; line-height: 1.3;">${findingHeadline}</h1>
             ${paragraphs}
           </td>
@@ -234,7 +234,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px; border-left: 2px solid ${COLORS.divider};">
         <tr>
           <td style="padding-left: 16px;">
-            <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.terracotta};">Working in the Background</p>
+            <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.terracotta};">Working in the Background</p>
             <p style="margin: 0; font-size: 13px; color: ${COLORS.textSecondary}; line-height: 1.6;">${data.proofOfWork}</p>
           </td>
         </tr>
@@ -317,7 +317,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
           <!-- Greeting -->
           <tr>
             <td style="padding-bottom: 20px;">
-              <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.terracotta};">Monday Brief</p>
+              <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.terracotta};">Monday Brief</p>
               <p style="margin: 0; font-size: 16px; color: ${COLORS.textSecondary}; line-height: 1.5;">
                 Good morning, ${firstName}. Here's what moved in your market.
               </p>
