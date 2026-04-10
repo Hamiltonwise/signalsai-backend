@@ -49,7 +49,7 @@ export function CreateTaskModal({ isOpen, onClose, preselectedProjectId }: Creat
     });
   }, [projectId]);
 
-  const selectedColumnIsBacklog = columns.find((c) => c.id === columnId)?.name === "Backlog";
+  const selectedColumnIsBacklog = columns.find((c) => c.id === columnId)?.is_backlog ?? false;
 
   const cyclePriority = () => {
     const idx = PRIORITY_CYCLE.indexOf(priority as any);

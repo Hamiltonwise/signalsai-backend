@@ -14,6 +14,11 @@ interface PmState {
   activeProject: PmProjectDetail | null;
   isLoading: boolean;
 
+  // Multi-select state (project board, scoped to activeProject)
+  selectedTaskIds: Set<string>;
+  // Multi-select state (Me tab, spans projects)
+  meSelectedTaskIds: Set<string>;
+
   // Project actions
   fetchProjects: (status?: string) => Promise<void>;
   fetchProject: (id: string) => Promise<void>;
@@ -36,12 +41,26 @@ interface PmState {
     toColumnId: string,
     position: number
   ) => PmProjectDetail | null;
+
+  // Multi-select (project board)
+  toggleTaskSelection: (id: string) => void;
+  clearTaskSelection: () => void;
+  selectTaskIds: (ids: string[]) => void;
+  bulkDeleteSelectedTasks: () => Promise<void>;
+  bulkMoveSelectedTasksToProject: (targetProjectId: string) => Promise<void>;
+
+  // Multi-select (Me tab)
+  toggleMeTaskSelection: (id: string) => void;
+  clearMeTaskSelection: () => void;
+  bulkDeleteMeSelectedTasks: () => Promise<void>;
 }
 
 export const usePmStore = create<PmState>((set, get) => ({
   projects: [],
   activeProject: null,
   isLoading: false,
+  selectedTaskIds: new Set<string>(),
+  meSelectedTaskIds: new Set<string>(),
 
   fetchProjects: async (status = "active") => {
     set({ isLoading: true });
@@ -58,7 +77,14 @@ export const usePmStore = create<PmState>((set, get) => ({
     set({ isLoading: true });
     try {
       const project = await pmApi.fetchProject(id);
-      set({ activeProject: project, isLoading: false });
+      // Clear selection when switching projects so stale ids don't linger.
+      const current = get().activeProject;
+      const clearSelection = current?.id !== id;
+      set({
+        activeProject: project,
+        isLoading: false,
+        ...(clearSelection ? { selectedTaskIds: new Set<string>() } : {}),
+      });
     } catch (err) {
       console.error("[PM] fetchProject failed:", err);
       set({ isLoading: false });
@@ -142,10 +168,9 @@ export const usePmStore = create<PmState>((set, get) => ({
     try {
       await pmApi.moveTask(taskId, columnId, position);
       // Re-fetch only if moving to/from Backlog (priority changes server-side)
-      const fromBacklog = snapshot?.columns.find((c) =>
-        c.tasks.some((t) => t.id === taskId)
-      )?.name === "Backlog";
-      const toBacklog = snapshot?.columns.find((c) => c.id === columnId)?.name === "Backlog";
+      const fromBacklog =
+        snapshot?.columns.find((c) => c.tasks.some((t) => t.id === taskId))?.is_backlog ?? false;
+      const toBacklog = snapshot?.columns.find((c) => c.id === columnId)?.is_backlog ?? false;
       if ((fromBacklog || toBacklog) && snapshot?.id) {
         const fresh = await pmApi.fetchProject(snapshot.id);
         set({ activeProject: fresh });
@@ -243,5 +268,110 @@ export const usePmStore = create<PmState>((set, get) => ({
     const updated = { ...state.activeProject, columns };
     set({ activeProject: updated });
     return updated;
+  },
+
+  // --- Multi-select (project board) ---
+
+  toggleTaskSelection: (id: string) => {
+    set((state) => {
+      const next = new Set(state.selectedTaskIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return { selectedTaskIds: next };
+    });
+  },
+
+  clearTaskSelection: () => {
+    set({ selectedTaskIds: new Set<string>() });
+  },
+
+  selectTaskIds: (ids: string[]) => {
+    set({ selectedTaskIds: new Set(ids) });
+  },
+
+  bulkDeleteSelectedTasks: async () => {
+    const state = get();
+    const ids = [...state.selectedTaskIds];
+    if (ids.length === 0) return;
+    const snapshot = state.activeProject;
+
+    // Optimistic remove
+    set((s) => {
+      if (!s.activeProject) return s;
+      const columns = s.activeProject.columns.map((col) => ({
+        ...col,
+        tasks: col.tasks
+          .filter((t) => !state.selectedTaskIds.has(t.id))
+          .map((t, i) => ({ ...t, position: i })),
+      }));
+      return {
+        activeProject: { ...s.activeProject, columns },
+        selectedTaskIds: new Set<string>(),
+      };
+    });
+
+    try {
+      await pmApi.bulkDeleteTasks(ids);
+    } catch (err) {
+      console.error("[PM] bulkDeleteTasks failed:", err);
+      set({ activeProject: snapshot, selectedTaskIds: new Set(ids) });
+      throw err;
+    }
+  },
+
+  bulkMoveSelectedTasksToProject: async (targetProjectId: string) => {
+    const state = get();
+    const ids = [...state.selectedTaskIds];
+    if (ids.length === 0) return;
+
+    // Validate: all selected tasks are in a backlog column of the active project.
+    // Enforced server-side as well; client check avoids a bad API call.
+    const active = state.activeProject;
+    if (!active) return;
+    const backlogColumnIds = new Set(
+      active.columns.filter((c) => c.is_backlog).map((c) => c.id)
+    );
+    const selectedTasks = active.columns.flatMap((c) => c.tasks).filter((t) => state.selectedTaskIds.has(t.id));
+    if (!selectedTasks.every((t) => backlogColumnIds.has(t.column_id))) {
+      throw new Error("Only backlog items can be moved between projects");
+    }
+
+    try {
+      await pmApi.bulkMoveTasksToProject(ids, targetProjectId);
+      // Positions shift on both sides; re-fetch source project to resync.
+      await get().fetchProject(active.id);
+      set({ selectedTaskIds: new Set<string>() });
+    } catch (err) {
+      console.error("[PM] bulkMoveTasksToProject failed:", err);
+      throw err;
+    }
+  },
+
+  // --- Multi-select (Me tab) ---
+
+  toggleMeTaskSelection: (id: string) => {
+    set((state) => {
+      const next = new Set(state.meSelectedTaskIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return { meSelectedTaskIds: next };
+    });
+  },
+
+  clearMeTaskSelection: () => {
+    set({ meSelectedTaskIds: new Set<string>() });
+  },
+
+  bulkDeleteMeSelectedTasks: async () => {
+    const state = get();
+    const ids = [...state.meSelectedTaskIds];
+    if (ids.length === 0) return;
+    try {
+      await pmApi.bulkDeleteTasks(ids);
+      set({ meSelectedTaskIds: new Set<string>() });
+    } catch (err) {
+      console.error("[PM] bulkDeleteMeSelectedTasks failed:", err);
+      throw err;
+    }
   },
 }));

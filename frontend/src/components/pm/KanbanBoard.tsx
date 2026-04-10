@@ -18,6 +18,7 @@ import type { PmProjectDetail, PmTask } from "../../types/pm";
 import { usePmStore } from "../../stores/pmStore";
 import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
+import type { TaskContextAction } from "./TaskCard";
 import { showWarningToast } from "../../lib/toast";
 
 interface KanbanBoardProps {
@@ -25,6 +26,11 @@ interface KanbanBoardProps {
   onTaskClick: (task: PmTask) => void;
   onDeleteTask?: (taskId: string) => void;
   showBacklog?: boolean;
+  // Multi-select pass-through
+  selectedTaskIds?: Set<string>;
+  selectionActive?: boolean;
+  onToggleSelect?: (taskId: string) => void;
+  onContextAction?: (action: TaskContextAction, taskId: string) => void;
 }
 
 export function KanbanBoard({
@@ -32,6 +38,10 @@ export function KanbanBoard({
   onTaskClick,
   onDeleteTask,
   showBacklog = true,
+  selectedTaskIds,
+  selectionActive = false,
+  onToggleSelect,
+  onContextAction,
 }: KanbanBoardProps) {
   const moveTask = usePmStore((s) => s.moveTask);
   const moveTaskOptimistic = usePmStore((s) => s.optimisticMoveTask);
@@ -47,7 +57,7 @@ export function KanbanBoard({
 
   const columns = showBacklog
     ? project.columns
-    : project.columns.filter((c) => c.name !== "Backlog");
+    : project.columns.filter((c) => !c.is_backlog);
 
   const columnIds = new Set(columns.map((c) => c.id));
 
@@ -106,7 +116,7 @@ export function KanbanBoard({
 
     const visibleCols = showBacklog
       ? currentProject.columns
-      : currentProject.columns.filter((c) => c.name !== "Backlog");
+      : currentProject.columns.filter((c) => !c.is_backlog);
 
     // Find which column the dragged task currently lives in
     const sourceCol = visibleCols.find((c) =>
@@ -188,12 +198,12 @@ export function KanbanBoard({
     }
 
     // Assignment catch: block Backlog → non-Backlog if no assignee
-    if (originalCol?.name === "Backlog") {
+    if (originalCol?.is_backlog) {
       const targetColObj = currentProject.columns.find((c) => c.id === targetColumnId);
       const originalTask = preDragSnapshot.current?.columns
         .flatMap((c) => c.tasks)
         .find((t) => t.id === taskId);
-      if (targetColObj?.name !== "Backlog" && !originalTask?.assigned_to) {
+      if (!targetColObj?.is_backlog && !originalTask?.assigned_to) {
         usePmStore.setState({ activeProject: preDragSnapshot.current });
         preDragSnapshot.current = null;
         showWarningToast("Assign someone first", "Assign someone to this task before moving it out of Backlog");
@@ -227,6 +237,11 @@ export function KanbanBoard({
             projectId={project.id}
             onTaskClick={onTaskClick}
             onDeleteTask={onDeleteTask}
+            selectedTaskIds={selectedTaskIds}
+            selectionActive={selectionActive}
+            onToggleSelect={onToggleSelect}
+            onContextAction={onContextAction}
+            siblingColumns={columns}
           />
         ))}
       </div>

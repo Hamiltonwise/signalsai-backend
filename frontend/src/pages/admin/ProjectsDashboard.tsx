@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FolderPlus, Plus } from "lucide-react";
+import { FolderPlus, Plus, Sparkles } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { usePmStore } from "../../stores/pmStore";
 import { CreateProjectModal } from "../../components/pm/CreateProjectModal";
@@ -12,6 +12,7 @@ import { ActivityTimeline } from "../../components/pm/ActivityTimeline";
 import { ActivityModal } from "../../components/pm/ActivityModal";
 import { FloatingClock } from "../../components/pm/FloatingClock";
 import { MeTabView } from "../../components/pm/MeTabView";
+import { CrossProjectAISynthModal } from "../../components/pm/CrossProjectAISynthModal";
 import { formatDeadline } from "../../utils/pmDateFormat";
 
 const containerVariants = {
@@ -35,6 +36,7 @@ export default function ProjectsDashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [showCrossProjectSynth, setShowCrossProjectSynth] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeView = searchParams.get("view") === "me" ? "me" : "overview";
@@ -79,7 +81,21 @@ export default function ProjectsDashboard() {
       {activeView === "overview" && <>
 
       {/* Header actions */}
-      <div className="flex justify-end max-w-[1400px] mx-auto mb-2">
+      <div className="flex justify-end items-center gap-4 max-w-[1400px] mx-auto mb-2">
+        <button
+          onClick={() => setShowCrossProjectSynth(true)}
+          className="flex items-center gap-1.5 text-[13px] font-medium transition-colors duration-150"
+          style={{ color: "#D66853" }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.color = "#E37A66";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.color = "#D66853";
+          }}
+        >
+          <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />
+          Cross-project AI Synth
+        </button>
         <button
           onClick={() => setShowCreateModal(true)}
           className="text-[13px] font-medium transition-colors duration-150"
@@ -308,6 +324,7 @@ export default function ProjectsDashboard() {
       <CreateProjectModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
       <CreateTaskModal isOpen={showCreateTask} onClose={() => setShowCreateTask(false)} />
       <ActivityModal isOpen={showActivityModal} onClose={() => setShowActivityModal(false)} />
+      <CrossProjectAISynthModal isOpen={showCrossProjectSynth} onClose={() => setShowCrossProjectSynth(false)} />
       </>}
 
       {/* Floating Clock — always visible */}

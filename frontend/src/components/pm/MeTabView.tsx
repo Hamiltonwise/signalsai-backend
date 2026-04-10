@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { Target, CalendarRange, TrendingUp } from "lucide-react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { Target, CalendarRange, TrendingUp, Trash2 } from "lucide-react";
 import {
   LineChart, Line, XAxis, Tooltip, ResponsiveContainer, Area,
 } from "recharts";
@@ -9,6 +9,10 @@ import { fetchMyStats, fetchMyVelocity, fetchMyTasks } from "../../api/pm";
 import { MeKanbanBoard } from "./MeKanbanBoard";
 import { NotificationCard } from "./NotificationCard";
 import { TaskDetailPanel } from "./TaskDetailPanel";
+import { BulkActionBar } from "../ui/DesignSystem";
+import { usePmStore } from "../../stores/pmStore";
+import { showErrorToast } from "../../lib/toast";
+import type { TaskContextAction } from "./TaskCard";
 
 const RANGES = ["7d", "4w", "3m"] as const;
 type Range = typeof RANGES[number];
@@ -49,6 +53,11 @@ export function MeTabView() {
   const [velocityRange, setVelocityRange] = useState<Range>("7d");
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<PmMyTask | null>(null);
+  const meSelectedTaskIds = usePmStore((s) => s.meSelectedTaskIds);
+  const toggleMeTaskSelection = usePmStore((s) => s.toggleMeTaskSelection);
+  const clearMeTaskSelection = usePmStore((s) => s.clearMeTaskSelection);
+  const bulkDeleteMeSelectedTasks = usePmStore((s) => s.bulkDeleteMeSelectedTasks);
+  const [meBulkDeleteCount, setMeBulkDeleteCount] = useState<number | null>(null);
 
   const handleTaskClick = useCallback((taskId: string) => {
     setHighlightedTaskId(taskId);
@@ -76,6 +85,49 @@ export function MeTabView() {
   const focusCount = stats?.focus_today.count ?? 0;
   const weekCount = stats?.this_week.count ?? 0;
   const focusSeverity = stats?.focus_today.severity ?? "green";
+  const selectionCount = meSelectedTaskIds.size;
+
+  const allMeTasks = useMemo<PmMyTask[]>(() => {
+    if (!tasks) return [];
+    return [...tasks.todo, ...tasks.in_progress, ...tasks.done];
+  }, [tasks]);
+
+  const handleMeContextAction = useCallback(
+    async (action: TaskContextAction, taskId: string) => {
+      const ids = meSelectedTaskIds.has(taskId) ? [...meSelectedTaskIds] : [taskId];
+      switch (action.type) {
+        case "open": {
+          const task = allMeTasks.find((t) => t.id === taskId);
+          if (task) setSelectedTask(task);
+          break;
+        }
+        case "assign": {
+          const task = allMeTasks.find((t) => t.id === taskId);
+          if (task) setSelectedTask(task);
+          break;
+        }
+        case "delete": {
+          setMeBulkDeleteCount(ids.length);
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [meSelectedTaskIds, allMeTasks]
+  );
+
+  const handleMeBulkDelete = useCallback(async () => {
+    try {
+      await bulkDeleteMeSelectedTasks();
+      await loadData();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Try again";
+      showErrorToast("Delete failed", message);
+    } finally {
+      setMeBulkDeleteCount(null);
+    }
+  }, [bulkDeleteMeSelectedTasks, loadData]);
 
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto">
@@ -212,11 +264,95 @@ export function MeTabView() {
           onRefresh={loadData}
           highlightedTaskId={highlightedTaskId}
           onCardClick={(task) => setSelectedTask(task)}
+          selectedTaskIds={meSelectedTaskIds}
+          selectionActive={selectionCount > 0}
+          onToggleSelect={toggleMeTaskSelection}
+          onContextAction={handleMeContextAction}
         />
       )}
 
       {/* Task detail panel */}
       <TaskDetailPanel task={selectedTask} onClose={() => { setSelectedTask(null); loadData(); }} />
+
+      {/* Bulk Action Bar */}
+      {selectionCount > 0 && (
+        <BulkActionBar
+          selectedCount={selectionCount}
+          onClear={clearMeTaskSelection}
+          actions={[
+            {
+              label: "Delete",
+              icon: <Trash2 className="h-4 w-4" />,
+              variant: "danger" as const,
+              onClick: () => setMeBulkDeleteCount(selectionCount),
+            },
+          ]}
+        />
+      )}
+
+      {/* Bulk delete confirm */}
+      <AnimatePresence>
+        {meBulkDeleteCount !== null && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMeBulkDeleteCount(null)}
+              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl p-6"
+              style={{
+                backgroundColor: "var(--color-pm-bg-secondary)",
+                boxShadow: "0 16px 48px rgba(0,0,0,0.3)",
+                border: "1px solid var(--color-pm-border)",
+              }}
+            >
+              <div
+                className="flex h-12 w-12 items-center justify-center rounded-xl mb-4 mx-auto"
+                style={{ backgroundColor: "rgba(196,51,51,0.1)" }}
+              >
+                <Trash2 className="h-6 w-6 text-[#C43333]" strokeWidth={1.5} />
+              </div>
+              <h3
+                className="text-[16px] font-semibold text-center mb-1"
+                style={{ color: "var(--color-pm-text-primary)" }}
+              >
+                Delete {meBulkDeleteCount} task{meBulkDeleteCount !== 1 ? "s" : ""}?
+              </h3>
+              <p
+                className="text-[13px] text-center mb-5"
+                style={{ color: "var(--color-pm-text-secondary)" }}
+              >
+                This cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setMeBulkDeleteCount(null)}
+                  className="flex-1 rounded-lg py-2.5 text-[13px] font-semibold"
+                  style={{
+                    border: "1px solid var(--color-pm-border)",
+                    color: "var(--color-pm-text-secondary)",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMeBulkDelete}
+                  className="flex-1 rounded-lg py-2.5 text-[13px] font-semibold text-white"
+                  style={{ backgroundColor: "#C43333" }}
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

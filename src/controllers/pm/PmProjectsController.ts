@@ -12,10 +12,10 @@ function handleError(res: Response, error: unknown, operation: string): Response
 }
 
 const DEFAULT_COLUMNS = [
-  { name: "Backlog", position: 0 },
-  { name: "To Do", position: 1 },
-  { name: "In Progress", position: 2 },
-  { name: "Done", position: 3 },
+  { name: "Backlog", position: 0, is_backlog: true },
+  { name: "To Do", position: 1, is_backlog: false },
+  { name: "In Progress", position: 2, is_backlog: false },
+  { name: "Done", position: 3, is_backlog: false },
 ];
 
 // GET /api/pm/projects
@@ -113,7 +113,7 @@ export async function createProject(req: AuthRequest, res: Response): Promise<an
 
       for (const col of DEFAULT_COLUMNS) {
         await PmColumnModel.create(
-          { project_id: proj.id, name: col.name, position: col.position },
+          { project_id: proj.id, name: col.name, position: col.position, is_backlog: col.is_backlog },
           trx
         );
       }
