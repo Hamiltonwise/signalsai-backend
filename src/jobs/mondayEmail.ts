@@ -14,8 +14,9 @@
  */
 
 import { db } from "../database/connection";
-import { sendMondayBriefEmail } from "../emails/templates/MondayBriefEmail";
+import { sendMondayBriefEmail, type Reading as EmailReading } from "../emails/templates/MondayBriefEmail";
 import { sendCleanWeekEmail } from "../emails/templates/CleanWeekEmail";
+import { getOzEngineResult, type OzEngineResult } from "../services/ozEngine";
 import { getMostShareableFinding } from "../services/behavioralIntelligence";
 import {
   generateSurpriseFindings,
@@ -221,6 +222,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         ownerName,
         ownerLastName,
         subjectLine: stripEmDashes(firstWeekSubject),
+        ozMoment: null, // First week: no Oz Engine data yet
         findingHeadline: stripEmDashes(firstWeekHeadline),
         findingBody: stripEmDashes(firstWeekBody),
         dollarFigure: 0, // Known 4: no fabricated dollar figures
@@ -228,6 +230,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
         rankingUpdate: market.city ? `Tracking your market in ${market.city}` : "Your market data is being collected",
         competitorNote: topComp ? stripEmDashes(`The leading practice in your market has ${topComp.reviewCount || "unknown"} reviews`) : "",
         referralLine: null,
+        readings: [], // First week: no readings yet
         founderLine,
         communityCount,
       });
@@ -687,6 +690,72 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     // behavioral_events may not exist, continue without proof of work
   }
 
+  // ── Oz Engine: fetch the hero insight ──
+  let ozMoment: OzEngineResult | null = null;
+  try {
+    ozMoment = await getOzEngineResult(orgId);
+  } catch (ozErr: any) {
+    console.error(`[MondayEmail] Oz Engine failed for ${org.name} (non-blocking):`, ozErr.message);
+  }
+
+  // ── Build readings strip from snapshot data ──
+  const emailReadings: EmailReading[] = [];
+  const clientRevCount = snapshot.client_review_count || 0;
+  const compRevCount = snapshot.competitor_review_count || 0;
+  const compNameClean = cleanCompetitorName(snapshot.competitor_name || "");
+
+  if (clientRevCount > 0) {
+    const revGap = compRevCount - clientRevCount;
+    emailReadings.push({
+      label: "Reviews",
+      value: `${clientRevCount}`,
+      context: revGap > 0 && compNameClean
+        ? `${compNameClean} has ${compRevCount}. Gap: ${revGap}.`
+        : compNameClean
+          ? `Leading ${compNameClean} (${compRevCount}).`
+          : `${clientRevCount} on Google.`,
+      status: revGap > 50 ? "attention" : "healthy",
+      verifyUrl: org.name ? `https://www.google.com/search?q=${encodeURIComponent(org.name)}` : null,
+    });
+  }
+
+  // Market reading
+  const checkupForReadings = org.checkup_data
+    ? (typeof org.checkup_data === "string" ? JSON.parse(org.checkup_data) : org.checkup_data)
+    : null;
+  const marketCity = checkupForReadings?.market?.city || snapshot.keyword?.split(" in ")?.[1] || null;
+  const totalComp = checkupForReadings?.market?.totalCompetitors || null;
+  if (marketCity && totalComp) {
+    emailReadings.push({
+      label: "Your Market",
+      value: `${totalComp} competitors`,
+      context: `Tracked in ${marketCity}.`,
+      status: "healthy",
+      verifyUrl: null,
+    });
+  }
+
+  // GBP Profile reading (from checkup data)
+  const place = checkupForReadings?.place || {};
+  const gbpFields = [
+    !!(place.hasPhone || place.phone || place.nationalPhoneNumber || place.internationalPhoneNumber),
+    !!(place.hasHours || place.hours || place.regularOpeningHours),
+    !!(place.hasWebsite || place.websiteUri || place.website),
+    (place.photosCount || place.photoCount || place.photos?.length || 0) > 0,
+    !!(place.hasEditorialSummary || place.editorialSummary),
+  ];
+  const gbpComplete = gbpFields.filter(Boolean).length;
+  if (gbpComplete > 0) {
+    const gbpMissing = 5 - gbpComplete;
+    emailReadings.push({
+      label: "GBP Profile",
+      value: `${gbpComplete}/5`,
+      context: gbpMissing > 0 ? `${gbpMissing} field${gbpMissing !== 1 ? "s" : ""} incomplete.` : "All complete.",
+      status: gbpComplete >= 5 ? "healthy" : gbpComplete >= 3 ? "attention" : "critical",
+      verifyUrl: org.name ? `https://www.google.com/search?q=${encodeURIComponent(org.name)}` : null,
+    });
+  }
+
   // Send via email service
   try {
     const success = await sendMondayBriefEmail({
@@ -695,6 +764,14 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       ownerName,
       ownerLastName,
       subjectLine: sanitizedSubject,
+      ozMoment: ozMoment ? {
+        headline: stripEmDashes(ozMoment.headline),
+        context: stripEmDashes(ozMoment.context),
+        status: ozMoment.status,
+        verifyUrl: ozMoment.verifyUrl,
+        actionText: ozMoment.actionText,
+        actionUrl: ozMoment.actionUrl,
+      } : null,
       findingHeadline: sanitizedHeadline,
       findingBody: sanitizedBody,
       dollarFigure: 0, // Known 4: no fabricated dollar figures
@@ -702,6 +779,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
       rankingUpdate: sanitizedRanking,
       competitorNote: sanitizedCompetitorNote,
       referralLine,
+      readings: emailReadings,
       proofOfWork,
       founderLine,
       communityCount,

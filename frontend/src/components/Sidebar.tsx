@@ -20,6 +20,7 @@ import {
   Shield,
   Brain,
   Users,
+  Mail,
   MessageSquare,
   Radio,
   Eye,
@@ -126,7 +127,7 @@ const NavItem = ({
         {isLocked && <Lock size={12} className="text-white/30" />}
         {badge && !isLocked && (
           <span
-            className={`px-2 py-0.5 rounded-md text-[9px] font-semibold leading-none
+            className={`px-2 py-0.5 rounded-md text-xs font-semibold leading-none
             ${
               active ? "bg-alloro-orange text-white" : "bg-white/10 text-white/40"
             }`}
@@ -138,7 +139,7 @@ const NavItem = ({
       </div>
     )}
     {minimized && badge && !isLocked && (
-      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-alloro-orange text-white text-[8px] font-semibold px-1">
+      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-alloro-orange text-white text-xs font-semibold px-1">
         {badge}
       </span>
     )}
@@ -371,6 +372,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         minimized={isMinimized}
       />
       <NavItem
+        icon={<Mail size={18} />}
+        label="Monday Emails"
+        active={isActive("/hq/monday-emails")}
+        onClick={() => handleNavigate("/hq/monday-emails")}
+        minimized={isMinimized}
+      />
+      <NavItem
         icon={<MessageSquare size={18} />}
         label="Messages"
         active={location.pathname === "/messages"}
@@ -487,7 +495,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </span>
               <button
                 onClick={() => setViewMode("admin")}
-                className="flex items-center gap-1.5 text-xs font-bold text-white/60 hover:text-white transition-colors"
+                className="flex items-center gap-1.5 text-xs font-semibold text-white/60 hover:text-white transition-colors"
               >
                 <ArrowLeft size={12} />
                 Exit
@@ -644,13 +652,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                   <button
                     onClick={() => setShowLogoutConfirm(false)}
-                    className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                    className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-md"
+                    className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-md"
                   >
                     Log Out
                   </button>
@@ -702,7 +710,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <h1 className="font-heading font-semibold text-xl tracking-tight leading-none">
                   Alloro
                 </h1>
-                <span className="text-[9px] font-semibold text-white/30 uppercase tracking-[0.25em] mt-1.5 leading-none">
+                <span className="text-xs font-semibold text-white/30 uppercase tracking-[0.25em] mt-1.5 leading-none">
                   Intelligence
                 </span>
               </div>
@@ -788,10 +796,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     "AP"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold text-white truncate">
+                  <p className="text-[13px] font-semibold text-white truncate">
                     {userProfile?.practiceName || "Your Business"}
                   </p>
-                  <p className="text-[9px] text-white/20 font-semibold uppercase tracking-widest mt-0.5">
+                  <p className="text-xs text-white/20 font-semibold uppercase tracking-widest mt-0.5">
                     {isSuperAdmin
                       ? "Super Admin"
                       : isPartner
@@ -809,7 +817,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   e.stopPropagation();
                   setShowLogoutConfirm(true);
                 }}
-                className="flex items-center gap-2 text-white/20 hover:text-red-400 transition-all w-full text-[9px] font-semibold uppercase tracking-widest"
+                className="flex items-center gap-2 text-white/20 hover:text-red-400 transition-all w-full text-xs font-semibold uppercase tracking-widest"
               >
                 <LogOut size={14} /> Log out
               </button>

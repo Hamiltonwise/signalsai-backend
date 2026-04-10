@@ -91,6 +91,8 @@ import internalApiRoutes from "./routes/internalApi";
 import billingRoutes from "./routes/billing";
 import founderSettingsRoutes from "./routes/admin/founderSettings";
 import clientHealthRoutes from "./routes/admin/clientHealth";
+import emailPreviewRoutes from "./routes/admin/emailPreview";
+import mondayPreviewRoutes from "./routes/admin/mondayPreview";
 import dashboardContextRoutes from "./routes/user/dashboardContext";
 import homeIntelligenceRoutes from "./routes/user/homeIntelligence";
 import ozEngineRoutes from "./routes/user/ozEngine";
@@ -341,6 +343,8 @@ app.use("/api/internal", internalApiRoutes); // Internal API for n8n workers
 app.use("/api/billing", billingRoutes); // Stripe billing & subscription management
 app.use("/api/founder/settings", founderSettingsRoutes); // Founder Mode personal settings
 app.use("/api/admin/client-health", clientHealthRoutes); // WO-T5: CS Pulse health grid for IntegratorView
+app.use("/api/admin/email-preview", emailPreviewRoutes); // Email preview for design QA
+app.use("/api/admin/monday-preview", mondayPreviewRoutes); // Monday Email HQ: preview all orgs before send
 app.use("/api/user/dashboard-context", dashboardContextRoutes); // WO-CHECKUP-SESSION-KEY: pre-populate dashboard from checkup data
 app.use("/api/user/home-intelligence", homeIntelligenceRoutes); // Layer 4: behavioral_events + snapshot findings for home page
 app.use("/api/user/oz-engine", ozEngineRoutes); // Oz Engine: deterministic hero insight for Home page

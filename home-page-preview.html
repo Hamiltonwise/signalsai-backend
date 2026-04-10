@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alloro Home — Garrison Preview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #F8F6F2;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page { max-width: 800px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* Greeting */
+    .greeting {
+      font-size: 24px;
+      font-weight: 300;
+      color: rgba(26, 29, 35, 0.6);
+      letter-spacing: -0.02em;
+      margin-bottom: 24px;
+    }
+
+    /* Oz Moment Hero */
+    .oz-hero {
+      background: #FDF4F2;
+      border: 1px solid rgba(213, 103, 83, 0.1);
+      border-radius: 16px;
+      padding: 40px 32px;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      margin-bottom: 32px;
+      animation: fadeUp 0.6s ease-out;
+    }
+    .oz-hero.clean {
+      background: #F8F6F2;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    .oz-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .oz-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-healthy { background: #10B981; }
+    .dot-attention { background: #F59E0B; }
+    .dot-critical { background: #EF4444; }
+    .oz-tag {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9CA3AF;
+    }
+    .oz-headline {
+      font-size: 32px;
+      font-weight: 600;
+      color: #1A1D23;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .oz-context {
+      font-size: 16px;
+      color: #6B7280;
+      line-height: 1.6;
+      max-width: 640px;
+    }
+    .oz-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .oz-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: #D56753;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: filter 0.15s;
+    }
+    .oz-cta:hover { filter: brightness(1.05); }
+    .oz-verify {
+      font-size: 12px;
+      font-weight: 600;
+      color: #D56753;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Score Shortcuts Strip */
+    .strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      margin-bottom: 32px;
+    }
+    .strip-item {
+      padding: 20px;
+    }
+    .strip-item + .strip-item {
+      border-left: 1px solid rgba(26, 29, 35, 0.05);
+    }
+    .strip-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .strip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .strip-tag {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9CA3AF;
+    }
+    .strip-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: #1A1D23;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .strip-context {
+      font-size: 14px;
+      color: #6B7280;
+      margin-top: 6px;
+    }
+
+    /* Action Card (secondary) */
+    .action-card {
+      background: #212D40;
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 32px;
+      animation: fadeUp 0.5s ease-out 0.25s both;
+    }
+    .action-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #D56753;
+      margin-bottom: 16px;
+    }
+    .action-headline {
+      font-size: 22px;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+    }
+    .action-body {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 12px;
+      line-height: 1.6;
+    }
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #D56753;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    /* Intelligence sections */
+    .intel-section {
+      padding-left: 16px;
+      border-left: 2px solid rgba(26, 29, 35, 0.1);
+      margin-bottom: 32px;
+    }
+    .intel-section.active {
+      border-color: #212D40;
+    }
+    .intel-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9CA3AF;
+      margin-bottom: 12px;
+    }
+    .intel-headline {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1A1D23;
+      line-height: 1.3;
+    }
+    .intel-bullet {
+      font-size: 15px;
+      color: #374151;
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+    .intel-action {
+      font-size: 15px;
+      color: #374151;
+      margin-top: 8px;
+    }
+
+    /* Upload prompt */
+    .upload-card {
+      background: rgba(245, 243, 238, 0.8);
+      border: 1px solid rgba(231, 229, 228, 0.6);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 32px;
+    }
+    .upload-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: rgba(213, 103, 83, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #D56753;
+      font-size: 18px;
+    }
+    .upload-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1A1D23;
+      margin-bottom: 4px;
+    }
+    .upload-desc {
+      font-size: 14px;
+      color: #6B7280;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: #D56753;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 640px) {
+      .strip { grid-template-columns: repeat(2, 1fr); }
+      .strip-item + .strip-item { border-left: none; }
+      .strip-item:nth-child(odd) + .strip-item { border-left: 1px solid rgba(26,29,35,0.05); }
+      .oz-headline { font-size: 24px; }
+      .strip-value { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- 1. Greeting (ambient, one line) -->
+    <h1 class="greeting">Good morning, Garrison.</h1>
+
+    <!-- 2. THE OZ MOMENT (HERO) -->
+    <div class="oz-hero">
+      <div class="oz-label">
+        <span class="oz-dot dot-attention"></span>
+        <span class="oz-tag">This Week</span>
+      </div>
+      <h2 class="oz-headline">Peluso Orthodontics added 6 reviews this week. You added 1.</h2>
+      <p class="oz-context">They now have 419 total reviews to your 74. The gap widened. At 2 reviews per week, you close that in about 86 weeks.</p>
+      <div class="oz-actions">
+        <a href="#" class="oz-cta">
+          See what changed
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+        <a href="https://www.google.com/search?q=orthodontist+West+Orange+NJ" class="oz-verify" target="_blank">
+          Verify on Google
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- 3. Score Shortcuts (status strip) -->
+    <div class="strip">
+      <div class="strip-item">
+        <div class="strip-label">
+          <span class="strip-dot dot-attention"></span>
+          <span class="strip-tag">Reviews</span>
+        </div>
+        <div class="strip-value">74</div>
+        <div class="strip-context">Peluso has 419. Gap: 345.</div>
+      </div>
+      <div class="strip-item">
+        <div class="strip-label">
+          <span class="strip-dot dot-healthy"></span>
+          <span class="strip-tag">Rating</span>
+        </div>
+        <div class="strip-value">4.9</div>
+        <div class="strip-context">Beats Peluso (4.6).</div>
+      </div>
+      <div class="strip-item">
+        <div class="strip-label">
+          <span class="strip-dot dot-healthy"></span>
+          <span class="strip-tag">Your Market</span>
+        </div>
+        <div class="strip-value">12</div>
+        <div class="strip-context">Competitors tracked.</div>
+      </div>
+      <div class="strip-item">
+        <div class="strip-label">
+          <span class="strip-dot dot-attention"></span>
+          <span class="strip-tag">GBP Profile</span>
+        </div>
+        <div class="strip-value">4/5</div>
+        <div class="strip-context">1 field incomplete.</div>
+      </div>
+    </div>
+
+    <!-- 4. Action Card (secondary, below fold) -->
+    <div class="action-card">
+      <div class="action-label">Your Next Move</div>
+      <div class="action-headline">You're 345 reviews from passing Peluso Orthodontics.</div>
+      <div class="action-body">At your current pace, you get there in about 86 weeks. Text your last 3 patients for a review. Every review counts double when competitors are watching.</div>
+      <a href="#" class="action-btn">
+        Request reviews
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </a>
+    </div>
+
+    <!-- 5. This Week (intelligence section) -->
+    <div class="intel-section active">
+      <div class="intel-label">This Week</div>
+      <div class="intel-headline">Peluso leads in West Orange with 419 reviews</div>
+      <p class="intel-bullet">The gap is 345 reviews. Every review you add closes that gap and improves how Google surfaces your business.</p>
+      <p class="intel-bullet">At 3 reviews per week, you close it in about 115 weeks.</p>
+    </div>
+
+    <!-- 6. Working in the Background -->
+    <div class="intel-section">
+      <div class="intel-label">Working in the Background</div>
+      <p class="intel-action">Scanned Peluso Orthodontics and 12 competitors in West Orange</p>
+      <p class="intel-action">Checked 74 Google reviews for changes</p>
+      <p class="intel-action">Verified your Google Business Profile fields are complete</p>
+    </div>
+
+    <!-- 7. Upload prompt -->
+    <div class="upload-card">
+      <div class="upload-icon">&#8593;</div>
+      <div>
+        <div class="upload-title">See where your customers come from</div>
+        <div class="upload-desc">Upload a referral report from your system and Alloro will show you which sources drive the most business, which ones are declining, and what to do about it.</div>
+        <button class="upload-btn">
+          &#8593; Upload business data
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Preview badge -->
+  <div style="position: fixed; bottom: 0; left: 0; right: 0; background: #FEF3C7; padding: 12px; text-align: center; font-size: 13px; color: #92400E; font-weight: 600; border-top: 1px solid #FCD34D; z-index: 999;">
+    PREVIEW: Home Page with Oz Moment Hero &mdash; Garrison (West Orange Orthodontics)
+  </div>
+</body>
+</html>

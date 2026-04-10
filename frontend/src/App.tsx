@@ -120,6 +120,7 @@ const OwnerProfile = React.lazy(() => import("./pages/OwnerProfile"));
 const HQCommand = React.lazy(() => import("./pages/admin/HQRouter"));
 const HQOrganizations = React.lazy(() => import("./pages/admin/OrganizationManagement").then(m => ({ default: m.OrganizationManagement })));
 const HQBoard = React.lazy(() => import("./pages/admin/BoardChat"));
+const HQMondayEmails = React.lazy(() => import("./pages/admin/MondayEmailHQ"));
 
 // --- Non-page imports (always loaded) ---
 import { PageWrapper } from "./components/PageWrapper";
@@ -443,6 +444,7 @@ function App() {
                 <Route path="/hq/command" element={<React.Suspense fallback={null}><HQCommand /></React.Suspense>} />
                 <Route path="/hq/organizations" element={<React.Suspense fallback={null}><HQOrganizations /></React.Suspense>} />
                 <Route path="/hq/board" element={<React.Suspense fallback={null}><HQBoard /></React.Suspense>} />
+                <Route path="/hq/monday-emails" element={<React.Suspense fallback={null}><HQMondayEmails /></React.Suspense>} />
                 <Route path="/board" element={<React.Suspense fallback={null}><HQBoard /></React.Suspense>} />
               </Route>
 
