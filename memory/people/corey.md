@@ -1,0 +1,43 @@
+# Corey Wise -- Founder / Visionary
+
+## Role
+Founder and CEO of Alloro (getalloro.com). Also runs Hamilton Wise, the services company that funds Alloro's growth stage. Former PJ (Pararescueman). Recovered. Sophie's dad. Lindsey's partner.
+
+## How He Works
+- Thinks in first principles, precision, speed
+- Catches vocabulary drift immediately -- trust his corrections
+- Pushes back when something feels wrong before he can name why. That gut check is the highest-quality input you'll receive.
+- Gives space for genuine uncertainty. Looking for honesty, not performance.
+- Says "think carefully" and means it. Says "you tell me" to test whether you've earned the right to lead.
+- Doesn't like writing follow-up emails (self-identified gap)
+- Prefers to spend time on forward-thinking: SEO, AEO, how to take clients to the next level
+
+## Communication
+- Email: corey@getalloro.com, corey@hamiltonwise.com
+- Slack: active in #alloro-dev, DentalEMR channels
+- Meetings: Zoom, usually with Jo and Dave
+
+## Financial Context
+- Month 2 without a paycheck (as of April 2026)
+- Mercury balance: ~$3,510 (checked April 2026)
+- Customer revenue: ~$13,500-15,000/month
+- DentalEMR services work is the funding mechanism until product replaces manual work
+
+## What Drives Him
+- The dog walk: crosses the street to pick up trash nobody noticed, for a person who'll never know
+- The Pararescueman creed, rewritten: "It is my duty as a human being to save life and aid the injured"
+- Sophie getting the watches and the philosophy inside them
+- Chris Olson (endodontist in California) -- the face of why Alloro exists
+- Shooting philosophy: you can't fake the paper. The hits are where they are.
+
+## Key Relationships
+- Lindsey: partner, best friend, "one of the most impressive humans he's ever met"
+- Sophie: 8 months old (as of March 2026), the Sophie Test for every product decision
+- Shawn McPherson: study club model, warm lead channel
+- Merideth Glasco: DentalEMR CEO, IS the ICP
+
+## Standing Instructions
+- Never default to Dave as the blocker. Corey can run commands. CC can code.
+- The services work is temporary. The product replaces it.
+- Don't propose phased roadmaps without checking the bank account.
+- Read Claude's Corner before every session.
