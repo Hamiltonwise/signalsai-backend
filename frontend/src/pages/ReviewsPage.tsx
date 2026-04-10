@@ -355,25 +355,15 @@ export default function ReviewsPage() {
             </div>
           ) : reviewCount > 0 ? (
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-[#1A1D23]">
-                You have {reviewCount} reviews at {rating} stars on Google.
-              </p>
-              <p className="text-sm text-[#1A1D23]/50">
-                Alloro syncs your Google reviews daily. Individual reviews with AI-drafted responses will appear here within 24 hours.
-              </p>
-              {/* Skeleton review cards */}
-              {[1, 2].map((i) => (
-                <div key={i} className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4 animate-pulse">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex gap-0.5">
-                      {[1,2,3,4,5].map(s => <div key={s} className="w-3.5 h-3.5 bg-gray-200 rounded" />)}
-                    </div>
-                    <div className="h-3 w-20 bg-gray-200 rounded" />
-                  </div>
-                  <div className="h-4 w-full bg-gray-100 rounded mb-1" />
-                  <div className="h-4 w-3/4 bg-gray-100 rounded" />
+              <div className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4">
+                <div className="flex items-center gap-3 mb-2">
+                  {rating && <StarRating rating={Math.round(rating)} size="md" />}
+                  <span className="text-lg font-semibold text-[#1A1D23]">{rating} stars</span>
                 </div>
-              ))}
+                <p className="text-sm text-[#1A1D23]/70">
+                  {reviewCount} reviews on Google. Alloro syncs your reviews daily and generates AI-drafted responses for new ones.
+                </p>
+              </div>
             </div>
           ) : (
             <div className="space-y-2">
@@ -429,15 +419,16 @@ export default function ReviewsPage() {
                 <p className="text-xs text-[#1A1D23]/40">this month</p>
               </div>
             </div>
-          ) : (
+          ) : reviewCount > 0 ? (
             <div className="space-y-2">
-              <p className="text-sm text-[#1A1D23]/50">
-                Review velocity compares your new reviews per month against your top competitor.
-              </p>
-              <p className="text-sm text-[#1A1D23]/40">
-                This data appears after your first week of tracking.
+              <p className="text-sm text-[#1A1D23]/70">
+                You have {reviewCount} total reviews{rating ? ` at ${rating} stars` : ""}. Alloro is tracking your review velocity against your top competitor. Monthly comparison data will appear here as it accumulates.
               </p>
             </div>
+          ) : (
+            <p className="text-sm text-[#1A1D23]/50">
+              Review velocity tracks your new reviews per month against your top competitor. Connect your Google Business Profile to start tracking.
+            </p>
           )}
         </Section>
 

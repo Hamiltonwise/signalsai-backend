@@ -21,8 +21,6 @@ import {
   AlertCircle,
   PenLine,
   Sparkles,
-  Clock,
-  Search,
   MousePointerClick,
 } from "lucide-react";
 import { apiGet } from "@/api/index";
@@ -189,96 +187,80 @@ function PresencePageInner() {
           )}
         </Section>
 
-        {/* Built for Search */}
-        <Section title="Built for Search" icon={Search} defaultOpen={true}>
-          <div className="space-y-3">
-            <p className="text-sm text-gray-500 leading-relaxed">
-              Your site is structured so customers searching for your services near your city can find you.
-            </p>
-            <p className="text-sm text-gray-500 leading-relaxed">
-              Alloro monitors your search performance. Data appears here as it becomes available.
-            </p>
-          </div>
-        </Section>
-
-        {/* Built to Convert */}
-        <Section title="Built to Convert" icon={MousePointerClick} defaultOpen={true}>
-          <div className="space-y-3">
-            <p className="text-sm text-gray-500 leading-relaxed">
-              Your site includes a contact form designed to turn visitors into inquiries.
-            </p>
-            {formSubmissions.length > 0 ? (
-              <div className="rounded-xl bg-[#F0EDE8] p-4">
-                <p className="text-sm font-semibold text-[#1A1D23]">
-                  {formSubmissions.length} form submission{formSubmissions.length !== 1 ? "s" : ""} received
-                </p>
-                {formSubmissions[0]?.created_at && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Most recent: {new Date(formSubmissions[0].created_at).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500 leading-relaxed">
-                No submissions yet. Alloro is watching.
-              </p>
-            )}
-          </div>
-        </Section>
-
-        {/* Website Optimizations (CRO Insights) */}
-        <Section title="Website Optimizations" icon={Sparkles} defaultOpen={true}>
-          {croInsights.length > 0 ? (
-            <div className="space-y-3">
-              {croInsights.slice(0, 8).map((insight, i) => {
-                const changeLabels: Record<string, string> = {
-                  title: "Page title",
-                  meta_description: "Meta description",
-                  content_section: "Content",
-                  cta: "Call to action",
-                  new_page: "New page",
-                };
-                return (
-                  <div key={i} className="rounded-xl bg-[#F0EDE8] p-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-                        {changeLabels[insight.changeType] || insight.changeType}
-                      </span>
-                      {insight.date && (
-                        <span className="text-xs text-gray-400">
-                          {new Date(insight.date).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                    {insight.rationale && (
-                      <p className="text-sm text-[#1A1D23] mb-2">{insight.rationale}</p>
-                    )}
-                    {insight.recommendedValue && (
-                      <p className="text-xs text-[#1A1D23]/60">
-                        Recommendation: {insight.recommendedValue}
+        {/* Only show additional sections when there's a website with real data */}
+        {hasWebsite && (
+          <>
+            {/* Built to Convert -- only when form submissions exist */}
+            {formSubmissions.length > 0 && (
+              <Section title="Built to Convert" icon={MousePointerClick} defaultOpen={true}>
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-[#F0EDE8] p-4">
+                    <p className="text-sm font-semibold text-[#1A1D23]">
+                      {formSubmissions.length} form submission{formSubmissions.length !== 1 ? "s" : ""} received
+                    </p>
+                    {formSubmissions[0]?.created_at && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Most recent: {new Date(formSubmissions[0].created_at).toLocaleDateString()}
                       </p>
                     )}
-                    {insight.pageUrl && insight.pageUrl !== "/" && (
-                      <p className="text-xs text-gray-400 mt-1">{insight.pageUrl}</p>
-                    )}
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex items-start gap-3 py-2">
-              <Clock className="w-4 h-4 text-gray-300 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-gray-500">
-                Website optimization runs weekly. Insights will appear here after your first scan.
-              </p>
-            </div>
-          )}
-        </Section>
+                </div>
+              </Section>
+            )}
 
-        {/* Focus Keywords and Compliance Check removed: not vital signs.
-            The owner at 10pm doesn't check keywords or FTC compliance.
-            These were features built because they could be, not because the
-            owner needed them. */}
+            {/* Website Optimizations -- only when CRO insights exist */}
+            {croInsights.length > 0 && (
+              <Section title="Website Optimizations" icon={Sparkles} defaultOpen={true}>
+                <div className="space-y-3">
+                  {croInsights.slice(0, 8).map((insight, i) => {
+                    const changeLabels: Record<string, string> = {
+                      title: "Page title",
+                      meta_description: "Meta description",
+                      content_section: "Content",
+                      cta: "Call to action",
+                      new_page: "New page",
+                    };
+                    return (
+                      <div key={i} className="rounded-xl bg-[#F0EDE8] p-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                            {changeLabels[insight.changeType] || insight.changeType}
+                          </span>
+                          {insight.date && (
+                            <span className="text-xs text-gray-400">
+                              {new Date(insight.date).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        {insight.rationale && (
+                          <p className="text-sm text-[#1A1D23] mb-2">{insight.rationale}</p>
+                        )}
+                        {insight.recommendedValue && (
+                          <p className="text-xs text-[#1A1D23]/60">
+                            Recommendation: {insight.recommendedValue}
+                          </p>
+                        )}
+                        {insight.pageUrl && insight.pageUrl !== "/" && (
+                          <p className="text-xs text-gray-400 mt-1">{insight.pageUrl}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Section>
+            )}
+          </>
+        )}
+
+        {/* When no website exists, show a single honest statement instead of 4 empty accordions */}
+        {!hasWebsite && (
+          <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6">
+            <p className="text-sm font-semibold text-[#1A1D23] mb-2">Website not yet active</p>
+            <p className="text-sm text-gray-500">
+              Alloro can build and maintain a patient-facing website for your practice. When active, this page shows your site performance, form submissions, and optimization history.
+            </p>
+          </div>
+        )}
 
       </div>
     </div>

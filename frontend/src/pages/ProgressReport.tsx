@@ -9,11 +9,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Minus, ExternalLink } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ExternalLink, Phone, MapPin, MousePointerClick } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 import { apiGet } from "@/api/index";
+import { getPriorityItem } from "@/hooks/useLocalStorage";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -41,7 +42,22 @@ export default function ProgressReport() {
     staleTime: 60_000,
   });
 
-  // Streaks available at /user/streaks if needed in future
+  const { data: rankingRaw } = useQuery<any>({
+    queryKey: ["progress-ranking", orgId, selectedLocation?.id],
+    queryFn: async () => {
+      const locParam = selectedLocation?.id ? `&locationId=${selectedLocation.id}` : "";
+      const token = getPriorityItem("auth_token") || getPriorityItem("token");
+      const res = await fetch(
+        `/api/practice-ranking/latest?googleAccountId=${orgId || ""}${locParam}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.rankings?.[0] || data?.results?.[0] || null;
+    },
+    enabled: !!orgId,
+    staleTime: 60_000,
+  });
 
   const checkup = ctx?.org?.checkup_data;
   const orgName = ctx?.org?.name || "";
@@ -199,8 +215,56 @@ export default function ProgressReport() {
           </motion.div>
         )}
 
+        {/* GBP Performance -- "Is the business producing?" */}
+        {(() => {
+          const perfData = rankingRaw?.rawData?.client_gbp?.performance;
+          if (!perfData) return null;
+          const calls = perfData.calls || 0;
+          const directions = perfData.directions || 0;
+          const clicks = perfData.clicks || 0;
+          const total = calls + directions + clicks;
+          if (total === 0) return null;
+
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="mt-6 space-y-3"
+            >
+              <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">Customer Actions from Google</p>
+              <div className="grid grid-cols-3 gap-3">
+                {calls > 0 && (
+                  <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4 text-center">
+                    <Phone className="w-4 h-4 text-gray-400 mx-auto mb-2" />
+                    <p className="text-2xl font-semibold text-[#1A1D23]">{calls}</p>
+                    <p className="text-xs text-gray-400 mt-1">Calls</p>
+                  </div>
+                )}
+                {directions > 0 && (
+                  <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4 text-center">
+                    <MapPin className="w-4 h-4 text-gray-400 mx-auto mb-2" />
+                    <p className="text-2xl font-semibold text-[#1A1D23]">{directions}</p>
+                    <p className="text-xs text-gray-400 mt-1">Directions</p>
+                  </div>
+                )}
+                {clicks > 0 && (
+                  <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4 text-center">
+                    <MousePointerClick className="w-4 h-4 text-gray-400 mx-auto mb-2" />
+                    <p className="text-2xl font-semibold text-[#1A1D23]">{clicks}</p>
+                    <p className="text-xs text-gray-400 mt-1">Website clicks</p>
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-gray-500">
+                These are real customer actions from your Google Business Profile. Each one represents someone who found you on Google and took a step toward becoming a patient.
+              </p>
+            </motion.div>
+          );
+        })()}
+
         {/* Upload Section -- unlock deeper intelligence */}
-        <div className="mt-10 pl-4 border-l-2 border-[#212D40]/20">
+        <div className="mt-10 pl-4 border-l-2 border-[#1A1D23]/20">
           <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">UNLOCK DEEPER INTELLIGENCE</p>
           <p className="text-[15px] text-[#1A1D23]/70 leading-relaxed">
             You are seeing your market position and review gap. Upload your referral or revenue data to see who is actually sending you business, and whether those relationships are growing or drifting.

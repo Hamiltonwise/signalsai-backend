@@ -87,16 +87,21 @@ type ReadingStatus = "healthy" | "attention" | "critical";
 
 // ─── Extract Readings from Data ─────────────────────────────────────
 
-function extractReadings(ctx: DashboardContext | null, ranking: RankingData | null) {
+function extractReadings(ctx: DashboardContext | null, ranking: RankingData | null, rankingRaw: any) {
   const checkup = ctx?.org?.checkup_data;
   if (!checkup) return null;
 
   const topCompetitor = checkup.topCompetitor || checkup.top_competitor || null;
   const competitorName = typeof topCompetitor === "string" ? topCompetitor : topCompetitor?.name || null;
+  const competitorReviews = typeof topCompetitor === "object" ? topCompetitor?.reviewCount : null;
   const city = checkup.market?.city || "";
+  const orgName = ctx?.org?.name || "";
 
   const marketSearchUrl = city
     ? `https://www.google.com/search?q=${encodeURIComponent((checkup.market?.specialty || "business") + " " + city)}`
+    : null;
+  const googleSearchUrl = orgName
+    ? `https://www.google.com/search?q=${encodeURIComponent(orgName)}`
     : null;
 
   const readings: {
@@ -110,7 +115,7 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
     whyItMatters?: string;
   }[] = [];
 
-  // Market Context (with rank position if available)
+  // 1. Market Context (with rank position if available)
   if (competitorName && marketSearchUrl) {
     const rankPos = ranking?.rankPosition;
     const totalComp = ranking?.totalCompetitors;
@@ -136,6 +141,76 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
       verifyUrl: marketSearchUrl,
       verifyLabel: `Search "${checkup.market?.specialty || "business"} ${city}"`,
       whyItMatters: "Alloro measures from a fixed point so your trend is always comparable week to week. Google rankings shift by location, device, and time of day. Your Alloro rank is a consistent benchmark, not a real-time Google replica.",
+    });
+  }
+
+  // 2. Reviews -- your count vs competitor gap
+  const clientReviews = checkup.place?.reviewCount || checkup.reviewCount || 0;
+  const clientRating = checkup.place?.rating || checkup.rating || null;
+  if (clientReviews > 0) {
+    const gap = competitorReviews ? competitorReviews - clientReviews : null;
+    const reviewContext = gap && gap > 0 && competitorName
+      ? `${competitorName} has ${competitorReviews}. Gap: ${gap}.`
+      : gap && gap <= 0
+        ? `You lead your top competitor by ${Math.abs(gap || 0)} reviews.`
+        : clientRating
+          ? `${clientRating} stars on Google.`
+          : "Alloro monitors your reviews daily.";
+
+    readings.push({
+      label: "Reviews",
+      value: `${clientReviews}`,
+      delta: clientRating ? `${clientRating} stars` : undefined,
+      context: reviewContext,
+      status: gap && gap > 50 ? "attention" : "healthy",
+      verifyUrl: googleSearchUrl,
+      verifyLabel: "Verify on Google",
+    });
+  }
+
+  // 3. GBP Performance -- calls from Google (if OAuth connected and data available)
+  const perfData = rankingRaw?.rawData?.client_gbp?.performance;
+  if (perfData) {
+    const calls = perfData.calls || 0;
+    const directions = perfData.directions || 0;
+    const clicks = perfData.clicks || 0;
+    const total = calls + directions + clicks;
+
+    if (total > 0) {
+      const parts: string[] = [];
+      if (calls > 0) parts.push(`${calls} call${calls !== 1 ? "s" : ""}`);
+      if (directions > 0) parts.push(`${directions} direction${directions !== 1 ? "s" : ""}`);
+      if (clicks > 0) parts.push(`${clicks} click${clicks !== 1 ? "s" : ""}`);
+
+      readings.push({
+        label: "From Google",
+        value: `${total} actions`,
+        context: parts.join(", ") + " this period.",
+        status: total >= 10 ? "healthy" : "attention",
+        verifyUrl: null,
+      });
+    }
+  }
+
+  // 4. GBP Profile completeness
+  const place = checkup.place || {};
+  const gbpFields = [
+    !!(place.hasPhone || place.phone || place.nationalPhoneNumber || place.internationalPhoneNumber),
+    !!(place.hasHours || place.hours || place.regularOpeningHours),
+    !!(place.hasWebsite || place.websiteUri || place.website),
+    (place.photosCount || place.photoCount || place.photos?.length || 0) > 0,
+    !!(place.hasEditorialSummary || place.editorialSummary),
+  ];
+  const complete = gbpFields.filter(Boolean).length;
+  if (complete > 0) {
+    const missing = 5 - complete;
+    readings.push({
+      label: "GBP Profile",
+      value: `${complete}/5`,
+      context: missing > 0 ? `${missing} field${missing !== 1 ? "s" : ""} incomplete.` : "All fields complete.",
+      status: complete >= 5 ? "healthy" : complete >= 3 ? "attention" : "critical",
+      verifyUrl: googleSearchUrl,
+      verifyLabel: "View your profile",
     });
   }
 
@@ -227,7 +302,7 @@ export default function HomePage() {
   // ── Derived State ──
   const action = actionData?.card || null;
   const greeting = buildGreeting(ctx || null);
-  const readings = extractReadings(ctx || null, ranking);
+  const readings = extractReadings(ctx || null, ranking, rankingRaw);
   const milestone = milestoneData?.card || null;
 
   const isTrialActive = ctx?.org?.subscription_status === "active" && ctx?.org?.trial_end_at;
@@ -273,7 +348,7 @@ export default function HomePage() {
           transition={{ duration: 0.6 }}
           className="mb-8"
         >
-          <h1 className="text-4xl sm:text-5xl font-light text-[#212D40] tracking-tight leading-tight">{greeting}</h1>
+          <h1 className="text-4xl sm:text-5xl font-light text-[#1A1D23] tracking-tight leading-tight">{greeting}</h1>
         </motion.div>
 
         {/* ── 2. Watchline ── */}
@@ -311,7 +386,7 @@ export default function HomePage() {
                 YOUR NEXT MOVE
               </p>
               <p className={`text-2xl sm:text-3xl font-medium leading-snug tracking-tight ${
-                action.clear ? "text-[#212D40]" : "text-white"
+                action.clear ? "text-[#1A1D23]" : "text-white"
               }`}>
                 {action.headline}
               </p>
@@ -352,7 +427,7 @@ export default function HomePage() {
                       <span className={`w-2 h-2 rounded-full ${dotColor}`} />
                       <span className="text-xs text-gray-400 font-semibold uppercase tracking-widest">{item.label}</span>
                     </div>
-                    <p className="text-2xl sm:text-[28px] font-semibold text-[#212D40] leading-none tracking-tight">{item.value}</p>
+                    <p className="text-2xl sm:text-[28px] font-semibold text-[#1A1D23] leading-none tracking-tight">{item.value}</p>
                     <p className="text-sm text-gray-500 mt-1.5 leading-snug">{item.context}</p>
                   </div>
                 );
@@ -385,7 +460,7 @@ export default function HomePage() {
             className="mb-10 pl-4 border-l-2 border-[#212D40]"
           >
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">WHAT ALLORO FOUND</p>
-            <p className="text-xl font-semibold text-[#212D40] leading-snug">{intelligenceData.weeklyFinding.headline}</p>
+            <p className="text-xl font-semibold text-[#1A1D23] leading-snug">{intelligenceData.weeklyFinding.headline}</p>
             {intelligenceData.weeklyFinding.bullets.length > 0 && (
               <div className="mt-3 space-y-2">
                 {intelligenceData.weeklyFinding.bullets.map((bullet, i) => (
@@ -406,7 +481,7 @@ export default function HomePage() {
               </p>
             )}
             {marketGap > 0 && (
-              <p className="text-lg font-semibold text-[#212D40] mt-2">
+              <p className="text-lg font-semibold text-[#1A1D23] mt-2">
                 The gap: {marketComp.name} has {marketCompReviews} reviews. You have {marketClientReviews}.
               </p>
             )}

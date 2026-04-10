@@ -203,39 +203,82 @@ function ComparePageInner() {
           </Section>
         )}
 
-        {/* What to Do */}
-        <Section title="What to Focus On" defaultOpen={true}>
-          <div className="space-y-6">
-            {clientReviews < (competitorReviews || 0) && (
+        {/* Market Intelligence */}
+        <Section title="What This Means" defaultOpen={true}>
+          <div className="space-y-4">
+            {clientReviews < (competitorReviews || 0) && competitorName && (
               <div>
-                <p className="text-sm font-semibold text-[#1A1D23]">Close the review gap</p>
+                <p className="text-sm font-semibold text-[#1A1D23]">
+                  The gap is {(competitorReviews || 0) - clientReviews} reviews.
+                </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  You have {clientReviews} reviews. {competitorName} has {competitorReviews}.
-                  Ask your 3 most recent clients for a review this week.
+                  {competitorName} has {competitorReviews} reviews to your {clientReviews}. Google weights review volume heavily in local pack rankings. This gap is the single largest factor keeping {competitorName} ahead.
                 </p>
               </div>
             )}
-            {clientPhotos < 10 && (
+            {clientPhotos < 10 && clientPhotos >= 0 && (
               <div>
-                <p className="text-sm font-semibold text-[#1A1D23]">Add photos to your profile</p>
+                <p className="text-sm font-semibold text-[#1A1D23]">
+                  {clientPhotos} photo{clientPhotos !== 1 ? "s" : ""} on your profile
+                </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  You have {clientPhotos} photos. Businesses with 10+ photos get significantly more engagement.
+                  Businesses with 10+ photos see measurably more engagement on Google. Photos signal an active, maintained business.
                 </p>
               </div>
             )}
             {clientReviews >= (competitorReviews || 0) && clientPhotos >= 10 && (
               <p className="text-sm text-gray-500">
-                You're ahead on all comparable readings. Keep the momentum.
+                You lead on all comparable readings. Alloro is watching for any shift.
               </p>
             )}
             {!competitorName && clientReviews === 0 && clientPhotos === 0 && (
               <div className="text-sm text-gray-500">
                 <p className="font-semibold text-[#1A1D23] mb-1">Your competitive picture is building</p>
-                <p>Alloro is analyzing your market. Add a competitor below to see a side-by-side comparison of reviews, star rating, and photos. You will see exactly where you lead and where to close the gap.</p>
+                <p>Alloro is analyzing your market. Your side-by-side comparison will appear here once competitor data is available.</p>
               </div>
             )}
           </div>
         </Section>
+
+        {/* How People Reach You (GBP Performance) */}
+        {(() => {
+          const perfData = rankingRaw?.rawData?.client_gbp?.performance;
+          if (!perfData) return null;
+          const calls = perfData.calls || 0;
+          const directions = perfData.directions || 0;
+          const clicks = perfData.clicks || 0;
+          const total = calls + directions + clicks;
+          if (total === 0) return null;
+          return (
+            <Section title="How People Reach You" defaultOpen={true}>
+              <div className="space-y-3">
+                <p className="text-sm text-gray-500">
+                  These numbers come from your Google Business Profile. They show how many people took action after finding you.
+                </p>
+                <div className="grid grid-cols-3 gap-4">
+                  {calls > 0 && (
+                    <div className="text-center">
+                      <p className="text-2xl font-semibold text-[#1A1D23]">{calls}</p>
+                      <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Calls</p>
+                    </div>
+                  )}
+                  {directions > 0 && (
+                    <div className="text-center">
+                      <p className="text-2xl font-semibold text-[#1A1D23]">{directions}</p>
+                      <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Directions</p>
+                    </div>
+                  )}
+                  {clicks > 0 && (
+                    <div className="text-center">
+                      <p className="text-2xl font-semibold text-[#1A1D23]">{clicks}</p>
+                      <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Website clicks</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Section>
+          );
+        })()}
 
         {/* Google Business Profile completeness */}
         <Section title="Google Business Profile" defaultOpen={true}>
