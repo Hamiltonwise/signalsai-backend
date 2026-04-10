@@ -30,6 +30,13 @@
 | Surprise Engine | surpriseFindings.ts -- 6 finding types scored on surprise + actionability |
 | DFY Engine | Done-For-You automation layer |
 
+## Critical Corrections (Do Not Repeat These Mistakes)
+| Wrong Assumption | Reality |
+|------------------|---------|
+| "Blocked by EC2" / "Blocked by Dave" for sandbox | Sandbox EC2 auto-deploys on every git push to sandbox branch. CI/CD pipeline works. No Dave dependency for sandbox deployment. |
+| "Dave is needed to deploy" | Dave merges to main and manages production. Sandbox is CC + Corey's domain. Push to sandbox = deployed. |
+| "Infrastructure is blocking features" | If something isn't working on sandbox, it's a code/routing/UI problem, not infrastructure. Fix it directly. |
+
 ## Technical
 | Term | Meaning |
 |------|---------|

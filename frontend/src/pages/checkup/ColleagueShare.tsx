@@ -94,10 +94,10 @@ export default function ColleagueShare() {
         {/* Headline */}
         <div className="space-y-3">
           <h1 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight leading-tight">
-            Know someone who should see theirs?
+            You're not the only one wondering.
           </h1>
           <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
-            It takes 60 seconds. Send them the link and they'll see how they compare in their market.
+            A colleague at the next booth is asking the same question. Send them the link, 60 seconds, and they'll see where they stand too.
           </p>
         </div>
 
@@ -152,14 +152,14 @@ export default function ColleagueShare() {
           </div>
         </div>
 
-        {/* Rise Together incentive */}
+        {/* Split the Check -- tribal, not transactional */}
         {referralCode && (
           <div className="bg-[#D56753]/5 border border-[#D56753]/15 rounded-2xl p-4">
             <p className="text-xs font-semibold text-[#D56753] uppercase tracking-wide mb-1">
-              Rise Together
+              Split the Check
             </p>
             <p className="text-sm text-[#1A1D23] leading-relaxed">
-              When they join, you both pay $1,000 instead of $2,000 for the first 3 months.
+              You're both building something. When they join, you each pay half for the first 3 months.
             </p>
           </div>
         )}

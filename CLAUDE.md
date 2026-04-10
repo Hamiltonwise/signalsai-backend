@@ -23,6 +23,13 @@ Backend: src/ (Node.js, Express, Knex, PostgreSQL)
 - Jo (COO/Integrator): maternity leave
 - Dave (CTO, Philippines): infrastructure, EC2, merges to main. Receives finished specs only.
 
+## Deployment Reality (LOCKED -- stop getting this wrong)
+
+Sandbox EC2 auto-deploys on every push to the sandbox branch. CI/CD pipeline is working.
+There is NO Dave dependency for sandbox. If code is pushed, it is deployed.
+If something is not working on sandbox, it is a code problem -- fix it directly.
+Never say "blocked by EC2" or "blocked by Dave" for sandbox work. That is false.
+
 ## Session Start
 
 1. `git branch --show-current && git status --short`

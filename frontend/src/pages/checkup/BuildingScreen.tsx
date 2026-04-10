@@ -113,14 +113,16 @@ export default function BuildingScreen() {
             Monday at 7:15 AM, your first briefing arrives at <span className="font-medium text-[#1A1D23]">{email}</span>
           </p>
         </div>
-        <div className="flex items-start gap-3">
-          <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center mt-0.5">
-            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-          </span>
-          <p className="text-sm text-gray-500 leading-relaxed">
-            Your website is being built from your reviews and market data
-          </p>
-        </div>
+      </div>
+
+      {/* Website preview teaser -- builds anticipation */}
+      <div className="rounded-2xl border border-[#D56753]/15 bg-[#D56753]/[0.03] p-5 text-left">
+        <p className="text-xs font-semibold text-[#D56753] uppercase tracking-wide mb-2">
+          Coming soon in your dashboard
+        </p>
+        <p className="text-sm text-[#1A1D23] leading-relaxed">
+          We're reading your reviews to find what makes {businessName} different. When it's ready, you'll see a website preview built from what your patients actually say about you, not stock copy.
+        </p>
       </div>
     </div>
   );

@@ -800,50 +800,121 @@ export default function ResultsScreen() {
         </div>
       )}
 
-      {/* Readings — the blood panel. Every number links to verification. */}
-      <div className={`space-y-3 transition-all duration-700 ${revealStage >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-        {/* Star Rating */}
-        {place.rating != null && (
-          <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`w-2.5 h-2.5 rounded-full ${place.rating >= 4.5 ? "bg-emerald-500" : place.rating >= 4.0 ? "bg-amber-400" : "bg-red-500"}`} />
-              <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Star Rating</span>
+      {/* ═══ HEAD-TO-HEAD — the "oh shit" moment ═══ */}
+      {/* This is the centerpiece. Every doctor who scans the QR sees this.
+          Side-by-side comparison, not flat reading cards. */}
+      <div className={`space-y-4 transition-all duration-700 ${revealStage >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+
+        {/* Matchup card */}
+        {topCompetitor && (
+          <div className="rounded-2xl overflow-hidden border border-stone-200/60">
+            {/* Header bar */}
+            <div className="bg-[#212D40] px-5 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40 text-center">
+                Head to Head
+              </p>
             </div>
-            <p className="text-lg font-semibold text-[#1A1D23]">{place.rating} stars</p>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {place.rating >= 4.5 ? "Above the threshold most consumers require" : "68% of consumers require 4+ stars"}
-            </p>
+
+            {/* Side-by-side stats */}
+            <div className="bg-stone-50/80 p-5">
+              {/* Names row */}
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 mb-5">
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-[#1A1D23] leading-snug truncate">{place.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">You</p>
+                </div>
+                <div className="text-xs font-semibold text-gray-300 uppercase">vs</div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-[#1A1D23] leading-snug truncate">{topCompetitor.name}</p>
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(topCompetitor.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold mt-0.5 hover:underline"
+                  >
+                    Verify <Globe className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Rating comparison */}
+              {place.rating != null && (
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-3 border-t border-stone-200/60">
+                  <div className="text-left">
+                    <p className={`text-2xl font-semibold tabular-nums ${
+                      place.rating >= topCompetitor.rating ? "text-emerald-600" : "text-[#1A1D23]"
+                    }`}>
+                      {place.rating}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                    <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Rating</span>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-2xl font-semibold tabular-nums ${
+                      topCompetitor.rating > place.rating ? "text-[#D56753]" : "text-[#1A1D23]"
+                    }`}>
+                      {topCompetitor.rating}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Review count comparison */}
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-3 border-t border-stone-200/60">
+                <div className="text-left">
+                  <p className={`text-2xl font-semibold tabular-nums ${
+                    place.reviewCount >= topCompetitor.reviewCount ? "text-emerald-600" : "text-[#1A1D23]"
+                  }`}>
+                    {place.reviewCount}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Reviews</span>
+                </div>
+                <div className="text-right">
+                  <p className={`text-2xl font-semibold tabular-nums ${
+                    topCompetitor.reviewCount > place.reviewCount ? "text-[#D56753]" : "text-[#1A1D23]"
+                  }`}>
+                    {topCompetitor.reviewCount}
+                  </p>
+                </div>
+              </div>
+
+              {/* Gap callout */}
+              {topCompetitor.reviewCount > place.reviewCount && (() => {
+                const reviewGap = topCompetitor.reviewCount - place.reviewCount;
+                const reviewRace = state.gaps?.find(g => g.velocity);
+                const theirPace = reviewRace?.velocity?.competitorWeekly;
+                return (
+                  <div className="mt-3 rounded-xl bg-[#D56753]/5 border border-[#D56753]/10 px-4 py-3">
+                    <p className="text-sm text-[#1A1D23] leading-relaxed">
+                      <span className="font-semibold text-[#D56753]">{reviewGap} review gap</span>.
+                      {theirPace && theirPace > 0
+                        ? ` They're gaining ~${theirPace} per week. Every week you wait, it gets harder.`
+                        : " Every new review they get widens the distance."}
+                    </p>
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         )}
 
-        {/* Review Volume vs Competitor */}
-        <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`w-2.5 h-2.5 rounded-full ${
-              topCompetitor && place.reviewCount >= topCompetitor.reviewCount ? "bg-emerald-500"
-              : topCompetitor && place.reviewCount >= topCompetitor.reviewCount * 0.5 ? "bg-amber-400"
-              : "bg-red-500"
-            }`} />
-            <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Review Volume</span>
+        {/* No competitor: solo reading */}
+        {!topCompetitor && place.rating != null && (
+          <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+              <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Your Rating</span>
+            </div>
+            <p className="text-2xl font-semibold text-[#1A1D23]">{place.rating} stars, {place.reviewCount} reviews</p>
           </div>
-          <p className="text-lg font-semibold text-[#1A1D23]">{place.reviewCount} reviews</p>
-          {topCompetitor && (
-            <p className="text-sm text-gray-500 mt-0.5">
-              {topCompetitor.name} has {topCompetitor.reviewCount}.
-              {place.reviewCount >= topCompetitor.reviewCount
-                ? " You lead."
-                : ` Gap: ${topCompetitor.reviewCount - place.reviewCount} reviews.`}
-            </p>
-          )}
-          {topCompetitor && (
-            <a href={`https://www.google.com/search?q=${encodeURIComponent(topCompetitor.name)}`} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold mt-1.5 hover:underline">
-              Verify on Google <Globe className="w-3 h-3" />
-            </a>
-          )}
-        </div>
+        )}
 
-        {/* GBP Completeness */}
+        {/* GBP Completeness -- compact inline */}
         {(() => {
           const fields = [
             { name: "phone", has: !!(place.phone || (place as any).nationalPhoneNumber || (place as any).hasPhone) },
@@ -856,94 +927,34 @@ export default function ResultsScreen() {
           const missing = fields.filter(f => !f.has).map(f => f.name);
           return (
             <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`w-2.5 h-2.5 rounded-full ${complete >= 5 ? "bg-emerald-500" : complete >= 3 ? "bg-amber-400" : "bg-red-500"}`} />
-                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Profile Completeness</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className={`w-3 h-3 rounded-full ring-4 ring-opacity-20 ${
+                    complete >= 5 ? "bg-emerald-500 ring-emerald-500" : complete >= 3 ? "bg-amber-400 ring-amber-400" : "bg-red-500 ring-red-500"
+                  }`} />
+                  <span className="text-sm font-semibold text-[#1A1D23]">Google Profile: {complete}/5</span>
+                </div>
+                {missing.length > 0 && (
+                  <span className="text-xs text-[#D56753] font-semibold">
+                    Missing {missing.length}
+                  </span>
+                )}
               </div>
-              <p className="text-lg font-semibold text-[#1A1D23]">{complete}/5 fields</p>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {missing.length > 0 ? `Missing: ${missing.join(", ")}` : "All fields complete"}
-              </p>
+              {missing.length > 0 && (
+                <p className="text-xs text-gray-400 mt-2 ml-7">
+                  {missing.join(", ")} {missing.length === 1 ? "is" : "are"} not set up. Patients and Google notice.
+                </p>
+              )}
             </div>
           );
         })()}
 
-        {/* Diagnostic sentence — verifiable, no position claim, uses velocity when available */}
-        {topCompetitor && topCompetitor.reviewCount > place.reviewCount && (() => {
-          const reviewGap = topCompetitor.reviewCount - place.reviewCount;
-          const reviewRace = state.gaps?.find(g => g.velocity);
-          const theirPace = reviewRace?.velocity?.competitorWeekly;
-          return (
-            <p className="text-sm text-[#1A1D23] text-center leading-relaxed mt-2">
-              <span className="font-semibold">{topCompetitor.name}</span> has{" "}
-              <span className="font-semibold text-[#D56753]">
-                {reviewGap} more review{reviewGap !== 1 ? "s" : ""}
-              </span>.
-              {theirPace && theirPace > 0
-                ? ` At their pace, the gap grows by ~${theirPace} per week.`
-                : " Here's what you can do about it."}
-            </p>
-          );
-        })()}
-      </div>
-
-      {/* Source attribution */}
-      <p className="text-xs text-gray-400 text-center leading-relaxed">
-        Based on public Google data. Every number above is verifiable.
-        {market?.totalCompetitors ? ` ${market.totalCompetitors} competitors in your market.` : ""}
-      </p>
-
-      {/* Oz Moments already rendered above the readings */}
-
-      {/* Share prompt — right after Oz moments, when the impulse is strongest.
-           Oz principle: the share is the user's own idea, not an ask. */}
-      <div className="bg-[#212D40] rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4">
-        <div className="flex-1 text-center sm:text-left">
-          <p className="text-sm font-semibold text-white">
-            Know someone who should see their market?
+        {/* Market context */}
+        {market && market.totalCompetitors > 0 && (
+          <p className="text-xs text-gray-400 text-center leading-relaxed">
+            Based on public Google data for {market.totalCompetitors} {place.category ? place.category.toLowerCase() + "s" : "businesses"} in {market.city}. Every number is verifiable.
           </p>
-          <p className="text-xs text-white/50 mt-1">
-            Send them a link to run their own scan. No names shared.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={async () => {
-            try {
-              const res = await fetch("/api/checkup/share", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  score: score.composite,
-                  city: place?.city,
-                  rank: market?.rank,
-                  totalCompetitors: market?.totalCompetitors,
-                  topCompetitorName: topCompetitor?.name,
-                  specialty: place?.category,
-                }),
-              });
-              const data = await res.json();
-              if (data.success && data.shareUrl) {
-                await navigator.clipboard.writeText(data.shareUrl);
-                setLinkCopied(true);
-                setTimeout(() => setLinkCopied(false), 2000);
-              }
-            } catch {
-              const base = window.location.origin;
-              const shareUrl = state.refCode
-                ? `${base}/checkup?ref=${state.refCode}`
-                : `${base}/checkup`;
-              navigator.clipboard.writeText(shareUrl).then(() => {
-                setLinkCopied(true);
-                setTimeout(() => setLinkCopied(false), 2000);
-              }).catch(() => {});
-            }
-          }}
-          className="shrink-0 flex items-center gap-2 text-sm font-semibold text-[#1A1D23] bg-white rounded-lg px-5 py-2.5 hover:bg-gray-50 active:scale-[0.98] transition-all"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-          {linkCopied ? "Copied!" : "Share and split the check"}
-        </button>
+        )}
       </div>
 
       {/* Gap Progress Bars — concrete closeable units */}
