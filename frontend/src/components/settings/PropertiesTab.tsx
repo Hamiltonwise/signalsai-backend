@@ -54,6 +54,7 @@ export const PropertiesTab: React.FC = () => {
   }, [hasGoogleConnection]);
 
   const canManageConnections = userRole === "admin";
+  const canRenameLocation = userRole === "admin" || userRole === "manager";
 
   const loadData = useCallback(async () => {
     try {
@@ -318,11 +319,11 @@ export const PropertiesTab: React.FC = () => {
                           <h4
                             className="text-lg font-black text-alloro-navy font-heading tracking-tight cursor-pointer hover:text-alloro-orange transition-colors group flex items-center gap-1.5"
                             onClick={() =>
-                              canManageConnections && startNameEdit(loc)
+                              canRenameLocation && startNameEdit(loc)
                             }
                           >
                             {loc.name}
-                            {canManageConnections && (
+                            {canRenameLocation && (
                               <Pencil
                                 size={12}
                                 className="opacity-0 group-hover:opacity-40 transition-opacity"

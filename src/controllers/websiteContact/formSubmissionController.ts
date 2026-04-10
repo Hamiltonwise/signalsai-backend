@@ -284,7 +284,7 @@ export async function handleFormSubmission(req: Request, res: Response): Promise
     }
 
     // Trusted form types skip spam scoring and AI analysis
-    const isTrustedFormType = formType === "onboarding";
+    const isTrustedFormType = formType === "onboarding" || formType === "insurance-inquiry";
 
     // ── 7. Process contents based on format ──
     let finalContents: FormContents;

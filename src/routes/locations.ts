@@ -261,10 +261,10 @@ router.put(
   "/:id",
   authenticateToken,
   rbacMiddleware,
-  requireRole("admin"),
+  requireRole("admin", "manager"),
   async (req: Request, res: Response) => {
     try {
-      const { organizationId } = req as RBACRequest;
+      const { organizationId, userRole } = req as RBACRequest;
       if (!organizationId) {
         return res.status(400).json({ success: false, error: "Organization not found" });
       }
@@ -275,6 +275,15 @@ router.put(
       }
 
       const { name, domain, is_primary } = req.body;
+
+      // Field-level guard: only admins can modify domain or primary flag.
+      // Managers are allowed to rename a location but nothing else on this route.
+      if (userRole !== "admin" && (domain !== undefined || is_primary !== undefined)) {
+        return res.status(403).json({
+          success: false,
+          error: "Only admins can modify domain or primary location",
+        });
+      }
 
       await updateLocation(locationId, organizationId, {
         ...(name !== undefined && { name }),
