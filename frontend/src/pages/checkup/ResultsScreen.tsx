@@ -459,17 +459,17 @@ export default function ResultsScreen() {
   const [weeklyUpdates, setWeeklyUpdates] = useState(true);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // Oz Pearlman sequential reveal: score first, then competitors, then finding, then gate
+  // Oz Pearlman sequential reveal: Oz moments first, then readings, then race, then gate
   const [revealStage, setRevealStage] = useState(0);
   useEffect(() => {
-    // Stage 0: score ring (immediate)
-    // Stage 1: competitors + diagnostic (after 2s)
-    // Stage 2: sub-scores + gaps (after 4s)
-    // Stage 3: findings + gate (after 6s)
+    // Stage 0: name + Oz moments (immediate)
+    // Stage 1: readings + competitor context (1.5s)
+    // Stage 2: gaps + race bars (3s)
+    // Stage 3: findings + gate (4.5s)
     const timers = [
-      setTimeout(() => setRevealStage(1), 2000),
-      setTimeout(() => setRevealStage(2), 4000),
-      setTimeout(() => setRevealStage(3), 6000),
+      setTimeout(() => setRevealStage(1), 1500),
+      setTimeout(() => setRevealStage(2), 3000),
+      setTimeout(() => setRevealStage(3), 4500),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
@@ -746,9 +746,13 @@ export default function ResultsScreen() {
       {/* Practice name + market context */}
       <div className="text-center">
         <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-2">
-          How You Stack Up
+          Your Market Reading
         </p>
-        <h2 className="text-2xl font-semibold text-[#1A1D23]">{place.name}</h2>
+        <h2 className="text-2xl font-semibold text-[#1A1D23]">
+          {topCompetitor
+            ? `${place.name} vs. ${topCompetitor.name}`
+            : place.name}
+        </h2>
         {market && market.totalCompetitors > 0 && (
           <p className="text-sm text-slate-400 mt-1.5">
             vs. {market.totalCompetitors} competitors in {market.city}
@@ -766,8 +770,38 @@ export default function ResultsScreen() {
         )}
       </div>
 
+      {/* ═══ OZ MOMENTS — Lead with the gut punch ═══ */}
+      {/* These hit first. Before the readings. Before the data.
+          The goal: "how did they know that?" within 10 seconds of seeing results. */}
+      {state.ozMoments && state.ozMoments.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#D56753]/70">
+            What we found
+          </p>
+          {state.ozMoments.map((moment, i) => (
+            <div
+              key={i}
+              className="rounded-2xl bg-[#212D40] p-5 space-y-2.5 shadow-lg"
+              style={{ animation: `fade-in-up 0.5s ease-out ${i * 0.15}s both` }}
+            >
+              <p className="text-[15px] font-semibold text-white leading-snug">
+                {moment.hook}
+              </p>
+              <p className="text-sm text-white/60 leading-relaxed">
+                {moment.implication}
+              </p>
+              <div className="pt-2 border-t border-white/8">
+                <p className="text-xs text-[#D56753] font-semibold">
+                  {moment.action}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Readings — the blood panel. Every number links to verification. */}
-      <div className="space-y-3">
+      <div className={`space-y-3 transition-all duration-700 ${revealStage >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
         {/* Star Rating */}
         {place.rating != null && (
           <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4">
@@ -834,16 +868,23 @@ export default function ResultsScreen() {
           );
         })()}
 
-        {/* Diagnostic sentence — verifiable, no position claim */}
-        {topCompetitor && topCompetitor.reviewCount > place.reviewCount && (
-          <p className="text-sm text-[#1A1D23] text-center leading-relaxed mt-2">
-            <span className="font-semibold">{topCompetitor.name}</span> has{" "}
-            <span className="font-semibold text-[#D56753]">
-              {topCompetitor.reviewCount - place.reviewCount} more review{topCompetitor.reviewCount - place.reviewCount !== 1 ? "s" : ""}
-            </span> than you.
-            Here's what you can do about it.
-          </p>
-        )}
+        {/* Diagnostic sentence — verifiable, no position claim, uses velocity when available */}
+        {topCompetitor && topCompetitor.reviewCount > place.reviewCount && (() => {
+          const reviewGap = topCompetitor.reviewCount - place.reviewCount;
+          const reviewRace = state.gaps?.find(g => g.velocity);
+          const theirPace = reviewRace?.velocity?.competitorWeekly;
+          return (
+            <p className="text-sm text-[#1A1D23] text-center leading-relaxed mt-2">
+              <span className="font-semibold">{topCompetitor.name}</span> has{" "}
+              <span className="font-semibold text-[#D56753]">
+                {reviewGap} more review{reviewGap !== 1 ? "s" : ""}
+              </span>.
+              {theirPace && theirPace > 0
+                ? ` At their pace, the gap grows by ~${theirPace} per week.`
+                : " Here's what you can do about it."}
+            </p>
+          );
+        })()}
       </div>
 
       {/* Source attribution */}
@@ -852,38 +893,7 @@ export default function ResultsScreen() {
         {market?.totalCompetitors ? ` ${market.totalCompetitors} competitors in your market.` : ""}
       </p>
 
-      {/* ═══ OZ MOMENTS: The jaw-drop insights from combined data ═══ */}
-      {/* These use progressive specificity: named competitor + specific number + consequence.
-          The goal: make the person stop scrolling and think "how did they know that?" */}
-      {/* Oz Pearlman moments: the "how did they know that?" reveal */}
-      {revealStage >= 1 && state.ozMoments && state.ozMoments.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D56753]/70">
-            The pattern we spotted
-          </p>
-          {state.ozMoments.map((moment, i) => (
-            <div
-              key={i}
-              className={`rounded-2xl bg-[#212D40] p-5 space-y-2.5 transition-all duration-700 shadow-lg ${
-                revealStage >= 2 ? "opacity-100 translate-y-0" : i === 0 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-              }`}
-              style={{ animation: `fade-in-up 0.5s ease-out ${i * 0.15}s both` }}
-            >
-              <p className="text-[15px] font-bold text-white leading-snug">
-                {moment.hook}
-              </p>
-              <p className="text-sm text-white/60 leading-relaxed">
-                {moment.implication}
-              </p>
-              <div className="pt-2 border-t border-white/8">
-                <p className="text-xs text-[#D56753] font-semibold">
-                  {moment.action}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Oz Moments already rendered above the readings */}
 
       {/* Share prompt — right after Oz moments, when the impulse is strongest.
            Oz principle: the share is the user's own idea, not an ask. */}
@@ -937,9 +947,11 @@ export default function ResultsScreen() {
       </div>
 
       {/* Gap Progress Bars — concrete closeable units */}
-      {state.gaps && state.gaps.length > 0 && (
-        <GapSection gaps={state.gaps} />
-      )}
+      <div className={`transition-all duration-700 ${revealStage >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+        {state.gaps && state.gaps.length > 0 && (
+          <GapSection gaps={state.gaps} />
+        )}
+      </div>
 
       {/* Viral Loop: Send competitors their free checkup */}
       {state.competitors && state.competitors.length > 0 && (
@@ -950,7 +962,7 @@ export default function ResultsScreen() {
       )}
 
       {/* Findings — first visible, rest blurred */}
-      <div className="space-y-3">
+      <div className={`space-y-3 transition-all duration-700 ${revealStage >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
         <h2 className="text-sm font-bold text-[#1A1D23] uppercase tracking-wide">Key Findings</h2>
         {state.userQuestion && (
           <div className="bg-[#D56753]/5 border border-[#D56753]/15 rounded-xl px-4 py-3 text-sm text-[#1A1D23]">
@@ -972,6 +984,7 @@ export default function ResultsScreen() {
       {/* Blur Gate — Voss-style: they're receiving something, not being extracted from.
           Frame as delivery, not transaction. "Your full checkup is ready." */}
       {!emailSubmitted ? (
+        <div className={`transition-all duration-700 ${revealStage >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
         <div className="bg-gradient-to-br from-white to-[#FFF9F7] border-2 border-[#D56753]/20 rounded-2xl p-7 shadow-warm-lg">
           <div className="mb-4">
             <p className="text-base font-bold text-[#1A1D23] font-heading">
@@ -1224,6 +1237,7 @@ export default function ResultsScreen() {
           <p className="text-xs text-slate-300 text-center mt-2 leading-relaxed">
             Built on Claude by Anthropic. Your data is never sold or shared.
           </p>
+        </div>
         </div>
       ) : (
         <>
