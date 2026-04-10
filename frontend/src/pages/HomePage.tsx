@@ -20,7 +20,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Upload } from "lucide-react";
+import { ChevronRight, Upload, ExternalLink } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
@@ -68,6 +68,17 @@ interface OneAction {
   action_url: string | null;
   priority_level: number;
   clear?: boolean;
+}
+
+interface OzMomentData {
+  headline: string;
+  context: string;
+  status: "healthy" | "attention" | "critical";
+  verifyUrl: string | null;
+  surprise: number;
+  actionText: string | null;
+  actionUrl: string | null;
+  signalType: string;
 }
 
 // ─── Greeting ───────────────────────────────────────────────────────
@@ -300,11 +311,19 @@ export default function HomePage() {
     staleTime: 120_000,
   });
 
+  const { data: ozData } = useQuery<{ ozMoment: OzMomentData | null }>({
+    queryKey: ["oz-engine", orgId],
+    queryFn: () => apiGet({ path: "/user/oz-engine" }),
+    enabled: !!orgId,
+    staleTime: 120_000,
+  });
+
   // ── Derived State ──
   const action = actionData?.card || null;
   const greeting = buildGreeting(ctx || null);
   const readings = extractReadings(ctx || null, ranking, rankingRaw);
   const milestone = milestoneData?.card || null;
+  const ozMoment = ozData?.ozMoment || null;
 
   const isTrialActive = ctx?.org?.subscription_status === "active" && ctx?.org?.trial_end_at;
   const needsOnboarding = setupProgress && !setupProgress.completed && !setupProgress.dismissed;
@@ -332,78 +351,98 @@ export default function HomePage() {
 
         {/* ═══ ABOVE THE FOLD ═══ */}
 
-        {/* ── 1. Greeting (ambient, light) ── */}
+        {/* ── 1. Greeting (ambient, one line) ── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-8"
+          className="mb-6"
         >
-          <h1 className="text-4xl sm:text-5xl font-light text-[#1A1D23] tracking-tight leading-tight">{greeting}</h1>
+          <h1 className="text-2xl font-light text-[#1A1D23]/60 tracking-tight">{greeting}</h1>
         </motion.div>
 
-        {/* ── 2. Watchline -- highest-priority true signal, or nothing ── */}
-        {intelligenceData?.watchline && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="text-xl sm:text-2xl font-light text-[#1A1D23]/60 mb-8"
-          >
-            {intelligenceData.watchline}
-          </motion.p>
-        )}
-
-        {/* ── 3. One Action Card (DOMINANT) ── */}
-        {action && (
+        {/* ── 2. THE OZ MOMENT (HERO) ── */}
+        {ozMoment ? (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
             className="mb-8"
           >
-            <div className={`w-full px-8 py-8 sm:py-10 ${
-              action.clear
-                ? "bg-[#F8F6F2] border-l-4 border-emerald-500"
-                : "bg-[#212D40] rounded-lg"
+            <div className={`w-full rounded-2xl px-8 py-10 sm:py-12 min-h-[200px] flex flex-col justify-center ${
+              ozMoment.signalType === "clean_week"
+                ? "bg-[#F8F6F2] border border-emerald-200"
+                : "bg-[#FDF4F2] border border-[#D56753]/10"
             }`}>
-              <p className={`text-xs font-semibold uppercase tracking-widest mb-4 ${
-                action.clear ? "text-emerald-600" : "text-[#D56753]"
-              }`}>
-                YOUR NEXT MOVE
+              {/* Status indicator */}
+              <div className="flex items-center gap-2 mb-5">
+                <span className={`w-2.5 h-2.5 rounded-full ${
+                  ozMoment.status === "healthy" ? "bg-emerald-500" : ozMoment.status === "attention" ? "bg-amber-400" : "bg-red-500"
+                }`} />
+                <span className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF]">
+                  {ozMoment.signalType === "clean_week" ? "ALL CLEAR" : "THIS WEEK"}
+                </span>
+              </div>
+
+              {/* The headline -- the thing they didn't know */}
+              <h2 className="text-2xl sm:text-[32px] font-semibold text-[#1A1D23] leading-tight tracking-tight mb-4">
+                {ozMoment.headline}
+              </h2>
+
+              {/* Supporting context */}
+              <p className="text-base text-[#6B7280] leading-relaxed max-w-[640px]">
+                {ozMoment.context}
               </p>
-              <p className={`text-2xl sm:text-3xl font-medium leading-snug tracking-tight ${
-                action.clear ? "text-[#1A1D23]" : "text-white"
-              }`}>
-                {action.headline}
-              </p>
-              {action.body && (
-                <p className={`mt-3 text-base leading-relaxed ${
-                  action.clear ? "text-[#1A1D23]/50" : "text-white/50"
-                }`}>
-                  {action.body}
-                </p>
-              )}
-              {action.action_text && action.action_url && (
-                <button
-                  onClick={() => navigate(action.action_url!)}
-                  className="mt-6 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold bg-[#D56753] text-white hover:brightness-110 active:scale-[0.98] transition-all"
-                >
-                  {action.action_text}
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              )}
+
+              {/* Action + verify row */}
+              <div className="flex flex-wrap items-center gap-4 mt-6">
+                {ozMoment.actionText && ozMoment.actionUrl && (
+                  <button
+                    onClick={() => navigate(ozMoment.actionUrl!)}
+                    className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold bg-[#D56753] text-white hover:brightness-105 active:scale-[0.98] transition-all"
+                  >
+                    {ozMoment.actionText}
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
+                {ozMoment.verifyUrl && (
+                  <a
+                    href={ozMoment.verifyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#D56753] hover:underline"
+                  >
+                    Verify on Google
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
             </div>
           </motion.div>
-        )}
+        ) : intelligenceData?.watchline ? (
+          /* Fallback: if Oz Engine returns null but we have a watchline, show it */
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mb-8"
+          >
+            <div className="w-full rounded-2xl bg-[#FDF4F2] border border-[#D56753]/10 px-8 py-10 sm:py-12 min-h-[200px] flex flex-col justify-center">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-5">THIS WEEK</span>
+              <h2 className="text-2xl sm:text-[32px] font-semibold text-[#1A1D23] leading-tight tracking-tight">
+                {intelligenceData.watchline}
+              </h2>
+            </div>
+          </motion.div>
+        ) : null}
 
-        {/* ── 3. Status Strip (compact horizontal, above the fold) ── */}
+        {/* ── 3. Score Shortcuts (status strip) ── */}
         {statusItems.length > 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-            className="mb-10"
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mb-8"
           >
             <div className={`grid gap-0 ${statusItems.length >= 4 ? "grid-cols-2 sm:grid-cols-4" : statusItems.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
               {statusItems.map((item, i) => {
@@ -422,7 +461,7 @@ export default function HomePage() {
             </div>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 mb-10">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 mb-8">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className={`py-5 px-5 animate-pulse ${i > 1 ? "sm:border-l sm:border-[#1A1D23]/5" : ""}`}>
                 <div className="flex items-center gap-2 mb-2">
@@ -434,6 +473,39 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* ── 4. One Action Card (SECONDARY -- below the fold) ── */}
+        {action && !action.clear && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.25 }}
+            className="mb-8"
+          >
+            <div className="w-full px-8 py-8 bg-[#212D40] rounded-2xl">
+              <p className="text-xs font-semibold uppercase tracking-widest mb-4 text-[#D56753]">
+                YOUR NEXT MOVE
+              </p>
+              <p className="text-xl sm:text-2xl font-semibold leading-snug tracking-tight text-white">
+                {action.headline}
+              </p>
+              {action.body && (
+                <p className="mt-3 text-sm leading-relaxed text-white/50">
+                  {action.body}
+                </p>
+              )}
+              {action.action_text && action.action_url && (
+                <button
+                  onClick={() => navigate(action.action_url!)}
+                  className="mt-5 inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold bg-[#D56753] text-white hover:brightness-110 active:scale-[0.98] transition-all"
+                >
+                  {action.action_text}
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </motion.div>
         )}
 
         {/* ═══ BELOW THE FOLD -- Intelligence Sections (no boxes) ═══ */}
