@@ -35,6 +35,9 @@ interface OrgContext {
   competitorName: string | null;
   competitorReviews: number | null;
   orgName: string | null;
+  clientRating: number | null;
+  competitorRating: number | null;
+  orgCreatedAt: string | null;
 }
 
 interface WatchlineSignal {
@@ -234,21 +237,80 @@ async function getPattern(
   return null;
 }
 
-/** P4: Business context -- what Alloro knows and is doing */
+/** P4: Business context -- specific competitive insight from checkup data.
+ *  This is the cold-start signal. A new client with zero longitudinal data
+ *  should still see something specific and true, not "Monitoring X in Y."
+ *  Uses review gap, rating comparison, or market position to generate
+ *  a quantified insight from day one.
+ */
 function getBusinessContext(ctx: OrgContext): WatchlineSignal | null {
-  if (ctx.competitorName && ctx.city) {
+  // 4a. Quantified review gap -- the most concrete competitive signal
+  if (
+    ctx.competitorName &&
+    ctx.competitorReviews &&
+    ctx.reviewCount != null
+  ) {
+    const gap = ctx.competitorReviews - ctx.reviewCount;
+    if (gap > 0) {
+      // How long to close at 2 reviews per week (realistic ask rate)
+      const weeksToClose = Math.ceil(gap / 2);
+      const timeframe =
+        weeksToClose <= 4
+          ? `${weeksToClose} week${weeksToClose !== 1 ? "s" : ""}`
+          : weeksToClose <= 52
+            ? `${Math.ceil(weeksToClose / 4)} months`
+            : `${(weeksToClose / 52).toFixed(1)} years`;
+      return {
+        priority: 4,
+        type: "review_gap",
+        text: `${ctx.competitorName} has ${gap} more reviews than you. At 2 per week, you close that gap in ${timeframe}.`,
+      };
+    }
+    if (gap <= 0) {
+      return {
+        priority: 4,
+        type: "review_lead",
+        text: `You lead ${ctx.competitorName} by ${Math.abs(gap)} reviews in ${ctx.city || "your market"}.`,
+      };
+    }
+  }
+
+  // 4b. Rating comparison -- if reviews are close but ratings differ
+  if (
+    ctx.competitorName &&
+    ctx.clientRating &&
+    ctx.competitorRating &&
+    ctx.clientRating !== ctx.competitorRating
+  ) {
+    if (ctx.clientRating > ctx.competitorRating) {
+      return {
+        priority: 4,
+        type: "rating_advantage",
+        text: `Your ${ctx.clientRating}-star rating beats ${ctx.competitorName} at ${ctx.competitorRating}. Patients notice.`,
+      };
+    }
     return {
       priority: 4,
-      type: "monitoring",
-      text: `Monitoring ${ctx.competitorName} and ${ctx.totalComp || "other"} competitors in ${ctx.city}.`,
+      type: "rating_gap",
+      text: `${ctx.competitorName} has a ${ctx.competitorRating}-star rating to your ${ctx.clientRating}. Review quality matters for AI search results.`,
     };
   }
 
-  if (ctx.city) {
+  // 4c. Market position with competitor named -- at minimum, name names
+  if (ctx.competitorName && ctx.city) {
     return {
       priority: 4,
-      type: "monitoring",
-      text: `Monitoring ${ctx.totalComp || "competitors"} in ${ctx.city}.`,
+      type: "market_position",
+      text: `Your top competitor in ${ctx.city} is ${ctx.competitorName}. Alloro is tracking their reviews, rankings, and visibility weekly.`,
+    };
+  }
+
+  // 4d. City only -- weakest signal, but still better than nothing
+  if (ctx.city && ctx.totalComp) {
+    return {
+      priority: 4,
+      type: "market_scan",
+      text: `Tracking ${ctx.totalComp} competitors in ${ctx.city}. Your first competitive report arrives Monday.`,
     };
   }
 
@@ -278,12 +340,16 @@ homeIntelligenceRoutes.get(
         city: cd?.market?.city || null,
         specialty: cd?.market?.specialty || null,
         totalComp: cd?.market?.totalCompetitors || null,
-        reviewCount: cd?.place?.reviewCount || null,
+        reviewCount: cd?.place?.reviewCount || cd?.reviewCount || null,
         competitorName:
           typeof topComp === "string" ? topComp : topComp?.name || null,
         competitorReviews:
           typeof topComp === "object" ? topComp?.reviewCount : null,
         orgName: org?.name || null,
+        clientRating: cd?.place?.rating || cd?.rating || null,
+        competitorRating:
+          typeof topComp === "object" ? topComp?.rating || null : null,
+        orgCreatedAt: org?.created_at || null,
       };
 
       // 1. Watchline: run waterfall, take highest priority signal

@@ -489,7 +489,7 @@ export default function HomePage() {
               {ctx?.referral_stats?.referrals_converted
                 ? `${ctx.referral_stats.referrals_converted} referral${ctx.referral_stats.referrals_converted !== 1 ? "s" : ""} converted`
                 : "Referral data uploaded"}
-              {" -- "}
+              {". "}
               <button onClick={() => navigate("/compare")} className="text-[#1A1D23] font-semibold hover:underline">
                 See details on Get Found
               </button>
