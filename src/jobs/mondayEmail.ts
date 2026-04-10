@@ -90,7 +90,10 @@ async function createMondayBriefFallbackNotification(
 /**
  * Send Monday email for a single org.
  */
-export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
+export async function sendMondayEmailForOrg(
+  orgId: number,
+  options?: { overrideRecipient?: string; testMode?: boolean },
+): Promise<boolean> {
   const org = await db("organizations").where({ id: orgId }).first();
   if (!org) return false;
 
@@ -117,6 +120,10 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
   const user = await db("users").where({ id: orgUser.user_id }).first();
   if (!user?.email) return false;
+
+  // Test mode: override recipient email and prefix subjects with [TEST]
+  const recipientEmail = options?.overrideRecipient || user.email;
+  const subjectPrefix = options?.testMode ? "[TEST] " : "";
 
   const ownerName = [user.first_name, user.last_name].filter(Boolean).join(" ") || org.name || "there";
   const ownerLastName = user.last_name || ownerName;
@@ -217,11 +224,11 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
     try {
       const success = await sendMondayBriefEmail({
-        recipientEmail: user.email,
+        recipientEmail,
         businessName: org.name,
         ownerName,
         ownerLastName,
-        subjectLine: stripEmDashes(firstWeekSubject),
+        subjectLine: `${subjectPrefix}${stripEmDashes(firstWeekSubject)}`,
         ozMoment: null, // First week: no Oz Engine data yet
         findingHeadline: stripEmDashes(firstWeekHeadline),
         findingBody: stripEmDashes(firstWeekBody),
@@ -380,7 +387,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
     try {
       const success = await sendCleanWeekEmail({
-        recipientEmail: user.email,
+        recipientEmail,
         businessName: org.name,
         firstName: user.first_name || ownerName,
         position: snapshot.position || null,
@@ -508,7 +515,7 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
 
           try {
             const success = await sendCleanWeekEmail({
-              recipientEmail: user.email,
+              recipientEmail,
               businessName: org.name,
               firstName: user.first_name || ownerName,
               position: snapshot.position || null,
@@ -698,6 +705,32 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
     console.error(`[MondayEmail] Oz Engine failed for ${org.name} (non-blocking):`, ozErr.message);
   }
 
+  // ── Hero override from Monday Email HQ (one-time use) ──
+  try {
+    const { getHeroOverride, consumeHeroOverride } = await import("../routes/admin/mondayPreview");
+    const override = await getHeroOverride(orgId);
+    if (override && ozMoment) {
+      console.log(`[MondayEmail] Hero override applied for ${org.name}: "${override.headline}"`);
+      ozMoment = { ...ozMoment, headline: override.headline, context: override.context };
+      await consumeHeroOverride(orgId);
+    } else if (override && !ozMoment) {
+      // Override without Oz -- create a minimal result
+      ozMoment = {
+        headline: override.headline,
+        context: override.context,
+        status: "attention" as const,
+        verifyUrl: null,
+        surprise: 5,
+        actionText: null,
+        actionUrl: null,
+        signalType: "admin_override",
+      };
+      await consumeHeroOverride(orgId);
+    }
+  } catch (overrideErr: any) {
+    console.error(`[MondayEmail] Hero override check failed for ${org.name} (non-blocking):`, overrideErr.message);
+  }
+
   // ── Build readings strip from snapshot data ──
   const emailReadings: EmailReading[] = [];
   const clientRevCount = snapshot.client_review_count || 0;
@@ -759,11 +792,11 @@ export async function sendMondayEmailForOrg(orgId: number): Promise<boolean> {
   // Send via email service
   try {
     const success = await sendMondayBriefEmail({
-      recipientEmail: user.email,
+      recipientEmail,
       businessName: org.name,
       ownerName,
       ownerLastName,
-      subjectLine: sanitizedSubject,
+      subjectLine: `${subjectPrefix}${sanitizedSubject}`,
       ozMoment: ozMoment ? {
         headline: stripEmDashes(ozMoment.headline),
         context: stripEmDashes(ozMoment.context),
@@ -900,6 +933,27 @@ export async function sendAllMondayEmails(): Promise<{ sent: number; total: numb
           skippedTest++;
           continue;
         }
+      }
+
+      // ── Monday Email HQ hold check (BLOCKING) ──
+      // If Corey held this org from /hq/monday-emails, skip it.
+      try {
+        const { isOrgHeld, isGloballyPaused } = await import("../routes/admin/mondayPreview");
+        const globalPause = await isGloballyPaused();
+        if (globalPause.paused) {
+          console.log(`[MondayEmail] GLOBAL PAUSE active. Skipping ${org.name}. Reason: ${globalPause.reason}`);
+          held++;
+          continue;
+        }
+        const orgHold = await isOrgHeld(org.id);
+        if (orgHold.held) {
+          console.log(`[MondayEmail] HELD by admin: ${org.name}. Reason: ${orgHold.reason}`);
+          held++;
+          continue;
+        }
+      } catch (holdErr: any) {
+        // If hold check fails, proceed with send (fail-open, not fail-closed)
+        console.error(`[MondayEmail] Hold check error for ${org.name} (non-blocking):`, holdErr.message);
       }
 
       // Go/No-Go poll: log results but don't block sends.

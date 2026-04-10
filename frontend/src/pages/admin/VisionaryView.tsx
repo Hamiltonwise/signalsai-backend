@@ -1005,7 +1005,7 @@ function EmailHealthPanel() {
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-medium text-gray-600">{m.label}</span>
               <div className="flex items-center gap-2">
-                <span className={`text-sm font-bold ${m.alert ? "text-red-600" : "text-[#212D40]"}`}>
+                <span className={`text-sm font-semibold ${m.alert ? "text-red-600" : "text-[#1A1D23]"}`}>
                   {m.value}{m.suffix}
                 </span>
                 {m.target !== null && (
@@ -1028,6 +1028,14 @@ function EmailHealthPanel() {
       <p className="text-xs text-gray-400 mt-3">
         {health.totalEmails.toLocaleString()} emails tracked (last 30 days)
       </p>
+
+      <a
+        href="/hq/monday-emails"
+        className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#D56753] hover:underline"
+      >
+        Review Monday Emails
+        <ChevronRight size={12} />
+      </a>
     </Panel>
   );
 }

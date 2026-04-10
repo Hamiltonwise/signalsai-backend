@@ -1,17 +1,17 @@
 /**
  * Monday Email HQ -- Command Center for Monday Brief Emails
  *
- * Lets Corey review every Monday email before it sends.
- * Shows all orgs with their Oz Moment hero, readings, hold status,
- * and links to full HTML preview.
+ * Controls: global pause, per-org hold/release, send test, edit hero, data age.
+ * The email job checks holds before sending. This page is how Corey
+ * sees and controls what every customer receives Monday morning.
  *
  * Route: /hq/monday-emails
- * API: GET /api/admin/monday-preview
+ * API: GET/POST /api/admin/monday-preview/*
  */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "@/api/index";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiGet, apiPost } from "@/api/index";
 import {
   Mail,
   AlertTriangle,
@@ -22,10 +22,15 @@ import {
   ChevronRight,
   Shield,
   Pause,
+  Play,
   Search,
+  Send,
+  Edit3,
+  RefreshCw,
+  Power,
 } from "lucide-react";
 
-// ---- Types ------------------------------------------------------------------
+// ── Types ──────────────────────────────────────────────────────────
 
 interface Reading {
   label: string;
@@ -56,14 +61,20 @@ interface EmailPreview {
   subscriptionStatus: string;
   held: boolean;
   holdReason: string | null;
+  heldAt: string | null;
+  snapshotAge: number | null;
+  heroOverride: { headline: string; context: string } | null;
 }
 
 interface PreviewResponse {
   previews: EmailPreview[];
+  globalPaused: boolean;
+  globalPauseReason: string | null;
+  globalPausedAt: string | null;
   generatedAt: string;
 }
 
-// ---- Helpers ----------------------------------------------------------------
+// ── Helpers ─────────────────────────────────────────────────────────
 
 function timeAgo(dateStr: string | null): string {
   if (!dateStr) return "never";
@@ -88,22 +99,18 @@ const statusRing: Record<string, string> = {
   critical: "ring-red-500/20",
 };
 
-// ---- Components -------------------------------------------------------------
+// ── Components ──────────────────────────────────────────────────────
 
 function OzMomentCard({ oz }: { oz: OzMoment }) {
   const borderColor =
-    oz.status === "healthy"
-      ? "border-emerald-200/60"
-      : oz.status === "attention"
-        ? "border-amber-200/60"
-        : "border-red-200/60";
+    oz.status === "healthy" ? "border-emerald-200/60"
+    : oz.status === "attention" ? "border-amber-200/60"
+    : "border-red-200/60";
 
   return (
     <div className={`rounded-xl border ${borderColor} bg-[#FDF4F2] p-4`}>
       <div className="flex items-center gap-2 mb-2">
-        <span
-          className={`w-2.5 h-2.5 rounded-full ${statusDot[oz.status]} ring-4 ${statusRing[oz.status]}`}
-        />
+        <span className={`w-2.5 h-2.5 rounded-full ${statusDot[oz.status]} ring-4 ${statusRing[oz.status]}`} />
         <span className="text-xs font-semibold uppercase tracking-wider text-[#1A1D23]/40">
           {oz.signalType.replace(/_/g, " ")}
         </span>
@@ -111,9 +118,7 @@ function OzMomentCard({ oz }: { oz: OzMoment }) {
           surprise: {oz.surprise}/10
         </span>
       </div>
-      <p className="text-sm font-semibold text-[#1A1D23] leading-snug">
-        {oz.headline}
-      </p>
+      <p className="text-sm font-semibold text-[#1A1D23] leading-snug">{oz.headline}</p>
       <p className="text-xs text-gray-500 mt-1">{oz.context}</p>
     </div>
   );
@@ -124,17 +129,10 @@ function ReadingsStrip({ readings }: { readings: Reading[] }) {
   return (
     <div className="flex gap-3 mt-3">
       {readings.map((r, i) => (
-        <div
-          key={i}
-          className="flex-1 rounded-lg bg-stone-50/80 border border-stone-200/60 p-3"
-        >
+        <div key={i} className="flex-1 rounded-lg bg-stone-50/80 border border-stone-200/60 p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <span
-              className={`w-2 h-2 rounded-full ${statusDot[r.status]}`}
-            />
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-              {r.label}
-            </span>
+            <span className={`w-2 h-2 rounded-full ${statusDot[r.status]}`} />
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">{r.label}</span>
           </div>
           <p className="text-sm font-semibold text-[#1A1D23]">{r.value}</p>
           <p className="text-xs text-gray-500 mt-0.5">{r.context}</p>
@@ -146,37 +144,73 @@ function ReadingsStrip({ readings }: { readings: Reading[] }) {
 
 function EmailCard({ preview }: { preview: EmailPreview }) {
   const [expanded, setExpanded] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editHeadline, setEditHeadline] = useState(preview.ozMoment?.headline || "");
+  const [editContext, setEditContext] = useState(preview.ozMoment?.context || "");
+  const [testStatus, setTestStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const queryClient = useQueryClient();
 
   const previewUrl = `/api/admin/email-preview/monday-brief/${preview.orgId}`;
 
+  const holdMutation = useMutation({
+    mutationFn: () => apiPost({ path: "/admin/monday-preview/hold", passedData: { orgId: preview.orgId, reason: "Held from Monday Email HQ" } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["monday-email-preview"] }),
+  });
+
+  const releaseMutation = useMutation({
+    mutationFn: () => apiPost({ path: "/admin/monday-preview/release", passedData: { orgId: preview.orgId } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["monday-email-preview"] }),
+  });
+
+  const overrideMutation = useMutation({
+    mutationFn: () => apiPost({ path: "/admin/monday-preview/override-hero", passedData: { orgId: preview.orgId, headline: editHeadline, context: editContext } }),
+    onSuccess: () => {
+      setEditMode(false);
+      queryClient.invalidateQueries({ queryKey: ["monday-email-preview"] });
+    },
+  });
+
+  const refreshMutation = useMutation({
+    mutationFn: () => apiPost({ path: "/admin/monday-preview/refresh", passedData: { orgId: preview.orgId } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["monday-email-preview"] }),
+  });
+
+  const sendTest = async () => {
+    setTestStatus("sending");
+    try {
+      await apiPost({ path: "/admin/monday-preview/test-send", passedData: { orgId: preview.orgId } });
+      setTestStatus("sent");
+      setTimeout(() => setTestStatus("idle"), 3000);
+    } catch {
+      setTestStatus("error");
+      setTimeout(() => setTestStatus("idle"), 3000);
+    }
+  };
+
   return (
-    <div
-      className={`rounded-2xl border overflow-hidden transition-colors ${
-        preview.held
-          ? "border-amber-300/60 bg-amber-50/30"
-          : "border-stone-200/60 bg-stone-50/80"
-      }`}
-    >
+    <div className={`rounded-2xl border overflow-hidden transition-colors ${
+      preview.held ? "border-amber-300/60 bg-amber-50/30" : "border-stone-200/60 bg-stone-50/80"
+    }`}>
       {/* Header row */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-stone-100/50 transition-colors"
       >
-        {expanded ? (
-          <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
-        ) : (
-          <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
-        )}
-
+        {expanded
+          ? <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
+          : <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+        }
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-[#1A1D23] truncate">
-              {preview.orgName}
-            </span>
+            <span className="text-sm font-semibold text-[#1A1D23] truncate">{preview.orgName}</span>
             {preview.held && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
-                <Pause size={10} />
-                Held
+                <Pause size={10} /> Held
+              </span>
+            )}
+            {preview.heroOverride && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
+                <Edit3 size={10} /> Edited
               </span>
             )}
             {preview.subscriptionStatus !== "active" && (
@@ -186,24 +220,24 @@ function EmailCard({ preview }: { preview: EmailPreview }) {
             )}
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
-            {preview.ownerName}
-            {preview.ownerEmail ? ` (${preview.ownerEmail})` : ""}
+            {preview.ownerName}{preview.ownerEmail ? ` (${preview.ownerEmail})` : ""}
           </p>
         </div>
 
-        {/* Right side: Oz signal summary */}
         <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Data age indicator */}
+          {preview.snapshotAge !== null && (
+            <span className={`text-xs ${preview.snapshotAge > 7 ? "text-amber-500 font-semibold" : "text-gray-400"}`}>
+              {preview.snapshotAge}d old
+            </span>
+          )}
           {preview.ozMoment ? (
-            <span
-              className={`w-2.5 h-2.5 rounded-full ${statusDot[preview.ozMoment.status]} ring-4 ${statusRing[preview.ozMoment.status]}`}
-            />
+            <span className={`w-2.5 h-2.5 rounded-full ${statusDot[preview.ozMoment.status]} ring-4 ${statusRing[preview.ozMoment.status]}`} />
           ) : (
             <span className="w-2.5 h-2.5 rounded-full bg-gray-300 ring-4 ring-gray-200/20" />
           )}
           <span className="text-xs text-gray-400">
-            {preview.lastEmailSentAt
-              ? `Last: ${timeAgo(preview.lastEmailSentAt)}`
-              : "Never sent"}
+            {preview.lastEmailSentAt ? `Last: ${timeAgo(preview.lastEmailSentAt)}` : "Never sent"}
           </span>
         </div>
       </button>
@@ -212,42 +246,138 @@ function EmailCard({ preview }: { preview: EmailPreview }) {
       {expanded && (
         <div className="px-5 pb-5 border-t border-stone-200/40">
           <div className="pt-4">
-            {preview.ozMoment ? (
-              <OzMomentCard oz={preview.ozMoment} />
+            {/* Oz Moment or empty */}
+            {preview.ozMoment && !editMode ? (
+              <OzMomentCard oz={preview.heroOverride
+                ? { ...preview.ozMoment, headline: preview.heroOverride.headline, context: preview.heroOverride.context }
+                : preview.ozMoment
+              } />
+            ) : editMode ? (
+              <div className="rounded-xl border border-blue-200/60 bg-blue-50/30 p-4">
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Edit Hero</p>
+                <input
+                  type="text"
+                  value={editHeadline}
+                  onChange={(e) => setEditHeadline(e.target.value)}
+                  placeholder="Headline"
+                  className="w-full px-3 py-2 rounded-lg border border-stone-200/60 text-sm text-[#1A1D23] mb-2 focus:outline-none focus:ring-2 focus:ring-[#D56753]/20"
+                />
+                <textarea
+                  value={editContext}
+                  onChange={(e) => setEditContext(e.target.value)}
+                  placeholder="Supporting context"
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg border border-stone-200/60 text-sm text-[#1A1D23] mb-3 focus:outline-none focus:ring-2 focus:ring-[#D56753]/20 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => overrideMutation.mutate()}
+                    disabled={!editHeadline.trim() || overrideMutation.isPending}
+                    className="px-3 py-1.5 rounded-lg bg-[#D56753] text-white text-xs font-semibold hover:brightness-105 transition-all disabled:opacity-50"
+                  >
+                    {overrideMutation.isPending ? "Saving..." : "Save Override"}
+                  </button>
+                  <button onClick={() => setEditMode(false)} className="px-3 py-1.5 rounded-lg bg-stone-100 text-gray-500 text-xs font-semibold hover:bg-stone-200 transition-colors">
+                    Cancel
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="rounded-xl border border-stone-200/60 bg-[#F0EDE8] p-4">
-                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">
-                  No Oz Moment
-                </p>
-                <p className="text-sm text-gray-500">
-                  Not enough data for this org yet.
-                </p>
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">No Oz Moment</p>
+                <p className="text-sm text-gray-500">Not enough data for this org yet.</p>
               </div>
             )}
 
             <ReadingsStrip readings={preview.readings} />
 
+            {/* Hold warning */}
             {preview.held && preview.holdReason && (
               <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200/60">
-                <AlertTriangle
-                  size={14}
-                  className="text-amber-500 mt-0.5 flex-shrink-0"
-                />
-                <p className="text-xs text-amber-700">{preview.holdReason}</p>
+                <AlertTriangle size={14} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-amber-700">
+                  <p>{preview.holdReason}</p>
+                  {preview.heldAt && <p className="text-amber-500 mt-0.5">Since {timeAgo(preview.heldAt)}</p>}
+                </div>
               </div>
             )}
 
-            {/* Actions */}
-            <div className="mt-4 flex items-center gap-3">
+            {/* Stale data warning */}
+            {preview.snapshotAge !== null && preview.snapshotAge > 7 && (
+              <div className="mt-3 flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200/60">
+                <Clock size={14} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-amber-700">Data is {preview.snapshotAge} days old. Consider refreshing before sending.</p>
+              </div>
+            )}
+
+            {/* Controls */}
+            <div className="mt-4 flex items-center gap-2 flex-wrap">
+              {/* Preview */}
               <a
                 href={previewUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#D56753] text-white text-xs font-medium hover:brightness-105 transition-all"
               >
-                <ExternalLink size={12} />
-                Preview Email
+                <ExternalLink size={12} /> Preview
               </a>
+
+              {/* Hold / Release */}
+              {preview.held ? (
+                <button
+                  onClick={() => releaseMutation.mutate()}
+                  disabled={releaseMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500 text-white text-xs font-medium hover:brightness-105 transition-all disabled:opacity-50"
+                >
+                  <Play size={12} /> {releaseMutation.isPending ? "Releasing..." : "Release"}
+                </button>
+              ) : (
+                <button
+                  onClick={() => holdMutation.mutate()}
+                  disabled={holdMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500 text-white text-xs font-medium hover:brightness-105 transition-all disabled:opacity-50"
+                >
+                  <Pause size={12} /> {holdMutation.isPending ? "Holding..." : "Hold"}
+                </button>
+              )}
+
+              {/* Send Test */}
+              <button
+                onClick={sendTest}
+                disabled={testStatus === "sending"}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                  testStatus === "sent" ? "bg-emerald-100 text-emerald-700"
+                  : testStatus === "error" ? "bg-red-100 text-red-700"
+                  : "bg-stone-100 text-gray-600 hover:bg-stone-200"
+                }`}
+              >
+                <Send size={12} />
+                {testStatus === "sending" ? "Sending..." : testStatus === "sent" ? "Sent to info@" : testStatus === "error" ? "Failed" : "Test Send"}
+              </button>
+
+              {/* Edit Hero */}
+              {!editMode && (
+                <button
+                  onClick={() => {
+                    setEditHeadline(preview.heroOverride?.headline || preview.ozMoment?.headline || "");
+                    setEditContext(preview.heroOverride?.context || preview.ozMoment?.context || "");
+                    setEditMode(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-100 text-gray-600 text-xs font-medium hover:bg-stone-200 transition-colors"
+                >
+                  <Edit3 size={12} /> Edit Hero
+                </button>
+              )}
+
+              {/* Refresh */}
+              <button
+                onClick={() => refreshMutation.mutate()}
+                disabled={refreshMutation.isPending}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-100 text-gray-600 text-xs font-medium hover:bg-stone-200 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={12} className={refreshMutation.isPending ? "animate-spin" : ""} />
+                Refresh
+              </button>
             </div>
           </div>
         </div>
@@ -256,13 +386,12 @@ function EmailCard({ preview }: { preview: EmailPreview }) {
   );
 }
 
-// ---- Main Page --------------------------------------------------------------
+// ── Main Page ───────────────────────────────────────────────────────
 
 export default function MondayEmailHQ() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterMode, setFilterMode] = useState<"all" | "held" | "active">(
-    "all",
-  );
+  const [filterMode, setFilterMode] = useState<"all" | "held" | "active" | "stale">("all");
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery<PreviewResponse>({
     queryKey: ["monday-email-preview"],
@@ -271,76 +400,109 @@ export default function MondayEmailHQ() {
     retry: false,
   });
 
+  const globalPauseMutation = useMutation({
+    mutationFn: () => apiPost({ path: "/admin/monday-preview/global-pause", passedData: { reason: "Paused from Monday Email HQ" } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["monday-email-preview"] }),
+  });
+
+  const globalResumeMutation = useMutation({
+    mutationFn: () => apiPost({ path: "/admin/monday-preview/global-resume", passedData: {} }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["monday-email-preview"] }),
+  });
+
   const previews = data?.previews ?? [];
+  const globalPaused = data?.globalPaused ?? false;
 
   const filtered = previews.filter((p) => {
     if (filterMode === "held" && !p.held) return false;
-    if (filterMode === "active" && p.subscriptionStatus !== "active")
-      return false;
+    if (filterMode === "active" && p.subscriptionStatus !== "active") return false;
+    if (filterMode === "stale" && (p.snapshotAge === null || p.snapshotAge <= 7)) return false;
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
-      return (
-        p.orgName.toLowerCase().includes(q) ||
-        p.ownerName.toLowerCase().includes(q) ||
-        p.ownerEmail.toLowerCase().includes(q)
-      );
+      return p.orgName.toLowerCase().includes(q) || p.ownerName.toLowerCase().includes(q) || p.ownerEmail.toLowerCase().includes(q);
     }
     return true;
   });
 
   const heldCount = previews.filter((p) => p.held).length;
-  const activeCount = previews.filter(
-    (p) => p.subscriptionStatus === "active",
-  ).length;
+  const activeCount = previews.filter((p) => p.subscriptionStatus === "active").length;
   const withOzCount = previews.filter((p) => p.ozMoment !== null).length;
+  const staleCount = previews.filter((p) => p.snapshotAge !== null && p.snapshotAge > 7).length;
 
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
       <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        {/* Page header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-1">
-            <Mail size={18} className="text-[#D56753]" />
-            <p className="text-xs font-semibold text-[#D56753] uppercase tracking-wider">
-              Monday Email HQ
-            </p>
+
+        {/* Global pause banner */}
+        {globalPaused && (
+          <div className="mb-6 rounded-2xl border border-red-300/60 bg-red-50/50 px-5 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Power size={18} className="text-red-500" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">All Monday emails are paused</p>
+                <p className="text-xs text-red-500 mt-0.5">No emails will send until resumed.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => globalResumeMutation.mutate()}
+              disabled={globalResumeMutation.isPending}
+              className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:brightness-105 transition-all disabled:opacity-50"
+            >
+              {globalResumeMutation.isPending ? "Resuming..." : "Resume All"}
+            </button>
           </div>
-          <h1 className="text-2xl font-semibold text-[#1A1D23]">
-            Monday Brief Preview
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Every Monday email for every org. Review before they send.
-          </p>
+        )}
+
+        {/* Page header */}
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Mail size={18} className="text-[#D56753]" />
+              <p className="text-xs font-semibold text-[#D56753] uppercase tracking-wider">Monday Email HQ</p>
+            </div>
+            <h1 className="text-2xl font-semibold text-[#1A1D23]">Monday Brief Command Center</h1>
+            <p className="text-sm text-gray-500 mt-1">Review, hold, edit, and test every email before it sends.</p>
+          </div>
+
+          {/* Global pause toggle */}
+          {!globalPaused && (
+            <button
+              onClick={() => globalPauseMutation.mutate()}
+              disabled={globalPauseMutation.isPending}
+              className="px-4 py-2 rounded-xl bg-red-500/10 text-red-600 text-xs font-semibold hover:bg-red-500/20 transition-colors border border-red-200/60 disabled:opacity-50"
+            >
+              <Power size={12} className="inline mr-1.5" />
+              {globalPauseMutation.isPending ? "Pausing..." : "Pause All"}
+            </button>
+          )}
         </div>
 
         {/* Stats bar */}
         <div className="flex items-center gap-4 mb-6 flex-wrap">
           <div className="flex items-center gap-1.5">
             <Shield size={14} className="text-gray-400" />
-            <span className="text-xs text-gray-500">
-              {previews.length} orgs
-            </span>
+            <span className="text-xs text-gray-500">{previews.length} orgs</span>
           </div>
           <div className="flex items-center gap-1.5">
             <CheckCircle2 size={14} className="text-emerald-500" />
-            <span className="text-xs text-gray-500">
-              {withOzCount} with Oz
-            </span>
+            <span className="text-xs text-gray-500">{withOzCount} with Oz</span>
           </div>
           {heldCount > 0 && (
             <div className="flex items-center gap-1.5">
               <AlertTriangle size={14} className="text-amber-500" />
-              <span className="text-xs text-amber-600 font-semibold">
-                {heldCount} held
-              </span>
+              <span className="text-xs text-amber-600 font-semibold">{heldCount} held</span>
+            </div>
+          )}
+          {staleCount > 0 && (
+            <div className="flex items-center gap-1.5">
+              <Clock size={14} className="text-amber-500" />
+              <span className="text-xs text-amber-600 font-semibold">{staleCount} stale</span>
             </div>
           )}
           <div className="flex items-center gap-1.5">
             <Clock size={14} className="text-gray-400" />
             <span className="text-xs text-gray-400">
-              {data?.generatedAt
-                ? `Generated ${timeAgo(data.generatedAt)}`
-                : "Loading..."}
+              {data?.generatedAt ? `Generated ${timeAgo(data.generatedAt)}` : "Loading..."}
             </span>
           </div>
         </div>
@@ -348,10 +510,7 @@ export default function MondayEmailHQ() {
         {/* Filters + Search */}
         <div className="flex items-center gap-3 mb-6">
           <div className="relative flex-1">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search org, owner, or email..."
@@ -361,21 +520,18 @@ export default function MondayEmailHQ() {
             />
           </div>
           <div className="flex rounded-xl border border-stone-200/60 overflow-hidden">
-            {(["all", "held", "active"] as const).map((mode) => (
+            {(["all", "held", "stale", "active"] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setFilterMode(mode)}
                 className={`px-3 py-2 text-xs font-semibold capitalize transition-colors ${
-                  filterMode === mode
-                    ? "bg-[#D56753] text-white"
-                    : "bg-stone-50/80 text-gray-500 hover:bg-stone-100"
+                  filterMode === mode ? "bg-[#D56753] text-white" : "bg-stone-50/80 text-gray-500 hover:bg-stone-100"
                 }`}
               >
-                {mode === "all"
-                  ? `All (${previews.length})`
-                  : mode === "held"
-                    ? `Held (${heldCount})`
-                    : `Active (${activeCount})`}
+                {mode === "all" ? `All (${previews.length})`
+                  : mode === "held" ? `Held (${heldCount})`
+                  : mode === "stale" ? `Stale (${staleCount})`
+                  : `Active (${activeCount})`}
               </button>
             ))}
           </div>
@@ -385,30 +541,19 @@ export default function MondayEmailHQ() {
         {isLoading ? (
           <div className="text-center py-16">
             <div className="w-8 h-8 border-2 border-[#D56753]/30 border-t-[#D56753] rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-gray-400">
-              Loading email previews...
-            </p>
+            <p className="text-sm text-gray-400">Loading email previews...</p>
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-red-200/60 bg-red-50/30 p-6 text-center">
-            <AlertTriangle
-              size={24}
-              className="text-red-400 mx-auto mb-2"
-            />
-            <p className="text-sm text-red-600 font-semibold">
-              Failed to load previews
-            </p>
-            <p className="text-xs text-red-400 mt-1">
-              {(error as Error).message}
-            </p>
+            <AlertTriangle size={24} className="text-red-400 mx-auto mb-2" />
+            <p className="text-sm text-red-600 font-semibold">Failed to load previews</p>
+            <p className="text-xs text-red-400 mt-1">{(error as Error).message}</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-stone-200/60 bg-stone-50/80 p-8 text-center">
             <Mail size={24} className="text-gray-300 mx-auto mb-2" />
             <p className="text-sm text-gray-500">
-              {searchTerm
-                ? "No orgs match your search."
-                : "No emails to preview."}
+              {searchTerm ? "No orgs match your search." : "No emails to preview."}
             </p>
           </div>
         ) : (
