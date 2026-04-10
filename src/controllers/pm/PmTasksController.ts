@@ -73,7 +73,7 @@ export async function createTask(req: AuthRequest, res: Response): Promise<any> 
         .increment("position", 1);
 
       // Backlog column auto-clears priority
-      const effectivePriority = column.name === "Backlog" ? null : (priority || "P4");
+      const effectivePriority = column.is_backlog ? null : (priority || "P4");
 
       const created = await PmTaskModel.create(
         {
@@ -220,9 +220,9 @@ export async function moveTask(req: AuthRequest, res: Response): Promise<any> {
       }
 
       // Backlog priority behavior
-      if (targetCol?.name === "Backlog") {
+      if (targetCol?.is_backlog) {
         updates.priority = null;
-      } else if (sourceCol?.name === "Backlog" && targetCol?.name !== "Backlog" && !existing.priority) {
+      } else if (sourceCol?.is_backlog && !targetCol?.is_backlog && !existing.priority) {
         updates.priority = "P4";
       }
 
@@ -386,5 +386,196 @@ export async function deleteTask(req: AuthRequest, res: Response): Promise<any> 
     return res.json({ success: true, data: { deleted: true } });
   } catch (error) {
     return handleError(res, error, "deleteTask");
+  }
+}
+
+// POST /api/pm/tasks/bulk/move-to-project
+// Moves a batch of backlog tasks into another project's backlog column.
+// All tasks must currently be in an is_backlog column (single or multiple
+// source projects are allowed). Tasks are appended to the end of the target
+// backlog in input order.
+export async function bulkMoveTasksToProject(req: AuthRequest, res: Response): Promise<any> {
+  try {
+    const { task_ids, target_project_id } = req.body as {
+      task_ids?: unknown;
+      target_project_id?: unknown;
+    };
+
+    if (!Array.isArray(task_ids) || task_ids.length === 0) {
+      return res.status(400).json({ success: false, error: "task_ids must be a non-empty array" });
+    }
+    if (typeof target_project_id !== "string" || !target_project_id) {
+      return res.status(400).json({ success: false, error: "target_project_id is required" });
+    }
+
+    // Load all tasks + their source columns in one shot
+    const tasks: any[] = await db("pm_tasks")
+      .join("pm_columns", "pm_tasks.column_id", "pm_columns.id")
+      .whereIn("pm_tasks.id", task_ids as string[])
+      .select(
+        "pm_tasks.id",
+        "pm_tasks.project_id",
+        "pm_tasks.column_id",
+        "pm_tasks.position",
+        "pm_tasks.title",
+        "pm_columns.is_backlog as source_is_backlog",
+        "pm_columns.name as source_column_name"
+      );
+
+    if (tasks.length !== (task_ids as string[]).length) {
+      return res.status(404).json({ success: false, error: "One or more tasks not found" });
+    }
+
+    // Enforce backlog-only rule
+    const nonBacklog = tasks.filter((t) => !t.source_is_backlog);
+    if (nonBacklog.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Only backlog items can be moved between projects",
+        metadata: { offending_task_ids: nonBacklog.map((t) => t.id) },
+      });
+    }
+
+    // Validate target project exists and is active
+    const targetProject = await db("pm_projects").where({ id: target_project_id }).first();
+    if (!targetProject) {
+      return res.status(404).json({ success: false, error: "Target project not found" });
+    }
+    if (targetProject.status !== "active") {
+      return res.status(400).json({ success: false, error: "Target project is not active" });
+    }
+
+    // Resolve target backlog column
+    const targetBacklog = await db("pm_columns")
+      .where({ project_id: target_project_id, is_backlog: true })
+      .first();
+    if (!targetBacklog) {
+      return res.status(400).json({ success: false, error: "Target project has no backlog column" });
+    }
+
+    // Reject no-ops: task already in the target backlog
+    if (tasks.some((t) => t.column_id === targetBacklog.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "One or more tasks are already in the target project's backlog",
+      });
+    }
+
+    // Execute the move in a single transaction
+    const movedIds: string[] = [];
+    await db.transaction(async (trx) => {
+      // Current max position in the target backlog (append to end)
+      const [maxRow] = await trx("pm_tasks")
+        .where({ column_id: targetBacklog.id })
+        .max<{ max: number | null }[]>("position as max");
+      let nextPosition = ((maxRow?.max ?? -1) as number) + 1;
+
+      // Group by source column so per-column compaction is efficient
+      const bySourceCol = new Map<string, any[]>();
+      for (const t of tasks) {
+        const bucket = bySourceCol.get(t.column_id) ?? [];
+        bucket.push(t);
+        bySourceCol.set(t.column_id, bucket);
+      }
+
+      for (const t of tasks) {
+        await trx("pm_tasks")
+          .where({ id: t.id })
+          .update({
+            project_id: target_project_id,
+            column_id: targetBacklog.id,
+            position: nextPosition,
+            priority: null, // backlog = no priority
+          });
+
+        await logPmActivity(
+          {
+            project_id: target_project_id,
+            task_id: t.id,
+            user_id: req.user!.userId,
+            action: "task_moved_to_project",
+            metadata: {
+              from_project_id: t.project_id,
+              from_column_id: t.column_id,
+              to_column_id: targetBacklog.id,
+              title: t.title,
+            },
+          },
+          trx
+        );
+
+        movedIds.push(t.id);
+        nextPosition += 1;
+      }
+
+      // Compact source columns: rewrite positions to be contiguous
+      for (const [sourceColId] of bySourceCol) {
+        const remaining: any[] = await trx("pm_tasks")
+          .where({ column_id: sourceColId })
+          .orderBy("position", "asc")
+          .select("id");
+        for (let i = 0; i < remaining.length; i++) {
+          await trx("pm_tasks").where({ id: remaining[i].id }).update({ position: i });
+        }
+      }
+    });
+
+    return res.json({ success: true, data: { moved_task_ids: movedIds } });
+  } catch (error) {
+    return handleError(res, error, "bulkMoveTasksToProject");
+  }
+}
+
+// POST /api/pm/tasks/bulk/delete
+// Deletes a batch of tasks and recomputes positions in each affected column.
+export async function bulkDeleteTasks(req: AuthRequest, res: Response): Promise<any> {
+  try {
+    const { task_ids } = req.body as { task_ids?: unknown };
+    if (!Array.isArray(task_ids) || task_ids.length === 0) {
+      return res.status(400).json({ success: false, error: "task_ids must be a non-empty array" });
+    }
+
+    const tasks: any[] = await db("pm_tasks")
+      .whereIn("id", task_ids as string[])
+      .select("id", "project_id", "column_id", "position", "title");
+
+    if (tasks.length === 0) {
+      return res.status(404).json({ success: false, error: "No tasks found" });
+    }
+
+    const affectedColumnIds = new Set<string>(tasks.map((t) => t.column_id));
+
+    await db.transaction(async (trx) => {
+      // Log each deletion before removing the row
+      for (const t of tasks) {
+        await logPmActivity(
+          {
+            project_id: t.project_id,
+            task_id: t.id,
+            user_id: req.user!.userId,
+            action: "task_deleted",
+            metadata: { title: t.title, column_id: t.column_id, bulk: true },
+          },
+          trx
+        );
+      }
+
+      await trx("pm_tasks").whereIn("id", tasks.map((t) => t.id)).delete();
+
+      // Compact affected columns
+      for (const colId of affectedColumnIds) {
+        const remaining: any[] = await trx("pm_tasks")
+          .where({ column_id: colId })
+          .orderBy("position", "asc")
+          .select("id");
+        for (let i = 0; i < remaining.length; i++) {
+          await trx("pm_tasks").where({ id: remaining[i].id }).update({ position: i });
+        }
+      }
+    });
+
+    return res.json({ success: true, data: { deleted_count: tasks.length } });
+  } catch (error) {
+    return handleError(res, error, "bulkDeleteTasks");
   }
 }

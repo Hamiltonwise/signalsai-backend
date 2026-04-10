@@ -11,6 +11,7 @@ import type {
   CreateProjectInput,
   CreateTaskInput,
   PmAiSynthBatch,
+  PmAiSynthBatchTask,
   PmVelocityData,
 } from "../types/pm";
 
@@ -100,6 +101,29 @@ export async function assignTask(
 
 export async function deleteTask(taskId: string): Promise<void> {
   await apiDelete({ path: `/pm/tasks/${taskId}` });
+}
+
+// --- Bulk task operations ---
+
+export async function bulkMoveTasksToProject(
+  taskIds: string[],
+  targetProjectId: string
+): Promise<{ moved_task_ids: string[] }> {
+  const res = await apiPost({
+    path: "/pm/tasks/bulk/move-to-project",
+    passedData: { task_ids: taskIds, target_project_id: targetProjectId },
+  });
+  return res.data;
+}
+
+export async function bulkDeleteTasks(
+  taskIds: string[]
+): Promise<{ deleted_count: number }> {
+  const res = await apiPost({
+    path: "/pm/tasks/bulk/delete",
+    passedData: { task_ids: taskIds },
+  });
+  return res.data;
 }
 
 // --- Stats ---
@@ -192,11 +216,55 @@ export async function extractBatch(
   if (file) {
     const formData = new FormData();
     formData.append("project_id", projectId);
+    formData.append("scope", "project");
     formData.append("file", file);
     const res = await apiPost({ path: "/pm/ai-synth/extract", passedData: formData });
     return res.data;
   }
-  const res = await apiPost({ path: "/pm/ai-synth/extract", passedData: { project_id: projectId, text } });
+  const res = await apiPost({
+    path: "/pm/ai-synth/extract",
+    passedData: { project_id: projectId, scope: "project", text },
+  });
+  return res.data;
+}
+
+export async function extractCrossProjectBatch(
+  text?: string,
+  file?: File
+): Promise<PmAiSynthBatch> {
+  if (file) {
+    const formData = new FormData();
+    formData.append("scope", "cross_project");
+    formData.append("file", file);
+    const res = await apiPost({ path: "/pm/ai-synth/extract", passedData: formData });
+    return res.data;
+  }
+  const res = await apiPost({
+    path: "/pm/ai-synth/extract",
+    passedData: { scope: "cross_project", text },
+  });
+  return res.data;
+}
+
+export async function fetchCrossProjectBatches(
+  limit = 20,
+  offset = 0
+): Promise<{ data: PmAiSynthBatch[]; total: number }> {
+  const res = await apiGet({
+    path: `/pm/ai-synth/batches/cross-project?limit=${limit}&offset=${offset}`,
+  });
+  return res;
+}
+
+export async function setBatchTaskTargetProject(
+  batchId: string,
+  taskId: string,
+  targetProjectId: string
+): Promise<PmAiSynthBatchTask> {
+  const res = await apiPut({
+    path: `/pm/ai-synth/batches/${batchId}/tasks/${taskId}/target-project`,
+    passedData: { target_project_id: targetProjectId },
+  });
   return res.data;
 }
 

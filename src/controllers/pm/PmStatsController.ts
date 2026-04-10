@@ -33,7 +33,7 @@ export async function getStats(_req: AuthRequest, res: Response): Promise<any> {
     const [backlogResult] = await db("pm_tasks")
       .join("pm_columns", "pm_tasks.column_id", "pm_columns.id")
       .join("pm_projects", "pm_tasks.project_id", "pm_projects.id")
-      .where("pm_columns.name", "Backlog")
+      .where("pm_columns.is_backlog", true)
       .where("pm_projects.status", "active")
       .whereNull("pm_tasks.completed_at")
       .count("* as count");

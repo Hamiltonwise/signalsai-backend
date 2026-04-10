@@ -6,6 +6,7 @@ import {
 import { motion } from "framer-motion";
 import type { PmColumn, PmTask } from "../../types/pm";
 import { TaskCard } from "./TaskCard";
+import type { TaskContextAction } from "./TaskCard";
 import { QuickAddTask } from "./QuickAddTask";
 
 const COLUMN_ACCENTS: Record<string, string> = {
@@ -20,12 +21,28 @@ interface KanbanColumnProps {
   projectId: string;
   onTaskClick: (task: PmTask) => void;
   onDeleteTask?: (taskId: string) => void;
+  // Multi-select props — passed down from ProjectBoard
+  selectedTaskIds?: Set<string>;
+  selectionActive?: boolean;
+  onToggleSelect?: (taskId: string) => void;
+  onContextAction?: (action: TaskContextAction, taskId: string) => void;
+  siblingColumns?: PmColumn[];
 }
 
-export function KanbanColumn({ column, projectId, onTaskClick, onDeleteTask }: KanbanColumnProps) {
+export function KanbanColumn({
+  column,
+  projectId,
+  onTaskClick,
+  onDeleteTask,
+  selectedTaskIds,
+  selectionActive = false,
+  onToggleSelect,
+  onContextAction,
+  siblingColumns,
+}: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const accent = COLUMN_ACCENTS[column.name] || "var(--color-pm-text-muted)";
-  const isBacklog = column.name === "Backlog";
+  const isBacklog = column.is_backlog;
 
   return (
     <div
@@ -90,6 +107,11 @@ export function KanbanColumn({ column, projectId, onTaskClick, onDeleteTask }: K
               onClick={() => onTaskClick(task)}
               onDelete={onDeleteTask}
               isBacklog={isBacklog}
+              isSelected={selectedTaskIds?.has(task.id) ?? false}
+              selectionActive={selectionActive}
+              onToggleSelect={onToggleSelect}
+              onContextAction={onContextAction}
+              siblingColumns={siblingColumns}
             />
           ))}
         </SortableContext>

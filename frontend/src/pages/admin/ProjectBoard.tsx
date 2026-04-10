@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -12,6 +12,7 @@ import {
   Maximize,
   Plus,
   Clock,
+  ArrowRight,
 } from "lucide-react";
 import type { PmTask } from "../../types/pm";
 import { usePmStore } from "../../stores/pmStore";
@@ -23,13 +24,22 @@ import { CreateTaskModal } from "../../components/pm/CreateTaskModal";
 import { ActivityTimeline } from "../../components/pm/ActivityTimeline";
 import { FocusMode } from "../../components/pm/FocusMode";
 import { CommandPalette } from "../../components/pm/CommandPalette";
+import { MoveToProjectModal } from "../../components/pm/MoveToProjectModal";
+import { BulkActionBar } from "../../components/ui/DesignSystem";
 import { formatDeadline } from "../../utils/pmDateFormat";
+import { showErrorToast } from "../../lib/toast";
+import type { TaskContextAction } from "../../components/pm/TaskCard";
 
 export default function ProjectBoard() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { activeProject, fetchProject, isLoading, deleteProject, archiveProject } =
     usePmStore();
+  const selectedTaskIds = usePmStore((s) => s.selectedTaskIds);
+  const toggleTaskSelection = usePmStore((s) => s.toggleTaskSelection);
+  const clearTaskSelection = usePmStore((s) => s.clearTaskSelection);
+  const bulkDeleteSelectedTasks = usePmStore((s) => s.bulkDeleteSelectedTasks);
+  const bulkMoveSelectedTasksToProject = usePmStore((s) => s.bulkMoveSelectedTasksToProject);
   const [selectedTask, setSelectedTask] = useState<PmTask | null>(null);
   const [showBacklog, setShowBacklog] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
@@ -39,6 +49,11 @@ export default function ProjectBoard() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
+  const [showMoveToProject, setShowMoveToProject] = useState(false);
+  const [bulkDeleteConfirmCount, setBulkDeleteConfirmCount] = useState<number | null>(null);
+  // Target task ids that the current action applies to — equals selection
+  // unless a right-click fired on a non-selected card (single-item mode).
+  const [actionTargetIds, setActionTargetIds] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (projectId) fetchProject(projectId);
@@ -77,6 +92,146 @@ export default function ProjectBoard() {
     }
   }, []);
 
+  // Resolve task map for quick lookups
+  const allTasks = useMemo(
+    () => activeProject?.columns.flatMap((c) => c.tasks) ?? [],
+    [activeProject]
+  );
+
+  // Selection diagnostics: are all selected (or action-target) tasks in Backlog?
+  const allTargetsInBacklog = useMemo(() => {
+    if (!activeProject) return false;
+    const targetIds =
+      actionTargetIds && actionTargetIds.length > 0
+        ? actionTargetIds
+        : [...selectedTaskIds];
+    if (targetIds.length === 0) return false;
+    const backlogCols = new Set(
+      activeProject.columns.filter((c) => c.is_backlog).map((c) => c.id)
+    );
+    return targetIds.every((id) => {
+      const task = allTasks.find((t) => t.id === id);
+      return task ? backlogCols.has(task.column_id) : false;
+    });
+  }, [activeProject, allTasks, actionTargetIds, selectedTaskIds]);
+
+  // Resolve the target ids the current bulk action should apply to.
+  const resolveTargetIds = useCallback((): string[] => {
+    if (actionTargetIds && actionTargetIds.length > 0) return actionTargetIds;
+    return [...selectedTaskIds];
+  }, [actionTargetIds, selectedTaskIds]);
+
+  // Context menu handler — decides single vs multi based on whether the
+  // right-clicked task is part of the active selection.
+  const handleContextAction = useCallback(
+    async (action: TaskContextAction, taskId: string) => {
+      const ids = selectedTaskIds.has(taskId) ? [...selectedTaskIds] : [taskId];
+      setActionTargetIds(ids);
+
+      switch (action.type) {
+        case "open": {
+          const task = allTasks.find((t) => t.id === taskId);
+          if (task) setSelectedTask(task);
+          setActionTargetIds(null);
+          break;
+        }
+        case "delete": {
+          setBulkDeleteConfirmCount(ids.length);
+          break;
+        }
+        case "moveToProject": {
+          setShowMoveToProject(true);
+          break;
+        }
+        case "moveToColumn": {
+          const { moveTask } = usePmStore.getState();
+          for (const id of ids) {
+            const task = allTasks.find((t) => t.id === id);
+            if (!task) continue;
+            // Append to end of target column
+            const targetCol = activeProject?.columns.find((c) => c.id === action.columnId);
+            const position = targetCol?.tasks.length ?? 0;
+            try {
+              await moveTask(id, action.columnId, position);
+            } catch (err) {
+              console.error("[PM] moveToColumn failed", err);
+            }
+          }
+          setActionTargetIds(null);
+          break;
+        }
+        case "setPriority": {
+          const { updateTask } = usePmStore.getState();
+          for (const id of ids) {
+            try {
+              await updateTask(id, { priority: action.priority });
+            } catch (err) {
+              console.error("[PM] setPriority failed", err);
+            }
+          }
+          setActionTargetIds(null);
+          break;
+        }
+        case "assign": {
+          // Single-task: route through TaskDetailPanel which has the user picker.
+          // Bulk assign UX is v2 — for v1 we open the first selected task's panel.
+          const first = allTasks.find((t) => t.id === ids[0]);
+          if (first) setSelectedTask(first);
+          setActionTargetIds(null);
+          break;
+        }
+      }
+    },
+    [selectedTaskIds, allTasks, activeProject]
+  );
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = resolveTargetIds();
+    if (ids.length === 0) return;
+    try {
+      if (actionTargetIds && actionTargetIds.length > 0 && !selectedTaskIds.has(actionTargetIds[0])) {
+        // Single-item context path: call singular delete for just that id
+        for (const id of ids) {
+          await usePmStore.getState().deleteTask(id);
+        }
+      } else {
+        await bulkDeleteSelectedTasks();
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Try again";
+      showErrorToast("Delete failed", message);
+    } finally {
+      setBulkDeleteConfirmCount(null);
+      setActionTargetIds(null);
+    }
+  }, [resolveTargetIds, actionTargetIds, selectedTaskIds, bulkDeleteSelectedTasks]);
+
+  const handleConfirmMoveToProject = useCallback(
+    async (targetProjectId: string) => {
+      const ids = resolveTargetIds();
+      if (ids.length === 0) return;
+      // If the operation is against the current selection, use the store's
+      // thunk (re-fetches project on success). If single-item context, call
+      // the API directly for just that id.
+      if (actionTargetIds && actionTargetIds.length > 0 && !selectedTaskIds.has(actionTargetIds[0])) {
+        const { bulkMoveTasksToProject } = await import("../../api/pm");
+        await bulkMoveTasksToProject(ids, targetProjectId);
+        if (activeProject) await fetchProject(activeProject.id);
+      } else {
+        await bulkMoveSelectedTasksToProject(targetProjectId);
+      }
+      setActionTargetIds(null);
+    },
+    [
+      resolveTargetIds,
+      actionTargetIds,
+      selectedTaskIds,
+      bulkMoveSelectedTasksToProject,
+      fetchProject,
+      activeProject,
+    ]
+  );
+
   if (isLoading && !activeProject) {
     return (
       <div
@@ -104,6 +259,7 @@ export default function ProjectBoard() {
   const doneTasks = activeProject.columns
     .filter((c) => c.name === "Done")
     .reduce((acc, c) => acc + c.tasks.length, 0);
+  const selectionCount = selectedTaskIds.size;
 
   return (
     <div
@@ -324,6 +480,10 @@ export default function ProjectBoard() {
           onTaskClick={setSelectedTask}
           onDeleteTask={handleDeleteTask}
           showBacklog={showBacklog}
+          selectedTaskIds={selectedTaskIds}
+          selectionActive={selectionCount > 0}
+          onToggleSelect={toggleTaskSelection}
+          onContextAction={handleContextAction}
         />
       </div>
 
@@ -333,10 +493,127 @@ export default function ProjectBoard() {
         onClose={() => setSelectedTask(null)}
         isBacklog={
           selectedTask
-            ? activeProject.columns.find((c) => c.id === selectedTask.column_id)?.name === "Backlog"
+            ? activeProject.columns.find((c) => c.id === selectedTask.column_id)?.is_backlog ?? false
             : false
         }
       />
+
+      {/* Bulk Action Bar */}
+      {selectionCount > 0 && (
+        <BulkActionBar
+          selectedCount={selectionCount}
+          totalCount={totalTasks}
+          onClear={clearTaskSelection}
+          actions={[
+            {
+              label: "Move to project",
+              icon: <ArrowRight className="h-4 w-4" />,
+              variant: "primary" as const,
+              disabled: !allTargetsInBacklog,
+              onClick: () => {
+                setActionTargetIds(null); // use selection
+                setShowMoveToProject(true);
+              },
+            },
+            {
+              label: "Delete",
+              icon: <Trash2 className="h-4 w-4" />,
+              variant: "danger" as const,
+              onClick: () => {
+                setActionTargetIds(null);
+                setBulkDeleteConfirmCount(selectionCount);
+              },
+            },
+          ]}
+        />
+      )}
+
+      {/* Move to Project modal */}
+      <MoveToProjectModal
+        isOpen={showMoveToProject}
+        onClose={() => {
+          setShowMoveToProject(false);
+          setActionTargetIds(null);
+        }}
+        taskCount={
+          actionTargetIds && actionTargetIds.length > 0
+            ? actionTargetIds.length
+            : selectionCount
+        }
+        currentProjectId={activeProject.id}
+        onConfirm={handleConfirmMoveToProject}
+      />
+
+      {/* Bulk delete confirm */}
+      <AnimatePresence>
+        {bulkDeleteConfirmCount !== null && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setBulkDeleteConfirmCount(null);
+                setActionTargetIds(null);
+              }}
+              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl p-6"
+              style={{
+                backgroundColor: "var(--color-pm-bg-secondary)",
+                boxShadow: "0 16px 48px rgba(0,0,0,0.3)",
+                border: "1px solid var(--color-pm-border)",
+              }}
+            >
+              <div
+                className="flex h-12 w-12 items-center justify-center rounded-xl mb-4 mx-auto"
+                style={{ backgroundColor: "rgba(196,51,51,0.1)" }}
+              >
+                <Trash2 className="h-6 w-6 text-[#C43333]" strokeWidth={1.5} />
+              </div>
+              <h3
+                className="text-[16px] font-semibold text-center mb-1"
+                style={{ color: "var(--color-pm-text-primary)" }}
+              >
+                Delete {bulkDeleteConfirmCount} task
+                {bulkDeleteConfirmCount !== 1 ? "s" : ""}?
+              </h3>
+              <p
+                className="text-[13px] text-center mb-5"
+                style={{ color: "var(--color-pm-text-secondary)" }}
+              >
+                This cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setBulkDeleteConfirmCount(null);
+                    setActionTargetIds(null);
+                  }}
+                  className="flex-1 rounded-lg py-2.5 text-[13px] font-semibold"
+                  style={{
+                    border: "1px solid var(--color-pm-border)",
+                    color: "var(--color-pm-text-secondary)",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  className="flex-1 rounded-lg py-2.5 text-[13px] font-semibold text-white"
+                  style={{ backgroundColor: "#C43333" }}
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* AI Synth Modal */}
       <AISynthModal

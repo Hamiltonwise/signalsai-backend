@@ -45,4 +45,20 @@ router.delete(
   controller.deleteTask
 );
 
+// POST /api/pm/tasks/bulk/move-to-project — move backlog tasks to another project
+router.post(
+  "/tasks/bulk/move-to-project",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.bulkMoveTasksToProject
+);
+
+// POST /api/pm/tasks/bulk/delete — delete multiple tasks
+router.post(
+  "/tasks/bulk/delete",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.bulkDeleteTasks
+);
+
 export default router;

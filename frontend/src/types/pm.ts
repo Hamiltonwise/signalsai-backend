@@ -29,6 +29,7 @@ export interface PmColumn {
   name: string;
   position: number;
   is_hidden: boolean;
+  is_backlog: boolean;
   tasks: PmTask[];
 }
 
@@ -101,10 +102,11 @@ export interface CreateTaskInput {
 
 export interface PmAiSynthBatch {
   id: string;
-  project_id: string;
+  // null for cross-project batches (tasks are assigned a target project individually)
+  project_id: string | null;
   source_text: string;
   source_filename: string | null;
-  status: "synthesizing" | "pending_review" | "completed";
+  status: "synthesizing" | "pending_review" | "completed" | "failed";
   total_proposed: number;
   total_approved: number;
   total_rejected: number;
@@ -118,10 +120,12 @@ export interface PmAiSynthBatchTask {
   batch_id: string;
   title: string;
   description: string | null;
-  priority: "P1" | "P2" | "P3";
+  priority: "P1" | "P2" | "P3" | "P4" | "P5";
   deadline_hint: string | null;
   status: "pending" | "approved" | "rejected";
   created_task_id: string | null;
+  // Only meaningful on cross-project batches; null = unassigned / pending user action
+  target_project_id: string | null;
   created_at: string;
 }
 

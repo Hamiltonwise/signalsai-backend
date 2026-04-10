@@ -16,12 +16,17 @@ import { CSS } from "@dnd-kit/utilities";
 import { usePmStore } from "../../stores/pmStore";
 import type { PmMyTask, PmMyTasksResponse } from "../../types/pm";
 import { MeTaskCard } from "./MeTaskCard";
+import type { TaskContextAction } from "./TaskCard";
 
 interface MeKanbanBoardProps {
   tasks: PmMyTasksResponse;
   onRefresh: () => void;
   highlightedTaskId?: string | null;
   onCardClick?: (task: PmMyTask) => void;
+  selectedTaskIds?: Set<string>;
+  selectionActive?: boolean;
+  onToggleSelect?: (taskId: string) => void;
+  onContextAction?: (action: TaskContextAction, taskId: string) => void;
 }
 
 const COLUMNS: { key: keyof PmMyTasksResponse; label: string }[] = [
@@ -38,6 +43,10 @@ function DroppableColumn({
   highlightedTaskId,
   isDraggingOver,
   onCardClick,
+  selectedTaskIds,
+  selectionActive,
+  onToggleSelect,
+  onContextAction,
 }: {
   columnKey: keyof PmMyTasksResponse;
   label: string;
@@ -45,6 +54,10 @@ function DroppableColumn({
   highlightedTaskId?: string | null;
   isDraggingOver: boolean;
   onCardClick?: (task: PmMyTask) => void;
+  selectedTaskIds?: Set<string>;
+  selectionActive?: boolean;
+  onToggleSelect?: (taskId: string) => void;
+  onContextAction?: (action: TaskContextAction, taskId: string) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: columnKey });
 
@@ -79,6 +92,10 @@ function DroppableColumn({
               task={task}
               isHighlighted={highlightedTaskId === task.id}
               onCardClick={onCardClick}
+              isSelected={selectedTaskIds?.has(task.id) ?? false}
+              selectionActive={selectionActive ?? false}
+              onToggleSelect={onToggleSelect}
+              onContextAction={onContextAction}
             />
           ))
         )}
@@ -92,10 +109,18 @@ function DraggableCard({
   task,
   isHighlighted,
   onCardClick,
+  isSelected,
+  selectionActive,
+  onToggleSelect,
+  onContextAction,
 }: {
   task: PmMyTask;
   isHighlighted: boolean;
   onCardClick?: (task: PmMyTask) => void;
+  isSelected?: boolean;
+  selectionActive?: boolean;
+  onToggleSelect?: (taskId: string) => void;
+  onContextAction?: (action: TaskContextAction, taskId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task.id,
@@ -140,7 +165,14 @@ function DraggableCard({
       {...listeners}
       {...attributes}
     >
-      <MeTaskCard task={task} isHighlighted={isHighlighted} />
+      <MeTaskCard
+        task={task}
+        isHighlighted={isHighlighted}
+        isSelected={isSelected}
+        selectionActive={selectionActive}
+        onToggleSelect={onToggleSelect}
+        onContextAction={onContextAction}
+      />
     </div>
   );
 }
@@ -153,7 +185,16 @@ const columnOnlyCollision: CollisionDetection = (args) => {
 };
 
 // ── Board ─────────────────────────────────────────────────────────────────────
-export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId, onCardClick }: MeKanbanBoardProps) {
+export function MeKanbanBoard({
+  tasks,
+  onRefresh,
+  highlightedTaskId,
+  onCardClick,
+  selectedTaskIds,
+  selectionActive,
+  onToggleSelect,
+  onContextAction,
+}: MeKanbanBoardProps) {
   const moveTask = usePmStore((s) => s.moveTask);
   const [localTasks, setLocalTasks] = useState<PmMyTasksResponse>(tasks);
   const [activeTask, setActiveTask] = useState<PmMyTask | null>(null);
@@ -231,6 +272,10 @@ export function MeKanbanBoard({ tasks, onRefresh, highlightedTaskId, onCardClick
             highlightedTaskId={highlightedTaskId}
             isDraggingOver={overColumn === key}
             onCardClick={onCardClick}
+            selectedTaskIds={selectedTaskIds}
+            selectionActive={selectionActive}
+            onToggleSelect={onToggleSelect}
+            onContextAction={onContextAction}
           />
         ))}
       </div>

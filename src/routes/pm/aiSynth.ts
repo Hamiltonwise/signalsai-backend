@@ -19,11 +19,23 @@ const router = express.Router();
 // POST /api/pm/ai-synth/extract — create batch + extract tasks
 router.post("/extract", authenticateToken, superAdminMiddleware, upload.single("file"), controller.extractBatch);
 
-// GET /api/pm/ai-synth/batches?project_id=X — list batches
+// GET /api/pm/ai-synth/batches?project_id=X — list per-project batches
 router.get("/batches", authenticateToken, superAdminMiddleware, controller.listBatches);
+
+// GET /api/pm/ai-synth/batches/cross-project — list cross-project batches
+// NOTE: must be registered BEFORE `/batches/:batchId` to avoid route collision.
+router.get("/batches/cross-project", authenticateToken, superAdminMiddleware, controller.listCrossProjectBatches);
 
 // GET /api/pm/ai-synth/batches/:batchId — get batch with tasks
 router.get("/batches/:batchId", authenticateToken, superAdminMiddleware, controller.getBatch);
+
+// PUT /api/pm/ai-synth/batches/:batchId/tasks/:taskId/target-project
+router.put(
+  "/batches/:batchId/tasks/:taskId/target-project",
+  authenticateToken,
+  superAdminMiddleware,
+  controller.setBatchTaskTargetProject
+);
 
 // PUT /api/pm/ai-synth/batches/:batchId/tasks/:taskId/approve
 router.put("/batches/:batchId/tasks/:taskId/approve", authenticateToken, superAdminMiddleware, controller.approveTask);
