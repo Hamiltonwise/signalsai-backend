@@ -112,6 +112,64 @@ const PREVIEW_POSTS = [
   { ...PLACEHOLDER_POST, "{{post.title}}": "Third Post Title", "{{post.slug}}": "third-post-title", "{{post.url}}": "/services/third-post-title", "{{post.featured_image}}": "https://placehold.co/800x400/fef3c7/f59e0b?text=Post+3" },
 ];
 
+// =====================================================================
+// Conditional Rendering ({{if}} / {{if_not}} / {{endif}})
+//
+// Strip {{if post.X}}...{{endif}} and {{if_not post.X}}...{{endif}} blocks
+// based on whether the named field is empty in the placeholder dict.
+//
+// Empty = key absent in placeholder dict OR value is empty string.
+// Flat only — nesting aborts with console.warn and leaves HTML unchanged.
+//
+// PREVIEW LIMITATION: custom field tokens (`post.custom.X`) are almost
+// never in PLACEHOLDER_POST, so conditional blocks referencing them will
+// be stripped in preview. Live site uses actual post data.
+//
+// NOTE: This logic is duplicated in two other locations. Keep in sync:
+//   - website-builder-rebuild/src/utils/shortcodes.ts (processConditionals)
+//   - alloro/src/controllers/user-website/user-website-services/shortcodeResolver.service.ts
+// =====================================================================
+
+const CONDITIONAL_BLOCK_RE =
+  /\{\{\s*(if|if_not)\s+post\.([\w.]+)\s*\}\}([\s\S]*?)\{\{\s*endif\s*\}\}/g;
+const ORPHAN_CONDITIONAL_RE =
+  /\{\{\s*(?:if|if_not)\s+[^}]*\}\}|\{\{\s*endif\s*\}\}/g;
+const NESTED_PROBE_RE = /\{\{\s*(?:if|if_not)\s+/;
+
+function processConditionals(
+  html: string,
+  placeholderPost: Record<string, string>
+): string {
+  if (!html.includes("{{if")) return html;
+
+  // Nesting detection — abort loudly.
+  for (const probe of html.matchAll(CONDITIONAL_BLOCK_RE)) {
+    if (NESTED_PROBE_RE.test(probe[3])) {
+      console.warn(
+        `[PostBlocksTab] Nested conditional detected in post template (flat-only in v1). ` +
+          `Field: post.${probe[2]}. Block: ${probe[0].slice(0, 200)}`
+      );
+      return html;
+    }
+  }
+
+  let result = html.replace(
+    CONDITIONAL_BLOCK_RE,
+    (_match, kind: string, field: string, body: string) => {
+      // Resolve field by looking up the literal token string in the dict.
+      const token = `{{post.${field}}}`;
+      const value = placeholderPost[token];
+      const empty = value === undefined || value === "";
+      const keep = kind === "if" ? !empty : empty;
+      return keep ? body : "";
+    }
+  );
+
+  // Orphan cleanup.
+  result = result.replace(ORPHAN_CONDITIONAL_RE, "");
+  return result;
+}
+
 function replacePlaceholders(html: string): string {
   const startMarker = "{{start_post_loop}}";
   const endMarker = "{{end_post_loop}}";
@@ -124,7 +182,9 @@ function replacePlaceholders(html: string): string {
     const after = html.slice(endIdx + endMarker.length);
 
     const rendered = PREVIEW_POSTS.map((post) => {
-      let result = template;
+      // Conditional pass first — per-post so different preview posts can
+      // resolve differently (though in practice they share the same shape).
+      let result = processConditionals(template, post);
       for (const [token, value] of Object.entries(post)) {
         result = result.replaceAll(token, value);
       }
@@ -135,7 +195,7 @@ function replacePlaceholders(html: string): string {
   }
 
   // Fallback: no loop markers — single post replacement
-  let result = html;
+  let result = processConditionals(html, PLACEHOLDER_POST);
   for (const [token, value] of Object.entries(PLACEHOLDER_POST)) {
     result = result.replaceAll(token, value);
   }

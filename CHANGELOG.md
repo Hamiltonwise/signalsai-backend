@@ -2,6 +2,101 @@
 
 All notable changes to Alloro App are documented here.
 
+## [0.0.14] - April 2026
+
+### PM Backlog Move, Multi-Select, Cross-Project AI Synth
+
+Three composed features land together because they share the same backbone — a hardened `is_backlog` column flag and a new set of bulk / cross-project task operations. Backlog items can now be reassigned to another project without losing context. A floating multi-action bar (reusing the Action Items Hub pattern) lands on both the project board and the Me tab, with a right-click context menu on every card. A new top-level "Cross-project AI Synth" extracts tasks from raw text or files and routes each proposed task to its best-fit project before approval.
+
+**Key Changes:**
+
+*Move backlog tasks between projects*
+- New endpoint `POST /api/pm/tasks/bulk/move-to-project` accepts `{ task_ids, target_project_id }`; the single-task right-click path calls the same endpoint with a one-element array so there is one code path to maintain
+- Hard-gated to backlog-only: server rejects with `400 + offending_task_ids` metadata if any source task's column is not `is_backlog = true`. The UI also disables the bulk bar and context menu item with an explanatory tooltip, so the rule is enforced at both layers
+- Tasks are appended to the end of the destination project's Backlog; source columns are compacted in the same transaction so positions stay contiguous
+- One `pm_activity_log` row per moved task, logged under the **destination** project with `action: "task_moved_to_project"` and `metadata: { from_project_id, from_column_id, to_column_id, title }`
+
+*Multi-select with floating action bar*
+- New `pmStore` state: `selectedTaskIds: Set<string>` scoped to `activeProject`, plus a separate `meSelectedTaskIds` for the Me tab (tasks span projects there, so the Sets can't be shared)
+- Selection auto-clears on project switch via `fetchProject` state reset — stale ids from the previous project can never leak into a bulk action
+- Checkbox appears on card hover and stays pinned when any card is selected; clicks use `onClick` + `onPointerDown` stopPropagation so the dnd-kit drag sensor never fires from a checkbox tap
+- Reuses the existing `BulkActionBar` from `components/ui/DesignSystem.tsx` — the same component Action Items Hub uses — with spring animation, count badge, and variant-styled action buttons. No new bar component was created
+- Context menu semantics: right-clicking a **selected** card applies the action to the whole selection; right-clicking an **unselected** card acts on that single task only and does not modify the selection
+- Bulk actions wired in the bar: Delete (with count-aware confirm modal), Move to project (disabled with tooltip unless every target is in Backlog). The context menu adds Open, Assign…, Set priority (P1–P5 + clear), Move to column, and Delete
+
+*Cross-project AI Synth*
+- New top-level "Cross-project AI Synth" button on `/admin/pm` dashboard, separate from the existing per-project button. The existing per-project synth flow is **completely untouched** — forked a new `CrossProjectAISynthModal` rather than refactoring `AISynthModal` to avoid regression risk
+- Detached batch model: `pm_ai_synth_batches.project_id` is now nullable, and each `pm_ai_synth_batch_tasks` row gets a new `target_project_id` FK that must be set before the task can be approved
+- LLM receives the active project list (id + name + description) as JSON in the system prompt and proposes a `target_project_id` per task. New prompt file `src/agents/pmAgents/AISynthCrossProject.md` lives alongside the existing `AISynth.md` — neither file modifies the other
+- Server validates LLM-suggested `target_project_id` against the active project list on insert; invalid ids land as `null` for the user to fill manually — no LLM hallucination ever reaches the DB
+- Approval UX: per-task project picker plus a "Set all pending to…" dropdown at the top of the task list. Approve button is disabled (with tooltip "Assign a project first") until `target_project_id` is set. Reject is always allowed
+- On approve, the server re-validates the destination project is still `active` (guards the archived-between-extract-and-approve race), resolves its Backlog column via `is_backlog = true`, and creates the real task there with `source: "ai_synth"`
+
+*Architectural lift — `is_backlog` flag*
+- Every backend site that previously identified the Backlog column by name literal (`column.name === "Backlog"`) now reads `column.is_backlog`. This includes `PmTasksController.createTask`/`moveTask`, `PmStatsController.listStats`, `PmAiSynthController.approveTask`, and the frontend `pmStore.moveTask`, `CreateTaskModal`, `KanbanBoard`, `KanbanColumn`. Single grep sweep confirms only three name literals remain, all expected: migration backfill, migration comment, and the `DEFAULT_COLUMNS` seed constant
+- Adding this flag in the same migration batch as the cross-project synth schema change was the "future-us won't hate present-us" call — if a column ever gets renamed or reordered, priority auto-clear, approval routing, and move-to-project validation keep working
+
+*New primitives*
+- `frontend/src/components/ui/context-menu.tsx` — shadcn-canonical wrapper around `@radix-ui/react-context-menu` (new dep), styled to the PM dark theme. First `radix-ui` primitive beyond `react-slot` in this repo; exports the full family (`ContextMenu`, `ContextMenuTrigger`, `ContextMenuContent`, `ContextMenuItem`, `ContextMenuSeparator`, `ContextMenuSub`/`SubTrigger`/`SubContent`, etc.)
+- `frontend/src/components/pm/MoveToProjectModal.tsx` — searchable project picker with backlog counts per project, used by both the bulk bar and the context menu move-to-project paths
+- `frontend/src/components/pm/CrossProjectAISynthModal.tsx` — the forked cross-project variant of AISynthModal (grid / new / detail views, per-task project picker, set-all dropdown, cross-project badge on history cards)
+
+**Migration:**
+- `20260412000001_pm_backlog_flag_and_cross_project_synth.ts` — additive, forward-compatible:
+  - `ALTER TABLE pm_columns ADD COLUMN is_backlog BOOLEAN NOT NULL DEFAULT FALSE` + backfill `WHERE name = 'Backlog'` + partial index `idx_pm_columns_is_backlog` on `(project_id) WHERE is_backlog = TRUE`
+  - `ALTER TABLE pm_ai_synth_batches ALTER COLUMN project_id DROP NOT NULL`
+  - `ALTER TABLE pm_ai_synth_batch_tasks ADD COLUMN target_project_id UUID REFERENCES pm_projects(id) ON DELETE SET NULL`
+- Down migration refuses to restore `NOT NULL` on `project_id` if any cross-project batches exist — loud-by-design so a rollback never nukes detached batches
+
+**Commits:**
+- `src/database/migrations/20260412000001_pm_backlog_flag_and_cross_project_synth.ts` — new migration (is_backlog flag, nullable project_id, target_project_id FK, partial index)
+- `src/controllers/pm/PmTasksController.ts` — `bulkMoveTasksToProject` + `bulkDeleteTasks` controllers; `createTask` and `moveTask` switched from name checks to `is_backlog`
+- `src/controllers/pm/PmAiSynthController.ts` — `extractBatch` gains `scope: "project" | "cross_project"` parameter and injects the active project list into the cross-project prompt; `approveTask` resolves destination via `batch.project_id ?? batchTask.target_project_id` with active-status revalidation; new `setBatchTaskTargetProject` and `listCrossProjectBatches` controllers
+- `src/controllers/pm/PmProjectsController.ts` — `DEFAULT_COLUMNS` seed now sets `is_backlog: true` for the Backlog entry and `false` for the other three, threaded through `PmColumnModel.create`
+- `src/controllers/pm/PmStatsController.ts` — backlog count query updated to `is_backlog = true`
+- `src/routes/pm/tasks.ts` — registered `POST /tasks/bulk/move-to-project` and `POST /tasks/bulk/delete`
+- `src/routes/pm/aiSynth.ts` — registered `GET /batches/cross-project` (before `/batches/:batchId` to avoid route collision) and `PUT /batches/:batchId/tasks/:taskId/target-project`
+- `src/agents/pmAgents/AISynthCrossProject.md` — new system prompt for cross-project extraction; receives `{{PROJECTS_JSON}}` block and proposes `target_project_id` per task
+- `frontend/src/types/pm.ts` — `PmColumn.is_backlog: boolean`, `PmAiSynthBatch.project_id: string | null`, `PmAiSynthBatchTask.target_project_id: string | null` (and P4/P5 added to the priority union + `"failed"` status)
+- `frontend/src/api/pm.ts` — `bulkMoveTasksToProject`, `bulkDeleteTasks`, `extractCrossProjectBatch`, `fetchCrossProjectBatches`, `setBatchTaskTargetProject`
+- `frontend/src/stores/pmStore.ts` — selection state (`selectedTaskIds` + `meSelectedTaskIds`), toggle/clear actions, `bulkDeleteSelectedTasks`, `bulkMoveSelectedTasksToProject`, `bulkDeleteMeSelectedTasks`; selection auto-clear on project switch; name checks replaced with `is_backlog`
+- `frontend/src/components/ui/context-menu.tsx` — new shadcn primitive wrapper
+- `frontend/src/components/pm/MoveToProjectModal.tsx` — new searchable picker modal
+- `frontend/src/components/pm/CrossProjectAISynthModal.tsx` — new forked cross-project synth modal with per-task project picker and set-all dropdown
+- `frontend/src/components/pm/TaskCard.tsx` — hover checkbox (with `stopPropagation` + `onPointerDown` guard against drag sensor), selection outline, `<ContextMenu>` wrapper with Open / Assign / Set priority / Move to column / Move to project / Delete
+- `frontend/src/components/pm/MeTaskCard.tsx` — same treatment, minus Move-to-column (tasks span projects on Me tab)
+- `frontend/src/components/pm/KanbanBoard.tsx` — pass selection props through to columns; `name === "Backlog"` checks and the assignee-required rule switched to `is_backlog`
+- `frontend/src/components/pm/KanbanColumn.tsx` — forward selection props to each `TaskCard`; `isBacklog` derived from `column.is_backlog`
+- `frontend/src/components/pm/MeKanbanBoard.tsx` — forward selection props through `DroppableColumn` → `DraggableCard` → `MeTaskCard`
+- `frontend/src/components/pm/MeTabView.tsx` — Me-tab `BulkActionBar`, bulk delete confirm modal, context action handler, store selection subscription
+- `frontend/src/components/pm/CreateTaskModal.tsx` — `selectedColumnIsBacklog` derived from `column.is_backlog`
+- `frontend/src/pages/admin/ProjectBoard.tsx` — selection subscription, `BulkActionBar` with Move-to-project + Delete actions, `MoveToProjectModal` wiring, bulk delete confirm modal, `handleContextAction` that routes single-vs-multi based on whether the right-clicked task is in the selection, `allTargetsInBacklog` guard, `is_backlog` lookup for `TaskDetailPanel` prop
+- `frontend/src/pages/admin/ProjectsDashboard.tsx` — "Cross-project AI Synth" entry button + modal mount
+- `frontend/package.json` / `package-lock.json` — added `@radix-ui/react-context-menu`
+- `plans/04112026-no-ticket-pm-bulk-move-cross-project-synth/spec.md` + `migrations/{pgsql.sql, mssql.sql, knexmigration.js}` — full spec with 16 tasks, Risk Level 4 section, and three migration scaffolds per convention
+
+## [0.0.13] - April 2026
+
+### Conditional Rendering for Post Tokens
+
+Post blocks and single post templates can now hide markup when a field or custom field is empty, eliminating broken-image icons, empty labels, and orphan wrapper elements. Template authors wrap markup in `{{if post.X}}...{{endif}}` or `{{if_not post.X}}...{{endif}}` to conditionally render based on field presence. Supports standard post tokens and `post.custom.<slug>` custom fields. Evaluated before token replacement so the stripped markup never reaches the output.
+
+**Key Changes:**
+- New syntax: `{{if post.featured_image}}<img src="{{post.featured_image}}"/>{{endif}}` keeps the image only when set; pair with `{{if_not post.featured_image}}...{{endif}}` for a fallback branch
+- "Empty" is strictly `null`, `undefined`, or empty string `""`. The values `"0"`, `0`, `false`, whitespace strings, and empty arrays/objects are intentionally **not** empty — authors writing `{{if post.custom.count}}` with a zero count see the block render as expected
+- Flat only in v1 — nested conditionals trigger a `console.warn` and leave the template unchanged so the raw markers render visibly. Loud-by-design so silent template bugs don't ship
+- Custom fields supported via `{{if post.custom.<slug>}}` in both post block loops and single post templates
+- Works in five render paths with identical semantics: production post blocks, production single post pages, editor page preview with embedded post block shortcodes, editor post block template preview (client-side), and editor single post template preview (client-side)
+- Existing templates with zero `{{if}}` tokens pass through a fast-path early return — zero behavioral change for all current data
+- Known preview limitation documented in the Posts Docs page: the editor's client-side preview treats `post.custom.*` as empty because placeholder data doesn't model custom fields. Live site reflects real values.
+- Companion change in `website-builder-rebuild` (production renderer) ships the same `processConditionals` logic in `src/utils/shortcodes.ts` — required for production parity. Three source-of-truth copies are kept in sync via cross-reference header comments in each file.
+
+**Commits:**
+- `src/controllers/user-website/user-website-services/shortcodeResolver.service.ts` — added `processConditionals` helper (local, non-exported) with field resolver handling the backend's `_categories`/`_tags` naming convention and derived `url` field; wired into `renderPostBlock`'s `posts.map` body after `customFields` is parsed. Header comment names the two sibling copies.
+- `frontend/src/components/Admin/PostBlocksTab.tsx` — added `processConditionals` helper that resolves fields by looking up literal token strings in `PLACEHOLDER_POST`; invoked in both the loop path (per-post, so different preview posts can resolve differently) and the single-template fallback path of `replacePlaceholders`. Documents the custom-field preview limitation inline.
+- `frontend/src/pages/admin/AlloroPostsDocs.tsx` — new "Conditional Rendering" section between "Shortcode Syntax" and "Examples" with syntax reference, empty-definition explainer, two worked examples (featured image fallback, video embed), and a rules/limits list covering flat-only constraint, absence of `{{else}}`/comparisons, preview limitation, and the supported field list.
+- `plans/04112026-no-ticket-conditional-post-token-rendering/spec.md` — full spec covering why/what/context/constraints/risk/tasks/done for the cross-repo change.
+
 ## [0.0.12] - April 2026
 
 ### Allow Manager Role to Rename a Location
