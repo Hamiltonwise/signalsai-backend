@@ -158,6 +158,7 @@ rankingsSnapshotRoutes.post(
 // ─── CRO Engine Manual Trigger ─────────────────────────────────────
 
 import { runCROForAllOrgs } from "../../services/croEngine";
+import { runDFYForAllOrgs, draftGBPPost, draftCRORecommendations } from "../../services/dfyEngine";
 
 rankingsSnapshotRoutes.post(
   "/cro/run-all",
@@ -170,6 +171,51 @@ rankingsSnapshotRoutes.post(
     } catch (error: any) {
       console.error("[CRO Engine] Run-all error:", error.message);
       return res.status(500).json({ success: false, error: "Failed to run CRO engine" });
+    }
+  },
+);
+
+// ─── DFY Engine Manual Triggers ──────────────────────────────────────
+
+rankingsSnapshotRoutes.post(
+  "/dfy/run-all",
+  authenticateToken,
+  superAdminMiddleware,
+  async (_req, res) => {
+    try {
+      const result = await runDFYForAllOrgs();
+      return res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("[DFY Engine] Run-all error:", error.message);
+      return res.status(500).json({ success: false, error: "Failed to run DFY engine" });
+    }
+  },
+);
+
+rankingsSnapshotRoutes.post(
+  "/dfy/run-now",
+  authenticateToken,
+  superAdminMiddleware,
+  async (req, res) => {
+    try {
+      const { org_id } = req.body;
+      if (!org_id) {
+        return res.status(400).json({ success: false, error: "org_id required" });
+      }
+
+      const [gbp, cro] = await Promise.all([
+        draftGBPPost(Number(org_id)),
+        draftCRORecommendations(Number(org_id)),
+      ]);
+
+      return res.json({
+        success: true,
+        gbpDraft: gbp,
+        croDrafts: cro,
+      });
+    } catch (error: any) {
+      console.error("[DFY Engine] Run-now error:", error.message);
+      return res.status(500).json({ success: false, error: "Failed to run DFY for org" });
     }
   },
 );
