@@ -50,6 +50,15 @@ Write a Customer Reality Check in the conversation:
 2. `npx tsc --noEmit` from repo root (zero errors)
 3. Check the map: describe what each affected page shows. If you can't describe it with certainty, don't commit.
 
+## Product Hierarchy (LOCKED -- Corey has corrected this multiple times)
+
+The app/dashboard is the product. The Monday email is a notification layer.
+The email is a support piece: a weekly reminder that Alloro is working.
+The email highlights the most surprising change and links to the dashboard.
+The three instruments are the product. The email is a pointer, not the whole story.
+Build features app-first. Email is additive.
+Never say "the email is the product." That is stale and wrong.
+
 ## Standing Rules
 
 - Never push to main directly

@@ -129,18 +129,19 @@ These never bend. No exceptions. No "just this once."
 
 ---
 
-### Known 8: Monday email is the product
+### Known 8: The app is the product. The email is a notification.
 
-**Rule:** The Monday email IS the product. The dashboard is the reference library. The email comes to you. You don't go to it. DWY mode: "here's what you should know." DFY mode: "here's what we did." The email shifts from advice to receipt as the DFY engine activates.
+**Rule:** The dashboard/app is the product. The Monday email is a support piece: a weekly reminder that Alloro is working, with a nudge to check the dashboard. The email highlights the most surprising change and links back to the app where the full context lives. The email is a pointer, not the whole story. DFY approvals, readings, competitor intelligence, proof of work -- all live in the app. The email says "something happened, here's the headline, tap to see it."
 
-**Test:** Read the Monday email without logging into the dashboard. Do you know the state of your business? Do you know what Alloro did? Do you know if anything needs your attention?
+**Test:** Open the dashboard without reading the Monday email. Do you know the state of your business? Can you approve DFY actions, see your readings, verify your competitor data? If yes, the product works. The email is additive, not required.
 
-**Violation:** Email says "log in to see your results." Email requires the dashboard to be useful. Email is generic and could apply to any business.
+**Violation:** Product value requires opening an email. Dashboard is a secondary surface. Features built email-first instead of app-first.
 
-**Locked:** April 3, 2026, Corey Wise.
-**Override requires:** Corey only.
+**Override history:**
+- Original: April 3, 2026, Corey Wise. "The Monday email IS the product."
+- Override: April 10, 2026, Corey Wise. Corrected multiple times across sessions: "the email is a support piece, a weekly reminder." Validated by Saif. The app/dashboard is the product. The three instruments are the product. The email is a notification layer.
 
-**Last tested:** UNTESTED. Monday email code exists and has sent in testing. Not verified from a real customer's inbox perspective. Position claims removed from email text April 4.
+**Last tested:** Monday email has been sent to Shawn and Corey. Email works as notification. Dashboard is the primary surface.
 
 ---
 

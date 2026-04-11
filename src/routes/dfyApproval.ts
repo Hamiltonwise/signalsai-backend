@@ -136,6 +136,85 @@ router.get("/reject/:token", async (req: Request, res: Response) => {
 });
 
 // =====================================================================
+// INLINE: JSON API for dashboard approve/reject (no redirect)
+// =====================================================================
+
+/**
+ * POST /api/actions/approve/:token
+ *
+ * Dashboard calls this via fetch(). Returns JSON instead of redirecting.
+ * Same logic as GET version but for in-app use.
+ */
+router.post("/approve/:token", async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+
+    const action = await db("pending_actions")
+      .where({ approval_token: token })
+      .first();
+
+    if (!action) return res.status(404).json({ error: "not_found" });
+    if (action.status === "executed") return res.json({ status: "already_done" });
+    if (action.status === "rejected") return res.json({ status: "already_rejected" });
+    if (action.status !== "draft") return res.status(400).json({ error: "invalid_status", status: action.status });
+
+    if (new Date(action.expires_at) < new Date()) {
+      await db("pending_actions").where({ id: action.id }).update({ status: "expired" });
+      return res.status(410).json({ error: "expired" });
+    }
+
+    await db("pending_actions").where({ id: action.id }).update({
+      status: "approved",
+      approved_at: new Date(),
+    });
+
+    try {
+      const result = await executeApprovedAction(action);
+      await db("pending_actions").where({ id: action.id }).update({
+        status: "executed",
+        executed_at: new Date(),
+        execution_result: JSON.stringify(result),
+      });
+      return res.json({ status: "executed", result });
+    } catch (execErr: any) {
+      await db("pending_actions").where({ id: action.id }).update({
+        execution_result: JSON.stringify({ success: false, error: execErr.message }),
+      });
+      return res.status(500).json({ status: "approved", exec_error: execErr.message });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ error: "server_error", message: err.message });
+  }
+});
+
+/**
+ * POST /api/actions/reject/:token
+ *
+ * Dashboard calls this via fetch(). Returns JSON.
+ */
+router.post("/reject/:token", async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+
+    const action = await db("pending_actions")
+      .where({ approval_token: token })
+      .first();
+
+    if (!action) return res.status(404).json({ error: "not_found" });
+    if (action.status !== "draft") return res.json({ status: `already_${action.status}` });
+
+    await db("pending_actions").where({ id: action.id }).update({
+      status: "rejected",
+      rejected_at: new Date(),
+    });
+
+    return res.json({ status: "rejected" });
+  } catch (err: any) {
+    return res.status(500).json({ error: "server_error", message: err.message });
+  }
+});
+
+// =====================================================================
 // AUTHENTICATED: Dashboard management of pending actions
 // =====================================================================
 
