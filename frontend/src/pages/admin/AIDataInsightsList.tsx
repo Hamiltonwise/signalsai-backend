@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   LineChart,
-  Play,
   Trash2,
   ArrowRight,
   FileText,
@@ -41,7 +40,8 @@ export default function AIDataInsightsList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const confirm = useConfirm();
   const [currentPage, setCurrentPage] = useState(1);
-  const [isRunning, setIsRunning] = useState(false);
+  // setIsRunning dropped — handleRunAgents disabled 2026-04-12
+  const [isRunning] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
   // Month selector state - read from URL params, default to current month
@@ -84,6 +84,7 @@ export default function AIDataInsightsList() {
     navigate(`/admin/ai-data-insights/${agentType}?month=${selectedMonth}`);
   };
 
+  /* DISABLED 2026-04-12 — see plans/04122026-no-ticket-disable-n8n-agents-migrate-identifier/spec.md
   const handleRunAgents = async () => {
     if (isRunning) return;
 
@@ -128,6 +129,7 @@ export default function AIDataInsightsList() {
       setIsRunning(false);
     }
   };
+  */
 
   const handleClearData = async () => {
     if (isClearing) return;
@@ -216,46 +218,47 @@ export default function AIDataInsightsList() {
     }
   };
 
+  // DISABLED 2026-04-12 — see plans/04122026-no-ticket-disable-n8n-agents-migrate-identifier/spec.md
   // Render progress bar when running
-  const renderProgressBar = () => {
-    if (!isRunning) return null;
-
-    return (
-      <motion.div
-        className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-      >
-        <div className="flex items-center gap-3 mb-3">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          >
-            <Loader2 className="h-5 w-5 text-blue-600" />
-          </motion.div>
-          <div>
-            <p className="font-medium text-blue-900">
-              Running Guardian & Governance Agents
-            </p>
-            <p className="text-sm text-blue-700">
-              This may take several minutes. Please wait...
-            </p>
-          </div>
-        </div>
-        {/* Indeterminate progress bar */}
-        <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-blue-600 rounded-full"
-            initial={{ x: "-100%" }}
-            animate={{ x: "200%" }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            style={{ width: "40%" }}
-          />
-        </div>
-      </motion.div>
-    );
-  };
+  // const renderProgressBar = () => {
+  //   if (!isRunning) return null;
+  //
+  //   return (
+  //     <motion.div
+  //       className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm"
+  //       initial={{ opacity: 0, y: -10 }}
+  //       animate={{ opacity: 1, y: 0 }}
+  //       exit={{ opacity: 0, y: -10 }}
+  //     >
+  //       <div className="flex items-center gap-3 mb-3">
+  //         <motion.div
+  //           animate={{ rotate: 360 }}
+  //           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+  //         >
+  //           <Loader2 className="h-5 w-5 text-blue-600" />
+  //         </motion.div>
+  //         <div>
+  //           <p className="font-medium text-blue-900">
+  //             Running Guardian & Governance Agents
+  //           </p>
+  //           <p className="text-sm text-blue-700">
+  //             This may take several minutes. Please wait...
+  //           </p>
+  //         </div>
+  //       </div>
+  //       {/* Indeterminate progress bar */}
+  //       <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+  //         <motion.div
+  //           className="h-full bg-blue-600 rounded-full"
+  //           initial={{ x: "-100%" }}
+  //           animate={{ x: "200%" }}
+  //           transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+  //           style={{ width: "40%" }}
+  //         />
+  //       </div>
+  //     </motion.div>
+  //   );
+  // };
 
   // Render action buttons
   const renderActionButtons = () => (
@@ -267,6 +270,7 @@ export default function AIDataInsightsList() {
           setCurrentPage(1);
         }}
       />
+      {/* DISABLED 2026-04-12 — see plans/04122026-no-ticket-disable-n8n-agents-migrate-identifier/spec.md
       <ActionButton
         label={isRunning ? "Running..." : "Run Guardian & Governance"}
         icon={isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
@@ -275,6 +279,7 @@ export default function AIDataInsightsList() {
         disabled={isRunning || isClearing}
         loading={isRunning}
       />
+      */}
       <ActionButton
         label={isClearing ? "Clearing..." : "Clear Month Data"}
         icon={<Trash2 className="w-4 h-4" />}
@@ -346,12 +351,14 @@ export default function AIDataInsightsList() {
           actionButtons={renderActionButtons()}
         />
 
+        {/* DISABLED 2026-04-12 — see plans/04122026-no-ticket-disable-n8n-agents-migrate-identifier/spec.md
         <AnimatePresence>{renderProgressBar()}</AnimatePresence>
+        */}
 
         <EmptyState
           icon={<Bot className="w-12 h-12" />}
           title="No agent data available"
-          description="Guardian and Governance agents haven't run yet for this month. Click 'Run Guardian & Governance' above to start."
+          description="No agent insights available for this month yet."
         />
       </div>
     );
@@ -368,7 +375,8 @@ export default function AIDataInsightsList() {
       />
 
       {/* Progress bar */}
-      <AnimatePresence>{renderProgressBar()}</AnimatePresence>
+      {/* DISABLED 2026-04-12 — see plans/04122026-no-ticket-disable-n8n-agents-migrate-identifier/spec.md */}
+      {/* <AnimatePresence>{renderProgressBar()}</AnimatePresence> */}
 
       {/* Agent Cards Grid */}
       <motion.div

@@ -8,6 +8,8 @@
 
 import axios from "axios";
 import { log } from "../feature-utils/agentLogger";
+import { loadPrompt } from "../../../agents/service.prompt-loader";
+import { runAgent } from "../../../agents/service.llm-runner";
 
 // =====================================================================
 // WEBHOOK URL CONSTANTS
@@ -76,18 +78,14 @@ export async function identifyLocationMeta(
 ): Promise<{ specialty: string; marketLocation: string }> {
   log(`  [IDENTIFIER] Identifying specialty and market for ${domain}`);
 
-  if (!IDENTIFIER_AGENT_WEBHOOK) {
-    log(
-      `  [IDENTIFIER] \u26a0 IDENTIFIER_AGENT_WEBHOOK not configured, using fallbacks`,
-    );
-    return getFallbackMeta(gbpData);
-  }
-
+  // NOTE: The Identifier prompt also returns specialtyKeywords[], city, state,
+  // county, postalCode. Path A migration: SDK currently returns parity-only
+  // {specialty, marketLocation}. Wire up the additional fields in a follow-up
+  // when competitor discovery / geo filtering needs them.
   try {
     const payload = {
       domain,
       gbp_profile: gbpData.profile || {},
-      // Include full storefront address fields for better location identification
       storefront_address: gbpData.profile?.storefrontAddress || {},
       address: {
         locality: gbpData.profile?.storefrontAddress?.locality || "",
@@ -98,22 +96,35 @@ export async function identifyLocationMeta(
       },
     };
 
-    const response = await axios.post(IDENTIFIER_AGENT_WEBHOOK, payload, {
-      timeout: 60000,
-      headers: { "Content-Type": "application/json" },
+    const systemPrompt = loadPrompt("rankingAgents/Identifier");
+    const userMessage = JSON.stringify(payload, null, 2);
+
+    const result = await runAgent({
+      systemPrompt,
+      userMessage,
+      maxTokens: 1024,
     });
 
-    let data = response.data;
-    if (Array.isArray(data)) data = data[0] || {};
+    const data = result.parsed;
+    if (!data || typeof data !== "object") {
+      log(
+        `  [IDENTIFIER] \u2717 Could not parse Identifier output. Using fallbacks.`,
+      );
+      return getFallbackMeta(gbpData);
+    }
 
     const specialty = data.specialty || "orthodontist";
     const marketLocation = data.marketLocation || getFallbackMarket(gbpData);
 
-    log(`  [IDENTIFIER] \u2713 Identified: ${specialty} in ${marketLocation}`);
+    log(
+      `  [IDENTIFIER] \u2713 Identified: ${specialty} in ${marketLocation} (${result.inputTokens} in / ${result.outputTokens} out)`,
+    );
 
     return { specialty, marketLocation };
   } catch (error: any) {
-    log(`  [IDENTIFIER] \u2717 Webhook failed: ${error.message}. Using fallbacks.`);
+    log(
+      `  [IDENTIFIER] \u2717 SDK call failed: ${error.message}. Using fallbacks.`,
+    );
     return getFallbackMeta(gbpData);
   }
 }
