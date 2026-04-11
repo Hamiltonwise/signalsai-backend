@@ -542,40 +542,66 @@ export async function sendMondayEmailForOrg(
     }
   }
 
-  // 5-Minute Fix: specific action based on the finding
+  // 5-Minute Fix: specific action based on behavioral patterns, not generic advice
   const reviewGap = (snapshot.competitor_review_count || 0) - (snapshot.client_review_count || 0);
   let fiveMinuteFix = "";
+
+  // Check behavioral_events for what's actually working for this client
+  let bestConvertingDay: string | null = null;
+  let bestConvertingSource: string | null = null;
+  try {
+    const weekAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days of patterns
+    const reviewEvents = await db("behavioral_events")
+      .where({ org_id: orgId })
+      .whereIn("event_type", ["review.received", "review.requested", "dfy.review_reply_posted"])
+      .where("created_at", ">=", weekAgo)
+      .select("created_at", "properties")
+      .orderBy("created_at", "desc");
+
+    if (reviewEvents.length >= 3) {
+      // Find which day of week gets most reviews
+      const dayCounts: Record<string, number> = {};
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      for (const evt of reviewEvents) {
+        const day = dayNames[new Date(evt.created_at).getDay()];
+        dayCounts[day] = (dayCounts[day] || 0) + 1;
+      }
+      const sortedDays = Object.entries(dayCounts).sort((a, b) => b[1] - a[1]);
+      if (sortedDays.length > 0 && sortedDays[0][1] >= 2) {
+        bestConvertingDay = sortedDays[0][0];
+      }
+
+      // Check for source patterns
+      for (const evt of reviewEvents) {
+        const props = typeof evt.properties === "string" ? JSON.parse(evt.properties) : evt.properties || {};
+        if (props.source && !bestConvertingSource) {
+          bestConvertingSource = props.source;
+        }
+      }
+    }
+  } catch {
+    // behavioral_events may not exist
+  }
 
   if (reviewGap > 0 && reviewGap <= 15) {
     const needed = Math.min(reviewGap, 3);
     const gapWeeks = Math.ceil(reviewGap / 3);
-    if (archetype === "survivor" || (confidenceScore !== null && confidenceScore <= 4)) {
-      fiveMinuteFix = `5-MINUTE FIX: Text ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} from this week for a review. This is proven: 3 reviews per week closes a ${reviewGap}-review gap in ${gapWeeks} weeks. Predictable and reliable.`;
-    } else if (archetype === "builder") {
-      fiveMinuteFix = `5-MINUTE FIX: Send ${needed} review request${needed !== 1 ? "s" : ""}. You're ${reviewGap} behind ${cleanCompetitorName(snapshot.competitor_name || "") || competitorFallback}. At 3/week, you pass them in ${gapWeeks} weeks. That momentum compounds.`;
+    if (bestConvertingDay) {
+      fiveMinuteFix = `5-MINUTE FIX: Text ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} ${bestConvertingDay === new Date().toLocaleDateString("en-US", { weekday: "long" }) ? "today" : `on ${bestConvertingDay}`}. Your reviews come in most on ${bestConvertingDay}s. ${reviewGap} reviews to close, ${gapWeeks} weeks at this pace.`;
     } else {
-      // craftsman or legacy
-      fiveMinuteFix = `5-MINUTE FIX: Text ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} from this week for a review. Takes 3 minutes. You're ${reviewGap} behind ${cleanCompetitorName(snapshot.competitor_name || "") || competitorFallback}, and 3/week closes it in ${gapWeeks} weeks.`;
+      fiveMinuteFix = `5-MINUTE FIX: Text ${needed} ${customerTerm}${needed !== 1 ? "s" : ""} from this week for a review. ${reviewGap} behind ${cleanCompetitorName(snapshot.competitor_name || "") || competitorFallback}. 3/week closes it in ${gapWeeks} weeks.`;
     }
   } else if (reviewGap > 15) {
     const targetDate = new Date(Date.now() + Math.ceil(reviewGap / 3) * 7 * 86400000).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-    if (archetype === "survivor" || (confidenceScore !== null && confidenceScore <= 4)) {
-      fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. Consistency is the strategy. At 3/week, you close the ${reviewGap}-review gap by ${targetDate}. One step at a time.`;
-    } else if (archetype === "builder") {
-      fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. At 3/week, you close a ${reviewGap}-review gap by ${targetDate}. Every review is a compounding asset.`;
+    if (bestConvertingDay) {
+      fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests${bestConvertingDay ? ` on ${bestConvertingDay}` : " today"}. Your data shows ${bestConvertingDay}s convert best. At 3/week, you close the ${reviewGap}-review gap by ${targetDate}.`;
     } else {
-      fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. Consistent weekly reviews compound. At 3/week, you close the gap by ${targetDate}.`;
+      fiveMinuteFix = `5-MINUTE FIX: Send 3 review requests today. At 3/week, you close the ${reviewGap}-review gap by ${targetDate}. Consistency is the strategy.`;
     }
   } else if (steadyWeeks >= 3) {
-    if (archetype === "craftsman" && personalGoal) {
-      fiveMinuteFix = `5-MINUTE FIX: Your position held for ${steadyWeeks} weeks. That stability is earned. Send 3 review requests and add a photo to your Google Business Profile to widen the lead.`;
-    } else if (archetype === "builder") {
-      fiveMinuteFix = `5-MINUTE FIX: Steady for ${steadyWeeks} weeks. This is your window to gain ground. Send 3 review requests and add a new photo to your Google Business Profile.`;
-    } else {
-      fiveMinuteFix = `5-MINUTE FIX: Your position is steady. Send 3 review requests and add a new photo to your Google Business Profile to strengthen it.`;
-    }
+    fiveMinuteFix = `5-MINUTE FIX: Position held for ${steadyWeeks} weeks. That's earned. Send 3 review requests${bestConvertingDay ? ` on ${bestConvertingDay} (your best day)` : ""} and add a photo to your Google Business Profile to widen the lead.`;
   } else {
-    fiveMinuteFix = `5-MINUTE FIX: Open your Google Business Profile and respond to any unanswered reviews. Each response signals activity to Google's ranking algorithm.`;
+    fiveMinuteFix = `5-MINUTE FIX: Respond to any unanswered Google reviews. Each response signals activity to Google's ranking algorithm.`;
   }
 
   findingBody += `\n\n${fiveMinuteFix}`;
@@ -669,23 +695,70 @@ export async function sendMondayEmailForOrg(
   }
 
   // ── Proof of Work: what Alloro DID this week (the receipt) ──
+  // This is the FIRST thing the owner should see. The receipt builds trust.
   let proofOfWork = "";
   try {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    // 1. DFY actions from behavioral_events
     const dfyEvents = await db("behavioral_events")
       .where({ org_id: orgId })
       .where("event_type", "like", "dfy.%")
-      .where("created_at", ">=", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+      .where("created_at", ">=", weekAgo)
       .select("event_type", "properties")
       .orderBy("created_at", "desc");
 
+    // 2. Proofline scans from agent_results (the 467+ invisible outputs)
+    let prooflineScans = 0;
+    try {
+      const prooflineCount = await db("agent_results")
+        .where({ organization_id: orgId })
+        .where("agent_type", "proofline")
+        .where("created_at", ">=", weekAgo)
+        .count("id as cnt")
+        .first();
+      prooflineScans = parseInt(String(prooflineCount?.cnt || 0), 10);
+    } catch {
+      // agent_results table may not exist yet
+    }
+
+    // 3. All agent activity count (total checks Alloro ran)
+    let totalAgentRuns = 0;
+    try {
+      const agentCount = await db("agent_results")
+        .where({ organization_id: orgId })
+        .where("created_at", ">=", weekAgo)
+        .count("id as cnt")
+        .first();
+      totalAgentRuns = parseInt(String(agentCount?.cnt || 0), 10);
+    } catch {
+      // agent_results table may not exist yet
+    }
+
     const receipts: string[] = [];
+
+    // Lead with total checks if substantial
+    if (totalAgentRuns > 0) {
+      receipts.push(`Ran ${totalAgentRuns} automated check${totalAgentRuns !== 1 ? "s" : ""} on your business`);
+    }
+
+    if (prooflineScans > 0) {
+      receipts.push(`Scanned ${prooflineScans} market data point${prooflineScans !== 1 ? "s" : ""}`);
+    }
+
     const reviewsPosted = dfyEvents.filter(e => e.event_type === "dfy.review_reply_posted").length;
+    const gbpPosts = dfyEvents.filter(e => e.event_type === "dfy.gbp_post_published").length;
+    const croApplied = dfyEvents.filter(e => e.event_type === "dfy.cro_applied").length;
     const croRecs = dfyEvents.filter(e => e.event_type === "dfy.cro_recommendation").length;
     const websiteUpdates = dfyEvents.filter(e => e.event_type === "dfy.website_update").length;
+    const gapAnalyses = dfyEvents.filter(e => e.event_type === "dfy.competitor_gap_analysis").length;
 
     if (reviewsPosted > 0) receipts.push(`Responded to ${reviewsPosted} review${reviewsPosted !== 1 ? "s" : ""} on Google`);
-    if (croRecs > 0) receipts.push(`Generated ${croRecs} website optimization${croRecs !== 1 ? "s" : ""}`);
+    if (gbpPosts > 0) receipts.push(`Published ${gbpPosts} post${gbpPosts !== 1 ? "s" : ""} to your Google Business Profile`);
+    if (croApplied > 0) receipts.push(`Optimized ${croApplied} page${croApplied !== 1 ? "s" : ""} on your website for better search visibility`);
+    if (croRecs > 0 && croApplied === 0) receipts.push(`Generated ${croRecs} website optimization${croRecs !== 1 ? "s" : ""}`);
     if (websiteUpdates > 0) receipts.push(`Updated your website ${websiteUpdates} time${websiteUpdates !== 1 ? "s" : ""}`);
+    if (gapAnalyses > 0) receipts.push("Analyzed your competitor gaps and updated your strategy");
 
     // Always include competitive tracking as proof of work
     receipts.push("Monitored your competitors and refreshed your market data");
@@ -789,6 +862,59 @@ export async function sendMondayEmailForOrg(
     });
   }
 
+  // ── Review Link + Stats: the one action that compounds ──
+  let reviewLink: string | null = null;
+  let reviewStats: { sent: number; clicked: number; newReviews: number } | null = null;
+  try {
+    const checkupParsed = org.checkup_data
+      ? (typeof org.checkup_data === "string" ? JSON.parse(org.checkup_data) : org.checkup_data)
+      : null;
+    const placeId = checkupParsed?.placeId || checkupParsed?.place?.placeId || null;
+    if (placeId) {
+      reviewLink = `https://search.google.com/local/writereview?placeid=${placeId}`;
+    }
+
+    // Last week's review request stats
+    const weekAgoRev = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const hasReviewRequests = await db.schema.hasTable("review_requests");
+    if (hasReviewRequests) {
+      const sentCount = await db("review_requests")
+        .where({ organization_id: orgId })
+        .where("created_at", ">=", weekAgoRev)
+        .count("id as cnt")
+        .first();
+      const clickedCount = await db("review_requests")
+        .where({ organization_id: orgId })
+        .where("created_at", ">=", weekAgoRev)
+        .whereNotNull("clicked_at")
+        .count("id as cnt")
+        .first();
+
+      const sent = parseInt(String(sentCount?.cnt || 0), 10);
+      const clicked = parseInt(String(clickedCount?.cnt || 0), 10);
+
+      // Count new reviews this week from review sync
+      let newReviews = 0;
+      try {
+        const hasReviewNotifications = await db.schema.hasTable("review_notifications");
+        if (hasReviewNotifications) {
+          const newRevCount = await db("review_notifications")
+            .where({ organization_id: orgId })
+            .where("created_at", ">=", weekAgoRev)
+            .count("id as cnt")
+            .first();
+          newReviews = parseInt(String(newRevCount?.cnt || 0), 10);
+        }
+      } catch { /* review_notifications may not exist */ }
+
+      if (sent > 0) {
+        reviewStats = { sent, clicked, newReviews };
+      }
+    }
+  } catch {
+    // Non-blocking: review link generation failed
+  }
+
   // Send via email service
   try {
     const success = await sendMondayBriefEmail({
@@ -816,6 +942,8 @@ export async function sendMondayEmailForOrg(
       proofOfWork,
       founderLine,
       communityCount,
+      reviewLink,
+      reviewStats,
     });
 
     if (success) {

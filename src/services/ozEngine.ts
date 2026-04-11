@@ -59,6 +59,12 @@ interface OrgSnapshot {
   clientPlaceId: string | null;
   googleSearchUrl: string | null;
   marketSearchUrl: string | null;
+  /** Founder context from weekly ritual (organizations.client_context) */
+  clientContext: string | null;
+  /** Proofline scan count from agent_results this week */
+  prooflineScansThisWeek: number;
+  /** Total DFY actions from behavioral_events this week */
+  dfyActionsThisWeek: number;
 }
 
 // ── Main Entry Point ──────────────────────────────────────────────────
@@ -101,10 +107,75 @@ async function buildOrgSnapshot(orgId: number): Promise<OrgSnapshot | null> {
     : null;
 
   const topComp = cd?.topCompetitor || cd?.top_competitor || null;
-  const competitorName = typeof topComp === "string" ? topComp : topComp?.name || null;
+  const genericCompName = typeof topComp === "string" ? topComp : topComp?.name || null;
+  const genericCompPlaceId = typeof topComp === "object" ? topComp?.placeId || null : null;
+  const genericCompReviews = typeof topComp === "object" ? topComp?.reviewCount || null : null;
+  const genericCompRating = typeof topComp === "object" ? topComp?.rating || null : null;
+
+  // Target competitor override: when the client says "beat Centreville,"
+  // that org's target_competitor fields take priority over whatever
+  // checkup_data thinks the top competitor is.
+  const hasTargetCompetitor = !!org.target_competitor_name;
+  const competitorName = hasTargetCompetitor
+    ? org.target_competitor_name
+    : (genericCompName ? cleanCompetitorName(genericCompName) : null);
+  const competitorPlaceId = hasTargetCompetitor
+    ? org.target_competitor_place_id
+    : genericCompPlaceId;
+
+  // If we have a target competitor place_id but no review data from checkup_data,
+  // try to pull their latest stats from weekly_ranking_snapshots
+  let competitorReviews = hasTargetCompetitor ? null : genericCompReviews;
+  let competitorRating = hasTargetCompetitor ? null : genericCompRating;
+
+  if (hasTargetCompetitor) {
+    try {
+      const targetSnapshot = await db("weekly_ranking_snapshots")
+        .where({ org_id: orgId })
+        .whereRaw("LOWER(competitor_name) = LOWER(?)", [org.target_competitor_name])
+        .orderBy("week_start", "desc")
+        .first();
+      if (targetSnapshot) {
+        competitorReviews = targetSnapshot.competitor_review_count || null;
+        competitorRating = targetSnapshot.competitor_rating || null;
+      }
+    } catch {
+      // weekly_ranking_snapshots may not have this competitor yet
+    }
+  }
+
   const city = cd?.market?.city || null;
   const specialty = cd?.market?.specialty || null;
   const orgName = org.name || null;
+
+  // Fetch proof-of-work counts for the receipt
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  let prooflineScansThisWeek = 0;
+  let dfyActionsThisWeek = 0;
+
+  try {
+    const prooflineCount = await db("agent_results")
+      .where({ organization_id: orgId })
+      .where("agent_type", "proofline")
+      .where("created_at", ">=", weekAgo)
+      .count("id as cnt")
+      .first();
+    prooflineScansThisWeek = parseInt(String(prooflineCount?.cnt || 0), 10);
+  } catch {
+    // agent_results table may not exist yet
+  }
+
+  try {
+    const dfyCount = await db("behavioral_events")
+      .where({ org_id: orgId })
+      .where("event_type", "like", "dfy.%")
+      .where("created_at", ">=", weekAgo)
+      .count("id as cnt")
+      .first();
+    dfyActionsThisWeek = parseInt(String(dfyCount?.cnt || 0), 10);
+  } catch {
+    // behavioral_events table may not exist yet
+  }
 
   return {
     orgId,
@@ -113,10 +184,10 @@ async function buildOrgSnapshot(orgId: number): Promise<OrgSnapshot | null> {
     specialty,
     clientReviews: cd?.place?.reviewCount || cd?.reviewCount || 0,
     clientRating: cd?.place?.rating || cd?.rating || null,
-    competitorName: competitorName ? cleanCompetitorName(competitorName) : null,
-    competitorReviews: typeof topComp === "object" ? topComp?.reviewCount || null : null,
-    competitorRating: typeof topComp === "object" ? topComp?.rating || null : null,
-    competitorPlaceId: typeof topComp === "object" ? topComp?.placeId || null : null,
+    competitorName: competitorName || null,
+    competitorReviews: competitorReviews,
+    competitorRating: competitorRating,
+    competitorPlaceId: competitorPlaceId,
     clientPlaceId: cd?.placeId || cd?.place?.placeId || null,
     googleSearchUrl: orgName
       ? `https://www.google.com/search?q=${encodeURIComponent(orgName)}`
@@ -124,6 +195,9 @@ async function buildOrgSnapshot(orgId: number): Promise<OrgSnapshot | null> {
     marketSearchUrl: city && specialty
       ? `https://www.google.com/search?q=${encodeURIComponent(specialty + " " + city)}`
       : null,
+    clientContext: org.client_context || null,
+    prooflineScansThisWeek,
+    dfyActionsThisWeek,
   };
 }
 
@@ -170,15 +244,19 @@ async function checkReferralDrift(s: OrgSnapshot): Promise<OzEngineResult | null
     if (daysSilent < 60) return null;
 
     const gpName = source.gp_name || source.name || "A referring provider";
-    const totalReferrals = source.total_referrals || Math.round(priorMonthly * 3);
+
+    // Steering correction: tell them exactly what to do, not just the data
+    const contextWithSeason = s.clientContext
+      ? `Alloro noticed the silence. ${s.clientContext.includes(gpName) ? "You mentioned them recently." : "A 5-minute call this week could reopen your highest-value relationship."}`
+      : `A 5-minute call this week could reopen your highest-value relationship. They averaged ${Math.round(priorMonthly)} referrals per month before going quiet.`;
 
     return {
-      headline: `${gpName} sent you ${totalReferrals} referrals, then went quiet ${daysSilent} days ago.`,
-      context: `They averaged ${Math.round(priorMonthly)} per month before stopping. A call this week could reopen your highest-value relationship.`,
+      headline: `Call ${gpName} this week. They stopped referring ${daysSilent} days ago.`,
+      context: contextWithSeason,
       status: "critical",
       verifyUrl: null,
       surprise: 8,
-      actionText: "See referral details",
+      actionText: `Call ${gpName}`,
       actionUrl: "/dashboard/referrals",
       signalType: "referral_drift",
     };
@@ -212,18 +290,30 @@ async function checkCompetitorSurge(s: OrgSnapshot): Promise<OzEngineResult | nu
       ? current.position - previous.position
       : 0;
 
-    const headline = positionDrop > 0
-      ? `${compName} gained ${compDelta} reviews this week. You dropped ${positionDrop} position${positionDrop !== 1 ? "s" : ""}.`
-      : `${compName} added ${compDelta} review${compDelta !== 1 ? "s" : ""} this week. You added ${clientDelta}.`;
+    // Steering correction: is action needed, or just monitoring?
+    if (positionDrop > 0) {
+      // Action needed: position lost
+      return {
+        headline: `${compName} is gaining ground. Send 3 review requests this week to hold your position.`,
+        context: `They added ${compDelta} reviews while you added ${clientDelta}. Your position dropped. 3 reviews this week stops the slide.`,
+        status: "critical",
+        verifyUrl: s.marketSearchUrl,
+        surprise: 8,
+        actionText: "Send review requests",
+        actionUrl: "/reviews",
+        signalType: "competitor_surge",
+      };
+    }
 
+    // Monitoring: competitor moved but position held
     return {
-      headline,
-      context: `They now have ${current.competitor_review_count || 0} total reviews to your ${current.client_review_count || 0}. The gap ${compDelta > clientDelta ? "widened" : "held steady"}.`,
-      status: positionDrop > 0 ? "critical" : "attention",
+      headline: `${compName} added ${compDelta} review${compDelta !== 1 ? "s" : ""} this week. Your position held.`,
+      context: `Alloro is watching this. No action needed yet, but matching their pace (${compDelta} per week) keeps you safe.`,
+      status: "attention",
       verifyUrl: s.marketSearchUrl,
-      surprise: positionDrop > 0 ? 8 : 6,
-      actionText: "See what changed",
-      actionUrl: "/compare",
+      surprise: 5,
+      actionText: null,
+      actionUrl: null,
       signalType: "competitor_surge",
     };
   } catch {
@@ -242,24 +332,25 @@ async function checkReviewTrajectory(s: OrgSnapshot): Promise<OzEngineResult | n
   const clientWeekly = Math.max(0.2, s.clientReviews / 104);
   const daysToClose = clientWeekly > 0 ? Math.ceil((gap + 1) / clientWeekly * 7) : Infinity;
 
+  // Within striking distance: clear action, specific timeline
   if (daysToClose <= 14) {
     return {
-      headline: `You're ${gap} review${gap !== 1 ? "s" : ""} from passing ${s.competitorName}.`,
-      context: `At your current pace, you close that in about ${daysToClose} days. Every review counts double when you're this close.`,
+      headline: `You pass ${s.competitorName} in ${daysToClose} days. Send ${Math.min(gap, 3)} review requests today.`,
+      context: `You're ${gap} review${gap !== 1 ? "s" : ""} away. At your current pace this closes itself, but ${Math.min(gap, 3)} requests today could cut that in half.`,
       status: "attention",
       verifyUrl: s.googleSearchUrl,
       surprise: 7,
-      actionText: "Request reviews",
+      actionText: "Send review requests",
       actionUrl: "/reviews",
       signalType: "closeable_gap",
     };
   }
 
+  // Large gap: reframe as long game, not emergency
   if (gap > 100) {
-    const monthsToClose = Math.ceil(gap / (clientWeekly * 4));
     return {
-      headline: `${s.competitorName} has ${gap} more reviews than you in ${s.city || "your market"}.`,
-      context: `At current pace, that closes in about ${Math.min(monthsToClose, 36)} months. 2 reviews per week cuts that in half.`,
+      headline: `The gap with ${s.competitorName} is ${gap} reviews. This is a long game, not a sprint.`,
+      context: `2 reviews per week is the formula. Alloro is tracking your pace. ${s.clientContext ? s.clientContext : "Consistency compounds."}`,
       status: "attention",
       verifyUrl: s.googleSearchUrl,
       surprise: 4,
@@ -269,15 +360,16 @@ async function checkReviewTrajectory(s: OrgSnapshot): Promise<OzEngineResult | n
     };
   }
 
+  // Medium gap: connect effort to outcome
   const weeksToClose = Math.ceil(gap / Math.max(1, clientWeekly));
   return {
-    headline: `${gap} reviews between you and ${s.competitorName}.`,
-    context: `At current pace, about ${Math.min(weeksToClose, 52)} weeks to close. Ask 2 customers this week.`,
+    headline: `${gap} reviews to close. Ask 2 patients this week.`,
+    context: `At your current pace, you pass ${s.competitorName} in about ${Math.min(weeksToClose, 52)} weeks. Every review request this week accelerates that.`,
     status: "attention",
     verifyUrl: s.googleSearchUrl,
     surprise: 5,
-    actionText: null,
-    actionUrl: null,
+    actionText: "Send review requests",
+    actionUrl: "/reviews",
     signalType: "review_gap",
   };
 }
@@ -287,14 +379,14 @@ async function checkReviewTrajectory(s: OrgSnapshot): Promise<OzEngineResult | n
 async function checkRatingSignal(s: OrgSnapshot): Promise<OzEngineResult | null> {
   if (!s.clientRating || !s.competitorName) return null;
 
-  // You lead in reviews
+  // You lead in reviews: confirm the position, reinforce what's working
   if (s.competitorReviews && s.clientReviews > s.competitorReviews) {
     const lead = s.clientReviews - s.competitorReviews;
     return {
-      headline: `You lead ${s.competitorName} by ${lead} reviews in ${s.city || "your market"}.`,
+      headline: `Your lead over ${s.competitorName} is ${lead} reviews. Nothing to do here.`,
       context: s.clientRating > (s.competitorRating || 0)
-        ? `And your ${s.clientRating}-star rating beats their ${s.competitorRating}. Strong position.`
-        : `Keep the momentum. One review per week compounds into a moat.`,
+        ? `Your ${s.clientRating}-star rating beats their ${s.competitorRating} too. Alloro is watching to alert you if that changes.`
+        : `Keep doing what you're doing. Alloro will tell you if ${s.competitorName} starts closing the gap.`,
       status: "healthy",
       verifyUrl: s.googleSearchUrl,
       surprise: 3,
@@ -304,12 +396,12 @@ async function checkRatingSignal(s: OrgSnapshot): Promise<OzEngineResult | null>
     };
   }
 
-  // Rating advantage even if behind on count
+  // Rating advantage even if behind on count: acknowledge the strength
   if (s.competitorRating && s.clientRating > s.competitorRating) {
     const ratingDiff = (s.clientRating - s.competitorRating).toFixed(1);
     return {
-      headline: `Your ${s.clientRating}-star rating beats ${s.competitorName} by ${ratingDiff} stars.`,
-      context: `Higher stars mean higher click-through in Google results and AI answers. That's earned trust.`,
+      headline: `Your ${s.clientRating}-star rating beats ${s.competitorName} by ${ratingDiff} stars. That's your moat.`,
+      context: `Higher stars mean higher click-through in Google and AI answers. Volume closes the rest of the gap. Alloro is tracking both.`,
       status: "healthy",
       verifyUrl: s.googleSearchUrl,
       surprise: 4,
@@ -340,12 +432,20 @@ async function checkCleanWeek(s: OrgSnapshot): Promise<OzEngineResult | null> {
     const compDelta = (current.competitor_review_count || 0) - (previous.competitor_review_count || 0);
 
     if (positionStable && compDelta <= 0) {
+      // The signature dish: proof we checked, nothing needed your attention.
+      // This is the default state of confidence. Elevated from surprise:1 to surprise:6
+      // because a confirmed clean week IS the product working.
+      const totalActions = s.prooflineScansThisWeek + s.dfyActionsThisWeek;
+      const proofLine = totalActions > 0
+        ? `Alloro ran ${totalActions} check${totalActions !== 1 ? "s" : ""} this week${s.prooflineScansThisWeek > 0 ? ` (${s.prooflineScansThisWeek} market scans)` : ""}. Nothing needed your attention.`
+        : `Alloro monitored your market this week. Nothing needed your attention.`;
+
       return {
-        headline: `Quiet week in ${s.city || "your market"}. No competitor gained ground.`,
-        context: "Your position held steady. Alloro is watching and will tell you when something changes.",
+        headline: `Clean week. Your business is on track.`,
+        context: proofLine,
         status: "healthy",
         verifyUrl: null,
-        surprise: 1,
+        surprise: 6,
         actionText: null,
         actionUrl: null,
         signalType: "clean_week",
@@ -367,19 +467,13 @@ async function checkCleanWeek(s: OrgSnapshot): Promise<OzEngineResult | null> {
 //
 
 function buildColdStartHero(s: OrgSnapshot): OzEngineResult | null {
-  // Priority 1: Quantified review gap with competitor named
+  // Priority 1: Quantified review gap with competitor named -- frame as what Alloro will do
   if (s.competitorName && s.competitorReviews && s.clientReviews > 0) {
     const gap = s.competitorReviews - s.clientReviews;
     if (gap > 0) {
-      const weeksToClose = Math.ceil(gap / 2); // 2 reviews/week is a realistic ask rate
-      const timeframe = weeksToClose <= 4
-        ? `${weeksToClose} week${weeksToClose !== 1 ? "s" : ""}`
-        : weeksToClose <= 52
-          ? `about ${Math.ceil(weeksToClose / 4)} months`
-          : `over a year`;
       return {
-        headline: `${s.competitorName} has ${s.competitorReviews} reviews to your ${s.clientReviews}. That gap is closeable.`,
-        context: `At 2 reviews per week, you close ${gap} reviews in ${timeframe}. Every review also strengthens how Google's AI describes your practice.`,
+        headline: `Alloro found ${s.competitorName}. They have ${gap} more reviews than you.`,
+        context: `Alloro is now watching them weekly. Your first Monday brief will tell you exactly what to do about it. No guessing.`,
         status: gap > 100 ? "attention" : "healthy",
         verifyUrl: s.googleSearchUrl,
         surprise: 4,
@@ -390,8 +484,8 @@ function buildColdStartHero(s: OrgSnapshot): OzEngineResult | null {
     }
     // You lead
     return {
-      headline: `You lead ${s.competitorName} by ${Math.abs(gap)} reviews in ${s.city || "your market"}.`,
-      context: `${s.clientRating ? `Your ${s.clientRating}-star rating` : "Your reviews"} and volume give you an edge in Google's search results and AI answers. Alloro is watching weekly to make sure it stays that way.`,
+      headline: `You lead ${s.competitorName} by ${Math.abs(gap)} reviews. Alloro will make sure it stays that way.`,
+      context: `Alloro is now monitoring ${s.competitorName} and your market in ${s.city || "your area"} every week. If anything changes, you'll know Monday morning.`,
       status: "healthy",
       verifyUrl: s.googleSearchUrl,
       surprise: 3,
@@ -405,8 +499,8 @@ function buildColdStartHero(s: OrgSnapshot): OzEngineResult | null {
   if (s.competitorName && s.clientRating && s.competitorRating) {
     if (s.clientRating > s.competitorRating) {
       return {
-        headline: `Your ${s.clientRating}-star rating beats ${s.competitorName} at ${s.competitorRating} stars.`,
-        context: `Higher stars mean higher click-through in Google search results. Patients trust the number before they read a single review.`,
+        headline: `Your ${s.clientRating}-star rating beats ${s.competitorName}. That's your edge.`,
+        context: `Alloro is now tracking both ratings and review volume. Your Monday brief will show you if anything shifts.`,
         status: "healthy",
         verifyUrl: s.googleSearchUrl,
         surprise: 3,
@@ -416,13 +510,13 @@ function buildColdStartHero(s: OrgSnapshot): OzEngineResult | null {
       };
     }
     return {
-      headline: `${s.competitorName} has a ${s.competitorRating}-star rating to your ${s.clientRating}.`,
-      context: `The fastest way to close a rating gap is volume. Every new 5-star review moves the needle. Ask 2 customers this week.`,
+      headline: `${s.competitorName} has a higher rating. Alloro will show you how to close it.`,
+      context: `Your Monday brief will include the specific steps. Volume is the fastest lever. 2 review requests this week starts the process.`,
       status: "attention",
       verifyUrl: s.googleSearchUrl,
       surprise: 3,
-      actionText: null,
-      actionUrl: null,
+      actionText: "Send review requests",
+      actionUrl: "/reviews",
       signalType: "cold_start_rating_gap",
     };
   }
@@ -430,8 +524,8 @@ function buildColdStartHero(s: OrgSnapshot): OzEngineResult | null {
   // Priority 3: Market context with competitor named
   if (s.competitorName && s.city) {
     return {
-      headline: `Alloro is tracking ${s.competitorName} and your market in ${s.city}.`,
-      context: `Your first competitive report arrives Monday. Every week, Alloro scans reviews, rankings, and visibility for every competitor in your market.`,
+      headline: `Alloro is now watching your market in ${s.city}.`,
+      context: `${s.competitorName} and every other competitor in your area are being tracked. Your first Monday brief arrives next week with what we found.`,
       status: "healthy",
       verifyUrl: s.marketSearchUrl,
       surprise: 2,
@@ -444,8 +538,8 @@ function buildColdStartHero(s: OrgSnapshot): OzEngineResult | null {
   // Priority 4: Basic org data only
   if (s.city || s.orgName) {
     return {
-      headline: `Your Google presence in ${s.city || "your market"} is being tracked.`,
-      context: `Alloro scans your competitors, reviews, and visibility every week. Your Monday brief will show exactly where you stand.`,
+      headline: `Alloro is scanning your market. Your first brief arrives Monday.`,
+      context: `Every week, Alloro checks your competitors, reviews, and visibility in ${s.city || "your area"}. If something needs your attention, you'll know.`,
       status: "healthy",
       verifyUrl: s.googleSearchUrl || s.marketSearchUrl,
       surprise: 1,

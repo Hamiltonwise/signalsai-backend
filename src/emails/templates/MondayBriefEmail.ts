@@ -86,6 +86,14 @@ export interface MondayBriefData {
   proofOfWork?: string | null;
   founderLine?: string | null;
   communityCount?: number | null;
+  /** One-tap review link for the owner to share with patients */
+  reviewLink?: string | null;
+  /** Review stats from last week */
+  reviewStats?: {
+    sent: number;
+    clicked: number;
+    newReviews: number;
+  } | null;
 }
 
 // ── Status dot color helper ────────────────────────────────────────
@@ -234,7 +242,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 24px; border-left: 2px solid ${COLORS.divider};">
         <tr>
           <td style="padding-left: 16px;">
-            <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.terracotta};">Working in the Background</p>
+            <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.terracotta};">Your Receipt</p>
             <p style="margin: 0; font-size: 13px; color: ${COLORS.textSecondary}; line-height: 1.6;">${data.proofOfWork}</p>
           </td>
         </tr>
@@ -251,6 +259,35 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
   const referralSection = referralLine
     ? `<p style="margin: 0 0 16px; font-size: 13px; color: ${COLORS.textSecondary}; line-height: 1.5;">${referralLine}</p>`
     : "";
+
+  // ── Review Link (the one action that compounds) ────────────────
+  let reviewSection = "";
+  if (data.reviewLink) {
+    const statsLine = data.reviewStats && data.reviewStats.sent > 0
+      ? `Last week: ${data.reviewStats.sent} sent, ${data.reviewStats.clicked} clicked, ${data.reviewStats.newReviews} new review${data.reviewStats.newReviews !== 1 ? "s" : ""}.`
+      : "Share it after every appointment. Alloro tracks every click and review.";
+
+    reviewSection = `
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: ${COLORS.cardBg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 16px; margin-bottom: 24px;">
+        <tr>
+          <td style="padding: 24px;">
+            <p style="margin: 0 0 8px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.terracotta};">Your Review Link</p>
+            <p style="margin: 0 0 12px; font-size: 14px; color: ${COLORS.textPrimary}; line-height: 1.5;">
+              Text this to your last 3 patients. One tap, straight to Google reviews.
+            </p>
+            <div style="margin: 0 0 12px; padding: 12px 16px; background: ${COLORS.pageBg}; border-radius: 8px; text-align: center;">
+              <a href="${data.reviewLink}" style="font-size: 15px; font-weight: 600; color: ${COLORS.terracotta}; text-decoration: none; word-break: break-all;">
+                ${data.reviewLink}
+              </a>
+            </div>
+            <p style="margin: 0; font-size: 13px; color: ${COLORS.textSecondary}; line-height: 1.5;">
+              ${statsLine}
+            </p>
+          </td>
+        </tr>
+      </table>
+    `;
+  }
 
   // ── CTA Button ─────────────────────────────────────────────────
   const ctaButton = `
@@ -324,6 +361,11 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
             </td>
           </tr>
 
+          <!-- Proof of Work (the receipt comes first) -->
+          <tr>
+            <td>${proofSection}</td>
+          </tr>
+
           <!-- Oz Moment Hero -->
           <tr>
             <td>${heroSection}</td>
@@ -334,9 +376,9 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
             <td>${readingsSection}</td>
           </tr>
 
-          <!-- Proof of Work -->
+          <!-- Review Link -->
           <tr>
-            <td>${proofSection}</td>
+            <td>${reviewSection}</td>
           </tr>
 
           <!-- Competitor Note -->
