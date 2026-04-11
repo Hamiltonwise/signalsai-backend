@@ -5,26 +5,26 @@
  * - URL includes ?mode=conference or ?demo=true
  * - API calls timeout after 5 seconds
  *
- * All competitor names are fictional. Uses universal specialist
- * language, not dental-specific.
+ * Default demo: Valley Endodontics, Salt Lake City (matches the
+ * paper PDF handed out at AAE). Competitor names are fictional.
  */
 
 import type { PlaceDetails } from "../../api/places";
 
 export const CONFERENCE_PLACE: PlaceDetails = {
   placeId: "conference-demo-slc",
-  name: "Valley Specialty Group",
+  name: "Valley Endodontics",
   formattedAddress: "123 S State St, Salt Lake City, UT 84111",
   city: "Salt Lake City",
   state: "UT",
-  displayString: "Valley Specialty Group, Salt Lake City, UT",
-  practiceSearchString: "Valley Specialty Group, Salt Lake City, UT",
-  domain: "valleyspecialtygroup.com",
+  displayString: "Valley Endodontics, Salt Lake City, UT",
+  practiceSearchString: "Valley Endodontics, Salt Lake City, UT",
+  domain: "valleyendodontics.com",
   websiteUri: null,
   phone: null,
   rating: 4.6,
   reviewCount: 61,
-  category: "Specialist",
+  category: "Endodontist",
   types: ["health", "professional_services"],
   location: { latitude: 40.7608, longitude: -111.891 },
 };
@@ -45,44 +45,44 @@ export const CONFERENCE_ANALYSIS = {
     competitive: 13,
   },
   topCompetitor: {
-    name: "Summit Specialists",
+    name: "Wasatch Endodontics",
     rating: 4.9,
     reviewCount: 284,
-    placeId: "conf-summit",
-    location: { lat: 40.758, lng: -111.876 },
+    placeId: "conf-wasatch",
+    location: { lat: 40.745, lng: -111.865 },
   },
   competitors: [
-    { name: "Summit Specialists", rating: 4.9, reviewCount: 284, placeId: "conf-summit", location: { lat: 40.758, lng: -111.876 }, driveTimeMinutes: 8 },
-    { name: "Pioneer Specialists", rating: 4.8, reviewCount: 156, placeId: "conf-pioneer", location: { lat: 40.771, lng: -111.902 }, driveTimeMinutes: 12 },
-    { name: "Wasatch Health Partners", rating: 4.7, reviewCount: 98, placeId: "conf-wasatch", location: { lat: 40.745, lng: -111.865 }, driveTimeMinutes: 15 },
-    { name: "Desert Valley Specialists", rating: 4.6, reviewCount: 67, placeId: "conf-desert", location: { lat: 40.782, lng: -111.921 }, driveTimeMinutes: 18 },
+    { name: "Wasatch Endodontics", rating: 4.9, reviewCount: 284, placeId: "conf-wasatch", location: { lat: 40.745, lng: -111.865 }, driveTimeMinutes: 8 },
+    { name: "Pioneer Endodontics", rating: 4.8, reviewCount: 156, placeId: "conf-pioneer", location: { lat: 40.771, lng: -111.902 }, driveTimeMinutes: 12 },
+    { name: "Summit Endodontics", rating: 4.7, reviewCount: 98, placeId: "conf-summit", location: { lat: 40.758, lng: -111.876 }, driveTimeMinutes: 15 },
+    { name: "Desert Endodontics", rating: 4.6, reviewCount: 67, placeId: "conf-desert", location: { lat: 40.782, lng: -111.921 }, driveTimeMinutes: 18 },
   ],
   findings: [
     {
       type: "review_gap",
       title: "Review Gap",
-      detail: "Summit Specialists has 223 more reviews than you. At your current pace, that gap grows by 8 reviews per month.",
+      detail: "Wasatch Endodontics has 223 more reviews than you. At your current pace, that gap grows by 8 reviews per month.",
       value: 223,
       impact: 10035,
     },
     {
       type: "rating_strong",
       title: "Rating Comparison",
-      detail: "Your 4.6-star rating is competitive but Summit leads with 4.9 stars across 284 reviews.",
+      detail: "Your 4.6-star rating is competitive but Wasatch leads with 4.9 stars across 284 reviews.",
       value: 0.3,
       impact: 720,
     },
     {
       type: "market_rank",
       title: "Market Position",
-      detail: "5 specialists in Salt Lake City. Summit and Pioneer have more reviews and are more visible on Google.",
+      detail: "5 endodontists in Salt Lake City. Wasatch and Pioneer have more reviews and are more visible on Google.",
       value: 3,
       impact: 0,
     },
     {
       type: "sentiment_insight",
       title: "Your reviews mention response time",
-      detail: "4 of your last 10 reviews mention response time or scheduling delays. Summit Specialists reviews never mention this. Clients notice.",
+      detail: "4 of your last 10 reviews mention response time or scheduling delays. Wasatch Endodontics reviews never mention this. Clients notice.",
       value: 0,
       impact: 0,
     },
@@ -98,19 +98,19 @@ export const CONFERENCE_ANALYSIS = {
   gaps: [
     {
       id: "review_race",
-      label: "223 reviews to pass Summit Specialists",
+      label: "223 reviews to pass Wasatch Endodontics",
       current: 61,
       target: 284,
       unit: "reviews",
       action: "Ask 3 clients for a Google review this week. At that pace, you close the gap in 18 weeks.",
       timeEstimate: "~18 weeks at current pace",
-      competitorName: "Summit Specialists",
+      competitorName: "Wasatch Endodontics",
       velocity: {
         clientWeekly: 0.6,
         competitorWeekly: 2.7,
         weeksToPass: 73,
         thisWeekAsk: 3,
-        competitorName: "Summit Specialists",
+        competitorName: "Wasatch Endodontics",
       },
     },
   ],
@@ -277,7 +277,7 @@ function buildSentimentFinding(place: PlaceDetails): typeof CONFERENCE_ANALYSIS.
     return {
       type: "sentiment_insight",
       title: "Your reviews mention response time",
-      detail: "4 of your last 10 reviews mention response time or scheduling delays. Summit Specialists reviews never mention this. Clients notice.",
+      detail: "4 of your last 10 reviews mention response time or scheduling delays. Wasatch Endodontics reviews never mention this. Clients notice.",
       value: 0,
       impact: 0,
     };
