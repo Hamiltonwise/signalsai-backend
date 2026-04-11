@@ -176,7 +176,7 @@ export default function ProgressReport() {
 
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
-      <div className="max-w-[640px] mx-auto px-5 sm:px-8 py-10 sm:py-14">
+      <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
 
         <motion.div
           initial={{ opacity: 0, y: 12 }}

@@ -418,7 +418,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
-      <div className="max-w-[1100px] mx-auto px-6 sm:px-10 py-10 sm:py-14">
+      <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
 
         {/* ═══ ABOVE THE FOLD ═══ */}
 
@@ -426,10 +426,10 @@ export default function HomePage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-6"
+          transition={{ duration: 0.5 }}
+          className="mb-4"
         >
-          <h1 className="text-2xl font-light text-[#1A1D23]/60 tracking-tight">{greeting}</h1>
+          <h1 className="text-2xl font-medium text-[#1A1D23]/80 tracking-tight">{greeting}</h1>
         </motion.div>
 
         {/* ── 2. THE OZ MOMENT (HERO) ── */}
@@ -445,20 +445,20 @@ export default function HomePage() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="mb-8"
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="mb-5"
               >
-                <div className={`w-full rounded-2xl px-8 py-10 sm:py-12 min-h-[200px] flex flex-col justify-center ${
+                <div className={`w-full rounded-2xl px-6 py-6 sm:py-8 flex flex-col justify-center ${
                   heroData.signalType === "clean_week" || heroData.status === "healthy"
                     ? "bg-[#F8F6F2] border border-emerald-200"
                     : "bg-[#FDF4F2] border border-[#D56753]/10"
                 }`}>
                   {/* Status indicator */}
-                  <div className="flex items-center gap-2 mb-5">
+                  <div className="flex items-center gap-2 mb-3">
                     <span className={`w-2.5 h-2.5 rounded-full ${
                       heroData.status === "healthy" ? "bg-emerald-500" : heroData.status === "attention" ? "bg-amber-400" : "bg-red-500"
                     }`} />
-                    <span className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF]">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#9CA3AF]">
                       {heroData.signalType === "clean_week" ? "ALL CLEAR" : "THIS WEEK"}
                     </span>
                   </div>
@@ -506,11 +506,11 @@ export default function HomePage() {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="mb-8"
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="mb-5"
               >
-                <div className="w-full rounded-2xl bg-[#FDF4F2] border border-[#D56753]/10 px-8 py-10 sm:py-12 min-h-[200px] flex flex-col justify-center">
-                  <span className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-5">THIS WEEK</span>
+                <div className="w-full rounded-2xl bg-[#FDF4F2] border border-[#D56753]/10 px-6 py-6 sm:py-8 flex flex-col justify-center">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#9CA3AF] mb-5">THIS WEEK</span>
                   <h2 className="text-2xl sm:text-[32px] font-semibold text-[#1A1D23] leading-tight tracking-tight">
                     {intelligenceData.watchline}
                   </h2>
@@ -540,7 +540,7 @@ export default function HomePage() {
                   <div key={item.label} className={`py-5 px-5 ${i > 0 ? "sm:border-l sm:border-[#1A1D23]/5" : ""}`}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`w-2 h-2 rounded-full ${dotColor}`} />
-                      <span className="text-xs text-gray-400 font-semibold uppercase tracking-widest">{item.label}</span>
+                      <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{item.label}</span>
                     </div>
                     <p className="text-2xl sm:text-[28px] font-semibold text-[#1A1D23] leading-none tracking-tight">{item.value}</p>
                     <p className="text-sm text-gray-500 mt-1.5 leading-snug">{item.context}</p>
@@ -549,8 +549,13 @@ export default function HomePage() {
               })}
             </div>
           </motion.div>
+        ) : ctx ? (
+          <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 mb-5">
+            <p className="text-sm font-medium text-[#1A1D23]">Alloro is scanning your market.</p>
+            <p className="text-sm text-gray-500 mt-1">Your competitive readings will appear here within 24 hours of your first scan.</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 mb-5">
             {[1, 2, 3, 4].map(i => (
               <div key={i} className={`py-5 px-5 animate-pulse ${i > 1 ? "sm:border-l sm:border-[#1A1D23]/5" : ""}`}>
                 <div className="flex items-center gap-2 mb-2">
@@ -573,14 +578,14 @@ export default function HomePage() {
             className="mb-8"
           >
             <div className="w-full px-8 py-8 bg-[#212D40] rounded-2xl">
-              <p className="text-xs font-semibold uppercase tracking-widest mb-4 text-[#D56753]">
+              <p className="text-xs font-semibold uppercase tracking-wider mb-4 text-[#D56753]">
                 YOUR NEXT MOVE
               </p>
               <p className="text-xl sm:text-2xl font-semibold leading-snug tracking-tight text-white">
                 {action.headline}
               </p>
               {action.body && (
-                <p className="mt-3 text-sm leading-relaxed text-white/50">
+                <p className="mt-3 text-sm leading-relaxed text-white/70">
                   {action.body}
                 </p>
               )}
@@ -607,7 +612,7 @@ export default function HomePage() {
             transition={{ delay: 0.2 }}
             className="mb-10 pl-4 border-l-2 border-[#212D40]"
           >
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">THIS WEEK</p>
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">THIS WEEK</p>
             <p className="text-xl font-semibold text-[#1A1D23] leading-snug">{intelligenceData.weeklyFinding.headline}</p>
             {intelligenceData.weeklyFinding.bullets.length > 0 && (
               <div className="mt-3 space-y-2">
@@ -624,7 +629,7 @@ export default function HomePage() {
         {/* ── Working in the Background ── */}
         {intelligenceData?.recentActions && intelligenceData.recentActions.length > 0 && (
           <div className="mb-10 pl-4 border-l-2 border-[#1A1D23]/10">
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">WORKING IN THE BACKGROUND</p>
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">WORKING IN THE BACKGROUND</p>
             <div className="space-y-2">
               {intelligenceData.recentActions.map((act, i) => (
                 <p key={i} className="text-[15px] text-gray-700">{act}</p>
