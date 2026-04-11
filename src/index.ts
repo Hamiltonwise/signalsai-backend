@@ -159,6 +159,7 @@ import croInsightsRoutes from "./routes/user/croInsights";
 import helpRoutes from "./routes/user/help";
 import helpArticleRoutes from "./routes/user/helpArticles";
 import mailgunEventsRoutes from "./routes/webhooks/mailgunEvents";
+import dfyApprovalRoutes from "./routes/dfyApproval";
 import { billingGateMiddleware } from "./middleware/billingGate";
 import {
   isAllowedCustomDomain,
@@ -319,6 +320,7 @@ app.use("/api/support", supportRoutes); // Help form / support inquiries
 app.use("/api/scraper", scraperRoutes); // Website scraper for n8n webhooks
 app.use("/api/places", placesRoutes); // Google Places API for GBP search
 app.use("/api/checkup", checkupRoutes); // Free Referral Base Checkup analysis
+app.use("/api/actions", dfyApprovalRoutes); // DFY approval: one-tap approve/reject from Monday email (public endpoints)
 app.use("/api/progress-report", progressReportRoutes); // 365-day progress report
 app.use("/api/org", vocabularyRoutes); // Vocabulary config per org
 app.use("/api/vocabulary", vocabularyRoutes); // Vocabulary defaults (public)

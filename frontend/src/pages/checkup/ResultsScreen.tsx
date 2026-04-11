@@ -459,6 +459,23 @@ export default function ResultsScreen() {
   const [weeklyUpdates, setWeeklyUpdates] = useState(true);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // Target competitor: "Who do you want to beat?"
+  // Pre-selects topCompetitor from the scan. Client can change it.
+  const [selectedCompetitor, setSelectedCompetitor] = useState<{
+    name: string;
+    placeId: string;
+  } | null>(null);
+
+  // Initialize selectedCompetitor from topCompetitor on first render
+  useEffect(() => {
+    if (state?.topCompetitor && !selectedCompetitor) {
+      setSelectedCompetitor({
+        name: state.topCompetitor.name,
+        placeId: state.topCompetitor.placeId,
+      });
+    }
+  }, [state?.topCompetitor]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Oz Pearlman sequential reveal: Oz moments first, then readings, then race, then gate
   const [revealStage, setRevealStage] = useState(0);
   useEffect(() => {
@@ -617,6 +634,8 @@ export default function ResultsScreen() {
             checkup_score: score.composite,
             session_id: getSessionId(),
             source_channel: getSourceChannel() || new URLSearchParams(window.location.search).get("ref") || undefined,
+            // Target competitor: the client's answer to "who do you want to beat?"
+            target_competitor: selectedCompetitor || undefined,
             checkup_data: {
               score,
               topCompetitor: topCompetitor || null,
@@ -956,6 +975,57 @@ export default function ResultsScreen() {
           </p>
         )}
       </div>
+
+      {/* ═══ TARGET COMPETITOR PICKER — "Who do you want to beat?" ═══ */}
+      {/* Shows when the scan found competitors. Pre-selects the top one.
+          One tap to change. This writes target_competitor on account creation
+          so the entire system runs against their chosen competitor from day one. */}
+      {state.competitors && state.competitors.length > 0 && topCompetitor && (
+        <div className={`transition-all duration-700 ${revealStage >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <div className="rounded-2xl border border-stone-200/60 bg-stone-50/80 p-5">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+              Who do you want to beat?
+            </p>
+            <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+              Alloro will track this competitor weekly and tell you exactly what to do to close the gap.
+            </p>
+            <div className="space-y-2">
+              {/* Top competitor first, then others */}
+              {[topCompetitor, ...state.competitors.filter(c => c.placeId !== topCompetitor.placeId)]
+                .slice(0, 5)
+                .map((c) => {
+                  const isSelected = selectedCompetitor?.placeId === c.placeId;
+                  return (
+                    <button
+                      key={c.placeId}
+                      type="button"
+                      onClick={() => setSelectedCompetitor({ name: c.name, placeId: c.placeId })}
+                      className={`w-full flex items-center justify-between rounded-xl px-4 py-3 text-left transition-all ${
+                        isSelected
+                          ? "bg-[#D56753]/8 border-2 border-[#D56753]/30"
+                          : "bg-white border border-stone-200/60 hover:border-stone-300"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className={`text-sm font-semibold truncate ${isSelected ? "text-[#D56753]" : "text-[#1A1D23]"}`}>
+                          {c.name}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {c.reviewCount} reviews, {c.rating} stars
+                        </p>
+                      </div>
+                      {isSelected && (
+                        <div className="shrink-0 ml-3 w-5 h-5 rounded-full bg-[#D56753] flex items-center justify-center">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Gap Progress Bars — concrete closeable units */}
       <div className={`transition-all duration-700 ${revealStage >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>

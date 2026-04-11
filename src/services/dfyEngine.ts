@@ -14,6 +14,7 @@
  * Owner.com proved the model: do the work, show the receipt, charge for outcomes.
  */
 
+import crypto from "crypto";
 import axios from "axios";
 import { db } from "../database/connection";
 import { getValidOAuth2ClientByOrg } from "../auth/oauth2Helper";
@@ -380,22 +381,354 @@ export interface CompetitorGap {
 }
 
 // =====================================================================
-// 4. WEEKLY DFY RUN (all orgs)
+// 4. PENDING ACTION INFRASTRUCTURE (draft-then-approve)
+// =====================================================================
+
+/**
+ * Create a pending action for owner approval.
+ * Returns the approval token for use in email links.
+ *
+ * At 5 clients, auto-execute is fine. At 10,000, you need this.
+ */
+export async function createPendingAction(params: {
+  orgId: number;
+  actionType: string;
+  payload: Record<string, unknown>;
+  previewTitle: string;
+  previewBody: string;
+  expiresInDays?: number;
+}): Promise<{ id: string; token: string } | null> {
+  try {
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + (params.expiresInDays || 7));
+
+    const [action] = await db("pending_actions")
+      .insert({
+        org_id: params.orgId,
+        action_type: params.actionType,
+        status: "draft",
+        payload: JSON.stringify(params.payload),
+        preview_title: params.previewTitle,
+        preview_body: params.previewBody,
+        approval_token: token,
+        expires_at: expiresAt,
+      })
+      .returning(["id", "approval_token"]);
+
+    return { id: action.id, token: action.approval_token };
+  } catch (err: any) {
+    console.error(`[DFY] Failed to create pending action: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Execute an approved action. Called by the approval route after token validation.
+ * Dispatches to the appropriate executor based on action_type.
+ */
+export async function executeApprovedAction(
+  action: {
+    id: string;
+    org_id: number;
+    action_type: string;
+    payload: Record<string, unknown> | string;
+  },
+): Promise<{ success: boolean; detail?: string }> {
+  const payload = typeof action.payload === "string"
+    ? JSON.parse(action.payload)
+    : action.payload;
+
+  switch (action.action_type) {
+    case "gbp_post":
+      return executeGBPPostFromDraft(action.org_id, payload);
+    case "cro_title":
+    case "cro_meta":
+      return executeCROFromDraft(action.org_id, payload);
+    default:
+      return { success: false, detail: `Unknown action type: ${action.action_type}` };
+  }
+}
+
+/**
+ * Execute a GBP post from a previously drafted pending action.
+ * The content was already generated and stored in the payload.
+ */
+async function executeGBPPostFromDraft(
+  orgId: number,
+  payload: Record<string, unknown>,
+): Promise<{ success: boolean; detail?: string }> {
+  try {
+    const postContent = payload.content as string;
+    if (!postContent) return { success: false, detail: "No content in payload" };
+
+    const connection = await db("google_connections")
+      .where({ organization_id: orgId })
+      .whereNotNull("refresh_token")
+      .first();
+
+    if (!connection) return { success: false, detail: "No GBP connection" };
+
+    const accountId = connection.account_id;
+    const locationId = connection.location_id;
+    const locationName = connection.location_name || connection.location_resource_name;
+
+    if (!accountId || !locationId) {
+      return { success: false, detail: "Missing GBP account/location IDs" };
+    }
+
+    const auth = await getValidOAuth2ClientByOrg(orgId);
+    const headers = await buildAuthHeaders(auth);
+    const parent = locationName || `accounts/${accountId}/locations/${locationId}`;
+
+    const { data } = await axios.post(
+      `https://mybusiness.googleapis.com/v4/${parent}/localPosts`,
+      {
+        languageCode: "en-US",
+        summary: postContent,
+        topicType: "STANDARD",
+      },
+      { headers, timeout: 15000 },
+    );
+
+    const postId = data?.name?.split("/").pop() || "unknown";
+
+    await recordDFYAction(orgId, "dfy.gbp_post_published", {
+      post_id: postId,
+      summary: postContent.slice(0, 200),
+      generated_by: "dfy_engine",
+      approved: true,
+    });
+
+    return { success: true, detail: `Post ${postId} published` };
+  } catch (err: any) {
+    const message = err?.response?.data?.error?.message || err.message;
+    return { success: false, detail: message };
+  }
+}
+
+/**
+ * Execute a CRO change from a previously drafted pending action.
+ */
+async function executeCROFromDraft(
+  orgId: number,
+  payload: Record<string, unknown>,
+): Promise<{ success: boolean; detail?: string }> {
+  try {
+    const pageId = payload.page_id as number;
+    const changeType = payload.change_type as string;
+    const newValue = payload.recommended_value as string;
+
+    if (!pageId || !changeType || !newValue) {
+      return { success: false, detail: "Incomplete CRO payload" };
+    }
+
+    const page = await db("website_builder.pages")
+      .where({ id: pageId })
+      .first();
+
+    if (!page) return { success: false, detail: "Page not found" };
+
+    const currentSeo = typeof page.seo_data === "string"
+      ? JSON.parse(page.seo_data)
+      : page.seo_data || {};
+
+    const beforeValue = changeType === "title"
+      ? currentSeo.meta_title || ""
+      : currentSeo.meta_description || "";
+
+    const updatedSeo = { ...currentSeo };
+    if (changeType === "title") {
+      updatedSeo.meta_title = newValue;
+    } else {
+      updatedSeo.meta_description = newValue;
+    }
+
+    await db("website_builder.pages")
+      .where({ id: pageId })
+      .update({
+        seo_data: JSON.stringify(updatedSeo),
+        updated_at: new Date(),
+      });
+
+    await recordDFYAction(orgId, "dfy.cro_applied", {
+      page_path: payload.page_path,
+      change_type: changeType,
+      before: beforeValue,
+      after: newValue,
+      approved: true,
+    });
+
+    return { success: true, detail: `${changeType} updated on ${payload.page_path}` };
+  } catch (err: any) {
+    return { success: false, detail: err.message };
+  }
+}
+
+// =====================================================================
+// 5. DRAFT CREATORS (generate content, save as pending, don't execute)
+// =====================================================================
+
+/**
+ * Draft a GBP post for owner approval.
+ * Generates the content via LLM but stores it in pending_actions instead of posting.
+ */
+export async function draftGBPPost(orgId: number): Promise<{
+  drafted: boolean;
+  token?: string;
+  error?: string;
+}> {
+  try {
+    const org = await db("organizations")
+      .where({ id: orgId })
+      .select("name", "specialty", "city", "state", "checkup_data")
+      .first();
+
+    if (!org) return { drafted: false, error: "Org not found" };
+
+    // Check GBP connection exists (we'll need it at execution time)
+    const connection = await db("google_connections")
+      .where({ organization_id: orgId })
+      .whereNotNull("refresh_token")
+      .first();
+
+    if (!connection) return { drafted: false, error: "No GBP connection" };
+
+    // Generate content (same LLM call as before)
+    const postContent = await generatePostContent(org);
+    if (!postContent) return { drafted: false, error: "Failed to generate post content" };
+
+    // Store as pending action instead of publishing
+    const result = await createPendingAction({
+      orgId,
+      actionType: "gbp_post",
+      payload: {
+        content: postContent,
+        specialty: org.specialty,
+        city: org.city,
+      },
+      previewTitle: `GBP Post for ${org.name}`,
+      previewBody: postContent,
+    });
+
+    if (!result) return { drafted: false, error: "Failed to create pending action" };
+
+    console.log(`[DFY] Drafted GBP post for org ${orgId} (token: ${result.token.slice(0, 8)}...)`);
+    return { drafted: true, token: result.token };
+  } catch (err: any) {
+    console.error(`[DFY] GBP draft failed for org ${orgId}: ${err.message}`);
+    return { drafted: false, error: err.message };
+  }
+}
+
+/**
+ * Draft CRO recommendations for owner approval.
+ * Runs the CRO engine but stores changes as pending actions instead of applying.
+ */
+export async function draftCRORecommendations(orgId: number): Promise<{
+  drafted: number;
+  skipped: number;
+}> {
+  const { recommendations } = await runCROEngine(orgId);
+
+  if (recommendations.length === 0) {
+    return { drafted: 0, skipped: 0 };
+  }
+
+  let drafted = 0;
+  let skipped = 0;
+
+  for (const rec of recommendations) {
+    if (!rec.autoExecutable) {
+      skipped++;
+      continue;
+    }
+
+    if (rec.changeType !== "title" && rec.changeType !== "meta_description") {
+      skipped++;
+      continue;
+    }
+
+    try {
+      const project = await db("website_builder.projects")
+        .where({ organization_id: orgId })
+        .whereIn("status", ["published", "live"])
+        .first();
+
+      if (!project) { skipped++; continue; }
+
+      const page = await db("website_builder.pages")
+        .where({ project_id: project.id })
+        .where(function () {
+          this.where("path", rec.pageUrl)
+            .orWhere("path", rec.pageUrl.replace(/^\//, ""));
+        })
+        .where("status", "published")
+        .first();
+
+      if (!page) { skipped++; continue; }
+
+      const currentSeo = typeof page.seo_data === "string"
+        ? JSON.parse(page.seo_data)
+        : page.seo_data || {};
+
+      const beforeValue = rec.changeType === "title"
+        ? currentSeo.meta_title || ""
+        : currentSeo.meta_description || "";
+
+      const actionType = rec.changeType === "title" ? "cro_title" : "cro_meta";
+
+      const previewBody = `Change ${rec.changeType} on ${rec.pageUrl}\n\nCurrent: ${beforeValue}\nRecommended: ${rec.recommendedValue}\n\nExpected impact: ${rec.expectedImpact}`;
+
+      const result = await createPendingAction({
+        orgId,
+        actionType,
+        payload: {
+          page_id: page.id,
+          page_path: rec.pageUrl,
+          change_type: rec.changeType,
+          current_value: beforeValue,
+          recommended_value: rec.recommendedValue,
+          trigger: rec.trigger,
+          expected_impact: rec.expectedImpact,
+        },
+        previewTitle: `SEO: Update ${rec.changeType} on ${rec.pageUrl}`,
+        previewBody,
+      });
+
+      if (result) {
+        drafted++;
+        console.log(`[DFY] Drafted CRO ${rec.changeType} for org ${orgId} on ${rec.pageUrl}`);
+      } else {
+        skipped++;
+      }
+    } catch (err: any) {
+      console.error(`[DFY] CRO draft failed for org ${orgId}: ${err.message}`);
+      skipped++;
+    }
+  }
+
+  return { drafted, skipped };
+}
+
+// =====================================================================
+// 6. WEEKLY DFY RUN (all orgs)
 // =====================================================================
 
 /**
  * Run the full DFY cycle for all active orgs.
  * Designed to run as a BullMQ job, Sunday night before Monday email.
  *
+ * DRAFT-THEN-APPROVE: Nothing executes automatically.
  * For each org:
- * 1. Publish a GBP post (if GBP connected)
- * 2. Run CRO and auto-apply safe changes (if PatientPath site exists)
- * 3. Analyze target competitor gaps (if target set)
+ * 1. Draft a GBP post (owner approves from Monday email)
+ * 2. Draft CRO changes (owner approves from Monday email)
+ * 3. Analyze target competitor gaps (informational, no approval needed)
  */
 export async function runDFYForAllOrgs(): Promise<{
   processed: number;
-  gbpPosts: number;
-  croChanges: number;
+  gbpDrafts: number;
+  croDrafts: number;
   errors: number;
 }> {
   const orgs = await db("organizations")
@@ -407,8 +740,8 @@ export async function runDFYForAllOrgs(): Promise<{
     .select("id", "name");
 
   let processed = 0;
-  let gbpPosts = 0;
-  let croChanges = 0;
+  let gbpDrafts = 0;
+  let croDrafts = 0;
   let errors = 0;
 
   for (const org of orgs) {
@@ -418,16 +751,16 @@ export async function runDFYForAllOrgs(): Promise<{
 
       processed++;
 
-      // 1. GBP Post
-      const postResult = await publishGBPPost(org.id);
-      if (postResult.success) gbpPosts++;
+      // 1. Draft GBP Post (owner approves via Monday email)
+      const postResult = await draftGBPPost(org.id);
+      if (postResult.drafted) gbpDrafts++;
 
-      // 2. CRO Auto-Apply
+      // 2. Draft CRO changes (owner approves via Monday email)
       try {
-        const croResult = await executeCRORecommendations(org.id);
-        croChanges += croResult.applied;
+        const croResult = await draftCRORecommendations(org.id);
+        croDrafts += croResult.drafted;
       } catch (croErr: any) {
-        console.error(`[DFY] CRO failed for ${org.name}: ${croErr.message}`);
+        console.error(`[DFY] CRO draft failed for ${org.name}: ${croErr.message}`);
       }
 
       // 3. Target competitor gap analysis (store for Oz Engine consumption)
@@ -448,8 +781,40 @@ export async function runDFYForAllOrgs(): Promise<{
     }
   }
 
-  console.log(`[DFY] Complete: ${processed} orgs, ${gbpPosts} GBP posts, ${croChanges} CRO changes, ${errors} errors`);
-  return { processed, gbpPosts, croChanges, errors };
+  console.log(`[DFY] Complete: ${processed} orgs, ${gbpDrafts} GBP drafts, ${croDrafts} CRO drafts, ${errors} errors`);
+  return { processed, gbpDrafts, croDrafts, errors };
+}
+
+/**
+ * Get pending actions for an org, ready for inclusion in Monday email.
+ * Returns draft actions with their approval/reject URLs.
+ */
+export async function getPendingActionsForEmail(orgId: number): Promise<Array<{
+  previewTitle: string;
+  previewBody: string;
+  actionType: string;
+  approveUrl: string;
+  rejectUrl: string;
+}>> {
+  try {
+    const actions = await db("pending_actions")
+      .where({ org_id: orgId, status: "draft" })
+      .where("expires_at", ">", new Date())
+      .orderBy("created_at", "desc")
+      .select("preview_title", "preview_body", "action_type", "approval_token");
+
+    const baseUrl = process.env.API_URL || "https://api.getalloro.com";
+
+    return actions.map((a: { preview_title: string; preview_body: string; action_type: string; approval_token: string }) => ({
+      previewTitle: a.preview_title,
+      previewBody: a.preview_body,
+      actionType: a.action_type,
+      approveUrl: `${baseUrl}/api/actions/approve/${a.approval_token}`,
+      rejectUrl: `${baseUrl}/api/actions/reject/${a.approval_token}`,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 // =====================================================================

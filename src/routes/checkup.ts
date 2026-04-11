@@ -1627,6 +1627,20 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
           checkupUpdates.utc_offset_minutes = checkup_data.place.utcOffsetMinutes;
         }
 
+        // Target competitor lock: when the client picks "who do you want to beat?"
+        // during the checkup, store it so every Oz Engine signal, One Action Card,
+        // and Monday email runs against their chosen competitor from day one.
+        const targetComp = req.body.target_competitor;
+        if (targetComp?.name) {
+          const hasTargetCol = await trx.schema.hasColumn("organizations", "target_competitor_name");
+          if (hasTargetCol) {
+            checkupUpdates.target_competitor_name = targetComp.name;
+            if (targetComp.placeId) {
+              checkupUpdates.target_competitor_place_id = targetComp.placeId;
+            }
+          }
+        }
+
         await trx("organizations").where({ id: newOrg.id }).update(checkupUpdates);
       }
 

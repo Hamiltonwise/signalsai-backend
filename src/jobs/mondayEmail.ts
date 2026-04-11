@@ -17,6 +17,7 @@ import { db } from "../database/connection";
 import { sendMondayBriefEmail, type Reading as EmailReading } from "../emails/templates/MondayBriefEmail";
 import { sendCleanWeekEmail } from "../emails/templates/CleanWeekEmail";
 import { getOzEngineResult, type OzEngineResult } from "../services/ozEngine";
+import { getPendingActionsForEmail } from "../services/dfyEngine";
 import { getMostShareableFinding } from "../services/behavioralIntelligence";
 import {
   generateSurpriseFindings,
@@ -915,6 +916,14 @@ export async function sendMondayEmailForOrg(
     // Non-blocking: review link generation failed
   }
 
+  // Fetch pending DFY actions for this org's Monday email
+  let pendingActions: Awaited<ReturnType<typeof getPendingActionsForEmail>> = [];
+  try {
+    pendingActions = await getPendingActionsForEmail(orgId);
+  } catch {
+    // Non-blocking: pending actions table may not exist yet
+  }
+
   // Send via email service
   try {
     const success = await sendMondayBriefEmail({
@@ -944,6 +953,7 @@ export async function sendMondayEmailForOrg(
       communityCount,
       reviewLink,
       reviewStats,
+      pendingActions: pendingActions.length > 0 ? pendingActions : null,
     });
 
     if (success) {

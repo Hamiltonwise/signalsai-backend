@@ -94,6 +94,14 @@ export interface MondayBriefData {
     clicked: number;
     newReviews: number;
   } | null;
+  /** Pending DFY actions awaiting owner approval */
+  pendingActions?: Array<{
+    previewTitle: string;
+    previewBody: string;
+    actionType: string;
+    approveUrl: string;
+    rejectUrl: string;
+  }> | null;
 }
 
 // ── Status dot color helper ────────────────────────────────────────
@@ -289,6 +297,66 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
     `;
   }
 
+  // ── Pending Actions (Drafts for You) ────────────────────────────
+  let pendingActionsSection = "";
+  if (data.pendingActions && data.pendingActions.length > 0) {
+    const actionCards = data.pendingActions.map((action) => {
+      const typeLabel = action.actionType === "gbp_post"
+        ? "GBP Post"
+        : action.actionType === "cro_title"
+          ? "SEO Title"
+          : action.actionType === "cro_meta"
+            ? "Meta Description"
+            : "Action";
+
+      // Truncate preview body for email (first 200 chars)
+      const preview = action.previewBody.length > 200
+        ? action.previewBody.slice(0, 200) + "..."
+        : action.previewBody;
+
+      return `
+        <tr>
+          <td style="padding: 16px; border-bottom: 1px solid ${COLORS.divider};">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+              <tr>
+                <td>
+                  <span style="display: inline-block; padding: 2px 8px; background: ${COLORS.terracottaWash}; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.terracotta};">${typeLabel}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-top: 8px;">
+                  <p style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: ${COLORS.textPrimary}; line-height: 1.4;">${action.previewTitle}</p>
+                  <p style="margin: 0 0 12px; font-size: 13px; color: ${COLORS.textSecondary}; line-height: 1.5; white-space: pre-line;">${preview}</p>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <a href="${action.approveUrl}" style="display: inline-block; padding: 8px 20px; background-color: ${COLORS.terracotta}; color: #FFFFFF; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px;">Approve</a>
+                  <a href="${action.rejectUrl}" style="display: inline-block; padding: 8px 20px; color: ${COLORS.textTertiary}; text-decoration: none; font-size: 13px; margin-left: 8px;">Skip</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    const actionCount = data.pendingActions.length;
+    const actionLabel = actionCount === 1 ? "1 draft" : `${actionCount} drafts`;
+
+    pendingActionsSection = `
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: ${COLORS.cardBg}; border: 1px solid ${COLORS.cardBorder}; border-radius: 16px; margin-bottom: 24px;">
+        <tr>
+          <td style="padding: 20px 16px 8px;">
+            <p style="margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.terracotta};">Drafts for You</p>
+            <p style="margin: 4px 0 0; font-size: 13px; color: ${COLORS.textSecondary};">Alloro prepared ${actionLabel}. One tap to approve.</p>
+          </td>
+        </tr>
+        ${actionCards}
+      </table>
+    `;
+  }
+
   // ── CTA Button ─────────────────────────────────────────────────
   const ctaButton = `
     <div style="margin: 8px 0 24px; text-align: center;">
@@ -379,6 +447,11 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
           <!-- Review Link -->
           <tr>
             <td>${reviewSection}</td>
+          </tr>
+
+          <!-- Pending Actions (Drafts for You) -->
+          <tr>
+            <td>${pendingActionsSection}</td>
           </tr>
 
           <!-- Competitor Note -->
