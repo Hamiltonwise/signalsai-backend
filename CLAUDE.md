@@ -23,6 +23,12 @@ Backend: src/ (Node.js, Express, Knex, PostgreSQL)
 - Jo (COO/Integrator): maternity leave
 - Dave (CTO, Philippines): infrastructure, EC2, merges to main. Receives finished specs only.
 
+## Operating Protocol
+
+Read `memory/context/operating-protocol.md` before any cross-team handoff.
+Core principle: Corey speaks descriptive (outcomes, feelings). Dave needs prescriptive (files, line numbers, tests). AI translates between them. Corey never writes engineering specs. Dave never interprets product intent.
+Team profiles with working styles: `memory/people/`
+
 ## Deployment Reality (LOCKED -- stop getting this wrong)
 
 Sandbox EC2 auto-deploys on every push to the sandbox branch. CI/CD pipeline is working.

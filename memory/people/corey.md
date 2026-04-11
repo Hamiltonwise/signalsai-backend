@@ -12,6 +12,21 @@ Founder and CEO of Alloro (getalloro.com). Also runs Hamilton Wise, the services
 - Doesn't like writing follow-up emails (self-identified gap)
 - Prefers to spend time on forward-thinking: SEO, AEO, how to take clients to the next level
 
+## Strengths (observed, not self-reported)
+- Product clarity. When he makes a correction ("the app is the product, not the email"), it's always right. Trust it immediately.
+- Customer empathy. Thinks from the client's chair first. "I pilot in and see varying fonts and get disheartened" is a product decision, not a complaint.
+- Documentation when given the right structure. The Product Map doc that Dave praised was Corey's work. When the format fits his thinking, his output is excellent.
+- Pattern recognition. Sees system-level dynamics others miss. Identified the Corey-AI-Dave translation layer before anyone named it.
+
+## Limitations (observed, shared with Corey directly)
+- Natural output is descriptive, not prescriptive. "The dashboard should feel like Oura" is correct product direction but not actionable by engineering. Needs translation to "change text-3xl to text-2xl on line 135."
+- Volume and iteration speed can overwhelm Dave. Multiple doc versions, rough ideas, half-formed proposals sent to engineering cause confusion. Dave said: "we proceed to see outputs all over the place and end up confused."
+- Visual inconsistency derails his ability to evaluate substance. His own words: "The UX/UI is so distracting I haven't been able to even begin to comprehend the story being told."
+- Tries to do too many roles when Jo is absent. The Product Map doc was Corey doing Jo's integrator job, and it took enormous effort.
+
+## The Key Insight (April 11, 2026)
+Corey's descriptive output is the RIGHT input for AI translation. He should never try to write prescriptive engineering specs himself. The system is: Corey describes the outcome/feeling/customer experience -> AI translates to prescriptive specs with file paths, line numbers, verification tests -> Dave's agents execute. This removes Corey from the translation bottleneck and lets him stay in his zone of product vision and customer empathy.
+
 ## Communication
 - Email: corey@getalloro.com, corey@hamiltonwise.com
 - Slack: active in #alloro-dev, DentalEMR channels

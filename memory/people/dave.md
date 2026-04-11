@@ -10,6 +10,17 @@ CTO. Infrastructure, EC2, production deploys, merges to main. Based in Philippin
 - Notices things. Fixes things quietly.
 - Working on DentalEMR services (website migrations, form submissions, dropdown menus, partner pages) while also maintaining Alloro infrastructure
 - Has his own project board in Notion
+- Uses engineering agents (closely monitored, detail-oriented) to execute code changes
+- Agents ran 1+ hours processing the Product Map doc (April 11, 2026)
+
+## What Makes Him Confident (April 11, 2026 -- direct from Dave)
+- **Prescriptive over descriptive.** "Build this" not "here's the outcome we like." Telling him what to do instead of what should be true saves guesswork.
+- **Features over goals.** Framing changes as discrete features his agents can act on immediately, not as abstract outcomes.
+- **Bite-sized specs with code already done.** The sandbox branch having 90% of the work built + a spec doc was "superb" in his words.
+- **Card-by-card with tests.** Transfer one feature at a time, verify each before confirming done, ordered by complexity simplest first.
+- **Visual blast radius summary.** He builds his own report mapping what gets removed/added/updated and their blast radius before touching anything.
+- **Three validation criteria:** 1) design is consistent, not sloppy; 2) features and APIs not disrupted; 3) output code consistent with existing codebase.
+- **Panics when things don't make sense.** His words: "if something does not make sense even a little, we panic and get crazy." Ambiguity is his enemy.
 
 ## Communication
 - Email: dave@getalloro.com
