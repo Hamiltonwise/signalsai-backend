@@ -1,9 +1,17 @@
 /**
- * Five-Page Layout -- One Alloro
+ * Three-Instrument Layout -- One Alloro
  *
- * The universal layout for the five-page dashboard.
- * Bottom navigation with five icons. No sidebar.
+ * The universal layout for the three-instrument dashboard.
+ * Bottom navigation with three instruments + Home. No sidebar.
  * Clean. Calm. Three seconds.
+ *
+ * Three instruments:
+ * 1. Can people find you? (/compare)
+ * 2. Do people trust you? (/reviews)
+ * 3. Is the business producing? (/progress)
+ *
+ * Home is the summary: readings from all three instruments.
+ * /presence still accessible via direct URL but not in primary nav.
  *
  * Replaces PageWrapper + Sidebar for the v2 customer experience.
  * V1 sidebar preserved at /dashboard routes.
@@ -11,17 +19,16 @@
 
 import { useState, useRef, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Home, BarChart3, Star, Globe, TrendingUp, Settings, HelpCircle, MapPin, ChevronDown, Check } from "lucide-react";
+import { Home, BarChart3, Star, TrendingUp, Settings, HelpCircle, MapPin, ChevronDown, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import CSAgentChat from "@/components/dashboard/CSAgentChat";
 
 const NAV_ITEMS = [
-  { to: "/home", icon: Home, label: "Home" },
-  { to: "/compare", icon: BarChart3, label: "Get Found" },
-  { to: "/reviews", icon: Star, label: "Reviews" },
-  { to: "/presence", icon: Globe, label: "Your Website" },
-  { to: "/progress", icon: TrendingUp, label: "Your Numbers" },
+  { to: "/home", icon: Home, label: "Home", question: null },
+  { to: "/compare", icon: BarChart3, label: "Find You", question: "Can people find you?" },
+  { to: "/reviews", icon: Star, label: "Trust You", question: "Do people trust you?" },
+  { to: "/progress", icon: TrendingUp, label: "Producing", question: "Is the business producing?" },
 ];
 
 /** Compact location picker for multi-location orgs. Light theme. */
@@ -150,7 +157,7 @@ export default function FivePageLayout() {
       </nav>
 
       {/* Side nav (desktop) -- labels visible, not just icons */}
-      <nav className="hidden sm:flex fixed left-0 top-0 bottom-0 w-48 flex-col py-6 px-3 gap-1 bg-[#F8F6F2] border-r border-stone-200/60 z-50">
+      <nav className="hidden sm:flex fixed left-0 top-0 bottom-0 w-56 flex-col py-6 px-3 gap-1 bg-[#F8F6F2] border-r border-stone-200/60 z-50">
         {/* Logo */}
         <div className="flex items-center gap-2.5 px-3 mb-8">
           <div className="w-8 h-8 rounded-lg bg-alloro-navy flex items-center justify-center">
@@ -161,12 +168,12 @@ export default function FivePageLayout() {
 
         <LocationPicker className="mb-3" />
 
-        {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
+        {NAV_ITEMS.map(({ to, icon: Icon, label, question }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              `flex items-center gap-3 px-3 ${question ? "py-3" : "py-2.5"} rounded-xl text-sm font-medium transition-all ${
                 isActive
                   ? "bg-[#D56753]/10 text-[#D56753]"
                   : "text-gray-500 hover:text-[#1A1D23] hover:bg-stone-100/80"
@@ -174,11 +181,16 @@ export default function FivePageLayout() {
             }
           >
             <Icon className="w-5 h-5 shrink-0" />
-            <span>{label}</span>
+            <div className="flex flex-col">
+              <span>{label}</span>
+              {question && (
+                <span className="text-xs font-normal text-gray-400 leading-tight mt-0.5">{question}</span>
+              )}
+            </div>
           </NavLink>
         ))}
 
-        {/* Settings -- accessible but not one of the five questions */}
+        {/* Settings -- accessible but not one of the three instruments */}
         <div className="mt-auto pt-4 border-t border-stone-200/40">
           <NavLink
             to="/settings"
@@ -212,7 +224,7 @@ export default function FivePageLayout() {
       {/* Desktop content offset for side nav */}
       <style>{`
         @media (min-width: 640px) {
-          main { margin-left: 192px; }
+          main { margin-left: 224px; }
         }
       `}</style>
     </div>
