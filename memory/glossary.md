@@ -13,7 +13,7 @@
 | Lindsey | Lindsey Wise | Corey's partner |
 | Shawn | Shawn McPherson | Study club model, beta client |
 | Chris | Chris Olson | Endodontist in CA, the "face of why" |
-| Kargoli | Dr. Kargoli | Lost customer, renewed with competitor |
+| Kargoli / Saif | Dr. Saif Kargoli | One Endo admin (org 39, 1endodontics.com), Falls Church |
 
 ## Products & Features
 | Term | Meaning |
