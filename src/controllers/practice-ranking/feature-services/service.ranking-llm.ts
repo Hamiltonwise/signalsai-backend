@@ -43,6 +43,25 @@ export interface RankingLlmPayload {
     };
     competitors: any[];
     benchmarks: Record<string, any>;
+    /**
+     * Live Google Search Position context.
+     * Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
+     * Lets the LLM reference where the practice actually appears on Google,
+     * separately from the proprietary 8-factor Practice Health score.
+     */
+    search_position?: {
+      query: string;
+      position: number | null;
+      status: "ok" | "not_in_top_20" | "bias_unavailable" | "api_error";
+      not_in_top_20: boolean;
+      top_5: Array<{
+        rank: number;
+        name: string;
+        review_count: number;
+        rating: number;
+        is_client: boolean;
+      }>;
+    };
   };
 }
 
@@ -66,6 +85,7 @@ const SYSTEM_PROMPT = `You are an expert SEO and local search analyst specializi
 1. **Gap Analysis**: Where the practice underperforms vs competitors
 2. **Driver Analysis**: Which factors impact their ranking most
 3. **Recommendations**: Prioritized actions to improve
+4. **Search Position Awareness**: When \`search_position\` is provided in the input, acknowledge the client's current Google position and factor it into the recommendations. If they're ranking above what their Practice Health score would predict, identify what's protecting that advantage and recommend preserving it. If below, prioritize actions that influence the signals Google weights most for local pack ranking (review count, recency, profile completeness, NAP consistency). If \`search_position.not_in_top_20\` is true, treat breaking into the top 20 as the primary goal.
 
 ## Rules
 - Be specific with numbers and comparisons

@@ -1,6 +1,23 @@
 import { Knex } from "knex";
 import { BaseModel, PaginatedResult, PaginationParams, QueryContext } from "./BaseModel";
 
+export type SearchPositionStatus =
+  | "ok"
+  | "not_in_top_20"
+  | "bias_unavailable"
+  | "api_error";
+
+export interface SearchResultEntry {
+  placeId: string;
+  name: string;
+  position: number;
+  rating: number;
+  reviewCount: number;
+  primaryType: string;
+  types: string[];
+  isClient: boolean;
+}
+
 export interface IPracticeRanking {
   id: number;
   organization_id: number;
@@ -19,6 +36,16 @@ export interface IPracticeRanking {
   search_state: string | null;
   search_county: string | null;
   search_postal_code: string | null;
+  // Search Position fields (Practice Health + Search Position split)
+  // Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
+  search_position: number | null;
+  search_query: string | null;
+  search_lat: number | null;
+  search_lng: number | null;
+  search_radius_meters: number | null;
+  search_results: SearchResultEntry[] | null;
+  search_checked_at: Date | null;
+  search_status: SearchPositionStatus | null;
   llm_analysis: Record<string, unknown> | null;
   ranking_factors: Record<string, unknown> | null;
   raw_data: Record<string, unknown> | null;
@@ -44,6 +71,7 @@ export class PracticeRankingModel extends BaseModel {
     "llm_analysis",
     "ranking_factors",
     "raw_data",
+    "search_results",
   ];
 
   static async findById(

@@ -471,17 +471,28 @@ export function filterBySpecialty(
 // =====================================================================
 
 /**
- * Get client's photo count via Google Places API.
+ * Look up the client business on Google Places.
+ *
+ * Returns the placeId, photo count, and lat/lng coordinates of the matched place.
+ * The coordinates are used as the vantage point for location-biased competitor
+ * search in the Practice Health + Search Position split (see
+ * plans/04122026-no-ticket-practice-health-search-position-split/spec.md).
+ *
  * Replaces the 2 Apify runs (search + detail scrape) previously used.
  *
  * @param practiceName - Client business name
  * @param marketLocation - Market location (e.g. "Austin, TX")
- * @returns Object with placeId and photosCount
+ * @returns Object with placeId, photosCount, lat, lng — nulls if no match
  */
 export async function getClientPhotosViaPlaces(
   practiceName: string,
   marketLocation: string,
-): Promise<{ placeId: string | null; photosCount: number }> {
+): Promise<{
+  placeId: string | null;
+  photosCount: number;
+  lat: number | null;
+  lng: number | null;
+}> {
   const searchQuery = `${practiceName} ${marketLocation}`;
   log(`Searching for client: "${searchQuery}"`);
 
@@ -489,7 +500,7 @@ export async function getClientPhotosViaPlaces(
 
   if (places.length === 0) {
     log(`✗ No results found for client`);
-    return { placeId: null, photosCount: 0 };
+    return { placeId: null, photosCount: 0, lat: null, lng: null };
   }
 
   // Find client in results by name match
@@ -509,13 +520,17 @@ export async function getClientPhotosViaPlaces(
         .map((p: any) => p.displayName?.text)
         .join(", ")}`,
     );
-    return { placeId: null, photosCount: 0 };
+    return { placeId: null, photosCount: 0, lat: null, lng: null };
   }
 
   const placeId = match.id;
   const photosCount = match.photos?.length ?? 0;
+  const lat = match.location?.latitude ?? null;
+  const lng = match.location?.longitude ?? null;
 
-  log(`✓ Found client: ${match.displayName?.text} (${placeId}), ${photosCount} photos`);
+  log(
+    `✓ Found client: ${match.displayName?.text} (${placeId}), ${photosCount} photos, coords=${lat ?? "?"},${lng ?? "?"}`,
+  );
 
-  return { placeId, photosCount };
+  return { placeId, photosCount, lat, lng };
 }
