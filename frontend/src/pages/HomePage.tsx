@@ -237,6 +237,76 @@ function limitPrompts(prompts: Array<{ key: string; show: boolean }>): Set<strin
   return visible;
 }
 
+// ─── Client-Side Fallback Hero ─────────────────────────────────────
+// When both Oz Engine API and Home Intelligence API return null/error,
+// build a hero card from the readings data that the status strip already
+// rendered successfully. This ensures the page NEVER looks empty.
+
+function buildFallbackHero(
+  readings: NonNullable<ReturnType<typeof extractReadings>>,
+): OzMomentData | null {
+  // Find the review reading -- it has the most actionable data
+  const reviewReading = readings.find(r => r.label === "Reviews");
+  const marketReading = readings.find(r => r.label === "Your Market");
+
+  // If we have review data with a competitor gap, that's the strongest hero
+  if (reviewReading && reviewReading.context.includes("Gap:")) {
+    const gapMatch = reviewReading.context.match(/Gap:\s*(\d+)/);
+    const gap = gapMatch ? parseInt(gapMatch[1], 10) : null;
+    const compMatch = reviewReading.context.match(/^(.+?)\s+has\s+(\d+)/);
+    const compName = compMatch ? compMatch[1] : null;
+
+    if (gap && compName) {
+      const weeksToClose = Math.ceil(gap / 2);
+      const timeframe = weeksToClose <= 4
+        ? `${weeksToClose} weeks`
+        : weeksToClose <= 52
+          ? `about ${Math.ceil(weeksToClose / 4)} months`
+          : "over a year";
+      return {
+        headline: `${compName} has ${gap} more reviews than you. That gap is closeable.`,
+        context: `At 2 reviews per week, you close it in ${timeframe}. Every review also strengthens how Google's AI describes your practice.`,
+        status: gap > 100 ? "attention" : "healthy",
+        verifyUrl: reviewReading.verifyUrl,
+        surprise: 4,
+        actionText: "See the full comparison",
+        actionUrl: "/compare",
+        signalType: "fallback_gap",
+      };
+    }
+  }
+
+  // If we lead in reviews
+  if (reviewReading && reviewReading.context.includes("You lead")) {
+    return {
+      headline: reviewReading.context.split(".")[0] + ".",
+      context: "Consistent reviews keep you ahead. One review per week compounds into a moat your competitors cannot close quickly.",
+      status: "healthy",
+      verifyUrl: reviewReading.verifyUrl,
+      surprise: 3,
+      actionText: null,
+      actionUrl: null,
+      signalType: "fallback_lead",
+    };
+  }
+
+  // Market reading with competitor info
+  if (marketReading) {
+    return {
+      headline: `Alloro is tracking your competitive landscape.`,
+      context: marketReading.context,
+      status: "healthy",
+      verifyUrl: marketReading.verifyUrl,
+      surprise: 2,
+      actionText: null,
+      actionUrl: null,
+      signalType: "fallback_market",
+    };
+  }
+
+  return null;
+}
+
 // ─── Component ──────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -362,79 +432,94 @@ export default function HomePage() {
         </motion.div>
 
         {/* ── 2. THE OZ MOMENT (HERO) ── */}
-        {ozMoment ? (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="mb-8"
-          >
-            <div className={`w-full rounded-2xl px-8 py-10 sm:py-12 min-h-[200px] flex flex-col justify-center ${
-              ozMoment.signalType === "clean_week"
-                ? "bg-[#F8F6F2] border border-emerald-200"
-                : "bg-[#FDF4F2] border border-[#D56753]/10"
-            }`}>
-              {/* Status indicator */}
-              <div className="flex items-center gap-2 mb-5">
-                <span className={`w-2.5 h-2.5 rounded-full ${
-                  ozMoment.status === "healthy" ? "bg-emerald-500" : ozMoment.status === "attention" ? "bg-amber-400" : "bg-red-500"
-                }`} />
-                <span className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF]">
-                  {ozMoment.signalType === "clean_week" ? "ALL CLEAR" : "THIS WEEK"}
-                </span>
-              </div>
+        {(() => {
+          // Build a client-side fallback hero from readings when Oz engine and watchline both miss
+          const fallbackHero = !ozMoment && !intelligenceData?.watchline && readings && readings.length > 0
+            ? buildFallbackHero(readings)
+            : null;
+          const heroData = ozMoment || fallbackHero;
 
-              {/* The headline -- the thing they didn't know */}
-              <h2 className="text-2xl sm:text-[32px] font-semibold text-[#1A1D23] leading-tight tracking-tight mb-4">
-                {ozMoment.headline}
-              </h2>
+          if (heroData) {
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="mb-8"
+              >
+                <div className={`w-full rounded-2xl px-8 py-10 sm:py-12 min-h-[200px] flex flex-col justify-center ${
+                  heroData.signalType === "clean_week" || heroData.status === "healthy"
+                    ? "bg-[#F8F6F2] border border-emerald-200"
+                    : "bg-[#FDF4F2] border border-[#D56753]/10"
+                }`}>
+                  {/* Status indicator */}
+                  <div className="flex items-center gap-2 mb-5">
+                    <span className={`w-2.5 h-2.5 rounded-full ${
+                      heroData.status === "healthy" ? "bg-emerald-500" : heroData.status === "attention" ? "bg-amber-400" : "bg-red-500"
+                    }`} />
+                    <span className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF]">
+                      {heroData.signalType === "clean_week" ? "ALL CLEAR" : "THIS WEEK"}
+                    </span>
+                  </div>
 
-              {/* Supporting context */}
-              <p className="text-base text-[#6B7280] leading-relaxed max-w-[640px]">
-                {ozMoment.context}
-              </p>
+                  {/* The headline */}
+                  <h2 className="text-2xl sm:text-[32px] font-semibold text-[#1A1D23] leading-tight tracking-tight mb-4">
+                    {heroData.headline}
+                  </h2>
 
-              {/* Action + verify row */}
-              <div className="flex flex-wrap items-center gap-4 mt-6">
-                {ozMoment.actionText && ozMoment.actionUrl && (
-                  <button
-                    onClick={() => navigate(ozMoment.actionUrl!)}
-                    className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold bg-[#D56753] text-white hover:brightness-105 active:scale-[0.98] transition-all"
-                  >
-                    {ozMoment.actionText}
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                )}
-                {ozMoment.verifyUrl && (
-                  <a
-                    href={ozMoment.verifyUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#D56753] hover:underline"
-                  >
-                    Verify on Google
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        ) : intelligenceData?.watchline ? (
-          /* Fallback: if Oz Engine returns null but we have a watchline, show it */
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="mb-8"
-          >
-            <div className="w-full rounded-2xl bg-[#FDF4F2] border border-[#D56753]/10 px-8 py-10 sm:py-12 min-h-[200px] flex flex-col justify-center">
-              <span className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-5">THIS WEEK</span>
-              <h2 className="text-2xl sm:text-[32px] font-semibold text-[#1A1D23] leading-tight tracking-tight">
-                {intelligenceData.watchline}
-              </h2>
-            </div>
-          </motion.div>
-        ) : null}
+                  {/* Supporting context */}
+                  <p className="text-base text-[#6B7280] leading-relaxed max-w-[640px]">
+                    {heroData.context}
+                  </p>
+
+                  {/* Action + verify row */}
+                  <div className="flex flex-wrap items-center gap-4 mt-6">
+                    {heroData.actionText && heroData.actionUrl && (
+                      <button
+                        onClick={() => navigate(heroData.actionUrl!)}
+                        className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold bg-[#D56753] text-white hover:brightness-105 active:scale-[0.98] transition-all"
+                      >
+                        {heroData.actionText}
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
+                    {heroData.verifyUrl && (
+                      <a
+                        href={heroData.verifyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-[#D56753] hover:underline"
+                      >
+                        Verify on Google
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          }
+
+          if (intelligenceData?.watchline) {
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="mb-8"
+              >
+                <div className="w-full rounded-2xl bg-[#FDF4F2] border border-[#D56753]/10 px-8 py-10 sm:py-12 min-h-[200px] flex flex-col justify-center">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-[#9CA3AF] mb-5">THIS WEEK</span>
+                  <h2 className="text-2xl sm:text-[32px] font-semibold text-[#1A1D23] leading-tight tracking-tight">
+                    {intelligenceData.watchline}
+                  </h2>
+                </div>
+              </motion.div>
+            );
+          }
+
+          return null;
+        })()}
 
         {/* ── 3. Score Shortcuts (status strip) ── */}
         {statusItems.length > 0 ? (

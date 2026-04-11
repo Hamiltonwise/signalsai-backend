@@ -81,7 +81,10 @@ export async function getOzEngineResult(orgId: number): Promise<OzEngineResult |
   const signals = [sentiment, drift, surge, trajectory, rating, clean]
     .filter(Boolean) as OzEngineResult[];
 
-  if (signals.length === 0) return null;
+  if (signals.length === 0) {
+    // Cold-start fallback: always produce something from checkup_data
+    return buildColdStartHero(snapshot);
+  }
 
   signals.sort((a, b) => b.surprise - a.surprise);
   return signals[0];
@@ -353,6 +356,106 @@ async function checkCleanWeek(s: OrgSnapshot): Promise<OzEngineResult | null> {
   } catch {
     return null;
   }
+}
+
+// ── Cold-Start Hero (when all signal checks return null) ─────────────
+//
+// New accounts, accounts without weekly_ranking_snapshots, accounts where
+// crons haven't fired yet. The hero card should NEVER be empty if the
+// org has checkup_data. This produces a real, verifiable insight from
+// whatever data exists at signup time.
+//
+
+function buildColdStartHero(s: OrgSnapshot): OzEngineResult | null {
+  // Priority 1: Quantified review gap with competitor named
+  if (s.competitorName && s.competitorReviews && s.clientReviews > 0) {
+    const gap = s.competitorReviews - s.clientReviews;
+    if (gap > 0) {
+      const weeksToClose = Math.ceil(gap / 2); // 2 reviews/week is a realistic ask rate
+      const timeframe = weeksToClose <= 4
+        ? `${weeksToClose} week${weeksToClose !== 1 ? "s" : ""}`
+        : weeksToClose <= 52
+          ? `about ${Math.ceil(weeksToClose / 4)} months`
+          : `over a year`;
+      return {
+        headline: `${s.competitorName} has ${s.competitorReviews} reviews to your ${s.clientReviews}. That gap is closeable.`,
+        context: `At 2 reviews per week, you close ${gap} reviews in ${timeframe}. Every review also strengthens how Google's AI describes your practice.`,
+        status: gap > 100 ? "attention" : "healthy",
+        verifyUrl: s.googleSearchUrl,
+        surprise: 4,
+        actionText: "See the full comparison",
+        actionUrl: "/compare",
+        signalType: "cold_start_gap",
+      };
+    }
+    // You lead
+    return {
+      headline: `You lead ${s.competitorName} by ${Math.abs(gap)} reviews in ${s.city || "your market"}.`,
+      context: `${s.clientRating ? `Your ${s.clientRating}-star rating` : "Your reviews"} and volume give you an edge in Google's search results and AI answers. Alloro is watching weekly to make sure it stays that way.`,
+      status: "healthy",
+      verifyUrl: s.googleSearchUrl,
+      surprise: 3,
+      actionText: null,
+      actionUrl: null,
+      signalType: "cold_start_lead",
+    };
+  }
+
+  // Priority 2: Rating advantage without review counts
+  if (s.competitorName && s.clientRating && s.competitorRating) {
+    if (s.clientRating > s.competitorRating) {
+      return {
+        headline: `Your ${s.clientRating}-star rating beats ${s.competitorName} at ${s.competitorRating} stars.`,
+        context: `Higher stars mean higher click-through in Google search results. Patients trust the number before they read a single review.`,
+        status: "healthy",
+        verifyUrl: s.googleSearchUrl,
+        surprise: 3,
+        actionText: null,
+        actionUrl: null,
+        signalType: "cold_start_rating",
+      };
+    }
+    return {
+      headline: `${s.competitorName} has a ${s.competitorRating}-star rating to your ${s.clientRating}.`,
+      context: `The fastest way to close a rating gap is volume. Every new 5-star review moves the needle. Ask 2 customers this week.`,
+      status: "attention",
+      verifyUrl: s.googleSearchUrl,
+      surprise: 3,
+      actionText: null,
+      actionUrl: null,
+      signalType: "cold_start_rating_gap",
+    };
+  }
+
+  // Priority 3: Market context with competitor named
+  if (s.competitorName && s.city) {
+    return {
+      headline: `Alloro is tracking ${s.competitorName} and your market in ${s.city}.`,
+      context: `Your first competitive report arrives Monday. Every week, Alloro scans reviews, rankings, and visibility for every competitor in your market.`,
+      status: "healthy",
+      verifyUrl: s.marketSearchUrl,
+      surprise: 2,
+      actionText: null,
+      actionUrl: null,
+      signalType: "cold_start_market",
+    };
+  }
+
+  // Priority 4: Basic org data only
+  if (s.city || s.orgName) {
+    return {
+      headline: `Your Google presence in ${s.city || "your market"} is being tracked.`,
+      context: `Alloro scans your competitors, reviews, and visibility every week. Your Monday brief will show exactly where you stand.`,
+      status: "healthy",
+      verifyUrl: s.googleSearchUrl || s.marketSearchUrl,
+      surprise: 1,
+      actionText: null,
+      actionUrl: null,
+      signalType: "cold_start_basic",
+    };
+  }
+
+  return null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────

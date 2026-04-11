@@ -492,7 +492,12 @@ async function getCompetitorVelocityData(orgId: number): Promise<OneActionIntell
   const compDelta = compReviewsCurrent - compReviewsPrev;
   const clientDelta = clientReviewsCurrent - clientReviewsPrev;
 
+  // Sanity check: if either previous count was 0 (initialization snapshot),
+  // the delta equals the full count which is misleading. Treat as no data.
+  if (compReviewsPrev === 0 || clientReviewsPrev === 0) return null;
   if (compDelta <= 0) return null;
+  // If delta looks unreasonably large (>50 in one week), it's likely a data artifact
+  if (compDelta > 50) return null;
 
   return {
     competitorName: compName,

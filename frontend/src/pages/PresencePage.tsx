@@ -95,6 +95,14 @@ function PresencePageInner() {
   const { userProfile, hasGoogleConnection } = useAuth();
   const orgId = userProfile?.organizationId || null;
 
+  // Dashboard context for GBP data
+  const { data: ctx } = useQuery<any>({
+    queryKey: ["presence-context", orgId],
+    queryFn: () => apiGet({ path: "/user/dashboard-context" }),
+    enabled: !!orgId,
+    staleTime: 60_000,
+  });
+
   // Website data
   const { data: websiteData } = useQuery<any>({
     queryKey: ["presence-website", orgId],
@@ -121,11 +129,27 @@ function PresencePageInner() {
   });
   const croInsights = croData?.insights || [];
 
-  // SEO/compliance data removed: not vital signs
-
   const website = websiteData?.website || null;
   const hasWebsite = !!website;
   const websiteUrl = website?.liveUrl || (website?.generated_hostname ? `https://${website.generated_hostname}.sites.getalloro.com` : null);
+
+  // Extract GBP profile data from checkup
+  const checkupData = ctx?.org?.checkup_data || null;
+  const place = checkupData?.place || {};
+  const orgName = ctx?.org?.name || "";
+  const googleSearchUrl = orgName ? `https://www.google.com/search?q=${encodeURIComponent(orgName)}` : null;
+
+  // GBP profile completeness
+  const gbpFields = [
+    { label: "Phone number", complete: !!(place.hasPhone || place.phone || place.nationalPhoneNumber || place.internationalPhoneNumber), value: place.nationalPhoneNumber || place.internationalPhoneNumber || place.phone || null },
+    { label: "Business hours", complete: !!(place.hasHours || place.hours || place.regularOpeningHours), value: place.regularOpeningHours ? "Set" : null },
+    { label: "Website", complete: !!(place.hasWebsite || place.websiteUri || place.website), value: place.websiteUri || place.website || null },
+    { label: "Photos", complete: (place.photosCount || place.photoCount || place.photos?.length || 0) > 0, value: `${place.photosCount || place.photoCount || place.photos?.length || 0} photos` },
+    { label: "Business description", complete: !!(place.hasEditorialSummary || place.editorialSummary), value: null },
+  ];
+  const gbpComplete = gbpFields.filter(f => f.complete).length;
+  const gbpTotal = gbpFields.length;
+  const hasGBPData = gbpFields.some(f => f.complete);
 
   return (
     <div className="min-h-screen bg-[#F8F6F2]">
@@ -136,8 +160,8 @@ function PresencePageInner() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Website</h1>
-          <p className="text-sm text-gray-400 mt-1">Alloro built and maintains your website.</p>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Online Presence</h1>
+          <p className="text-sm text-gray-400 mt-1">What customers see when they search for you on Google.</p>
         </motion.div>
 
         {/* GBP Connection (if not connected) */}
@@ -145,119 +169,162 @@ function PresencePageInner() {
           <GBPConnectCard gbpConnected={!!hasGoogleConnection} orgId={orgId} />
         )}
 
-        {/* Website */}
-        <Section title="Your Website" icon={Globe} defaultOpen={true}>
-          {hasWebsite ? (
-            <div className="space-y-3">
-              <div className="rounded-xl bg-gray-50 p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-[#1A1D23]">{website.generated_hostname}</p>
-                  <p className="text-xs text-gray-400 capitalize">{website.status}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => navigate("/dfy/website")}
-                    className="flex items-center gap-1 text-sm font-semibold text-alloro-orange hover:text-alloro-navy transition-colors"
-                  >
-                    Edit your website <PenLine className="w-3.5 h-3.5" />
-                  </button>
-                  {websiteUrl && (
-                    <a
-                      href={websiteUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-sm font-semibold text-alloro-orange hover:text-alloro-navy transition-colors"
-                    >
-                      View site <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
+        {/* GBP Profile Completeness */}
+        {hasGBPData && (
+          <Section title="Google Business Profile" icon={Globe} defaultOpen={true}>
+            <div className="space-y-4">
+              {/* Score bar */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-[#1A1D23]">{gbpComplete}/{gbpTotal} fields complete</span>
+                    {googleSearchUrl && (
+                      <a
+                        href={googleSearchUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-[#D56753] hover:underline"
+                      >
+                        View on Google <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                  <div className="w-full h-2 bg-stone-200/60 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${gbpComplete >= gbpTotal ? "bg-emerald-500" : gbpComplete >= 3 ? "bg-amber-400" : "bg-red-400"}`}
+                      style={{ width: `${(gbpComplete / gbpTotal) * 100}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="rounded-xl bg-[#F0EDE8] p-4 animate-pulse">
-                <div className="h-4 w-48 bg-gray-200 rounded mb-2" />
-                <div className="h-3 w-32 bg-gray-200 rounded" />
-              </div>
-              <p className="text-sm text-gray-500">
-                Alloro builds your website from your Google reviews and business data. A preview will appear here when it is ready.
-              </p>
-            </div>
-          )}
-        </Section>
 
-        {/* Only show additional sections when there's a website with real data */}
-        {hasWebsite && (
-          <>
-            {/* Built to Convert -- only when form submissions exist */}
-            {formSubmissions.length > 0 && (
-              <Section title="Built to Convert" icon={MousePointerClick} defaultOpen={true}>
-                <div className="space-y-3">
-                  <div className="rounded-xl bg-[#F0EDE8] p-4">
-                    <p className="text-sm font-semibold text-[#1A1D23]">
-                      {formSubmissions.length} form submission{formSubmissions.length !== 1 ? "s" : ""} received
-                    </p>
-                    {formSubmissions[0]?.created_at && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        Most recent: {new Date(formSubmissions[0].created_at).toLocaleDateString()}
-                      </p>
+              {/* Field checklist */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {gbpFields.map((field) => (
+                  <div key={field.label} className="flex items-center gap-2 py-1.5">
+                    <span className={`w-2 h-2 rounded-full ${field.complete ? "bg-emerald-500" : "bg-stone-300"}`} />
+                    <span className={`text-sm ${field.complete ? "text-[#1A1D23]" : "text-[#1A1D23]/40"}`}>
+                      {field.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {gbpComplete < gbpTotal && (
+                <p className="text-sm text-gray-500">
+                  Complete profiles appear in 2x more searches. Missing fields reduce your visibility in local search and AI-generated answers.
+                </p>
+              )}
+            </div>
+          </Section>
+        )}
+
+        {/* Website */}
+        {(hasWebsite || !hasGBPData) && (
+          <Section title="Your Website" icon={PenLine} defaultOpen={true}>
+            {hasWebsite ? (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-[#F0EDE8] p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-[#1A1D23]">{website.generated_hostname}</p>
+                    <p className="text-xs text-gray-400 capitalize">{website.status}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => navigate("/dfy/website")}
+                      className="flex items-center gap-1 text-sm font-semibold text-[#D56753] hover:underline transition-colors"
+                    >
+                      Edit <PenLine className="w-3.5 h-3.5" />
+                    </button>
+                    {websiteUrl && (
+                      <a
+                        href={websiteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-sm font-semibold text-[#D56753] hover:underline transition-colors"
+                      >
+                        View site <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
                     )}
                   </div>
                 </div>
-              </Section>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500">
+                  Alloro builds your website from your Google reviews and business data. A preview will appear here when it is ready.
+                </p>
+              </div>
             )}
-
-            {/* Website Optimizations -- only when CRO insights exist */}
-            {croInsights.length > 0 && (
-              <Section title="Website Optimizations" icon={Sparkles} defaultOpen={true}>
-                <div className="space-y-3">
-                  {croInsights.slice(0, 8).map((insight, i) => {
-                    const changeLabels: Record<string, string> = {
-                      title: "Page title",
-                      meta_description: "Meta description",
-                      content_section: "Content",
-                      cta: "Call to action",
-                      new_page: "New page",
-                    };
-                    return (
-                      <div key={i} className="rounded-xl bg-[#F0EDE8] p-4">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-                            {changeLabels[insight.changeType] || insight.changeType}
-                          </span>
-                          {insight.date && (
-                            <span className="text-xs text-gray-400">
-                              {new Date(insight.date).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                        {insight.rationale && (
-                          <p className="text-sm text-[#1A1D23] mb-2">{insight.rationale}</p>
-                        )}
-                        {insight.recommendedValue && (
-                          <p className="text-xs text-[#1A1D23]/60">
-                            Recommendation: {insight.recommendedValue}
-                          </p>
-                        )}
-                        {insight.pageUrl && insight.pageUrl !== "/" && (
-                          <p className="text-xs text-gray-400 mt-1">{insight.pageUrl}</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </Section>
-            )}
-          </>
+          </Section>
         )}
 
-        {/* When no website exists, show a single honest statement instead of 4 empty accordions */}
-        {!hasWebsite && (
+        {/* Built to Convert -- form submissions */}
+        {hasWebsite && formSubmissions.length > 0 && (
+          <Section title="Built to Convert" icon={MousePointerClick} defaultOpen={true}>
+            <div className="space-y-3">
+              <div className="rounded-xl bg-[#F0EDE8] p-4">
+                <p className="text-sm font-semibold text-[#1A1D23]">
+                  {formSubmissions.length} form submission{formSubmissions.length !== 1 ? "s" : ""} received
+                </p>
+                {formSubmissions[0]?.created_at && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Most recent: {new Date(formSubmissions[0].created_at).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            </div>
+          </Section>
+        )}
+
+        {/* Website Optimizations -- CRO insights */}
+        {hasWebsite && croInsights.length > 0 && (
+          <Section title="Website Optimizations" icon={Sparkles} defaultOpen={true}>
+            <div className="space-y-3">
+              {croInsights.slice(0, 8).map((insight: any, i: number) => {
+                const changeLabels: Record<string, string> = {
+                  title: "Page title",
+                  meta_description: "Meta description",
+                  content_section: "Content",
+                  cta: "Call to action",
+                  new_page: "New page",
+                };
+                return (
+                  <div key={i} className="rounded-xl bg-[#F0EDE8] p-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                        {changeLabels[insight.changeType] || insight.changeType}
+                      </span>
+                      {insight.date && (
+                        <span className="text-xs text-gray-400">
+                          {new Date(insight.date).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    {insight.rationale && (
+                      <p className="text-sm text-[#1A1D23] mb-2">{insight.rationale}</p>
+                    )}
+                    {insight.recommendedValue && (
+                      <p className="text-xs text-[#1A1D23]/60">
+                        Recommendation: {insight.recommendedValue}
+                      </p>
+                    )}
+                    {insight.pageUrl && insight.pageUrl !== "/" && (
+                      <p className="text-xs text-gray-400 mt-1">{insight.pageUrl}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        {/* When nothing exists at all */}
+        {!hasWebsite && !hasGBPData && !hasGoogleConnection && (
           <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6">
-            <p className="text-sm font-semibold text-[#1A1D23] mb-2">Website not yet active</p>
+            <p className="text-sm font-semibold text-[#1A1D23] mb-2">Connect your Google Business Profile</p>
             <p className="text-sm text-gray-500">
-              Alloro can build and maintain a website for your business. When active, this page shows your site performance, form submissions, and optimization history.
+              Once connected, this page shows your profile completeness, website performance, form submissions, and optimization history.
             </p>
           </div>
         )}
