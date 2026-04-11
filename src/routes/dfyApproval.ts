@@ -239,6 +239,7 @@ router.get("/pending/:orgId", async (req: Request, res: Response) => {
         "status",
         "preview_title",
         "preview_body",
+        "approval_token",
         "created_at",
         "expires_at",
       );

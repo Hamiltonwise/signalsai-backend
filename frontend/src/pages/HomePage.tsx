@@ -28,6 +28,7 @@ import { getPriorityItem } from "@/hooks/useLocalStorage";
 import BillingPromptBar from "@/components/dashboard/BillingPromptBar";
 import CardCapture from "@/components/dashboard/CardCapture";
 import { NotificationWidget } from "@/components/dashboard/NotificationWidget";
+import PendingActionsCard from "@/components/dashboard/PendingActionsCard";
 import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -520,6 +521,9 @@ export default function HomePage() {
 
           return null;
         })()}
+
+        {/* ── DRAFTS FOR YOU (the work Alloro did, waiting for one tap) ── */}
+        {orgId && <PendingActionsCard orgId={orgId} />}
 
         {/* ── 3. Score Shortcuts (status strip) ── */}
         {statusItems.length > 0 ? (
