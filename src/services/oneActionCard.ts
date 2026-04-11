@@ -77,10 +77,7 @@ export async function getOneActionCard(orgId: number): Promise<OneActionCard> {
   // no PatientPath pending. Check if we have stable position data --
   // if so, this is genuinely a "nothing to do" moment. The gift.
 
-  const clearCheck = await db("weekly_ranking_snapshots")
-    .where({ org_id: orgId })
-    .orderBy("week_start", "desc")
-    .limit(2);
+  const clearCheck = await getTargetCompetitorSnapshots(orgId, 2);
 
   if (clearCheck.length >= 2) {
     const curr = clearCheck[0];
@@ -146,10 +143,8 @@ async function checkGPDrift(orgId: number): Promise<OneActionCard | null> {
 // ─── Rule 2: Review Gap Closeable in 2 Weeks ───────────────────────
 
 async function checkReviewGap(orgId: number): Promise<OneActionCard | null> {
-  const latest = await db("weekly_ranking_snapshots")
-    .where({ org_id: orgId })
-    .orderBy("week_start", "desc")
-    .first();
+  const snapshots = await getTargetCompetitorSnapshots(orgId, 1);
+  const latest = snapshots[0] || null;
 
   if (!latest) return null;
 
@@ -192,9 +187,18 @@ async function checkSentimentGap(orgId: number): Promise<OneActionCard | null> {
       ? JSON.parse(org.checkup_data) : org.checkup_data;
 
     const clientPlaceId = checkup.placeId || checkup.place?.placeId || null;
-    const topCompetitor = checkup.topCompetitor;
-    const competitorPlaceId = typeof topCompetitor === "object" ? topCompetitor?.placeId : null;
-    const competitorName = typeof topCompetitor === "string" ? topCompetitor : topCompetitor?.name || null;
+
+    // Prefer target competitor over generic topCompetitor
+    let competitorPlaceId: string | null = null;
+    let competitorName: string | null = null;
+    if (org.target_competitor_name && org.target_competitor_place_id) {
+      competitorName = org.target_competitor_name;
+      competitorPlaceId = org.target_competitor_place_id;
+    } else {
+      const topCompetitor = checkup.topCompetitor;
+      competitorPlaceId = typeof topCompetitor === "object" ? topCompetitor?.placeId : null;
+      competitorName = typeof topCompetitor === "string" ? topCompetitor : topCompetitor?.name || null;
+    }
 
     if (!clientPlaceId || !competitorPlaceId || !competitorName) return null;
 
@@ -225,10 +229,7 @@ async function checkSentimentGap(orgId: number): Promise<OneActionCard | null> {
 // ─── Rule 3: Competitor Gained Ground ──────────────────────────────
 
 async function checkRankingDrop(orgId: number): Promise<OneActionCard | null> {
-  const snapshots = await db("weekly_ranking_snapshots")
-    .where({ org_id: orgId })
-    .orderBy("week_start", "desc")
-    .limit(2);
+  const snapshots = await getTargetCompetitorSnapshots(orgId, 2);
 
   if (snapshots.length < 2) return null;
 
@@ -275,10 +276,8 @@ async function checkPatientPath(orgId: number): Promise<OneActionCard | null> {
 // ─── Rule 5: Steady State ───────────────────────────────────────────
 
 async function getSteadyState(orgId: number): Promise<OneActionCard> {
-  const latest = await db("weekly_ranking_snapshots")
-    .where({ org_id: orgId })
-    .orderBy("week_start", "desc")
-    .first();
+  const snapshots = await getTargetCompetitorSnapshots(orgId, 1);
+  const latest = snapshots[0] || null;
 
   if (latest?.position && latest.competitor_name) {
     const gap = (latest.competitor_review_count || 0) - (latest.client_review_count || 0);
@@ -471,10 +470,7 @@ async function getGPDriftData(orgId: number): Promise<OneActionIntelligence["dri
 }
 
 async function getCompetitorVelocityData(orgId: number): Promise<OneActionIntelligence["competitorVelocity"]> {
-  const snapshots = await db("weekly_ranking_snapshots")
-    .where({ org_id: orgId })
-    .orderBy("week_start", "desc")
-    .limit(2);
+  const snapshots = await getTargetCompetitorSnapshots(orgId, 2);
 
   if (snapshots.length < 2) return null;
 
@@ -504,6 +500,27 @@ async function getCompetitorVelocityData(orgId: number): Promise<OneActionIntell
     competitorReviewsThisMonth: compDelta,
     clientReviewsThisMonth: Math.max(0, clientDelta),
   };
+}
+
+// ─── Target Competitor Resolution ──────────────────────────────────
+// When the org has a target_competitor_name (e.g., Saif: "beat Centreville"),
+// use snapshots for that competitor instead of whatever the latest scan found.
+
+async function getTargetCompetitorSnapshots(orgId: number, limit: number = 2) {
+  const org = await db("organizations").where({ id: orgId }).select("target_competitor_name").first();
+  if (org?.target_competitor_name) {
+    const snapshots = await db("weekly_ranking_snapshots")
+      .where({ org_id: orgId })
+      .whereRaw("LOWER(competitor_name) = LOWER(?)", [org.target_competitor_name])
+      .orderBy("week_start", "desc")
+      .limit(limit);
+    if (snapshots.length > 0) return snapshots;
+  }
+  // Fallback: latest snapshots regardless of competitor
+  return db("weekly_ranking_snapshots")
+    .where({ org_id: orgId })
+    .orderBy("week_start", "desc")
+    .limit(limit);
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
