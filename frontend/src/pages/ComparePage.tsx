@@ -205,14 +205,56 @@ function ComparePageInner() {
 
         {/* Market Intelligence */}
         <Section title="What This Means" defaultOpen={true}>
-          <div className="space-y-4">
-            {clientReviews < (competitorReviews || 0) && competitorName && (
+          <div className="space-y-5">
+            {clientReviews < (competitorReviews || 0) && competitorName && (() => {
+              const gap = (competitorReviews || 0) - clientReviews;
+              const weeksToClose = Math.ceil(gap / 2);
+              const timeframe = weeksToClose <= 4
+                ? `${weeksToClose} week${weeksToClose !== 1 ? "s" : ""}`
+                : weeksToClose <= 52
+                  ? `${Math.ceil(weeksToClose / 4)} months`
+                  : `${(weeksToClose / 52).toFixed(1)} years`;
+              const clientPct = competitorReviews ? Math.round((clientReviews / competitorReviews) * 100) : 0;
+              return (
+                <div className="space-y-3">
+                  {/* Visual gap bar */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                      <span>Review Volume</span>
+                      <span>Gap: {gap}</span>
+                    </div>
+                    <div className="relative w-full h-3 bg-stone-200/60 rounded-full overflow-hidden">
+                      <div
+                        className="absolute left-0 top-0 h-full bg-emerald-500 rounded-full transition-all"
+                        style={{ width: `${Math.max(clientPct, 3)}%` }}
+                      />
+                      <div
+                        className="absolute right-0 top-0 h-full bg-[#D56753]/30 rounded-full transition-all"
+                        style={{ width: `${Math.max(100 - clientPct, 3)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-emerald-600 font-semibold">You: {clientReviews}</span>
+                      <span className="text-[#D56753] font-semibold">{competitorName.split(/\s/).slice(0, 2).join(" ")}: {competitorReviews}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-[#1A1D23] font-semibold">
+                    At 2 reviews per week, you close this gap in {timeframe}.
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Google weights review volume heavily in local pack rankings and AI-generated answers. This gap is the single largest factor in your competitive position. Every review also adds keywords Google uses to match you with patient searches.
+                  </p>
+                </div>
+              );
+            })()}
+            {clientReviews >= (competitorReviews || 0) && competitorName && competitorReviews && (
               <div>
                 <p className="text-sm font-semibold text-[#1A1D23]">
-                  The gap is {(competitorReviews || 0) - clientReviews} reviews.
+                  You lead {competitorName} by {clientReviews - (competitorReviews || 0)} reviews.
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  {competitorName} has {competitorReviews} reviews to your {clientReviews}. Google weights review volume heavily in local pack rankings. This gap is the single largest factor keeping {competitorName} ahead.
+                  Consistent reviews keep you ahead. One review per week compounds into a moat your competitors cannot close quickly. Alloro watches for any shift.
                 </p>
               </div>
             )}
@@ -225,11 +267,6 @@ function ComparePageInner() {
                   Businesses with 10+ photos see measurably more engagement on Google. Photos signal an active, maintained business.
                 </p>
               </div>
-            )}
-            {clientReviews >= (competitorReviews || 0) && clientPhotos >= 10 && (
-              <p className="text-sm text-gray-500">
-                You lead on all comparable readings. Alloro is watching for any shift.
-              </p>
             )}
             {!competitorName && clientReviews === 0 && clientPhotos === 0 && (
               <div className="text-sm text-gray-500">
