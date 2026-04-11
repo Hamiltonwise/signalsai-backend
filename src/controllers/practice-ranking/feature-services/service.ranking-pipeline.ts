@@ -135,6 +135,7 @@ export async function updateStatus(
   if (progress > 0 && !detail.stepsCompleted.includes(step)) {
     const steps = [
       "queued",
+      "fetching_search_position",
       "fetching_client_gbp",
       "discovering_competitors",
       "scraping_competitors",
@@ -232,6 +233,155 @@ export async function processLocationRanking(
   const startDateStr = startDate.toISOString().split("T")[0];
   const endDateStr = endDate.toISOString().split("T")[0];
 
+  // ========== STEP 0: Search Position (live Google data) ==========
+  // Fetch the client's position in Google Places for "{specialty} in {marketLocation}",
+  // using the practice's own coordinates as the location bias. The same competitor
+  // set drives Practice Health scoring (Option A — see spec).
+  // Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
+  await updateStatus(
+    rankingId,
+    "processing",
+    "fetching_search_position",
+    `Looking up ${gbpLocationName} on Google...`,
+    5,
+    statusDetail,
+    log,
+  );
+
+  const SEARCH_RADIUS_METERS = 40234; // 25 miles
+  const searchQuery = `${specialty} in ${marketLocation}`;
+
+  let clientVantage: { lat: number; lng: number } | null = null;
+  let clientPlaceId: string | null = null;
+  let clientPhotosCountFromStep0 = 0;
+  let searchStatus: "ok" | "not_in_top_20" | "bias_unavailable" | "api_error" = "ok";
+  let searchPosition: number | null = null;
+  let discoveredCompetitors: any[] = [];
+
+  // Sub-step 1: Resolve client vantage point via Places lookup
+  try {
+    const clientLookup = await getClientPhotosViaPlaces(
+      gbpLocationName,
+      marketLocation,
+    );
+    if (
+      clientLookup.placeId &&
+      clientLookup.lat !== null &&
+      clientLookup.lng !== null
+    ) {
+      clientVantage = { lat: clientLookup.lat, lng: clientLookup.lng };
+      clientPlaceId = clientLookup.placeId;
+      clientPhotosCountFromStep0 = clientLookup.photosCount;
+      log(
+        `[RANKING] [${rankingId}] Step 0: client vantage = ${clientVantage.lat.toFixed(4)},${clientVantage.lng.toFixed(4)} (placeId=${clientPlaceId})`,
+      );
+    } else {
+      log(
+        `[RANKING] [${rankingId}] Step 0: client lookup did not return coordinates — proceeding without location bias`,
+      );
+      searchStatus = "bias_unavailable";
+    }
+  } catch (err: any) {
+    log(
+      `[RANKING] [${rankingId}] Step 0: client lookup failed: ${err.message}`,
+    );
+    searchStatus = "bias_unavailable";
+  }
+
+  // Sub-step 2: Location-biased competitor search via Places API
+  try {
+    discoveredCompetitors = await discoverCompetitorsViaPlaces(
+      specialty,
+      marketLocation,
+      20,
+      clientVantage
+        ? {
+            lat: clientVantage.lat,
+            lng: clientVantage.lng,
+            radiusMeters: SEARCH_RADIUS_METERS,
+          }
+        : undefined,
+    );
+    log(
+      `[RANKING] [${rankingId}] Step 0: ${discoveredCompetitors.length} competitors from Places searchText`,
+    );
+  } catch (err: any) {
+    log(
+      `[RANKING] [${rankingId}] Step 0: Places searchText failed: ${err.message}. Falling back to unbiased discovery so Practice Health still has data.`,
+    );
+    searchStatus = "api_error";
+    try {
+      discoveredCompetitors = await discoverCompetitorsViaPlaces(
+        specialty,
+        marketLocation,
+        20,
+      );
+    } catch (fallbackErr: any) {
+      log(
+        `[RANKING] [${rankingId}] Step 0: fallback discovery also failed: ${fallbackErr.message}`,
+      );
+      discoveredCompetitors = [];
+    }
+  }
+
+  // Sub-step 3: Find client in results by exact placeId
+  if (searchStatus !== "api_error" && clientPlaceId) {
+    const clientIndex = discoveredCompetitors.findIndex(
+      (c: any) => c.placeId === clientPlaceId,
+    );
+    if (clientIndex >= 0) {
+      searchPosition = clientIndex + 1;
+      searchStatus = "ok";
+      // Prefer the photos count from the searchText result if it's higher
+      // (the searchText field mask includes photos, so we may get a fresher count)
+      const clientFromSearch = discoveredCompetitors[clientIndex];
+      if ((clientFromSearch.photosCount ?? 0) > clientPhotosCountFromStep0) {
+        clientPhotosCountFromStep0 = clientFromSearch.photosCount;
+      }
+      log(
+        `[RANKING] [${rankingId}] Step 0: client found at position ${searchPosition}`,
+      );
+    } else if (searchStatus === "ok") {
+      searchStatus = "not_in_top_20";
+      log(
+        `[RANKING] [${rankingId}] Step 0: client not found in top ${discoveredCompetitors.length} results`,
+      );
+    }
+  }
+
+  // Sub-step 4: Build search_results jsonb with isClient flag
+  const searchResultsPayload = discoveredCompetitors.map((c: any, idx: number) => ({
+    placeId: c.placeId,
+    name: c.name,
+    position: idx + 1,
+    rating: c.totalScore ?? 0,
+    reviewCount: c.reviewsCount ?? 0,
+    primaryType: c.primaryType ?? "",
+    types: c.types ?? [],
+    isClient: clientPlaceId !== null && c.placeId === clientPlaceId,
+  }));
+
+  // Sub-step 5: Persist Step 0 fields immediately so they survive later-step failures
+  await db("practice_rankings")
+    .where({ id: rankingId })
+    .update({
+      search_position: searchPosition,
+      search_query: searchQuery,
+      search_lat: clientVantage?.lat ?? null,
+      search_lng: clientVantage?.lng ?? null,
+      search_radius_meters: clientVantage ? SEARCH_RADIUS_METERS : null,
+      search_results: JSON.stringify(searchResultsPayload),
+      search_checked_at: new Date(),
+      search_status: searchStatus,
+      updated_at: new Date(),
+    });
+
+  log(
+    `[RANKING] [${rankingId}] Step 0 complete: status=${searchStatus}, position=${
+      searchPosition ?? "n/a"
+    }, results=${discoveredCompetitors.length}`,
+  );
+
   // ========== STEP 1: Fetch GBP Data ==========
   await updateStatus(
     rankingId,
@@ -262,90 +412,26 @@ export async function processLocationRanking(
   );
 
   // ========== STEP 2: Discover Competitors ==========
+  // The competitor list was already fetched in Step 0 via location-biased Places
+  // searchText. We trust Google's ordering verbatim — no filterBySpecialty
+  // post-filter (per spec: Option A, "trust Google, no post-filter"). The same
+  // unfiltered set drives both the Search Position display and Practice Health
+  // scoring downstream.
+  //
+  // The legacy competitor_cache module is intentionally bypassed on this path —
+  // its (specialty + marketLocation) key is incompatible with per-practice
+  // location bias. The cache module stays in place for any other callers.
   await updateStatus(
     rankingId,
     "processing",
     "discovering_competitors",
-    "Checking competitor cache...",
+    `Using ${discoveredCompetitors.length} competitors from Google Places`,
     30,
     statusDetail,
     log,
   );
 
-  const cachedCompetitors = await getCachedCompetitors(
-    specialty,
-    marketLocation,
-  );
-  let discoveredCompetitors: any[];
-  let usedCache = false;
-
-  if (cachedCompetitors && cachedCompetitors.length > 0) {
-    discoveredCompetitors = cachedCompetitors.map((c) => ({
-      placeId: c.placeId,
-      name: c.name,
-      address: c.address || "",
-      category: c.category || "Unknown",
-      primaryType: c.primaryType || "",
-      types: c.types || [],
-      totalScore: c.totalScore ?? 0,
-      reviewsCount: c.reviewsCount ?? 0,
-      url: "",
-      website: undefined,
-      phone: undefined,
-      hasHours: false,
-      hoursComplete: false,
-      photosCount: 0,
-    }));
-    usedCache = true;
-    await updateStatus(
-      rankingId,
-      "processing",
-      "discovering_competitors",
-      `Using ${cachedCompetitors.length} cached competitors`,
-      35,
-      statusDetail,
-      log,
-    );
-  } else {
-    await updateStatus(
-      rankingId,
-      "processing",
-      "discovering_competitors",
-      "Discovering local competitors via Google Places...",
-      30,
-      statusDetail,
-      log,
-    );
-
-    log(
-      `[RANKING] [${rankingId}] Discovering competitors: "${specialty}" in "${marketLocation}"`,
-    );
-    discoveredCompetitors = await discoverCompetitorsViaPlaces(
-      specialty,
-      marketLocation,
-      20,
-    );
-
-    // Strict category filter — only keep specialty-matching competitors
-    discoveredCompetitors = filterBySpecialty(discoveredCompetitors, specialty);
-    log(
-      `[RANKING] [${rankingId}] After specialty filter: ${discoveredCompetitors.length} competitors`,
-    );
-
-    if (discoveredCompetitors.length > 0) {
-      const competitorsToCache = discoveredCompetitors.map((c) => ({
-        placeId: c.placeId,
-        name: c.name,
-        address: c.address,
-        category: c.category,
-        primaryType: c.primaryType,
-        types: c.types,
-        totalScore: c.totalScore ?? 0,
-        reviewsCount: c.reviewsCount ?? 0,
-      }));
-      await setCachedCompetitors(specialty, marketLocation, competitorsToCache);
-    }
-  }
+  const usedCache = false;
 
   // ========== STEP 3: Deep Scrape Competitors ==========
   await updateStatus(
@@ -421,27 +507,35 @@ export async function processLocationRanking(
     );
   }
 
-  // Filter client out of competitors
-  const clientNameLower = gbpLocationName.toLowerCase().trim();
-  competitorDetails = competitorDetails.filter((comp) => {
-    const compNameLower = (comp.name || "").toLowerCase().trim();
-    if (compNameLower === clientNameLower) return false;
-    if (
-      compNameLower.includes(clientNameLower) ||
-      clientNameLower.includes(compNameLower)
-    ) {
-      const shorterLength = Math.min(
-        compNameLower.length,
-        clientNameLower.length,
-      );
-      const longerLength = Math.max(
-        compNameLower.length,
-        clientNameLower.length,
-      );
-      if (shorterLength / longerLength > 0.5) return false;
-    }
-    return true;
-  });
+  // Filter client out of competitors by exact placeId (when available from Step 0).
+  // Falls back to fuzzy name match only if Step 0 couldn't resolve the client's placeId
+  // (bias_unavailable / api_error states).
+  if (clientPlaceId) {
+    competitorDetails = competitorDetails.filter(
+      (comp) => comp.placeId !== clientPlaceId,
+    );
+  } else {
+    const clientNameLower = gbpLocationName.toLowerCase().trim();
+    competitorDetails = competitorDetails.filter((comp) => {
+      const compNameLower = (comp.name || "").toLowerCase().trim();
+      if (compNameLower === clientNameLower) return false;
+      if (
+        compNameLower.includes(clientNameLower) ||
+        clientNameLower.includes(compNameLower)
+      ) {
+        const shorterLength = Math.min(
+          compNameLower.length,
+          clientNameLower.length,
+        );
+        const longerLength = Math.max(
+          compNameLower.length,
+          clientNameLower.length,
+        );
+        if (shorterLength / longerLength > 0.5) return false;
+      }
+      return true;
+    });
+  }
 
   // ========== STEP 4: Website Audit ==========
   await updateStatus(
@@ -507,31 +601,36 @@ export async function processLocationRanking(
     // Continue with postsLast30d = 0 if fetch fails
   }
 
-  // Fetch client photos count via Google Places API
-  let clientPhotosCount = 0;
-  try {
-    log(
-      `[RANKING] [${rankingId}] Fetching client photos via Places API: "${gbpLocationName}" in "${marketLocation}"`,
-    );
-    const clientPhotosResult = await getClientPhotosViaPlaces(
-      gbpLocationName,
-      marketLocation,
-    );
-    clientPhotosCount = clientPhotosResult.photosCount;
-    if (clientPhotosResult.placeId) {
+  // Reuse the client photos count captured in Step 0 — no extra Places API call needed.
+  // Step 0 already looked the client up via Places, and the searchText field mask
+  // includes places.photos. Falls back to a fresh lookup only if Step 0 didn't resolve
+  // the client (clientPlaceId is null).
+  let clientPhotosCount = clientPhotosCountFromStep0;
+  if (!clientPlaceId) {
+    try {
       log(
-        `[RANKING] [${rankingId}] ✓ Client photos: ${clientPhotosCount} (Place ID: ${clientPhotosResult.placeId})`,
+        `[RANKING] [${rankingId}] Step 0 had no client placeId — fetching client photos directly: "${gbpLocationName}" in "${marketLocation}"`,
       );
-    } else {
+      const clientPhotosResult = await getClientPhotosViaPlaces(
+        gbpLocationName,
+        marketLocation,
+      );
+      clientPhotosCount = clientPhotosResult.photosCount;
+      if (clientPhotosResult.placeId) {
+        log(
+          `[RANKING] [${rankingId}] ✓ Client photos: ${clientPhotosCount} (Place ID: ${clientPhotosResult.placeId})`,
+        );
+      } else {
+        log(
+          `[RANKING] [${rankingId}] ✗ Could not match client in Places API results`,
+        );
+      }
+    } catch (error: any) {
       log(
-        `[RANKING] [${rankingId}] ✗ Could not match client in Places API results`,
+        `[RANKING] [${rankingId}] ✗ Failed to fetch client photos: ${error.message}`,
       );
+      // Continue with clientPhotosCount = 0 if fetch fails
     }
-  } catch (error: any) {
-    log(
-      `[RANKING] [${rankingId}] ✗ Failed to fetch client photos: ${error.message}`,
-    );
-    // Continue with clientPhotosCount = 0 if fetch fails
   }
 
   const clientPracticeData: PracticeData = {
@@ -740,6 +839,16 @@ export async function processLocationRanking(
     .where({ id: rankingId })
     .first();
 
+  // Build Search Position context for the LLM (Practice Health + Search Position split).
+  // Includes the live Google query, the client's position, and the top 5 with isClient flags.
+  const top5SearchResults = searchResultsPayload.slice(0, 5).map((entry) => ({
+    rank: entry.position,
+    name: entry.name,
+    review_count: entry.reviewCount,
+    rating: entry.rating,
+    is_client: entry.isClient,
+  }));
+
   const llmPayload: RankingLlmPayload = {
     additional_data: {
       practice_ranking_id: rankingId,
@@ -766,6 +875,13 @@ export async function processLocationRanking(
       },
       competitors: rawData.competitors.slice(0, 5),
       benchmarks,
+      search_position: {
+        query: searchQuery,
+        position: searchPosition,
+        status: searchStatus,
+        not_in_top_20: searchStatus === "not_in_top_20",
+        top_5: top5SearchResults,
+      },
     },
   };
 

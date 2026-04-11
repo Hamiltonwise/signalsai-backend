@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   AlertCircle,
   RefreshCw,
-  ArrowUpRight,
   Target,
   Rocket,
   HelpCircle,
@@ -28,6 +27,41 @@ import {
   useWizardDemoData,
 } from "../../contexts/OnboardingWizardContext";
 import { useLocationContext } from "../../contexts/locationContext";
+
+/**
+ * Date when the Practice Health scoring methodology changed (Practice Health +
+ * Search Position split). Score values from rankings observed before this date
+ * were computed against the legacy competitor discovery path and are not
+ * directly comparable to post-ship values.
+ *
+ * Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
+ */
+const PRACTICE_HEALTH_METHODOLOGY_CHANGED_AT = "2026-04-12";
+
+/**
+ * Maximum drift between consecutive runs' vantage points (in meters) before
+ * the Search Position growth arrow is suppressed. Beyond this distance the
+ * comparison isn't measuring the same thing — practice may have moved or the
+ * Identifier Agent re-resolved to a different address.
+ */
+const SEARCH_POSITION_VANTAGE_TOLERANCE_METERS = 500;
+
+/** Haversine distance in meters between two lat/lng points. */
+function haversineMeters(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const R = 6371000; // earth radius in meters
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
 
 // Type for client GBP data
 interface ClientGbpData {
@@ -158,6 +192,33 @@ interface RankingResult {
       client_gbp: ClientGbpData | null;
     } | null;
   } | null;
+  // Search Position fields (Practice Health + Search Position split).
+  // Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
+  searchPosition: number | null;
+  searchQuery: string | null;
+  searchStatus: "ok" | "not_in_top_20" | "bias_unavailable" | "api_error" | null;
+  searchResults: Array<{
+    placeId: string;
+    name: string;
+    position: number;
+    rating: number;
+    reviewCount: number;
+    primaryType: string;
+    types: string[];
+    isClient: boolean;
+  }> | null;
+  searchLat: number | null;
+  searchLng: number | null;
+  searchRadiusMeters: number | null;
+  searchCheckedAt: string | null;
+  // Practice Health aliases (same data as rankScore/rankPosition).
+  practiceHealth: number | null;
+  practiceHealthRank: number | null;
+  // Previous run's Search Position data — used to gate growth arrow stability.
+  previousSearchPosition: number | null;
+  previousSearchQuery: string | null;
+  previousSearchLat: number | null;
+  previousSearchLng: number | null;
 }
 
 // Ranking Task from the tasks endpoint (approved tasks only)
@@ -692,6 +753,310 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
   );
 }
 
+/**
+ * Search Position Section
+ *
+ * Top section of the rankings page. Renders the practice's live position in
+ * Google Places for "{specialty} in {city, state}", branching on
+ * `searchStatus` for the four possible outcomes (ok / not_in_top_20 /
+ * bias_unavailable / api_error). The growth arrow vs the previous run is
+ * gated by a stability check — same query AND vantage point within
+ * SEARCH_POSITION_VANTAGE_TOLERANCE_METERS — otherwise renders a NEW badge.
+ *
+ * Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
+ */
+function SearchPositionSection({ result }: { result: RankingResult }) {
+  const status = result.searchStatus ?? "ok";
+
+  // Stability check: render growth arrow only when comparison is valid.
+  // Falls back to NEW badge for first run, query drift, or vantage drift > 500m.
+  const hasPriorPosition = result.previousSearchPosition !== null;
+  const sameQuery =
+    result.previousSearchQuery !== null &&
+    result.previousSearchQuery === result.searchQuery;
+  const vantageStable =
+    result.searchLat !== null &&
+    result.searchLng !== null &&
+    result.previousSearchLat !== null &&
+    result.previousSearchLng !== null &&
+    haversineMeters(
+      result.previousSearchLat,
+      result.previousSearchLng,
+      result.searchLat,
+      result.searchLng,
+    ) <= SEARCH_POSITION_VANTAGE_TOLERANCE_METERS;
+
+  const showGrowthArrow =
+    hasPriorPosition && sameQuery && vantageStable;
+
+  const positionDelta =
+    showGrowthArrow && result.searchPosition !== null
+      ? result.previousSearchPosition! - result.searchPosition // negative = improved (lower number = better rank)
+      : null;
+
+  const stabilityTooltip = !hasPriorPosition
+    ? "First measurement — tracking starts now"
+    : !sameQuery || !vantageStable
+      ? "Measurement updated — tracking restarted"
+      : null;
+
+  // Render the "Last checked" timestamp
+  const lastCheckedLabel = result.searchCheckedAt
+    ? new Date(result.searchCheckedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "Last run";
+
+  // Take top 5 from searchResults; fall back gracefully if missing.
+  const topResults = (result.searchResults ?? []).slice(0, 5);
+
+  // Resolve the section title from the search query (e.g. "Top Orthodontists in Winter Garden, FL")
+  const sectionTitle = result.searchQuery
+    ? `Top ${result.searchQuery
+        .split(" in ")[0]
+        .replace(/^./, (c) => c.toUpperCase())}s in ${result.searchQuery.split(" in ")[1] ?? ""}`.trim()
+    : "Your Competitors on Google";
+
+  return (
+    <section
+      data-wizard-target="rankings-search-position"
+      className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden"
+    >
+      <div className="px-10 py-8 border-b border-black/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="text-left">
+          <h2 className="text-xl font-black font-heading text-alloro-navy tracking-tight">
+            {sectionTitle}
+          </h2>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
+            Live Google Search Position
+          </p>
+        </div>
+        <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-black/5 text-[10px] font-black text-alloro-orange uppercase tracking-widest">
+          Last checked {lastCheckedLabel}
+        </div>
+      </div>
+
+      {/* HEADLINE — branches on searchStatus */}
+      <div className="px-10 py-8 border-b border-black/5">
+        {status === "ok" && result.searchPosition !== null && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline gap-3">
+              <span className="text-6xl lg:text-7xl font-black font-heading text-alloro-navy tracking-tighter leading-none tabular-nums">
+                #{result.searchPosition}
+              </span>
+              {showGrowthArrow && positionDelta !== null && positionDelta !== 0 && (
+                <span
+                  className={`text-[11px] font-black px-3 py-1.5 rounded-lg border tabular-nums ${
+                    positionDelta > 0
+                      ? "bg-green-50 text-green-700 border-green-100"
+                      : "bg-red-50 text-red-700 border-red-100"
+                  }`}
+                >
+                  {positionDelta > 0 ? "▲" : "▼"} {Math.abs(positionDelta)}
+                </span>
+              )}
+              {!showGrowthArrow && (
+                <div className="relative group">
+                  <span className="text-[11px] font-black px-3 py-1.5 rounded-lg border bg-alloro-orange/10 text-alloro-orange border-alloro-orange/20">
+                    NEW
+                  </span>
+                  {stabilityTooltip && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-alloro-navy text-white text-[11px] font-medium rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-56 text-center leading-relaxed z-50">
+                      {stabilityTooltip}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <p className="text-sm font-bold text-slate-500">
+              for{" "}
+              <span className="text-alloro-navy">
+                {result.searchQuery ?? "your specialty query"}
+              </span>
+            </p>
+          </div>
+        )}
+
+        {status === "not_in_top_20" && (
+          <div className="flex flex-col gap-2">
+            <span className="text-3xl lg:text-4xl font-black font-heading text-slate-400 tracking-tight leading-tight">
+              Not ranked in top 20
+            </span>
+            <p className="text-sm font-bold text-slate-500">
+              for{" "}
+              <span className="text-alloro-navy">
+                {result.searchQuery ?? "your specialty query"}
+              </span>
+              . Your Practice Health below shows what's keeping you out of the
+              top 20 and how to break in.
+            </p>
+          </div>
+        )}
+
+        {status === "bias_unavailable" && (
+          <div className="flex flex-col gap-2">
+            <span className="text-3xl lg:text-4xl font-black font-heading text-slate-400 tracking-tight leading-tight">
+              Couldn't locate your practice on Google
+            </span>
+            <p className="text-sm font-bold text-slate-500">
+              Check that your Google Business Profile is connected and has a
+              valid address.{" "}
+              <a
+                href="/settings"
+                className="text-alloro-orange underline underline-offset-4 hover:text-alloro-orange/80"
+              >
+                Open settings →
+              </a>
+            </p>
+          </div>
+        )}
+
+        {status === "api_error" && (
+          <div className="flex flex-col gap-2">
+            <span className="text-3xl lg:text-4xl font-black font-heading text-slate-400 tracking-tight leading-tight">
+              Google search temporarily unavailable
+            </span>
+            <p className="text-sm font-bold text-slate-500">
+              We'll try again on your next refresh.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* TOP 5 LIST */}
+      {topResults.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse table-fixed">
+            <thead className="bg-slate-50/50 text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.25em] border-b border-black/5">
+              <tr>
+                <th className="px-10 py-5 w-[55%]">Practice Name</th>
+                <th className="px-4 py-5 text-center w-[15%]">Rank</th>
+                <th className="px-10 py-5 text-right w-[30%]">Reviews</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {topResults.map((entry) => (
+                <tr
+                  key={entry.placeId}
+                  className={`${
+                    entry.isClient
+                      ? "bg-alloro-orange/[0.03]"
+                      : "hover:bg-slate-50/30"
+                  } transition-all`}
+                >
+                  <td className="px-10 py-7 text-left">
+                    <div className="flex flex-col">
+                      <span
+                        className={`text-[16px] font-black tracking-tight ${
+                          entry.isClient
+                            ? "text-alloro-orange"
+                            : "text-alloro-navy"
+                        }`}
+                      >
+                        {entry.name}
+                      </span>
+                      {entry.isClient && (
+                        <span className="text-[9px] font-black bg-alloro-orange text-white px-2 py-0.5 rounded uppercase tracking-widest w-fit mt-1.5 leading-none">
+                          You
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-7 text-center">
+                    <span
+                      className={`text-2xl font-black font-heading tabular-nums ${
+                        entry.position <= 3
+                          ? "text-alloro-orange"
+                          : "text-slate-300"
+                      }`}
+                    >
+                      #{entry.position}
+                    </span>
+                  </td>
+                  <td className="px-10 py-7 text-right">
+                    <span className="font-black text-alloro-navy tabular-nums font-sans text-lg">
+                      {entry.reviewCount.toLocaleString()}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Holding You Back Section
+ *
+ * Top-3 teaser pulled from the LLM gap analysis (`llm_analysis.top_recommendations`),
+ * with a link out to /to-do-list for the full improvement plan. Sits between
+ * Search Position and the existing VisibilityProtocol task list.
+ *
+ * Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
+ */
+function HoldingYouBackSection({ result }: { result: RankingResult }) {
+  const navigate = useNavigate();
+  const recs = result.llmAnalysis?.top_recommendations ?? [];
+  const top3 = recs.slice(0, 3);
+
+  if (top3.length === 0) return null;
+
+  return (
+    <section className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden text-left">
+      <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between">
+        <div className="space-y-1">
+          <h3 className="text-xl font-black font-heading text-alloro-navy tracking-tight leading-none">
+            What's Holding You Back
+          </h3>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Top 3 things to fix to climb your ranking
+          </p>
+        </div>
+        <div className="w-12 h-12 bg-alloro-orange/10 text-alloro-orange rounded-xl flex items-center justify-center shadow-inner">
+          <Lightbulb size={24} />
+        </div>
+      </div>
+      <div className="p-8 lg:p-10 space-y-4">
+        {top3.map((rec, idx) => (
+          <div
+            key={idx}
+            className="p-6 rounded-2xl border border-black/5 bg-slate-50/50 flex items-start justify-between gap-4"
+          >
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-[10px] font-black text-alloro-orange uppercase tracking-widest">
+                  Priority {rec.priority}
+                </span>
+              </div>
+              <p className="font-black text-alloro-navy text-base tracking-tight mb-1">
+                {rec.title}
+              </p>
+              {rec.description && (
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  {rec.description}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="px-10 py-6 border-t border-black/5 bg-slate-50/30">
+        <button
+          onClick={() => navigate("/to-do-list")}
+          className="text-[11px] font-black text-alloro-orange uppercase tracking-widest flex items-center gap-1.5 hover:text-alloro-orange/80 transition-colors"
+        >
+          See full improvement plan <ChevronRight size={14} />
+        </button>
+      </div>
+    </section>
+  );
+}
+
 // Performance Dashboard View Component
 function PerformanceDashboard({
   result,
@@ -737,6 +1102,13 @@ function PerformanceDashboard({
 
   const getScoreTrend = () => {
     if (!result.previousAnalysis) return undefined;
+    // Suppress the trend arrow if the previous data point predates the
+    // Practice Health methodology change. The two scores measure against
+    // different competitor sets and aren't directly comparable.
+    // Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
+    const prevDate = new Date(result.previousAnalysis.observedAt);
+    const cutoff = new Date(PRACTICE_HEALTH_METHODOLOGY_CHANGED_AT);
+    if (prevDate < cutoff) return undefined;
     const prev = Number(result.previousAnalysis.rankScore);
     const curr = Number(result.rankScore);
     const change = curr - prev;
@@ -798,165 +1170,29 @@ function PerformanceDashboard({
           tooltip="Total number of reviews across all platforms. Higher volume improves local search visibility."
         />
         <KPICard
-          label="Market Reach"
+          label="Practice Health"
           value={Number(result.rankScore).toFixed(0)}
           suffix="/100"
           sub={
             Number(result.rankScore) >= 80
-              ? "Excellent performance"
+              ? "Excellent — protect what's working"
               : Number(result.rankScore) >= 60
               ? "Good, room to grow"
               : "Needs improvement"
           }
           trend={scoreTrend?.value}
           dir={scoreTrend?.dir}
-          tooltip="Alloro's proprietary score measuring your practice's overall digital authority and local search dominance."
+          tooltip="Alloro's diagnostic score for the strength of your local search fundamentals — review count, recency, rating, profile completeness, NAP consistency. Separate from your live Google rank shown below."
         />
       </section>
 
-      {/* 3. COMPETITIVE MATRIX */}
-      <section
-        data-wizard-target="rankings-competitors"
-        className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden"
-      >
-        <div className="px-10 py-8 border-b border-black/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="text-left">
-            <h2 className="text-xl font-black font-heading text-alloro-navy tracking-tight">
-              Nearby Practices
-            </h2>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">
-              How you compare to the neighbors
-            </p>
-          </div>
-          <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-black/5 text-[10px] font-black text-alloro-orange uppercase tracking-widest">
-            Last checked today
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse table-fixed">
-            <thead className="bg-slate-50/50 text-[10px] font-black text-alloro-textDark/40 uppercase tracking-[0.25em] border-b border-black/5">
-              <tr>
-                <th className="px-10 py-5 w-[40%]">Practice Name</th>
-                <th className="px-4 py-5 text-center w-[15%]">Rank</th>
-                <th className="px-4 py-5 text-center w-[20%]">Reviews</th>
-                <th className="px-10 py-5 text-right w-[25%]">
-                  Monthly Growth
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {(() => {
-                // Build display list: top competitors + client
-                const clientPosition = result.rankPosition;
+      {/* 3. SEARCH POSITION — live Google ranking for the practice's specialty query.
+            Replaces the legacy "Nearby Practices" table.
+            Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md */}
+      <SearchPositionSection result={result} />
 
-                // Filter out the client from competitors using GBP location name
-                const clientNameBase = (
-                  result.gbpLocationName ||
-                  result.rawData?.client_gbp?.gbpLocationName ||
-                  ""
-                )
-                  .toLowerCase()
-                  .replace(/[^a-z0-9]/g, "");
-
-                const isClientMatch = (name: string) => {
-                  if (!clientNameBase) return false;
-                  const normalizedName = name
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]/g, "");
-                  return (
-                    normalizedName.includes(clientNameBase) ||
-                    clientNameBase.includes(normalizedName) ||
-                    (clientNameBase.length > 5 &&
-                      normalizedName.includes(clientNameBase.slice(0, 6)))
-                  );
-                };
-
-                const filteredCompetitors = sortedCompetitors.filter(
-                  (c) => !isClientMatch(c.name)
-                );
-
-                const clientDisplayName =
-                  result.gbpLocationName ||
-                  result.rawData?.client_gbp?._raw?.locations?.[0]
-                    ?.displayName ||
-                  result.specialty;
-
-                const clientEntry = {
-                  name: clientDisplayName,
-                  rankPosition: clientPosition,
-                  totalReviews: clientReviews,
-                  reviewsLast30d:
-                    result.rawData?.client_gbp?.reviewsLast30d || 0,
-                  isClient: true,
-                };
-
-                const displayList = [
-                  ...filteredCompetitors
-                    .slice(0, 5)
-                    .map((c) => ({ ...c, isClient: false })),
-                  clientEntry,
-                ]
-                  .sort((a, b) => a.rankPosition - b.rankPosition)
-                  .slice(0, 6);
-
-                return displayList.map((comp, idx) => (
-                  <tr
-                    key={idx}
-                    className={`${
-                      comp.isClient
-                        ? "bg-alloro-orange/[0.03]"
-                        : "hover:bg-slate-50/30"
-                    } transition-all group`}
-                  >
-                    <td className="px-10 py-7 text-left">
-                      <div className="flex flex-col">
-                        <span
-                          className={`text-[16px] font-black tracking-tight ${
-                            comp.isClient
-                              ? "text-alloro-orange"
-                              : "text-alloro-navy"
-                          }`}
-                        >
-                          {comp.name}
-                        </span>
-                        {comp.isClient ? (
-                          <span className="text-[9px] font-black bg-alloro-orange text-white px-2 py-0.5 rounded uppercase tracking-widest w-fit mt-1.5 leading-none">
-                            You
-                          </span>
-                        ) : (
-                          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest w-fit mt-1.5 leading-none">
-                            Competitor
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-7 text-center">
-                      <span
-                        className={`text-2xl font-black font-heading tabular-nums ${
-                          comp.rankPosition <= 3
-                            ? "text-alloro-orange"
-                            : "text-slate-300"
-                        }`}
-                      >
-                        #{comp.rankPosition}
-                      </span>
-                    </td>
-                    <td className="px-4 py-7 text-center font-black text-alloro-navy tabular-nums font-sans text-lg">
-                      {comp.totalReviews.toLocaleString()}
-                    </td>
-                    <td className="px-10 py-7 text-right">
-                      <div className="flex items-center justify-end gap-2 text-green-600 font-black text-lg font-sans">
-                        +{comp.reviewsLast30d || 0}
-                        <ArrowUpRight size={18} className="opacity-40" />
-                      </div>
-                    </td>
-                  </tr>
-                ));
-              })()}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {/* 3a. WHAT'S HOLDING YOU BACK — top-3 LLM gap analysis teaser, links to /to-do-list */}
+      <HoldingYouBackSection result={result} />
 
       {/* 4. VISIBILITY PROTOCOL (Action Plan) - Only approved tasks */}
       <VisibilityProtocol tasks={tasks} />

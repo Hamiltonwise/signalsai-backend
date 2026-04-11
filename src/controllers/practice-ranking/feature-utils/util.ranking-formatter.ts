@@ -222,6 +222,11 @@ export function formatAccountsList(accounts: any[]) {
 // =====================================================================
 
 export function formatLatestRanking(ranking: any, previous: any | null) {
+  // Coerce decimal columns (search_lat, search_lng) — Postgres returns DECIMAL
+  // as a string in some pg driver versions; cast to number for the frontend.
+  const toNumberOrNull = (v: unknown): number | null =>
+    v === null || v === undefined ? null : Number(v);
+
   return {
     id: ranking.id,
     organizationId: ranking.organization_id,
@@ -236,6 +241,20 @@ export function formatLatestRanking(ranking: any, previous: any | null) {
     rankScore: ranking.rank_score,
     rankPosition: ranking.rank_position,
     totalCompetitors: ranking.total_competitors,
+    // Practice Health aliases — same data, new label for the client UI.
+    // The legacy rankScore/rankPosition fields stay above for backward compatibility.
+    practiceHealth: ranking.rank_score,
+    practiceHealthRank: ranking.rank_position,
+    // Search Position fields (Practice Health + Search Position split).
+    // Spec: plans/04122026-no-ticket-practice-health-search-position-split/spec.md
+    searchPosition: ranking.search_position,
+    searchQuery: ranking.search_query,
+    searchStatus: ranking.search_status,
+    searchResults: parseJsonField(ranking.search_results),
+    searchLat: toNumberOrNull(ranking.search_lat),
+    searchLng: toNumberOrNull(ranking.search_lng),
+    searchRadiusMeters: ranking.search_radius_meters,
+    searchCheckedAt: ranking.search_checked_at,
     rankingFactors: parseJsonField(ranking.ranking_factors),
     rawData: parseJsonField(ranking.raw_data),
     llmAnalysis: parseJsonField(ranking.llm_analysis),
@@ -243,7 +262,9 @@ export function formatLatestRanking(ranking: any, previous: any | null) {
     errorMessage: ranking.error_message,
     createdAt: ranking.created_at,
     updatedAt: ranking.updated_at,
-    // Include previous ranking data for trend comparison (from any previous batch)
+    // Include previous ranking data for trend comparison (from any previous batch).
+    // The query/lat/lng fields let the frontend decide whether the comparison is
+    // valid (Revision 1, Gap A: stability check).
     previousAnalysis: previous
       ? {
           id: previous.id,
@@ -254,6 +275,10 @@ export function formatLatestRanking(ranking: any, previous: any | null) {
           rawData: parseJsonField(previous.raw_data),
         }
       : null,
+    previousSearchPosition: previous?.search_position ?? null,
+    previousSearchQuery: previous?.search_query ?? null,
+    previousSearchLat: toNumberOrNull(previous?.search_lat),
+    previousSearchLng: toNumberOrNull(previous?.search_lng),
   };
 }
 
