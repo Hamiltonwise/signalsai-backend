@@ -342,7 +342,10 @@ export default function ReviewsPage() {
   const rawData = (rankingRaw as Record<string, unknown>)?.rawData as Record<string, unknown> | undefined;
   const competitors = (rawData?.competitors as Array<Record<string, unknown>>) || [];
   const topCompetitors = [...competitors]
-    .sort((a, b) => ((b.reviewCount as number) || 0) - ((a.reviewCount as number) || 0))
+    .sort((a, b) => (
+      ((b.userRatingCount as number) || (b.reviewCount as number) || (b.totalReviews as number) || 0) -
+      ((a.userRatingCount as number) || (a.reviewCount as number) || (a.totalReviews as number) || 0)
+    ))
     .slice(0, 5);
 
   const googleSearchUrl = orgName ? `https://www.google.com/search?q=${encodeURIComponent(orgName)}` : undefined;
@@ -488,9 +491,9 @@ export default function ReviewsPage() {
               </div>
               {/* Competitor rows */}
               {topCompetitors.map((comp, i) => {
-                const compReviews = (comp.reviewCount as number) || 0;
-                const compRating = (comp.rating as number) || 0;
-                const compName = (comp.name as string) || `Competitor ${i + 1}`;
+                const compReviews = (comp.userRatingCount as number) || (comp.reviewCount as number) || (comp.totalReviews as number) || 0;
+                const compRating = (comp.rating as number) || (comp.averageRating as number) || 0;
+                const compName = (comp.name as string) || (comp.displayName as Record<string, string>)?.text || `Competitor ${i + 1}`;
                 const gap = compReviews - reviewCount;
                 return (
                   <div key={i} className="flex items-center justify-between rounded-xl bg-stone-50/80 border border-stone-200/60 p-3">

@@ -94,8 +94,34 @@ export default function PendingActionsCard({ orgId }: { orgId: number }) {
 
   const actions = data?.actions || [];
 
-  // Don't render anything if no pending actions
-  if (isLoading || actions.length === 0) return null;
+  // Loading state: don't flash
+  if (isLoading) return null;
+
+  // Empty state: Alloro is still working, not invisible
+  if (actions.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.15 }}
+        className="mb-8"
+      >
+        <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#D56753]/10 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-[#D56753]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#1A1D23]">Alloro is working</p>
+              <p className="text-sm text-gray-500">
+                Your next batch of drafts is being prepared. They'll appear here for you to review and approve.
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

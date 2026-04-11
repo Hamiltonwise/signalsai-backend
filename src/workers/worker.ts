@@ -97,10 +97,10 @@ const weeklyCROWorker = new Worker(
   { connection, concurrency: 1, prefix: '{minds}' }
 );
 
-// 9. Weekly DFY Execution (Sunday 10 PM UTC = 5 PM ET)
-// The autopilot. Publishes GBP posts, applies CRO changes, analyzes competitor gaps.
-// Runs AFTER CRO engine (which generates recommendations) and BEFORE ranking snapshots.
-// Every action records to behavioral_events as dfy.* for Monday email proof-of-work.
+// 9. DFY Execution (Mon/Wed/Fri 10 PM UTC = 5 PM ET)
+// The autopilot. Drafts GBP posts and CRO changes for owner approval.
+// Runs 3x/week so the dashboard always has something ready.
+// Dedup built into the engine: won't create new drafts if unexpired ones exist.
 const weeklyDFYWorker = new Worker(
   "minds-weekly-dfy",
   async () => { await runDFYForAllOrgs(); },
@@ -234,10 +234,10 @@ async function setupWeeklyDFYSchedule(): Promise<void> {
   try {
     const queue = getMindsQueue("weekly-dfy");
     await queue.add("weekly-dfy", {}, {
-      repeat: { pattern: "0 22 * * 0", tz: "UTC" }, // Sunday 10 PM UTC = 5 PM ET, after CRO, before snapshots
+      repeat: { pattern: "0 22 * * 1,3,5", tz: "UTC" }, // Mon/Wed/Fri 10 PM UTC = 5 PM ET
       jobId: "weekly-dfy",
     });
-    console.log("[MINDS-WORKER] DFY engine scheduled (Sunday 10 PM UTC)");
+    console.log("[MINDS-WORKER] DFY engine scheduled (Mon/Wed/Fri 10 PM UTC)");
   } catch (err: any) {
     console.error("[MINDS-WORKER] Failed to schedule DFY engine:", err);
   }

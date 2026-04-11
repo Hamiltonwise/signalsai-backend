@@ -579,6 +579,16 @@ export async function draftGBPPost(orgId: number): Promise<{
   error?: string;
 }> {
   try {
+    // Dedup: skip if an unexpired GBP draft already exists for this org
+    const existing = await db("pending_actions")
+      .where({ org_id: orgId, action_type: "gbp_post", status: "draft" })
+      .where("expires_at", ">", new Date())
+      .first();
+
+    if (existing) {
+      return { drafted: false, error: "Unexpired GBP draft already exists" };
+    }
+
     const org = await db("organizations")
       .where({ id: orgId })
       .select("name", "specialty", "city", "state", "checkup_data")
@@ -629,6 +639,18 @@ export async function draftCRORecommendations(orgId: number): Promise<{
   drafted: number;
   skipped: number;
 }> {
+  // Dedup: count unexpired CRO drafts. Skip if 3+ already waiting.
+  const existingCROCount = await db("pending_actions")
+    .where({ org_id: orgId, status: "draft" })
+    .whereIn("action_type", ["cro_title", "cro_meta"])
+    .where("expires_at", ">", new Date())
+    .count("id as cnt")
+    .first();
+
+  if (parseInt(String(existingCROCount?.cnt || 0), 10) >= 3) {
+    return { drafted: 0, skipped: 0 };
+  }
+
   const { recommendations } = await runCROEngine(orgId);
 
   if (recommendations.length === 0) {
@@ -717,12 +739,13 @@ export async function draftCRORecommendations(orgId: number): Promise<{
 
 /**
  * Run the full DFY cycle for all active orgs.
- * Designed to run as a BullMQ job, Sunday night before Monday email.
+ * Runs Mon/Wed/Fri via BullMQ so drafts are always fresh on the dashboard.
  *
  * DRAFT-THEN-APPROVE: Nothing executes automatically.
+ * Dedup built-in: won't create duplicates if unexpired drafts exist.
  * For each org:
- * 1. Draft a GBP post (owner approves from Monday email)
- * 2. Draft CRO changes (owner approves from Monday email)
+ * 1. Draft a GBP post (owner approves from dashboard or Monday email)
+ * 2. Draft CRO changes (owner approves from dashboard or Monday email)
  * 3. Analyze target competitor gaps (informational, no approval needed)
  */
 export async function runDFYForAllOrgs(): Promise<{
