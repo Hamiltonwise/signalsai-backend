@@ -353,7 +353,12 @@ function ComparePageInner() {
                           <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right">
                               <p className="text-sm font-semibold text-[#1A1D23]">{reviews}</p>
-                              <p className="text-xs text-gray-400">reviews</p>
+                              <p className="text-xs text-gray-400">
+                                {(c.reviewsLast30d != null && c.reviewsLast30d > 0)
+                                  ? `+${c.reviewsLast30d} this month`
+                                  : "reviews"
+                                }
+                              </p>
                             </div>
                             <a href={searchUrl} target="_blank" rel="noopener noreferrer"
                               className="text-[#D56753]/60 hover:text-[#D56753] transition-colors">

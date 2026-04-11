@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Minus, ExternalLink, Phone, MapPin, MousePointerClick } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ExternalLink, Phone, MapPin, MousePointerClick, CheckCircle2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
@@ -27,6 +27,33 @@ interface ReadingTrend {
   verifyUrl?: string;
 }
 
+interface ProoflineEntry {
+  date: string;
+  title: string;
+  narrative: string;
+  proofType: string;
+  valueChange: string | null;
+}
+
+interface ReviewTrajectoryPoint {
+  date: string;
+  reviewCount: number;
+  competitorReviewCount: number | null;
+  competitorName: string | null;
+}
+
+interface ProofOfWorkData {
+  prooflineTimeline: ProoflineEntry[];
+  reviewTrajectory: ReviewTrajectoryPoint[];
+  competitorLandscape: Array<{
+    name: string;
+    reviewCount: number;
+    rating: number;
+    reviewVelocity: number | null;
+    photosCount: number | null;
+  }>;
+}
+
 // ─── Component ──────────────────────────────────────────────────────
 
 export default function ProgressReport() {
@@ -40,6 +67,13 @@ export default function ProgressReport() {
     queryFn: () => apiGet({ path: "/user/dashboard-context" }),
     enabled: !!orgId,
     staleTime: 60_000,
+  });
+
+  const { data: proofData } = useQuery<ProofOfWorkData>({
+    queryKey: ["proof-of-work", orgId],
+    queryFn: () => apiGet({ path: "/user/proof-of-work" }),
+    enabled: !!orgId,
+    staleTime: 120_000,
   });
 
   const { data: rankingRaw } = useQuery<any>({
@@ -315,6 +349,125 @@ export default function ProgressReport() {
             </motion.div>
           );
         })()}
+
+        {/* Review Trajectory -- the arc that proves it's working */}
+        {proofData?.reviewTrajectory && proofData.reviewTrajectory.length >= 2 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mt-6 space-y-3"
+          >
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">Review Count Over Time</p>
+            <div className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-5">
+              {/* Simple bar visualization */}
+              <div className="space-y-2">
+                {proofData.reviewTrajectory.map((point, i) => {
+                  const maxReviews = Math.max(
+                    ...proofData.reviewTrajectory.map(p => Math.max(p.reviewCount, p.competitorReviewCount || 0))
+                  );
+                  const barWidth = maxReviews > 0 ? Math.max(3, (point.reviewCount / maxReviews) * 100) : 3;
+                  const compBarWidth = point.competitorReviewCount && maxReviews > 0
+                    ? Math.max(3, (point.competitorReviewCount / maxReviews) * 100)
+                    : 0;
+                  const dateLabel = new Date(point.date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-xs text-gray-400 w-14 text-right flex-shrink-0">{dateLabel}</span>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-4 bg-emerald-500 rounded-sm transition-all"
+                            style={{ width: `${barWidth}%` }}
+                          />
+                          <span className="text-xs font-semibold text-[#1A1D23]">{point.reviewCount}</span>
+                        </div>
+                        {compBarWidth > 0 && (
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-3 bg-[#D56753]/30 rounded-sm transition-all"
+                              style={{ width: `${compBarWidth}%` }}
+                            />
+                            <span className="text-xs text-gray-400">{point.competitorReviewCount}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Legend */}
+              <div className="flex items-center gap-4 mt-4 pt-3 border-t border-stone-200/60">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-emerald-500" />
+                  <span className="text-xs text-gray-500">You</span>
+                </div>
+                {proofData.reviewTrajectory.some(p => p.competitorReviewCount) && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-sm bg-[#D56753]/30" />
+                    <span className="text-xs text-gray-500">
+                      {proofData.reviewTrajectory.find(p => p.competitorName)?.competitorName || "Top competitor"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Proofline Timeline -- What Alloro Did */}
+        {proofData?.prooflineTimeline && proofData.prooflineTimeline.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="mt-6"
+          >
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">What Alloro Did</p>
+            <div className="space-y-3">
+              {proofData.prooflineTimeline.map((entry, i) => {
+                const dateLabel = new Date(entry.date).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                });
+                const isWin = entry.proofType === "win";
+
+                return (
+                  <div
+                    key={i}
+                    className="rounded-xl bg-stone-50/80 border border-stone-200/60 p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        isWin ? "bg-emerald-50" : "bg-stone-100"
+                      }`}>
+                        {isWin ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-sm font-semibold text-[#1A1D23]">{entry.title}</p>
+                          {entry.valueChange && (
+                            <span className={`text-xs font-semibold flex-shrink-0 ${
+                              isWin ? "text-emerald-600" : "text-gray-400"
+                            }`}>{entry.valueChange}</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 leading-relaxed">{entry.narrative}</p>
+                        <p className="text-xs text-gray-400 mt-2">{dateLabel}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
 
         {/* Upload Section -- unlock deeper intelligence */}
         <div className="mt-10 pl-4 border-l-2 border-[#1A1D23]/20">

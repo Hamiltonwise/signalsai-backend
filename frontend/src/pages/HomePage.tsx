@@ -389,6 +389,21 @@ export default function HomePage() {
     staleTime: 120_000,
   });
 
+  const { data: proofData } = useQuery<{
+    prooflineTimeline: Array<{
+      date: string;
+      title: string;
+      narrative: string;
+      proofType: string;
+      valueChange: string | null;
+    }>;
+  }>({
+    queryKey: ["proof-of-work", orgId],
+    queryFn: () => apiGet({ path: "/user/proof-of-work" }),
+    enabled: !!orgId,
+    staleTime: 300_000,
+  });
+
   // ── Derived State ──
   const action = actionData?.card || null;
   const greeting = buildGreeting(ctx || null);
@@ -627,7 +642,30 @@ export default function HomePage() {
         {/* Competitive detail lives on Get Found. Readings above the fold. */}
 
         {/* ── Working in the Background ── */}
-        {intelligenceData?.recentActions && intelligenceData.recentActions.length > 0 && (
+        {(proofData?.prooflineTimeline?.length ?? 0) > 0 ? (
+          <div className="mb-10 pl-4 border-l-2 border-[#1A1D23]/10">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">WHAT ALLORO DID</p>
+            <div className="space-y-3">
+              {proofData!.prooflineTimeline.slice(0, 3).map((entry, i) => (
+                <div key={i}>
+                  <p className="text-xs text-gray-400 mb-0.5">
+                    {new Date(entry.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </p>
+                  <p className="text-sm text-[#1A1D23] font-semibold">{entry.title}</p>
+                  {entry.narrative && (
+                    <p className="text-sm text-gray-500 mt-0.5">{entry.narrative}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate("/progress")}
+              className="mt-3 inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold hover:underline"
+            >
+              See full timeline <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+        ) : intelligenceData?.recentActions && intelligenceData.recentActions.length > 0 ? (
           <div className="mb-10 pl-4 border-l-2 border-[#1A1D23]/10">
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">WORKING IN THE BACKGROUND</p>
             <div className="space-y-2">
@@ -636,7 +674,7 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* ═══ SECONDARY CONTENT ═══ */}
         <div className="space-y-6 mt-4">
