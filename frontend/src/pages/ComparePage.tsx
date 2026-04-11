@@ -132,13 +132,13 @@ function ComparePageInner() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">How Easily Patients Find You</h1>
+          <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">How Easily Patients Find You</h1>
           <p className="text-sm text-gray-400 mt-1">Alloro tracks your ranking against every competitor in your market.</p>
           {competitorName && (
             <p className="text-sm text-gray-500 mt-1">
               Your top competitor: {competitorName}
               {competitorSearchUrl && (
-                <a href={competitorSearchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 ml-2 text-[#1A1D23]/40 hover:text-[#1A1D23]/60 hover:underline">
+                <a href={competitorSearchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 ml-2 text-xs text-[#D56753] font-semibold hover:underline">
                   Verify <ExternalLink className="w-3 h-3" />
                 </a>
               )}
@@ -186,18 +186,18 @@ function ComparePageInner() {
             <div className="flex gap-3 mt-4">
               {googleSearchUrl && (
                 <a href={googleSearchUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-[#1A1D23]/40 font-semibold hover:text-[#1A1D23]/60 hover:underline">
+                  className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold hover:underline">
                   Verify your data <ExternalLink className="w-3 h-3" />
                 </a>
               )}
               {competitorSearchUrl && (
                 <a href={competitorSearchUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-[#1A1D23]/40 font-semibold hover:text-[#1A1D23]/60 hover:underline">
+                  className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold hover:underline">
                   Verify competitor <ExternalLink className="w-3 h-3" />
                 </a>
               )}
             </div>
-            <p className="text-xs text-[#1A1D23]/30 mt-4">
+            <p className="text-xs text-gray-400 mt-4">
               Alloro measures from a fixed point so your trend is always comparable week to week.
             </p>
           </Section>
@@ -338,7 +338,7 @@ function ComparePageInner() {
                       const isTop = i === 0;
                       const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(name)}`;
                       return (
-                        <div key={i} className={`flex items-center justify-between py-3 px-4 rounded-xl ${isTop ? "bg-[#D56753]/5 border border-[#D56753]/10" : "bg-white/60 border border-stone-100"}`}>
+                        <div key={i} className={`flex items-center justify-between py-3 px-4 rounded-xl ${isTop ? "bg-[#D56753]/5 border border-[#D56753]/10" : "bg-stone-50/80 border border-stone-200/60"}`}>
                           <div className="flex items-center gap-3 min-w-0">
                             <span className="text-xs font-semibold text-gray-400 w-5 shrink-0">{i + 1}</span>
                             <div className="min-w-0">
@@ -356,7 +356,7 @@ function ComparePageInner() {
                               <p className="text-xs text-gray-400">reviews</p>
                             </div>
                             <a href={searchUrl} target="_blank" rel="noopener noreferrer"
-                              className="text-[#1A1D23]/30 hover:text-[#D56753] transition-colors">
+                              className="text-[#D56753]/60 hover:text-[#D56753] transition-colors">
                               <ExternalLink className="w-3.5 h-3.5" />
                             </a>
                           </div>
@@ -406,7 +406,7 @@ function ComparePageInner() {
                 )}
                 {googleSearchUrl && (
                   <a href={googleSearchUrl} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-[#1A1D23]/40 font-semibold hover:text-[#1A1D23]/60 hover:underline mt-1">
+                    className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold hover:underline mt-1">
                     Verify on Google <ExternalLink className="w-3 h-3" />
                   </a>
                 )}

@@ -73,7 +73,7 @@ function Section({
     <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-100/50 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-stone-100/50 transition-colors"
       >
         <div className="flex items-center gap-2">
           {Icon && <Icon className="w-4 h-4 text-gray-400" />}
@@ -133,7 +133,7 @@ function NotificationReviewCard({
     : null;
 
   return (
-    <div className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4 space-y-3">
+    <div className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4 space-y-3">
       {/* Review header */}
       <div className="flex items-center gap-2">
         <StarRating rating={review.star_rating || 5} />
@@ -141,13 +141,13 @@ function NotificationReviewCard({
           {review.reviewer_name || "Customer"}
         </span>
         {formattedDate && (
-          <span className="text-xs text-[#1A1D23]/30">{formattedDate}</span>
+          <span className="text-xs text-gray-400">{formattedDate}</span>
         )}
       </div>
 
       {/* Review text */}
       {review.review_text && (
-        <p className="text-sm text-[#1A1D23]/80 leading-relaxed">
+        <p className="text-sm text-[#1A1D23]/60 leading-relaxed">
           {review.review_text}
         </p>
       )}
@@ -161,7 +161,7 @@ function NotificationReviewCard({
               Suggested response
             </span>
           </div>
-          <p className="text-sm text-[#1A1D23]/70 leading-relaxed">
+          <p className="text-sm text-gray-500 leading-relaxed">
             {review.ai_response}
           </p>
           {review.postable ? (
@@ -179,7 +179,7 @@ function NotificationReviewCard({
               )}
             </div>
           ) : (
-            <p className="text-xs text-[#1A1D23]/40 pt-1">
+            <p className="text-xs text-gray-400 pt-1">
               Copy this response and post it on your Google Business Profile.
             </p>
           )}
@@ -211,13 +211,13 @@ function CheckupReviewCard({ review }: { review: CheckupReview }) {
         <StarRating rating={review.rating || 5} />
         <span className="text-xs text-[#1A1D23]/60">{authorName}</span>
         {review.relativePublishTimeDescription && (
-          <span className="text-xs text-[#1A1D23]/30">
+          <span className="text-xs text-gray-400">
             {review.relativePublishTimeDescription}
           </span>
         )}
       </div>
       {reviewText && (
-        <p className="text-sm text-[#1A1D23]/70 leading-relaxed line-clamp-3">
+        <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
           {reviewText}
         </p>
       )}
@@ -355,7 +355,7 @@ export default function ReviewsPage() {
       <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-4">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">
+          <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">
             What People Are Saying
           </h1>
           <p className="text-sm text-gray-400 mt-1">Alloro monitors your Google reviews daily. AI-drafted responses appear here within 24 hours of a new review.</p>
@@ -409,12 +409,12 @@ export default function ReviewsPage() {
             </div>
           ) : reviewCount > 0 ? (
             <div className="space-y-3">
-              <div className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4">
+              <div className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4">
                 <div className="flex items-center gap-3 mb-2">
                   {rating && <StarRating rating={Math.round(rating)} size="md" />}
                   <span className="text-lg font-semibold text-[#1A1D23]">{rating} stars</span>
                 </div>
-                <p className="text-sm text-[#1A1D23]/70">
+                <p className="text-sm text-gray-500">
                   {reviewCount} reviews on Google. Alloro syncs your reviews daily and generates AI-drafted responses for new ones.
                 </p>
               </div>
@@ -422,7 +422,7 @@ export default function ReviewsPage() {
           ) : (
             <div className="space-y-2">
               <p className="text-sm font-semibold text-[#1A1D23]">Your reviews will appear here</p>
-              <p className="text-sm text-[#1A1D23]/50">
+              <p className="text-sm text-gray-500">
                 Once your Google Business Profile is connected, Alloro syncs your reviews daily at 4 AM and generates AI-drafted responses for each one.
               </p>
             </div>
@@ -435,7 +435,7 @@ export default function ReviewsPage() {
             0 && (
             <div className="rounded-xl bg-[#FDF4F2] border border-[#D56753]/10 px-5 py-3 flex items-center gap-3">
               <MessageSquare className="w-4 h-4 text-[#D56753]" />
-              <p className="text-sm text-[#1A1D23]/70">
+              <p className="text-sm text-gray-500">
                 <span className="font-medium text-[#1A1D23]">
                   {
                     notifications.filter(
@@ -454,23 +454,23 @@ export default function ReviewsPage() {
           {velocityData ? (
             <div className="flex items-center gap-6 text-sm">
               <div>
-                <p className="text-[#1A1D23]/40 text-xs uppercase tracking-wider">
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
                   You
                 </p>
                 <p className="text-lg font-semibold text-[#1A1D23]">
                   {(velocityData as Record<string, unknown>).clientReviewsThisMonth as number}
                 </p>
-                <p className="text-xs text-[#1A1D23]/40">this month</p>
+                <p className="text-xs text-gray-400">this month</p>
               </div>
               <div className="w-px h-10 bg-gray-200" />
               <div>
-                <p className="text-[#1A1D23]/40 text-xs uppercase tracking-wider">
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
                   {(velocityData as Record<string, unknown>).competitorName as string}
                 </p>
                 <p className="text-lg font-semibold text-[#1A1D23]">
                   {(velocityData as Record<string, unknown>).competitorReviewsThisMonth as number}
                 </p>
-                <p className="text-xs text-[#1A1D23]/40">this month</p>
+                <p className="text-xs text-gray-400">this month</p>
               </div>
             </div>
           ) : topCompetitors.length > 0 && reviewCount > 0 ? (
@@ -520,12 +520,12 @@ export default function ReviewsPage() {
             </div>
           ) : reviewCount > 0 ? (
             <div className="space-y-2">
-              <p className="text-sm text-[#1A1D23]/70">
+              <p className="text-sm text-gray-500">
                 You have {reviewCount} total reviews{rating ? ` at ${rating} stars` : ""}. Alloro is tracking your review velocity against your top competitor. Monthly comparison data will appear here as it accumulates.
               </p>
             </div>
           ) : (
-            <p className="text-sm text-[#1A1D23]/50">
+            <p className="text-sm text-gray-500">
               Review velocity tracks your new reviews per month against your top competitor. Connect your Google Business Profile to start tracking.
             </p>
           )}
@@ -535,14 +535,14 @@ export default function ReviewsPage() {
         {(sentimentMoments.length > 0 || sentimentInsight?.summary || (rating && reviewCount > 0)) && (
           <Section title="What Your Reviews Reveal" defaultOpen={true}>
             {sentimentInsight?.summary && (
-              <p className="text-sm text-[#1A1D23]/70 leading-relaxed mb-4">
+              <p className="text-sm text-gray-500 leading-relaxed mb-4">
                 {sentimentInsight.summary}
               </p>
             )}
             {sentimentMoments.length > 0 && (
               <div className="space-y-3">
                 {sentimentMoments.map((moment, i) => (
-                  <div key={i} className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4">
+                  <div key={i} className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4">
                     <p className="text-sm font-medium text-[#1A1D23]">{moment.hook}</p>
                     {moment.implication && (
                       <p className="text-sm text-[#1A1D23]/60 mt-1">{moment.implication}</p>
@@ -553,7 +553,7 @@ export default function ReviewsPage() {
             )}
             {sentimentMoments.length === 0 && !sentimentInsight?.summary && rating && reviewCount > 0 && (
               <div className="space-y-3">
-                <div className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4">
+                <div className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4">
                   <p className="text-sm font-medium text-[#1A1D23]">
                     {rating >= 4.5
                       ? `${rating} stars puts you above the threshold most consumers require before choosing a provider.`
@@ -570,7 +570,7 @@ export default function ReviewsPage() {
                   </p>
                 </div>
                 {sentimentInsight?.positiveThemes && sentimentInsight.positiveThemes.length > 0 && (
-                  <div className="rounded-xl bg-[#FAFAF7] border border-gray-100 p-4">
+                  <div className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4">
                     <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-2">Reviewers mention most</p>
                     <div className="flex flex-wrap gap-2">
                       {sentimentInsight.positiveThemes.map((theme, i) => (

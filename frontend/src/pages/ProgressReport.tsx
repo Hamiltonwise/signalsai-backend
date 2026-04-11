@@ -182,10 +182,10 @@ export default function ProgressReport() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Numbers</h1>
+          <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">Your Numbers</h1>
           {daysActive && (
             <div className="mt-3">
-              <p className="text-base text-[#1A1D23] font-medium">
+              <p className="text-sm text-gray-500">
                 Alloro has been monitoring your market for {daysActive} day{daysActive !== 1 ? "s" : ""}.
               </p>
               <p className="text-sm text-gray-400 mt-1">Rankings measured weekly from the same location so movement is real, not noise.</p>
@@ -250,7 +250,7 @@ export default function ProgressReport() {
                     href={trend.verifyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-[#1A1D23]/40 font-semibold mt-2 hover:text-[#1A1D23]/60 hover:underline"
+                    className="inline-flex items-center gap-1 text-xs text-[#D56753] font-semibold mt-2 hover:underline"
                   >
                     Verify on Google <ExternalLink className="w-3 h-3" />
                   </a>
@@ -318,13 +318,13 @@ export default function ProgressReport() {
 
         {/* Upload Section -- unlock deeper intelligence */}
         <div className="mt-10 pl-4 border-l-2 border-[#1A1D23]/20">
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-3">UNLOCK DEEPER INTELLIGENCE</p>
-          <p className="text-[15px] text-[#1A1D23]/70 leading-relaxed">
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">UNLOCK DEEPER INTELLIGENCE</p>
+          <p className="text-sm text-gray-500 leading-relaxed">
             You are seeing your market position and review gap. Upload your referral or revenue data to see who is actually sending you business, and whether those relationships are growing or drifting.
           </p>
           <button
             onClick={() => setShowUploadModal(true)}
-            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#212D40] text-white text-sm font-medium hover:bg-[#2a3a52] transition-all"
+            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
           >
             Upload business data
           </button>

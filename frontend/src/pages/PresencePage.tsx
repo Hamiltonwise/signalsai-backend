@@ -160,7 +160,7 @@ function PresencePageInner() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">Your Online Presence</h1>
+          <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">Your Online Presence</h1>
           <p className="text-sm text-gray-400 mt-1">What customers see when they search for you on Google.</p>
         </motion.div>
 

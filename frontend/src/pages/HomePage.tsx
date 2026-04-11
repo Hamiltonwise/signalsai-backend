@@ -429,7 +429,7 @@ export default function HomePage() {
           transition={{ duration: 0.5 }}
           className="mb-4"
         >
-          <h1 className="text-2xl font-medium text-[#1A1D23]/80 tracking-tight">{greeting}</h1>
+          <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">{greeting}</h1>
         </motion.div>
 
         {/* ── 2. THE OZ MOMENT (HERO) ── */}
@@ -464,12 +464,12 @@ export default function HomePage() {
                   </div>
 
                   {/* The headline */}
-                  <h2 className="text-2xl sm:text-[32px] font-semibold text-[#1A1D23] leading-tight tracking-tight mb-4">
+                  <h2 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] leading-tight tracking-tight mb-4">
                     {heroData.headline}
                   </h2>
 
                   {/* Supporting context */}
-                  <p className="text-base text-[#6B7280] leading-relaxed max-w-[640px]">
+                  <p className="text-base text-gray-500 leading-relaxed max-w-[640px]">
                     {heroData.context}
                   </p>
 
@@ -511,7 +511,7 @@ export default function HomePage() {
               >
                 <div className="w-full rounded-2xl bg-[#FDF4F2] border border-[#D56753]/10 px-6 py-6 sm:py-8 flex flex-col justify-center">
                   <span className="text-xs font-semibold uppercase tracking-wider text-[#9CA3AF] mb-5">THIS WEEK</span>
-                  <h2 className="text-2xl sm:text-[32px] font-semibold text-[#1A1D23] leading-tight tracking-tight">
+                  <h2 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] leading-tight tracking-tight">
                     {intelligenceData.watchline}
                   </h2>
                 </div>
@@ -542,7 +542,7 @@ export default function HomePage() {
                       <span className={`w-2 h-2 rounded-full ${dotColor}`} />
                       <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{item.label}</span>
                     </div>
-                    <p className="text-2xl sm:text-[28px] font-semibold text-[#1A1D23] leading-none tracking-tight">{item.value}</p>
+                    <p className="text-2xl font-semibold text-[#1A1D23] leading-none tracking-tight">{item.value}</p>
                     <p className="text-sm text-gray-500 mt-1.5 leading-snug">{item.context}</p>
                   </div>
                 );
@@ -617,7 +617,7 @@ export default function HomePage() {
             {intelligenceData.weeklyFinding.bullets.length > 0 && (
               <div className="mt-3 space-y-2">
                 {intelligenceData.weeklyFinding.bullets.map((bullet, i) => (
-                  <p key={i} className="text-[15px] text-gray-700 leading-relaxed">{bullet}</p>
+                  <p key={i} className="text-sm text-gray-500 leading-relaxed">{bullet}</p>
                 ))}
               </div>
             )}
@@ -632,7 +632,7 @@ export default function HomePage() {
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-3">WORKING IN THE BACKGROUND</p>
             <div className="space-y-2">
               {intelligenceData.recentActions.map((act, i) => (
-                <p key={i} className="text-[15px] text-gray-700">{act}</p>
+                <p key={i} className="text-sm text-gray-500">{act}</p>
               ))}
             </div>
           </div>
