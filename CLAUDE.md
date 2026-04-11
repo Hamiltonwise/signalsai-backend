@@ -29,6 +29,45 @@ Read `memory/context/operating-protocol.md` before any cross-team handoff.
 Core principle: Corey speaks descriptive (outcomes, feelings). Dave needs prescriptive (files, line numbers, tests). AI translates between them. Corey never writes engineering specs. Dave never interprets product intent.
 Team profiles with working styles: `memory/people/`
 
+## Engineer Handoff Format (LOCKED -- Dave confirmed this works, April 11 2026)
+
+Every document, spec, or handoff intended for Dave or any engineer MUST use this format.
+No exceptions. This is the format Dave's agents consume. Deviating from it causes confusion.
+
+Rules:
+- Prescriptive, not descriptive. "Build this" not "here's the outcome we like."
+- Frame changes as discrete features, not abstract goals. Each feature is a card.
+- Cards sequenced simplest-first, complexity noted on every card.
+- Every card has runnable verification tests (browser checks, SQL queries, Network tab).
+- Done gates between every card: "All tests pass? Yes = next card. No = fix first."
+- Always state whether the change touches: database, auth, billing, new API endpoint.
+
+Card format:
+```
+Card [N]: [Feature Name]
+Blast Radius: Green / Yellow / Red
+Complexity: Low / Medium / High
+Dependencies: [prior cards or "none"]
+
+What Changes:
+- [file]: [specific change]
+
+Touches:
+- Database: yes/no
+- Auth: yes/no
+- Billing: yes/no
+- New API endpoint: yes/no
+
+Verification Tests:
+1. [Specific, runnable check]
+2. [Specific, runnable check]
+
+Done Gate:
+All verification tests pass? Yes = next card. No = fix before proceeding.
+```
+
+If a doc going to engineering doesn't look like this, rewrite it before sending.
+
 ## Deployment Reality (LOCKED -- stop getting this wrong)
 
 Sandbox EC2 auto-deploys on every push to the sandbox branch. CI/CD pipeline is working.
