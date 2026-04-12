@@ -27,6 +27,7 @@ import {
   Check,
   Sparkles,
   ExternalLink,
+  AlertCircle,
 } from "lucide-react";
 import { apiGet, apiPatch } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +46,20 @@ interface ReviewNotification {
   postable: boolean;
   review_published_at: string | null;
   created_at: string;
+}
+
+interface ThemeCitation {
+  theme: string;
+  count: number;
+  exampleQuote: string;
+}
+
+interface SentimentComparison {
+  competitorName: string;
+  competitorThemes: ThemeCitation[];
+  yourThemes: ThemeCitation[];
+  gaps: { theme: string; competitorCount: number; exampleQuote: string }[];
+  insight: string;
 }
 
 interface CheckupReview {
@@ -302,6 +317,22 @@ export default function ReviewsPage() {
     staleTime: 60_000,
   });
 
+  // Sentiment comparison: theme gaps vs competitor
+  const { data: sentimentData, isLoading: sentimentLoading } = useQuery<{
+    success: boolean;
+    comparison: SentimentComparison | null;
+    cached?: boolean;
+    reason?: string;
+  }>({
+    queryKey: ["review-sentiment", orgId],
+    queryFn: () => apiGet({ path: "/user/review-sentiment" }),
+    enabled: !!orgId,
+    staleTime: 10 * 60_000, // 10 min client-side, 7-day server cache
+    retry: false,
+  });
+
+  const sentimentComparison = sentimentData?.comparison || null;
+
   // Parse checkup data
   const orgData = (ctx as Record<string, Record<string, unknown>> | undefined)?.org;
   const orgName = (orgData?.name as string) || "";
@@ -539,57 +570,128 @@ export default function ReviewsPage() {
           )}
         </Section>
 
-        {/* Sentiment Summary */}
-        {(sentimentMoments.length > 0 || sentimentInsight?.summary || (rating && reviewCount > 0)) && (
+        {/* Sentiment Comparison: the "how did they know that?" section */}
+        {(sentimentComparison || sentimentLoading || sentimentMoments.length > 0 || sentimentInsight?.summary || (rating && reviewCount > 0)) && (
           <Section title="What Your Reviews Reveal" defaultOpen={true}>
-            {sentimentInsight?.summary && (
-              <p className="text-sm text-gray-500 leading-relaxed mb-4">
-                {sentimentInsight.summary}
-              </p>
-            )}
-            {sentimentMoments.length > 0 && (
-              <div className="space-y-3">
-                {sentimentMoments.map((moment, i) => (
-                  <div key={i} className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4">
-                    <p className="text-sm font-medium text-[#1A1D23]">{moment.hook}</p>
-                    {moment.implication && (
-                      <p className="text-sm text-[#1A1D23]/60 mt-1">{moment.implication}</p>
-                    )}
+            {sentimentComparison && sentimentComparison.insight ? (
+              <div className="space-y-4">
+                {/* The insight that stops scrolling */}
+                <div className="rounded-xl bg-[#FDF4F2] border border-[#D56753]/10 p-5">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-4 h-4 text-[#D56753] mt-0.5 shrink-0" />
+                    <p className="text-sm font-medium text-[#1A1D23] leading-relaxed">
+                      {sentimentComparison.insight}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-            {sentimentMoments.length === 0 && !sentimentInsight?.summary && rating && reviewCount > 0 && (
-              <div className="space-y-3">
-                <div className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4">
-                  <p className="text-sm font-medium text-[#1A1D23]">
-                    {rating >= 4.5
-                      ? `${rating} stars puts you above the threshold most consumers require before choosing a provider.`
-                      : rating >= 4.0
-                        ? `${rating} stars is solid. Most consumers filter for 4+ stars, so you clear the bar.`
-                        : `${rating} stars means some consumers will filter you out. Getting above 4.0 is the priority.`}
-                  </p>
-                  <p className="text-sm text-[#1A1D23]/60 mt-1">
-                    {reviewCount >= 100
-                      ? `With ${reviewCount} reviews, your rating is statistically stable. New reviews shift it slowly.`
-                      : reviewCount >= 50
-                        ? `At ${reviewCount} reviews, each new 5-star review still moves the needle. Consistent collection matters.`
-                        : `With ${reviewCount} reviews, every new review has outsized impact on your rating. This is your highest-leverage growth activity right now.`}
-                  </p>
                 </div>
-                {sentimentInsight?.positiveThemes && sentimentInsight.positiveThemes.length > 0 && (
-                  <div className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4">
-                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-2">Reviewers mention most</p>
-                    <div className="flex flex-wrap gap-2">
-                      {sentimentInsight.positiveThemes.map((theme, i) => (
-                        <span key={i} className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-medium">
-                          {theme}
+
+                {/* Your themes */}
+                {sentimentComparison.yourThemes.length > 0 && (
+                  <div className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4 space-y-3">
+                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                      What your patients say about you
+                    </p>
+                    {sentimentComparison.yourThemes.map((t, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-medium shrink-0">
+                          {t.count}x
                         </span>
-                      ))}
-                    </div>
+                        <div>
+                          <p className="text-sm font-medium text-[#1A1D23]">{t.theme}</p>
+                          {t.exampleQuote && (
+                            <p className="text-xs text-[#1A1D23]/40 mt-0.5 italic">
+                              &ldquo;{t.exampleQuote}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
+
+                {/* Competitor themes */}
+                {sentimentComparison.competitorThemes.length > 0 && (
+                  <div className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4 space-y-3">
+                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                      What patients say about {sentimentComparison.competitorName}
+                    </p>
+                    {sentimentComparison.competitorThemes.map((t, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${
+                          sentimentComparison.gaps.some((g) => g.theme === t.theme)
+                            ? "bg-red-50 text-red-500"
+                            : "bg-stone-100 text-[#1A1D23]/40"
+                        }`}>
+                          {t.count}x
+                        </span>
+                        <div>
+                          <p className={`text-sm text-[#1A1D23] ${
+                            sentimentComparison.gaps.some((g) => g.theme === t.theme)
+                              ? "font-medium"
+                              : ""
+                          }`}>
+                            {t.theme}
+                            {sentimentComparison.gaps.some((g) => g.theme === t.theme) && (
+                              <span className="ml-2 text-xs text-red-500 font-medium">gap</span>
+                            )}
+                          </p>
+                          {t.exampleQuote && (
+                            <p className="text-xs text-[#1A1D23]/40 mt-0.5 italic">
+                              &ldquo;{t.exampleQuote}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-xs text-gray-400">
+                  Alloro reads your reviews and your top competitor's reviews, then identifies themes they're known for that you are not. Updated weekly.
+                </p>
               </div>
+            ) : sentimentLoading ? (
+              <div className="space-y-3">
+                <div className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Fallback: ozMoments or generic rating context */}
+                {sentimentInsight?.summary && (
+                  <p className="text-sm text-gray-500 leading-relaxed mb-4">
+                    {sentimentInsight.summary}
+                  </p>
+                )}
+                {sentimentMoments.length > 0 && (
+                  <div className="space-y-3">
+                    {sentimentMoments.map((moment, i) => (
+                      <div key={i} className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4">
+                        <p className="text-sm font-medium text-[#1A1D23]">{moment.hook}</p>
+                        {moment.implication && (
+                          <p className="text-sm text-[#1A1D23]/60 mt-1">{moment.implication}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {sentimentMoments.length === 0 && !sentimentInsight?.summary && rating && reviewCount > 0 && (
+                  <div className="rounded-xl bg-[#F0EDE8] border border-gray-100 p-4">
+                    <p className="text-sm font-medium text-[#1A1D23]">
+                      {rating >= 4.5
+                        ? `${rating} stars puts you above the threshold most consumers require before choosing a provider.`
+                        : rating >= 4.0
+                          ? `${rating} stars is solid. Most consumers filter for 4+ stars, so you clear the bar.`
+                          : `${rating} stars means some consumers will filter you out. Getting above 4.0 is the priority.`}
+                    </p>
+                    <p className="text-sm text-[#1A1D23]/60 mt-1">
+                      Alloro is analyzing your reviews against your top competitor's. The comparison will appear here once both sets of reviews are loaded.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </Section>
         )}
