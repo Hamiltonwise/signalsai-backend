@@ -73,7 +73,7 @@ function DraftCard({ draft, onAction }: { draft: Draft; onAction: () => void }) 
     return (
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-2">
         <Check className="w-4 h-4 text-emerald-600" />
-        <p className="text-sm font-medium text-emerald-700">Sent to Dr. {draft.gp_name}</p>
+        <p className="text-sm font-medium text-emerald-700">Sent to {draft.gp_name}</p>
       </div>
     );
   }
@@ -82,7 +82,7 @@ function DraftCard({ draft, onAction }: { draft: Draft; onAction: () => void }) 
     <div className="rounded-xl border border-stone-200/60 bg-stone-50/80 p-4">
       <div className="flex items-start justify-between mb-2">
         <p className="text-sm font-semibold text-[#1A1D23]">
-          Thank-you to Dr. {draft.gp_name}
+          Thank-you to {draft.gp_name}
         </p>
         <span className="text-xs font-semibold uppercase tracking-wider text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">
           Draft
@@ -108,7 +108,7 @@ function DraftCard({ draft, onAction }: { draft: Draft; onAction: () => void }) 
             type="email"
             value={gpEmail}
             onChange={(e) => setGpEmail(e.target.value)}
-            placeholder={`Dr. ${draft.gp_name}'s email`}
+            placeholder={`${draft.gp_name}'s email`}
             className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:border-[#D56753] focus:outline-none focus:ring-2 focus:ring-[#D56753]/10"
           />
         </div>

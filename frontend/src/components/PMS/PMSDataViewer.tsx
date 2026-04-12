@@ -162,8 +162,8 @@ const Odometer = ({ value }: { value: string | number }) => {
 export const PMSDataViewer: React.FC<PMSDataViewerProps> = ({
   isOpen,
   jobId,
-  title = "View PMS Data",
-  subtitle = "Review referral and production data",
+  title = "View Your Data",
+  subtitle = "Review referral and revenue data",
   initialData,
   onClose,
   onSave,
@@ -369,7 +369,7 @@ export const PMSDataViewer: React.FC<PMSDataViewerProps> = ({
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {months.length === 0 || !activeMonth ? (
               <div className="flex h-full items-center justify-center text-sm text-gray-500">
-                No PMS records found.
+                No records found.
               </div>
             ) : (
               <div className="space-y-8">
@@ -460,7 +460,7 @@ export const PMSDataViewer: React.FC<PMSDataViewerProps> = ({
                     layout
                     className="rounded-2xl border p-6 flex flex-col justify-center"
                   >
-                    <div className="flex items-center justify-center gap-2 text-xs font-bold text-gray-400 uppercase mb-3">
+                    <div className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-400 uppercase mb-3">
                       <Calendar size={14} />
                       Month
                     </div>
@@ -518,7 +518,7 @@ export const PMSDataViewer: React.FC<PMSDataViewerProps> = ({
                 </div>
 
                 {/* Table Header */}
-                <div className="grid grid-cols-13 gap-4 mb-3 px-2 text-xs font-bold text-gray-400 uppercase">
+                <div className="grid grid-cols-13 gap-4 mb-3 px-2 text-xs font-semibold text-gray-400 uppercase">
                   <div className="col-span-3">Source</div>
                   <div className="col-span-2">Type</div>
                   <div className="col-span-3">Referral Count</div>

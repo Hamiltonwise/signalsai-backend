@@ -67,7 +67,7 @@ export function WelcomeModal({ onStart, onSkip }: WelcomeModalProps) {
           className="text-xl text-white/90 mb-6 leading-relaxed"
         >
           We're excited to have you here! Let us show you around and help you
-          get the most out of your practice intelligence platform.
+          get the most out of your business intelligence platform.
         </motion.p>
 
         {/* Demo data notice */}
@@ -81,7 +81,7 @@ export function WelcomeModal({ onStart, onSkip }: WelcomeModalProps) {
             <Info size={18} className="text-white" />
           </div>
           <p className="text-white/90 text-sm leading-relaxed">
-            <span className="font-bold text-white">Note:</span> During this tour, you'll see
+            <span className="font-semibold text-white">Note:</span> During this tour, you'll see
             placeholder data to demonstrate each feature. Once you connect your
             accounts, you'll see your real practice data.
           </p>

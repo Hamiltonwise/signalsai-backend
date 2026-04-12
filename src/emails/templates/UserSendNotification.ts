@@ -35,7 +35,7 @@ const NOTIFICATION_CONFIG: Record<
 > = {
   pms_job_ready: {
     icon: "📊",
-    tagLabel: "PMS Ready",
+    tagLabel: "Data Ready",
     tagType: "success",
     defaultActionLabel: "View Referral Data",
     defaultActionPath: "/dashboard?tab=referrals",

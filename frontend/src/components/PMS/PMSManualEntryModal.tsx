@@ -574,11 +574,11 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-white">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Enter PMS Data
+              <h2 className="text-xl font-semibold text-gray-900">
+                Enter Your Data
               </h2>
               <p className="text-xs text-gray-500 mt-1">
-                Add your referral and production data for {clientId}
+                Add your referral and revenue data for {clientId}
               </p>
             </div>
             <button
@@ -601,7 +601,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                 <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
                   <Save className="w-8 h-8 text-emerald-600" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   Data Submitted Successfully!
                 </h3>
                 <p className="text-gray-600 text-center max-w-md">
@@ -709,7 +709,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                       className="rounded-2xl border bg-white p-4 flex flex-col justify-center cursor-pointer hover:border-gray-300 transition"
                       onClick={openMonthPicker}
                     >
-                      <div className="flex items-center justify-center gap-2 text-xs font-bold text-gray-400 uppercase mb-2">
+                      <div className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-400 uppercase mb-2">
                         <Calendar size={14} />
                         Month
                       </div>
@@ -768,7 +768,7 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
                 )}
 
                 {/* Table Header */}
-                <div className="grid grid-cols-13 gap-4 px-2 text-xs font-bold text-gray-400 uppercase">
+                <div className="grid grid-cols-13 gap-4 px-2 text-xs font-semibold text-gray-400 uppercase">
                   <div className="col-span-3">Source</div>
                   <div className="col-span-2">Type</div>
                   <div className="col-span-3">Referral Count</div>

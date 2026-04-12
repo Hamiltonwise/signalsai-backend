@@ -97,7 +97,7 @@ const MetricCard = ({
         : "bg-white/60 border-slate-100 hover:bg-white"
     }`}
   >
-    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 leading-none">
+    <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3 leading-none">
       {label}
     </span>
     <div className="flex items-center justify-between mb-2">
@@ -105,7 +105,7 @@ const MetricCard = ({
         <div className="h-8 w-20 bg-slate-200 rounded animate-pulse" />
       ) : (
         <span
-          className={`text-2xl font-bold font-heading tracking-tighter leading-none ${
+          className={`text-2xl font-semibold font-heading tracking-tighter leading-none ${
             isHighlighted ? "text-alloro-orange" : "text-alloro-navy"
           }`}
         >
@@ -114,7 +114,7 @@ const MetricCard = ({
       )}
       {!isLoading && trend && (
         <span
-          className={`text-xs font-bold flex items-center gap-0.5 ${
+          className={`text-xs font-semibold flex items-center gap-0.5 ${
             trend.startsWith("+") ? "text-green-600" : "text-red-500"
           }`}
         >
@@ -136,7 +136,7 @@ const MetricCard = ({
 // Temporarily hidden - Practice Diagnosis section
 // const DiagnosisBlock = ({ title, desc }: { title: string; desc: string }) => (
 //   <div>
-//     <h4 className="text-xs font-bold text-alloro-teal mb-1.5 uppercase tracking-widest leading-none">
+//     <h4 className="text-xs font-semibold text-alloro-teal mb-1.5 uppercase tracking-widest leading-none">
 //       {title}
 //     </h4>
 //     <p className="text-[13px] text-blue-100/60 leading-relaxed font-medium tracking-tight">
@@ -817,21 +817,21 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
         "Overall conversion rates above industry average",
       ],
       doctor_referral_matrix: [
-        { referrer_name: "Dr. Sarah Johnson", referred: 12, pct_scheduled: 92, pct_examined: 85, pct_started: 75, net_production: 18500, trend_label: "increasing" },
-        { referrer_name: "Dr. Michael Chen", referred: 8, pct_scheduled: 88, pct_examined: 80, pct_started: 70, net_production: 12000, trend_label: "stable" },
-        { referrer_name: "Dr. Emily Davis", referred: 6, pct_scheduled: 95, pct_examined: 90, pct_started: 82, net_production: 10800, trend_label: "new" },
-        { referrer_name: "Dr. Robert Wilson", referred: 5, pct_scheduled: 80, pct_examined: 75, pct_started: 65, net_production: 7500, trend_label: "decreasing" },
+        { referrer_name: "Sarah Johnson", referred: 12, pct_scheduled: 92, pct_examined: 85, pct_started: 75, net_production: 18500, trend_label: "increasing" },
+        { referrer_name: "Michael Chen", referred: 8, pct_scheduled: 88, pct_examined: 80, pct_started: 70, net_production: 12000, trend_label: "stable" },
+        { referrer_name: "Emily Davis", referred: 6, pct_scheduled: 95, pct_examined: 90, pct_started: 82, net_production: 10800, trend_label: "new" },
+        { referrer_name: "Robert Wilson", referred: 5, pct_scheduled: 80, pct_examined: 75, pct_started: 65, net_production: 7500, trend_label: "decreasing" },
       ],
       non_doctor_referral_matrix: [
         { source_label: "Google Search", source_type: "digital", referred: 35, pct_scheduled: 78, pct_examined: 70, pct_started: 58, net_production: 42000, trend_label: "increasing" },
-        { source_label: "Patient Referral", source_type: "patient", referred: 28, pct_scheduled: 95, pct_examined: 90, pct_started: 85, net_production: 52000, trend_label: "increasing" },
+        { source_label: "Client Referral", source_type: "other", referred: 28, pct_scheduled: 95, pct_examined: 90, pct_started: 85, net_production: 52000, trend_label: "increasing" },
         { source_label: "Facebook Ads", source_type: "digital", referred: 18, pct_scheduled: 65, pct_examined: 55, pct_started: 45, net_production: 18000, trend_label: "stable" },
         { source_label: "Website Direct", source_type: "digital", referred: 14, pct_scheduled: 72, pct_examined: 65, pct_started: 55, net_production: 16800, trend_label: "new" },
       ],
       growth_opportunity_summary: {
         top_three_fixes: [
           "Increase follow-up on Google Search leads to improve conversion",
-          "Implement patient referral program incentives",
+          "Implement client referral program incentives",
           "Optimize Facebook ad targeting for higher quality leads",
         ],
         estimated_additional_annual_revenue: 45000,
@@ -1141,7 +1141,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 rounded-full mb-4">
               <span className="w-2 h-2 bg-alloro-orange rounded-full animate-pulse"></span>
-              <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">
+              <span className="text-xs font-semibold text-alloro-orange uppercase tracking-wider">
                 Setup Required
               </span>
             </div>
@@ -1149,7 +1149,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
               Let's Set Up Your Dashboard
             </h1>
             <p className="text-lg text-slate-500 font-medium">
-              Complete these two steps to unlock your practice insights
+              Complete these two steps to unlock your business insights
             </p>
           </div>
 
@@ -1183,7 +1183,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                   <p className="text-sm text-amber-600 font-semibold">
                     Missing: {disconnectedServices.join(", ")}
                   </p>
-                  <div className="flex items-center gap-2 text-alloro-orange font-bold text-sm group-hover:gap-3 transition-all mt-3">
+                  <div className="flex items-center gap-2 text-alloro-orange font-semibold text-sm group-hover:gap-3 transition-all mt-3">
                     <Settings className="w-4 h-4" />
                     <span>Go to Settings</span>
                     <ChevronRight className="w-4 h-4" />
@@ -1217,7 +1217,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                     </span>
                   </div>
                   <p className="text-slate-400 font-medium leading-relaxed">
-                    Once properties are connected, upload your practice management
+                    Once properties are connected, upload your business
                     data to see referral analytics and revenue attribution.
                   </p>
                 </div>
@@ -1250,18 +1250,18 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
               <BarChart3 size={20} />
             </div>
             <div>
-              <h1 className="text-xs font-bold font-heading text-alloro-navy uppercase tracking-[0.2em]">
+              <h1 className="text-xs font-semibold font-heading text-alloro-navy uppercase tracking-[0.2em]">
                 Revenue Attribution
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
                   PMS Sync Verified
                 </span>
                 {latestTimestamp && (
                   <>
                     <span className="text-slate-300 mx-1">•</span>
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
                       Updated {latestTimestamp.toLocaleDateString()}
                     </span>
                   </>
@@ -1273,7 +1273,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
           {/* CTA Button - Always visible */}
           <button
             onClick={scrollToIngestionHub}
-            className="flex items-center gap-2.5 px-5 py-3 bg-alloro-orange hover:brightness-110 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg shadow-alloro-orange/20 active:scale-[0.98]"
+            className="flex items-center gap-2.5 px-5 py-3 bg-alloro-orange hover:brightness-110 text-white rounded-xl font-semibold text-xs uppercase tracking-widest transition-all shadow-lg shadow-alloro-orange/20 active:scale-[0.98]"
           >
             <Plus size={16} />
             Enter Referral Data
@@ -1294,11 +1294,11 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 <Clock className="h-5 w-5 text-alloro-teal" />
               </div>
               <div>
-                <p className="font-bold text-alloro-navy text-sm">
+                <p className="font-semibold text-alloro-navy text-sm">
                   Your latest PMS data is now being processed.
                 </p>
                 <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mt-0.5">
-                  We'll notify you when the analysis is complete.
+                  Check back in a moment to see your results.
                 </p>
               </div>
             </div>
@@ -1318,7 +1318,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
             }`}
           >
             <div className="flex-1 space-y-1">
-              <div className="font-bold text-alloro-navy text-base">
+              <div className="font-semibold text-alloro-navy text-base">
                 Your PMS data is processed.
               </div>
               <div className="text-xs text-slate-400 font-semibold uppercase tracking-widest">
@@ -1337,7 +1337,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                 type="button"
                 onClick={() => setIsEditorOpen(true)}
                 disabled={latestJobId == null || !hasLatestJobRaw}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-alloro-orange bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-alloro-orange transition hover:bg-alloro-orange/5 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-alloro-orange bg-white px-5 py-2.5 text-xs font-semibold uppercase tracking-widest text-alloro-orange transition hover:bg-alloro-orange/5 disabled:cursor-not-allowed disabled:opacity-60 shadow-sm"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Confirm and get insights
@@ -1357,7 +1357,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
               <AlertCircle className="h-5 w-5 text-red-600" />
             </div>
             <div>
-              <p className="font-bold text-red-800">
+              <p className="font-semibold text-red-800">
                 Unable to retrieve PMS data.
               </p>
               <p className="text-xs text-red-600 font-semibold uppercase tracking-widest mt-0.5">
@@ -1373,7 +1373,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
             {/* 1. ATTRIBUTION VITALS - Matching newdesign */}
             <section data-wizard-target="pms-attribution" className="space-y-4">
               <div className="flex items-center gap-4 px-2">
-                <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
                   Your PMS Vitals (YTD)
                 </h3>
                 <div className="h-px flex-1 bg-slate-100"></div>
@@ -1415,20 +1415,20 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
               <div className="px-6 sm:px-10 py-8 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-3">
                   <Calendar size={20} className="text-alloro-orange" />
-                  <h2 className="text-xl font-bold font-heading text-alloro-navy tracking-tight">
+                  <h2 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight">
                     Referral Velocity
                   </h2>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-alloro-orange"></div>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
                       Marketing
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-alloro-navy"></div>
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
                       Doctor
                     </span>
                   </div>
@@ -1459,7 +1459,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                         className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8"
                       >
                         <div className="w-16 sm:text-right shrink-0">
-                          <div className="text-[12px] font-bold text-alloro-navy uppercase">
+                          <div className="text-[12px] font-semibold text-alloro-navy uppercase">
                             {data.month}
                           </div>
                         </div>
@@ -1479,7 +1479,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                                 ease: "easeOut",
                               }}
                             />
-                            <span className="text-xs font-bold text-alloro-navy tabular-nums">
+                            <span className="text-xs font-semibold text-alloro-navy tabular-nums">
                               {data.selfReferrals}
                             </span>
                           </div>
@@ -1499,7 +1499,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                                   ease: "easeOut",
                                 }}
                               />
-                              <span className="text-xs font-bold text-slate-400 tabular-nums">
+                              <span className="text-xs font-semibold text-slate-400 tabular-nums">
                                 {data.doctorReferrals}
                               </span>
                             </div>
@@ -1527,7 +1527,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
             {/* When client approval banner is shown, show the progress timeline at "Your confirmation" step */}
             <section data-wizard-target="pms-matrices" className="space-y-4">
               <div className="flex items-center gap-4 px-2">
-                <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
                   Intelligence Hub Matrices
                 </h3>
                 <div className="h-px flex-1 bg-slate-100"></div>
@@ -1561,7 +1561,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <h3 className="text-2xl sm:text-3xl font-bold font-heading text-alloro-navy tracking-tight leading-tight">
+                    <h3 className="text-2xl sm:text-3xl font-semibold font-heading text-alloro-navy tracking-tight leading-tight">
                       Update your referral data
                     </h3>
                     <p className="text-base sm:text-lg text-slate-400 font-normal tracking-tight leading-relaxed max-w-xl mx-auto">
@@ -1584,10 +1584,10 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                   </div>
 
                   <div className="flex flex-wrap items-center justify-center gap-6 pt-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest">
                       <Lock size={14} className="text-slate-300" /> HIPAA SECURE
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest">
                       <ShieldCheck size={14} className="text-green-500" /> ENCRYPTED
                     </div>
                   </div>
@@ -1607,7 +1607,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                     )}
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold font-heading text-alloro-navy mb-2">
+                    <h3 className="text-xl font-semibold font-heading text-alloro-navy mb-2">
                       {!hasProperties && !isWizardActive ? "Connect Properties First" : "Upload Restricted"}
                     </h3>
                     <p className="text-sm text-slate-500 font-medium max-w-md">
@@ -1618,7 +1618,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                     {!hasProperties && !isWizardActive && (
                       <a
                         href="/settings"
-                        className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 bg-alloro-orange text-white rounded-xl text-sm font-bold hover:bg-alloro-orange/90 transition-colors"
+                        className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 bg-alloro-orange text-white rounded-xl text-sm font-semibold hover:bg-alloro-orange/90 transition-colors"
                       >
                         Go to Settings
                       </a>
@@ -1636,7 +1636,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                     <div className="w-10 h-10 bg-alloro-orange rounded-xl flex items-center justify-center shadow-lg border border-white/10">
                       <Target size={20} className="text-white" />
                     </div>
-                    <h3 className="text-xl font-bold font-heading tracking-tight leading-none">
+                    <h3 className="text-xl font-semibold font-heading tracking-tight leading-none">
                       Practice Diagnosis
                     </h3>
                   </div>
@@ -1661,7 +1661,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
                       }`}
                     />
                   </div>
-                  <button className="w-full md:w-auto py-3.5 px-8 bg-alloro-orange rounded-xl text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg active:scale-95">
+                  <button className="w-full md:w-auto py-3.5 px-8 bg-alloro-orange rounded-xl text-xs font-semibold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg active:scale-95">
                     View Strategic Plan
                   </button>
                 </div>

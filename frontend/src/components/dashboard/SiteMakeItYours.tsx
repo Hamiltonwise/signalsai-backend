@@ -107,7 +107,7 @@ export default function SiteMakeItYours({
             </h1>
             <p className="text-sm text-gray-500 mt-3 leading-relaxed max-w-sm mx-auto">
               Alloro built this from your Google reviews, your market data,
-              and what your patients say about you.
+              and what your customers say about you.
               Take a look, then make it yours in about 5 minutes.
             </p>
           </div>

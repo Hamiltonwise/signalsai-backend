@@ -1,5 +1,5 @@
 /**
- * One Action Card — Deterministic Rule Engine
+ * One Action Card -- Deterministic Rule Engine
  *
  * Six rules in exact priority order. First match fires. Only one action ever shows.
  * No randomness. No "pick two." The system tells the doctor the single most
@@ -135,7 +135,7 @@ function resolveAction(props: OneActionCardProps): OneAction {
     const gp = props.driftGP;
     return {
       severity: "red",
-      title: `${gp.name} at ${gp.practice} referred 0 cases this month after ${gp.monthsConsistent} months of consistent referrals.`,
+      title: `${gp.name} at ${gp.practice} referred 0 new customers this month after ${gp.monthsConsistent} months of consistent referrals.`,
       detail: "A top referral source going dark costs you revenue every week it continues. This needs attention today.",
       cta: "See what changed",
       ctaLink: "/dashboard/referrals",

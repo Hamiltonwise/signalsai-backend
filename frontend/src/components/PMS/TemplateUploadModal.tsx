@@ -104,12 +104,12 @@ export const TemplateUploadModal: React.FC<TemplateUploadModalProps> = ({
       if (result.success) {
         setUploadStatus("success");
         setMessage(
-          "We're processing your PMS data now. We'll notify you once it's ready."
+          "Your referral data is being analyzed. You'll see it on your dashboard shortly."
         );
 
         showUploadToast(
-          "PMS export received!",
-          "We'll notify when ready for checking"
+          "Data received!",
+          "Referral insights loading on dashboard"
         );
 
         if (typeof window !== "undefined") {
@@ -181,7 +181,7 @@ export const TemplateUploadModal: React.FC<TemplateUploadModalProps> = ({
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">
+                <h2 className="text-xl font-semibold text-slate-900">
                   Upload from Template
                 </h2>
                 <p className="text-sm text-slate-500 mt-0.5">
@@ -206,7 +206,7 @@ export const TemplateUploadModal: React.FC<TemplateUploadModalProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     className="flex items-start gap-4"
                   >
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-700 font-bold text-sm">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-700 font-semibold text-sm">
                       1
                     </div>
                     <div className="flex-1">
@@ -234,7 +234,7 @@ export const TemplateUploadModal: React.FC<TemplateUploadModalProps> = ({
                     transition={{ delay: 0.1 }}
                     className="flex items-start gap-4"
                   >
-                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-600 font-bold text-sm">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-600 font-semibold text-sm">
                       2
                     </div>
                     <div className="flex-1">
@@ -339,7 +339,7 @@ export const TemplateUploadModal: React.FC<TemplateUploadModalProps> = ({
                   >
                     <CheckCircle className="w-10 h-10 text-emerald-600" />
                   </motion.div>
-                  <h4 className="text-xl font-bold text-slate-900 mb-2">
+                  <h4 className="text-xl font-semibold text-slate-900 mb-2">
                     Upload Successful!
                   </h4>
                   <p className="text-slate-600">{message}</p>
@@ -355,7 +355,7 @@ export const TemplateUploadModal: React.FC<TemplateUploadModalProps> = ({
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
                     <AlertCircle className="w-10 h-10 text-red-600" />
                   </div>
-                  <h4 className="text-xl font-bold text-slate-900 mb-2">Upload Failed</h4>
+                  <h4 className="text-xl font-semibold text-slate-900 mb-2">Upload Failed</h4>
                   <p className="text-red-600 mb-4">{message}</p>
                   <button
                     onClick={() => setUploadStatus("idle")}

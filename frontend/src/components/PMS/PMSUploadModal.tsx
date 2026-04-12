@@ -120,18 +120,18 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
           showUploadToast(
             finding?.topSource ? finding.topSource : "Data received",
             finding?.topSource
-              ? `${finding.topSourceCount} cases found in ${finding.totalRecords} records`
+              ? `${finding.topSourceCount} records found in ${finding.totalRecords} records`
               : `${finding?.totalRecords || 0} records saved. Full analysis completing.`
           );
         } else if (finding?.topSource) {
           // Full success with instant finding
           setUploadStatus("success");
           setMessage(
-            `Your top referral source: ${finding.topSource} (${finding.topSourceCount} cases from ${finding.totalRecords} records). See your full referral picture below.`
+            `Your top referral source: ${finding.topSource} (${finding.topSourceCount} records from ${finding.totalRecords} records). See your full referral picture below.`
           );
           showUploadToast(
             `${finding.topSource}`,
-            `${finding.topSourceCount} cases found in ${finding.totalRecords} records`
+            `${finding.topSourceCount} records found in ${finding.totalRecords} records`
           );
         } else {
           setUploadStatus("success");
@@ -139,7 +139,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
             `We found ${finding?.totalRecords || 0} records. Your referral picture is being built.`
           );
           showUploadToast(
-            "PMS data received!",
+            "Data received!",
             `${finding?.totalRecords || 0} records processing`
           );
         }
@@ -433,7 +433,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                           >
                             <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                             <p className="text-xs text-emerald-700">
-                              {uploadResult.hipaaReport.patientNamesFound} patient name{uploadResult.hipaaReport.patientNamesFound !== 1 ? "s" : ""} automatically removed before processing. Your data is safe.
+                              {uploadResult.hipaaReport.patientNamesFound} personal name{uploadResult.hipaaReport.patientNamesFound !== 1 ? "s" : ""} automatically removed before processing. Your data is safe.
                             </p>
                           </motion.div>
                         )}
@@ -447,7 +447,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                             className="text-center"
                           >
                             <p className="text-3xl font-semibold text-[#1A1D23]">
-                              {uploadResult.stats.uniquePatients} patients
+                              {uploadResult.stats.uniquePatients} clients
                             </p>
                             <p className="text-sm text-gray-500 mt-1">
                               from {uploadResult.stats.uniqueSources} referral source{uploadResult.stats.uniqueSources !== 1 ? "s" : ""} totaling ${Number(uploadResult.stats.totalRevenue).toLocaleString()}
@@ -486,7 +486,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                                     )}
                                   </div>
                                   <div className="flex items-center gap-3 shrink-0">
-                                    <span className="text-xs text-gray-500">{source.uniquePatients} patient{source.uniquePatients !== 1 ? "s" : ""}</span>
+                                    <span className="text-xs text-gray-500">{source.uniquePatients} client{source.uniquePatients !== 1 ? "s" : ""}</span>
                                     <span className="text-sm font-semibold text-[#1A1D23]">${Number(source.totalRevenue).toLocaleString()}</span>
                                   </div>
                                 </button>
@@ -519,7 +519,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                                       )}
                                     </div>
                                     <p className="text-xs text-gray-400 mt-2 px-2">
-                                      {source.lineItems} line items across {source.uniquePatients} unique patient{source.uniquePatients !== 1 ? "s" : ""}
+                                      {source.lineItems} line items across {source.uniquePatients} unique client{source.uniquePatients !== 1 ? "s" : ""}
                                       {source.providers?.length > 1 && ` (providers: ${source.providers.join(", ")})`}
                                     </p>
                                   </div>
@@ -584,7 +584,7 @@ export const PMSUploadModal: React.FC<PMSUploadModalProps> = ({
                         className="text-center py-6"
                       >
                         <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-3" />
-                        <h4 className="text-xl font-bold text-gray-900 mb-2">
+                        <h4 className="text-xl font-semibold text-gray-900 mb-2">
                           Upload Failed
                         </h4>
                         <p className="text-red-600 mb-4">{message}</p>

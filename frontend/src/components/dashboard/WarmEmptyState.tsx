@@ -83,7 +83,7 @@ export const WARM_STATES = {
   sentiment: {
     happening: "We're comparing your review themes against your top competitor.",
     when: "This analysis runs automatically after your reviews sync.",
-    promise: "You'll see the exact themes patients praise in your competitor that yours never mention.",
+    promise: "You'll see the exact themes customers praise in your competitor that yours never mention.",
   },
   referrals: {
     happening: "When you connect your data, we'll map your referral network.",

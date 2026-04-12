@@ -256,7 +256,7 @@ function PresencePageInner() {
               <WarmEmptyState
                 happening="Alloro builds your website from your Google reviews and business data."
                 when="A preview appears here once your reviews are analyzed."
-                promise="Your website will showcase the exact themes patients praise most in their reviews."
+                promise="Your website will showcase the exact themes customers praise most in their reviews."
               />
             )}
           </Section>
