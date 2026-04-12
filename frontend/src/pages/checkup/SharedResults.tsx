@@ -22,6 +22,7 @@ interface SharedCard {
 export default function SharedResults() {
   const { shareId } = useParams<{ shareId: string }>();
   const [card, setCard] = useState<SharedCard | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -32,6 +33,7 @@ export default function SharedResults() {
       .then((data) => {
         if (data.success && data.card) {
           setCard(data.card);
+          if (data.card.referralCode) setReferralCode(data.card.referralCode);
         } else {
           setError(true);
         }
@@ -124,7 +126,7 @@ export default function SharedResults() {
 
                 <div className="border-t border-stone-200/60 pt-4">
                   <Link
-                    to="/checkup"
+                    to={referralCode ? `/checkup?ref=${referralCode}` : "/checkup"}
                     className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#D56753] text-white text-base font-semibold px-6 py-4 shadow-[0_4px_20px_rgba(213,103,83,0.4)] hover:brightness-110 active:scale-[0.98] transition-all"
                   >
                     See how you compare

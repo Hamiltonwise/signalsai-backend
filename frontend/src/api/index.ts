@@ -230,6 +230,29 @@ export async function apiDelete({ path }: { path: string }) {
   }
 }
 
+// ─── Global 401 Interceptor ───
+// When a JWT expires or is invalid the backend returns 401.
+// Clear stored tokens and redirect to sign-in so the user does not sit
+// on a zombie dashboard with loading skeletons forever.
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      // Only redirect if the user had a token (avoid loops on public pages)
+      const hadToken = !!(getPriorityItem("auth_token") || getPriorityItem("token"));
+      if (hadToken) {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("token");
+        localStorage.removeItem("onboardingCompleted");
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("pilot_mode");
+        window.location.href = "/signin";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ─── Global 402 Interceptor ───
 // Emits a custom event when the billingGateMiddleware returns ACCOUNT_LOCKED.
 // AuthContext listens for this and updates billingStatus so the UI reacts immediately.

@@ -1575,7 +1575,7 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
       });
 
       // Set source_channel from referral or source query param
-      const sourceChannel = req.body.source_channel || req.query.ref || req.query.source || null;
+      const sourceChannel = req.body.source_channel || req.body.ref_code || req.query.ref || req.query.source || null;
       if (sourceChannel) {
         await trx("organizations").where({ id: newOrg.id }).update({ source_channel: sourceChannel });
       }
@@ -2100,7 +2100,7 @@ checkupRoutes.post("/vendor", async (req, res) => {
  */
 checkupRoutes.post("/share", async (req, res) => {
   try {
-    const { score, city, rank, totalCompetitors, topCompetitorName, specialty } = req.body;
+    const { score, city, rank, totalCompetitors, topCompetitorName, specialty, referralCode } = req.body;
 
     if (!score || !city) {
       return res.status(400).json({ success: false, error: "Score and city required" });
@@ -2121,6 +2121,7 @@ checkupRoutes.post("/share", async (req, res) => {
       rank: rank || null,
       total_competitors: totalCompetitors || null,
       top_competitor_name: topCompetitorName || null,
+      referral_code: referralCode || null,
       created_at: new Date(),
     });
 
@@ -2168,6 +2169,7 @@ checkupRoutes.get("/shared/:shareId", async (req, res) => {
         rank: share.rank,
         totalCompetitors: share.total_competitors,
         topCompetitorName: share.top_competitor_name,
+        referralCode: share.referral_code || null,
       },
     });
   } catch (error: any) {

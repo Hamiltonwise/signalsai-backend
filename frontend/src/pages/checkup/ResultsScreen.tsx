@@ -1399,6 +1399,7 @@ export default function ResultsScreen() {
                     totalCompetitors: state.market?.totalCompetitors,
                     topCompetitorName: state.topCompetitor?.name,
                     specialty: state.place?.category,
+                    referralCode: state.refCode || undefined,
                   }),
                 });
                 const data = await res.json();
