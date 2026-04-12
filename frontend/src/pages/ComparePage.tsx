@@ -110,12 +110,26 @@ function ComparePageInner() {
 
   const checkupData = ctx?.org?.checkup_data || null;
   const place = checkupData?.place || {};
-  // Prefer ranking data (filtered, location-aware) over stale checkup data
-  const topCompetitor = rankingRaw?.rawData?.topCompetitor || checkupData?.topCompetitor || null;
-  const competitorName = typeof topCompetitor === "string" ? topCompetitor : topCompetitor?.name || null;
-  const competitorReviews = typeof topCompetitor === "object" ? topCompetitor?.reviewCount : null;
   const orgName = ctx?.org?.name || "";
-  // city available from checkupData?.market?.city for future market context
+
+  // Resolve topCompetitor: ranking API > checkup data > compute from competitors array
+  let topCompetitor = rankingRaw?.rawData?.topCompetitor || checkupData?.topCompetitor || null;
+  if (!topCompetitor) {
+    // Fallback: compute from competitors array (same logic as ranking API Fix 1)
+    const rawCompetitors = rankingRaw?.rawData?.competitors || [];
+    if (Array.isArray(rawCompetitors) && rawCompetitors.length > 0) {
+      const sorted = [...rawCompetitors].sort(
+        (a: any, b: any) =>
+          ((b.userRatingCount as number) || (b.reviewCount as number) || 0) -
+          ((a.userRatingCount as number) || (a.reviewCount as number) || 0),
+      );
+      topCompetitor = sorted[0];
+    }
+  }
+  const competitorName = typeof topCompetitor === "string" ? topCompetitor : topCompetitor?.name || topCompetitor?.displayName?.text || null;
+  const competitorReviews = typeof topCompetitor === "object"
+    ? topCompetitor?.reviewCount || topCompetitor?.userRatingCount || topCompetitor?.totalReviews || null
+    : null;
 
   const clientRating = place.rating || rankingRaw?.rawData?.clientRating || 0;
   const clientReviews = place.reviewCount || rankingRaw?.rawData?.clientReviews || 0;

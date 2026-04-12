@@ -199,6 +199,58 @@ export default function ProgressReport() {
     });
   }
 
+  // GBP Profile Completeness trend
+  if (place) {
+    const gbpFields = [
+      !!(place.hasPhone || place.phone || place.nationalPhoneNumber || place.internationalPhoneNumber),
+      !!(place.hasHours || place.hours || place.regularOpeningHours),
+      !!(place.hasWebsite || place.websiteUri || place.website),
+      (place.photosCount || place.photoCount || place.photos?.length || 0) > 0,
+      !!(place.hasEditorialSummary || place.editorialSummary),
+    ];
+    const complete = gbpFields.filter(Boolean).length;
+    if (complete > 0) {
+      const missing = 5 - complete;
+      let gbpContext = "";
+      if (missing === 0) {
+        gbpContext = "All fields complete. Google has everything it needs to show you accurately.";
+      } else {
+        const missingNames: string[] = [];
+        if (!gbpFields[0]) missingNames.push("Phone");
+        if (!gbpFields[1]) missingNames.push("Hours");
+        if (!gbpFields[2]) missingNames.push("Website");
+        if (!gbpFields[3]) missingNames.push("Photos");
+        if (!gbpFields[4]) missingNames.push("Description");
+        gbpContext = `Missing: ${missingNames.join(", ")}. Complete profiles appear in 2x more searches.`;
+      }
+      trends.push({
+        label: "GBP Profile",
+        startValue: `${complete}/5`,
+        currentValue: `${complete}/5`,
+        direction: complete >= 5 ? "up" : "flat",
+        context: gbpContext,
+        verifyUrl: googleSearchUrl,
+      });
+    }
+  }
+
+  // Photo count trend
+  const photoCount = place?.photosCount || place?.photoCount || place?.photos?.length || 0;
+  if (photoCount > 0) {
+    trends.push({
+      label: "Photos",
+      startValue: `${photoCount}`,
+      currentValue: `${photoCount}`,
+      direction: "flat",
+      context: photoCount >= 100
+        ? `${photoCount} photos. Businesses with 100+ photos get 520% more calls.`
+        : photoCount >= 10
+          ? `${photoCount} photos. Keep adding. Businesses with 100+ photos get 520% more calls.`
+          : `${photoCount} photo${photoCount !== 1 ? "s" : ""}. Businesses with 10+ photos see measurably more engagement.`,
+      verifyUrl: googleSearchUrl,
+    });
+  }
+
   // Competitors tracked trend
   if (competitors.length > 0) {
     trends.push({
