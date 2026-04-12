@@ -91,10 +91,25 @@ export const billingGateMiddleware = async (
 
     const org = await db("organizations")
       .where({ id: orgUser.organization_id })
-      .select("subscription_status", "trial_end_at", "stripe_customer_id")
+      .select("subscription_status", "trial_end_at", "stripe_customer_id", "account_type")
       .first();
 
     if (!org) {
+      return next();
+    }
+
+    // Foundation and Heroes accounts bypass all billing gates permanently
+    if (org.account_type === "foundation" || org.account_type === "heroes") {
+      return next();
+    }
+
+    // Active subscription -- pass through
+    if (org.subscription_status === "active") {
+      return next();
+    }
+
+    // Admin-granted access (e.g. demo accounts, internal)
+    if (org.subscription_status === "admin_granted") {
       return next();
     }
 
@@ -108,14 +123,21 @@ export const billingGateMiddleware = async (
       });
     }
 
-    // Trial expired: no Stripe subscription and past trial_end_at
-    if (org.trial_end_at && !org.stripe_customer_id) {
+    // Trial expired: past trial_end_at and not actively subscribed
+    if (org.trial_end_at) {
       const trialEnd = new Date(org.trial_end_at);
-      if (trialEnd < new Date()) {
+      const now = new Date();
+      if (trialEnd < now && org.subscription_status !== "active") {
+        // Grace period: 3 days after trial end before full lockout
+        const gracePeriodMs = 3 * 24 * 60 * 60 * 1000;
+        const isInGrace = (now.getTime() - trialEnd.getTime()) <= gracePeriodMs;
         return res.status(402).json({
           success: false,
-          errorCode: "TRIAL_EXPIRED",
-          message: "Your free trial has ended. Subscribe to continue.",
+          errorCode: isInGrace ? "TRIAL_GRACE" : "TRIAL_EXPIRED",
+          message: isInGrace
+            ? "Your trial has ended. Subscribe now to keep your intelligence flowing."
+            : "Your free trial has ended. Subscribe to continue.",
+          trialEndedAt: org.trial_end_at,
         });
       }
     }

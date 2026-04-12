@@ -18,11 +18,15 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Home, BarChart3, Star, TrendingUp, Settings, HelpCircle, MapPin, ChevronDown, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
+import { apiGet } from "@/api/index";
 import CSAgentChat from "@/components/dashboard/CSAgentChat";
+import TrialBanner from "@/components/dashboard/TrialBanner";
+import TrialExpiredOverlay from "@/components/dashboard/TrialExpiredOverlay";
 
 const NAV_ITEMS = [
   { to: "/home", icon: Home, label: "Home", question: null },
@@ -108,10 +112,43 @@ function LocationPicker({ className }: { className?: string }) {
 
 export default function FivePageLayout() {
   const { userProfile } = useAuth();
+  const navigate = useNavigate();
   const practiceName = userProfile?.practiceName || "your practice";
+  const orgId = userProfile?.organizationId || null;
+
+  // Fetch trial state from dashboard context
+  const { data: dashCtx } = useQuery<any>({
+    queryKey: ["layout-trial-ctx", orgId],
+    queryFn: () => apiGet({ path: "/user/dashboard-context" }),
+    enabled: !!orgId,
+    staleTime: 120_000,
+  });
+
+  const trial = dashCtx?.trial || null;
+  const isSubscribed = trial?.is_subscribed || dashCtx?.org?.subscription_status === "active";
+  const isFoundation = dashCtx?.org?.account_type === "foundation" || dashCtx?.org?.account_type === "heroes";
+  const daysRemaining = trial?.days_remaining ?? null;
+  const competitorName = dashCtx?.org?.checkup_data?.topCompetitor?.name || null;
+
+  // Show soft gate (banner) when 0 < days <= 3 and not subscribed
+  const showTrialBanner = !isFoundation && !isSubscribed && daysRemaining != null && daysRemaining > 0 && daysRemaining <= 3;
+  // Show hard gate (overlay) when days <= 0 and not subscribed
+  const showTrialExpired = !isFoundation && !isSubscribed && daysRemaining != null && daysRemaining <= 0;
+
+  const handleSubscribe = () => navigate("/settings/billing");
 
   return (
     <div className="min-h-screen bg-[#F8F6F2] pb-20 sm:pb-0 pt-14 sm:pt-0">
+      {/* Trial expired overlay -- full lockout */}
+      {showTrialExpired && (
+        <TrialExpiredOverlay
+          competitorName={competitorName}
+          finding={dashCtx?.org?.checkup_data?.findings?.[0] || null}
+          onSubscribe={handleSubscribe}
+          isGracePeriod={daysRemaining != null && daysRemaining > -3}
+        />
+      )}
+
       {/* Mobile header: location picker + settings gear */}
       <div className="sm:hidden fixed top-0 inset-x-0 z-40 flex items-center gap-2 px-3 py-2 bg-[#F8F6F2]/95 backdrop-blur-sm">
         <LocationPicker className="flex-1 min-w-0" />
@@ -123,6 +160,17 @@ export default function FivePageLayout() {
           <Settings className="w-4 h-4" />
         </NavLink>
       </div>
+
+      {/* Trial banner -- soft gate */}
+      {showTrialBanner && (
+        <div className="pt-2">
+          <TrialBanner
+            daysRemaining={daysRemaining!}
+            competitorName={competitorName}
+            onSubscribe={handleSubscribe}
+          />
+        </div>
+      )}
 
       {/* Page content */}
       <main>
