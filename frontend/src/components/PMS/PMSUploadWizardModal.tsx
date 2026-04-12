@@ -135,12 +135,12 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
           setInstantFinding(result.data.instantFinding);
         }
         setMessage(
-          "We're processing your PMS data now. We'll notify you once it's ready."
+          "Your referral data is being analyzed. You'll see it on your dashboard shortly."
         );
 
         showUploadToast(
           "PMS export received!",
-          "We'll notify when ready for checking"
+          "Referral insights loading on dashboard"
         );
 
         if (typeof window !== "undefined") {
@@ -340,7 +340,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="text-xl font-bold text-slate-900 mb-2"
+                className="text-xl font-semibold text-slate-900 mb-2"
               >
                 We found {instantFinding.totalRecords.toLocaleString()} referral records.
               </motion.h4>
@@ -351,7 +351,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                   transition={{ delay: 0.4 }}
                   className="text-base text-slate-700 mb-3"
                 >
-                  Your top source: <span className="font-bold text-[#D56753]">{instantFinding.topSource}</span>
+                  Your top source: <span className="font-semibold text-[#D56753]">{instantFinding.topSource}</span>
                   {instantFinding.topSourceCount && (
                     <>, {instantFinding.topSourceCount} case{instantFinding.topSourceCount !== 1 ? "s" : ""}</>
                   )}
@@ -364,12 +364,12 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                 transition={{ delay: 0.6 }}
                 className="text-sm text-slate-500"
               >
-                Full analysis is running now. We'll notify you when it's ready.
+                Full analysis is running now. Check your dashboard in a moment.
               </motion.p>
             </>
           ) : (
             <>
-              <h4 className="text-xl font-bold text-slate-900 mb-2">
+              <h4 className="text-xl font-semibold text-slate-900 mb-2">
                 Upload Successful!
               </h4>
               <p className="text-slate-600">{message}</p>
@@ -387,7 +387,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
           <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
             <AlertCircle className="w-10 h-10 text-red-600" />
           </div>
-          <h4 className="text-xl font-bold text-slate-900 mb-2">Upload Failed</h4>
+          <h4 className="text-xl font-semibold text-slate-900 mb-2">Upload Failed</h4>
           <p className="text-red-600 mb-4">{message}</p>
           <button
             onClick={() => setUploadStatus("idle")}
@@ -457,7 +457,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                 animate={{ opacity: 1, x: 0 }}
                 className="flex-1"
               >
-                <h2 className="text-xl font-bold text-slate-900">
+                <h2 className="text-xl font-semibold text-slate-900">
                   {step === "gate" && "Upload Referral Report"}
                   {step === "direct-upload" && "Upload Your Report"}
                   {step === "alternatives" && "Alternative Options"}

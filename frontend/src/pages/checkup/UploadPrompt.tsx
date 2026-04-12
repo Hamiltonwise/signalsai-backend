@@ -72,7 +72,7 @@ export default function UploadPrompt() {
             Now show us your referral report.
           </h2>
           <p className="text-sm text-gray-500 leading-relaxed max-w-sm mx-auto">
-            Upload your January production report. 60 seconds, and we'll tell you which referring doctor needs attention.
+            Upload a recent production report. 60 seconds, and we'll tell you which referring source needs attention.
           </p>
         </div>
 
