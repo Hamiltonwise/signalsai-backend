@@ -100,6 +100,7 @@ import gbpAuthRoutes from "./routes/auth/gbp";
 import oneActionCardRoutes from "./routes/user/oneActionCard";
 import reviewDraftRoutes from "./routes/user/reviewDrafts";
 import reviewSentimentRoutes from "./routes/user/reviewSentimentRoute";
+import networkIntelligenceRoutes from "./routes/user/networkIntelligence";
 import championRoutes from "./routes/user/champion";
 import streakRoutes from "./routes/user/streaks";
 import ownerProfileRoutes from "./routes/user/ownerProfile";
@@ -357,6 +358,7 @@ app.use("/api/auth/google", gbpAuthRoutes); // T6: GBP OAuth connect + callback
 app.use("/api/user", oneActionCardRoutes); // T3: One Action Card deterministic engine
 app.use("/api/user/review-drafts", reviewDraftRoutes); // WO-49: Review auto-draft responses
 app.use("/api/user", reviewSentimentRoutes); // Review sentiment: theme comparison vs competitor
+app.use("/api/user", networkIntelligenceRoutes); // Network intelligence: collective heuristics, seasonal, drift, themes
 app.use("/api/user", streakRoutes); // WO-33: Growth/Action/Review streaks
 app.use("/api/user", ownerProfileRoutes); // WO-50: Owner Profile (Lemonis Protocol)
 app.use("/api/user", milestoneCardRoutes); // WO-51/52: Milestone check-in cards
