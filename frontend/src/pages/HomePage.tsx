@@ -942,7 +942,7 @@ export default function HomePage() {
               <div className="flex-1">
                 <p className="text-sm font-semibold text-[#1A1D23] mb-1">{headline}</p>
                 <p className="text-sm text-gray-500 mb-3">
-                  They get a free Google Health Check. You both save on your first month.
+                  They get a free Google Health Check. See how your markets compare.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button

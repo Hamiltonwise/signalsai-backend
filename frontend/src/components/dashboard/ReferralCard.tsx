@@ -50,10 +50,10 @@ export default function ReferralCard() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-[#1A1D23]">
-            See how a colleague ranks.
+            Know someone who should see their market?
           </p>
           <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-            Send them your link. When they join, you both save on your first month.
+            Send them your link. See how your markets compare side by side.
           </p>
 
           {/* Copy link */}

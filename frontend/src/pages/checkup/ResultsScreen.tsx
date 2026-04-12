@@ -1312,7 +1312,7 @@ export default function ResultsScreen() {
               <Lock className="w-3 h-3" /> No credit card
             </span>
             <span className="text-xs text-slate-400">
-              Cancel anytime
+              Takes 60 seconds
             </span>
             <span className="text-xs text-slate-400">
               Your data stays yours
@@ -1382,7 +1382,7 @@ export default function ResultsScreen() {
             </span>
           </div>
           <p className="text-xs text-gray-500 mb-3">
-            Send them a link. When they join, you both save on your first month.
+            Send them a link. See how your markets compare side by side.
           </p>
           <button
             type="button"
@@ -1421,7 +1421,7 @@ export default function ResultsScreen() {
             className="flex items-center gap-2 text-sm font-medium text-[#1A1D23] border border-stone-200/60 rounded-lg px-4 py-2.5 hover:border-stone-300 transition-colors"
           >
             <Copy className="w-3.5 h-3.5" />
-            {linkCopied ? "Copied!" : "Share and save on your first month"}
+            {linkCopied ? "Copied!" : "Share your checkup"}
           </button>
         </div>
         </>

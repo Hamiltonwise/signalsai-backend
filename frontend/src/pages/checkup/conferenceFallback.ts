@@ -61,7 +61,7 @@ export const CONFERENCE_ANALYSIS = {
     {
       type: "review_gap",
       title: "Review Gap",
-      detail: "Wasatch Endodontics has 223 more reviews than you. At your current pace, that gap grows by 8 reviews per month.",
+      detail: "Wasatch Endodontics has 223 more reviews than you. Reviews are the single biggest factor in local search visibility.",
       value: 223,
       impact: 10035,
     },
@@ -82,7 +82,7 @@ export const CONFERENCE_ANALYSIS = {
     {
       type: "sentiment_insight",
       title: "Your reviews mention response time",
-      detail: "4 of your last 10 reviews mention response time or scheduling delays. Wasatch Endodontics reviews never mention this. Clients notice.",
+      detail: "Practices that respond to every review within 24 hours consistently outperform on Google. Check your recent reviews to see how you compare.",
       value: 0,
       impact: 0,
     },
@@ -188,7 +188,7 @@ export const BARBER_DEMO_ANALYSIS = {
     {
       type: "sentiment_insight",
       title: "Your reviews mention atmosphere",
-      detail: "6 of your last 10 reviews mention the vibe, music, or conversation. Your competitors' reviews focus on speed. That's your edge.",
+      detail: "Businesses whose reviews highlight the experience, not just the service, tend to build stronger loyalty. Check what your reviews say about you.",
       value: 0,
       impact: 0,
     },
@@ -276,8 +276,8 @@ function buildSentimentFinding(place: PlaceDetails): typeof CONFERENCE_ANALYSIS.
   if (isHealthcare) {
     return {
       type: "sentiment_insight",
-      title: "Your reviews mention response time",
-      detail: "4 of your last 10 reviews mention response time or scheduling delays. Your top competitor's reviews never mention this. Patients notice.",
+      title: "Review response patterns",
+      detail: "Practices that respond to every review within 24 hours consistently outperform on Google. Check your recent reviews to see how you compare.",
       value: 0,
       impact: 0,
     };
@@ -285,8 +285,8 @@ function buildSentimentFinding(place: PlaceDetails): typeof CONFERENCE_ANALYSIS.
 
   return {
     type: "sentiment_insight",
-    title: "Your reviews mention unanswered reviews",
-    detail: "3 of your last 10 reviews went without a response. Top-ranked businesses in your market respond to every review. Google rewards the engagement.",
+    title: "Review response patterns",
+    detail: "Businesses that respond to every review consistently outperform on Google. Check your recent reviews to see how you compare.",
     value: 0,
     impact: 0,
   };
@@ -381,7 +381,7 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
       {
         type: "review_gap",
         title: "Review Gap",
-        detail: `Your top competitor has ${reviewGap} more reviews than you. At your current pace, that gap grows each month.`,
+        detail: `Your top competitor has ${reviewGap} more reviews than you. Reviews are the single biggest factor in local search visibility.`,
         value: reviewGap,
         impact: 0,
       },
