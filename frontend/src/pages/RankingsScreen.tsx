@@ -1,9 +1,14 @@
 /**
- * Rankings Screen — /dashboard/rankings
+ * Market Intelligence Screen — /dashboard/rankings
  *
- * WO20 / T3-B: Shows weekly ranking snapshots from the Intelligence Agent.
- * Current position, named #1 and #2 competitors, trend, weekly bullets,
- * competitor note, recommended action with dollar figure.
+ * WO20 / T3-B: Shows weekly competitive snapshots from the Intelligence Agent.
+ * Review gap, named competitors, trend, weekly bullets,
+ * competitor note, recommended action.
+ *
+ * Known compliance:
+ * - Known 3: No position claims. No "#3", no rank numbers shown to customers.
+ * - Known 4: No fabricated dollar figures.
+ * - Known 6: No composite scores.
  *
  * Also shows GP drift alerts (T3-F Surprise Catch) as persistent amber banners.
  */
@@ -14,7 +19,6 @@ import {
   TrendingUp,
   TrendingDown,
   AlertTriangle,
-  DollarSign,
   X,
   ChevronRight,
   BarChart3,
@@ -125,8 +129,8 @@ function SnapshotCard({ snapshot, isLatest }: { snapshot: RankingSnapshot; isLat
             </span>
           )}
         </div>
-        {snapshot.position && (
-          <span className="text-lg font-semibold text-[#1A1D23]">#{snapshot.position}</span>
+        {snapshot.client_review_count != null && (
+          <span className="text-lg font-semibold text-[#1A1D23]">{snapshot.client_review_count} reviews</span>
         )}
       </div>
 
@@ -150,12 +154,12 @@ function SnapshotCard({ snapshot, isLatest }: { snapshot: RankingSnapshot; isLat
         <p className="text-xs text-gray-400 italic mb-3">{snapshot.competitor_note}</p>
       )}
 
-      {/* Dollar figure */}
-      {snapshot.dollar_figure != null && snapshot.dollar_figure > 0 && (
-        <div className="flex items-center gap-2 bg-red-50 rounded-lg px-3 py-2">
-          <DollarSign className="h-4 w-4 text-red-500" />
-          <p className="text-xs font-semibold text-red-600">
-            ${snapshot.dollar_figure.toLocaleString()}/month estimated revenue at risk from velocity gap
+      {/* Velocity gap warning */}
+      {snapshot.competitor_review_count != null && snapshot.client_review_count != null && snapshot.competitor_review_count > snapshot.client_review_count && (
+        <div className="flex items-center gap-2 bg-amber-50 rounded-lg px-3 py-2">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <p className="text-xs font-semibold text-amber-700">
+            {snapshot.competitor_review_count - snapshot.client_review_count} review gap with {snapshot.competitor_name || "top competitor"}. Every week this widens, visibility drops.
           </p>
         </div>
       )}
@@ -220,9 +224,9 @@ export default function RankingsScreen() {
     <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-[#1A1D23]">Your Rankings</h1>
+        <h1 className="text-2xl font-semibold text-[#1A1D23]">Your Market</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Weekly intelligence on your market position. Updated every Sunday.
+          Weekly intelligence on your competitive landscape. Updated every Sunday.
         </p>
       </div>
 
@@ -235,20 +239,20 @@ export default function RankingsScreen() {
         />
       ))}
 
-      {/* Current position hero */}
+      {/* Competitive landscape hero */}
       {latest && (
         <div className="bg-[#212D40] rounded-2xl p-4 sm:p-6 text-white">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <p className="text-xs text-white/50 uppercase tracking-wider font-semibold">Current Position</p>
+              <p className="text-xs text-white/50 uppercase tracking-wider font-semibold">Your Reviews</p>
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-3xl sm:text-5xl font-semibold">#{latest.position}</span>
+                <span className="text-3xl sm:text-5xl font-semibold">{latest.client_review_count ?? "..."}</span>
                 {positionDelta !== null && positionDelta !== 0 && (
                   <span className={`flex items-center gap-1 text-sm font-semibold ${
                     positionDelta > 0 ? "text-emerald-400" : "text-red-400"
                   }`}>
                     {positionDelta > 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                    {positionDelta > 0 ? "+" : ""}{positionDelta}
+                    {positionDelta > 0 ? "Gaining" : "Falling behind"}
                   </span>
                 )}
               </div>
@@ -261,7 +265,7 @@ export default function RankingsScreen() {
             <div className="text-right">
               {(latest.competitor_name || latest.competitor_review_count) && (
                 <div>
-                  <p className="text-xs text-white/50 uppercase tracking-wider font-semibold">#1 Position</p>
+                  <p className="text-xs text-white/50 uppercase tracking-wider font-semibold">Top Competitor</p>
                   <p className="text-sm font-semibold text-white mt-1">{latest.competitor_name || "Top competitor"}</p>
                   {latest.competitor_review_count && (
                     <p className="text-xs text-white/50">{latest.competitor_review_count} reviews</p>
@@ -269,10 +273,10 @@ export default function RankingsScreen() {
                 </div>
               )}
             </div>
-          {/* Near-miss line (WO-37) */}
+          {/* Review gap line (WO-37) */}
           {latest.client_review_count != null && latest.competitor_review_count != null && latest.competitor_name && (
             <p className="text-sm text-white/60 mt-4">
-              {latest.position === 1
+              {latest.client_review_count >= latest.competitor_review_count
                 ? `${(latest.client_review_count - latest.competitor_review_count)} reviews ahead of ${latest.competitor_name}.`
                 : `${Math.abs(latest.competitor_review_count - latest.client_review_count)} reviews separate you from ${latest.competitor_name}.`}
             </p>
@@ -308,14 +312,14 @@ export default function RankingsScreen() {
                 From your Checkup
               </p>
               <div className="flex flex-col sm:flex-row items-baseline gap-1 sm:gap-2 mb-1">
-                <span className="text-3xl sm:text-4xl font-semibold">#{checkupCtx.data.market.rank || "?"}</span>
+                <span className="text-3xl sm:text-4xl font-semibold">{checkupCtx.data.market.totalCompetitors || "?"} competitors</span>
                 <span className="text-white/50 text-sm">
-                  of {checkupCtx.data.market.totalCompetitors || "?"} in {checkupCtx.data.market.city || "your market"}
+                  in {checkupCtx.data.market.city || "your market"}
                 </span>
               </div>
               {checkupCtx.data.topCompetitor && (
                 <p className="text-sm text-white/60 mt-2">
-                  {checkupCtx.data.topCompetitor.name} holds #1 with {checkupCtx.data.topCompetitor.reviewCount} reviews
+                  {checkupCtx.data.topCompetitor.name} leads with {checkupCtx.data.topCompetitor.reviewCount} reviews
                   {checkupCtx.data.topCompetitor.rating ? ` and a ${checkupCtx.data.topCompetitor.rating}-star rating` : ""}.
                 </p>
               )}

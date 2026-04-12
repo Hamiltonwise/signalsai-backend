@@ -393,9 +393,9 @@ function CheckupLauncher() {
   return (
     <div className="space-y-6">
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <h3 className="text-base font-bold text-[#212D40] mb-2">Run a Checkup</h3>
+        <h3 className="text-base font-semibold text-[#1A1D23] mb-2">Run a Checkup</h3>
         <p className="text-sm text-gray-500 mb-4">
-          Search any business to generate a live Business Clarity Score. Results are automatically added to your portfolio.
+          Search any business to run a live Business Clarity Checkup. Results are automatically added to your portfolio.
         </p>
         <a
           href={checkupUrl}
