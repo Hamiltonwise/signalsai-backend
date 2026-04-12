@@ -261,6 +261,52 @@ All verification tests pass? Yes = next card. No = fix before proceeding.
 
 ---
 
+## Card 7: Multi-Vertical Vocab Wiring (NOT YET BUILT -- next sprint)
+
+Commit: none (future work)
+Blast Radius: Yellow (touches Producing page, PMS components, onboarding wizard, Sidebar nav)
+Complexity: High
+Dependencies: Card 1 (verticalProfiles.ts must be merged first)
+
+### Why:
+
+Card 1 made the backend multi-vertical: 22 verticals with per-vertical vocabulary (patientTerm, competitorTerm, referralTerm, etc.) and intelligence_mode routing (referral_based, direct_acquisition, hybrid). But the frontend PMS/Producing pillar still hardcodes dental terminology. A barber sees "Upload PMS data" and "GP Referral Intelligence." The backend knows they're a barber. The frontend doesn't use that knowledge.
+
+### Current State:
+
+- `src/config/verticalProfiles.ts`: has vocab per vertical (e.g., barber: patientTerm="client", competitorTerm="barber", referralTerm="word-of-mouth recommendation")
+- `frontend/src/contexts/vocabularyContext.tsx`: has a vocab context with hardcoded defaults -- exists but is not connected to verticalProfiles
+- `frontend/src/components/Sidebar.tsx` line 189: already reads `intelligence_mode` and conditionally shows "Referrals Hub" -- partial wiring exists
+- `frontend/src/components/PMS/` (14 files): hardcode "PMS data" in ~20 customer-visible strings
+- `frontend/src/pages/ReferralIntelligence.tsx`: title hardcodes "GP Referral Intelligence"
+- `frontend/src/components/onboarding-wizard/wizardConfig.ts`: hardcodes "patients," "doctor referrals," "PMS data"
+
+### What Needs to Change:
+
+1. Connect vocabularyContext to the org's vertical (read from dashboard-context API, resolve via verticalProfiles)
+2. Replace all hardcoded "PMS data" strings with vocab-driven labels (e.g., "business data" for direct_acquisition, "referral data" for referral_based)
+3. ReferralIntelligence.tsx page title: drive from vocab ("Referral Intelligence" for referral_based, "Business Intelligence" for direct_acquisition)
+4. Onboarding wizard copy: adapt per vertical using vocab context
+5. PMS component labels: consume vocabularyContext instead of hardcoded strings
+6. Intelligence_mode routing: direct_acquisition verticals should see revenue/client tracking, not referral matrices
+
+### Touches:
+
+- Database: no
+- Auth: no
+- Billing: no
+- New API endpoint: no (dashboard-context already returns specialty/vertical)
+
+### Scope Note:
+
+This is a HIGH card -- 14+ PMS component files, onboarding wizard, sidebar, and page titles. Recommend splitting into sub-cards during implementation. The vocab infrastructure exists on both ends; the work is wiring them together and replacing hardcoded strings.
+
+### Done Gate:
+
+Create a test org with vertical "barber." Navigate all pages. Zero dental-specific language should appear. Upload prompt should say "Upload business data." Producing page should show client/revenue tracking, not referral matrices.
+
+---
+
 ## Summary Table
 
 | Order | Feature | Commit | Blast Radius | Complexity | Dependencies |
@@ -271,11 +317,15 @@ All verification tests pass? Yes = next card. No = fix before proceeding.
 | 4 | Breathing Score + Progress Story | `d1e076d4` | Green | Medium | Card 3 |
 | 5 | Trial Gate (Banner + Overlay + Middleware) | `4c33b9b8` | Yellow | Medium | none |
 | 6 | Intelligence Paywall (BlurGate) | `2e7e8da6` | Green | Low | Card 5 |
+| 7 | Multi-Vertical Vocab Wiring | not yet built | Yellow | High | Card 1 |
+
+Cards 1-6 are built, verified, and on sandbox. Card 7 is the next sprint -- included here so Dave sees the full picture and knows Cards 1-6 are incomplete without it.
 
 Cards 1-3 are independent Green/Low changes -- safe to merge in any order.
 Card 4 depends on Card 3 (same page layout).
 Card 5 is the only Yellow (auth/billing middleware) -- review carefully.
 Card 6 depends on Card 5's subscription state.
+Card 7 depends on Card 1 being merged first.
 
 Additional commit: `230cf3f9` -- restores customerOutcomeTracker.ts deleted by a prior index conflict. No feature change, just file restoration.
 

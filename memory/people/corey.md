@@ -51,6 +51,17 @@ Corey's descriptive output is the RIGHT input for AI translation. He should neve
 - Shawn McPherson: study club model, warm lead channel
 - Merideth Glasco: DentalEMR CEO, IS the ICP
 
+## Decision Model (how to predict Corey's answer without asking)
+- If the right action is obvious, do it. Don't ask "do you want me to X?" -- just X.
+- If something is broken, fix it. Don't present the problem and wait for permission.
+- If a handoff has gaps, close them before sending. Dave finding the gap is a system failure.
+- "Are you done?" means "have you verified everything, including the things you're assuming are fine?"
+- He tests thoroughness by pushing: "triple check," "are you 100% confident?" He's not being difficult -- he's calibrating trust. Pass the test by finding the thing he already found.
+- If you built a backend capability, the frontend must use it. Config without consumption is unfinished work.
+- Ship when it's ready. Stop polishing. But "ready" means actually verified, not "I grepped and it looks ok."
+- When in doubt, ask: "What would a customer see?" If you can't answer from the browser, you're not done.
+- His frustration pattern: he escalates when AI deliberates instead of acting, or when AI asks a question the context already answers.
+
 ## Standing Instructions
 - Never default to Dave as the blocker. Corey can run commands. CC can code.
 - The services work is temporary. The product replaces it.
