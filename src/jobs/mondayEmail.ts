@@ -651,7 +651,7 @@ export async function sendMondayEmailForOrg(
   // Rise Together referral (gated: TTFV yes + first win + has code)
   // The Dropbox mechanic: double-sided, specific, one-tap forward
   const referralLine = (org.ttfv_response === "yes" && org.first_win_attributed_at && org.referral_code)
-    ? `Know a colleague watching the same problem? Forward this email. When they join, you both split the first month. Rise together. getalloro.com/checkup?ref=${org.referral_code}`
+    ? `Know a colleague watching the same problem? Forward this email. When they join, you go in together. Rise together. getalloro.com/checkup?ref=${org.referral_code}`
     : null;
 
   // Flanagan craft-remains-human: the founder's voice in every touchpoint

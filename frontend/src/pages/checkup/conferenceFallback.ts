@@ -74,8 +74,8 @@ export const CONFERENCE_ANALYSIS = {
     },
     {
       type: "market_rank",
-      title: "Market Position",
-      detail: "5 endodontists in Salt Lake City. Wasatch and Pioneer have more reviews and are more visible on Google.",
+      title: "Your Market",
+      detail: "4 competitors in Salt Lake City. Wasatch and Pioneer have more reviews and are more visible on Google.",
       value: 3,
       impact: 0,
     },
@@ -93,7 +93,7 @@ export const CONFERENCE_ANALYSIS = {
     totalCompetitors: 4,
     avgRating: 4.75,
     avgReviews: 151,
-    rank: 3,
+    rank: 0,
   },
   gaps: [
     {
@@ -199,7 +199,7 @@ export const BARBER_DEMO_ANALYSIS = {
     totalCompetitors: 3,
     avgRating: 4.65,
     avgReviews: 80,
-    rank: 3,
+    rank: 0,
   },
   gaps: [
     {
@@ -277,7 +277,7 @@ function buildSentimentFinding(place: PlaceDetails): typeof CONFERENCE_ANALYSIS.
     return {
       type: "sentiment_insight",
       title: "Your reviews mention response time",
-      detail: "4 of your last 10 reviews mention response time or scheduling delays. Wasatch Endodontics reviews never mention this. Clients notice.",
+      detail: "4 of your last 10 reviews mention response time or scheduling delays. Your top competitor's reviews never mention this. Patients notice.",
       value: 0,
       impact: 0,
     };
@@ -296,7 +296,11 @@ function buildSentimentFinding(place: PlaceDetails): typeof CONFERENCE_ANALYSIS.
  * Build a personalized conference fallback using the real practice's data.
  * Randomizes the score in a realistic range and injects the actual
  * practice name, city, rating, and review count so every attendee
- * at AAE sees their own data, not identical demo numbers.
+ * sees their own data, not identical demo numbers.
+ *
+ * Competitor names are generic and category-aware (never hardcoded
+ * dental names). A plumber sees "Top-rated plumber in Columbus",
+ * an endodontist sees "Top-rated endodontist in Salt Lake City".
  */
 export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFERENCE_ANALYSIS {
   const seed = hashCode(place.placeId || place.name);
@@ -318,8 +322,37 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
   const topReviews = (place.reviewCount || 61) + 80 + Math.abs((seed >> 6) % 200);
   const reviewGap = topReviews - (place.reviewCount || 61);
 
-  const topName = CONFERENCE_ANALYSIS.topCompetitor.name;
-  const city = place.city || "Salt Lake City";
+  const category = place.category || "business";
+  const categoryLower = category.toLowerCase();
+  const city = place.city || "your area";
+
+  // Generic, category-aware competitor names. Never fake business names.
+  const topName = `Top-rated ${categoryLower} in ${city}`;
+  const competitorNames = [
+    topName,
+    `Nearby ${categoryLower}`,
+    `${city} ${category}`,
+    `Local ${categoryLower}`,
+  ];
+
+  const topRating = 4.6 + Math.abs((seed >> 3) % 4) * 0.1; // 4.6-4.9
+
+  // Build category-aware competitors with realistic spread
+  const personalizedCompetitors = competitorNames.map((name, i) => {
+    const revSpread = [topReviews, topReviews - 40 - Math.abs((seed >> (i * 3)) % 80), topReviews - 120 - Math.abs((seed >> (i * 4)) % 60), topReviews - 180 - Math.abs((seed >> (i * 5)) % 40)];
+    const ratSpread = [topRating, topRating - 0.1, topRating - 0.2, topRating - 0.1];
+    return {
+      name,
+      rating: Math.max(4.0, ratSpread[i] || 4.5),
+      reviewCount: Math.max(10, revSpread[i] || 50),
+      placeId: `conf-gen-${i}`,
+      location: {
+        lat: (place.location?.latitude || 40.76) + (i * 0.01 - 0.015),
+        lng: (place.location?.longitude || -111.89) + (i * 0.012 - 0.018),
+      },
+      driveTimeMinutes: 5 + i * 4,
+    };
+  });
 
   return {
     ...CONFERENCE_ANALYSIS,
@@ -337,35 +370,38 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
       competitive: responsiveness,
     },
     topCompetitor: {
-      ...CONFERENCE_ANALYSIS.topCompetitor,
+      name: topName,
       reviewCount: topReviews,
-      rating: 4.6 + Math.abs((seed >> 3) % 4) * 0.1, // 4.6-4.9
+      rating: topRating,
+      placeId: "conf-gen-0",
+      location: personalizedCompetitors[0].location,
     },
+    competitors: personalizedCompetitors,
     findings: [
       {
         type: "review_gap",
         title: "Review Gap",
-        detail: `${topName} has ${reviewGap} more reviews than you. At your current pace, that gap grows each month.`,
+        detail: `Your top competitor has ${reviewGap} more reviews than you. At your current pace, that gap grows each month.`,
         value: reviewGap,
-        impact: reviewGap * 45,
+        impact: 0,
       },
       {
         type: "rating_strong",
         title: "Rating Comparison",
-        detail: `Your ${place.rating || 4.6}-star rating is ${(place.rating || 4.6) >= 4.7 ? "strong" : "competitive"} but ${topName} leads with ${(4.6 + Math.abs((seed >> 3) % 4) * 0.1).toFixed(1)} stars across ${topReviews} reviews.`,
+        detail: `Your ${place.rating || 4.6}-star rating is ${(place.rating || 4.6) >= 4.7 ? "strong" : "competitive"} but the top ${categoryLower} in ${city} leads with ${topRating.toFixed(1)} stars across ${topReviews} reviews.`,
         value: 0.3,
-        impact: 720,
+        impact: 0,
       },
       {
         type: "market_rank",
-        title: "Market Position",
-        detail: `${totalCompetitors} specialists in ${city} compete for the same searches. Reviews, photos, and profile completeness determine who appears first.`,
+        title: "Your Market",
+        detail: `${totalCompetitors} ${categoryLower}s in ${city} compete for the same searches. Reviews, photos, and profile completeness determine who appears first.`,
         value: rank,
         impact: 0,
       },
       buildSentimentFinding(place),
     ],
-    totalImpact: reviewGap * 45 + 720,
+    totalImpact: 0,
     market: {
       city,
       totalCompetitors,
@@ -376,9 +412,17 @@ export function personalizeConferenceFallback(place: PlaceDetails): typeof CONFE
     gaps: [
       {
         ...CONFERENCE_ANALYSIS.gaps[0],
-        label: `${reviewGap} reviews to pass ${topName}`,
+        label: `${reviewGap} reviews to pass your top competitor`,
         current: place.reviewCount || 61,
         target: topReviews,
+        competitorName: topName,
+        velocity: {
+          clientWeekly: 0.6 + Math.abs((seed >> 7) % 5) * 0.2,
+          competitorWeekly: 1.5 + Math.abs((seed >> 9) % 8) * 0.3,
+          weeksToPass: Math.max(8, Math.ceil(reviewGap / 2)),
+          thisWeekAsk: 3,
+          competitorName: topName,
+        },
       },
     ],
   };

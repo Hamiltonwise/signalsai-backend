@@ -174,7 +174,7 @@ export default function ColleagueShare() {
               Split the Check
             </p>
             <p className="text-sm text-[#1A1D23] leading-relaxed">
-              You're both building something. When they join, you each pay half for the first 3 months.
+              You're both building something. When they join, you go in together.
             </p>
           </div>
         )}

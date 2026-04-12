@@ -362,7 +362,7 @@ function CompetitorInviteSection({
         // Norton frictionless handoff: use Web Share API on mobile, clipboard on desktop
         if (navigator.share) {
           await navigator.share({
-            title: `${competitor.name}, see where you rank`,
+            title: `${competitor.name}, see how they compare`,
             text: `We already know who's ahead of ${competitor.name}. 60 seconds to find out.`,
             url: res.inviteUrl,
           }).catch(() => {
@@ -405,7 +405,7 @@ function CompetitorInviteSection({
                 ? "Link copied!"
                 : loadingId === c.placeId
                   ? "..."
-                  : "Show them where they rank"}
+                  : "Show them how they compare"}
             </button>
           </div>
         ))}
@@ -528,7 +528,7 @@ export default function ResultsScreen() {
       blur_gate_cta_text: state.topCompetitor
         ? state.score.composite >= 80
           ? `You're ahead, but ${state.topCompetitor.name} is closing the gap.`
-          : `See why ${state.topCompetitor.name} ranks above you in ${state.place.city || "your market"}.`
+          : `See how ${state.topCompetitor.name} compares to you in ${state.place.city || "your market"}.`
         : `Competitive breakdown for ${state.place.city || "your market"}.`,
     });
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
