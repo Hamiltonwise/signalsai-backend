@@ -159,7 +159,7 @@ export default function PatientPathPreview() {
           <iframe
             src={data.previewUrl}
             className="h-[70vh] w-full border-0"
-            title="PatientPath Preview"
+            title="Website Preview"
           />
         </div>
       ) : (
