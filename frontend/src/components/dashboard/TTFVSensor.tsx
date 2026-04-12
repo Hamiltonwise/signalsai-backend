@@ -92,7 +92,7 @@ export default function TTFVSensor({ orgId, onYes }: TTFVSensorProps) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 animate-in slide-in-from-bottom duration-300">
       <div className="mx-auto max-w-2xl px-4 pb-4">
-        <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <div className="rounded-2xl border border-stone-200/60 bg-stone-50/80 px-5 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
           {responded ? (
             <p className="text-sm text-center text-gray-500">Thank you.</p>
           ) : (

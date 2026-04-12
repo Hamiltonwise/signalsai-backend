@@ -118,7 +118,7 @@ export default function FocusKeywords() {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-100 p-6">
+      <div className="bg-stone-50/80 rounded-xl border border-stone-200/60 p-6">
         <div className="animate-pulse space-y-3">
           <div className="h-5 bg-gray-100 rounded w-40" />
           <div className="h-8 bg-gray-50 rounded w-full" />
@@ -129,7 +129,7 @@ export default function FocusKeywords() {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6">
+    <div className="bg-stone-50/80 rounded-xl border border-stone-200/60 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

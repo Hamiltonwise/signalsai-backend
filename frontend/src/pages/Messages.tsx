@@ -334,7 +334,7 @@ export const Messages: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-[13px] font-bold text-alloro-navy truncate">
+                        <span className="text-[13px] font-semibold text-alloro-navy truncate">
                           {conv.label}
                         </span>
                         {conv.unreadCount > 0 && (
@@ -348,7 +348,7 @@ export const Messages: React.FC = () => {
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         <span
-                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold ${
                             MESSAGE_TYPE_COLORS[conv.lastMessage.message_type]
                           }`}
                         >
@@ -391,7 +391,7 @@ export const Messages: React.FC = () => {
                   )}
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-alloro-navy">
+                  <h2 className="text-sm font-semibold text-alloro-navy">
                     {activeConversation.label}
                   </h2>
                   <p className="text-xs text-slate-400">
@@ -418,13 +418,13 @@ export const Messages: React.FC = () => {
                         }`}
                       >
                         {!isMine && (
-                          <p className="text-xs font-bold opacity-50 mb-1">
+                          <p className="text-xs font-semibold opacity-50 mb-1">
                             User #{msg.sender_id}
                           </p>
                         )}
                         {msg.message_type !== "text" && (
                           <span
-                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold mb-2 ${
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold mb-2 ${
                               isMine
                                 ? "bg-white/20 text-white/80"
                                 : MESSAGE_TYPE_COLORS[msg.message_type]
@@ -461,7 +461,7 @@ export const Messages: React.FC = () => {
                     <button
                       key={type}
                       onClick={() => setMessageType(type)}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${
                         messageType === type
                           ? "bg-alloro-navy text-white"
                           : "bg-slate-100 text-slate-500 hover:bg-slate-200"

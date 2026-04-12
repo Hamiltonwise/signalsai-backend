@@ -57,7 +57,7 @@ export default function ClarityUpgrade({
   }
 
   return (
-    <div className="rounded-2xl border border-[#D56753]/15 bg-white p-5 relative">
+    <div className="rounded-2xl border border-[#D56753]/15 bg-stone-50/80 p-5 relative">
       <button
         onClick={() => setDismissed(true)}
         className="absolute top-3 right-3 p-1 text-gray-400 hover:text-gray-500 transition-colors"

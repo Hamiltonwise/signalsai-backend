@@ -212,7 +212,7 @@ const KPICard = ({
   warning?: boolean;
   tooltip?: string;
 }) => (
-  <div className="bg-white border border-black/5 rounded-2xl p-8 shadow-premium flex flex-col transition-all hover:shadow-2xl hover:-translate-y-1 group">
+  <div className="bg-stone-50/80 border border-stone-200/60 rounded-2xl p-8 shadow-premium flex flex-col transition-all hover:shadow-2xl hover:-translate-y-1 group">
     <div className="flex justify-between items-start mb-8">
       <div className="flex items-center gap-2">
         {tooltip && (
@@ -448,7 +448,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
   if (error && !isWizardActive) {
     return (
       <div className="min-h-screen bg-alloro-bg font-body flex items-center justify-center py-16">
-        <div className="text-center max-w-md bg-white rounded-2xl border border-slate-200 shadow-premium p-10">
+        <div className="text-center max-w-md bg-stone-50/80 rounded-2xl border border-stone-200/60 shadow-premium p-10">
           <div className="p-4 bg-red-50 rounded-2xl w-fit mx-auto mb-4">
             <AlertCircle className="h-10 w-10 text-red-500" />
           </div>
@@ -471,7 +471,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
   if (!organizationId && !isWizardActive) {
     return (
       <div className="min-h-screen bg-alloro-bg font-body flex items-center justify-center py-16">
-        <div className="text-center max-w-md bg-white rounded-2xl border border-slate-200 shadow-premium p-10">
+        <div className="text-center max-w-md bg-stone-50/80 rounded-2xl border border-stone-200/60 shadow-premium p-10">
           <div className="p-4 bg-slate-100 rounded-2xl w-fit mx-auto mb-4">
             <Trophy className="h-10 w-10 text-slate-400" />
           </div>
@@ -540,7 +540,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
 
             {/* Top Competitor Card */}
             {checkupSnapshot.topCompetitor && (
-              <div className="bg-white rounded-3xl border border-black/5 shadow-premium p-8">
+              <div className="bg-stone-50/80 rounded-3xl border border-stone-200/60 shadow-premium p-8">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-alloro-orange/10 flex items-center justify-center">
                     <Trophy size={20} className="text-alloro-orange" />
@@ -570,7 +570,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
 
             {/* Findings */}
             {checkupSnapshot.findings.length > 0 && (
-              <div className="bg-white rounded-3xl border border-black/5 shadow-premium p-8">
+              <div className="bg-stone-50/80 rounded-3xl border border-stone-200/60 shadow-premium p-8">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-xl bg-alloro-bg flex items-center justify-center">
                     <Lightbulb size={20} className="text-alloro-orange" />
@@ -632,7 +632,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
 
           <div
             onClick={() => navigate("/settings/integrations")}
-            className="group bg-white rounded-3xl border-2 border-alloro-orange shadow-xl shadow-alloro-orange/10 p-8 cursor-pointer hover:shadow-2xl hover:shadow-alloro-orange/20 transition-all duration-300 hover:-translate-y-1"
+            className="group bg-stone-50/80 rounded-3xl border-2 border-alloro-orange shadow-xl shadow-alloro-orange/10 p-8 cursor-pointer hover:shadow-2xl hover:shadow-alloro-orange/20 transition-all duration-300 hover:-translate-y-1"
           >
             <div className="flex items-start gap-6">
               <div className="shrink-0">
@@ -792,7 +792,7 @@ export function RankingsDashboard({ organizationId, locationId }: RankingsDashbo
               </span>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-5 bg-white px-6 py-3 rounded-2xl border border-black/5 shadow-premium">
+          <div className="hidden sm:flex items-center gap-5 bg-stone-50/80 px-6 py-3 rounded-2xl border border-stone-200/60 shadow-premium">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
               Latest Analysis:
             </span>
@@ -977,7 +977,7 @@ function PerformanceDashboard({
       {/* 3. COMPETITIVE MATRIX */}
       <section
         data-wizard-target="rankings-competitors"
-        className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden"
+        className="bg-stone-50/80 rounded-3xl border border-stone-200/60 shadow-premium overflow-hidden"
       >
         <div className="px-10 py-8 border-b border-black/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="text-left">
@@ -1121,7 +1121,7 @@ function PerformanceDashboard({
 
       {/* 5. RANK DRIVERS */}
       {result.llmAnalysis?.drivers && result.llmAnalysis.drivers.length > 0 && (
-        <section className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden text-left">
+        <section className="bg-stone-50/80 rounded-3xl border border-stone-200/60 shadow-premium overflow-hidden text-left">
           <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between">
             <div className="space-y-1">
               <h3 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
@@ -1196,7 +1196,7 @@ function PerformanceDashboard({
                 initial={{ opacity: 0, x: 50, scale: 0.8 }}
                 animate={{ opacity: 1, x: 0, scale: 0.85 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className={`absolute left-0 z-0 w-80 bg-white rounded-3xl p-6 shadow-lg border hidden lg:block ${
+                className={`absolute left-0 z-0 w-80 bg-stone-50/80 rounded-3xl p-6 shadow-lg border hidden lg:block ${
                   drivers[selectedDriverIndex - 1].direction === "positive"
                     ? "border-green-200"
                     : "border-red-200"
@@ -1237,7 +1237,7 @@ function PerformanceDashboard({
                 initial={{ opacity: 0, x: -50, scale: 0.8 }}
                 animate={{ opacity: 1, x: 0, scale: 0.85 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className={`absolute right-0 z-0 w-80 bg-white rounded-3xl p-6 shadow-lg border hidden lg:block ${
+                className={`absolute right-0 z-0 w-80 bg-stone-50/80 rounded-3xl p-6 shadow-lg border hidden lg:block ${
                   drivers[selectedDriverIndex + 1].direction === "positive"
                     ? "border-green-200"
                     : "border-red-200"
@@ -1277,7 +1277,7 @@ function PerformanceDashboard({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className={`relative z-10 bg-white rounded-3xl w-full max-w-xl p-10 shadow-2xl border-2 mx-auto ${
+              className={`relative z-10 bg-stone-50/80 rounded-3xl w-full max-w-xl p-10 shadow-2xl border-2 mx-auto ${
                 selectedDriver.direction === "positive"
                   ? "border-green-300"
                   : "border-red-300"
@@ -1378,7 +1378,7 @@ function PerformanceDashboard({
 
       {/* 6. GAPS / OPPORTUNITIES */}
       {result.llmAnalysis?.gaps && result.llmAnalysis.gaps.length > 0 && (
-        <section className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden text-left">
+        <section className="bg-stone-50/80 rounded-3xl border border-stone-200/60 shadow-premium overflow-hidden text-left">
           <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between">
             <div className="space-y-1">
               <h3 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
@@ -1483,7 +1483,7 @@ function VisibilityProtocol({ tasks }: { tasks: RankingTask[] }) {
   return (
     <section
       data-wizard-target="rankings-factors"
-      className="bg-white rounded-3xl border border-black/5 shadow-premium overflow-hidden text-left"
+      className="bg-stone-50/80 rounded-3xl border border-stone-200/60 shadow-premium overflow-hidden text-left"
     >
       <div className="px-10 py-8 border-b border-black/5 flex items-center justify-between">
         <div className="space-y-1">
@@ -1565,7 +1565,7 @@ function LoadingSkeleton() {
         {[...Array(2)].map((_, i) => (
           <div
             key={i}
-            className="p-10 rounded-3xl border-2 border-slate-100 bg-white"
+            className="p-10 rounded-3xl border-2 border-stone-200/60 bg-stone-50/80"
           >
             <div className="flex gap-6 mb-10">
               <div className="w-14 h-14 bg-slate-200 rounded-2xl" />
@@ -1591,7 +1591,7 @@ function LoadingSkeleton() {
         {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className="rounded-2xl border border-slate-200 bg-white p-8"
+            className="rounded-2xl border border-stone-200/60 bg-stone-50/80 p-8"
           >
             <div className="h-3 w-24 bg-slate-200 rounded mb-8" />
             <div className="h-12 w-32 bg-slate-200 rounded mb-2" />

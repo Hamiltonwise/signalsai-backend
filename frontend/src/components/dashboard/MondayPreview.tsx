@@ -216,7 +216,7 @@ export default function MondayPreview() {
       </div>
 
       {/* Email preview */}
-      <div className="rounded-xl border border-gray-100 bg-white p-5">
+      <div className="rounded-xl border border-stone-200/60 bg-stone-50/80 p-5">
         {/* Subject */}
         <p className="text-base font-semibold text-[#1A1D23] leading-snug">
           {preview.subject}

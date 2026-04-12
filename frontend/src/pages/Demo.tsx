@@ -52,25 +52,122 @@ const DEFAULTS = {
   startScore: 42,
 };
 
+// Pre-configured verticals: use ?vertical=plumber (or restaurant, attorney, etc.)
+// Each vertical tells a compelling 4-month growth story with realistic data.
+const VERTICAL_PROFILES: Record<string, typeof DEFAULTS> = {
+  plumber: {
+    name: "Cascade Plumbing",
+    city: "Denver",
+    state: "Colorado",
+    score: 72,
+    rank: 2,
+    totalCompetitors: 8,
+    specialty: "plumber",
+    reviews: 94,
+    rating: 4.7,
+    competitorName: "Mile High Plumbing",
+    competitorReviews: 312,
+    competitorRating: 4.8,
+    startRank: 5,
+    startScore: 38,
+  },
+  restaurant: {
+    name: "Ember Kitchen",
+    city: "Austin",
+    state: "Texas",
+    score: 67,
+    rank: 4,
+    totalCompetitors: 12,
+    specialty: "restaurant",
+    reviews: 187,
+    rating: 4.5,
+    competitorName: "Willow & Sage",
+    competitorReviews: 524,
+    competitorRating: 4.7,
+    startRank: 9,
+    startScore: 34,
+  },
+  attorney: {
+    name: "Birch & Crane Law",
+    city: "Charlotte",
+    state: "North Carolina",
+    score: 58,
+    rank: 3,
+    totalCompetitors: 6,
+    specialty: "attorney",
+    reviews: 38,
+    rating: 4.8,
+    competitorName: "Prescott Legal Group",
+    competitorReviews: 127,
+    competitorRating: 4.9,
+    startRank: 6,
+    startScore: 29,
+  },
+  medspa: {
+    name: "Luma Aesthetics",
+    city: "Scottsdale",
+    state: "Arizona",
+    score: 74,
+    rank: 2,
+    totalCompetitors: 9,
+    specialty: "medspa",
+    reviews: 156,
+    rating: 4.9,
+    competitorName: "Desert Glow Med Spa",
+    competitorReviews: 289,
+    competitorRating: 4.8,
+    startRank: 7,
+    startScore: 41,
+  },
+  chiropractor: {
+    name: "Summit Spine & Wellness",
+    city: "Nashville",
+    state: "Tennessee",
+    score: 65,
+    rank: 3,
+    totalCompetitors: 7,
+    specialty: "chiropractor",
+    reviews: 72,
+    rating: 4.7,
+    competitorName: "Music City Chiropractic",
+    competitorReviews: 198,
+    competitorRating: 4.6,
+    startRank: 6,
+    startScore: 35,
+  },
+};
+
 function useDemoPractice() {
   const [params] = useSearchParams();
+  // ?vertical=plumber loads the plumber profile. Individual params still override.
+  const verticalKey = params.get("vertical")?.toLowerCase() || "";
+  const base = VERTICAL_PROFILES[verticalKey] || DEFAULTS;
   return {
-    name: params.get("name") || DEFAULTS.name,
-    city: params.get("city") || DEFAULTS.city,
-    state: params.get("state") || DEFAULTS.state,
-    score: Number(params.get("score")) || DEFAULTS.score,
-    rank: Number(params.get("rank")) || DEFAULTS.rank,
-    totalCompetitors: Number(params.get("competitors")) || DEFAULTS.totalCompetitors,
-    specialty: params.get("specialty") || DEFAULTS.specialty,
-    reviews: Number(params.get("reviews")) || DEFAULTS.reviews,
-    rating: Number(params.get("rating")) || DEFAULTS.rating,
-    competitorName: params.get("competitor") || DEFAULTS.competitorName,
-    competitorReviews: Number(params.get("compReviews")) || DEFAULTS.competitorReviews,
-    competitorRating: Number(params.get("compRating")) || DEFAULTS.competitorRating,
-    startRank: Number(params.get("startRank")) || DEFAULTS.startRank,
-    startScore: Number(params.get("startScore")) || DEFAULTS.startScore,
+    name: params.get("name") || base.name,
+    city: params.get("city") || base.city,
+    state: params.get("state") || base.state,
+    score: Number(params.get("score")) || base.score,
+    rank: Number(params.get("rank")) || base.rank,
+    totalCompetitors: Number(params.get("competitors")) || base.totalCompetitors,
+    specialty: params.get("specialty") || base.specialty,
+    reviews: Number(params.get("reviews")) || base.reviews,
+    rating: Number(params.get("rating")) || base.rating,
+    competitorName: params.get("competitor") || base.competitorName,
+    competitorReviews: Number(params.get("compReviews")) || base.competitorReviews,
+    competitorRating: Number(params.get("compRating")) || base.competitorRating,
+    startRank: Number(params.get("startRank")) || base.startRank,
+    startScore: Number(params.get("startScore")) || base.startScore,
   };
 }
+
+// Owner names per vertical (non-medical verticals drop the "Dr." prefix)
+const DEMO_OWNERS: Record<string, string> = {
+  plumber: "Mike",
+  restaurant: "Chef Rivera",
+  attorney: "Mr. Crane",
+  medspa: "Dr. Luma",
+  chiropractor: "Dr. Mitchell",
+};
 
 const REFERRING_GPS = [
   { name: "Dr. Sarah Chen", practice: "Chen Family Practice", referrals: 18, trend: "up" as const, trendLabel: "+3 vs last quarter", lastReferral: "5 days ago", status: "active" as const },
@@ -80,30 +177,13 @@ const REFERRING_GPS = [
   { name: "Dr. Lisa Park", practice: "Park Group", referrals: 6, trend: "down" as const, trendLabel: "Silent for 74 days", lastReferral: "74 days ago", status: "drift" as const },
 ];
 
-const TASKS = [
-  { title: "Request 3 reviews this week", why: "Summit Specialists has 284 reviews to your 61. Closing that gap is the single biggest lever for moving from #3 to #1.", status: "active" },
-  { title: "Respond to your last 5 reviews", why: "Businesses that respond to reviews rank higher and convert more referrals from colleagues who research you.", status: "active" },
-  { title: "Update your GBP hours", why: "Incomplete business profiles rank 23% lower in local search. This fix takes 2 minutes.", status: "active" },
-];
+// Tasks are generated dynamically in the WeeklyTasks component using practice data
 
-const RANKING_HISTORY = [
-  { month: "Dec", position: 6, score: 42 },
-  { month: "Jan", position: 5, score: 48 },
-  { month: "Feb", position: 4, score: 54 },
-  { month: "Mar", position: 3, score: 61 },
-];
+// Ranking history is generated dynamically in the component using startRank/startScore
 
-const TOP_MOVES = [
-  { title: "Added 12 Google reviews", outcome: "Moved from #6 to #4 in local search", date: "Jan" },
-  { title: "Completed GBP profile", outcome: "Score jumped from 42 to 54 (+12 points)", date: "Feb" },
-  { title: "Responded to all negative reviews", outcome: "Rating held at 4.6 stars instead of declining", date: "Mar" },
-];
+// Top moves are generated dynamically in ProgressReport using practice data
 
-const NEXT_90 = [
-  { title: "Collect 3 Google reviews per week for 10 weeks", why: "At 3/week you close the gap with Summit Specialists by 30 reviews. Combined with your higher engagement rate, that moves you from #3 to #2.", impact: "Projected move to #2 position" },
-  { title: "Re-engage Dr. Torres, she hasn't referred in 40 days", why: "Torres sent 13 clients last quarter. At $1,750 per case, that is $22,750 at risk. A lunch meeting costs $50.", impact: "$22,750 estimated quarterly revenue at risk" },
-  { title: "Add 10 new photos to GBP", why: "Summit has 45 photos. You have 8. Businesses with 20+ photos get 35% more website clicks from Google.", impact: "5 to 10 point score improvement" },
-];
+// Next 90 is generated dynamically in the Next90 component using practice data
 
 const CS_ACTIONS = [
   { time: "2h ago", text: "Detected Dr. Torres referral drift. 40 days since last referral. Flagged for outreach.", type: "alert" },
@@ -262,6 +342,18 @@ function CompetitorGap() {
 }
 
 function RankingTrajectory() {
+  const p = useDemoPractice();
+  const posGain = p.startRank - p.rank;
+  // Generate a plausible 4-month trajectory from startRank to current rank
+  const months = ["Dec", "Jan", "Feb", "Mar"];
+  const history = months.map((month, i) => {
+    const progress = i / (months.length - 1);
+    const position = Math.round(p.startRank - posGain * progress);
+    const score = Math.round(p.startScore + (p.score - p.startScore) * progress);
+    return { month, position, score };
+  });
+  const maxPos = Math.max(...history.map(h => h.position)) + 1;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -272,19 +364,19 @@ function RankingTrajectory() {
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Ranking Trajectory</p>
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-          <TrendingUp className="h-3 w-3" /> +3 positions
+          <TrendingUp className="h-3 w-3" /> +{posGain} positions
         </span>
       </div>
       <div className="flex items-end gap-3 h-20">
-        {RANKING_HISTORY.map((m) => {
-          const heightPct = ((7 - m.position) / 6) * 100;
-          const isLatest = m.month === "Mar";
+        {history.map((m, i) => {
+          const heightPct = ((maxPos - m.position) / maxPos) * 100;
+          const isLatest = i === history.length - 1;
           return (
             <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
               <span className={`text-xs font-semibold ${isLatest ? "text-[#D56753]" : "text-[#1A1D23]/60"}`}>#{m.position}</span>
               <div
                 className={`w-full rounded-lg transition-all ${isLatest ? "bg-[#D56753]" : "bg-[#D56753]/20"}`}
-                style={{ height: `${heightPct}%` }}
+                style={{ height: `${Math.max(heightPct, 5)}%` }}
               />
               <span className="text-xs text-gray-400">{m.month}</span>
             </div>
@@ -360,6 +452,12 @@ function ReferralNetwork() {
 }
 
 function WeeklyTasks() {
+  const p = useDemoPractice();
+  const tasks = [
+    { title: "Request 3 reviews this week", why: `${p.competitorName} has ${p.competitorReviews} reviews to your ${p.reviews}. Closing that gap is the single biggest lever for moving from #${p.rank} to #1.` },
+    { title: "Respond to your last 5 reviews", why: "Businesses that respond to reviews rank higher and earn 35% more revenue. Each response signals activity to Google." },
+    { title: "Update your GBP hours", why: "Incomplete business profiles rank 23% lower in local search. This fix takes 2 minutes." },
+  ];
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -372,7 +470,7 @@ function WeeklyTasks() {
         <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Your Next Moves</p>
       </div>
       <div className="space-y-4">
-        {TASKS.map((task, i) => (
+        {tasks.map((task, i) => (
           <div key={i} className="flex items-start gap-3">
             <span className="shrink-0 w-6 h-6 rounded-full bg-[#D56753] text-white flex items-center justify-center text-xs font-semibold mt-0.5">
               {i + 1}
@@ -418,6 +516,16 @@ function AgentActivity() {
 }
 
 function ProgressReport() {
+  const p = useDemoPractice();
+  const posGain = p.startRank - p.rank;
+  const scoreGain = p.score - p.startScore;
+  const reviewGain = p.reviews - Math.round(p.reviews * 0.7); // Approx 30% growth
+  const midScore = Math.round(p.startScore + scoreGain * 0.6);
+  const topMoves = [
+    { title: `Added ${reviewGain} Google reviews`, outcome: `Moved from #${p.startRank} to #${Math.max(p.rank + 1, p.startRank - Math.floor(posGain * 0.6))} in local search`, date: "Jan" },
+    { title: "Completed GBP profile", outcome: `Score jumped from ${p.startScore} to ${midScore} (+${midScore - p.startScore} points)`, date: "Feb" },
+    { title: "Responded to all negative reviews", outcome: `Rating held at ${p.rating} stars instead of declining`, date: "Mar" },
+  ];
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -433,25 +541,25 @@ function ProgressReport() {
       {/* Stats grid */}
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-4 text-center">
-          <p className="text-2xl font-semibold text-emerald-600">+3</p>
+          <p className="text-2xl font-semibold text-emerald-600">+{posGain}</p>
           <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Positions</p>
-          <p className="text-xs text-gray-400">#6 to #3</p>
+          <p className="text-xs text-gray-400">#{p.startRank} to #{p.rank}</p>
         </div>
         <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-4 text-center">
-          <p className="text-2xl font-semibold text-[#1A1D23]">+19</p>
+          <p className="text-2xl font-semibold text-[#1A1D23]">+{reviewGain}</p>
           <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Reviews</p>
-          <p className="text-xs text-gray-400">42 to 61</p>
+          <p className="text-xs text-gray-400">{p.reviews - reviewGain} to {p.reviews}</p>
         </div>
         <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-4 text-center">
-          <p className="text-2xl font-semibold text-[#D56753]">+19</p>
+          <p className="text-2xl font-semibold text-[#D56753]">+{scoreGain}</p>
           <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Score</p>
-          <p className="text-xs text-gray-400">42 to 61</p>
+          <p className="text-xs text-gray-400">{p.startScore} to {p.score}</p>
         </div>
       </div>
 
       {/* Top moves */}
       <div className="space-y-2">
-        {TOP_MOVES.map((move, i) => (
+        {topMoves.map((move, i) => (
           <div key={i} className="flex items-start gap-3 rounded-xl bg-[#F0EDE8] border border-stone-200/40 p-4">
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
             <div>
@@ -467,6 +575,13 @@ function ProgressReport() {
 }
 
 function Next90() {
+  const p = useDemoPractice();
+  const gap = p.competitorReviews - p.reviews;
+  const actions = [
+    { title: `Collect 3 Google reviews per week for ${Math.min(Math.ceil(gap / 3), 12)} weeks`, why: `At 3/week you close the gap with ${p.competitorName} by ${Math.min(gap, 36)} reviews. Combined with your higher engagement rate, that moves you from #${p.rank} to #${Math.max(p.rank - 1, 1)}.`, impact: `Projected move to #${Math.max(p.rank - 1, 1)} position` },
+    { title: "Re-engage Dr. Torres, she hasn't referred in 40 days", why: "Torres sent 13 clients last quarter. At $1,750 per case, that is $22,750 at risk. A lunch meeting costs $50.", impact: "$22,750 estimated quarterly revenue at risk" },
+    { title: `Add 10 new photos to GBP`, why: `${p.competitorName} has significantly more photos. Businesses with 20+ photos get 35% more website clicks from Google.`, impact: "5 to 10 point score improvement" },
+  ];
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -479,7 +594,7 @@ function Next90() {
         <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Next 90 Days</p>
       </div>
       <div className="space-y-3">
-        {NEXT_90.map((action, i) => (
+        {actions.map((action, i) => (
           <div key={i} className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
             <div className="flex items-start gap-3">
               <span className="shrink-0 w-6 h-6 rounded-full bg-[#D56753] text-white flex items-center justify-center text-xs font-semibold mt-0.5">
@@ -545,6 +660,11 @@ export default function Demo() {
     );
   }
 
+  // Resolve owner name from vertical param or default
+  const [searchParams] = useSearchParams();
+  const verticalKey = searchParams.get("vertical")?.toLowerCase() || "";
+  const ownerName = DEMO_OWNERS[verticalKey] || "Dr. Hayward";
+
   // Fallback: premium demo page (no seeded account)
   return (
     <div className="min-h-dvh bg-[#F8F6F2]">
@@ -555,7 +675,7 @@ export default function Demo() {
         {/* Greeting */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">
-            Good morning, Dr. Hayward.
+            Good morning, {ownerName}.
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Here is what Alloro found this week for {p.name}.
@@ -602,7 +722,7 @@ export default function Demo() {
         >
           <p className="text-lg font-semibold text-white">This is Alloro running for 4 months.</p>
           <p className="text-sm text-white/60 mt-2 leading-relaxed">
-            From #6 to #3. From 42 reviews to 61. From blind to seeing every referral pattern in your market.
+            From #{p.startRank} to #{p.rank}. From {p.startScore} to {p.score}. From blind to seeing every pattern in your market.
           </p>
           <a
             href="/checkup"
@@ -615,7 +735,7 @@ export default function Demo() {
 
         {/* Footer */}
         <p className="text-center text-xs text-[#1A1D23]/30 uppercase tracking-wide pt-4 pb-8">
-          Demo account. Valley Specialty Practice. Salt Lake City, UT.
+          Demo account. {p.name}. {p.city}, {p.state}.
         </p>
       </div>
     </div>

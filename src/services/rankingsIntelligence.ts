@@ -193,7 +193,7 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
     const response = await client.messages.create({
       model: LLM_MODEL,
       max_tokens: 500,
-      system: `Generate exactly 3 bullets about what changed in this practice's competitive position this week. Format: WHAT happened + RESULT for the practice. Never say HOW (no SEO, schema, keywords). Never claim a specific Google ranking number (e.g. "#1" or "#3") because our position data is approximate. Focus on review counts, review gaps, and competitor activity, which are verifiable. Be specific. Be brief. Never make assumptions about competitive relationships. Report what the data shows. Do not say a competitor "is your biggest threat" or "you need to beat X." Report facts: positions, review counts, gaps. The business owner defines their own competitive priorities.`,
+      system: `Generate exactly 3 bullets about what changed in this practice's competitive position this week. Format: WHAT happened + RESULT for the practice. Never say HOW (no SEO, schema, keywords). Never claim a specific Google ranking number (e.g. "#1" or "#3") because our position data is approximate. Focus on review counts, review gaps, and competitor activity, which are verifiable. Be specific. Be brief. Never make assumptions about competitive relationships. Report what the data shows. Do not say a competitor "is your biggest threat" or "you need to beat X." Report facts: positions, review counts, gaps. The business owner defines their own competitive priorities. CRITICAL: Never say "I need more information", "I don't have enough data", "insufficient data", or similar. Always produce 3 concrete bullets from whatever data is provided. If a field is missing, skip it and focus on what IS available.`,
       messages: [{
         role: "user",
         content: `Practice: ${org.name}
@@ -204,7 +204,12 @@ Market: ${address || specialty}`,
     });
 
     const text = response.content[0]?.type === "text" ? response.content[0].text : "";
-    bullets = text.split("\n").map(b => b.replace(/^[-•*]\s*/, "").trim()).filter(Boolean).slice(0, 3);
+    const garbagePhrases = ["i need more", "i don't have", "insufficient", "not enough data", "more information", "no data", "cannot determine"];
+    bullets = text
+      .split("\n")
+      .map(b => b.replace(/^[-•*]\s*/, "").trim())
+      .filter(b => b.length > 0 && !garbagePhrases.some(g => b.toLowerCase().includes(g)))
+      .slice(0, 3);
   } catch {
     // Fallback to template bullets (verifiable data only, no position claims, no competitor framing)
     bullets = [

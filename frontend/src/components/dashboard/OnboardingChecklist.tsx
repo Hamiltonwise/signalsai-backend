@@ -205,7 +205,7 @@ export default function OnboardingChecklist({
                 ? step.autoCompleted
                   ? "bg-gradient-to-r from-emerald-50/60 to-emerald-50/30 border border-emerald-200/40"
                   : "bg-gray-50/50 opacity-60"
-                : "bg-white hover:bg-[#FFF9F7] border border-[#D56753]/8 hover:border-[#D56753]/20 shadow-sm hover:shadow-warm"
+                : "bg-stone-50/80 hover:bg-[#FFF9F7] border border-[#D56753]/8 hover:border-[#D56753]/20 shadow-sm hover:shadow-warm"
             }`}
             style={!step.complete ? { animation: `fade-in-up 0.3s ease-out ${i * 0.05}s both` } : undefined}
           >

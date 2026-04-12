@@ -256,11 +256,15 @@ export function calculateClarityScore(
   });
 
   // ─── COMPOSITE SCORE ───────────────────────────────────────────
-  // Score = percentage of readings that are healthy
-  // Simple. No weights. No formulas. Just: how much of your blood panel is green?
-  const healthyCount = readings.filter(r => r.status === "healthy").length;
+  // Score = weighted percentage of reading health
+  // Healthy = full credit (1.0), Attention = partial credit (0.5), Critical = zero
+  // A business with all "attention" readings scores 50, not 0. The number
+  // should reflect reality: attention is not the same as critical.
+  const statusWeight = (s: ReadingStatus): number =>
+    s === "healthy" ? 1.0 : s === "attention" ? 0.5 : 0;
+  const totalWeight = readings.reduce((sum, r) => sum + statusWeight(r.status), 0);
   const totalReadings = readings.length;
-  const composite = Math.round((healthyCount / totalReadings) * 100);
+  const composite = Math.round((totalWeight / totalReadings) * 100);
 
   // Map to sub-scores for backwards compatibility
   // These are simplified mappings for code that expects the old interface
@@ -274,15 +278,14 @@ export function calculateClarityScore(
     r.name === "Review Responses"
   );
 
-  const reviewHealthScore = Math.round(
-    (reviewReadings.filter(r => r.status === "healthy").length / Math.max(reviewReadings.length, 1)) * 33
-  );
-  const gbpScore = Math.round(
-    (gbpReadings.filter(r => r.status === "healthy").length / Math.max(gbpReadings.length, 1)) * 33
-  );
-  const activityScore = Math.round(
-    (activityReadings.filter(r => r.status === "healthy").length / Math.max(activityReadings.length, 1)) * 34
-  );
+  const weightedRatio = (arr: Reading[], max: number) => {
+    if (arr.length === 0) return 0;
+    const w = arr.reduce((s, r) => s + statusWeight(r.status), 0);
+    return Math.round((w / arr.length) * max);
+  };
+  const reviewHealthScore = weightedRatio(reviewReadings, 33);
+  const gbpScore = weightedRatio(gbpReadings, 33);
+  const activityScore = weightedRatio(activityReadings, 34);
 
   return {
     composite,

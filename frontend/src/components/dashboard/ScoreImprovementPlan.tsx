@@ -89,7 +89,7 @@ export default function ScoreImprovementPlan() {
 
   if (isLoading) {
     return (
-      <div className="bg-white border border-black/5 rounded-2xl p-6 animate-pulse">
+      <div className="bg-stone-50/80 border border-stone-200/60 rounded-2xl p-6 animate-pulse">
         <div className="h-5 w-48 bg-slate-100 rounded mb-4" />
         <div className="space-y-3">
           <div className="h-16 bg-slate-50 rounded-xl" />
@@ -109,7 +109,7 @@ export default function ScoreImprovementPlan() {
   return (
     <motion.div
       variants={warmCardVariants}
-      className="bg-white border border-black/5 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+      className="bg-stone-50/80 border border-stone-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
     >
       {/* Header */}
       <button

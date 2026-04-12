@@ -147,7 +147,7 @@ export default function CompetitorComparison({
   ];
 
   return (
-    <div className="bg-white border border-black/5 rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-stone-50/80 border border-stone-200/60 rounded-2xl overflow-hidden shadow-sm">
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
         <div className="min-w-0 flex-1">

@@ -92,8 +92,8 @@ const MetricCard = ({
     <div
       className={`flex flex-col p-6 rounded-2xl border transition-all duration-500 ${
         isHighlighted
-          ? "bg-white border-alloro-orange/20 shadow-premium"
-          : "bg-white border-black/5 hover:border-alloro-orange/20 hover:shadow-premium"
+          ? "bg-stone-50/80 border-alloro-orange/20 shadow-premium"
+          : "bg-stone-50/80 border-stone-200/60 hover:border-alloro-orange/20 hover:shadow-premium"
       }`}
     >
       <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-[0.2em] mb-4 leading-none text-left">
@@ -806,7 +806,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
   // Error state
   if (error) {
     return (
-      <div className="bg-white border border-red-200 rounded-2xl p-8 text-center shadow-premium">
+      <div className="bg-stone-50/80 border border-red-200 rounded-2xl p-8 text-center shadow-premium">
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <AlertCircle className="w-8 h-8 text-red-600" />
         </div>
@@ -1246,7 +1246,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                     {effectiveWins.map((win: string, idx: number) => (
                       <div
                         key={idx}
-                        className="flex gap-4 p-5 bg-white border border-slate-50 rounded-2xl shadow-sm hover:shadow-md transition-all"
+                        className="flex gap-4 p-5 bg-stone-50/80 border border-stone-200/60 rounded-2xl shadow-sm hover:shadow-md transition-all"
                       >
                         <CheckCircle2
                           className="text-green-500 shrink-0 mt-0.5"
@@ -1277,7 +1277,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                       ) => (
                         <div
                           key={idx}
-                          className="flex gap-4 p-5 bg-white border border-slate-50 rounded-2xl shadow-sm hover:shadow-md transition-all"
+                          className="flex gap-4 p-5 bg-stone-50/80 border border-stone-200/60 rounded-2xl shadow-sm hover:shadow-md transition-all"
                         >
                           <div className="w-2.5 h-2.5 bg-red-400 rounded-full shrink-0 mt-2"></div>
                           <span className="text-sm font-semibold text-slate-500 leading-relaxed tracking-tight">
@@ -1300,7 +1300,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           if (tasksLoading) {
             return (
               <section className="animate-pulse">
-                <div className="bg-white border border-slate-100 rounded-2xl p-6 lg:px-10 lg:py-8 shadow-premium">
+                <div className="bg-stone-50/80 border border-stone-200/60 rounded-2xl p-6 lg:px-10 lg:py-8 shadow-premium">
                   <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="flex-1 space-y-4 w-full">
                       <div className="h-6 w-40 bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded skeleton-shimmer"></div>
@@ -1337,7 +1337,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
           }
 
           return (
-            <section className="bg-white border border-slate-100 rounded-2xl p-6 lg:px-10 lg:py-8 shadow-premium relative flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <section className="bg-stone-50/80 border border-stone-200/60 rounded-2xl p-6 lg:px-10 lg:py-8 shadow-premium relative flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="flex-1 text-left space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="px-2.5 py-1 bg-red-50 text-red-600 text-[9px] font-semibold uppercase tracking-widest rounded-lg border border-red-100 leading-none">
@@ -1436,7 +1436,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                 return (
                   <div
                     key={idx}
-                    className="group relative bg-white rounded-3xl p-8 lg:p-10 border border-slate-100 shadow-premium hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col min-h-[280px] overflow-hidden"
+                    className="group relative bg-stone-50/80 rounded-3xl p-8 lg:p-10 border border-stone-200/60 shadow-premium hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col min-h-[280px] overflow-hidden"
                   >
                     {/* Elite Background Gradient Glow */}
                     <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-alloro-orange/[0.04] rounded-full blur-[80px] -mr-32 -mt-32 group-hover:bg-alloro-orange/[0.08] transition-all duration-500 pointer-events-none"></div>

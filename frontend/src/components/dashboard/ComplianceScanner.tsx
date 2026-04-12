@@ -70,7 +70,7 @@ export default function ComplianceScanner() {
   const mediumCount = findings.filter(f => f.severity === "medium").length;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6">
+    <div className="bg-stone-50/80 rounded-xl border border-stone-200/60 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

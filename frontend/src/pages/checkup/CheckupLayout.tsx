@@ -15,7 +15,7 @@ export default function CheckupLayout() {
               <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9"/>
             </svg>
           </div>
-          <span className="text-[22px] font-bold tracking-tight text-[#1A1D23]">
+          <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
             alloro
           </span>
         </div>

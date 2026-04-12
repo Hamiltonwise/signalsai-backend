@@ -189,7 +189,7 @@ export const Notifications: React.FC = () => {
               <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 Notifications
               </h1>
-              <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+              <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 Real-time Business Updates
               </span>
             </div>
@@ -393,7 +393,7 @@ export const Notifications: React.FC = () => {
               <h4 className="text-2xl font-semibold font-heading text-alloro-navy tracking-tight">
                 All Clear.
               </h4>
-              <p className="text-slate-400 font-bold text-lg max-w-md leading-relaxed tracking-tight">
+              <p className="text-slate-400 font-semibold text-lg max-w-md leading-relaxed tracking-tight">
                 No active signals requiring attention. System surveillance is
                 active and monitoring 24/7.
               </p>
@@ -412,7 +412,7 @@ export const Notifications: React.FC = () => {
             <h4 className="text-2xl font-semibold font-heading text-white tracking-tight">
               Notification Monitoring Active
             </h4>
-            <p className="text-blue-100/40 font-bold text-lg max-w-lg leading-relaxed tracking-tight">
+            <p className="text-blue-100/40 font-semibold text-lg max-w-lg leading-relaxed tracking-tight">
               Alloro AI is continuously monitoring your business and will notify
               you of important events and updates.
             </p>

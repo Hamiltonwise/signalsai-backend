@@ -79,7 +79,7 @@ function DraftCard({ draft, onAction }: { draft: Draft; onAction: () => void }) 
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div className="rounded-xl border border-stone-200/60 bg-stone-50/80 p-4">
       <div className="flex items-start justify-between mb-2">
         <p className="text-sm font-semibold text-[#1A1D23]">
           Thank-you to Dr. {draft.gp_name}

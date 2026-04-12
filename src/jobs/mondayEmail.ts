@@ -271,9 +271,12 @@ export async function sendMondayEmailForOrg(
   }
 
   // Parse bullets -- if LLM analysis didn't run, generate from raw ranking data
-  let bullets = typeof snapshot.bullets === "string"
+  // Filter out garbage phrases from stored LLM output (e.g. "I need more information")
+  const garbagePhrases = ["i need more", "i don't have", "insufficient", "not enough data", "more information", "no data", "cannot determine"];
+  let bullets: string[] = (typeof snapshot.bullets === "string"
     ? JSON.parse(snapshot.bullets)
-    : snapshot.bullets || [];
+    : snapshot.bullets || [])
+    .filter((b: string) => b && !garbagePhrases.some(g => b.toLowerCase().includes(g)));
 
   // Fallback: when LLM bullets are empty but ranking data exists, build them from raw data
   // This ensures every Monday email has real intelligence, even without ANTHROPIC_API_KEY
