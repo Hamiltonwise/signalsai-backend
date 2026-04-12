@@ -123,23 +123,31 @@ export default function ProgressReport() {
     const reviewGap = topCompReviews > 0 ? topCompReviews - currentReviews : 0;
 
     let context = "";
-    if (delta > 0) {
+    if (delta > 0 && daysActive) {
+      const weeklyRate = Math.round((delta / (daysActive / 7)) * 10) / 10;
+      context = `+${delta} review${delta !== 1 ? "s" : ""} since you joined (${weeklyRate}/week)`;
+    } else if (delta > 0) {
       context = `+${delta} review${delta !== 1 ? "s" : ""} since you joined`;
     } else if (delta === 0) {
-      context = "No new reviews yet";
+      context = "No new reviews yet. Every new review has outsized impact at your current volume.";
     } else {
       context = `${Math.abs(delta)} review${Math.abs(delta) !== 1 ? "s" : ""} removed`;
     }
 
-    // Add competitor context if available
+    // Add competitor context with interpretation
     if (topCompetitor && topCompReviews > 0) {
       const compName = (topCompetitor.name as string) || "Top competitor";
       if (reviewGap > 0) {
-        context += `. ${compName} has ${topCompReviews} (${reviewGap} ahead)`;
+        const weeksToClose = Math.ceil(reviewGap / 2);
+        const timeframe = weeksToClose <= 52
+          ? `${Math.ceil(weeksToClose / 4)} month${Math.ceil(weeksToClose / 4) !== 1 ? "s" : ""}`
+          : "over a year";
+        context += `. ${compName} is ${reviewGap} ahead. Closeable in ${timeframe} at 2/week.`;
       } else if (reviewGap < 0) {
-        context += `. You lead ${compName} by ${Math.abs(reviewGap)}`;
+        const lead = Math.abs(reviewGap);
+        context += `. You lead ${compName} by ${lead}${lead > 100 ? ". That gap compounds." : "."}`;
       } else {
-        context += `. Tied with ${compName}`;
+        context += `. Tied with ${compName}. Each new review shifts the balance.`;
       }
     }
 

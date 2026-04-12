@@ -121,7 +121,7 @@ export default function BuildingScreen() {
           Coming soon in your dashboard
         </p>
         <p className="text-sm text-[#1A1D23] leading-relaxed">
-          We're reading your reviews to find what makes {businessName} different. When it's ready, you'll see a website preview built from what your patients actually say about you, not stock copy.
+          We're reading your reviews to find what makes {businessName} different. When it's ready, you'll see a website preview built from what your customers actually say about you, not stock copy.
         </p>
       </div>
     </div>

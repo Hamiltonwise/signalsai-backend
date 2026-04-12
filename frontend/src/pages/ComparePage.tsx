@@ -132,7 +132,7 @@ function ComparePageInner() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">How Easily Patients Find You</h1>
+          <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">How Easily People Find You</h1>
           <p className="text-sm text-gray-400 mt-1">Alloro tracks your ranking against every competitor in your market.</p>
           {competitorName && (
             <p className="text-sm text-gray-500 mt-1">
@@ -243,21 +243,33 @@ function ComparePageInner() {
                     At 2 reviews per week, you close this gap in {timeframe}.
                   </p>
                   <p className="text-sm text-gray-500">
-                    Google weights review volume heavily in local pack rankings and AI-generated answers. This gap is the single largest factor in your competitive position. Every review also adds keywords Google uses to match you with patient searches.
+                    Google weights review volume heavily in local pack rankings and AI-generated answers. This gap is the single largest factor in your competitive position. Every review also adds keywords Google uses to match you with searches in your area.
                   </p>
                 </div>
               );
             })()}
-            {clientReviews >= (competitorReviews || 0) && competitorName && competitorReviews && (
-              <div>
-                <p className="text-sm font-semibold text-[#1A1D23]">
-                  You lead {competitorName} by {clientReviews - (competitorReviews || 0)} reviews.
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Consistent reviews keep you ahead. One review per week compounds into a moat your competitors cannot close quickly. Alloro watches for any shift.
-                </p>
-              </div>
-            )}
+            {clientReviews >= (competitorReviews || 0) && competitorName && competitorReviews && (() => {
+              const lead = clientReviews - (competitorReviews || 0);
+              const leadInterpretation = lead > 500
+                ? "That lead is a moat. No competitor can close a gap that size quickly. Your job is to maintain, not sprint."
+                : lead > 100
+                  ? "That is a significant lead. Consistent effort widens it further. Alloro watches for any shift."
+                  : lead > 20
+                    ? "A solid lead, but closeable if a competitor gets aggressive. Keep the pace."
+                    : lead > 0
+                      ? "A narrow lead. One strong month from a competitor could erase it. Stay consistent."
+                      : "You are tied. Every new review shifts the balance.";
+              return (
+                <div>
+                  <p className="text-sm font-semibold text-[#1A1D23]">
+                    You lead {competitorName} by {lead} reviews.
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {leadInterpretation}
+                  </p>
+                </div>
+              );
+            })()}
             {clientPhotos < 10 && clientPhotos >= 0 && (
               <div>
                 <p className="text-sm font-semibold text-[#1A1D23]">
@@ -373,7 +385,7 @@ function ComparePageInner() {
                   <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-emerald-50 border border-emerald-100">
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-semibold text-emerald-600 w-5">You</span>
-                      <p className="text-sm font-semibold text-emerald-700">{orgName || "Your practice"}</p>
+                      <p className="text-sm font-semibold text-emerald-700">{orgName || "Your business"}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-semibold text-emerald-700">{clientReviews}</p>

@@ -57,11 +57,11 @@ export default function ReferralProgram() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#D56753]/10 mb-5">
             <Users className="w-6 h-6 text-[#D56753]" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-[#212D40] tracking-tight leading-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight leading-tight">
             A colleague thought you'd want to see this.
           </h1>
           <p className="mt-4 text-base text-slate-500 leading-relaxed max-w-md mx-auto">
-            They ran their practice through Alloro and found something.
+            They ran their business through Alloro and found something.
             Here's what they found -- and what it might mean for yours.
           </p>
         </div>
@@ -72,8 +72,8 @@ export default function ReferralProgram() {
             What {validRef && referrerName ? referrerName : "your colleague"} found
           </p>
           {validRef && referrerName ? (
-            <p className="text-sm text-[#212D40]/80 leading-relaxed">
-              A practice referred by{" "}
+            <p className="text-sm text-[#1A1D23]/80 leading-relaxed">
+              A business referred by{" "}
               <strong>{referrerName}</strong> ran their Business Clarity
               Checkup and discovered where they rank against every
               competitor in their market -- with named competitors on a
@@ -81,8 +81,8 @@ export default function ReferralProgram() {
               their result in 60 seconds.
             </p>
           ) : (
-            <p className="text-sm text-[#212D40]/80 leading-relaxed">
-              A {FALLBACK.specialty} practice in {FALLBACK.city} found
+            <p className="text-sm text-[#1A1D23]/80 leading-relaxed">
+              A {FALLBACK.specialty} business in {FALLBACK.city} found
               that their top competitor has {FALLBACK.reviewGap} more
               reviews and ranks above them for "{FALLBACK.keyword}." They
               saw their result in 60 seconds.
@@ -92,8 +92,8 @@ export default function ReferralProgram() {
 
         {/* Section 2: Run yours */}
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-[#212D40]">
-            Every practice has a different result.
+          <h2 className="text-xl font-semibold text-[#1A1D23]">
+            Every business has a different result.
           </h2>
           <p className="mt-2 text-sm text-slate-500">
             Yours takes 60 seconds.

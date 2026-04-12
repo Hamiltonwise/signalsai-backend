@@ -20,7 +20,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Upload, ExternalLink } from "lucide-react";
+import { ChevronRight, Upload, ExternalLink, Users } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
@@ -155,18 +155,38 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
     });
   }
 
-  // 2. Reviews -- your count vs competitor gap
+  // 2. Reviews -- your count vs competitor gap, with interpretation
   const clientReviews = checkup.place?.reviewCount || checkup.reviewCount || 0;
   const clientRating = checkup.place?.rating || checkup.rating || null;
   if (clientReviews > 0) {
     const gap = competitorReviews ? competitorReviews - clientReviews : null;
-    const reviewContext = gap && gap > 0 && competitorName
-      ? `${competitorName} has ${competitorReviews}. Gap: ${gap}.`
-      : gap && gap <= 0
-        ? `You lead your top competitor by ${Math.abs(gap || 0)} reviews.`
-        : clientRating
-          ? `${clientRating} stars on Google.`
-          : "Alloro monitors your reviews daily.";
+    let reviewContext: string;
+
+    if (gap && gap > 0 && competitorName) {
+      // Behind: compute time-to-close at 2/week
+      const weeksToClose = Math.ceil(gap / 2);
+      const timeframe = weeksToClose <= 4
+        ? `${weeksToClose} week${weeksToClose !== 1 ? "s" : ""}`
+        : weeksToClose <= 52
+          ? `about ${Math.ceil(weeksToClose / 4)} month${Math.ceil(weeksToClose / 4) !== 1 ? "s" : ""}`
+          : "over a year";
+      reviewContext = `${competitorName} leads by ${gap}. At 2 per week, you close it in ${timeframe}.`;
+    } else if (gap && gap <= 0) {
+      const lead = Math.abs(gap || 0);
+      if (lead > 500) {
+        reviewContext = `You lead by ${lead} reviews. That gap is a moat no competitor can close quickly.`;
+      } else if (lead > 100) {
+        reviewContext = `You lead by ${lead} reviews. Consistent effort keeps that gap growing.`;
+      } else if (lead > 0) {
+        reviewContext = `You lead by ${lead} reviews. Keep the pace to widen the gap.`;
+      } else {
+        reviewContext = "You're tied with your top competitor. Every new review shifts the balance.";
+      }
+    } else {
+      reviewContext = clientRating
+        ? `${clientRating} stars on Google. Alloro monitors your reviews daily.`
+        : "Alloro monitors your reviews daily.";
+    }
 
     readings.push({
       label: "Reviews",
@@ -193,10 +213,18 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
       if (directions > 0) parts.push(`${directions} direction${directions !== 1 ? "s" : ""}`);
       if (clicks > 0) parts.push(`${clicks} click${clicks !== 1 ? "s" : ""}`);
 
+      // Identify top conversion channel
+      const topChannel = calls >= directions && calls >= clicks
+        ? "Calls"
+        : directions >= clicks
+          ? "Directions requests"
+          : "Website clicks";
+      const interpretation = `${topChannel} ${total > 1 ? "are" : "is"} your top conversion channel. Each one is someone who found you and took a step toward becoming a customer.`;
+
       readings.push({
         label: "From Google",
         value: `${total} actions`,
-        context: parts.join(", ") + " this period.",
+        context: parts.join(", ") + " this period. " + interpretation,
         status: total >= 10 ? "healthy" : "attention",
         verifyUrl: null,
       });
@@ -215,10 +243,18 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
   const complete = gbpFields.filter(Boolean).length;
   if (complete > 0) {
     const missing = 5 - complete;
+    let gbpInterpretation: string;
+    if (missing === 0) {
+      gbpInterpretation = "All fields complete. Google has everything it needs to show you accurately.";
+    } else if (missing <= 2) {
+      gbpInterpretation = `${missing} field${missing !== 1 ? "s" : ""} incomplete. Completing your profile helps Google match you with more searches.`;
+    } else {
+      gbpInterpretation = `${missing} fields incomplete. Customers and Google notice. An incomplete profile loses credibility before someone calls.`;
+    }
     readings.push({
       label: "GBP Profile",
       value: `${complete}/5`,
-      context: missing > 0 ? `${missing} field${missing !== 1 ? "s" : ""} incomplete.` : "All fields complete.",
+      context: gbpInterpretation,
       status: complete >= 5 ? "healthy" : complete >= 3 ? "attention" : "critical",
       verifyUrl: googleSearchUrl,
       verifyLabel: "View your profile",
@@ -266,7 +302,7 @@ function buildFallbackHero(
           : "over a year";
       return {
         headline: `${compName} has ${gap} more reviews than you. That gap is closeable.`,
-        context: `At 2 reviews per week, you close it in ${timeframe}. Every review also strengthens how Google's AI describes your practice.`,
+        context: `At 2 reviews per week, you close it in ${timeframe}. Every review also strengthens how Google describes your business.`,
         status: gap > 100 ? "attention" : "healthy",
         verifyUrl: reviewReading.verifyUrl,
         surprise: 4,
@@ -684,6 +720,39 @@ export default function HomePage() {
             organizationId={orgId}
             locationId={selectedLocation?.id || null}
           />
+        )}
+
+        {/* ── Share Prompt: connect logged-in users to the referral system ── */}
+        {ctx?.referral_stats?.referral_code && (
+          <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <Users className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-[#1A1D23] mb-1">Know a business owner who could use this?</p>
+                <p className="text-sm text-gray-500 mb-3">
+                  They get a free Google Health Check. You both save on your first month.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      const link = `${window.location.origin}/checkup?ref=${ctx.referral_stats!.referral_code}`;
+                      if (navigator.share) {
+                        navigator.share({ text: `I just checked my Google presence against my competitors. Took 60 seconds. You should see yours: ${link}` });
+                      } else {
+                        navigator.clipboard.writeText(link);
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
+                  >
+                    <Users className="w-4 h-4" />
+                    Share your link
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {ctx?.has_referral_data ? (
