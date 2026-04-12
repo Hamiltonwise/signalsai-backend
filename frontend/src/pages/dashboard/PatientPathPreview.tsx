@@ -73,7 +73,7 @@ export default function PatientPathPreview() {
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100">
           <Wifi className="h-8 w-8 text-gray-400" />
         </div>
-        <h1 className="mb-3 text-2xl font-bold text-[#212D40]">
+        <h1 className="mb-3 text-2xl font-semibold text-[#1A1D23]">
           Connect your Google Business Profile to get started
         </h1>
         <p className="mb-8 text-gray-500">
@@ -98,7 +98,7 @@ export default function PatientPathPreview() {
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#D56753]/10">
           <Loader2 className="h-8 w-8 animate-spin text-[#D56753]" />
         </div>
-        <h1 className="mb-3 text-2xl font-bold text-[#212D40]">
+        <h1 className="mb-3 text-2xl font-semibold text-[#1A1D23]">
           Your site is being built
         </h1>
         <p className="mb-2 text-gray-500">
@@ -136,7 +136,7 @@ export default function PatientPathPreview() {
         ) : (
           <a
             href="/settings/billing"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#212D40] px-6 py-3 text-sm font-semibold text-white hover:brightness-105 transition-all"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#D56753] px-6 py-3 text-sm font-semibold text-white hover:brightness-105 transition-all"
           >
             <Lock className="h-4 w-4" />
             Add payment to go live
