@@ -122,3 +122,150 @@ Commit and push to sandbox:
 
 Sandbox auto-deploys on push. Changes are live. Constitution check passes.
 
+
+---
+
+## Card 4: APP_URL Environment Variable (Dave Task)
+
+Blast Radius: Green (env var only)
+Complexity: Low
+Dependencies: Dave access to EC2
+
+### Problem
+
+`APP_URL` is not set in the sandbox `.env`. Every backend reference falls back to `https://app.getalloro.com` (production). This means:
+
+- Share links from `/api/checkup/share` point to production
+- Viral share URLs generated at AAE go to production
+- If production isn't deployed, shared links 404
+
+### What Changes
+
+Dave sets on sandbox EC2:
+```
+APP_URL=https://sandbox.getalloro.com
+```
+
+OR: production is deployed before AAE and `app.getalloro.com` resolves correctly.
+
+### Touches
+
+- Database: no
+- Auth: no
+- Billing: no
+- New API endpoint: no
+
+### Verification Tests
+
+1. After setting: `curl -s https://sandbox.getalloro.com/api/checkup/geo` returns JSON with lat/lng.
+2. Share a checkup result -- the URL in the response should match the sandbox domain.
+
+### Done Gate
+
+Share URLs point to a working domain. Test by creating a share and clicking the link.
+
+---
+
+## Card 5: QR Code Asset for AAE Booth
+
+Blast Radius: Green
+Complexity: Low  
+Dependencies: Card 4 (need to know which domain to encode)
+
+### Problem
+
+No QR code has been created for the booth. The QR code is the entry point for every prospect at AAE.
+
+### What Changes
+
+Generate a QR code pointing to:
+```
+https://sandbox.getalloro.com/checkup?mode=conference&ref=aae2026
+```
+
+The `mode=conference` activates fallback protection. The `ref=aae2026` tags every signup for attribution.
+
+### Verification Tests
+
+1. Scan QR code on phone. Lands on checkup page with search input visible.
+2. URL params `mode=conference` and `ref=aae2026` present in address bar.
+
+### Done Gate
+
+QR code printed/saved and ready for the booth.
+
+---
+
+## Card 6: Pull PMS Upload Into Post-Signup Flow (The Banner Promise)
+
+Blast Radius: Yellow (changes post-signup navigation sequence, no auth/billing)
+Complexity: Medium
+Dependencies: Card 1 (conference fallback) should land first, but not blocking
+
+### The Story Gap
+
+The booth banner says: "Every Endodontist Has A Referring GP They're About To Lose. We Know Which One."
+
+The prospect scans the QR code expecting to learn WHICH GP. The checkup gives them Google competitive intelligence (reviews, ratings, head-to-head). That's valuable but it doesn't close the loop the banner opened.
+
+The answer lives in `/dashboard/referrals` -- Top Referrers, Drift Alerts, value at risk. But to see it, the prospect needs to upload PMS data. Right now that upload prompt is buried at the bottom of the Home page, after ColleagueShare and OwnerProfile. The endodontist may never find it in the first 5 minutes.
+
+### What Changes
+
+Resequence the post-signup flow. Current order:
+
+```
+ResultsScreen -> BuildingScreen -> ColleagueShare -> OwnerProfile -> Dashboard (upload buried)
+```
+
+New order:
+
+```
+ResultsScreen -> BuildingScreen -> PMS Upload Prompt -> ColleagueShare -> Dashboard
+```
+
+Specific changes:
+
+1. **`frontend/src/pages/checkup/BuildingScreen.tsx`** (lines 58-73):
+   - Change navigation destination from `/checkup/share` to a new route `/checkup/upload-prompt`
+   - Pass existing state (businessName, referralCode, etc.) through
+
+2. **New file: `frontend/src/pages/checkup/UploadPrompt.tsx`**:
+   - Simple page, same styling as BuildingScreen/ColleagueShare
+   - Headline: "Now show us your referral report."
+   - Subtext: "Upload your January production report. 60 seconds, and we'll tell you which referring doctor needs attention."
+   - Two paths:
+     - Primary CTA: Opens PMSUploadWizardModal (already built, import it)
+     - Skip link: "I'll do this later" -> navigates to `/checkup/share`
+   - On successful upload: navigate to `/checkup/share` (colleague share is the next natural moment -- they just saw something amazing, now share it)
+   - Must pass `clientId` = org ID from the JWT token stored in localStorage during account creation. Use the same pattern as HomePage (decode token or fetch from dashboardContext).
+
+3. **`frontend/src/App.tsx`**: Add route for `/checkup/upload-prompt` with the new component
+
+4. **OwnerProfile deferral**: Move OwnerProfile questions to the dashboard (show as a card on first login, not a blocking gate). The 5 Lemonis questions are important but they don't close the banner's loop. They can wait.
+
+### Why This Sequence
+
+- BuildingScreen confirms "your readings are live" (2 seconds of brand moment)
+- Upload Prompt closes the banner loop ("We Know Which One" -- upload and we'll show you)
+- ColleagueShare capitalizes on the excitement AFTER they've seen their referral data (now they have a real reason to share -- "I just found out my top referral source dropped 30% last quarter")
+- Dashboard has data from checkup AND PMS when they arrive
+
+### Touches
+
+- Database: no
+- Auth: no (uses existing JWT from account creation)
+- Billing: no
+- New API endpoint: no (uses existing /pms/upload)
+
+### Verification Tests
+
+1. Complete the checkup flow end-to-end. After BuildingScreen, the next screen should be the upload prompt, not ColleagueShare.
+2. Upload a CSV on the upload prompt screen. On success, navigate to ColleagueShare.
+3. Click "I'll do this later" on the upload prompt. Navigate to ColleagueShare.
+4. `cd frontend && npx tsc --noEmit` -- zero errors.
+5. OwnerProfile questions still accessible from dashboard (not lost, just deferred).
+
+### Done Gate
+
+All verification tests pass? Yes = next card. No = fix before proceeding.

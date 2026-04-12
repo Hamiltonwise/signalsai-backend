@@ -31,7 +31,9 @@ Two issues found. Cards written in docs/AAE-READINESS-CARDS.md. CC executes.
 | Issue | Severity | Card | Status |
 |-------|----------|------|--------|
 | Conference fallback shows fake SLC endodontics competitors to non-dental prospects | Trust-killing if wifi is bad | Card 1 (Green) | Ready for CC |
-| "Split the Check" promises discount with no backend | Broken promise post-conference | Card 2 (Red -- Corey decides A/B/C) | Awaiting Corey decision |
+| "Split the Check" promises discount with no backend | Broken promise post-conference | Card 2 (Yellow -- Corey approved direction) | Ready for CC |
+| PMS upload buried after ColleagueShare and OwnerProfile | Banner promises "Which One" but flow doesn't deliver it in first 5 min | Card 6 (Yellow) | Ready for CC |
+| PMS upload org resolution bug | Data orphaned silently | Fixed by CC (01d4ff3a) | DONE |
 
 ### What's deployed and committed
 
