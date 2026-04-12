@@ -112,7 +112,7 @@ function TopReferrers({ referrers }: { referrers: Referrer[] }) {
 
   return (
     <div>
-      <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
         Top Referrers
       </h2>
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -130,9 +130,9 @@ function TopReferrers({ referrers }: { referrers: Referrer[] }) {
             {referrers.map((r, i) => (
               <tr key={r.name} className="border-t border-gray-100">
                 <td className="px-4 py-3 text-gray-400 font-medium">{i + 1}</td>
-                <td className="px-4 py-3 font-semibold text-[#212D40]">{r.name}</td>
-                <td className="px-4 py-3 text-right text-[#212D40]">{r.referrals}</td>
-                <td className="px-4 py-3 text-right font-semibold text-[#212D40]">
+                <td className="px-4 py-3 font-semibold text-[#1A1D23]">{r.name}</td>
+                <td className="px-4 py-3 text-right text-[#1A1D23]">{r.referrals}</td>
+                <td className="px-4 py-3 text-right font-semibold text-[#1A1D23]">
                   {r.revenue != null && !isNaN(r.revenue) ? `$${r.revenue.toLocaleString()}` : "$--"}
                 </td>
                 <td className="px-4 py-3 text-center">
@@ -154,7 +154,7 @@ function DriftAlerts({ alerts }: { alerts: DriftAlert[] }) {
 
   return (
     <div>
-      <h2 className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-4 flex items-center gap-1.5">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-[#D56753] mb-4 flex items-center gap-1.5">
         <AlertTriangle className="h-3.5 w-3.5" />
         Drift Alerts
       </h2>
@@ -167,7 +167,7 @@ function DriftAlerts({ alerts }: { alerts: DriftAlert[] }) {
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-base font-bold text-[#212D40]">{a.name}</p>
+                <p className="text-base font-semibold text-[#1A1D23]">{a.name}</p>
                 <p className="text-sm text-gray-500 mt-0.5">
                   Last referral: {a.lastReferralMonth} &middot;{" "}
                   <span className="font-semibold text-[#D56753]">
@@ -204,11 +204,11 @@ function ThisWeeksMove({ action }: { action: RecommendedAction | null }) {
 
   return (
     <div>
-      <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
         This Week's Move
       </h2>
       <div className="rounded-2xl border-2 border-[#D56753]/20 bg-white p-6 shadow-sm">
-        <p className="text-base leading-relaxed text-[#212D40]">
+        <p className="text-base leading-relaxed text-[#1A1D23]">
           {action.message}
         </p>
         <div className="mt-5">
@@ -239,7 +239,7 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-8">
-      <h3 className="text-lg font-bold text-[#212D40] text-center mb-2">
+      <h3 className="text-lg font-semibold text-[#1A1D23] text-center mb-2">
         See who sends you business
       </h3>
       <p className="text-sm text-gray-500 text-center mb-6">
@@ -255,7 +255,7 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
           className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all"
         >
           <Upload className="h-6 w-6 text-[#D56753]" />
-          <span className="text-sm font-semibold text-[#212D40]">Drop a file</span>
+          <span className="text-sm font-semibold text-[#1A1D23]">Drop a file</span>
           <span className="text-xs text-gray-400">CSV, Excel, PDF, any format</span>
         </button>
 
@@ -265,7 +265,7 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
           className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all"
         >
           <Camera className="h-6 w-6 text-[#D56753]" />
-          <span className="text-sm font-semibold text-[#212D40]">
+          <span className="text-sm font-semibold text-[#1A1D23]">
             {isTouchDevice ? "Take a photo" : "Upload a screenshot"}
           </span>
           <span className="text-xs text-gray-400">Of a report, spreadsheet, or screen</span>
@@ -277,7 +277,7 @@ function EmptyState({ onUpload }: { onUpload: () => void }) {
           className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 cursor-pointer hover:border-[#D56753]/40 hover:bg-[#D56753]/[0.02] transition-all"
         >
           <FileText className="h-6 w-6 text-[#D56753]" />
-          <span className="text-sm font-semibold text-[#212D40]">Paste anything</span>
+          <span className="text-sm font-semibold text-[#1A1D23]">Paste anything</span>
           <span className="text-xs text-gray-400">Names, numbers, notes from any source</span>
         </button>
       </div>
@@ -348,7 +348,7 @@ function GPDiscoverySection() {
 
   return (
     <div>
-      <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-1.5">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-1.5">
         <Search className="h-3.5 w-3.5" />
         Discover New Referral Sources
       </h2>
@@ -404,7 +404,7 @@ function GPDiscoverySection() {
                 }`}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#212D40] truncate">{gp.name}</p>
+                  <p className="text-sm font-semibold text-[#1A1D23] truncate">{gp.name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xs text-gray-400">{gp.specialty}</span>
                     <span className="text-xs text-gray-300">|</span>
@@ -449,7 +449,7 @@ function GPDiscoverySection() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <div>
-                <p className="text-sm font-bold text-[#212D40]">Introduction to {selectedGP.name}</p>
+                <p className="text-sm font-semibold text-[#1A1D23]">Introduction to {selectedGP.name}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {outreachMutation.data.letter.confidence}% confidence
                 </p>
@@ -465,7 +465,7 @@ function GPDiscoverySection() {
             {/* Subject */}
             <div className="px-5 py-3 border-b border-gray-50">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Subject</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Subject</p>
                 <button
                   onClick={() => handleCopy(outreachMutation.data!.letter!.subject, "subject")}
                   className="flex items-center gap-1 text-xs font-semibold text-[#D56753] hover:underline"
@@ -474,7 +474,7 @@ function GPDiscoverySection() {
                   {copiedField === "subject" ? "Copied" : "Copy"}
                 </button>
               </div>
-              <p className="text-sm font-semibold text-[#212D40] mt-1">
+              <p className="text-sm font-semibold text-[#1A1D23] mt-1">
                 {outreachMutation.data.letter.subject}
               </p>
             </div>
@@ -482,7 +482,7 @@ function GPDiscoverySection() {
             {/* Body */}
             <div className="px-5 py-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Body</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Body</p>
                 <button
                   onClick={() => handleCopy(outreachMutation.data!.letter!.body, "body")}
                   className="flex items-center gap-1 text-xs font-semibold text-[#D56753] hover:underline"
@@ -491,7 +491,7 @@ function GPDiscoverySection() {
                   {copiedField === "body" ? "Copied" : "Copy"}
                 </button>
               </div>
-              <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-[#212D40] leading-relaxed whitespace-pre-wrap">
+              <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm text-[#1A1D23] leading-relaxed whitespace-pre-wrap">
                 {outreachMutation.data.letter.body}
               </div>
             </div>
@@ -555,6 +555,18 @@ export default function ReferralIntelligence() {
 
   const [showUploadWizard, setShowUploadWizard] = useState(false);
 
+  // Intelligence mode drives which sections render
+  const { data: dashCtx } = useQuery({
+    queryKey: ["dashboard-context"],
+    queryFn: async () => {
+      const res = await apiGet({ path: "/user/dashboard-context" });
+      return res?.success ? res : null;
+    },
+    staleTime: 30 * 60_000,
+  });
+  const intelligenceMode = dashCtx?.intelligence_mode || "referral_based";
+  const isReferralMode = intelligenceMode === "referral_based";
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["referral-intelligence", locationId],
     queryFn: async (): Promise<IntelligenceData> => {
@@ -566,15 +578,21 @@ export default function ReferralIntelligence() {
 
   const hasData = data?.hasData ?? false;
 
+  // Page title and subtitle adapt to intelligence mode
+  const pageTitle = isReferralMode ? "Referral Intelligence" : "Revenue Sources";
+  const pageSubtitle = isReferralMode
+    ? "Who sends you clients, who stopped, and what to do about it."
+    : "Where your customers come from and how those channels are trending.";
+
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-4 py-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#212D40]">
-          Referral Intelligence
+        <h1 className="text-2xl font-semibold text-[#1A1D23]">
+          {pageTitle}
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Who sends you clients, who stopped, and what to do about it.
+          {pageSubtitle}
         </p>
       </div>
 
@@ -603,20 +621,20 @@ export default function ReferralIntelligence() {
       {/* Data present */}
       {!isLoading && hasData && data && (
         <>
-          {/* This Week's Move — at the top for impact */}
+          {/* This Week's Move -- always visible */}
           <ThisWeeksMove action={data.recommendedAction} />
 
-          {/* Thank-You Drafts (WO-47) */}
-          <ThankYouDrafts />
+          {/* Thank-You Drafts -- referral_based only (GP-specific) */}
+          {isReferralMode && <ThankYouDrafts />}
 
-          {/* Drift Alerts */}
+          {/* Drift Alerts -- always visible (relevant to all revenue sources) */}
           <DriftAlerts alerts={data.driftAlerts} />
 
-          {/* Top Referrers */}
+          {/* Top Referrers -- always visible (relabeled by backend per mode) */}
           <TopReferrers referrers={data.topReferrers} />
 
-          {/* GP Discovery (WO-56) */}
-          <GPDiscoverySection />
+          {/* GP Discovery -- referral_based only (finding referring providers) */}
+          {isReferralMode && <GPDiscoverySection />}
         </>
       )}
 

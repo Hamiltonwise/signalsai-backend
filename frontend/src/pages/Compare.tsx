@@ -132,16 +132,16 @@ export default function Compare() {
         <div className="grid grid-cols-2 gap-3">
           {/* Headers */}
           <div className="rounded-xl bg-[#212D40] p-4 text-center">
-            <p className="text-xs font-bold uppercase tracking-wider text-white/50 mb-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-1">
               Your business
             </p>
-            <p className="text-sm font-bold text-white truncate">{p.name}</p>
+            <p className="text-sm font-semibold text-white truncate">{p.name}</p>
           </div>
           <div className="rounded-xl bg-slate-100 p-4 text-center">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
               Competitor
             </p>
-            <p className="text-sm font-bold text-[#1A1D23] truncate">{c.name}</p>
+            <p className="text-sm font-semibold text-[#1A1D23] truncate">{c.name}</p>
           </div>
 
           {/* Reviews */}
@@ -192,13 +192,13 @@ export default function Compare() {
 
           {/* Category */}
           <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
               Category
             </p>
             <p className="text-xs text-[#1A1D23] font-medium">{p.category || "--"}</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
               Category
             </p>
             <p className="text-xs text-[#1A1D23] font-medium">{c.category || "--"}</p>
@@ -207,7 +207,7 @@ export default function Compare() {
 
         {/* Delta Summary */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753] mb-3">
             The gap
           </p>
           <div className="space-y-2">
@@ -270,7 +270,7 @@ function MetricCell({
     >
       <div className="flex items-center justify-center gap-1.5 mb-1">
         <Icon className={`w-3.5 h-3.5 ${highlight ? "text-[#D56753]" : "text-slate-400"}`} />
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
           {label}
         </p>
       </div>

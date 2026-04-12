@@ -150,7 +150,7 @@ export const IntegrationsRoute: React.FC = () => {
               <Shield size={22} className="text-white/60" />
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-bold leading-snug tracking-tight text-white/90">
+              <p className="text-sm font-semibold leading-snug tracking-tight text-white/90">
                 <span className="text-alloro-orange font-semibold">
                   Encrypted & Secure.
                 </span>{" "}
@@ -303,7 +303,7 @@ function HubSpotCard() {
             </svg>
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 text-sm">HubSpot CRM</h3>
+            <h3 className="font-semibold text-gray-900 text-sm">HubSpot CRM</h3>
             <p className="text-xs text-gray-400">
               {loading ? "Checking..." : status?.connected ? `Connected to ${status.hubDomain || "HubSpot"}` : "Read-only pipeline sync"}
             </p>

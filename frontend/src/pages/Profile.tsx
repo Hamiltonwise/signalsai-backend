@@ -68,7 +68,7 @@ const Profile = () => {
               <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 Intelligence Ecosystem
               </h1>
-              <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+              <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 Your business at a glance
               </span>
             </div>
@@ -140,7 +140,7 @@ const Profile = () => {
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-alloro-bg border border-black/5 rounded-2xl text-alloro-textDark font-bold focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
+                      className="w-full px-4 py-3 bg-alloro-bg border border-black/5 rounded-2xl text-alloro-textDark font-semibold focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
                     />
                   </div>
                   <div>
@@ -152,7 +152,7 @@ const Profile = () => {
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-alloro-bg border border-black/5 rounded-2xl text-alloro-textDark font-bold focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
+                      className="w-full px-4 py-3 bg-alloro-bg border border-black/5 rounded-2xl text-alloro-textDark font-semibold focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
                     />
                   </div>
                 </div>
@@ -166,7 +166,7 @@ const Profile = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 bg-alloro-bg border border-black/5 rounded-2xl text-alloro-textDark font-bold focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
+                    className="w-full px-4 py-3 bg-alloro-bg border border-black/5 rounded-2xl text-alloro-textDark font-semibold focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
                   />
                 </div>
 
@@ -179,7 +179,7 @@ const Profile = () => {
                     name="practiceName"
                     value={formData.practiceName}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 bg-alloro-bg border border-black/5 rounded-2xl text-alloro-textDark font-bold focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
+                    className="w-full px-4 py-3 bg-alloro-bg border border-black/5 rounded-2xl text-alloro-textDark font-semibold focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
                   />
                 </div>
 
@@ -206,7 +206,7 @@ const Profile = () => {
                   <span className="text-xs font-semibold text-alloro-textDark/60 uppercase tracking-widest">
                     First Name
                   </span>
-                  <span className="font-bold text-alloro-textDark">
+                  <span className="font-semibold text-alloro-textDark">
                     {formData.firstName}
                   </span>
                 </div>
@@ -214,7 +214,7 @@ const Profile = () => {
                   <span className="text-xs font-semibold text-alloro-textDark/60 uppercase tracking-widest">
                     Last Name
                   </span>
-                  <span className="font-bold text-alloro-textDark">
+                  <span className="font-semibold text-alloro-textDark">
                     {formData.lastName}
                   </span>
                 </div>
@@ -222,7 +222,7 @@ const Profile = () => {
                   <span className="text-xs font-semibold text-alloro-textDark/60 uppercase tracking-widest">
                     Email
                   </span>
-                  <span className="font-bold text-alloro-textDark">
+                  <span className="font-semibold text-alloro-textDark">
                     {formData.email}
                   </span>
                 </div>
@@ -230,7 +230,7 @@ const Profile = () => {
                   <span className="text-xs font-semibold text-alloro-textDark/60 uppercase tracking-widest">
                     Business
                   </span>
-                  <span className="font-bold text-alloro-textDark">
+                  <span className="font-semibold text-alloro-textDark">
                     {formData.practiceName}
                   </span>
                 </div>
@@ -258,7 +258,7 @@ const Profile = () => {
               <LogOut size={18} />
               Logout from All Devices
             </button>
-            <p className="text-xs text-alloro-textDark/40 font-bold uppercase tracking-widest mt-4 text-center">
+            <p className="text-xs text-alloro-textDark/40 font-semibold uppercase tracking-widest mt-4 text-center">
               You will be logged out from this and all other active sessions
             </p>
           </div>

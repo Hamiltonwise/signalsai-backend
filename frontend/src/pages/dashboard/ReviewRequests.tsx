@@ -115,7 +115,7 @@ export default function ReviewRequests() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-[#212D40]">Review Requests</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold text-[#1A1D23]">Review Requests</h1>
         <p className="text-sm text-gray-500 mt-0.5">Send clients a direct link to leave a Google review.</p>
       </div>
 
@@ -123,7 +123,7 @@ export default function ReviewRequests() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <Star className="h-5 w-5 text-[#D56753]" />
-          <h2 className="text-sm font-bold text-[#212D40]">Send a request</h2>
+          <h2 className="text-sm font-semibold text-[#1A1D23]">Send a request</h2>
         </div>
 
         {/* Tab toggle */}
@@ -131,7 +131,7 @@ export default function ReviewRequests() {
           <button
             onClick={() => { setTab("email"); setContact(""); setError(""); }}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-              tab === "email" ? "bg-white text-[#212D40] shadow-sm" : "text-gray-500"
+              tab === "email" ? "bg-white text-[#1A1D23] shadow-sm" : "text-gray-500"
             }`}
           >
             <Mail className="h-3.5 w-3.5" />
@@ -140,7 +140,7 @@ export default function ReviewRequests() {
           <button
             onClick={() => { setTab("sms"); setContact(""); setError(""); }}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-              tab === "sms" ? "bg-white text-[#212D40] shadow-sm" : "text-gray-500"
+              tab === "sms" ? "bg-white text-[#1A1D23] shadow-sm" : "text-gray-500"
             }`}
           >
             <Phone className="h-3.5 w-3.5" />
@@ -154,7 +154,7 @@ export default function ReviewRequests() {
             value={patientName}
             onChange={(e) => setPatientName(e.target.value)}
             placeholder="Client name (optional)"
-            className="w-full h-10 px-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
+            className="w-full h-10 px-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
           />
           <div className="flex gap-2">
             <input
@@ -162,7 +162,7 @@ export default function ReviewRequests() {
               value={contact}
               onChange={(e) => { setContact(e.target.value); setError(""); }}
               placeholder={tab === "email" ? "client@email.com" : "+1 (202) 555-1234"}
-              className={`flex-1 h-10 px-3 rounded-lg bg-gray-50 border text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
+              className={`flex-1 h-10 px-3 rounded-lg bg-gray-50 border text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
                 error ? "border-red-400 focus:ring-red-400/10" : "border-gray-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
               }`}
             />
@@ -182,7 +182,7 @@ export default function ReviewRequests() {
 
       {/* Section 2: Sent Today */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
-        <h2 className="text-sm font-bold text-[#212D40] mb-4">Sent today</h2>
+        <h2 className="text-sm font-semibold text-[#1A1D23] mb-4">Sent today</h2>
         {todayRequests.length === 0 ? (
           <p className="text-sm text-gray-400">No requests sent today. Start by sending one above.</p>
         ) : (
@@ -197,7 +197,7 @@ export default function ReviewRequests() {
                     ) : (
                       <Send className="w-3.5 h-3.5 text-gray-300 shrink-0" />
                     )}
-                    <span className="text-[#212D40] truncate">
+                    <span className="text-[#1A1D23] truncate">
                       {r.recipient_name || r.recipient_email || r.recipient_phone}
                     </span>
                   </div>
@@ -216,10 +216,10 @@ export default function ReviewRequests() {
 
       {/* Section 3: Review Velocity */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
-        <h2 className="text-sm font-bold text-[#212D40] mb-3">Review velocity</h2>
+        <h2 className="text-sm font-semibold text-[#1A1D23] mb-3">Review velocity</h2>
         {velocity > 0 ? (
           <>
-            <p className="text-3xl font-semibold text-[#212D40]">
+            <p className="text-3xl font-semibold text-[#1A1D23]">
               {velocity.toFixed(1)} <span className="text-base font-medium text-gray-400">per week</span>
             </p>
             <p className="text-sm text-gray-500 mt-2">
@@ -275,7 +275,7 @@ function ReviewDraftsSection() {
   return (
     <div className="space-y-3">
       <div>
-        <h2 className="text-sm font-bold text-[#212D40]">Review responses ready</h2>
+        <h2 className="text-sm font-semibold text-[#1A1D23]">Review responses ready</h2>
         <p className="text-xs text-gray-500 mt-0.5">
           Alloro drafted responses for your recent reviews. Approve, edit, or skip.
         </p>
@@ -328,7 +328,7 @@ function ReviewDraftCard({
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-sm text-amber-500">{stars}</span>
-              <span className="text-sm font-semibold text-[#212D40]">{review.reviewer_name}</span>
+              <span className="text-sm font-semibold text-[#1A1D23]">{review.reviewer_name}</span>
             </div>
             <p className="text-xs text-gray-600 leading-relaxed">{review.review_text}</p>
             <p className="text-xs text-red-600 mt-2 font-medium">
@@ -353,7 +353,7 @@ function ReviewDraftCard({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm text-amber-500">{stars}</span>
-            <span className="text-sm font-semibold text-[#212D40]">{review.reviewer_name}</span>
+            <span className="text-sm font-semibold text-[#1A1D23]">{review.reviewer_name}</span>
           </div>
           <p className="text-xs text-gray-600 leading-relaxed">{review.review_text}</p>
         </div>
@@ -361,7 +361,7 @@ function ReviewDraftCard({
 
       {/* Draft response */}
       <div className="bg-gray-50 rounded-lg p-3">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
           Draft response
         </p>
         {isEditing ? (

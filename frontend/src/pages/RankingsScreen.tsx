@@ -66,7 +66,7 @@ function SurpriseCatchBanner({ alert, onDismiss }: { alert: DriftAlert; onDismis
         <div>
           {alert.type === "gone_dark" ? (
             <>
-              <p className="text-sm font-bold text-[#212D40]">
+              <p className="text-sm font-semibold text-[#1A1D23]">
                 {alert.gpName} at {alert.gpPractice} hasn't referred a case in {alert.daysSilent} days.
               </p>
               <p className="text-xs text-gray-600 mt-1">
@@ -75,7 +75,7 @@ function SurpriseCatchBanner({ alert, onDismiss }: { alert: DriftAlert; onDismis
             </>
           ) : (
             <>
-              <p className="text-sm font-bold text-[#212D40]">
+              <p className="text-sm font-semibold text-[#1A1D23]">
                 {alert.gpName}'s referrals are down {alert.declinePct}% over the last 60 days.
               </p>
               <p className="text-xs text-gray-600 mt-1">
@@ -116,23 +116,23 @@ function SnapshotCard({ snapshot, isLatest }: { snapshot: RankingSnapshot; isLat
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-gray-400" />
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
             Week of {new Date(snapshot.week_start).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
           </span>
           {isLatest && (
-            <span className="text-xs font-bold bg-[#D56753]/10 text-[#D56753] px-2 py-0.5 rounded-full">
+            <span className="text-xs font-semibold bg-[#D56753]/10 text-[#D56753] px-2 py-0.5 rounded-full">
               This Week
             </span>
           )}
         </div>
         {snapshot.position && (
-          <span className="text-lg font-semibold text-[#212D40]">#{snapshot.position}</span>
+          <span className="text-lg font-semibold text-[#1A1D23]">#{snapshot.position}</span>
         )}
       </div>
 
       {/* Finding headline */}
       {snapshot.finding_headline && (
-        <p className="text-base font-bold text-[#212D40] mb-3">{snapshot.finding_headline}</p>
+        <p className="text-base font-semibold text-[#1A1D23] mb-3">{snapshot.finding_headline}</p>
       )}
 
       {/* Bullets */}
@@ -220,7 +220,7 @@ export default function RankingsScreen() {
     <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-[#212D40]">Your Rankings</h1>
+        <h1 className="text-2xl font-semibold text-[#1A1D23]">Your Rankings</h1>
         <p className="text-sm text-gray-500 mt-1">
           Weekly intelligence on your market position. Updated every Sunday.
         </p>
@@ -240,11 +240,11 @@ export default function RankingsScreen() {
         <div className="bg-[#212D40] rounded-2xl p-4 sm:p-6 text-white">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <p className="text-xs text-white/50 uppercase tracking-wider font-bold">Current Position</p>
+              <p className="text-xs text-white/50 uppercase tracking-wider font-semibold">Current Position</p>
               <div className="flex items-center gap-3 mt-1">
                 <span className="text-3xl sm:text-5xl font-semibold">#{latest.position}</span>
                 {positionDelta !== null && positionDelta !== 0 && (
-                  <span className={`flex items-center gap-1 text-sm font-bold ${
+                  <span className={`flex items-center gap-1 text-sm font-semibold ${
                     positionDelta > 0 ? "text-emerald-400" : "text-red-400"
                   }`}>
                     {positionDelta > 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
@@ -261,7 +261,7 @@ export default function RankingsScreen() {
             <div className="text-right">
               {(latest.competitor_name || latest.competitor_review_count) && (
                 <div>
-                  <p className="text-xs text-white/50 uppercase tracking-wider font-bold">#1 Position</p>
+                  <p className="text-xs text-white/50 uppercase tracking-wider font-semibold">#1 Position</p>
                   <p className="text-sm font-semibold text-white mt-1">{latest.competitor_name || "Top competitor"}</p>
                   {latest.competitor_review_count && (
                     <p className="text-xs text-white/50">{latest.competitor_review_count} reviews</p>
@@ -342,7 +342,7 @@ export default function RankingsScreen() {
       {/* Snapshot history */}
       {snapshots.length > 0 && (
         <div className="space-y-4">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Weekly Reports</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Weekly Reports</p>
           {snapshots.map((snapshot, i) => (
             <SnapshotCard key={snapshot.id} snapshot={snapshot} isLatest={i === 0} />
           ))}
@@ -383,7 +383,7 @@ function ActivityFeed() {
   if (entries.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-5">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
           What Alloro Did This Week
         </p>
         <p className="text-sm text-gray-400">
@@ -396,7 +396,7 @@ function ActivityFeed() {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
       <div className="px-5 pt-4 pb-2">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
           What Alloro Did This Week
         </p>
       </div>
@@ -408,7 +408,7 @@ function ActivityFeed() {
             }`} />
             <div className="flex-1 min-w-0">
               <p className={`text-sm leading-snug ${
-                entry.isNotable ? "text-[#212D40] font-medium" : "text-gray-500"
+                entry.isNotable ? "text-[#1A1D23] font-medium" : "text-gray-500"
               }`}>
                 {entry.label}
               </p>

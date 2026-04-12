@@ -198,7 +198,7 @@ export default function Dashboard() {
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 Client Access Error
               </h2>
               <p className="text-gray-600 mb-6">{clientError}</p>
@@ -218,7 +218,7 @@ export default function Dashboard() {
               <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Building2 className="w-8 h-8 text-yellow-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
                 No Client Access
               </h2>
               <p className="text-gray-600 mb-6">
@@ -247,7 +247,7 @@ export default function Dashboard() {
               <div className="text-center mb-10">
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 rounded-full mb-4">
                   <span className="w-2 h-2 bg-alloro-orange rounded-full animate-pulse"></span>
-                  <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">Getting Started</span>
+                  <span className="text-xs font-semibold text-alloro-orange uppercase tracking-wider">Getting Started</span>
                 </div>
                 <h1 className="text-4xl font-semibold text-alloro-navy font-heading tracking-tight mb-3">
                   Let's Set Up Your Dashboard
@@ -280,7 +280,7 @@ export default function Dashboard() {
                       <p className="text-slate-500 font-medium leading-relaxed mb-4">
                         Link your Google Business Profile to enable tracking and insights.
                       </p>
-                      <div className="flex items-center gap-2 text-alloro-orange font-bold text-sm group-hover:gap-3 transition-all">
+                      <div className="flex items-center gap-2 text-alloro-orange font-semibold text-sm group-hover:gap-3 transition-all">
                         <Settings className="w-4 h-4" />
                         <span>Go to Settings</span>
                         <ChevronRight className="w-4 h-4" />

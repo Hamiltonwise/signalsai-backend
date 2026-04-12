@@ -33,6 +33,8 @@ import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
+type IntelligenceMode = "referral_based" | "direct_acquisition" | "hybrid";
+
 interface DashboardContext {
   org?: {
     id: number;
@@ -47,6 +49,7 @@ interface DashboardContext {
   };
   user?: { first_name?: string; last_name?: string; email?: string };
   has_referral_data?: boolean;
+  intelligence_mode?: IntelligenceMode;
   referral_stats?: {
     referral_code?: string;
     referrals_converted?: number;
@@ -448,6 +451,9 @@ export default function HomePage() {
   const milestone = milestoneData?.card || null;
   const ozMoment = ozData?.ozMoment || null;
 
+  const intelligenceMode: IntelligenceMode = ctx?.intelligence_mode || "referral_based";
+  const showReferralSections = intelligenceMode !== "direct_acquisition";
+
   const isTrialActive = ctx?.org?.subscription_status === "active" && ctx?.org?.trial_end_at;
   const needsOnboarding = setupProgress && !setupProgress.completed && !setupProgress.dismissed;
   const needsBilling = billingStatus && !billingStatus.hasStripeSubscription && !billingStatus.isAdminGranted;
@@ -724,7 +730,8 @@ export default function HomePage() {
         )}
 
         {/* ── Share Prompt: connect logged-in users to the referral system ── */}
-        {ctx?.referral_stats?.referral_code && (() => {
+        {/* Hidden for direct_acquisition verticals (plumbers, restaurants, etc.) */}
+        {showReferralSections && ctx?.referral_stats?.referral_code && (() => {
           const checkup = ctx?.org?.checkup_data;
           // Prefer ranking data (filtered, location-aware) over stale checkup data
           const topComp = rankingRaw?.rawData?.topCompetitor || checkup?.topCompetitor;
@@ -779,45 +786,48 @@ export default function HomePage() {
           );
         })()}
 
-        {ctx?.has_referral_data ? (
-          <div className="pl-4 border-l-2 border-[#1A1D23]/10 py-2">
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Your Business Data</p>
-            <p className="text-sm text-gray-500">
-              {ctx?.referral_stats?.referrals_converted
-                ? `${ctx.referral_stats.referrals_converted} referral${ctx.referral_stats.referrals_converted !== 1 ? "s" : ""} converted`
-                : "Referral data uploaded"}
-              {". "}
-              <button onClick={() => navigate("/compare")} className="text-[#1A1D23] font-semibold hover:underline">
-                See details on Get Found
-              </button>
-            </p>
-          </div>
-        ) : ctx && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-[#D56753]/10 flex items-center justify-center flex-shrink-0">
-                <Upload className="w-5 h-5 text-[#D56753]" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-[#1A1D23] mb-1">See where your customers come from</p>
-                <p className="text-sm text-gray-500 mb-4">
-                  Upload a referral report from your system and Alloro will show you which sources drive the most business, which ones are declining, and what to do about it.
-                </p>
-                <button
-                  onClick={() => setShowUploadModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload business data
+        {/* Referral data / upload prompt -- hidden for direct_acquisition verticals */}
+        {showReferralSections && (
+          ctx?.has_referral_data ? (
+            <div className="pl-4 border-l-2 border-[#1A1D23]/10 py-2">
+              <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Your Business Data</p>
+              <p className="text-sm text-gray-500">
+                {ctx?.referral_stats?.referrals_converted
+                  ? `${ctx.referral_stats.referrals_converted} referral${ctx.referral_stats.referrals_converted !== 1 ? "s" : ""} converted`
+                  : "Referral data uploaded"}
+                {". "}
+                <button onClick={() => navigate("/compare")} className="text-[#1A1D23] font-semibold hover:underline">
+                  See details on Get Found
                 </button>
-              </div>
+              </p>
             </div>
-          </motion.div>
+          ) : ctx && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-[#D56753]/10 flex items-center justify-center flex-shrink-0">
+                  <Upload className="w-5 h-5 text-[#D56753]" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-[#1A1D23] mb-1">See where your customers come from</p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Upload a referral report from your system and Alloro will show you which sources drive the most business, which ones are declining, and what to do about it.
+                  </p>
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#D56753] text-white text-sm font-medium hover:brightness-105 transition-all"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload business data
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )
         )}
 
         <AnimatePresence>

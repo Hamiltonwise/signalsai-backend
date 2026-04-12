@@ -86,7 +86,7 @@ export default function DashboardSettings() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:py-8 space-y-6">
       <div>
-        <TailorText editKey="settings.heading" defaultText="Settings" as="h1" className="text-xl sm:text-2xl font-bold text-[#212D40]" />
+        <TailorText editKey="settings.heading" defaultText="Settings" as="h1" className="text-xl sm:text-2xl font-semibold text-[#1A1D23]" />
         <TailorText editKey="settings.subheading" defaultText="Manage your account and preferences." as="p" className="text-sm text-gray-500 mt-0.5" />
       </div>
 
@@ -94,16 +94,16 @@ export default function DashboardSettings() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <SettingsIcon className="h-5 w-5 text-gray-400" />
-          <TailorText editKey="settings.account.title" defaultText="Account info" as="h2" className="text-sm font-bold text-[#212D40]" />
+          <TailorText editKey="settings.account.title" defaultText="Account info" as="h2" className="text-sm font-semibold text-[#1A1D23]" />
         </div>
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-gray-500">Business name</label>
-            <p className="text-sm font-semibold text-[#212D40] mt-0.5">{practiceName}</p>
+            <p className="text-sm font-semibold text-[#1A1D23] mt-0.5">{practiceName}</p>
           </div>
           <div>
             <label className="text-xs font-medium text-gray-500">Email</label>
-            <p className="text-sm text-[#212D40] mt-0.5">{userProfile?.email || "Not set"}</p>
+            <p className="text-sm text-[#1A1D23] mt-0.5">{userProfile?.email || "Not set"}</p>
           </div>
         </div>
       </div>
@@ -112,7 +112,7 @@ export default function DashboardSettings() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="h-5 w-5 text-blue-500" />
-          <TailorText editKey="settings.npi.title" defaultText="NPI Verification" as="h2" className="text-sm font-bold text-[#212D40]" />
+          <TailorText editKey="settings.npi.title" defaultText="NPI Verification" as="h2" className="text-sm font-semibold text-[#1A1D23]" />
         </div>
         {npiVerified ? (
           <div className="flex items-center gap-2 text-emerald-700">
@@ -129,7 +129,7 @@ export default function DashboardSettings() {
                 onChange={(e) => { setNpi(e.target.value.replace(/\D/g, "").slice(0, 10)); setNpiError(""); }}
                 placeholder="1234567890"
                 maxLength={10}
-                className={`flex-1 h-10 px-3 rounded-lg bg-gray-50 border text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
+                className={`flex-1 h-10 px-3 rounded-lg bg-gray-50 border text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
                   npiError ? "border-red-400 focus:ring-red-400/10" : "border-gray-200 focus:border-[#D56753] focus:ring-[#D56753]/10"
                 }`}
               />
@@ -150,7 +150,7 @@ export default function DashboardSettings() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <Bell className="h-5 w-5 text-amber-500" />
-          <TailorText editKey="settings.notifications.title" defaultText="Notifications" as="h2" className="text-sm font-bold text-[#212D40]" />
+          <TailorText editKey="settings.notifications.title" defaultText="Notifications" as="h2" className="text-sm font-semibold text-[#1A1D23]" />
         </div>
         <div className="space-y-3">
           {[
@@ -159,7 +159,7 @@ export default function DashboardSettings() {
             { key: "milestones", label: "Milestone celebrations", value: milestones, set: setMilestones },
           ].map((pref) => (
             <div key={pref.key} className="flex items-center justify-between">
-              <span className="text-sm text-[#212D40]">{pref.label}</span>
+              <span className="text-sm text-[#1A1D23]">{pref.label}</span>
               <button
                 onClick={() => {
                   const next = !pref.value;
@@ -179,14 +179,14 @@ export default function DashboardSettings() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
           <CreditCard className="h-5 w-5 text-emerald-600" />
-          <TailorText editKey="settings.billing.title" defaultText="Billing" as="h2" className="text-sm font-bold text-[#212D40]" />
+          <TailorText editKey="settings.billing.title" defaultText="Billing" as="h2" className="text-sm font-semibold text-[#1A1D23]" />
         </div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-sm font-semibold text-[#212D40]">Business Clarity</p>
+            <p className="text-sm font-semibold text-[#1A1D23]">Business Clarity</p>
             <p className="text-xs text-gray-500">$2,000/month</p>
           </div>
-          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
             isActive ? "bg-emerald-50 text-emerald-700" : isTrial ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500"
           }`}>
             {isActive ? "Active" : isTrial ? "Trial" : "Inactive"}
@@ -217,8 +217,8 @@ export default function DashboardSettings() {
       {/* Section 5: Your Data */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Download className="h-5 w-5 text-[#212D40]/60" />
-          <TailorText editKey="settings.data.title" defaultText="Your data" as="h2" className="text-sm font-bold text-[#212D40]" />
+          <Download className="h-5 w-5 text-[#1A1D23]/60" />
+          <TailorText editKey="settings.data.title" defaultText="Your data" as="h2" className="text-sm font-semibold text-[#1A1D23]" />
         </div>
         <p className="text-sm text-gray-500 mb-4 leading-relaxed">
           Your data belongs to you. Export everything we have for your account at any time,
@@ -283,7 +283,7 @@ function ExportButton({ label, description, path, filename }: {
       className="w-full flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 hover:border-[#212D40]/20 transition-colors disabled:opacity-50"
     >
       <div className="text-left">
-        <p className="text-sm font-medium text-[#212D40]">{label}</p>
+        <p className="text-sm font-medium text-[#1A1D23]">{label}</p>
         <p className="text-xs text-gray-400">{description}</p>
       </div>
       <Download className={`h-4 w-4 text-gray-400 ${downloading ? "animate-pulse" : ""}`} />
@@ -432,7 +432,7 @@ function CancelSection({ orgName, isActive, isTrial: _isTrial, orgCreatedAt: _or
     return (
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
         <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto mb-3" />
-        <p className="text-sm font-bold text-[#212D40]">Account paused</p>
+        <p className="text-sm font-semibold text-[#1A1D23]">Account paused</p>
         <p className="text-sm text-gray-500 mt-1 leading-relaxed">
           Your data and intelligence history are preserved. Resume anytime from this page.
         </p>
@@ -444,7 +444,7 @@ function CancelSection({ orgName, isActive, isTrial: _isTrial, orgCreatedAt: _or
     const response = getRetentionResponse(reason, orgName);
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-        <p className="text-base font-bold text-[#212D40]">{response.headline}</p>
+        <p className="text-base font-semibold text-[#1A1D23]">{response.headline}</p>
         <p className="text-sm text-gray-600 leading-relaxed">{response.body}</p>
 
         {reason === "other" || reason === "missing_feature" ? (
@@ -453,7 +453,7 @@ function CancelSection({ orgName, isActive, isTrial: _isTrial, orgCreatedAt: _or
             onChange={(e) => setOtherText(e.target.value)}
             placeholder={reason === "missing_feature" ? "What feature would make the difference?" : "What's driving your decision?"}
             rows={3}
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none"
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none"
           />
         ) : null}
 
@@ -517,7 +517,7 @@ function CancelSection({ orgName, isActive, isTrial: _isTrial, orgCreatedAt: _or
   if (step === "reason") {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-        <p className="text-sm font-bold text-[#212D40]">What's driving your decision?</p>
+        <p className="text-sm font-semibold text-[#1A1D23]">What's driving your decision?</p>
         <p className="text-xs text-gray-500">This goes directly to Corey. One question, then you're done.</p>
         <div className="space-y-2">
           {CANCEL_REASONS.map((r) => (
@@ -537,7 +537,7 @@ function CancelSection({ orgName, isActive, isTrial: _isTrial, orgCreatedAt: _or
                 onChange={() => setReason(r.value)}
                 className="w-4 h-4 text-[#D56753] border-gray-300 focus:ring-[#D56753]/20"
               />
-              <span className="text-sm text-[#212D40]">{r.label}</span>
+              <span className="text-sm text-[#1A1D23]">{r.label}</span>
             </label>
           ))}
         </div>

@@ -107,7 +107,7 @@ const Help = () => {
               <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 Help Center
               </h1>
-              <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+              <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 Answers and guidance
               </span>
             </div>
@@ -158,7 +158,7 @@ const Help = () => {
                     <h3 className="text-3xl font-semibold font-heading text-alloro-navy tracking-tight">
                       Message Received.
                     </h3>
-                    <p className="text-slate-500 font-bold max-w-sm">
+                    <p className="text-slate-500 font-semibold max-w-sm">
                       Your strategist has been alerted and will respond via your
                       registered email shortly.
                     </p>
@@ -179,7 +179,7 @@ const Help = () => {
                     <h2 className="text-3xl font-semibold font-heading text-alloro-navy tracking-tight leading-none">
                       Submit an Inquiry
                     </h2>
-                    <p className="text-slate-400 font-bold text-sm tracking-tight leading-none">
+                    <p className="text-slate-400 font-semibold text-sm tracking-tight leading-none">
                       Bypass the email queue and reach us directly.
                     </p>
                   </div>
@@ -187,7 +187,7 @@ const Help = () => {
                   {error && (
                     <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700">
                       <AlertCircle size={18} />
-                      <span className="text-sm font-bold">{error}</span>
+                      <span className="text-sm font-semibold">{error}</span>
                     </div>
                   )}
 
@@ -203,7 +203,7 @@ const Help = () => {
                         onChange={handleInputChange}
                         required
                         placeholder="John Doe"
-                        className="w-full bg-alloro-bg border border-black/5 rounded-2xl px-6 py-4 text-alloro-navy font-bold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
+                        className="w-full bg-alloro-bg border border-black/5 rounded-2xl px-6 py-4 text-alloro-navy font-semibold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
                       />
                     </div>
                     <div className="space-y-2 text-left">
@@ -217,7 +217,7 @@ const Help = () => {
                         onChange={handleInputChange}
                         required
                         placeholder="john@practice.com"
-                        className="w-full bg-alloro-bg border border-black/5 rounded-2xl px-6 py-4 text-alloro-navy font-bold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
+                        className="w-full bg-alloro-bg border border-black/5 rounded-2xl px-6 py-4 text-alloro-navy font-semibold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all"
                       />
                     </div>
                   </div>
@@ -231,7 +231,7 @@ const Help = () => {
                         name="subject"
                         value={formData.subject}
                         onChange={handleInputChange}
-                        className="w-full bg-alloro-bg border border-black/5 rounded-2xl px-6 py-4 text-alloro-navy font-bold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all appearance-none cursor-pointer"
+                        className="w-full bg-alloro-bg border border-black/5 rounded-2xl px-6 py-4 text-alloro-navy font-semibold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all appearance-none cursor-pointer"
                       >
                         <option>General Support</option>
                         <option>Technical Issue</option>
@@ -247,7 +247,7 @@ const Help = () => {
                         name="urgency"
                         value={formData.urgency}
                         onChange={handleInputChange}
-                        className="w-full bg-alloro-bg border border-black/5 rounded-2xl px-6 py-4 text-alloro-navy font-bold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all appearance-none cursor-pointer"
+                        className="w-full bg-alloro-bg border border-black/5 rounded-2xl px-6 py-4 text-alloro-navy font-semibold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all appearance-none cursor-pointer"
                       >
                         <option>Normal Protocol</option>
                         <option>High Priority</option>
@@ -266,7 +266,7 @@ const Help = () => {
                       onChange={handleInputChange}
                       required
                       placeholder="Please describe your challenge or question in detail..."
-                      className="w-full h-40 bg-alloro-bg border border-black/5 rounded-3xl px-6 py-5 text-alloro-navy font-bold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all resize-none"
+                      className="w-full h-40 bg-alloro-bg border border-black/5 rounded-3xl px-6 py-5 text-alloro-navy font-semibold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all resize-none"
                     />
                   </div>
 
@@ -322,13 +322,13 @@ const Help = () => {
               <div className="pt-8 border-t border-black/[0.03] space-y-6">
                 <div className="flex items-center gap-3">
                   <CheckCircle2 size={16} className="text-green-500" />
-                  <span className="text-sm font-bold text-slate-500 tracking-tight">
+                  <span className="text-sm font-semibold text-slate-500 tracking-tight">
                     Average response: {"<"} 2 hours
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle2 size={16} className="text-green-500" />
-                  <span className="text-sm font-bold text-slate-500 tracking-tight">
+                  <span className="text-sm font-semibold text-slate-500 tracking-tight">
                     Expert orthodonic strategists
                   </span>
                 </div>

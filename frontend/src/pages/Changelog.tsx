@@ -68,7 +68,7 @@ export default function Changelog() {
       <div className="max-w-lg mx-auto px-5 py-12 sm:py-16 space-y-10">
         {/* Title */}
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753] mb-2">
             What's new
           </p>
           <h1 className="text-2xl sm:text-3xl font-semibold text-[#1A1D23] tracking-tight">
@@ -86,7 +86,7 @@ export default function Changelog() {
               key={entry.date}
               className="rounded-2xl border border-gray-200 bg-white p-6"
             >
-              <p className="text-xs font-bold text-slate-400 mb-1">
+              <p className="text-xs font-semibold text-slate-400 mb-1">
                 {entry.date}
               </p>
               <h2 className="text-base font-semibold text-[#1A1D23] mb-4">
@@ -108,7 +108,7 @@ export default function Changelog() {
 
         {/* CTA */}
         <div className="rounded-2xl bg-[#212D40] p-6 text-center">
-          <p className="text-sm font-bold text-white">
+          <p className="text-sm font-semibold text-white">
             Want to see what's coming?
           </p>
           <a

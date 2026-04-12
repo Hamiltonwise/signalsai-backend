@@ -71,7 +71,7 @@ function SEOTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-3xl font-semibold text-[#212D40]">
+          <p className="text-3xl font-semibold text-[#1A1D23]">
             {latest.seo_score}/100
           </p>
           <p className="text-xs text-gray-400 mt-1">
@@ -96,7 +96,7 @@ function SEOTab() {
                 ) : (
                   <XCircle className="h-4 w-4 text-red-400" />
                 )}
-                <span className="text-sm font-medium text-[#212D40]">
+                <span className="text-sm font-medium text-[#1A1D23]">
                   {f.name
                     .replace(/_/g, " ")
                     .replace(/\b\w/g, (c: string) => c.toUpperCase())}
@@ -146,7 +146,7 @@ function AEOTab() {
       {faqs.map((faq: { question: string; answer: string; status: string }, i: number) => (
         <div key={i} className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-sm font-semibold text-[#212D40]">
+            <p className="text-sm font-semibold text-[#1A1D23]">
               {faq.question}
             </p>
             <StatusBadge status={faq.status} />
@@ -194,7 +194,7 @@ function CROTab() {
           className="rounded-xl border border-gray-200 bg-white p-4"
         >
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-[#212D40]">
+            <p className="text-sm font-semibold text-[#1A1D23]">
               {exp.experiment_name}
             </p>
             {exp.concluded ? (
@@ -222,13 +222,13 @@ function CROTab() {
                   key={v}
                   className={`rounded-lg p-3 ${isWinner ? "bg-emerald-50 border border-emerald-200" : "bg-gray-50"}`}
                 >
-                  <p className="text-xs font-bold uppercase text-gray-400 mb-1">
+                  <p className="text-xs font-semibold uppercase text-gray-400 mb-1">
                     Option {v.toUpperCase()} {isWinner && "(Best)"}
                   </p>
                   <p className="text-xs text-gray-600 mb-2 line-clamp-2">
                     {text}
                   </p>
-                  <p className="text-lg font-bold text-[#212D40]">{rate}%</p>
+                  <p className="text-lg font-semibold text-[#1A1D23]">{rate}%</p>
                 </div>
               );
             })}
@@ -258,13 +258,13 @@ function EmptyState({ icon, text, features }: { icon: React.ReactNode; text: str
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white border border-gray-100 shadow-sm mb-4">
           {icon}
         </div>
-        <p className="text-sm text-[#212D40]/70 max-w-sm mx-auto leading-relaxed">{text}</p>
+        <p className="text-sm text-[#1A1D23]/70 max-w-sm mx-auto leading-relaxed">{text}</p>
         {features && features.length > 0 && (
           <div className="mt-6 space-y-2 max-w-xs mx-auto text-left">
             {features.map((f, i) => (
               <div key={i} className="flex items-start gap-2.5">
                 <CheckCircle className="w-4 h-4 text-[#D56753] mt-0.5 shrink-0" />
-                <span className="text-xs text-[#212D40]/60">{f}</span>
+                <span className="text-xs text-[#1A1D23]/60">{f}</span>
               </div>
             ))}
           </div>
@@ -340,7 +340,7 @@ export default function IntelligenceDashboard() {
       {/* Header with Intelligence Score */}
       <div className="flex items-center gap-3 mb-6">
         <Shield className="h-5 w-5 text-[#D56753]" />
-        <TailorText editKey="intelligence.heading" defaultText="Business Clarity" as="h1" className="text-xl font-bold text-[#212D40]" />
+        <TailorText editKey="intelligence.heading" defaultText="Business Clarity" as="h1" className="text-xl font-semibold text-[#1A1D23]" />
       </div>
 
       {/* Score summary card */}
@@ -361,15 +361,15 @@ export default function IntelligenceDashboard() {
             </div>
             <div className="flex gap-6">
               <div className="text-center">
-                <p className="text-2xl font-bold">{summary.seoScore ?? "--"}</p>
+                <p className="text-2xl font-semibold">{summary.seoScore ?? "--"}</p>
                 <p className="text-xs text-gray-400 mt-1">SEO</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold">{summary.aeoFaqCount}</p>
+                <p className="text-2xl font-semibold">{summary.aeoFaqCount}</p>
                 <p className="text-xs text-gray-400 mt-1">FAQs</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-semibold">
                   {summary.croExperimentsActive}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">Tests</p>
@@ -387,7 +387,7 @@ export default function IntelligenceDashboard() {
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition-colors flex-1 justify-center ${
               activeTab === tab.key
-                ? "bg-white text-[#212D40] shadow-sm"
+                ? "bg-white text-[#1A1D23] shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >

@@ -119,7 +119,7 @@ export default function AnniversaryReport() {
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-amber-50">
             <Clock className="h-8 w-8 text-amber-500" />
           </div>
-          <h1 className="text-2xl font-bold text-[#212D40]">
+          <h1 className="text-2xl font-semibold text-[#1A1D23]">
             Your Anniversary Report Builds Over Time
           </h1>
           <p className="mt-3 text-gray-600">
@@ -174,7 +174,7 @@ export default function AnniversaryReport() {
         <p className="text-sm font-medium uppercase tracking-wider text-white/60">
           Anniversary Report
         </p>
-        <h1 className="mt-2 text-3xl font-bold">{data.orgName}</h1>
+        <h1 className="mt-2 text-3xl font-semibold">{data.orgName}</h1>
         <p className="mt-1 text-white/70">
           {data.monthsActive} month{data.monthsActive !== 1 ? "s" : ""} on Alloro, since {startDate}
         </p>
@@ -186,12 +186,12 @@ export default function AnniversaryReport() {
             <div className="mt-2 flex items-center justify-center gap-4">
               <div>
                 <p className="text-sm text-white/50">Started</p>
-                <p className="text-5xl font-bold">#{ranking.startPosition}</p>
+                <p className="text-5xl font-semibold">#{ranking.startPosition}</p>
               </div>
               <ChevronRight className="h-8 w-8 text-[#D56753]" />
               <div>
                 <p className="text-sm text-white/50">Today</p>
-                <p className="text-5xl font-bold text-[#D56753]">#{ranking.currentPosition}</p>
+                <p className="text-5xl font-semibold text-[#D56753]">#{ranking.currentPosition}</p>
               </div>
             </div>
             {ranking.positionDelta != null && ranking.positionDelta > 0 && (
@@ -242,18 +242,18 @@ export default function AnniversaryReport() {
       {/* Top moments timeline */}
       {topMoments && topMoments.length > 0 && (
         <div className="mb-10">
-          <h2 className="mb-4 text-lg font-semibold text-[#212D40]">Key Moments</h2>
+          <h2 className="mb-4 text-lg font-semibold text-[#1A1D23]">Key Moments</h2>
           <div className="space-y-4">
             {topMoments.map((moment, i) => (
               <div
                 key={i}
                 className="flex gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
               >
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#D56753]/10 text-sm font-bold text-[#D56753]">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#D56753]/10 text-sm font-semibold text-[#D56753]">
                   {i + 1}
                 </div>
                 <div>
-                  <p className="font-semibold text-[#212D40]">{moment.title}</p>
+                  <p className="font-semibold text-[#1A1D23]">{moment.title}</p>
                   <p className="mt-0.5 text-sm text-gray-500">{moment.detail}</p>
                   <p className="mt-1 text-xs text-gray-400">
                     {new Date(moment.date).toLocaleDateString("en-US", {
@@ -272,7 +272,7 @@ export default function AnniversaryReport() {
       {/* Milestones list */}
       {milestones && milestones.length > 0 && (
         <div className="mb-10">
-          <h2 className="mb-4 text-lg font-semibold text-[#212D40]">Milestones Achieved</h2>
+          <h2 className="mb-4 text-lg font-semibold text-[#1A1D23]">Milestones Achieved</h2>
           <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
             {milestones.map((m, i) => (
               <div
@@ -283,7 +283,7 @@ export default function AnniversaryReport() {
               >
                 <div className="flex items-center gap-3">
                   <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                  <span className="text-sm font-medium text-[#212D40]">{m.title}</span>
+                  <span className="text-sm font-medium text-[#1A1D23]">{m.title}</span>
                 </div>
                 <span className="text-xs text-gray-400">
                   {new Date(m.achievedAt).toLocaleDateString("en-US", {
@@ -301,7 +301,7 @@ export default function AnniversaryReport() {
       {/* Revenue breakdown */}
       {revenueProtected && revenueProtected.total > 0 && (
         <div className="mb-10 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-[#212D40]">
+          <h2 className="mb-4 text-lg font-semibold text-[#1A1D23]">
             Revenue Protected: ${revenueProtected.total.toLocaleString()}
           </h2>
           <p className="text-sm text-gray-500">Estimated annual revenue impact from your improved visibility.</p>
@@ -309,7 +309,7 @@ export default function AnniversaryReport() {
             {revenueProtected.fromReviews > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">From review growth</span>
-                <span className="font-medium text-[#212D40]">
+                <span className="font-medium text-[#1A1D23]">
                   ${revenueProtected.fromReviews.toLocaleString()}
                 </span>
               </div>
@@ -317,7 +317,7 @@ export default function AnniversaryReport() {
             {revenueProtected.fromPosition > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">From ranking improvement</span>
-                <span className="font-medium text-[#212D40]">
+                <span className="font-medium text-[#1A1D23]">
                   ${revenueProtected.fromPosition.toLocaleString()}
                 </span>
               </div>
@@ -355,7 +355,7 @@ function StatCard({
   return (
     <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
       <div className="mb-2">{icon}</div>
-      <p className="text-2xl font-bold text-[#212D40]">{value}</p>
+      <p className="text-2xl font-semibold text-[#1A1D23]">{value}</p>
       <p className="mt-0.5 text-xs text-gray-500">{label}</p>
     </div>
   );

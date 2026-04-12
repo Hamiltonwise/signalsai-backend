@@ -124,16 +124,16 @@ function LocationCard({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-bold text-[#212D40] truncate">
+              <p className="text-sm font-semibold text-[#1A1D23] truncate">
                 {location.name}
               </p>
               {location.is_primary && (
-                <span className="shrink-0 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-bold uppercase">
+                <span className="shrink-0 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase">
                   Primary
                 </span>
               )}
               {location.is_coming_soon && (
-                <span className="shrink-0 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-xs font-bold uppercase flex items-center gap-1">
+                <span className="shrink-0 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-xs font-semibold uppercase flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   Coming Soon
                 </span>
@@ -165,11 +165,11 @@ function LocationCard({
           )}
           {location.review_count != null && (
             <div className="text-right">
-              <p className="text-lg font-semibold text-[#212D40] flex items-center gap-1">
+              <p className="text-lg font-semibold text-[#1A1D23] flex items-center gap-1">
                 <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                 {location.review_count}
               </p>
-              <p className="text-xs text-gray-400 uppercase font-bold">
+              <p className="text-xs text-gray-400 uppercase font-semibold">
                 Reviews
               </p>
             </div>
@@ -182,7 +182,7 @@ function LocationCard({
         {!location.is_primary && (
           <button
             onClick={onSetPrimary}
-            className="text-xs text-gray-500 hover:text-[#212D40] font-medium flex items-center gap-1 transition-colors"
+            className="text-xs text-gray-500 hover:text-[#1A1D23] font-medium flex items-center gap-1 transition-colors"
           >
             <Check className="w-3 h-3" />
             Set as primary
@@ -248,7 +248,7 @@ function AddLocationForm({ onAdd }: { onAdd: (data: Record<string, unknown>) => 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-bold text-[#212D40]">New Location</p>
+        <p className="text-sm font-semibold text-[#1A1D23]">New Location</p>
         <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600">
           <X className="w-4 h-4" />
         </button>
@@ -330,7 +330,7 @@ export default function Locations() {
   return (
     <div className="mx-auto max-w-2xl space-y-5 px-4 py-6 sm:py-8">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-[#212D40]">
+        <h1 className="text-xl sm:text-2xl font-semibold text-[#1A1D23]">
           Locations
         </h1>
         <p className="text-sm text-gray-500 mt-0.5">
