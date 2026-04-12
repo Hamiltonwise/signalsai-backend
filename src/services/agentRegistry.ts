@@ -46,6 +46,7 @@ import { generateDailyBrief as generateCoreyBrief } from "./personalAgents/corey
 import { generateDailyBrief as generateJoBrief } from "./personalAgents/joAgent";
 import { generateDailyBrief as generateDaveBrief } from "./personalAgents/daveAgent";
 import { runAgentAudit } from "./agents/agentAuditor";
+import { runCollectiveIntelligence } from "./collectiveIntelligence";
 import { db } from "../database/connection";
 import { processWeek1Win } from "../workers/processors/week1Win.processor";
 
@@ -110,6 +111,15 @@ const registry: Record<string, AgentHandler> = {
           heuristic_stats: stats,
         } as unknown as Record<string, unknown>,
       };
+    },
+  },
+
+  collective_intelligence: {
+    displayName: "Collective Intelligence",
+    description: "Weekly network-level analysis. Cross-client patterns: which actions move rankings, which review language correlates with growth, churn patterns. Sunday 8PM UTC (1PM PT), before Product Evolution.",
+    handler: async () => {
+      const result = await runCollectiveIntelligence();
+      return { summary: result as unknown as Record<string, unknown> };
     },
   },
 
