@@ -117,7 +117,7 @@ export default function PatientPathPreview() {
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#212D40]">Your PatientPath Site</h1>
+          <h1 className="text-2xl font-semibold text-[#1A1D23]">Your Website</h1>
           <p className="text-sm text-gray-500 mt-1">
             Built from your real data. Preview below, launch when ready.
           </p>
