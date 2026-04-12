@@ -31,6 +31,8 @@ import { NotificationWidget } from "@/components/dashboard/NotificationWidget";
 import PendingActionsCard from "@/components/dashboard/PendingActionsCard";
 import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 import WarmEmptyState from "@/components/dashboard/WarmEmptyState";
+import BreathingScore from "@/components/dashboard/BreathingScore";
+import ProgressStory from "@/components/dashboard/ProgressStory";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -577,6 +579,51 @@ export default function HomePage() {
         >
           <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">{greeting}</h1>
         </motion.div>
+
+        {/* ── 1b. Breathing Score (at-a-glance health ring) ── */}
+        {readings && readings.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05 }}
+            className="mb-5"
+          >
+            <BreathingScore
+              readings={readings.map(r => ({ label: r.label, status: r.status }))}
+            />
+          </motion.div>
+        )}
+
+        {/* ── 1c. Progress Story (your narrative arc) ── */}
+        {(() => {
+          const checkup = ctx?.org?.checkup_data;
+          const startRevs = checkup?.reviewCount ?? checkup?.checkup_review_count_at_creation ?? null;
+          const curRevs = checkup?.place?.reviewCount ?? startRevs ?? 0;
+          const curRating = checkup?.place?.rating ?? checkup?.rating ?? null;
+          const topComp = rankingRaw?.rawData?.topCompetitor || checkup?.topCompetitor || null;
+          const compName = typeof topComp === "string" ? topComp : topComp?.name || null;
+          const compRevs = typeof topComp === "object" ? topComp?.reviewCount || topComp?.userRatingCount || null : null;
+
+          if (curRevs === 0 && !startRevs) return null;
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.08 }}
+              className="mb-5"
+            >
+              <ProgressStory
+                orgCreatedAt={ctx?.org?.created_at || null}
+                startReviews={startRevs}
+                currentReviews={curRevs}
+                currentRating={curRating}
+                competitorName={compName}
+                competitorReviews={compRevs}
+                onViewMore={() => navigate("/progress")}
+              />
+            </motion.div>
+          );
+        })()}
 
         {/* ── 2. THE OZ MOMENT (HERO) ── */}
         {(() => {

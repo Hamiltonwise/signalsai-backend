@@ -16,6 +16,7 @@ import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
 import { apiGet } from "@/api/index";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 import WarmEmptyState, { WARM_STATES } from "@/components/dashboard/WarmEmptyState";
+import ProgressStory from "@/components/dashboard/ProgressStory";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -290,6 +291,28 @@ export default function ProgressReport() {
             <p className="text-sm text-gray-400 mt-1">Alloro reads your business data and shows you what is moving. Every number links to something you can verify.</p>
           )}
         </motion.div>
+
+        {/* Progress Story -- the narrative arc */}
+        {(() => {
+          const curRevs = place.reviewCount || startReviews || 0;
+          const curRating = place.rating || checkup?.rating || null;
+          const compName = topCompetitor ? ((topCompetitor.name as string) || null) : null;
+          const compRevs = topCompetitor ? ((topCompetitor.reviewCount as number) || (topCompetitor.userRatingCount as number) || null) : null;
+
+          if (curRevs === 0 && !startReviews) return null;
+          return (
+            <div className="mt-6">
+              <ProgressStory
+                orgCreatedAt={createdAt || null}
+                startReviews={startReviews}
+                currentReviews={curRevs}
+                currentRating={curRating}
+                competitorName={compName}
+                competitorReviews={compRevs}
+              />
+            </div>
+          );
+        })()}
 
         {/* Reading Trends */}
         {trends.length === 0 && (
