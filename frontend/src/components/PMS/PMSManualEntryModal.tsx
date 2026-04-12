@@ -453,6 +453,14 @@ export const PMSManualEntryModal: React.FC<PMSManualEntryModalProps> = ({
 
   // Submit handler
   const handleSubmit = async () => {
+    // Guard: if account setup is incomplete (no orgId), surface the error
+    if (!clientId) {
+      setError(
+        "Your account setup isn't complete yet. Please finish onboarding or contact us so we can get your data connected."
+      );
+      return;
+    }
+
     // Validate that there's at least one source with data
     const allRows = months.flatMap((m) => m.rows);
     const validRows = allRows.filter(

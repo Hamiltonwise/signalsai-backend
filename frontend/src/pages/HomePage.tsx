@@ -1081,11 +1081,12 @@ export default function HomePage() {
         finding={action?.headline || null}
       />
 
-      {orgId && (
+      {showUploadModal && (
         <PMSUploadWizardModal
           isOpen={showUploadModal}
           onClose={() => setShowUploadModal(false)}
-          clientId={String(orgId)}
+          clientId={orgId ? String(orgId) : ""}
+          locationId={selectedLocation?.id}
           onSuccess={() => setShowUploadModal(false)}
         />
       )}

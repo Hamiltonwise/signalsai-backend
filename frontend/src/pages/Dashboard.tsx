@@ -158,7 +158,7 @@ export default function Dashboard() {
   // Placeholder data - replace with actual hook data later
   const ready = true;
   const session = { user: { id: "1", email: "user@example.com" } };
-  const clientId = "demo-client-123";
+  const clientId = orgId ? String(orgId) : selectedDomain?.domain || "";
   const clientLoading = false;
   const clientError = null;
   // Wait for Lemonis guard to complete before rendering

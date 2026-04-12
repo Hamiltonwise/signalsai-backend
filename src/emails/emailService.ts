@@ -195,8 +195,22 @@ async function sendViaWebhook(options: SendEmailOptions): Promise<EmailResult> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Sandbox Safety Gate
+// ---------------------------------------------------------------------------
+// LOCKED: Sandbox must NEVER send email to real customers.
+// Set ALLOW_EMAIL_SEND=true in production .env to enable sending.
+// On sandbox this variable must remain unset or "false".
+// All calls still log normally so template development works.
+// ---------------------------------------------------------------------------
+
+const EMAIL_SENDING_ENABLED = process.env.ALLOW_EMAIL_SEND === "true";
+
 /**
- * Send email -- Mailgun direct if configured, n8n webhook fallback
+ * Send email -- Mailgun direct if configured, n8n webhook fallback.
+ *
+ * SAFETY: If ALLOW_EMAIL_SEND is not explicitly "true", all sends are
+ * blocked and logged. This prevents sandbox from ever reaching customers.
  */
 export async function sendEmail(
   options: SendEmailOptions
@@ -210,6 +224,23 @@ export async function sendEmail(
     logEmail("ERROR", error, { subject: options.subject, recipients: options.recipients });
     return { success: false, error, timestamp };
   }
+
+  // ── SANDBOX KILL SWITCH ──────────────────────────────────────────
+  // Block all outbound email unless explicitly enabled.
+  // This is the single gate. Every email in the system flows through here.
+  if (!EMAIL_SENDING_ENABLED) {
+    logEmail("WARN", "EMAIL BLOCKED (ALLOW_EMAIL_SEND is not true)", {
+      subject: options.subject,
+      recipients: options.recipients,
+      recipientCount: options.recipients.length,
+    });
+    return {
+      success: true,
+      messageId: `blocked_sandbox_${Date.now()}`,
+      timestamp,
+    };
+  }
+  // ────────────────────────────────────────────────────────────────
 
   logEmail("INFO", `Sending email via ${MAILGUN_API_KEY ? "Mailgun" : "n8n webhook"}`, {
     subject: options.subject,

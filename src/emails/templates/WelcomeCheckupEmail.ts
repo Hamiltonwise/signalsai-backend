@@ -52,7 +52,7 @@ export async function sendWelcomeCheckupEmail(data: WelcomeCheckupData): Promise
 
   const scoreSection = checkupScore != null
     ? createCard(`
-        <p style="margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Your Google Health Check</p>
+        <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${BRAND_COLORS.orange};">Your Google Health Check</p>
         <p style="margin: 0; font-size: 14px; font-weight: 600; color: ${BRAND_COLORS.navy};">Your readings are ready. Log in to see how you compare.</p>
       `)
     : "";

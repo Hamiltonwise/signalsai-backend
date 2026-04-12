@@ -108,6 +108,16 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
   const handleUpload = async () => {
     if (!file) return;
 
+    // Guard: if account setup is incomplete (no orgId), surface the error
+    // instead of firing a doomed API call with an empty domain.
+    if (!clientId) {
+      setUploadStatus("error");
+      setMessage(
+        "Your account setup isn't complete yet. Please finish onboarding or contact us so we can get your data connected."
+      );
+      return;
+    }
+
     setIsUploading(true);
     setUploadStatus("idle");
 

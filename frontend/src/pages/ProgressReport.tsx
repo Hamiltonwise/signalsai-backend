@@ -558,11 +558,11 @@ export default function ProgressReport() {
           <p className="text-sm text-gray-400 mt-2">Any format. Drag and drop. Takes 2 minutes.</p>
         </div>
 
-        {showUploadModal && orgId && (
+        {showUploadModal && (
           <PMSUploadWizardModal
             isOpen={showUploadModal}
             onClose={() => setShowUploadModal(false)}
-            clientId={String(orgId)}
+            clientId={orgId ? String(orgId) : ""}
             locationId={selectedLocation?.id}
             onSuccess={() => setShowUploadModal(false)}
           />
