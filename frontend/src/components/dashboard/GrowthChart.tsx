@@ -272,8 +272,7 @@ export default function GrowthChart({
                 fill="white"
                 style={{ fontSize: "9px" }}
               >
-                Week of {formatDate(slicedData[hoveredIndex].week_start)}:
-                You ranked #{slicedData[hoveredIndex].position}
+                {formatDate(slicedData[hoveredIndex].week_start)}: Position {slicedData[hoveredIndex].position}
               </text>
               {slicedCompetitor[hoveredIndex] && (
                 <text

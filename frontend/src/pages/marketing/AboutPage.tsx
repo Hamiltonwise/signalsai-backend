@@ -75,7 +75,7 @@ export default function AboutPage() {
               to="/checkup"
               className="inline-flex items-center gap-2 rounded-xl bg-[#D56753] text-white text-sm font-semibold px-6 py-3 hover:brightness-110 active:scale-[0.98] transition-all"
             >
-              See Where You Rank <ArrowRight className="w-4 h-4" />
+              Run Your Free Checkup <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               to="/foundation"

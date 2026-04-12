@@ -320,14 +320,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
         {ranking.totalCompetitors} {ranking.specialty || "competitor"}s in {(ranking.location && ranking.location !== "unknown") ? ranking.location : "your market"}
       </p>
 
-      {ranking.rankScore != null && (
-        <div className="mt-4 flex items-center gap-2">
-          <span className={`badge-warm transition-all duration-700`}>
-            <span className="inline-block w-2 h-2 rounded-full bg-current opacity-50 animate-pulse" />
-            Business Clarity Score: {ranking.rankScore}/100
-          </span>
-        </div>
-      )}
+      {/* Composite score display removed per Known 6: no composite scores shown to customers */}
 
       {/* Sub-score breakdown from checkup data */}
       {subScores && (

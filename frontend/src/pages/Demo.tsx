@@ -5,13 +5,18 @@
  * Corey says "let me show you what it looks like fully running" and opens this.
  *
  * Practice: Valley Specialty Practice, Salt Lake City, Utah
- * Score: 61. Rank: #3 of 5 specialists.
  * All competitor names are FICTIONAL to avoid showing real practice data in a demo.
  * Identity matches conference fallback in conferenceFallback.ts.
  * Uses universal specialist language, not dental-specific.
  *
  * Design: matches Alloro design system (Oura/Apple Health aesthetic).
  * Warm backgrounds, generous whitespace, status rings, visual gap bars.
+ *
+ * Known compliance:
+ * - Known 3: No position claims. No "#3", no "outranking", no rank numbers.
+ * - Known 4: No fabricated dollar figures. Revenue/cost numbers require real data.
+ * - Known 6: No composite scores. No gauges. Raw readings only.
+ * - Known 14: Max weight semibold. No em-dashes. Min 12px.
  */
 
 import { useState, useEffect } from "react";
@@ -39,8 +44,6 @@ const DEFAULTS = {
   name: "Valley Specialty Practice",
   city: "Salt Lake City",
   state: "Utah",
-  score: 61,
-  rank: 3,
   totalCompetitors: 5,
   specialty: "specialist",
   reviews: 61,
@@ -48,8 +51,7 @@ const DEFAULTS = {
   competitorName: "Summit Specialists",
   competitorReviews: 284,
   competitorRating: 4.9,
-  startRank: 6,
-  startScore: 42,
+  startReviews: 43,
 };
 
 // Pre-configured verticals: use ?vertical=plumber (or restaurant, attorney, etc.)
@@ -59,8 +61,6 @@ const VERTICAL_PROFILES: Record<string, typeof DEFAULTS> = {
     name: "Cascade Plumbing",
     city: "Denver",
     state: "Colorado",
-    score: 72,
-    rank: 2,
     totalCompetitors: 8,
     specialty: "plumber",
     reviews: 94,
@@ -68,15 +68,12 @@ const VERTICAL_PROFILES: Record<string, typeof DEFAULTS> = {
     competitorName: "Mile High Plumbing",
     competitorReviews: 312,
     competitorRating: 4.8,
-    startRank: 5,
-    startScore: 38,
+    startReviews: 58,
   },
   restaurant: {
     name: "Ember Kitchen",
     city: "Austin",
     state: "Texas",
-    score: 67,
-    rank: 4,
     totalCompetitors: 12,
     specialty: "restaurant",
     reviews: 187,
@@ -84,15 +81,12 @@ const VERTICAL_PROFILES: Record<string, typeof DEFAULTS> = {
     competitorName: "Willow & Sage",
     competitorReviews: 524,
     competitorRating: 4.7,
-    startRank: 9,
-    startScore: 34,
+    startReviews: 131,
   },
   attorney: {
     name: "Birch & Crane Law",
     city: "Charlotte",
     state: "North Carolina",
-    score: 58,
-    rank: 3,
     totalCompetitors: 6,
     specialty: "attorney",
     reviews: 38,
@@ -100,15 +94,12 @@ const VERTICAL_PROFILES: Record<string, typeof DEFAULTS> = {
     competitorName: "Prescott Legal Group",
     competitorReviews: 127,
     competitorRating: 4.9,
-    startRank: 6,
-    startScore: 29,
+    startReviews: 22,
   },
   medspa: {
     name: "Luma Aesthetics",
     city: "Scottsdale",
     state: "Arizona",
-    score: 74,
-    rank: 2,
     totalCompetitors: 9,
     specialty: "medspa",
     reviews: 156,
@@ -116,15 +107,12 @@ const VERTICAL_PROFILES: Record<string, typeof DEFAULTS> = {
     competitorName: "Desert Glow Med Spa",
     competitorReviews: 289,
     competitorRating: 4.8,
-    startRank: 7,
-    startScore: 41,
+    startReviews: 104,
   },
   chiropractor: {
     name: "Summit Spine & Wellness",
     city: "Nashville",
     state: "Tennessee",
-    score: 65,
-    rank: 3,
     totalCompetitors: 7,
     specialty: "chiropractor",
     reviews: 72,
@@ -132,8 +120,7 @@ const VERTICAL_PROFILES: Record<string, typeof DEFAULTS> = {
     competitorName: "Music City Chiropractic",
     competitorReviews: 198,
     competitorRating: 4.6,
-    startRank: 6,
-    startScore: 35,
+    startReviews: 45,
   },
 };
 
@@ -146,8 +133,6 @@ function useDemoPractice() {
     name: params.get("name") || base.name,
     city: params.get("city") || base.city,
     state: params.get("state") || base.state,
-    score: Number(params.get("score")) || base.score,
-    rank: Number(params.get("rank")) || base.rank,
     totalCompetitors: Number(params.get("competitors")) || base.totalCompetitors,
     specialty: params.get("specialty") || base.specialty,
     reviews: Number(params.get("reviews")) || base.reviews,
@@ -155,8 +140,7 @@ function useDemoPractice() {
     competitorName: params.get("competitor") || base.competitorName,
     competitorReviews: Number(params.get("compReviews")) || base.competitorReviews,
     competitorRating: Number(params.get("compRating")) || base.competitorRating,
-    startRank: Number(params.get("startRank")) || base.startRank,
-    startScore: Number(params.get("startScore")) || base.startScore,
+    startReviews: Number(params.get("startReviews")) || base.startReviews,
   };
 }
 
@@ -194,7 +178,7 @@ const REFERRING_GPS = [
 
 // Tasks are generated dynamically in the WeeklyTasks component using practice data
 
-// Ranking history is generated dynamically in the component using startRank/startScore
+// Review growth data is generated dynamically in the ReviewGrowth component
 
 // Top moves are generated dynamically in ProgressReport using practice data
 
@@ -204,7 +188,7 @@ const CS_ACTIONS = [
   { time: "2h ago", text: "Detected Dr. Torres referral drift. 40 days since last referral. Flagged for outreach.", type: "alert" },
   { time: "Yesterday", text: "Sent review request to 3 recent clients. 1 review received (5 stars).", type: "success" },
   { time: "2 days ago", text: "Dr. Lisa Park has been silent for 74 days. Added to re-engagement queue.", type: "alert" },
-  { time: "3 days ago", text: "Weekly ranking scan complete. Position held at #3. Score improved +2 to 61.", type: "info" },
+  { time: "3 days ago", text: "Weekly scan complete. Review gap with top competitor narrowed by 4 this month.", type: "info" },
   { time: "Last week", text: "New referring relationship detected: Dr. Okafor sent 2 clients in 10 days.", type: "success" },
 ];
 
@@ -245,7 +229,7 @@ function SignalBanner() {
   // Referral-based verticals: GP drift alert
   const referralSignal = {
     headline: "Dr. Torres referred 8 clients last quarter. She hasn't referred in 40 days.",
-    detail: "Estimated $14,000 at risk. Alloro flagged this before it became invisible.",
+    detail: "That relationship is drifting. Alloro flagged this before it became invisible.",
     status: "red" as const,
   };
 
@@ -285,14 +269,14 @@ function InstrumentCards() {
   const instruments = [
     {
       label: "Your Market",
-      value: `#${PRACTICE.rank} of ${PRACTICE.totalCompetitors}`,
+      value: `${PRACTICE.totalCompetitors} ${PRACTICE.specialty}s`,
       context: `${PRACTICE.totalCompetitors} ${PRACTICE.specialty}s in ${PRACTICE.city}. Top competitor: ${PRACTICE.competitorName}.`,
       status: "attention" as const,
     },
     {
       label: "Reviews",
       value: `${PRACTICE.reviews} reviews`,
-      context: `${PRACTICE.competitorName} leads by ${gap}. At 3 per week, you close it in ${Math.ceil(gap / 3)} weeks.`,
+      context: `${PRACTICE.competitorName} has ${PRACTICE.competitorReviews}. Gap: ${gap}. At 3 per week, you close it in ${Math.ceil(gap / 3)} weeks.`,
       status: "attention" as const,
     },
     {
@@ -371,18 +355,17 @@ function CompetitorGap() {
   );
 }
 
-function RankingTrajectory() {
+function ReviewGrowth() {
   const p = useDemoPractice();
-  const posGain = p.startRank - p.rank;
-  // Generate a plausible 4-month trajectory from startRank to current rank
+  const reviewGain = p.reviews - p.startReviews;
+  // Generate a plausible 4-month review growth trajectory
   const months = ["Dec", "Jan", "Feb", "Mar"];
   const history = months.map((month, i) => {
     const progress = i / (months.length - 1);
-    const position = Math.round(p.startRank - posGain * progress);
-    const score = Math.round(p.startScore + (p.score - p.startScore) * progress);
-    return { month, position, score };
+    const reviewCount = Math.round(p.startReviews + reviewGain * progress);
+    return { month, reviewCount };
   });
-  const maxPos = Math.max(...history.map(h => h.position)) + 1;
+  const maxReviews = Math.max(...history.map(h => h.reviewCount));
 
   return (
     <motion.div
@@ -392,18 +375,18 @@ function RankingTrajectory() {
       className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5"
     >
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Ranking Trajectory</p>
+        <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Review Growth</p>
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-          <TrendingUp className="h-3 w-3" /> +{posGain} positions
+          <TrendingUp className="h-3 w-3" /> +{reviewGain} reviews
         </span>
       </div>
       <div className="flex items-end gap-3 h-20">
         {history.map((m, i) => {
-          const heightPct = ((maxPos - m.position) / maxPos) * 100;
+          const heightPct = (m.reviewCount / maxReviews) * 100;
           const isLatest = i === history.length - 1;
           return (
             <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-              <span className={`text-xs font-semibold ${isLatest ? "text-[#D56753]" : "text-[#1A1D23]/60"}`}>#{m.position}</span>
+              <span className={`text-xs font-semibold ${isLatest ? "text-[#D56753]" : "text-[#1A1D23]/60"}`}>{m.reviewCount}</span>
               <div
                 className={`w-full rounded-lg transition-all ${isLatest ? "bg-[#D56753]" : "bg-[#D56753]/20"}`}
                 style={{ height: `${Math.max(heightPct, 5)}%` }}
@@ -484,7 +467,7 @@ function ReferralNetwork() {
 function WeeklyTasks() {
   const p = useDemoPractice();
   const tasks = [
-    { title: "Request 3 reviews this week", why: `${p.competitorName} has ${p.competitorReviews} reviews to your ${p.reviews}. Closing that gap is the single biggest lever for moving from #${p.rank} to #1.` },
+    { title: "Request 3 reviews this week", why: `${p.competitorName} has ${p.competitorReviews} reviews to your ${p.reviews}. Closing that gap is the single biggest lever for visibility in local search.` },
     { title: "Respond to your last 5 reviews", why: "Businesses that respond to reviews rank higher and earn 35% more revenue. Each response signals activity to Google." },
     { title: "Update your GBP hours", why: "Incomplete business profiles rank 23% lower in local search. This fix takes 2 minutes." },
   ];
@@ -524,7 +507,7 @@ function AgentActivity() {
     { time: "2h ago", text: `Detected ${p.competitorName} added 3 new photos to their Google profile. You have fewer photos.`, type: "alert" },
     { time: "Yesterday", text: "Sent review request to 3 recent customers. 1 review received (5 stars).", type: "success" },
     { time: "2 days ago", text: `${p.competitorName} updated their business hours to include Saturday. Your profile shows closed.`, type: "alert" },
-    { time: "3 days ago", text: `Weekly ranking scan complete. Position held at #${p.rank}. Score improved +2 to ${p.score}.`, type: "info" },
+    { time: "3 days ago", text: `Weekly scan complete. Review gap with ${p.competitorName} narrowed by 4 this month.`, type: "info" },
     { time: "Last week", text: `New 1-star review detected. Drafted a response for your approval.`, type: "alert" },
   ];
 
@@ -560,13 +543,13 @@ function AgentActivity() {
 
 function ProgressReport() {
   const p = useDemoPractice();
-  const posGain = p.startRank - p.rank;
-  const scoreGain = p.score - p.startScore;
-  const reviewGain = p.reviews - Math.round(p.reviews * 0.7); // Approx 30% growth
-  const midScore = Math.round(p.startScore + scoreGain * 0.6);
+  const reviewGain = p.reviews - p.startReviews;
+  const gapNow = p.competitorReviews - p.reviews;
+  const gapThen = p.competitorReviews - p.startReviews;
+  const gapClosed = gapThen - gapNow;
   const topMoves = [
-    { title: `Added ${reviewGain} Google reviews`, outcome: `Moved from #${p.startRank} to #${Math.max(p.rank + 1, p.startRank - Math.floor(posGain * 0.6))} in local search`, date: "Jan" },
-    { title: "Completed GBP profile", outcome: `Score jumped from ${p.startScore} to ${midScore} (+${midScore - p.startScore} points)`, date: "Feb" },
+    { title: `Added ${reviewGain} Google reviews`, outcome: `Gap with ${p.competitorName} narrowed from ${gapThen} to ${gapNow}`, date: "Jan" },
+    { title: "Completed GBP profile", outcome: "Profile completeness went from 3/5 to 4/5. Appearing in more local searches.", date: "Feb" },
     { title: "Responded to all negative reviews", outcome: `Rating held at ${p.rating} stars instead of declining`, date: "Mar" },
   ];
   return (
@@ -584,19 +567,19 @@ function ProgressReport() {
       {/* Stats grid */}
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-4 text-center">
-          <p className="text-2xl font-semibold text-emerald-600">+{posGain}</p>
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Positions</p>
-          <p className="text-xs text-gray-400">#{p.startRank} to #{p.rank}</p>
-        </div>
-        <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-4 text-center">
-          <p className="text-2xl font-semibold text-[#1A1D23]">+{reviewGain}</p>
+          <p className="text-2xl font-semibold text-emerald-600">+{reviewGain}</p>
           <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Reviews</p>
-          <p className="text-xs text-gray-400">{p.reviews - reviewGain} to {p.reviews}</p>
+          <p className="text-xs text-gray-400">{p.startReviews} to {p.reviews}</p>
         </div>
         <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-4 text-center">
-          <p className="text-2xl font-semibold text-[#D56753]">+{scoreGain}</p>
-          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Score</p>
-          <p className="text-xs text-gray-400">{p.startScore} to {p.score}</p>
+          <p className="text-2xl font-semibold text-[#1A1D23]">{gapClosed}</p>
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Gap Closed</p>
+          <p className="text-xs text-gray-400">{gapThen} to {gapNow}</p>
+        </div>
+        <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-4 text-center">
+          <p className="text-2xl font-semibold text-[#D56753]">{p.rating}</p>
+          <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Rating</p>
+          <p className="text-xs text-gray-400">Held steady</p>
         </div>
       </div>
 
@@ -623,15 +606,15 @@ function Next90() {
   const gap = p.competitorReviews - p.reviews;
 
   const referralActions = [
-    { title: `Collect 3 Google reviews per week for ${Math.min(Math.ceil(gap / 3), 12)} weeks`, why: `At 3/week you close the gap with ${p.competitorName} by ${Math.min(gap, 36)} reviews. Combined with your higher engagement rate, that moves you from #${p.rank} to #${Math.max(p.rank - 1, 1)}.`, impact: `Projected move to #${Math.max(p.rank - 1, 1)} position` },
-    { title: "Re-engage Dr. Torres, she hasn't referred in 40 days", why: "Torres sent 13 clients last quarter. At $1,750 per case, that is $22,750 at risk. A lunch meeting costs $50.", impact: "$22,750 estimated quarterly revenue at risk" },
-    { title: `Add 10 new photos to GBP`, why: `${p.competitorName} has significantly more photos. Businesses with 20+ photos get 35% more website clicks from Google.`, impact: "5 to 10 point score improvement" },
+    { title: `Collect 3 Google reviews per week for ${Math.min(Math.ceil(gap / 3), 12)} weeks`, why: `At 3/week you close the gap with ${p.competitorName} by ${Math.min(gap, 36)} reviews. Review count is the strongest local ranking signal.`, impact: `Close ${Math.min(gap, 36)} of the ${gap}-review gap` },
+    { title: "Re-engage Dr. Torres, she hasn't referred in 40 days", why: "Torres sent 13 clients last quarter. That relationship is drifting, and Alloro caught it before it went silent. A lunch meeting can restart it.", impact: "Protect your top referral relationship" },
+    { title: `Add 10 new photos to GBP`, why: `${p.competitorName} has significantly more photos. Businesses with 20+ photos get 35% more website clicks from Google.`, impact: "More visibility in local search results" },
   ];
 
   const directActions = [
-    { title: `Collect 3 Google reviews per week for ${Math.min(Math.ceil(gap / 3), 12)} weeks`, why: `At 3/week you close the gap with ${p.competitorName} by ${Math.min(gap, 36)} reviews. Review count is the strongest local ranking signal.`, impact: `Projected move to #${Math.max(p.rank - 1, 1)} position` },
+    { title: `Collect 3 Google reviews per week for ${Math.min(Math.ceil(gap / 3), 12)} weeks`, why: `At 3/week you close the gap with ${p.competitorName} by ${Math.min(gap, 36)} reviews. Review count is the strongest local ranking signal.`, impact: `Close ${Math.min(gap, 36)} of the ${gap}-review gap` },
     { title: "Respond to every review within 24 hours", why: `Businesses that respond to all reviews earn 35% more revenue. ${p.competitorName} responds to 80% of theirs. Match or beat that.`, impact: "Higher conversion rate from Google searches" },
-    { title: `Add 10 new photos to GBP`, why: `${p.competitorName} has significantly more photos. Businesses with 20+ photos get 35% more website clicks from Google.`, impact: "5 to 10 point score improvement" },
+    { title: `Add 10 new photos to GBP`, why: `${p.competitorName} has significantly more photos. Businesses with 20+ photos get 35% more website clicks from Google.`, impact: "More visibility in local search results" },
   ];
 
   const actions = mode === "direct_acquisition" ? directActions : referralActions;
@@ -750,8 +733,8 @@ export default function Demo() {
         {/* Competitive gap visualization */}
         <CompetitorGap />
 
-        {/* Ranking trajectory */}
-        <RankingTrajectory />
+        {/* Review growth */}
+        <ReviewGrowth />
 
         {/* Referral network -- only for referral_based/hybrid verticals */}
         {showReferralNetwork && <ReferralNetwork />}
@@ -777,7 +760,7 @@ export default function Demo() {
         >
           <p className="text-lg font-semibold text-white">This is Alloro running for 4 months.</p>
           <p className="text-sm text-white/60 mt-2 leading-relaxed">
-            From #{p.startRank} to #{p.rank}. From {p.startScore} to {p.score}. From blind to seeing every pattern in your market.
+            From {p.startReviews} reviews to {p.reviews}. From blind to seeing every pattern in your market.
           </p>
           <a
             href="/checkup"

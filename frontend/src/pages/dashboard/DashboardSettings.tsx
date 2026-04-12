@@ -485,7 +485,7 @@ function CancelSection({ orgName, isActive, isTrial: _isTrial, orgCreatedAt: _or
                 <p className="text-sm text-[#1A1D23]/70">{weeksTracked} weeks of market monitoring</p>
               )}
               {rankPosition && (
-                <p className="text-sm text-[#1A1D23]/70">Current position: #{rankPosition} in your market</p>
+                <p className="text-sm text-[#1A1D23]/70">Market tracked: {rankPosition} competitors monitored</p>
               )}
               {reviewsGained && reviewsGained > 0 && (
                 <p className="text-sm text-[#1A1D23]/70">{reviewsGained} reviews gained during your time here</p>
