@@ -47,7 +47,6 @@ import { generateDailyBrief as generateJoBrief } from "./personalAgents/joAgent"
 import { generateDailyBrief as generateDaveBrief } from "./personalAgents/daveAgent";
 import { runAgentAudit } from "./agents/agentAuditor";
 import { runCollectiveIntelligence } from "./collectiveIntelligence";
-import { trackAllCustomerOutcomes } from "./customerOutcomeTracker";
 import { db } from "../database/connection";
 import { processWeek1Win } from "../workers/processors/week1Win.processor";
 
@@ -408,14 +407,6 @@ const registry: Record<string, AgentHandler> = {
     handler: async () => {
       const daveUser = await db("users").where({ email: "dave@getalloro.com" }).first("id");
       const result = await generateDaveBrief(daveUser?.id || 3);
-      return { summary: result as unknown as Record<string, unknown> };
-    },
-  },
-  customer_outcomes: {
-    displayName: "Customer Outcome Tracker",
-    description: "Tracks real customer results: rating deltas, review velocity, ranking movement, competitor gap. Creates tasks on regression, stores wins for Monday email. Runs after rankings_intelligence (Sunday 11:30PM UTC).",
-    handler: async () => {
-      const result = await trackAllCustomerOutcomes();
       return { summary: result as unknown as Record<string, unknown> };
     },
   },
