@@ -52,7 +52,7 @@ function getChecklistItems(category?: string | null): string[] {
     "Scanning Google Business Profile",
     `Finding ${plural} near you`,
     "Counting their reviews",
-    "Checking local search rankings",
+    "Checking local search results",
     "Measuring online presence",
     "Building your report...",
   ];
@@ -248,7 +248,9 @@ function buildBusinessDataItems(place: PlaceDetails): FeedItem[] {
     items.push({ type: "data", icon: MessageSquare, label: "Reviews detected", value: `${place.reviewCount} reviews` });
   }
   if (place.websiteUri) {
-    items.push({ type: "data", icon: Globe, label: "Website found", value: new URL(place.websiteUri).hostname });
+    let hostname = place.websiteUri;
+    try { hostname = new URL(place.websiteUri).hostname; } catch { /* malformed URL, show raw */ }
+    items.push({ type: "data", icon: Globe, label: "Website found", value: hostname });
   } else {
     items.push({ type: "data", icon: Globe, label: "Website", value: "Not found" });
   }
@@ -368,10 +370,10 @@ function DiscoveryFeed({
                   isHighlighted ? "bg-[#212D40]/5" : ""
                 }`}
               >
-                <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
                   isHighlighted ? "bg-[#212D40]" : "bg-[#212D40]/20"
                 }`}>
-                  <span className="text-[8px] font-semibold text-white">{i + 1}</span>
+                  <span className="text-xs font-semibold text-white leading-none">{i + 1}</span>
                 </div>
                 <span className={`font-semibold break-words max-w-[140px] ${isHighlighted ? "text-[#1A1D23]" : "text-slate-600"}`}>
                   {item.label}
@@ -486,7 +488,7 @@ function PhotoStrip({ photos }: { photos: PlacePhoto[] }) {
   return (
     <div className="mt-3">
       <p className="text-xs font-semibold tracking-widest text-slate-400 uppercase mb-2">
-        GBP Photos
+        Your Google Photos
       </p>
       <div className="flex gap-1.5 overflow-hidden">
         {photos.slice(0, visibleCount).map((photo, i) => (

@@ -777,12 +777,12 @@ export default function ResultsScreen() {
         </h2>
         {market && market.totalCompetitors > 0 && (
           <p className="text-sm text-slate-400 mt-1.5">
-            vs. {market.totalCompetitors} competitors in {market.city}
+            vs. {market.totalCompetitors} competitors in {market.city || "your market"}
           </p>
         )}
         {market && market.totalCompetitors === 0 && state.competitors && state.competitors.length > 0 && (
           <p className="text-sm text-emerald-600 mt-1.5 font-medium">
-            Only {place.category || "specialist"} in {market.city}. {state.competitors.length} nearby businesses are your referral market.
+            Only {place.category || "specialist"} in {market.city || "your area"}. {state.competitors.length} nearby businesses are your referral market.
           </p>
         )}
         {market && market.totalCompetitors === 0 && (!state.competitors || state.competitors.length === 0) && (
