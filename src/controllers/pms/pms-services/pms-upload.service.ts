@@ -27,9 +27,19 @@ export async function processManualEntry(
 ) {
   // Use authenticated org ID if available, fall back to domain lookup for backward compat
   let organizationId = authOrganizationId ?? null;
+  if (!organizationId && domain) {
+    const numericId = parseInt(domain, 10);
+    if (!isNaN(numericId) && String(numericId) === domain.trim()) {
+      const org = await OrganizationModel.findById(numericId);
+      organizationId = org?.id ?? null;
+    } else {
+      const org = await OrganizationModel.findByDomain(domain);
+      organizationId = org?.id ?? null;
+    }
+  }
+
   if (!organizationId) {
-    const org = await OrganizationModel.findByDomain(domain);
-    organizationId = org?.id ?? null;
+    throw new Error("Could not determine your organization. Please complete onboarding or contact support.");
   }
 
   console.log(
@@ -286,10 +296,21 @@ export async function processFileUpload(
 
   // Use authenticated org ID if available, fall back to domain lookup for backward compat
   let organizationId = authOrganizationId ?? null;
-  if (!organizationId) {
-    const org = await OrganizationModel.findByDomain(domain);
-    organizationId = org?.id ?? null;
+  if (!organizationId && domain) {
+    const numericId = parseInt(domain, 10);
+    if (!isNaN(numericId) && String(numericId) === domain.trim()) {
+      const org = await OrganizationModel.findById(numericId);
+      organizationId = org?.id ?? null;
+    } else {
+      const org = await OrganizationModel.findByDomain(domain);
+      organizationId = org?.id ?? null;
+    }
   }
+
+  if (!organizationId) {
+    throw new Error("Could not determine your organization. Please complete onboarding or contact support.");
+  }
+
   // Use passed locationId if available, otherwise resolve from org
   const locationId = passedLocationId ?? await resolveLocationId(organizationId);
 

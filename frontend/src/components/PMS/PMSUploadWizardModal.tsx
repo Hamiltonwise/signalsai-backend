@@ -165,7 +165,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
           onSuccess?.();
         }, 2000);
       } else {
-        throw new Error(result.error || "Upload failed");
+        throw new Error(result.error || result.message || "Upload failed");
       }
     } catch (error) {
       console.error("PMSUploadWizard: Upload error:", error);
