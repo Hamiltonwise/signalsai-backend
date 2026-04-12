@@ -255,7 +255,7 @@ export default function ReviewsPage() {
 
   // Aggregate review data from checkup
   const { data: ctx } = useQuery<Record<string, unknown>>({
-    queryKey: ["reviews-context", orgId],
+    queryKey: ["reviews-context", orgId, selectedLocation?.id],
     queryFn: () => apiGet({ path: "/user/dashboard-context" }),
     enabled: !!orgId,
     staleTime: 60_000,
@@ -341,7 +341,15 @@ export default function ReviewsPage() {
   // Competitor review data from ranking analysis
   const rawData = (rankingRaw as Record<string, unknown>)?.rawData as Record<string, unknown> | undefined;
   const competitors = (rawData?.competitors as Array<Record<string, unknown>>) || [];
-  const topCompetitors = [...competitors]
+  // Filter out the client's own locations (same brand name prefix)
+  const orgNameNorm = (orgName || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const filteredCompetitors = orgNameNorm
+    ? competitors.filter((c) => {
+        const cName = ((c.name as string) || ((c.displayName as Record<string, string>)?.text) || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        return !cName.startsWith(orgNameNorm) && !orgNameNorm.startsWith(cName);
+      })
+    : competitors;
+  const topCompetitors = [...filteredCompetitors]
     .sort((a, b) => (
       ((b.userRatingCount as number) || (b.reviewCount as number) || (b.totalReviews as number) || 0) -
       ((a.userRatingCount as number) || (a.reviewCount as number) || (a.totalReviews as number) || 0)

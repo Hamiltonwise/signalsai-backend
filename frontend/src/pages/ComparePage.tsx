@@ -102,7 +102,7 @@ function ComparePageInner() {
   });
 
   const { data: ctx } = useQuery<any>({
-    queryKey: ["compare-context", orgId],
+    queryKey: ["compare-context", orgId, selectedLocation?.id],
     queryFn: () => apiGet({ path: "/user/dashboard-context" }),
     enabled: !!orgId,
     staleTime: 60_000,
@@ -332,8 +332,17 @@ function ComparePageInner() {
         {/* Full Competitor Landscape */}
         {(() => {
           const rawData = rankingRaw?.rawData || rankingRaw?.raw_data;
-          const allCompetitors = rawData?.competitors;
-          if (!Array.isArray(allCompetitors) || allCompetitors.length < 2) return null;
+          const rawCompetitors = rawData?.competitors;
+          if (!Array.isArray(rawCompetitors) || rawCompetitors.length < 2) return null;
+          // Filter out the client's own locations (same brand name prefix)
+          const orgNameNorm = (orgName || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          const allCompetitors = orgNameNorm
+            ? rawCompetitors.filter((c: any) => {
+                const cName = (c.name || c.displayName?.text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                return !cName.startsWith(orgNameNorm) && !orgNameNorm.startsWith(cName);
+              })
+            : rawCompetitors;
+          if (allCompetitors.length === 0) return null;
           return (
             <Section title={`Your Market (${allCompetitors.length} competitors)`} defaultOpen={true}>
               <div className="space-y-3">

@@ -354,7 +354,7 @@ export default function HomePage() {
   const orgId = userProfile?.organizationId || null;
 
   const { data: ctx } = useQuery<DashboardContext>({
-    queryKey: ["home-context", orgId],
+    queryKey: ["home-context", orgId, selectedLocation?.id],
     queryFn: () => apiGet({ path: "/user/dashboard-context" }),
     enabled: !!orgId,
     staleTime: 60_000,
@@ -738,9 +738,12 @@ export default function HomePage() {
               ? `I just checked how I stack up against ${compName} on Google. You should see yours: ${link}`
               : `I just checked my Google presence against my competitors. Took 60 seconds. You should see yours: ${link}`;
 
+          const lead = compReviews && clientRevs > compReviews ? clientRevs - compReviews : 0;
           const headline = compName && gap > 0
             ? `${compName} has ${gap} more reviews than you. Know someone in the same spot?`
-            : "Know a business owner who could use this?";
+            : compName && lead > 0
+              ? `You lead your market by ${lead} reviews. Know someone who'd want to see their numbers?`
+              : "Know a business owner who could use this?";
 
           return (
           <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
@@ -751,7 +754,7 @@ export default function HomePage() {
               <div className="flex-1">
                 <p className="text-sm font-semibold text-[#1A1D23] mb-1">{headline}</p>
                 <p className="text-sm text-gray-500 mb-3">
-                  They get a free Google Health Check. You both split the first month.
+                  They get a free Google Health Check. You both save on your first month.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button

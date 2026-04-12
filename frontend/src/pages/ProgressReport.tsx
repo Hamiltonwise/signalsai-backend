@@ -63,7 +63,7 @@ export default function ProgressReport() {
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   const { data: ctx } = useQuery<any>({
-    queryKey: ["progress-context", orgId],
+    queryKey: ["progress-context", orgId, selectedLocation?.id],
     queryFn: () => apiGet({ path: "/user/dashboard-context" }),
     enabled: !!orgId,
     staleTime: 60_000,
