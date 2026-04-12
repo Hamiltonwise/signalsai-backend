@@ -104,8 +104,28 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
       const locationBias = (practiceLat && practiceLng)
         ? { lat: practiceLat, lng: practiceLng, radiusMeters: 16093 } // 10 miles
         : undefined;
-      const results = await textSearch(query, 10, locationBias);
+      const rawResults = await textSearch(query, 10, locationBias);
       const orgNameLower = org.name.toLowerCase();
+
+      // Distance filter: remove results more than 80km (~50mi) from practice
+      // locationBias is a preference, not a restriction. Google returns national
+      // results for niche specialties (e.g. "Advanced Endodontics of Chicago"
+      // for a Falls Church, VA endodontist). Filter them out.
+      const results = (practiceLat && practiceLng)
+        ? rawResults.filter((r: any) => {
+            const rLat = r.location?.latitude;
+            const rLng = r.location?.longitude;
+            if (rLat == null || rLng == null) return true; // keep if no coords (benefit of doubt)
+            const dLat = (rLat - practiceLat!) * 111; // rough km per degree
+            const dLng = (rLng - practiceLng!) * 111 * Math.cos(practiceLat! * Math.PI / 180);
+            const distKm = Math.sqrt(dLat * dLat + dLng * dLng);
+            if (distKm > 80) {
+              console.log(`[RankingsIntel] Filtered out "${r.displayName?.text}" (${Math.round(distKm)}km away from ${org.name})`);
+              return false;
+            }
+            return true;
+          })
+        : rawResults;
 
       // Match self: prefer placeId (exact), fall back to name matching
       for (let i = 0; i < results.length; i++) {

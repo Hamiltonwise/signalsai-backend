@@ -107,22 +107,30 @@ router.get(
         });
       }
 
-      // Also fix topCompetitor if it matches self
+      // Ensure topCompetitor is always populated from competitors array
+      // This fixes: ComparePage empty, Reviews VS Competitors placeholder,
+      // Home page share prompt generic, and all downstream consumers.
+      const sortedCompetitors = [...(rawData.competitors || [])].sort(
+        (a: any, b: any) =>
+          (b.userRatingCount || b.reviewCount || 0) -
+          (a.userRatingCount || a.reviewCount || 0),
+      );
+
       if (rawData.topCompetitor && orgName) {
+        // Fix topCompetitor if it matches self
         const topName =
           typeof rawData.topCompetitor === "string"
             ? rawData.topCompetitor
             : rawData.topCompetitor?.name || "";
         const topNorm = topName.toLowerCase().replace(/[^a-z0-9]/g, "");
         if (topNorm.startsWith(orgName) || orgName.startsWith(topNorm)) {
-          // Replace with actual top competitor from filtered list
-          const sorted = [...(rawData.competitors || [])].sort(
-            (a: any, b: any) =>
-              (b.userRatingCount || b.reviewCount || 0) -
-              (a.userRatingCount || a.reviewCount || 0),
-          );
-          rawData.topCompetitor = sorted[0] || null;
+          rawData.topCompetitor = sortedCompetitors[0] || null;
         }
+      }
+
+      // If topCompetitor is missing entirely, compute from competitors array
+      if (!rawData.topCompetitor && sortedCompetitors.length > 0) {
+        rawData.topCompetitor = sortedCompetitors[0];
       }
 
       return res.json({
