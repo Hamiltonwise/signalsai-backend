@@ -155,6 +155,7 @@ import competitorRoutes from "./routes/user/competitors";
 import missionControlRoutes from "./routes/admin/missionControl";
 import killSwitchRoutes from "./routes/admin/killSwitch";
 import customerReadinessRoutes from "./routes/admin/customerReadiness";
+import realityCheckRoutes from "./routes/admin/realityCheck";
 import agentIdentityRoutes from "./routes/admin/agentIdentity";
 import agentCanonRoutes from "./routes/admin/agentCanon";
 import analyticsRoutes from "./routes/admin/analytics";
@@ -410,6 +411,7 @@ app.use("/api/user/competitors", competitorRoutes); // Tracked Competitors: side
 app.use("/api/admin/mission-control", missionControlRoutes); // Mission Control: real-time agent status grid
 app.use("/api/admin/kill-switch", killSwitchRoutes); // Emergency kill switch for all agents
 app.use("/api/admin/customer-readiness", customerReadinessRoutes); // Customer experience readiness scores
+app.use("/api/admin/reality-check", realityCheckRoutes); // Per-org per-page pass/fail reality check
 app.use("/api/admin/agent-identity", agentIdentityRoutes); // Agent identity, scopes, audit, quarantine
 app.use("/api/admin/agent-canon", agentCanonRoutes); // Canon governance: spec, gold questions, gate verdicts
 app.use("/api/admin/analytics", analyticsRoutes); // GA4 + GSC analytics data pipeline
