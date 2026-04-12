@@ -20,7 +20,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Upload, ExternalLink, Users } from "lucide-react";
+import { ChevronRight, Upload, ExternalLink, Users, AlertTriangle, TrendingDown, Zap } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
@@ -94,8 +94,21 @@ function getTimeGreeting(): string {
   return "Good evening";
 }
 
-function buildGreeting(ctx: DashboardContext | null): string {
+function buildGreeting(ctx: DashboardContext | null, toneProfile?: { formality: string; useFirstName: boolean; greetingStyle: string } | null): string {
   const firstName = ctx?.user?.first_name || null;
+  const style = toneProfile?.greetingStyle || "professional";
+
+  if (style === "casual" && firstName) {
+    const h = new Date().getHours();
+    if (h < 12) return `Morning, ${firstName}.`;
+    return `Hey, ${firstName}.`;
+  }
+
+  if (style === "personal" && firstName) {
+    return `${getTimeGreeting()}, ${firstName}.`;
+  }
+
+  // Professional (default)
   if (firstName) return `${getTimeGreeting()}, ${firstName}.`;
   return `${getTimeGreeting()}.`;
 }
@@ -429,6 +442,25 @@ export default function HomePage() {
     staleTime: 120_000,
   });
 
+  // Network intelligence: collective heuristics, seasonal alerts, drift, hero quote
+  const { data: networkData } = useQuery<{
+    success: boolean;
+    data: {
+      networkInsights: Array<{ insight: string; actionable: string; confidence: number; category: string }> | null;
+      seasonalAlert: { alert_text: string; weeks_away: number; pattern: { recommended_action: string } } | null;
+      heroQuote: { quote: string; reviewerName: string } | null;
+      toneProfile: { formality: string; useFirstName: boolean; greetingStyle: string } | null;
+      driftAlerts: Array<{ type: string; gpName: string; priorMonthlyAvg: number; daysSilent?: number; declinePercent?: number; estimatedAnnualRisk?: number }> | null;
+      topReferrers: Array<{ name: string; practice: string; referrals_last_30d: number }> | null;
+      marketPatterns: Array<{ insight: string; actionable: string }> | null;
+    } | null;
+  }>({
+    queryKey: ["network-intelligence", orgId],
+    queryFn: () => apiGet({ path: "/user/network-intelligence" }),
+    enabled: !!orgId,
+    staleTime: 300_000,
+  });
+
   const { data: proofData } = useQuery<{
     prooflineTimeline: Array<{
       date: string;
@@ -446,7 +478,7 @@ export default function HomePage() {
 
   // ── Derived State ──
   const action = actionData?.card || null;
-  const greeting = buildGreeting(ctx || null);
+  const greeting = buildGreeting(ctx || null, networkData?.data?.toneProfile);
   const readings = extractReadings(ctx || null, ranking, rankingRaw);
   const milestone = milestoneData?.card || null;
   const ozMoment = ozData?.ozMoment || null;
@@ -718,6 +750,88 @@ export default function HomePage() {
             </div>
           </div>
         ) : null}
+
+        {/* ── Network Intelligence: things only Alloro can tell you ── */}
+        {networkData?.data && (
+          <div className="space-y-4 mb-6">
+            {/* GP Drift Alerts */}
+            {networkData.data.driftAlerts && networkData.data.driftAlerts.length > 0 && showReferralSections && (
+              <div className="rounded-2xl bg-[#FDF4F2] border border-[#D56753]/10 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-[#D56753]" />
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Referral Alerts</p>
+                </div>
+                {networkData.data.driftAlerts.map((alert, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <TrendingDown className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-[#1A1D23]">
+                        {alert.type === "gone_dark"
+                          ? `${alert.gpName} stopped referring ${alert.daysSilent} days ago.`
+                          : `${alert.gpName} is down ${alert.declinePercent}% from their average.`}
+                      </p>
+                      <p className="text-sm text-[#1A1D23]/60 mt-0.5">
+                        {alert.type === "gone_dark"
+                          ? `They averaged ${alert.priorMonthlyAvg} referrals/month. A 5-minute call this week could reopen the relationship.`
+                          : `Previously ${alert.priorMonthlyAvg} referrals/month. Worth a check-in before the pattern sticks.`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Seasonal Alert */}
+            {networkData.data.seasonalAlert && (
+              <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
+                <div className="flex items-start gap-3">
+                  <Zap className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-[#1A1D23]">
+                      {networkData.data.seasonalAlert.alert_text}
+                    </p>
+                    {networkData.data.seasonalAlert.pattern?.recommended_action && (
+                      <p className="text-sm text-[#1A1D23]/60 mt-1">
+                        {networkData.data.seasonalAlert.pattern.recommended_action}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Network Insights (collective intelligence) */}
+            {networkData.data.networkInsights && networkData.data.networkInsights.length > 0 && (
+              <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 space-y-3">
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">From Alloro's Network</p>
+                {networkData.data.networkInsights.slice(0, 2).map((ni, i) => (
+                  <div key={i}>
+                    <p className="text-sm text-[#1A1D23]">{ni.insight}</p>
+                    {ni.actionable && (
+                      <p className="text-sm text-[#1A1D23]/60 mt-1">{ni.actionable}</p>
+                    )}
+                  </div>
+                ))}
+                <p className="text-xs text-gray-400">
+                  Based on anonymized patterns across all Alloro accounts. Updated weekly.
+                </p>
+              </div>
+            )}
+
+            {/* Hero Quote from reviews */}
+            {networkData.data.heroQuote && (
+              <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-2">Your Most Powerful Review</p>
+                <p className="text-sm text-[#1A1D23] italic leading-relaxed">
+                  &ldquo;{networkData.data.heroQuote.quote}&rdquo;
+                </p>
+                <p className="text-xs text-[#1A1D23]/40 mt-2">
+                  {networkData.data.heroQuote.reviewerName}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ═══ SECONDARY CONTENT ═══ */}
         <div className="space-y-6 mt-4">
