@@ -27,6 +27,7 @@ import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import { useNavigate } from "react-router-dom";
+import WarmEmptyState, { WARM_STATES } from "@/components/dashboard/WarmEmptyState";
 
 // Import existing components from parts shelf
 import GBPConnectCard from "@/components/dashboard/GBPConnectCard";
@@ -252,11 +253,11 @@ function PresencePageInner() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-500">
-                  Alloro builds your website from your Google reviews and business data. A preview will appear here when it is ready.
-                </p>
-              </div>
+              <WarmEmptyState
+                happening="Alloro builds your website from your Google reviews and business data."
+                when="A preview appears here once your reviews are analyzed."
+                promise="Your website will showcase the exact themes patients praise most in their reviews."
+              />
             )}
           </Section>
         )}
@@ -323,12 +324,7 @@ function PresencePageInner() {
 
         {/* When nothing exists at all */}
         {!hasWebsite && !hasGBPData && !hasGoogleConnection && (
-          <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-6">
-            <p className="text-sm font-semibold text-[#1A1D23] mb-2">Connect your Google Business Profile</p>
-            <p className="text-sm text-gray-500">
-              Once connected, this page shows your profile completeness, website performance, form submissions, and optimization history.
-            </p>
-          </div>
+          <WarmEmptyState {...WARM_STATES.presence} />
         )}
 
       </div>

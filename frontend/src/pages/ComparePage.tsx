@@ -19,6 +19,7 @@ import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
+import WarmEmptyState from "@/components/dashboard/WarmEmptyState";
 
 
 // ─── Collapsible Section ────────────────────────────────────────────
@@ -296,10 +297,11 @@ function ComparePageInner() {
               </div>
             )}
             {!competitorName && clientReviews === 0 && clientPhotos === 0 && (
-              <div className="text-sm text-gray-500">
-                <p className="font-semibold text-[#1A1D23] mb-1">Your competitive picture is building</p>
-                <p>Alloro is analyzing your market. Your side-by-side comparison will appear here once competitor data is available.</p>
-              </div>
+              <WarmEmptyState
+                happening="Alloro is analyzing your market right now."
+                when="Your side-by-side comparison appears once competitor data syncs."
+                promise="You'll see exactly how you stack up on reviews, ratings, and photos against your top competitor."
+              />
             )}
           </div>
         </Section>

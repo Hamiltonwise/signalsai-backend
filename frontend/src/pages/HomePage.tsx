@@ -30,6 +30,7 @@ import CardCapture from "@/components/dashboard/CardCapture";
 import { NotificationWidget } from "@/components/dashboard/NotificationWidget";
 import PendingActionsCard from "@/components/dashboard/PendingActionsCard";
 import { PMSUploadWizardModal } from "@/components/PMS/PMSUploadWizardModal";
+import WarmEmptyState from "@/components/dashboard/WarmEmptyState";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -85,7 +86,18 @@ interface OzMomentData {
   signalType: string;
 }
 
-// ─── Greeting ───────────────────────────────────────────────────────
+// ─── Alive Greeting (WO-61 Component 1) ────────────────────────────
+//
+// Not a static "Good morning." A contextual, streak-aware, warm opener
+// that tells the owner: someone is watching. You are not alone.
+//
+// Priority cascade (first match wins):
+// 1. First login ever -> welcome message
+// 2. Win detected this week -> celebrate it
+// 3. Streak / tenure -> "Week N of watching your market"
+// 4. Return after absence -> "Your market didn't stop"
+// 5. Clean week -> "Nothing urgent. That's the goal."
+// 6. Default -> warm time-of-day with name
 
 function getTimeGreeting(): string {
   const h = new Date().getHours();
@@ -94,21 +106,65 @@ function getTimeGreeting(): string {
   return "Good evening";
 }
 
-function buildGreeting(ctx: DashboardContext | null, toneProfile?: { formality: string; useFirstName: boolean; greetingStyle: string } | null): string {
+function buildGreeting(
+  ctx: DashboardContext | null,
+  toneProfile?: { formality: string; useFirstName: boolean; greetingStyle: string } | null,
+  ozMoment?: OzMomentData | null,
+  _rankingData?: RankingData | null,
+): string {
   const firstName = ctx?.user?.first_name || null;
+  const orgCreated = ctx?.org?.created_at;
   const style = toneProfile?.greetingStyle || "professional";
 
+  // Calculate tenure
+  const daysSinceJoin = orgCreated
+    ? Math.floor((Date.now() - new Date(orgCreated).getTime()) / 86_400_000)
+    : null;
+  const weeksSinceJoin = daysSinceJoin != null ? Math.floor(daysSinceJoin / 7) : null;
+
+  // 1. First login ever (joined within last 24 hours)
+  if (daysSinceJoin != null && daysSinceJoin < 1) {
+    if (firstName) return `Welcome, ${firstName}. We started watching your market the moment you signed up.`;
+    return `Welcome. We started watching your market the moment you signed up.`;
+  }
+
+  // 2. First week (still new)
+  if (daysSinceJoin != null && daysSinceJoin <= 7) {
+    if (firstName) return `${getTimeGreeting()}, ${firstName}. Your first intelligence brief is building.`;
+    return `${getTimeGreeting()}. Your first intelligence brief is building.`;
+  }
+
+  // 3. Clean week (ozMoment signals it)
+  if (ozMoment?.signalType === "clean_week") {
+    if (firstName) return `Nothing urgent this week, ${firstName}. That's the goal.`;
+    return `Nothing urgent this week. That's the goal.`;
+  }
+
+  // 4. Win detected (ranking improved or positive ozMoment)
+  if (ozMoment?.status === "healthy" && ozMoment?.signalType !== "fallback_market" && ozMoment?.signalType !== "fallback_lead") {
+    if (weeksSinceJoin && weeksSinceJoin > 2 && firstName) {
+      return `Week ${weeksSinceJoin}, ${firstName}. Here's what moved.`;
+    }
+  }
+
+  // 5. Streak / tenure (2+ weeks)
+  if (weeksSinceJoin && weeksSinceJoin >= 2) {
+    // Casual tone after 90 days
+    if (style === "casual" && firstName) {
+      const h = new Date().getHours();
+      if (h < 12) return `Morning, ${firstName}. Week ${weeksSinceJoin}.`;
+      return `Hey, ${firstName}. Week ${weeksSinceJoin}.`;
+    }
+    if (firstName) return `Week ${weeksSinceJoin} of watching your market, ${firstName}.`;
+    return `Week ${weeksSinceJoin} of watching your market.`;
+  }
+
+  // 6. Default: warm time-of-day
   if (style === "casual" && firstName) {
     const h = new Date().getHours();
     if (h < 12) return `Morning, ${firstName}.`;
     return `Hey, ${firstName}.`;
   }
-
-  if (style === "personal" && firstName) {
-    return `${getTimeGreeting()}, ${firstName}.`;
-  }
-
-  // Professional (default)
   if (firstName) return `${getTimeGreeting()}, ${firstName}.`;
   return `${getTimeGreeting()}.`;
 }
@@ -478,7 +534,7 @@ export default function HomePage() {
 
   // ── Derived State ──
   const action = actionData?.card || null;
-  const greeting = buildGreeting(ctx || null, networkData?.data?.toneProfile);
+  const greeting = buildGreeting(ctx || null, networkData?.data?.toneProfile, ozData?.ozMoment || null, ranking);
   const readings = extractReadings(ctx || null, ranking, rankingRaw);
   const milestone = milestoneData?.card || null;
   const ozMoment = ozData?.ozMoment || null;
@@ -640,9 +696,12 @@ export default function HomePage() {
             </div>
           </motion.div>
         ) : ctx ? (
-          <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5 mb-5">
-            <p className="text-sm font-medium text-[#1A1D23]">Alloro is scanning your market.</p>
-            <p className="text-sm text-gray-500 mt-1">Your competitive readings will appear here within 24 hours of your first scan.</p>
+          <div className="mb-5">
+            <WarmEmptyState
+              happening="Alloro is scanning your market right now."
+              when="Your first readings appear within 24 hours."
+              promise="You'll see your rating, review count, and how you compare to your top competitor."
+            />
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 mb-5">

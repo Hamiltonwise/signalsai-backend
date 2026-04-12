@@ -33,6 +33,7 @@ import { apiGet, apiPatch } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
+import WarmEmptyState, { WARM_STATES } from "@/components/dashboard/WarmEmptyState";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -459,12 +460,7 @@ export default function ReviewsPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-[#1A1D23]">Your reviews will appear here</p>
-              <p className="text-sm text-gray-500">
-                Once your Google Business Profile is connected, Alloro syncs your reviews daily at 4 AM and generates AI-drafted responses for each one.
-              </p>
-            </div>
+            <WarmEmptyState {...WARM_STATES.reviews} />
           )}
         </Section>
 
@@ -690,6 +686,9 @@ export default function ReviewsPage() {
                       Alloro is analyzing your reviews against your top competitor's. The comparison will appear here once both sets of reviews are loaded.
                     </p>
                   </div>
+                )}
+                {sentimentMoments.length === 0 && !sentimentInsight?.summary && (!rating || reviewCount === 0) && (
+                  <WarmEmptyState {...WARM_STATES.sentiment} />
                 )}
               </>
             )}
