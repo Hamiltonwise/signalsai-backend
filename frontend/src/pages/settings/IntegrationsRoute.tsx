@@ -32,7 +32,7 @@ const InfoRow = ({ icon, label, value }: InfoRowProps) => (
       {icon}
     </div>
     <div className="min-w-0 text-left">
-      <div className="text-[8px] font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
+      <div className="text-xs font-semibold text-alloro-textDark/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
         {label}
       </div>
       <div className="text-base font-semibold text-alloro-navy tracking-tight truncate group-hover:translate-x-1 transition-transform">
@@ -158,10 +158,10 @@ export const IntegrationsRoute: React.FC = () => {
                 encryption protocols.
               </p>
               <div className="flex items-center gap-4 pt-1">
-                <span className="flex items-center gap-1.5 text-[8px] font-semibold text-white/20 uppercase tracking-[0.2em]">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-white/20 uppercase tracking-[0.2em]">
                   <Lock size={10} /> HIPAA Compliant
                 </span>
-                <span className="flex items-center gap-1.5 text-[8px] font-semibold text-white/20 uppercase tracking-[0.2em]">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-white/20 uppercase tracking-[0.2em]">
                   <Activity size={10} /> Monitored 24/7
                 </span>
               </div>

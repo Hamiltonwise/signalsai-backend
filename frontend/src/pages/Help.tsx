@@ -107,14 +107,14 @@ const Help = () => {
               <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 Help Center
               </h1>
-              <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+              <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 Answers and guidance
               </span>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-4 bg-white px-4 py-2 rounded-xl border border-black/5 shadow-inner-soft">
             <ShieldCheck size={14} className="text-green-500" />
-            <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest leading-none">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest leading-none">
               Verified Channel
             </span>
           </div>

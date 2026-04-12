@@ -68,7 +68,7 @@ const Profile = () => {
               <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 Intelligence Ecosystem
               </h1>
-              <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+              <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 Your business at a glance
               </span>
             </div>
