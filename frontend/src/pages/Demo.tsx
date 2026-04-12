@@ -28,12 +28,14 @@ import {
   Activity,
   Loader2,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 
 // -- Demo Data ---------------------------------------------------------------
+// URL params override defaults: ?name=...&city=...&reviews=...&rating=...
+// This lets Corey customize the demo at the booth for any prospect.
 
-const PRACTICE = {
+const DEFAULTS = {
   name: "Valley Specialty Practice",
   city: "Salt Lake City",
   state: "Utah",
@@ -49,6 +51,26 @@ const PRACTICE = {
   startRank: 6,
   startScore: 42,
 };
+
+function useDemoPractice() {
+  const [params] = useSearchParams();
+  return {
+    name: params.get("name") || DEFAULTS.name,
+    city: params.get("city") || DEFAULTS.city,
+    state: params.get("state") || DEFAULTS.state,
+    score: Number(params.get("score")) || DEFAULTS.score,
+    rank: Number(params.get("rank")) || DEFAULTS.rank,
+    totalCompetitors: Number(params.get("competitors")) || DEFAULTS.totalCompetitors,
+    specialty: params.get("specialty") || DEFAULTS.specialty,
+    reviews: Number(params.get("reviews")) || DEFAULTS.reviews,
+    rating: Number(params.get("rating")) || DEFAULTS.rating,
+    competitorName: params.get("competitor") || DEFAULTS.competitorName,
+    competitorReviews: Number(params.get("compReviews")) || DEFAULTS.competitorReviews,
+    competitorRating: Number(params.get("compRating")) || DEFAULTS.competitorRating,
+    startRank: Number(params.get("startRank")) || DEFAULTS.startRank,
+    startScore: Number(params.get("startScore")) || DEFAULTS.startScore,
+  };
+}
 
 const REFERRING_GPS = [
   { name: "Dr. Sarah Chen", practice: "Chen Family Practice", referrals: 18, trend: "up" as const, trendLabel: "+3 vs last quarter", lastReferral: "5 days ago", status: "active" as const },
@@ -148,6 +170,7 @@ function SignalBanner() {
 }
 
 function InstrumentCards() {
+  const PRACTICE = useDemoPractice();
   const gap = PRACTICE.competitorReviews - PRACTICE.reviews;
   const instruments = [
     {
@@ -201,6 +224,7 @@ function InstrumentCards() {
 }
 
 function CompetitorGap() {
+  const PRACTICE = useDemoPractice();
   const gap = PRACTICE.competitorReviews - PRACTICE.reviews;
   const pct = Math.round((PRACTICE.reviews / PRACTICE.competitorReviews) * 100);
 
@@ -478,6 +502,7 @@ function Next90() {
 
 export default function Demo() {
   const navigate = useNavigate();
+  const p = useDemoPractice();
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -533,11 +558,11 @@ export default function Demo() {
             Good morning, Dr. Hayward.
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Here is what Alloro found this week for {PRACTICE.name}.
+            Here is what Alloro found this week for {p.name}.
           </p>
           <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            {PRACTICE.city}, {PRACTICE.state}
+            {p.city}, {p.state}
           </p>
         </motion.div>
 
