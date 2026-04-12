@@ -107,10 +107,11 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
       const rawResults = await textSearch(query, 10, locationBias);
       const orgNameLower = org.name.toLowerCase();
 
-      // Distance filter: remove results more than 80km (~50mi) from practice
+      // Distance filter: remove results more than 40km (~25mi) from practice
       // locationBias is a preference, not a restriction. Google returns national
       // results for niche specialties (e.g. "Advanced Endodontics of Chicago"
       // for a Falls Church, VA endodontist). Filter them out.
+      const MAX_DISTANCE_KM = 40; // ~25 miles -- realistic local service area
       const results = (practiceLat && practiceLng)
         ? rawResults.filter((r: any) => {
             const rLat = r.location?.latitude;
@@ -119,8 +120,8 @@ export async function generateSnapshotForOrg(orgId: number, force = false): Prom
             const dLat = (rLat - practiceLat!) * 111; // rough km per degree
             const dLng = (rLng - practiceLng!) * 111 * Math.cos(practiceLat! * Math.PI / 180);
             const distKm = Math.sqrt(dLat * dLat + dLng * dLng);
-            if (distKm > 80) {
-              console.log(`[RankingsIntel] Filtered out "${r.displayName?.text}" (${Math.round(distKm)}km away from ${org.name})`);
+            if (distKm > MAX_DISTANCE_KM) {
+              console.log(`[RankingsIntel] Filtered out "${r.displayName?.text}" (${Math.round(distKm)}km / ${Math.round(distKm * 0.621)}mi away from ${org.name})`);
               return false;
             }
             return true;
