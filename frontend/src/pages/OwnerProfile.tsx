@@ -90,7 +90,7 @@ export default function OwnerProfile() {
         {/* Header */}
         {step === 0 && (
           <div className="text-center mb-10">
-            <h1 className="text-2xl font-semibold text-[#212D40] tracking-tight">
+            <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">
               Before we go further.
             </h1>
             <p className="text-sm text-gray-500 mt-2">
@@ -112,7 +112,7 @@ export default function OwnerProfile() {
         </div>
 
         {/* Question */}
-        <p className="text-lg font-semibold text-[#212D40] leading-relaxed mb-6">
+        <p className="text-lg font-semibold text-[#1A1D23] leading-relaxed mb-6">
           {current.question}
         </p>
 
@@ -123,7 +123,7 @@ export default function OwnerProfile() {
             onChange={(e) => setAnswer(current.key, e.target.value)}
             placeholder={current.placeholder}
             rows={4}
-            className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:border-[#D56753] focus:outline-none focus:ring-2 focus:ring-[#D56753]/10 resize-none transition-colors"
+            className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:border-[#D56753] focus:outline-none focus:ring-2 focus:ring-[#D56753]/10 resize-none transition-colors"
             autoFocus
           />
         )}
@@ -146,12 +146,12 @@ export default function OwnerProfile() {
               />
               <span className="text-sm text-gray-400">10</span>
             </div>
-            <p className="text-center text-3xl font-semibold text-[#212D40]">{sliderValue}</p>
+            <p className="text-center text-3xl font-semibold text-[#1A1D23]">{sliderValue}</p>
 
             {/* Followup question */}
             {current.followup && (
               <div className="pt-4 border-t border-gray-100">
-                <p className="text-sm font-medium text-[#212D40] mb-3">
+                <p className="text-sm font-medium text-[#1A1D23] mb-3">
                   {current.followup.question}
                 </p>
                 <textarea
@@ -159,7 +159,7 @@ export default function OwnerProfile() {
                   onChange={(e) => setAnswer(current.followup.key, e.target.value)}
                   placeholder={current.followup.placeholder}
                   rows={2}
-                  className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:border-[#D56753] focus:outline-none focus:ring-2 focus:ring-[#D56753]/10 resize-none transition-colors"
+                  className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:border-[#D56753] focus:outline-none focus:ring-2 focus:ring-[#D56753]/10 resize-none transition-colors"
                 />
               </div>
             )}
@@ -175,7 +175,7 @@ export default function OwnerProfile() {
                 className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all ${
                   yesNoValue === true
                     ? "bg-[#D56753] text-white"
-                    : "bg-white border-2 border-gray-200 text-[#212D40] hover:border-gray-300"
+                    : "bg-white border-2 border-gray-200 text-[#1A1D23] hover:border-gray-300"
                 }`}
               >
                 Yes
@@ -186,7 +186,7 @@ export default function OwnerProfile() {
                 className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all ${
                   yesNoValue === false
                     ? "bg-[#212D40] text-white"
-                    : "bg-white border-2 border-gray-200 text-[#212D40] hover:border-gray-300"
+                    : "bg-white border-2 border-gray-200 text-[#1A1D23] hover:border-gray-300"
                 }`}
               >
                 No
@@ -198,7 +198,7 @@ export default function OwnerProfile() {
                 onChange={(e) => setAnswer("people_challenge_detail", e.target.value)}
                 placeholder={current.placeholder}
                 rows={2}
-                className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:border-[#D56753] focus:outline-none focus:ring-2 focus:ring-[#D56753]/10 resize-none transition-colors"
+                className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:border-[#D56753] focus:outline-none focus:ring-2 focus:ring-[#D56753]/10 resize-none transition-colors"
               />
             )}
           </div>

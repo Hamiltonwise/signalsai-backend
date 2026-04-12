@@ -87,10 +87,10 @@ function ComparePageInner() {
   const { data: rankingRaw } = useQuery<any>({
     queryKey: ["compare-ranking", orgId, selectedLocation?.id],
     queryFn: async () => {
-      const locParam = selectedLocation?.id ? `&locationId=${selectedLocation.id}` : "";
+      const locParam = selectedLocation?.id ? `?locationId=${selectedLocation.id}` : "";
       const token = getPriorityItem("auth_token") || getPriorityItem("token");
       const res = await fetch(
-        `/api/practice-ranking/latest?googleAccountId=${orgId || ""}${locParam}`,
+        `/api/user/ranking/latest${locParam}`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
       if (!res.ok) return null;
@@ -110,7 +110,8 @@ function ComparePageInner() {
 
   const checkupData = ctx?.org?.checkup_data || null;
   const place = checkupData?.place || {};
-  const topCompetitor = checkupData?.topCompetitor || rankingRaw?.rawData?.topCompetitor || null;
+  // Prefer ranking data (filtered, location-aware) over stale checkup data
+  const topCompetitor = rankingRaw?.rawData?.topCompetitor || checkupData?.topCompetitor || null;
   const competitorName = typeof topCompetitor === "string" ? topCompetitor : topCompetitor?.name || null;
   const competitorReviews = typeof topCompetitor === "object" ? topCompetitor?.reviewCount : null;
   const orgName = ctx?.org?.name || "";

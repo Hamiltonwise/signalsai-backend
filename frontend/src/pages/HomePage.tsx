@@ -105,7 +105,8 @@ function extractReadings(ctx: DashboardContext | null, ranking: RankingData | nu
   const checkup = ctx?.org?.checkup_data;
   if (!checkup) return null;
 
-  const topCompetitor = checkup.topCompetitor || checkup.top_competitor || null;
+  // Prefer ranking data (filtered, location-aware) over stale checkup data
+  const topCompetitor = rankingRaw?.rawData?.topCompetitor || checkup.topCompetitor || checkup.top_competitor || null;
   const competitorName = typeof topCompetitor === "string" ? topCompetitor : topCompetitor?.name || null;
   const competitorReviews = typeof topCompetitor === "object" ? topCompetitor?.reviewCount : null;
   const city = checkup.market?.city || "";
@@ -363,10 +364,10 @@ export default function HomePage() {
   const { data: rankingRaw } = useQuery<any>({
     queryKey: ["home-ranking", orgId, selectedLocation?.id],
     queryFn: async () => {
-      const locParam = selectedLocation?.id ? `&locationId=${selectedLocation.id}` : "";
+      const locParam = selectedLocation?.id ? `?locationId=${selectedLocation.id}` : "";
       const token = getPriorityItem("auth_token") || getPriorityItem("token");
       const res = await fetch(
-        `/api/practice-ranking/latest?googleAccountId=${orgId || ""}${locParam}`,
+        `/api/user/ranking/latest${locParam}`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
       if (!res.ok) return null;
@@ -725,7 +726,8 @@ export default function HomePage() {
         {/* ── Share Prompt: connect logged-in users to the referral system ── */}
         {ctx?.referral_stats?.referral_code && (() => {
           const checkup = ctx?.org?.checkup_data;
-          const topComp = checkup?.topCompetitor;
+          // Prefer ranking data (filtered, location-aware) over stale checkup data
+          const topComp = rankingRaw?.rawData?.topCompetitor || checkup?.topCompetitor;
           const compName = typeof topComp === "string" ? topComp : topComp?.name || null;
           const compReviews = typeof topComp === "object" ? topComp?.reviewCount : null;
           const clientRevs = checkup?.place?.reviewCount || checkup?.reviewCount || 0;

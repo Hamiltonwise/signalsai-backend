@@ -288,10 +288,10 @@ export default function ReviewsPage() {
   const { data: rankingRaw } = useQuery<Record<string, unknown> | null>({
     queryKey: ["reviews-ranking", orgId, selectedLocation?.id],
     queryFn: async () => {
-      const locParam = selectedLocation?.id ? `&locationId=${selectedLocation.id}` : "";
+      const locParam = selectedLocation?.id ? `?locationId=${selectedLocation.id}` : "";
       const token = getPriorityItem("auth_token") || getPriorityItem("token");
       const res = await fetch(
-        `/api/practice-ranking/latest?googleAccountId=${orgId || ""}${locParam}`,
+        `/api/user/ranking/latest${locParam}`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
       if (!res.ok) return null;

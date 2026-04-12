@@ -964,7 +964,7 @@ export default function ResultsScreen() {
               </div>
               {missing.length > 0 && (
                 <p className="text-xs text-gray-400 mt-2 ml-7">
-                  {missing.join(", ")} {missing.length === 1 ? "is" : "are"} not set up. Patients and Google notice.
+                  {missing.join(", ")} {missing.length === 1 ? "is" : "are"} not set up. People searching for you notice.
                 </p>
               )}
             </div>

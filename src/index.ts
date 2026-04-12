@@ -117,6 +117,7 @@ import billingAdminRoutes from "./routes/admin/billingAdmin";
 import userExportRoutes from "./routes/user/export";
 import userProgressReportRoutes from "./routes/user/progressReport";
 import proofOfWorkRoutes from "./routes/user/proofOfWork";
+import userRankingRoutes from "./routes/user/ranking";
 import healthRoutes from "./routes/health";
 import adminSearchRoutes from "./routes/admin/search";
 import adminUserManagementRoutes from "./routes/admin/userManagement";
@@ -374,6 +375,7 @@ app.use("/api/user/help-articles", helpArticleRoutes);
 app.use("/api/user/export", userExportRoutes); // WO-EXPORT-API: rankings CSV, referrals CSV, checkup JSON
 app.use("/api/user", userProgressReportRoutes); // Enhanced progress report data
 app.use("/api/user/proof-of-work", proofOfWorkRoutes); // Proofline timeline + review trajectory + competitor landscape
+app.use("/api/user/ranking", userRankingRoutes); // User-facing ranking data (not admin-gated)
 app.use("/api/admin/search", adminSearchRoutes); // WO-ADMIN-SEARCH: cross-collection search for HQ
 app.use("/api/admin/users", adminUserManagementRoutes); // T6: User CRUD (GET/POST/PATCH/DELETE)
 app.use("/api/admin/feature-flags", adminFeatureFlagRoutes); // T6: Feature flag management

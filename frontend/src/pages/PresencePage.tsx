@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { apiGet } from "@/api/index";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocationContext } from "@/contexts/locationContext";
 import { useNavigate } from "react-router-dom";
 
 // Import existing components from parts shelf
@@ -93,11 +94,12 @@ export default function PresencePage() {
 function PresencePageInner() {
   const navigate = useNavigate();
   const { userProfile, hasGoogleConnection } = useAuth();
+  const { selectedLocation } = useLocationContext();
   const orgId = userProfile?.organizationId || null;
 
   // Dashboard context for GBP data
   const { data: ctx } = useQuery<any>({
-    queryKey: ["presence-context", orgId],
+    queryKey: ["presence-context", orgId, selectedLocation?.id],
     queryFn: () => apiGet({ path: "/user/dashboard-context" }),
     enabled: !!orgId,
     staleTime: 60_000,

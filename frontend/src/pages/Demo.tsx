@@ -148,10 +148,10 @@ const NEXT_90 = [
 function SignalBanner() {
   return (
     <div className="rounded-2xl px-6 py-5" style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}>
-      <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-2">
+      <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753] mb-2">
         Morning Brief
       </p>
-      <p className="text-base font-medium text-[#212D40] leading-relaxed">
+      <p className="text-base font-medium text-[#1A1D23] leading-relaxed">
         Dr. Torres referred 8 clients last quarter. She hasn't referred in 40 days. Estimated <strong>$14,000</strong> at risk.
       </p>
     </div>
@@ -164,20 +164,20 @@ function DemoPositionCard() {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
       <div className="flex items-start justify-between mb-1">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Market Position</p>
-        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Market Position</p>
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
           <TrendingUp className="h-3 w-3" />+3 since Dec
         </span>
       </div>
       <div className="mt-2">
-        <span className="text-5xl font-semibold text-[#212D40]">#{PRACTICE.rank}</span>
+        <span className="text-5xl font-semibold text-[#1A1D23]">#{PRACTICE.rank}</span>
         <span className="text-lg text-gray-400 ml-2">of {PRACTICE.totalCompetitors}</span>
       </div>
       <p className="text-sm text-gray-500 mt-2">
         {PRACTICE.totalCompetitors} {PRACTICE.specialty}s in {PRACTICE.city}, {PRACTICE.state}
       </p>
       <div className="mt-4">
-        <span className="inline-flex px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600">
+        <span className="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600">
           Score: {PRACTICE.score}/100
         </span>
       </div>
@@ -190,13 +190,13 @@ function DemoPositionCard() {
 function RankingSparkline() {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
-      <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Ranking Trajectory</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Ranking Trajectory</p>
       <div className="flex items-end gap-3 h-24">
         {RANKING_HISTORY.map((m) => {
           const heightPct = ((7 - m.position) / 6) * 100;
           return (
             <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-xs font-bold text-[#212D40]">#{m.position}</span>
+              <span className="text-xs font-semibold text-[#1A1D23]">#{m.position}</span>
               <div className="w-full rounded-t-lg bg-[#D56753]/10 relative" style={{ height: `${heightPct}%` }}>
                 <div className="absolute inset-0 rounded-t-lg bg-[#D56753]" style={{ opacity: m.position <= 3 ? 1 : 0.4 }} />
               </div>
@@ -215,8 +215,8 @@ function DemoCompetitorGap() {
   const gap = PRACTICE.competitorReviews - PRACTICE.reviews;
   return (
     <div className="rounded-2xl px-5 py-4" style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}>
-      <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-2">Top Competitor</p>
-      <p className="text-base font-semibold text-[#212D40] leading-relaxed">
+      <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753] mb-2">Top Competitor</p>
+      <p className="text-base font-semibold text-[#1A1D23] leading-relaxed">
         <strong>{PRACTICE.competitorName}</strong> holds #1 with a {PRACTICE.competitorRating}-star rating and {gap} more reviews than you.
       </p>
       <p className="text-xs text-[#D56753] font-medium mt-2">
@@ -234,7 +234,7 @@ function ReferralNetwork() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-[#D56753]" />
-          <p className="text-xs font-bold uppercase tracking-wider text-[#D56753]">Referral Network</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753]">Referral Network</p>
         </div>
         <span className="text-xs text-gray-400">{REFERRING_GPS.reduce((s, g) => s + g.referrals, 0)} referrals this quarter</span>
       </div>
@@ -248,9 +248,9 @@ function ReferralNetwork() {
           >
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-[#212D40] truncate">{gp.name}</p>
+                <p className="text-sm font-semibold text-[#1A1D23] truncate">{gp.name}</p>
                 {gp.status === "drift" && (
-                  <span className="flex items-center gap-1 text-xs font-bold text-red-600 bg-red-100 rounded-full px-2 py-0.5">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-100 rounded-full px-2 py-0.5">
                     <AlertTriangle className="h-2.5 w-2.5" />
                     DRIFT
                   </span>
@@ -268,7 +268,7 @@ function ReferralNetwork() {
               </div>
             </div>
             <div className="text-right shrink-0 ml-4">
-              <p className="text-lg font-semibold text-[#212D40]">{gp.referrals}</p>
+              <p className="text-lg font-semibold text-[#1A1D23]">{gp.referrals}</p>
               <p className="text-xs text-gray-400">referrals</p>
               <p className="text-xs text-gray-400 mt-0.5">Last: {gp.lastReferral}</p>
             </div>
@@ -286,16 +286,16 @@ function DemoTasks() {
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
       <div className="flex items-center gap-2 mb-4">
         <Zap className="h-5 w-5 text-[#D56753]" />
-        <p className="text-xs font-bold uppercase tracking-wider text-[#D56753]">This Week's Tasks</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753]">This Week's Tasks</p>
       </div>
       <div className="space-y-4">
         {TASKS.map((task, i) => (
           <div key={i} className="space-y-1.5">
             <div className="flex items-start gap-3">
-              <span className="shrink-0 w-6 h-6 rounded-full bg-[#D56753] text-white flex items-center justify-center text-xs font-bold mt-0.5">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-[#D56753] text-white flex items-center justify-center text-xs font-semibold mt-0.5">
                 {i + 1}
               </span>
-              <p className="text-sm font-bold text-[#212D40]">{task.title}</p>
+              <p className="text-sm font-semibold text-[#1A1D23]">{task.title}</p>
             </div>
             <p className="text-xs text-gray-500 leading-relaxed ml-9">{task.why}</p>
           </div>
@@ -312,7 +312,7 @@ function DemoProgressReport() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Calendar className="h-5 w-5 text-[#D56753]" />
-        <p className="text-xs font-bold uppercase tracking-wider text-[#D56753]">365-Day Progress</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753]">365-Day Progress</p>
       </div>
 
       {/* Hero stat */}
@@ -325,29 +325,29 @@ function DemoProgressReport() {
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
           <p className="text-xl font-semibold text-emerald-600">+3</p>
-          <p className="text-xs font-bold text-gray-400 uppercase mt-1">Positions</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase mt-1">Positions</p>
           <p className="text-xs text-gray-400">#6 → #3</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
-          <p className="text-xl font-semibold text-[#212D40]">+19</p>
-          <p className="text-xs font-bold text-gray-400 uppercase mt-1">Reviews</p>
+          <p className="text-xl font-semibold text-[#1A1D23]">+19</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase mt-1">Reviews</p>
           <p className="text-xs text-gray-400">42 → 61</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
           <p className="text-xl font-semibold text-[#D56753]">+19</p>
-          <p className="text-xs font-bold text-gray-400 uppercase mt-1">Score</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase mt-1">Score</p>
           <p className="text-xs text-gray-400">42 → 61</p>
         </div>
       </div>
 
       {/* Top moves */}
       <div className="space-y-2">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Top Moves</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Top Moves</p>
         {TOP_MOVES.map((move, i) => (
           <div key={i} className="flex items-start gap-3 bg-white border border-gray-200 rounded-xl p-3">
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-[#212D40]">{move.title}</p>
+              <p className="text-sm font-semibold text-[#1A1D23]">{move.title}</p>
               <p className="text-xs text-emerald-600 font-medium">{move.outcome}</p>
               <p className="text-xs text-gray-400 mt-0.5">{move.date}</p>
             </div>
@@ -365,17 +365,17 @@ function DemoNext90() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Target className="h-5 w-5 text-[#D56753]" />
-        <p className="text-xs font-bold uppercase tracking-wider text-[#D56753]">Next 90 Days</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753]">Next 90 Days</p>
       </div>
       <div className="space-y-3">
         {NEXT_90.map((action, i) => (
           <div key={i} className="bg-white border border-gray-200 rounded-xl p-5">
             <div className="flex items-start gap-3">
-              <span className="shrink-0 w-6 h-6 rounded-full bg-[#D56753] text-white flex items-center justify-center text-xs font-bold mt-0.5">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-[#D56753] text-white flex items-center justify-center text-xs font-semibold mt-0.5">
                 {i + 1}
               </span>
               <div>
-                <p className="text-sm font-bold text-[#212D40]">{action.title}</p>
+                <p className="text-sm font-semibold text-[#1A1D23]">{action.title}</p>
                 <p className="text-xs text-gray-500 leading-relaxed mt-1.5">{action.why}</p>
                 <p className="text-xs font-semibold text-[#D56753] mt-2">{action.impact}</p>
               </div>
@@ -402,7 +402,7 @@ function DemoCSAgent() {
     <div className="rounded-2xl border border-gray-200 bg-white p-6">
       <div className="flex items-center gap-2 mb-4">
         <Activity className="h-5 w-5 text-[#D56753]" />
-        <p className="text-xs font-bold uppercase tracking-wider text-[#D56753]">CS Agent Activity</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753]">CS Agent Activity</p>
       </div>
       <div className="space-y-3">
         {actions.map((a, i) => (
@@ -479,9 +479,9 @@ export default function Demo() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9"/>
               </svg>
             </div>
-            <span className="text-lg font-bold tracking-tight">alloro</span>
+            <span className="text-lg font-semibold tracking-tight">alloro</span>
           </Link>
-          <span className="text-xs font-bold uppercase tracking-widest text-white/40 bg-white/10 px-3 py-1 rounded-full">
+          <span className="text-xs font-semibold uppercase tracking-widest text-white/40 bg-white/10 px-3 py-1 rounded-full">
             Demo
           </span>
         </div>
@@ -490,7 +490,7 @@ export default function Demo() {
       <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
         {/* Greeting */}
         <div>
-          <h1 className="text-2xl font-semibold text-[#212D40]">
+          <h1 className="text-2xl font-semibold text-[#1A1D23]">
             Good morning, Dr. Hayward.
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -529,7 +529,7 @@ export default function Demo() {
 
         {/* CTA */}
         <div className="rounded-2xl bg-[#212D40] p-6 text-center text-white">
-          <p className="text-lg font-bold">This is Alloro running for 4 months.</p>
+          <p className="text-lg font-semibold">This is Alloro running for 4 months.</p>
           <p className="text-sm text-white/70 mt-2">
             From #6 to #3. From 42 reviews to 61. From blind to seeing every referral pattern in your market.
           </p>
