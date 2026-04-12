@@ -28,6 +28,7 @@ import { getPlaceDetails } from "../controllers/places/feature-services/GooglePl
 
 // Scoring config imported from single source of truth
 import { REVIEW_VOLUME_BENCHMARKS, COMPETITIVE_RADII_MILES, getScoreLabel } from "../services/businessMetrics";
+import { getAvgCaseValue, getConversionRate } from "../config/verticalProfiles";
 import { calculateClarityScore } from "../services/clarityScoring";
 import { cleanCompetitorName } from "../utils/textCleaning";
 
@@ -174,48 +175,10 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     }).catch(() => {});
     const specialty = deriveSpecialtyFromName(name, category || "");
 
-    // Specialty-aware economics: avgCaseValue per new customer/case.
-    // Sources: ADA, ASPS, AmSpa, Clio, NAR, AVMA, Housecall Pro, AICPA (2025 data).
-    // These are DEFAULTS. The settings page allows business owners to personalize.
-    // Universal: any GBP-listed business type can run a checkup.
-    const specialtyEconomics: Record<string, { avgCaseValue: number; conversionRate: number }> = {
-      // Healthcare -- per case/treatment (what the owner sees on their P&L)
-      endodontist: { avgCaseValue: 1400, conversionRate: 0.02 },        // Root canal per tooth
-      orthodontist: { avgCaseValue: 5500, conversionRate: 0.015 },      // Full treatment (braces/Invisalign)
-      "general dentist": { avgCaseValue: 275, conversionRate: 0.03 },   // Per visit (exam + services)
-      dentist: { avgCaseValue: 275, conversionRate: 0.03 },
-      chiropractor: { avgCaseValue: 65, conversionRate: 0.05 },         // Per visit (adjustment)
-      "physical therapist": { avgCaseValue: 106, conversionRate: 0.03 },// Per visit (net collections)
-      optometrist: { avgCaseValue: 475, conversionRate: 0.025 },        // Exam + optical
-      veterinarian: { avgCaseValue: 275, conversionRate: 0.03 },        // Per visit (blended)
-      "med spa": { avgCaseValue: 500, conversionRate: 0.025 },          // Per treatment (AmSpa 2024)
-      medspa: { avgCaseValue: 500, conversionRate: 0.025 },
-      dermatologist: { avgCaseValue: 350, conversionRate: 0.02 },       // Blended medical + cosmetic
-      "plastic surgeon": { avgCaseValue: 8000, conversionRate: 0.01 },  // Per procedure (ASPS)
-      "oculofacial surgeon": { avgCaseValue: 7000, conversionRate: 0.01 }, // Per procedure (blepharoplasty avg)
-      // Professional services -- per case/engagement
-      attorney: { avgCaseValue: 3500, conversionRate: 0.015 },          // Per matter (Clio 2025)
-      lawyer: { avgCaseValue: 3500, conversionRate: 0.015 },
-      accountant: { avgCaseValue: 2500, conversionRate: 0.015 },        // Annual client value
-      cpa: { avgCaseValue: 2500, conversionRate: 0.015 },
-      "financial advisor": { avgCaseValue: 5000, conversionRate: 0.01 },// Annual client (1% on $500K AUM)
-      "real estate agent": { avgCaseValue: 11500, conversionRate: 0.008 }, // Commission per transaction (NAR)
-      // Home services -- per job
-      plumber: { avgCaseValue: 475, conversionRate: 0.04 },             // Per service call (blended)
-      electrician: { avgCaseValue: 350, conversionRate: 0.04 },
-      "hvac": { avgCaseValue: 500, conversionRate: 0.035 },
-      roofer: { avgCaseValue: 9500, conversionRate: 0.015 },            // Per replacement job
-      landscaper: { avgCaseValue: 150, conversionRate: 0.04 },          // Per maintenance visit
-      "garden designer": { avgCaseValue: 7500, conversionRate: 0.02 },  // Per design project
-      "landscape designer": { avgCaseValue: 7500, conversionRate: 0.02 },
-      // Personal services -- per visit
-      barber: { avgCaseValue: 40, conversionRate: 0.08 },               // Per haircut (2025 avg)
-      "hair salon": { avgCaseValue: 75, conversionRate: 0.06 },         // Per visit (cut + color blended)
-      "auto repair": { avgCaseValue: 400, conversionRate: 0.03 },       // Per repair order
-      photographer: { avgCaseValue: 500, conversionRate: 0.02 },        // Per session (non-wedding)
-    };
+    // Specialty-aware economics from unified vertical profiles (single source of truth).
+    // Settings page allows business owners to personalize. These are defaults.
     const specKey = specialty.toLowerCase();
-    const econ = specialtyEconomics[specKey] || { avgCaseValue: 200, conversionRate: 0.03 };
+    const econ = { avgCaseValue: getAvgCaseValue(specKey), conversionRate: getConversionRate(specKey) };
 
     // Detect vocabulary for this vertical -- drives language in findings
     const vocabPreset = detectPreset(specialty, types);

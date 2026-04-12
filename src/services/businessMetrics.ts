@@ -95,65 +95,13 @@ export async function getMRRFromDB(): Promise<MRRBreakdown> {
 }
 
 // ---- Per-Specialty Benchmarks --------------------------------------------------
-// Used by clarityScoring.ts and checkup.ts. Defined here, imported everywhere.
+// Derived from verticalProfiles.ts -- the single source of truth for all verticals.
+// These maps are built at import time for backward compatibility with existing consumers.
 
-export const REVIEW_VOLUME_BENCHMARKS: Record<string, number> = {
-  endodontist: 40,
-  orthodontist: 100,
-  dentist: 100,
-  "general dentist": 100,
-  "pediatric dentist": 80,
-  periodontist: 40,
-  prosthodontist: 30,
-  "oral surgeon": 50,
-  barber: 150,
-  "med spa": 200,
-  medspa: 200,
-  "plastic surgeon": 100,
-  chiropractor: 80,
-  optometrist: 60,
-  veterinarian: 100,
-  "physical therapist": 40,
-  attorney: 30,
-  lawyer: 30,
-  accountant: 20,
-  cpa: 20,
-  "hair salon": 150,
-  plumber: 50,
-  electrician: 50,
-  hvac: 50,
-  roofer: 30,
-  landscaper: 40,
-  "garden designer": 20,
-  "landscape designer": 20,
-  "auto repair": 60,
-  "financial advisor": 20,
-  "real estate agent": 40,
-};
+import { buildReviewBenchmarksMap, buildCompetitiveRadiiMap } from "../config/verticalProfiles";
 
-// Per-specialty competitive search radii (miles)
-export const COMPETITIVE_RADII_MILES: Record<string, number> = {
-  barber: 5,
-  chiropractor: 5,
-  dentist: 10,
-  "general dentist": 10,
-  "hair salon": 10,
-  optometrist: 10,
-  "physical therapist": 10,
-  veterinarian: 10,
-  "pediatric dentist": 10,
-  orthodontist: 15,
-  "med spa": 15,
-  medspa: 15,
-  endodontist: 25,
-  periodontist: 25,
-  "oral surgeon": 25,
-  "garden designer": 25,
-  "landscape designer": 25,
-  "plastic surgeon": 40,
-  "oculofacial surgeon": 75,
-  prosthodontist: 75,
-};
+export const REVIEW_VOLUME_BENCHMARKS: Record<string, number> = buildReviewBenchmarksMap();
+export const COMPETITIVE_RADII_MILES: Record<string, number> = buildCompetitiveRadiiMap();
 
 // Score label thresholds (used by clarity scoring and checkup)
 export function getScoreLabel(score: number): string {
