@@ -17,6 +17,8 @@ import { apiGet } from "@/api/index";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 import WarmEmptyState, { WARM_STATES } from "@/components/dashboard/WarmEmptyState";
 import ProgressStory from "@/components/dashboard/ProgressStory";
+import BlurGate from "@/components/dashboard/BlurGate";
+import { useSubscriptionGate } from "@/hooks/useSubscriptionGate";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -61,6 +63,7 @@ interface ProofOfWorkData {
 export default function ProgressReport() {
   const { userProfile } = useAuth();
   const { selectedLocation } = useLocationContext();
+  const { locked, onSubscribe } = useSubscriptionGate();
   const orgId = userProfile?.organizationId || null;
   const [showUploadModal, setShowUploadModal] = useState(false);
 
@@ -314,7 +317,8 @@ export default function ProgressReport() {
           );
         })()}
 
-        {/* Reading Trends */}
+        {/* Reading Trends (gated after trial) */}
+        <BlurGate locked={locked} featureName="Progress tracking" onSubscribe={onSubscribe}>
         {trends.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -536,6 +540,8 @@ export default function ProgressReport() {
             </div>
           </motion.div>
         )}
+
+        </BlurGate>
 
         {/* Upload Section -- unlock deeper intelligence */}
         <div className="mt-10 pl-4 border-l-2 border-[#1A1D23]/20">

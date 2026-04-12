@@ -20,6 +20,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocationContext } from "@/contexts/locationContext";
 import { getPriorityItem } from "@/hooks/useLocalStorage";
 import WarmEmptyState from "@/components/dashboard/WarmEmptyState";
+import BlurGate from "@/components/dashboard/BlurGate";
+import { useSubscriptionGate } from "@/hooks/useSubscriptionGate";
 
 
 // ─── Collapsible Section ────────────────────────────────────────────
@@ -83,6 +85,7 @@ export default function ComparePage() {
 function ComparePageInner() {
   const { userProfile } = useAuth();
   const { selectedLocation } = useLocationContext();
+  const { locked, onSubscribe } = useSubscriptionGate();
   const orgId = userProfile?.organizationId || null;
 
   const { data: rankingRaw } = useQuery<any>({
@@ -162,7 +165,8 @@ function ComparePageInner() {
           )}
         </motion.div>
 
-        {/* Side-by-Side Comparison */}
+        {/* Side-by-Side Comparison (gated after trial) */}
+        <BlurGate locked={locked} featureName="Competitive intelligence" onSubscribe={onSubscribe}>
         {competitorName && (
           <Section title="You vs Your Top Competitor" defaultOpen={true}>
             <div className="overflow-x-auto">
@@ -458,6 +462,8 @@ function ComparePageInner() {
           })()}
         </Section>
 
+
+        </BlurGate>
 
         {/* PMS Upload Modal */}
       </div>
