@@ -25,11 +25,9 @@
 
 import { db } from "../database/connection";
 import { cleanCompetitorName } from "../utils/textCleaning";
-// NOTE: compareReviewSentiment intentionally NOT imported here.
-// It calls the Claude API + Google Places API, which is too expensive
-// for every Home page load. Sentiment gap detection should be pre-computed
-// at checkup scan time and stored in a column. Until that cache exists,
-// checkSentimentSurprise returns null.
+// Sentiment gap now reads from pre-computed cache in checkup_data.sentimentComparison.
+// No Claude API calls on page load. Cache is populated by GET /api/user/review-sentiment
+// (7-day TTL) and refreshed weekly.
 
 export interface OzEngineResult {
   headline: string;
@@ -203,17 +201,39 @@ async function buildOrgSnapshot(orgId: number): Promise<OrgSnapshot | null> {
 
 // ── Signal 1: Sentiment Surprise (highest possible surprise) ──────────
 //
-// DISABLED for real-time use. compareReviewSentiment calls Claude API +
-// Google Places on every invocation. Running it per page load would add
-// 3-10s latency and significant API cost.
-//
-// TODO: Pre-compute sentiment gaps at checkup scan time, store in a
-// `sentiment_gap` column on organizations or weekly_ranking_snapshots,
-// then read that column here. Until then, this returns null.
-//
+// Reads from pre-computed cache in checkup_data.sentimentComparison.
+// Cache populated by GET /api/user/review-sentiment (7-day TTL).
+// Zero API calls on page load.
 
-async function checkSentimentSurprise(_s: OrgSnapshot): Promise<OzEngineResult | null> {
-  return null;
+async function checkSentimentSurprise(s: OrgSnapshot): Promise<OzEngineResult | null> {
+  try {
+    const org = await db("organizations").where({ id: s.orgId }).first();
+    if (!org?.checkup_data) return null;
+
+    const cd = typeof org.checkup_data === "string"
+      ? tryParse(org.checkup_data) : org.checkup_data;
+
+    const cached = cd?.sentimentComparison;
+    if (!cached?.data?.insight || !cached?.data?.gaps?.length) return null;
+
+    const comparison = cached.data;
+    const topGap = comparison.gaps[0];
+
+    return {
+      headline: comparison.insight,
+      context: topGap?.exampleQuote
+        ? `Patients say "${topGap.exampleQuote}" about ${comparison.competitorName}. Your reviews don't mention "${topGap.theme}." That's the gap Google's AI reads.`
+        : `${comparison.competitorName} is known for "${topGap.theme}" but your patients never mention it. Alloro found this by reading both sets of reviews side by side.`,
+      status: "critical",
+      verifyUrl: s.googleSearchUrl,
+      surprise: 10,
+      actionText: "See the comparison",
+      actionUrl: "/reviews",
+      signalType: "sentiment_gap",
+    };
+  } catch {
+    return null;
+  }
 }
 
 // ── Signal 2: Referral Drift ──────────────────────────────────────────
