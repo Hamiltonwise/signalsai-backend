@@ -20,6 +20,7 @@ import EntryScreen from "./pages/checkup/EntryScreen";
 import ScanningTheater from "./pages/checkup/ScanningTheater";
 import ResultsScreen from "./pages/checkup/ResultsScreen";
 import BuildingScreen from "./pages/checkup/BuildingScreen";
+import UploadPrompt from "./pages/checkup/UploadPrompt";
 import ColleagueShare from "./pages/checkup/ColleagueShare";
 
 // --- Lazy-loaded page imports ---
@@ -235,6 +236,7 @@ function App() {
                 <Route path="results" element={<ResultsScreen />} />
                 <Route path="building" element={<BuildingScreen />} />
               </Route>
+              <Route path="/checkup/upload-prompt" element={<UploadPrompt />} />
               <Route path="/checkup/shared/:shareId" element={<SharedResults />} />
               <Route path="/checkup/share" element={<ColleagueShare />} />
               <Route path="/clarity/:id" element={<ClarityCard />} />

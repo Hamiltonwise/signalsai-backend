@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, Navigate, useNavigate } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
-import { isConferenceMode, clearFlowParams } from "./conferenceFallback";
+import { clearFlowParams } from "./conferenceFallback";
 
 /**
  * /checkup/building -- transition after account creation.
@@ -54,8 +54,7 @@ export default function BuildingScreen() {
   // Navigate forward after the confirmation moment
   useEffect(() => {
     if (!ready) return;
-    const conference = isConferenceMode();
-    const destination = conference ? "/checkup/share" : "/checkup/share";
+    const destination = "/checkup/upload-prompt";
     const timer = setTimeout(() => {
       clearFlowParams();
       navigate(destination, {
