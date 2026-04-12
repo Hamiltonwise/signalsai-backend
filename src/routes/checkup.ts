@@ -15,7 +15,7 @@ import { generateToken } from "../controllers/auth-otp/feature-services/service.
 import { sendCheckupResultEmail } from "../emails/templates/CheckupResultEmail";
 import { sendWelcomeCheckupEmail } from "../emails/templates/WelcomeCheckupEmail";
 import { BehavioralEventModel } from "../models/BehavioralEventModel";
-import { analyzeReviewSentiment } from "../services/reviewSentiment";
+import { analyzeReviewSentiment, compareReviewSentiment } from "../services/reviewSentiment";
 import { generateOzMoments, type OzMoment } from "../services/ozMoment";
 import { generateSurpriseFindings, type SurpriseFinding } from "../services/surpriseFindings";
 import { extractReviewThemes, type ThemeExtractionResult } from "../services/reviewThemeExtractor";
@@ -1043,14 +1043,15 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
     // Review response gap (we can detect this from review data)
     // This one really feels like mind-reading: "you haven't responded to your reviews"
 
-    // ─── AI Analysis: Sentiment + Oz Moments + Review Themes (parallel, non-blocking) ───
+    // ─── AI Analysis: Sentiment + Oz Moments + Review Themes + Deep Comparison (parallel, non-blocking) ───
     let sentimentInsight = null;
     let ozMoments: OzMoment[] = [];
     let reviewThemes: ThemeExtractionResult | null = null;
+    let sentimentComparison: any = null;
 
     if (placeId) {
-      // Run sentiment, Oz moments, and theme extraction in parallel (zero added latency)
-      const [sentimentResult, ozResult, themeResult] = await Promise.allSettled([
+      // Run sentiment, Oz moments, theme extraction, and deep comparison in parallel (zero added latency)
+      const [sentimentResult, ozResult, themeResult, comparisonResult] = await Promise.allSettled([
         analyzeReviewSentiment(
           placeId,
           name,
@@ -1098,6 +1099,22 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
           name,
           specialty,
         ),
+        // Deep sentiment comparison: the "how did they know that?" moment for the checkup
+        // This powers the Reviews page insight section and becomes the #1 conversion driver.
+        // Runs in parallel with everything else, zero added latency.
+        topCompetitor?.placeId
+          ? compareReviewSentiment({
+              clientPlaceId: placeId,
+              clientName: name,
+              clientReviews: googleReviews.map((r: any) => ({
+                text: r.text?.text || r.originalText?.text || r.text || "",
+                rating: r.rating || 5,
+                authorName: r.authorAttribution?.displayName || r.author_name || "A customer",
+              })),
+              competitorPlaceId: topCompetitor.placeId,
+              competitorName: topCompetitor.name,
+            })
+          : Promise.resolve(null),
       ]);
 
       if (sentimentResult.status === "fulfilled" && sentimentResult.value) {
@@ -1117,6 +1134,10 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
 
       if (themeResult.status === "fulfilled" && themeResult.value) {
         reviewThemes = themeResult.value;
+      }
+
+      if (comparisonResult.status === "fulfilled" && comparisonResult.value) {
+        sentimentComparison = comparisonResult.value;
       }
     }
 
@@ -1233,6 +1254,8 @@ checkupRoutes.post("/analyze", analyzeLimiter, scraperDetection, async (req, res
       competitorLabel: (isOnlySpecialist && isReferralBased) ? "Referral Sources" : "Competitors",
       findings,
       sentimentInsight: sentimentInsight || null,
+      // Deep sentiment comparison: themes, gaps, citations. The Oz moment for conversion.
+      sentimentComparison: sentimentComparison || null,
       ozMoments: ozMoments.length > 0 ? ozMoments : undefined,
       // Only HIGH confidence surprise findings in checkup (zero false positives).
       // MEDIUM confidence findings saved for Monday email after trust is built.
@@ -1602,7 +1625,17 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
           checkupUpdates.previous_clarity_score = checkup_score;
           checkupUpdates.score_updated_at = new Date();
         }
-        if (checkup_data) checkupUpdates.checkup_data = JSON.stringify(checkup_data);
+        if (checkup_data) {
+          // Inject sentiment comparison from checkup if the frontend passed it through.
+          // This ensures the dashboard Reviews page has data immediately post-signup.
+          if (checkup_data.sentimentComparison && !checkup_data.sentimentComparison?.cachedAt) {
+            checkup_data.sentimentComparison = {
+              data: checkup_data.sentimentComparison,
+              cachedAt: new Date().toISOString(),
+            };
+          }
+          checkupUpdates.checkup_data = JSON.stringify(checkup_data);
+        }
         if (checkup_data?.topCompetitor?.name) {
           checkupUpdates.top_competitor_name = cleanCompetitorName(checkup_data.topCompetitor.name);
         }
