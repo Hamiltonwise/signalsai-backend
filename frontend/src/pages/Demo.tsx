@@ -169,6 +169,21 @@ const DEMO_OWNERS: Record<string, string> = {
   chiropractor: "Dr. Mitchell",
 };
 
+// Intelligence mode per vertical -- determines which demo sections render
+const DEMO_INTELLIGENCE_MODE: Record<string, "referral_based" | "direct_acquisition" | "hybrid"> = {
+  plumber: "direct_acquisition",
+  restaurant: "direct_acquisition",
+  attorney: "hybrid",
+  medspa: "hybrid",
+  chiropractor: "referral_based",
+};
+
+function useDemoIntelligenceMode(): "referral_based" | "direct_acquisition" | "hybrid" {
+  const [params] = useSearchParams();
+  const verticalKey = params.get("vertical")?.toLowerCase() || "";
+  return DEMO_INTELLIGENCE_MODE[verticalKey] || "referral_based";
+}
+
 const REFERRING_GPS = [
   { name: "Dr. Sarah Chen", practice: "Chen Family Practice", referrals: 18, trend: "up" as const, trendLabel: "+3 vs last quarter", lastReferral: "5 days ago", status: "active" as const },
   { name: "Dr. Marcus Webb", practice: "Webb Group", referrals: 12, trend: "flat" as const, trendLabel: "Same as last quarter", lastReferral: "12 days ago", status: "active" as const },
@@ -224,6 +239,25 @@ function DemoHeader() {
 }
 
 function SignalBanner() {
+  const p = useDemoPractice();
+  const mode = useDemoIntelligenceMode();
+
+  // Referral-based verticals: GP drift alert
+  const referralSignal = {
+    headline: "Dr. Torres referred 8 clients last quarter. She hasn't referred in 40 days.",
+    detail: "Estimated $14,000 at risk. Alloro flagged this before it became invisible.",
+    status: "red" as const,
+  };
+
+  // Direct acquisition verticals: competitor move alert
+  const directSignal = {
+    headline: `${p.competitorName} added 14 reviews this week. You added 2.`,
+    detail: `At this pace, they widen the gap by ${14 * 4} reviews per month. Every review they add pushes you further down in local search.`,
+    status: "red" as const,
+  };
+
+  const signal = mode === "direct_acquisition" ? directSignal : referralSignal;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -233,16 +267,12 @@ function SignalBanner() {
     >
       <div className="flex items-start gap-4">
         <div className="mt-0.5">
-          <div className={`w-3 h-3 rounded-full ring-4 bg-red-500 ring-red-500/20`} />
+          <div className="w-3 h-3 rounded-full ring-4 bg-red-500 ring-red-500/20" />
         </div>
         <div>
           <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">This Week</p>
-          <p className="text-sm font-semibold text-[#1A1D23]">
-            Dr. Torres referred 8 clients last quarter. She hasn't referred in 40 days.
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            Estimated $14,000 at risk. Alloro flagged this before it became invisible.
-          </p>
+          <p className="text-sm font-semibold text-[#1A1D23]">{signal.headline}</p>
+          <p className="text-sm text-gray-500 mt-1">{signal.detail}</p>
         </div>
       </div>
     </motion.div>
@@ -487,6 +517,19 @@ function WeeklyTasks() {
 }
 
 function AgentActivity() {
+  const p = useDemoPractice();
+  const mode = useDemoIntelligenceMode();
+
+  const directActions = [
+    { time: "2h ago", text: `Detected ${p.competitorName} added 3 new photos to their Google profile. You have fewer photos.`, type: "alert" },
+    { time: "Yesterday", text: "Sent review request to 3 recent customers. 1 review received (5 stars).", type: "success" },
+    { time: "2 days ago", text: `${p.competitorName} updated their business hours to include Saturday. Your profile shows closed.`, type: "alert" },
+    { time: "3 days ago", text: `Weekly ranking scan complete. Position held at #${p.rank}. Score improved +2 to ${p.score}.`, type: "info" },
+    { time: "Last week", text: `New 1-star review detected. Drafted a response for your approval.`, type: "alert" },
+  ];
+
+  const actions = mode === "direct_acquisition" ? directActions : CS_ACTIONS;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -499,7 +542,7 @@ function AgentActivity() {
         <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Alloro is Working</p>
       </div>
       <div className="space-y-3">
-        {CS_ACTIONS.map((a, i) => (
+        {actions.map((a, i) => (
           <div key={i} className="flex items-start gap-3">
             <span className={`mt-1.5 shrink-0 w-2 h-2 rounded-full ${
               a.type === "alert" ? "bg-red-400" : a.type === "success" ? "bg-emerald-400" : "bg-blue-400"
@@ -576,12 +619,22 @@ function ProgressReport() {
 
 function Next90() {
   const p = useDemoPractice();
+  const mode = useDemoIntelligenceMode();
   const gap = p.competitorReviews - p.reviews;
-  const actions = [
+
+  const referralActions = [
     { title: `Collect 3 Google reviews per week for ${Math.min(Math.ceil(gap / 3), 12)} weeks`, why: `At 3/week you close the gap with ${p.competitorName} by ${Math.min(gap, 36)} reviews. Combined with your higher engagement rate, that moves you from #${p.rank} to #${Math.max(p.rank - 1, 1)}.`, impact: `Projected move to #${Math.max(p.rank - 1, 1)} position` },
     { title: "Re-engage Dr. Torres, she hasn't referred in 40 days", why: "Torres sent 13 clients last quarter. At $1,750 per case, that is $22,750 at risk. A lunch meeting costs $50.", impact: "$22,750 estimated quarterly revenue at risk" },
     { title: `Add 10 new photos to GBP`, why: `${p.competitorName} has significantly more photos. Businesses with 20+ photos get 35% more website clicks from Google.`, impact: "5 to 10 point score improvement" },
   ];
+
+  const directActions = [
+    { title: `Collect 3 Google reviews per week for ${Math.min(Math.ceil(gap / 3), 12)} weeks`, why: `At 3/week you close the gap with ${p.competitorName} by ${Math.min(gap, 36)} reviews. Review count is the strongest local ranking signal.`, impact: `Projected move to #${Math.max(p.rank - 1, 1)} position` },
+    { title: "Respond to every review within 24 hours", why: `Businesses that respond to all reviews earn 35% more revenue. ${p.competitorName} responds to 80% of theirs. Match or beat that.`, impact: "Higher conversion rate from Google searches" },
+    { title: `Add 10 new photos to GBP`, why: `${p.competitorName} has significantly more photos. Businesses with 20+ photos get 35% more website clicks from Google.`, impact: "5 to 10 point score improvement" },
+  ];
+
+  const actions = mode === "direct_acquisition" ? directActions : referralActions;
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -660,10 +713,12 @@ export default function Demo() {
     );
   }
 
-  // Resolve owner name from vertical param or default
+  // Resolve owner name and intelligence mode from vertical param
   const [searchParams] = useSearchParams();
   const verticalKey = searchParams.get("vertical")?.toLowerCase() || "";
   const ownerName = DEMO_OWNERS[verticalKey] || "Dr. Hayward";
+  const demoMode = DEMO_INTELLIGENCE_MODE[verticalKey] || "referral_based";
+  const showReferralNetwork = demoMode !== "direct_acquisition";
 
   // Fallback: premium demo page (no seeded account)
   return (
@@ -698,8 +753,8 @@ export default function Demo() {
         {/* Ranking trajectory */}
         <RankingTrajectory />
 
-        {/* Referral network */}
-        <ReferralNetwork />
+        {/* Referral network -- only for referral_based/hybrid verticals */}
+        {showReferralNetwork && <ReferralNetwork />}
 
         {/* Weekly tasks */}
         <WeeklyTasks />
