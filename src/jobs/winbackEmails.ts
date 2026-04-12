@@ -72,7 +72,7 @@ Corey`;
       const name = org.owner_first_name || "there";
       return `${name},
 
-Your competitors didn't stop when you left. We're still watching your market (your data is preserved for another 76 days).
+Your data is still preserved for another 76 days. Your market has kept moving since you left.
 
 If you want to see what changed, it takes one click:
 ${APP_URL}/settings/billing
@@ -153,14 +153,9 @@ Corey`;
       const name = org.owner_first_name || "there";
       return `${name},
 
-Quick update on what's changed since you were last here:
+Quick update: we've been improving the product since you were last here. Your competitive data and market insights are still preserved.
 
-- Oz Intelligence: we now surface competitive insights you didn't know existed
-- Shareable Score Cards: see how you compare, share with colleagues
-- Faster scans: results in under 10 seconds
-- Pause option: freeze your account up to 3 months instead of cancelling
-
-Your data is preserved for another 30 days:
+Your data is available for another 30 days:
 ${APP_URL}/settings/billing
 
 Corey`;

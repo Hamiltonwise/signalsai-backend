@@ -159,7 +159,7 @@ export async function classifyOrgHealth(orgId: number): Promise<OrgHealth | null
               if (emailWebhook) {
                 const firstName = user.first_name || "there";
                 const subject = `${firstName}, something changed in your market this week`;
-                const body = `${firstName},\n\nYour market moved while you were away. We caught something specific about your competitive position that you should see before Monday.\n\nIt takes 60 seconds: ${process.env.APP_URL || "https://app.getalloro.com"}/dashboard\n\nIf any of this is off, reply. I read every reply personally.\n\nCorey`;
+                const body = `${firstName},\n\nIt's been a while since you checked in. Your dashboard has fresh data from this week's market scan.\n\nIt takes 60 seconds: ${process.env.APP_URL || "https://app.getalloro.com"}/dashboard\n\nIf any of this is off, reply. I read every reply personally.\n\nCorey`;
 
                 await fetch(emailWebhook, {
                   method: "POST",

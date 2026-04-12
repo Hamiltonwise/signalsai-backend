@@ -213,7 +213,7 @@ export async function sendMondayEmailForOrg(
     firstWeekBody += "Alloro is now monitoring your market. Next Monday, you'll see what changed.";
 
     // 5-minute fix for first week (never reference dashboard for first-week users)
-    const firstWeekFix = "5-MINUTE FIX: Open your Google Business Profile and make sure your hours, photos, and services are complete. Complete profiles are 2.7x more reputable to Google.";
+    const firstWeekFix = "5-MINUTE FIX: Open your Google Business Profile and make sure your hours, photos, and services are complete. Complete profiles consistently rank higher in local search.";
     firstWeekBody += `\n\n${firstWeekFix}`;
 
     const hasLoggedInFirst = !!(user.last_login_at || user.first_login_at);
@@ -236,7 +236,7 @@ export async function sendMondayEmailForOrg(
         dollarFigure: 0, // Known 4: no fabricated dollar figures
         actionText: firstWeekAction,
         rankingUpdate: market.city ? `Tracking your market in ${market.city}` : "Your market data is being collected",
-        competitorNote: topComp ? stripEmDashes(`The leading practice in your market has ${topComp.reviewCount || "unknown"} reviews`) : "",
+        competitorNote: topComp ? stripEmDashes(`The leading business in your market has ${topComp.reviewCount || "unknown"} reviews`) : "",
         referralLine: null,
         readings: [], // First week: no readings yet
         founderLine,

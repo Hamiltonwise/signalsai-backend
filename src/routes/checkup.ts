@@ -20,6 +20,8 @@ import { generateOzMoments, type OzMoment } from "../services/ozMoment";
 import { generateSurpriseFindings, type SurpriseFinding } from "../services/surpriseFindings";
 import { extractReviewThemes, type ThemeExtractionResult } from "../services/reviewThemeExtractor";
 import { db } from "../database/connection";
+import { authenticateToken } from "../middleware/auth";
+import { rbacMiddleware } from "../middleware/rbac";
 import { getMindsQueue } from "../workers/queues";
 import { detectPreset } from "../services/vocabularyAutoMapper";
 import { attributeCheckupToOrg } from "../services/firstPatientAttribution";
@@ -1965,7 +1967,7 @@ checkupRoutes.post("/create-account", checkupCreateAccountLimiter, async (req, r
  * PATCH /api/checkup/first-login
  * Sets first_login_at on the org if not already set. Requires auth.
  */
-checkupRoutes.patch("/first-login", async (req: any, res) => {
+checkupRoutes.patch("/first-login", authenticateToken, rbacMiddleware, async (req: any, res) => {
   try {
     const orgId = req.organizationId;
     if (!orgId) return res.status(401).json({ success: false, error: "Auth required" });
@@ -1986,7 +1988,7 @@ checkupRoutes.patch("/first-login", async (req: any, res) => {
  * PATCH /api/checkup/ttfv
  * Records TTFV response. Body: { response: 'yes' | 'not_yet' }
  */
-checkupRoutes.patch("/ttfv", async (req: any, res) => {
+checkupRoutes.patch("/ttfv", authenticateToken, rbacMiddleware, async (req: any, res) => {
   try {
     const orgId = req.organizationId;
     if (!orgId) return res.status(401).json({ success: false, error: "Auth required" });
@@ -2017,7 +2019,7 @@ checkupRoutes.patch("/ttfv", async (req: any, res) => {
  * PATCH /api/checkup/billing-prompt-shown
  * Sets billing_prompt_shown_at so it doesn't show again.
  */
-checkupRoutes.patch("/billing-prompt-shown", async (req: any, res) => {
+checkupRoutes.patch("/billing-prompt-shown", authenticateToken, rbacMiddleware, async (req: any, res) => {
   try {
     const orgId = req.organizationId;
     if (!orgId) return res.status(401).json({ success: false, error: "Auth required" });
@@ -2037,7 +2039,7 @@ checkupRoutes.patch("/billing-prompt-shown", async (req: any, res) => {
  * GET /api/checkup/ttfv-status
  * Returns TTFV state for the authenticated org.
  */
-checkupRoutes.get("/ttfv-status", async (req: any, res) => {
+checkupRoutes.get("/ttfv-status", authenticateToken, rbacMiddleware, async (req: any, res) => {
   try {
     const orgId = req.organizationId;
     if (!orgId) return res.status(401).json({ success: false, error: "Auth required" });

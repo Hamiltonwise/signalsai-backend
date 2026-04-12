@@ -49,7 +49,7 @@ export async function sendReviewRequestEmail(data: ReviewRequestEmailData) {
     </div>
     <div style="padding: 24px 0; border-top: 1px solid ${BRAND_COLORS.border};">
       <p style="font-size: 13px; color: ${BRAND_COLORS.mediumGray}; margin: 0;">
-        ${data.ownerName ? `— ${data.ownerName}, ${data.businessName}` : `— ${data.businessName}`}
+        ${data.ownerName ? `${data.ownerName}, ${data.businessName}` : data.businessName}
       </p>
     </div>
   `;

@@ -633,7 +633,8 @@ export default function ResultsScreen() {
             agreedToTerms,
             checkup_score: score.composite,
             session_id: getSessionId(),
-            source_channel: getSourceChannel() || new URLSearchParams(window.location.search).get("ref") || undefined,
+            source_channel: getSourceChannel() || undefined,
+            ref_code: state.refCode || new URLSearchParams(window.location.search).get("ref") || undefined,
             // Target competitor: the client's answer to "who do you want to beat?"
             target_competitor: selectedCompetitor || undefined,
             checkup_data: {

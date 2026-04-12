@@ -281,7 +281,7 @@ export async function sendMondayBriefEmail(data: MondayBriefData): Promise<boole
           <td style="padding: 24px;">
             <p style="margin: 0 0 8px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: ${COLORS.terracotta};">Your Review Link</p>
             <p style="margin: 0 0 12px; font-size: 14px; color: ${COLORS.textPrimary}; line-height: 1.5;">
-              Text this to your last 3 patients. One tap, straight to Google reviews.
+              Text this to your last 3 customers. One tap, straight to Google reviews.
             </p>
             <div style="margin: 0 0 12px; padding: 12px 16px; background: ${COLORS.pageBg}; border-radius: 8px; text-align: center;">
               <a href="${data.reviewLink}" style="font-size: 15px; font-weight: 600; color: ${COLORS.terracotta}; text-decoration: none; word-break: break-all;">

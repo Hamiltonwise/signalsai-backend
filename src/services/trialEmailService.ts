@@ -95,7 +95,7 @@ async function buildContext(orgId: number): Promise<TrialEmailContext | null> {
   return {
     org,
     email: user.email,
-    practiceName: org.name || "your practice",
+    practiceName: org.name || "your business",
     score: org.checkup_score,
     competitorName: org.top_competitor_name || latestSnapshot?.competitor_name || null,
     reviewCount,
@@ -185,7 +185,7 @@ export async function sendTrialDay3(orgId: number): Promise<void> {
           Who is the GP that sends you the most referrals?
         </p>
         <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin: 0;">
-          Just reply to this email with their name and practice. We will add them
+          Just reply to this email with their name and business. We will add them
           to your intelligence dashboard and track how they compare to other
           referral sources in your area.
         </p>
