@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { uploadPMSData } from "../../api/pms";
 import { PMSManualEntryModal } from "./PMSManualEntryModal";
+import { useVocab } from "../../contexts/vocabularyContext";
 
 interface PMSUploadWizardModalProps {
   isOpen: boolean;
@@ -27,12 +28,12 @@ type UploadStatus = "idle" | "success" | "error";
 
 const ALORO_ORANGE = "#C9765E";
 
-// Sample data for the example table
+// Sample data for the example table -- universal, not dental-specific
 const SAMPLE_DATA = [
-  { date: "1/1/26", practice: "Sample Medical Practice", source: "Dr. Sarah Lewis", production: "$180" },
+  { date: "1/1/26", practice: "Partner Business", source: "Sarah Lewis", production: "$180" },
   { date: "1/2/26", practice: "Self Referral", source: "Google", production: "$220" },
   { date: "1/3/26", practice: "Self Referral", source: "Website", production: "$150" },
-  { date: "1/4/26", practice: "Sample Medical Practice", source: "Dr. James Patel", production: "$190" },
+  { date: "1/4/26", practice: "Partner Business", source: "James Patel", production: "$190" },
 ];
 
 export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
@@ -42,6 +43,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
   locationId,
   onSuccess,
 }) => {
+  const vocab = useVocab();
   const [step, setStep] = useState<WizardStep>("gate");
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -57,7 +59,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processingStorageKey = useMemo(
-    () => `pmsProcessing:${clientId || "artfulorthodontics.com"}`,
+    () => `pmsProcessing:${clientId || "default"}`,
     [clientId]
   );
 
@@ -139,7 +141,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
         );
 
         showUploadToast(
-          "PMS export received!",
+          "Data received!",
           "Referral insights loading on dashboard"
         );
 
@@ -342,7 +344,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                 transition={{ delay: 0.2 }}
                 className="text-xl font-semibold text-slate-900 mb-2"
               >
-                We found {instantFinding.totalRecords.toLocaleString()} referral records.
+                We found {instantFinding.totalRecords.toLocaleString()} records.
               </motion.h4>
               {instantFinding.topSource && (
                 <motion.p
@@ -353,7 +355,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                 >
                   Your top source: <span className="font-semibold text-[#D56753]">{instantFinding.topSource}</span>
                   {instantFinding.topSourceCount && (
-                    <>, {instantFinding.topSourceCount} case{instantFinding.topSourceCount !== 1 ? "s" : ""}</>
+                    <>, {instantFinding.topSourceCount} {vocab.caseType}{instantFinding.topSourceCount !== 1 ? "s" : ""}</>
                   )}
                   .
                 </motion.p>
@@ -410,10 +412,10 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-slate-50/50">
-              <th className="px-2 py-1.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Referral Date</th>
-              <th className="px-2 py-1.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Referring Practice</th>
-              <th className="px-2 py-1.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Referring Source</th>
-              <th className="px-2 py-1.5 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">Production</th>
+              <th className="px-2 py-1.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Date</th>
+              <th className="px-2 py-1.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Source</th>
+              <th className="px-2 py-1.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Contact</th>
+              <th className="px-2 py-1.5 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">Revenue</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -458,14 +460,14 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                 className="flex-1"
               >
                 <h2 className="text-xl font-semibold text-slate-900">
-                  {step === "gate" && "Upload Referral Report"}
+                  {step === "gate" && "Upload Your Data"}
                   {step === "direct-upload" && "Upload Your Report"}
                   {step === "alternatives" && "Alternative Options"}
                   {step === "template-upload" && "Upload Completed Template"}
                 </h2>
                 <p className="text-sm text-slate-500 mt-0.5">
-                  {step === "gate" && "Check if your PMS can export the required data"}
-                  {step === "direct-upload" && "Download the report from your PMS and upload it"}
+                  {step === "gate" && "Check if your system can export the required data"}
+                  {step === "direct-upload" && "Download the report from your system and upload it"}
                   {step === "alternatives" && "Choose how you'd like to provide your data"}
                   {step === "template-upload" && "Upload the filled-in template"}
                 </p>
@@ -492,7 +494,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                     className="space-y-5"
                   >
                     <p className="text-slate-600">
-                      Does your PMS allow you to export a report with these fields?
+                      Does your system allow you to export a report with these fields?
                     </p>
 
                     {/* Example Table */}

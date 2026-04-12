@@ -107,7 +107,7 @@ export default function ColleagueShare() {
             You're not the only one wondering.
           </h1>
           <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
-            A colleague at the next booth is asking the same question. Send them the link, 60 seconds, and they'll see where they stand too.
+            A colleague is probably asking the same question. Send them the link, 60 seconds, and they'll see where they stand too.
           </p>
         </div>
 

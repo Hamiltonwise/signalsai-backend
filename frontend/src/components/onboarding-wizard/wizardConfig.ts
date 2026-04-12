@@ -32,14 +32,14 @@ export interface WizardStep {
 }
 
 export const WIZARD_STEPS: WizardStep[] = [
-  // ========== PRACTICE HUB (Dashboard) ==========
+  // ========== YOUR HUB (Dashboard) ==========
   {
     id: "dashboard-overview",
     page: "dashboard",
     targetSelector: null,
-    title: "Welcome to Practice Hub",
+    title: "Welcome to Your Hub",
     description:
-      "This is your command center. Get a quick snapshot of your practice's health, see what's working, and identify opportunities for growth.",
+      "This is your command center. Get a quick snapshot of your business health, see what's working, and identify opportunities for growth.",
     isPageOverview: true,
   },
   {
@@ -48,16 +48,16 @@ export const WIZARD_STEPS: WizardStep[] = [
     targetSelector: "[data-wizard-target='dashboard-hero']",
     title: "Personalized Insights",
     description:
-      "Every time you log in, you'll see a personalized greeting with the latest update on your practice's trajectory and growth status.",
+      "Every time you log in, you'll see a personalized greeting with the latest update on your business trajectory and growth status.",
     scrollToElement: true,
   },
   {
     id: "dashboard-metrics",
     page: "dashboard",
     targetSelector: "[data-wizard-target='dashboard-metrics']",
-    title: "Monthly Practice Totals",
+    title: "Monthly Business Totals",
     description:
-      "Track your key metrics at a glance: new patient starts, referrals, production value, and market coverage. Trends show month-over-month changes.",
+      "Track your key metrics at a glance: new customers, referrals, revenue, and market coverage. Trends show month-over-month changes.",
     scrollToElement: true,
   },
   {
@@ -93,7 +93,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     targetSelector: "[data-wizard-target='dashboard-growth']",
     title: "Strategic Growth Opportunities",
     description:
-      "Your top 3 fixes to maximize revenue. Each recommendation is based on your practice's actual data and industry benchmarks.",
+      "Your top 3 fixes to maximize revenue. Each recommendation is based on your actual data and industry benchmarks.",
     scrollToElement: true,
   },
 
@@ -104,7 +104,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     targetSelector: null,
     title: "Welcome to Referrals Hub",
     description:
-      "This is where you track where your patients come from. Upload your PMS data and we'll analyze your referral patterns and revenue attribution.",
+      "This is where you track where your customers come from. Upload your data and we'll analyze your referral patterns and revenue attribution.",
     isPageOverview: true,
   },
   {
@@ -113,7 +113,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     targetSelector: "[data-wizard-target='pms-attribution']",
     title: "Referral Analysis",
     description:
-      "See your year-to-date production split between marketing (self-referrals) and doctor referrals. Track total referrals synced from your PMS.",
+      "See your year-to-date revenue split between marketing (self-referrals) and partner referrals. Track total referrals synced from your data.",
     scrollToElement: true,
   },
   {
@@ -122,7 +122,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     targetSelector: "[data-wizard-target='pms-velocity']",
     title: "Referral Activity",
     description:
-      "Monthly breakdown of your referral sources. Orange bars show marketing/self-referrals, navy bars show doctor referrals.",
+      "Monthly breakdown of your referral sources. Orange bars show marketing/self-referrals, navy bars show partner referrals.",
     scrollToElement: true,
   },
   {
@@ -138,9 +138,9 @@ export const WIZARD_STEPS: WizardStep[] = [
     id: "pms-upload",
     page: "pmsStatistics",
     targetSelector: "[data-wizard-target='pms-upload']",
-    title: "Upload Your PMS Data",
+    title: "Upload Your Data",
     description:
-      "This is where you'll upload your practice management data. Drop a CSV file or manually enter your referral data to start getting insights.",
+      "This is where you'll upload your business data. Drop a CSV file or manually enter your referral data to start getting insights.",
     scrollToElement: true,
   },
 
@@ -151,7 +151,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     targetSelector: null,
     title: "Welcome to Local Rankings",
     description:
-      "Track how your practice ranks in local search results. We analyze your Google Business Profile against competitors in your area.",
+      "Track how your business ranks in local search results. We analyze your Google Business Profile against competitors in your area.",
     isPageOverview: true,
   },
   {
@@ -241,9 +241,9 @@ export const WIZARD_STEPS: WizardStep[] = [
     id: "final-pms-upload",
     page: "pmsStatistics",
     targetSelector: "[data-wizard-target='pms-upload']",
-    title: "Upload Your First PMS Data",
+    title: "Upload Your Data",
     description:
-      "Finally, upload your practice management data so we can start analyzing your referrals and revenue attribution. You're all set!",
+      "Finally, upload your business data so we can start analyzing your referrals and revenue attribution. You're all set!",
     scrollToElement: true,
     promptAction: {
       type: "click",
@@ -279,7 +279,7 @@ export function getPageRoute(page: WizardPage): string {
  */
 export function getPageDisplayName(page: WizardPage): string {
   const names: Record<WizardPage, string> = {
-    dashboard: "Practice Hub",
+    dashboard: "Your Hub",
     pmsStatistics: "Referrals Hub",
     rankings: "Local Rankings",
     tasks: "To-Do List",
@@ -308,7 +308,7 @@ export const WIZARD_DEMO_DATA = {
       rank: 3,
       totalCompetitors: 15,
       visibilityScore: 78,
-      patientMood: "High",
+      customerSentiment: "High",
       reviews: 127,
       rating: 4.8,
     },
@@ -331,7 +331,7 @@ export const WIZARD_DEMO_DATA = {
         id: "demo-task-2",
         title: "Update Google Business Profile hours",
         description:
-          "Your holiday hours may be outdated. Verify and update your business hours to avoid patient confusion.",
+          "Your holiday hours may be outdated. Verify and update your business hours to avoid customer confusion.",
         status: "pending",
         urgency: "Medium",
         category: "GBP",
@@ -343,7 +343,7 @@ export const WIZARD_DEMO_DATA = {
         id: "demo-alloro-1",
         title: "Monitoring review sentiment",
         description:
-          "Automatically tracking patient sentiment across platforms.",
+          "Automatically tracking customer sentiment across platforms.",
         status: "in_progress",
         category: "Automation",
       },
@@ -360,16 +360,16 @@ export const WIZARD_DEMO_DATA = {
   // Referral data
   referralData: {
     monthlyData: [
-      { month: "Jan", marketing: 12, doctor: 8 },
-      { month: "Feb", marketing: 15, doctor: 10 },
-      { month: "Mar", marketing: 18, doctor: 12 },
-      { month: "Apr", marketing: 14, doctor: 11 },
-      { month: "May", marketing: 20, doctor: 14 },
-      { month: "Jun", marketing: 22, doctor: 13 },
+      { month: "Jan", marketing: 12, partner: 8 },
+      { month: "Feb", marketing: 15, partner: 10 },
+      { month: "Mar", marketing: 18, partner: 12 },
+      { month: "Apr", marketing: 14, partner: 11 },
+      { month: "May", marketing: 20, partner: 14 },
+      { month: "Jun", marketing: 22, partner: 13 },
     ],
     keyData: {
-      mktProduction: 89000,
-      docProduction: 67000,
+      mktRevenue: 89000,
+      partnerRevenue: 67000,
       totalReferrals: 124,
     },
   },
@@ -377,11 +377,11 @@ export const WIZARD_DEMO_DATA = {
   // Wins and risks
   prooflineData: {
     trajectory:
-      "Your practice is showing <hl>strong momentum</hl> this month. New patient starts are up 12% and your local visibility continues to improve.",
+      "Your business is showing <hl>strong momentum</hl> this month. New customer acquisition is up 12% and your local visibility continues to improve.",
     wins: [
       "Google reviews up 23% this quarter",
       "Website traffic increased by 15%",
-      "Patient retention rate at 89%",
+      "Customer retention rate at 89%",
     ],
     risks: [
       "3 negative reviews need responses",
@@ -400,9 +400,9 @@ export const WIZARD_DEMO_DATA = {
           "Add business description and update photos to improve visibility.",
       },
       {
-        title: "Request reviews from recent patients",
+        title: "Request reviews from recent customers",
         description:
-          "Send review requests to 15 patients who visited in the last 30 days.",
+          "Send review requests to 15 customers who visited in the last 30 days.",
       },
     ],
     estimatedRevenue: 12500,
@@ -413,8 +413,8 @@ export const WIZARD_DEMO_DATA = {
 
   // User profile for greeting
   userProfile: {
-    firstName: "Doctor",
+    firstName: "Alex",
     lastName: "Smith",
-    practiceName: "Smith Orthodontics",
+    practiceName: "Smith & Associates",
   },
 };
