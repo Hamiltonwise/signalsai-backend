@@ -269,3 +269,59 @@ Specific changes:
 ### Done Gate
 
 All verification tests pass? Yes = next card. No = fix before proceeding.
+
+---
+
+## Card 7: UploadPrompt + PMSUploadWizardModal Polish (Pre-AAE)
+
+Blast Radius: Green (copy change + Known 14 fix, no logic changes)
+Complexity: Low
+Dependencies: Card 6 (UploadPrompt must exist)
+
+### Problems
+
+1. **UploadPrompt.tsx line 75**: "Upload your January production report" -- hardcoded month. It's April. Endodontist at AAE reads this and wonders if the product is stale.
+
+2. **PMSUploadWizardModal.tsx lines 343, 354, 372, 390**: Uses `font-bold` (Known 14 violation). Max weight is `font-semibold`.
+
+3. **PMSUploadWizardModal.tsx line 138**: Success message says "We'll notify you once it's ready" but there is no notification mechanism. The referral sync actually completes near-instantly via `syncReferralSourcesFromPmsJob()`. The promise misleads.
+
+### What Changes
+
+1. `frontend/src/pages/checkup/UploadPrompt.tsx` line 75:
+   - OLD: "Upload your January production report. 60 seconds, and we'll tell you which referring doctor needs attention."
+   - NEW: "Upload a recent production report. 60 seconds, and we'll tell you which referring source needs attention."
+   - Also changes "referring doctor" to "referring source" (vertical-agnostic for non-dental).
+
+2. `frontend/src/components/PMS/PMSUploadWizardModal.tsx`:
+   - Line 343: `font-bold` -> `font-semibold`
+   - Line 354: `font-bold` -> `font-semibold`
+   - Line 372: `font-bold` -> `font-semibold`
+   - Line 390: `font-bold` -> `font-semibold`
+
+3. `frontend/src/components/PMS/PMSUploadWizardModal.tsx`:
+   - Line 138: OLD: "We're processing your PMS data now. We'll notify you once it's ready."
+     NEW: "Your referral data is being analyzed. You'll see it on your dashboard shortly."
+   - Line 143: OLD: "We'll notify when ready for checking"
+     NEW: "Referral insights loading on dashboard"
+   - Line 367: OLD: "Full analysis is running now. We'll notify you when it's ready."
+     NEW: "Full analysis is running now. Check your dashboard in a moment."
+
+### Touches
+
+- Database: no
+- Auth: no
+- Billing: no
+- New API endpoint: no
+
+### Verification Tests
+
+1. `grep -n "font-bold" frontend/src/components/PMS/PMSUploadWizardModal.tsx` -- zero hits.
+2. `grep -n "January" frontend/src/pages/checkup/UploadPrompt.tsx` -- zero hits.
+3. `grep -n "notify" frontend/src/components/PMS/PMSUploadWizardModal.tsx` -- zero hits.
+4. `bash scripts/constitution-check.sh --critical-path` -- all pass.
+5. `cd frontend && npx tsc --noEmit` -- zero errors.
+
+### Done Gate
+
+All verification tests pass? Yes = done. No = fix before proceeding.
