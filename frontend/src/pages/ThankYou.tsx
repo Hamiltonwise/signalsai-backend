@@ -58,9 +58,9 @@ export default function ThankYou() {
   const showBooth = isConferenceMode() || searchParams.get("source") === "aae2026";
 
   return (
-    <div className="min-h-dvh bg-[#F7F8FA]">
+    <div className="min-h-dvh bg-[#F8F6F2]">
       {/* Header */}
-      <header className="bg-[#212D40] text-white py-4 px-5">
+      <header className="bg-[#F8F6F2] border-b border-stone-200/60 py-4 px-5">
         <div className="mx-auto max-w-lg flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-[#D56753] flex items-center justify-center">
@@ -68,7 +68,7 @@ export default function ThankYou() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-lg font-bold tracking-tight">alloro</span>
+            <span className="text-lg font-semibold tracking-tight text-[#1A1D23]">alloro</span>
           </Link>
         </div>
       </header>
@@ -87,7 +87,7 @@ export default function ThankYou() {
 
         {/* P0: Monday time anchor, the most important line on the page */}
         <div className="card-primary text-center">
-          <p className="text-lg font-bold text-[#1A1D23] leading-snug font-heading">
+          <p className="text-lg font-semibold text-[#1A1D23] leading-snug font-heading">
             Monday at 7:15 AM, your first briefing
             lands in your inbox.
           </p>
@@ -125,7 +125,7 @@ export default function ThankYou() {
         <div className="text-center">
           <button
             onClick={handleAddToCalendar}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-medium text-[#1A1D23] px-5 py-3 shadow-sm hover:bg-slate-50 active:scale-[0.98] transition-all"
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-200/60 bg-stone-50/80 text-sm font-medium text-[#1A1D23] px-5 py-3 shadow-sm hover:bg-stone-100/80 active:scale-[0.98] transition-all"
           >
             <Calendar className="w-4 h-4 text-[#D56753]" />
             Add Monday 7:15 AM to your calendar
@@ -135,7 +135,7 @@ export default function ThankYou() {
         {/* Booth card -- only shown at AAE conference */}
         {showBooth && (
           <div className="rounded-2xl bg-[#212D40] p-5 text-center">
-            <p className="text-base font-bold text-white">
+            <p className="text-base font-semibold text-white">
               Come find us at booth #835.
             </p>
             <p className="text-sm text-white/60 mt-1.5 leading-relaxed">

@@ -95,7 +95,7 @@ export default function SignIn() {
 
           {/* Welcome Message */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold font-heading text-alloro-navy tracking-tight mb-2">
+            <h1 className="text-3xl font-semibold font-heading text-[#1A1D23] tracking-tight mb-2">
               Welcome to Alloro
             </h1>
             <p className="text-slate-500 text-sm">

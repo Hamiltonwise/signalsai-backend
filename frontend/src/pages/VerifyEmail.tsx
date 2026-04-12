@@ -113,7 +113,7 @@ export default function VerifyEmail() {
 
           {/* Heading */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold font-heading text-alloro-navy tracking-tight mb-2">
+            <h1 className="text-3xl font-semibold font-heading text-[#1A1D23] tracking-tight mb-2">
               Verify your email
             </h1>
             <p className="text-slate-500 text-sm">
@@ -173,7 +173,7 @@ export default function VerifyEmail() {
                 onKeyPress={handleKeyPress}
                 placeholder="000000"
                 maxLength={6}
-                className="w-full px-4 py-4 bg-white border-2 border-slate-300 rounded-xl focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange outline-none transition-all text-center tracking-[0.5em] font-mono text-2xl font-bold placeholder:tracking-normal placeholder:text-base text-alloro-navy"
+                className="w-full px-4 py-4 bg-white border-2 border-slate-300 rounded-xl focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange outline-none transition-all text-center tracking-[0.5em] font-mono text-2xl font-semibold placeholder:tracking-normal placeholder:text-base text-[#1A1D23]"
                 disabled={isLoading}
                 autoFocus
               />

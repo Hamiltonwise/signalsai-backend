@@ -156,11 +156,11 @@ function FindingCard({
           ? "bg-[#212D40] border border-[#212D40] shadow-lg"
           : isPositive
             ? "bg-gradient-to-r from-emerald-50/60 to-white border border-emerald-200/40"
-            : "bg-white border border-[#D56753]/10 hover:border-[#D56753]/20"
+            : "bg-stone-50/80 border border-[#D56753]/10 hover:border-[#D56753]/20"
       } ${blurred ? "select-none" : ""}`}
     >
       {blurred && (
-        <div className="absolute inset-0 backdrop-blur-[6px] bg-white/60 rounded-xl z-10" />
+        <div className="absolute inset-0 backdrop-blur-[6px] bg-[#F8F6F2]/60 rounded-xl z-10" />
       )}
       <div className="flex items-start gap-3">
         <div
@@ -203,7 +203,7 @@ function ReviewRaceCard({ gap }: { gap: CheckupGapItem }) {
   const isLeading = gap.current >= gap.target;
 
   return (
-    <div className={`rounded-xl border p-5 ${isLeading ? "border-emerald-200 bg-emerald-50/50" : "border-[#D56753]/20 bg-white"}`}>
+    <div className={`rounded-xl border p-5 ${isLeading ? "border-emerald-200 bg-emerald-50/50" : "border-[#D56753]/20 bg-stone-50/80"}`}>
       {/* Race header */}
       <p className={`text-sm font-semibold leading-snug ${isLeading ? "text-emerald-800" : "text-[#1A1D23]"}`}>
         {gap.label}
@@ -294,7 +294,7 @@ function GapBar({ gap }: { gap: CheckupGapItem }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4">
+    <div className="bg-stone-50/80 border border-stone-200/60 rounded-xl p-4">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
@@ -759,7 +759,7 @@ export default function ResultsScreen() {
       {/* Intent context chip */}
       {state.intent && (
         <div className="text-center">
-          <span className="inline-block text-xs font-semibold text-[#1A1D23]/60 bg-[#212D40]/4 border border-[#212D40]/10 rounded-full px-3.5 py-1.5">
+          <span className="inline-block text-xs font-semibold text-[#1A1D23]/60 bg-[#1A1D23]/4 border border-[#1A1D23]/10 rounded-full px-3.5 py-1.5">
             {state.intent}
           </span>
         </div>
@@ -1006,7 +1006,7 @@ export default function ResultsScreen() {
                       className={`w-full flex items-center justify-between rounded-xl px-4 py-3 text-left transition-all ${
                         isSelected
                           ? "bg-[#D56753]/8 border-2 border-[#D56753]/30"
-                          : "bg-white border border-stone-200/60 hover:border-stone-300"
+                          : "bg-[#F0EDE8] border border-stone-200/60 hover:border-stone-300"
                       }`}
                     >
                       <div className="min-w-0">
@@ -1069,7 +1069,7 @@ export default function ResultsScreen() {
           Frame as delivery, not transaction. "Your full checkup is ready." */}
       {!emailSubmitted ? (
         <div className={`transition-all duration-700 ${revealStage >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-        <div className="bg-gradient-to-br from-white to-[#FFF9F7] border-2 border-[#D56753]/20 rounded-2xl p-7 shadow-warm-lg">
+        <div className="bg-gradient-to-br from-[#F8F6F2] to-[#FFF9F7] border-2 border-[#D56753]/20 rounded-2xl p-7 shadow-warm-lg">
           <div className="mb-4">
             <p className="text-base font-semibold text-[#1A1D23] font-heading">
               Your full checkup is ready.
@@ -1100,7 +1100,7 @@ export default function ResultsScreen() {
                 className={`w-full h-10 sm:h-12 px-3 sm:px-4 rounded-xl border text-sm sm:text-base text-[#1A1D23] placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-all duration-200 ${
                   emailError
                     ? "border-red-400 focus:border-red-400 focus:ring-red-400/10 bg-red-50/30"
-                    : "border-[#D56753]/15 bg-white focus:border-[#D56753] focus:ring-[#D56753]/10"
+                    : "border-[#D56753]/15 bg-[#F8F6F2] focus:border-[#D56753] focus:ring-[#D56753]/10"
                 }`}
               />
               {emailSuggestion && (
@@ -1246,7 +1246,7 @@ export default function ResultsScreen() {
                           setTimeout(() => setVendorShareCopied(false), 2000);
                         });
                       }}
-                      className="w-full h-12 flex items-center justify-center gap-2 rounded-xl border-2 border-[#212D40]/20 text-[#1A1D23] text-sm font-semibold hover:border-[#212D40]/40 transition-all"
+                      className="w-full h-12 flex items-center justify-center gap-2 rounded-xl border-2 border-stone-200/60 text-[#1A1D23] text-sm font-semibold hover:border-stone-300 transition-all"
                     >
                       {vendorShareCopied ? "Copied!" : "Copy link"}
                     </button>
@@ -1374,15 +1374,15 @@ export default function ResultsScreen() {
         </div>
 
         {/* Share prompt — viral loop */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5">
+        <div className="bg-stone-50/80 border border-stone-200/60 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-2">
-            <Share2 className="w-4 h-4 text-slate-400" />
-            <span className="text-sm font-medium text-slate-700">
+            <Share2 className="w-4 h-4 text-gray-400" />
+            <span className="text-sm font-medium text-[#1A1D23]">
               Know a colleague who should see their market?
             </span>
           </div>
-          <p className="text-xs text-slate-500 mb-3">
-            Send them a link. When they join, you both split month one.
+          <p className="text-xs text-gray-500 mb-3">
+            Send them a link. When they join, you both save on your first month.
           </p>
           <button
             type="button"
@@ -1418,10 +1418,10 @@ export default function ResultsScreen() {
                 });
               }
             }}
-            className="flex items-center gap-2 text-sm font-medium text-[#1A1D23] border border-[#212D40]/20 rounded-lg px-4 py-2.5 hover:border-[#212D40]/40 transition-colors"
+            className="flex items-center gap-2 text-sm font-medium text-[#1A1D23] border border-stone-200/60 rounded-lg px-4 py-2.5 hover:border-stone-300 transition-colors"
           >
             <Copy className="w-3.5 h-3.5" />
-            {linkCopied ? "Copied!" : "Share and split the check"}
+            {linkCopied ? "Copied!" : "Share and save on your first month"}
           </button>
         </div>
         </>

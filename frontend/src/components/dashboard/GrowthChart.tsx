@@ -83,7 +83,7 @@ export default function GrowthChart({
   // Empty state
   if (slicedData.length === 0) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center">
+      <div className="rounded-2xl border border-stone-200/60 bg-stone-50/80 p-6 text-center">
         <p className="text-sm text-slate-400">
           Position tracking starts after your first full week.
         </p>
@@ -136,7 +136,7 @@ export default function GrowthChart({
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5">
+    <div className="rounded-2xl border border-stone-200/60 bg-stone-50/80 p-5">
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753]">
           Market Position
@@ -182,7 +182,7 @@ export default function GrowthChart({
                 x={CHART_PADDING_LEFT - 8}
                 y={toY(tick) + 3}
                 textAnchor="end"
-                className="text-xs fill-slate-400"
+                className="fill-slate-400"
                 style={{ fontSize: "10px" }}
               >
                 #{tick}
@@ -201,8 +201,8 @@ export default function GrowthChart({
                 x={toX(i)}
                 y={CHART_HEIGHT - 4}
                 textAnchor="middle"
-                className="text-[9px] fill-slate-400"
-                style={{ fontSize: "9px" }}
+                className="fill-slate-400"
+                style={{ fontSize: "10px" }}
               >
                 {formatDate(d.week_start)}
               </text>

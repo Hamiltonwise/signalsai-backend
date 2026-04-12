@@ -119,7 +119,7 @@ export default function OnboardingPaymentSuccess() {
                 <Loader2 className="w-10 h-10 text-white" />
               </motion.div>
             </div>
-            <h1 className="text-3xl font-bold font-heading text-alloro-navy tracking-tight">
+            <h1 className="text-3xl font-semibold font-heading text-[#1A1D23] tracking-tight">
               {pageState === "verifying"
                 ? "Processing your payment..."
                 : "Setting up your account..."}
@@ -138,7 +138,7 @@ export default function OnboardingPaymentSuccess() {
             <div className="w-20 h-20 mx-auto rounded-2xl bg-green-50 flex items-center justify-center">
               <CheckCircle2 className="w-10 h-10 text-green-600" />
             </div>
-            <h1 className="text-3xl font-bold font-heading text-alloro-navy tracking-tight">
+            <h1 className="text-3xl font-semibold font-heading text-[#1A1D23] tracking-tight">
               You're all set!
             </h1>
             <p className="text-slate-500">Redirecting to your dashboard...</p>
@@ -155,7 +155,7 @@ export default function OnboardingPaymentSuccess() {
             <div className="w-20 h-20 mx-auto rounded-2xl bg-amber-50 flex items-center justify-center">
               <AlertTriangle className="w-10 h-10 text-amber-600" />
             </div>
-            <h1 className="text-3xl font-bold font-heading text-alloro-navy tracking-tight">
+            <h1 className="text-3xl font-semibold font-heading text-[#1A1D23] tracking-tight">
               Payment received
             </h1>
             <p className="text-slate-500">

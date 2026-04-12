@@ -27,8 +27,6 @@ import {
   ArrowRight,
   Activity,
   Loader2,
-  ExternalLink,
-  ChevronRight,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";

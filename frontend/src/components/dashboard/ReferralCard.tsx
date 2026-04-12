@@ -43,7 +43,7 @@ export default function ReferralCard() {
   };
 
   return (
-    <div className="rounded-2xl border border-[#212D40]/10 bg-white p-5">
+    <div className="rounded-2xl border border-stone-200/60 bg-stone-50/80 p-5">
       <div className="flex items-start gap-3">
         <div className="shrink-0 w-10 h-10 rounded-xl bg-[#D56753]/10 flex items-center justify-center">
           <Users className="h-5 w-5 text-[#D56753]" />
@@ -53,7 +53,7 @@ export default function ReferralCard() {
             See how a colleague ranks.
           </p>
           <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-            Send them your link. When they join, you both split month one. Rise together.
+            Send them your link. When they join, you both save on your first month.
           </p>
 
           {/* Copy link */}
