@@ -23,6 +23,9 @@ interface BuildingState {
   email: string;
   referralCode?: string | null;
   checkupScore?: number | null;
+  topCompetitorName?: string | null;
+  reviewGap?: number | null;
+  city?: string | null;
 }
 
 export default function BuildingScreen() {
@@ -61,6 +64,9 @@ export default function BuildingScreen() {
           referralCode: state?.referralCode || null,
           checkupScore: state?.checkupScore || null,
           businessName: state?.businessName || null,
+          topCompetitorName: state?.topCompetitorName || null,
+          reviewGap: state?.reviewGap || null,
+          city: state?.city || null,
         },
       });
     }, 4000);

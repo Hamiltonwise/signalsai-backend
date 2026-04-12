@@ -744,6 +744,9 @@ export default function ResultsScreen() {
         email: email.trim(),
         referralCode,
         checkupScore: score.composite,
+        topCompetitorName: topCompetitor?.name || null,
+        reviewGap: topCompetitor ? Math.max(0, topCompetitor.reviewCount - place.reviewCount) : null,
+        city: place.city || null,
       },
     }), 500);
   };

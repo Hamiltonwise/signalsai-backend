@@ -723,23 +723,41 @@ export default function HomePage() {
         )}
 
         {/* ── Share Prompt: connect logged-in users to the referral system ── */}
-        {ctx?.referral_stats?.referral_code && (
+        {ctx?.referral_stats?.referral_code && (() => {
+          const checkup = ctx?.org?.checkup_data;
+          const topComp = checkup?.topCompetitor;
+          const compName = typeof topComp === "string" ? topComp : topComp?.name || null;
+          const compReviews = typeof topComp === "object" ? topComp?.reviewCount : null;
+          const clientRevs = checkup?.place?.reviewCount || checkup?.reviewCount || 0;
+          const gap = compReviews && compReviews > clientRevs ? compReviews - clientRevs : 0;
+          const link = `${window.location.origin}/checkup?ref=${ctx.referral_stats!.referral_code}`;
+
+          const shareText = compName && gap > 0
+            ? `I just found out ${compName} has ${gap} more reviews than me. Took 60 seconds to see. Check yours: ${link}`
+            : compName
+              ? `I just checked how I stack up against ${compName} on Google. You should see yours: ${link}`
+              : `I just checked my Google presence against my competitors. Took 60 seconds. You should see yours: ${link}`;
+
+          const headline = compName && gap > 0
+            ? `${compName} has ${gap} more reviews than you. Know someone in the same spot?`
+            : "Know a business owner who could use this?";
+
+          return (
           <div className="rounded-2xl bg-stone-50/80 border border-stone-200/60 p-5">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
                 <Users className="w-5 h-5 text-emerald-600" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-[#1A1D23] mb-1">Know a business owner who could use this?</p>
+                <p className="text-sm font-semibold text-[#1A1D23] mb-1">{headline}</p>
                 <p className="text-sm text-gray-500 mb-3">
-                  They get a free Google Health Check. You both save on your first month.
+                  They get a free Google Health Check. You both split the first month.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => {
-                      const link = `${window.location.origin}/checkup?ref=${ctx.referral_stats!.referral_code}`;
                       if (navigator.share) {
-                        navigator.share({ text: `I just checked my Google presence against my competitors. Took 60 seconds. You should see yours: ${link}` });
+                        navigator.share({ text: shareText });
                       } else {
                         navigator.clipboard.writeText(link);
                       }
@@ -753,7 +771,8 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {ctx?.has_referral_data ? (
           <div className="pl-4 border-l-2 border-[#1A1D23]/10 py-2">

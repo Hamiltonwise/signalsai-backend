@@ -13,6 +13,10 @@ import { trackEvent } from "../../api/tracking";
 interface ShareState {
   referralCode?: string | null;
   businessName?: string | null;
+  checkupScore?: number | null;
+  topCompetitorName?: string | null;
+  reviewGap?: number | null;
+  city?: string | null;
 }
 
 export default function ColleagueShare() {
@@ -28,9 +32,15 @@ export default function ColleagueShare() {
     ? `${window.location.origin}/checkup?ref=${referralCode}`
     : `${window.location.origin}/checkup`;
 
-  const shareMessage =
-    "I just checked my Google presence against my competitors. Took 60 seconds. You should see yours: " +
-    checkupLink;
+  const competitorName = state?.topCompetitorName || null;
+  const reviewGap = state?.reviewGap || null;
+
+  // Personalized message when we have competitive data, generic fallback when we don't
+  const shareMessage = competitorName && reviewGap && reviewGap > 0
+    ? `I just found out ${competitorName} has ${reviewGap} more reviews than me. Took 60 seconds to see. Check yours: ${checkupLink}`
+    : competitorName
+      ? `I just checked how I stack up against ${competitorName} on Google. You should see yours: ${checkupLink}`
+      : `I just checked my Google presence against my competitors. Took 60 seconds. You should see yours: ${checkupLink}`;
 
   const handleShare = useCallback(async () => {
     trackEvent("colleague_share.attempted", {
@@ -107,7 +117,12 @@ export default function ColleagueShare() {
             Your message
           </p>
           <p className="text-sm text-[#1A1D23] leading-relaxed">
-            "I just checked my Google presence against my competitors. Took 60 seconds. You should see yours:{" "}
+            "{competitorName && reviewGap && reviewGap > 0
+              ? `I just found out ${competitorName} has ${reviewGap} more reviews than me. Took 60 seconds to see. Check yours: `
+              : competitorName
+                ? `I just checked how I stack up against ${competitorName} on Google. You should see yours: `
+                : "I just checked my Google presence against my competitors. Took 60 seconds. You should see yours: "
+            }
             <span className="text-[#D56753] font-medium break-all">{checkupLink}</span>"
           </p>
         </div>
