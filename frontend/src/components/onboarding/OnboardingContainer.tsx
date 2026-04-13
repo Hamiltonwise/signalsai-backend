@@ -45,7 +45,7 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
 
   const [autoOpenGbp, setAutoOpenGbp] = useState(false);
 
-  // Called when Google OAuth popup succeeds — refresh auth state then auto-open GBP selector
+  // Called when Google OAuth popup succeeds -- refresh auth state then auto-open GBP selector
   const handleGoogleConnected = async () => {
     await refreshUserProperties();
     setAutoOpenGbp(true);
@@ -101,7 +101,7 @@ export const OnboardingContainer: React.FC<OnboardingContainerProps> = () => {
                 />
               </svg>
             </div>
-            <h2 className="text-alloro-navy text-xl font-bold font-heading">
+            <h2 className="text-alloro-navy text-xl font-semibold font-heading">
               Oops! Something went wrong
             </h2>
             <p className="text-slate-600">{error}</p>

@@ -155,13 +155,13 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
     title: string;
     description: string;
     impact?: string;
-    /** @deprecated Legacy — use impact instead */
+    /** @deprecated Legacy -- use impact instead */
     why_important?: string;
-    /** @deprecated Legacy — use impact instead */
+    /** @deprecated Legacy -- use impact instead */
     expected_impact?: string;
-    /** @deprecated Legacy — no longer returned by n8n */
+    /** @deprecated Legacy -- no longer returned by n8n */
     estimated_return?: number;
-    /** @deprecated Legacy — no longer returned by n8n */
+    /** @deprecated Legacy -- no longer returned by n8n */
     sources?: string[];
   }
 
@@ -1388,7 +1388,7 @@ export function DashboardOverview({ organizationId, locationId }: DashboardOverv
                 </div>
               </div>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Once your data is fully analyzed, you will see three specific actions ranked by revenue impact, with dollar estimates based on your market position and case values.
+                Once your data is fully analyzed, you will see three specific actions ranked by revenue impact, with dollar estimates based on your market position and customer values.
               </p>
             </div>
           </section>

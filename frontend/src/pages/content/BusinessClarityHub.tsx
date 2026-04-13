@@ -102,14 +102,14 @@ export default function BusinessClarityHub() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+            <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
               alloro
             </span>
           </div>
         </header>
 
         <main className="mx-auto max-w-2xl px-5 pb-16">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
             Business Clarity for Licensed Specialists
           </h1>
 
@@ -119,7 +119,7 @@ export default function BusinessClarityHub() {
 
           {/* Vertical Cards */}
           <div className="mt-12 space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">
               Choose your specialty
             </h2>
             {VERTICALS.map((vertical) => (
@@ -130,7 +130,7 @@ export default function BusinessClarityHub() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-base font-semibold text-[#212D40] group-hover:text-[#D56753] transition-colors">
+                    <p className="text-base font-semibold text-[#1A1D23] group-hover:text-[#D56753] transition-colors">
                       {vertical.title}
                     </p>
                     <p className="text-sm text-gray-500 leading-relaxed mt-1">

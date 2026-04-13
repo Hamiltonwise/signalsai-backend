@@ -74,7 +74,7 @@ function getStepStatusIcon(
     case "failed":
       return <AlertCircle className="h-4 w-4 text-red-500" />;
     case "skipped":
-      return <span className="text-gray-400 text-xs">—</span>;
+      return <span className="text-gray-400 text-xs">--</span>;
     case "pending":
     default:
       if (isCurrentStep) {

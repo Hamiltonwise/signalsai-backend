@@ -80,7 +80,7 @@ export function OnboardingWizardProvider({ children }: { children: ReactNode }) 
   const totalSteps = WIZARD_STEPS.length;
   const progress = totalSteps > 0 ? ((currentStepIndex + 1) / totalSteps) * 100 : 0;
 
-  // Check wizard status — only when main onboarding is confirmed complete.
+  // Check wizard status -- only when main onboarding is confirmed complete.
   // Without this guard, the wizard would auto-start while the user is still
   // in the onboarding flow (org exists but onboarding_completed is false).
   useEffect(() => {

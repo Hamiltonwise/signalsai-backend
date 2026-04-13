@@ -55,7 +55,7 @@ export interface Location {
  */
 export async function getLocations(): Promise<Location[]> {
   const response = await apiGet({ path: "/locations" });
-  // apiGet already unwraps axios { data } — response IS the body
+  // apiGet already unwraps axios { data } -- response IS the body
   return response.locations || [];
 }
 

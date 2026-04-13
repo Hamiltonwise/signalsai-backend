@@ -100,7 +100,7 @@ function PositionChange({
   const improved = end < start;
   return (
     <span
-      className={`inline-flex items-center gap-1 text-sm font-bold ${
+      className={`inline-flex items-center gap-1 text-sm font-semibold ${
         improved ? "text-emerald-600" : "text-gray-500"
       }`}
     >
@@ -169,7 +169,7 @@ function AddCaseStudyForm({
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm font-bold text-[#212D40]">New Case Study</p>
+        <p className="text-sm font-semibold text-[#1A1D23]">New Case Study</p>
         <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600">
           <X className="w-4 h-4" />
         </button>
@@ -210,7 +210,7 @@ function AddCaseStudyForm({
         <textarea value={doctorQuote} onChange={(e) => setDoctorQuote(e.target.value)} placeholder="Doctor quote" rows={2} className="col-span-2 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#212D40]/20 resize-none" />
       </div>
       <label className="flex items-center gap-2 mt-3 cursor-pointer">
-        <input type="checkbox" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} className="w-4 h-4 rounded text-[#212D40] border-gray-300" />
+        <input type="checkbox" checked={isAnonymous} onChange={(e) => setIsAnonymous(e.target.checked)} className="w-4 h-4 rounded text-[#1A1D23] border-gray-300" />
         <span className="text-xs text-gray-600">Publish anonymously</span>
       </label>
       <button
@@ -269,7 +269,7 @@ function EditableCell({
       onClick={() => setEditing(true)}
       className="text-left group flex items-center gap-1"
     >
-      <span className={value ? "text-sm text-[#212D40]" : "text-xs text-gray-400 italic"}>
+      <span className={value ? "text-sm text-[#1A1D23]" : "text-xs text-gray-400 italic"}>
         {value || placeholder}
       </span>
       <span className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -314,7 +314,7 @@ export default function CaseStudies() {
     <div className="mx-auto max-w-4xl px-4 py-6 sm:py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#212D40]">
+          <h1 className="text-xl sm:text-2xl font-semibold text-[#1A1D23]">
             Case Studies
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -340,16 +340,16 @@ export default function CaseStudies() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
                   Practice
                 </th>
-                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
                   Position
                 </th>
-                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
                   Revenue Impact
                 </th>
-                <th className="px-5 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
                   Published
                 </th>
               </tr>
@@ -358,7 +358,7 @@ export default function CaseStudies() {
               {studies.map((s) => (
                 <tr key={s.id} className="border-b border-gray-50 last:border-0">
                   <td className="px-5 py-4">
-                    <p className="text-sm font-semibold text-[#212D40]">
+                    <p className="text-sm font-semibold text-[#1A1D23]">
                       {s.is_anonymous ? "Anonymous Practice" : s.practice_name}
                     </p>
                     <p className="text-xs text-gray-400">

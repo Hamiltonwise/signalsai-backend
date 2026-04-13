@@ -69,10 +69,10 @@ export default function Intelligence() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Intelligence</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Intelligence</h1>
         <div className="text-right">
           <p className="text-sm text-gray-500">Intelligence Score</p>
-          <p className={`text-3xl font-bold ${scoreColor}`}>{score}/100</p>
+          <p className={`text-3xl font-semibold ${scoreColor}`}>{score}/100</p>
         </div>
       </div>
 

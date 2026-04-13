@@ -112,7 +112,7 @@ export function SlideDiscoveryTriage({
     }
   };
 
-  // Empty state — no batch
+  // Empty state -- no batch
   if (!batch) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">

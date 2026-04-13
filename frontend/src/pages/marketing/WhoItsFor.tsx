@@ -20,10 +20,10 @@ export default function WhoItsFor() {
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">
             Built for people who chose service first.
           </h1>
-          <p className="mt-6 text-lg sm:text-xl text-[#212D40]/60 leading-relaxed max-w-xl mx-auto">
+          <p className="mt-6 text-lg sm:text-xl text-[#1A1D23]/60 leading-relaxed max-w-xl mx-auto">
             You spent years becoming excellent at your craft.
             Then you opened a business. Then you discovered the
             business has a language of its own, one nobody
@@ -42,8 +42,8 @@ export default function WhoItsFor() {
       {/* Heroes */}
       <section className="px-5 py-12 sm:py-16 bg-white">
         <div className="max-w-xl mx-auto">
-          <h2 className="text-2xl font-bold text-[#212D40] mb-4">The Heroes</h2>
-          <p className="text-base text-[#212D40]/70 leading-relaxed">
+          <h2 className="text-2xl font-semibold text-[#1A1D23] mb-4">The Heroes</h2>
+          <p className="text-base text-[#1A1D23]/70 leading-relaxed">
             If you spent years in service before you built
             something, in the military, in medicine, in public
             service, in the trades, you are a Hero. You chose
@@ -57,8 +57,8 @@ export default function WhoItsFor() {
       {/* Founders */}
       <section className="px-5 py-12 sm:py-16">
         <div className="max-w-xl mx-auto">
-          <h2 className="text-2xl font-bold text-[#212D40] mb-4">The Founders</h2>
-          <p className="text-base text-[#212D40]/70 leading-relaxed">
+          <h2 className="text-2xl font-semibold text-[#1A1D23] mb-4">The Founders</h2>
+          <p className="text-base text-[#1A1D23]/70 leading-relaxed">
             If you took the leap, left the security of a
             salary, bet on yourself, opened a business or a firm or
             a studio, you are a Founder. Most people won't do what
@@ -164,8 +164,8 @@ function VerticalCard({ icon, title, desc }: { icon: React.ReactNode; title: str
       <div className="flex items-start gap-3">
         <div className="shrink-0 mt-0.5">{icon}</div>
         <div>
-          <h3 className="text-sm font-bold text-[#212D40] mb-1">{title}</h3>
-          <p className="text-xs text-[#212D40]/60 leading-relaxed">{desc}</p>
+          <h3 className="text-sm font-semibold text-[#1A1D23] mb-1">{title}</h3>
+          <p className="text-xs text-[#1A1D23]/60 leading-relaxed">{desc}</p>
         </div>
       </div>
     </div>

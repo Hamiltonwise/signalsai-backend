@@ -1,5 +1,5 @@
 /**
- * Competitor Detail Drawer — right-side slide-in panel.
+ * Competitor Detail Drawer -- right-side slide-in panel.
  *
  * Shows: GBP data, review velocity, gap-closing timeline.
  * Opens when a competitor is clicked in the leaderboard.

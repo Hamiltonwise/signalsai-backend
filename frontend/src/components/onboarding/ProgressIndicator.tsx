@@ -19,7 +19,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
             <div
               className={`
                 w-10 h-10 rounded-full flex items-center justify-center
-                transition-all duration-300 font-bold text-sm
+                transition-all duration-300 font-semibold text-sm
                 ${
                   isCompleted
                     ? "bg-gradient-to-br from-alloro-orange to-[#c45a47] text-white shadow-md shadow-alloro-orange/20"

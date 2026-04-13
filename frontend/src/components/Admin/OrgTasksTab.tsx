@@ -62,7 +62,7 @@ export function OrgTasksTab({ organizationId, locationId }: OrgTasksTabProps) {
 
   const pageSize = 50;
 
-  // TanStack Query — replaces useEffect + useState for data fetching
+  // TanStack Query -- replaces useEffect + useState for data fetching
   const { data, isLoading: loading } = useAdminOrgTasks({
     organizationId,
     locationId,

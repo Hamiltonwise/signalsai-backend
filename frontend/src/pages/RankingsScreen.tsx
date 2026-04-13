@@ -1,5 +1,5 @@
 /**
- * Market Intelligence Screen — /dashboard/rankings
+ * Market Intelligence Screen -- /dashboard/rankings
  *
  * WO20 / T3-B: Shows weekly competitive snapshots from the Intelligence Agent.
  * Review gap, named competitors, trend, weekly bullets,
@@ -230,7 +230,7 @@ export default function RankingsScreen() {
         </p>
       </div>
 
-      {/* Drift alerts — persistent banners */}
+      {/* Drift alerts -- persistent banners */}
       {alerts.map((alert) => (
         <SurpriseCatchBanner
           key={alert.sourceId}
@@ -302,7 +302,7 @@ export default function RankingsScreen() {
         </div>
       )}
 
-      {/* Empty state — use checkup data if available */}
+      {/* Empty state -- use checkup data if available */}
       {!snapshotsLoading && !isSnapshotsError && snapshots.length === 0 && (
         checkupCtx?.data?.market ? (
           <div className="space-y-4">
@@ -340,7 +340,7 @@ export default function RankingsScreen() {
         )
       )}
 
-      {/* What Alloro Did This Week — Live Progress Feed (WO-46) */}
+      {/* What Alloro Did This Week -- Live Progress Feed (WO-46) */}
       <ActivityFeed />
 
       {/* Snapshot history */}
@@ -356,7 +356,7 @@ export default function RankingsScreen() {
   );
 }
 
-// ─── Activity Feed — What Alloro Did This Week (WO-46) ──────────────
+// ─── Activity Feed -- What Alloro Did This Week (WO-46) ──────────────
 
 interface FeedEntry {
   id: string;

@@ -44,18 +44,18 @@ export default function About() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+            <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
               alloro
             </span>
           </div>
         </header>
 
         <main className="mx-auto max-w-2xl px-5 pb-16">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
             Alloro is built on one idea.
           </h1>
 
-          <p className="text-lg sm:text-xl text-[#212D40] font-medium leading-relaxed text-center mt-6 max-w-xl mx-auto">
+          <p className="text-lg sm:text-xl text-[#1A1D23] font-medium leading-relaxed text-center mt-6 max-w-xl mx-auto">
             Every local business owner deserves to know what is actually
             happening in their market. Not a monthly report. Not a dashboard
             full of numbers. The specific, true, actionable thing they did not
@@ -65,7 +65,7 @@ export default function About() {
           {/* Why the problem exists */}
           <div className="mt-14 space-y-10">
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-4">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-4">
                 Why the problem exists
               </h2>
               <p className="text-base text-gray-700 leading-relaxed text-center">
@@ -86,7 +86,7 @@ export default function About() {
 
             {/* What Alloro does differently */}
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-4">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-4">
                 What Alloro does differently
               </h2>
               <p className="text-base text-gray-700 leading-relaxed text-center">
@@ -106,7 +106,7 @@ export default function About() {
 
             {/* Who built it */}
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-4">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-4">
                 Who built it
               </h2>
               <p className="text-base text-gray-700 leading-relaxed text-center">
@@ -130,7 +130,7 @@ export default function About() {
             className="mt-14 rounded-2xl px-6 py-8 text-center"
             style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
           >
-            <p className="text-base font-medium text-[#212D40]">
+            <p className="text-base font-medium text-[#1A1D23]">
               The best way to understand Alloro is to run a Checkup.
             </p>
             <button

@@ -5,7 +5,7 @@
  * Provides hover/click selection of alloro-tpl-* elements inside an iframe.
  *
  * Uses event delegation on the iframe body so listeners survive DOM mutations
- * (critical for live editing — we mutate the iframe DOM directly after LLM edits).
+ * (critical for live editing -- we mutate the iframe DOM directly after LLM edits).
  */
 
 import { useCallback, useRef, useState } from "react";
@@ -98,7 +98,7 @@ export type QuickActionType = "text" | "link" | "media" | "hide" | "text-up" | "
 /** Payload emitted when a quick action with user input is submitted. */
 export interface QuickActionPayload {
   action: QuickActionType;
-  value?: string; // For text/link — the user-entered value
+  value?: string; // For text/link -- the user-entered value
 }
 
 /** Inline SVG icons for quick action buttons (white stroke). */
@@ -178,7 +178,7 @@ const SELECTOR_CSS = `
     outline-offset: 6px !important;
   }
 
-  /* Both hover and selected — selected wins */
+  /* Both hover and selected -- selected wins */
   [data-alloro-selected="true"][data-alloro-hover="true"] {
     outline: 2px solid #2563eb !important;
   }
@@ -206,7 +206,7 @@ const SELECTOR_CSS = `
   .alloro-label--selected-section { background: #5b21b6; color: white; }
   .alloro-label--selected-component { background: #1d4ed8; color: white; }
 
-  /* Selected label — re-enable pointer events so action icons are clickable */
+  /* Selected label -- re-enable pointer events so action icons are clickable */
   #alloro-selected-label {
     pointer-events: auto !important;
     cursor: default !important;
@@ -242,7 +242,7 @@ const SELECTOR_CSS = `
     margin: 0 6px;
   }
 
-  /* Inline action input panel — re-enable pointer events with high specificity */
+  /* Inline action input panel -- re-enable pointer events with high specificity */
   #alloro-action-panel {
     position: absolute;
     z-index: 99999;
@@ -297,7 +297,7 @@ const SELECTOR_CSS = `
     background: #ea580c;
   }
 
-  /* Hidden elements — reduced opacity in editor */
+  /* Hidden elements -- reduced opacity in editor */
   [data-alloro-hidden="true"] {
     opacity: 0.3 !important;
   }
@@ -460,7 +460,7 @@ export function useIframeSelector(
                   : undefined;
                 showActionPanel(action, currentLabel, hrefVal || undefined);
               } else {
-                // Media and hide — dispatch directly to parent
+                // Media and hide -- dispatch directly to parent
                 quickActionRef.current?.({ action });
               }
             });
@@ -486,7 +486,7 @@ export function useIframeSelector(
       if (label) label.remove();
     }
 
-    // Event delegation on the body — survives DOM mutations
+    // Event delegation on the body -- survives DOM mutations
     doc.body.addEventListener("mouseover", (e) => {
       const target = findAlloroElement(e.target as Element);
       if (!target) return;

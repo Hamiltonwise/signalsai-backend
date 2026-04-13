@@ -512,7 +512,7 @@ export default function SeoPanel({
           <button
             onClick={handleAnalyzeAll}
             disabled={isBusy || !hasBusinessData}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             title={!hasBusinessData ? "Business data required" : "Analyze existing SEO data"}
           >
             {isAnalyzing ? (
@@ -527,7 +527,7 @@ export default function SeoPanel({
           <button
             onClick={handleGenerateAll}
             disabled={isBusy || !hasBusinessData}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-alloro-orange hover:bg-alloro-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-alloro-orange hover:bg-alloro-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
             title={!hasBusinessData ? "Refresh business data in Settings first" : undefined}
           >
             {isGenerating ? (
@@ -619,7 +619,7 @@ export default function SeoPanel({
             {/* Section header with action buttons */}
             <div className="flex items-center gap-2 mb-4">
               <span className={`w-2.5 h-2.5 rounded-full ${currentSection.dotColor}`} />
-              <h3 className="text-sm font-bold text-gray-900">{currentSection.label}</h3>
+              <h3 className="text-sm font-semibold text-gray-900">{currentSection.label}</h3>
               <span className="text-xs font-medium text-gray-400 tabular-nums">
                 {currentSection.score} / {currentSection.max} pts
               </span>
@@ -630,7 +630,7 @@ export default function SeoPanel({
                   <button
                     onClick={() => handleAnalyzeSection(activeSection)}
                     disabled={isBusy}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Analyze this section"
                   >
                     {analyzingSection === activeSection ? (
@@ -643,7 +643,7 @@ export default function SeoPanel({
                   <button
                     onClick={() => handleGenerateSection(activeSection)}
                     disabled={isBusy}
-                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold text-white bg-alloro-orange hover:bg-alloro-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-white bg-alloro-orange hover:bg-alloro-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Regenerate this section"
                   >
                     {generatingSection === activeSection ? (
@@ -711,7 +711,7 @@ export default function SeoPanel({
                 <div className="flex items-start gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-blue-500 mb-1">AI Insight</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-blue-500 mb-1">AI Insight</p>
                     <p className="text-xs text-blue-800 leading-relaxed">{currentInsight}</p>
                   </div>
                 </div>
@@ -729,7 +729,7 @@ export default function SeoPanel({
 // ---------------------------------------------------------------------------
 
 const fieldInput = "w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-400 bg-white";
-const fieldLabel = "text-xs font-bold uppercase tracking-widest text-gray-400 mb-1.5 block";
+const fieldLabel = "text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1.5 block";
 
 function CriticalFields({ seo, onChange }: { seo: SeoData; onChange: (f: keyof SeoData, v: unknown) => void }) {
   const titleLen = (seo.meta_title || "").length;
@@ -825,7 +825,7 @@ function SchemaFields({ seo, onChange }: { seo: SeoData; onChange: (f: keyof Seo
         {schemaStr && (
           <button
             onClick={() => { setEditing(!editing); setEditValue(schemaStr); }}
-            className="text-xs font-bold text-alloro-orange hover:text-alloro-orange/80 transition-colors"
+            className="text-xs font-semibold text-alloro-orange hover:text-alloro-orange/80 transition-colors"
           >
             {editing ? "Cancel" : "Edit"}
           </button>
@@ -841,7 +841,7 @@ function SchemaFields({ seo, onChange }: { seo: SeoData; onChange: (f: keyof Seo
           />
           <button
             onClick={handleSave}
-            className="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-alloro-orange hover:bg-alloro-orange/90 transition-colors"
+            className="mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-alloro-orange hover:bg-alloro-orange/90 transition-colors"
           >
             Save Schema
           </button>

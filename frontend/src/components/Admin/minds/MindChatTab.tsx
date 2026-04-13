@@ -202,7 +202,7 @@ export function MindChatTab({ mindId, mindName }: MindChatTabProps) {
     }
   }, [messages.length, streamingText]);
 
-  // Track scroll position — if user scrolls away, stop following
+  // Track scroll position -- if user scrolls away, stop following
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -406,7 +406,7 @@ export function MindChatTab({ mindId, mindName }: MindChatTabProps) {
         }
       }
 
-      // Stream complete — finalize the assistant message
+      // Stream complete -- finalize the assistant message
       if (accumulated) {
         const assistantMessage: MindMessage = {
           id: crypto.randomUUID(),

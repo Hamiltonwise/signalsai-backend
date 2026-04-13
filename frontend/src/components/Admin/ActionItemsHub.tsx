@@ -427,7 +427,7 @@ export function ActionItemsHub() {
   const [selectedAgentType, setSelectedAgentType] = useState<string>("all");
   const [selectedApproval, setSelectedApproval] = useState<string>("all");
 
-  // TanStack Query — replaces useEffect + useState + 3s polling
+  // TanStack Query -- replaces useEffect + useState + 3s polling
   const {
     data: taskData,
     isLoading: loading,

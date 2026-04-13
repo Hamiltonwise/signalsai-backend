@@ -151,7 +151,7 @@ checkupRoutes.get("/geo", async (req, res) => {
  *
  * Runs a competitor analysis for the Free Referral Base Checkup.
  * Takes a practice's Place details, discovers competitors via Google Places,
- * and returns a Business Clarity Score with sub-scores.
+ * and returns a Google Health Check with readings.
  *
  * Body: { name, city, state, category, types, rating, reviewCount, placeId }
  */

@@ -76,7 +76,7 @@ function ProposalDiff({ proposal }: { proposal: SyncProposal }) {
         <div className="mt-2 grid grid-cols-2 gap-3">
           {proposal.target_excerpt && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-red-500 mb-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-red-500 mb-1.5">
                 Will Forget
               </p>
               <div className="rounded-xl bg-red-50 border border-red-100 p-3 text-xs text-red-800 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -85,7 +85,7 @@ function ProposalDiff({ proposal }: { proposal: SyncProposal }) {
             </div>
           )}
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-green-600 mb-1.5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-green-600 mb-1.5">
               Will Learn
             </p>
             <div className="rounded-xl bg-green-50 border border-green-100 p-3 text-xs text-green-800 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -253,7 +253,7 @@ export function SlideProposalsReview({
         <div className="w-20 h-20 rounded-2xl bg-green-50 flex items-center justify-center mb-5">
           <Sparkles className="h-10 w-10 text-green-500" />
         </div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
           {mindName} Graduated
         </h3>
         <p className="text-sm text-gray-500 mb-8 max-w-md leading-relaxed">
@@ -277,7 +277,7 @@ export function SlideProposalsReview({
       <div>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-base font-bold text-gray-900">
+            <h3 className="text-base font-semibold text-gray-900">
               Graduation Ceremony
             </h3>
             <p className="text-sm text-gray-500 mt-1">
@@ -327,7 +327,7 @@ export function SlideProposalsReview({
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h3 className="text-base font-bold text-gray-900">Intake</h3>
+        <h3 className="text-base font-semibold text-gray-900">Intake</h3>
         <p className="text-sm text-gray-500 mt-1 leading-relaxed max-w-2xl">
           Class is over. {mindName} stands at the gate. Time in slow motion. New
           knowledge on queue. You decide what {mindName} gets to forget, and
@@ -421,7 +421,7 @@ export function SlideProposalsReview({
                     {/* Type badge */}
                     <div className="flex items-center gap-2 mb-2">
                       <span
-                        className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg ${
+                        className={`text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-lg ${
                           proposal.type === "NEW"
                             ? "bg-green-100 text-green-700"
                             : proposal.type === "UPDATE"

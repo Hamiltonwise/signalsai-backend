@@ -15,7 +15,7 @@ interface GoogleConnectButtonProps {
 }
 
 /**
- * Google Connect Button — initiates Google OAuth for GBP connection (NOT for login).
+ * Google Connect Button -- initiates Google OAuth for GBP connection (NOT for login).
  * Uses popup pattern (window.open) so the user stays on the current page.
  * After successful OAuth, calls onSuccess so the parent can react (e.g. open GBP selector).
  */
@@ -83,7 +83,7 @@ export const GoogleConnectButton: React.FC<GoogleConnectButtonProps> = ({
         return;
       }
 
-      // Open OAuth in popup — user stays on current page
+      // Open OAuth in popup -- user stays on current page
       const popupFeatures = [
         centerPopup(POPUP_WIDTH, POPUP_HEIGHT),
         "resizable=yes",
@@ -189,13 +189,13 @@ export const GoogleConnectButton: React.FC<GoogleConnectButtonProps> = ({
         )}
       </button>
 
-      {/* Confirmation Dialog — portal to body so it covers the full screen */}
+      {/* Confirmation Dialog -- portal to body so it covers the full screen */}
       {showConfirm && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6">
             <div className="flex items-center gap-3 mb-3">
               <GoogleIcon className="w-6 h-6" />
-              <h3 className="text-lg font-bold text-alloro-navy">
+              <h3 className="text-lg font-semibold text-alloro-navy">
                 Connect Google Account
               </h3>
             </div>

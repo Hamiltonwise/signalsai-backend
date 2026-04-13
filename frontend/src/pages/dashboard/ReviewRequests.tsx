@@ -1,5 +1,5 @@
 /**
- * Review Requests — /dashboard/reviews
+ * Review Requests -- /dashboard/reviews
  *
  * How a doctor sends review requests to patients after appointments.
  * Three sections: Send, Sent Today, Review Velocity.

@@ -28,7 +28,7 @@ interface BackupsTabProps {
 }
 
 function formatBytes(bytes: number | null): string {
-  if (!bytes) return "—";
+  if (!bytes) return "--";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   if (bytes < 1024 * 1024 * 1024)
@@ -37,7 +37,7 @@ function formatBytes(bytes: number | null): string {
 }
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "—";
+  if (!dateStr) return "--";
   return new Date(dateStr).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -473,7 +473,7 @@ export default function BackupsTab({ projectId, projectName }: BackupsTabProps) 
       {/* Info */}
       <p className="text-xs text-gray-400">
         Backups include all pages, posts, media files, menus, code snippets,
-        form submissions, and newsletter signups. Max 5 backups per project —
+        form submissions, and newsletter signups. Max 5 backups per project --
         oldest is auto-deleted when creating a new one.
       </p>
     </div>

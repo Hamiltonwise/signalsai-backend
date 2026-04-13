@@ -1,5 +1,5 @@
 /**
- * Intelligence Panel — PatientPath SEO/AEO/CRO Dashboard (WO-8)
+ * Intelligence Panel -- PatientPath SEO/AEO/CRO Dashboard (WO-8)
  *
  * Route: /admin/organizations/:id/intelligence
  * Three tabs: SEO Audit, AEO Content, CRO Experiments
@@ -61,7 +61,7 @@ function SEOTab({ orgId }: { orgId: number }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-3xl font-semibold text-[#212D40]">{audit.seo_score}/100</p>
+          <p className="text-3xl font-semibold text-[#1A1D23]">{audit.seo_score}/100</p>
           <p className="text-xs text-gray-400 mt-1">Last audited {formatDate(audit.audited_at)}</p>
         </div>
         {audit.score_delta != null && audit.score_delta !== 0 && (
@@ -81,7 +81,7 @@ function SEOTab({ orgId }: { orgId: number }) {
               ) : (
                 <XCircle className="h-4 w-4 text-red-400" />
               )}
-              <span className="text-sm font-medium text-[#212D40]">
+              <span className="text-sm font-medium text-[#1A1D23]">
                 {f.name.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
               </span>
             </div>
@@ -122,7 +122,7 @@ function AEOTab({ orgId }: { orgId: number }) {
       {faqs.map((faq: any, i: number) => (
         <div key={i} className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-start justify-between gap-3">
-            <p className="text-sm font-semibold text-[#212D40]">{faq.question}</p>
+            <p className="text-sm font-semibold text-[#1A1D23]">{faq.question}</p>
             <StatusBadge status={faq.status} />
           </div>
           <p className="text-sm text-gray-500 mt-2 leading-relaxed">{faq.answer}</p>
@@ -158,7 +158,7 @@ function CROTab({ orgId }: { orgId: number }) {
       {experiments.map((exp: any) => (
         <div key={exp.id} className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-[#212D40]">{exp.experiment_name}</p>
+            <p className="text-sm font-semibold text-[#1A1D23]">{exp.experiment_name}</p>
             {exp.concluded ? (
               <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                 Concluded
@@ -181,11 +181,11 @@ function CROTab({ orgId }: { orgId: number }) {
                   key={v}
                   className={`rounded-lg p-3 ${isWinner ? "bg-emerald-50 border border-emerald-200" : "bg-gray-50"}`}
                 >
-                  <p className="text-xs font-bold uppercase text-gray-400 mb-1">
+                  <p className="text-xs font-semibold uppercase text-gray-400 mb-1">
                     Variant {v.toUpperCase()} {isWinner && "Winner"}
                   </p>
                   <p className="text-xs text-gray-600 mb-2 line-clamp-2">{text}</p>
-                  <p className="text-lg font-bold text-[#212D40]">{rate}%</p>
+                  <p className="text-lg font-semibold text-[#1A1D23]">{rate}%</p>
                   <p className="text-xs text-gray-400">{conversions} conv</p>
                 </div>
               );
@@ -267,7 +267,7 @@ export default function IntelligencePanel() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-xl font-bold text-[#212D40] mb-6">Intelligence Panel</h1>
+      <h1 className="text-xl font-semibold text-[#1A1D23] mb-6">Intelligence Panel</h1>
 
       {/* Tab bar */}
       <div className="flex items-center gap-1 mb-6 bg-gray-100 rounded-xl p-1">
@@ -277,7 +277,7 @@ export default function IntelligencePanel() {
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition-colors flex-1 justify-center ${
               activeTab === tab.key
-                ? "bg-white text-[#212D40] shadow-sm"
+                ? "bg-white text-[#1A1D23] shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >

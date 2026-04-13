@@ -67,7 +67,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
       const data = await adminGetBusinessData(orgId);
       setBusinessData(data);
     } catch {
-      // Silently fail — section still shows without data
+      // Silently fail -- section still shows without data
       setBusinessData(null);
     } finally {
       setLoadingBusinessData(false);
@@ -192,7 +192,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                         <span className="text-sm font-semibold text-gray-900">
                           Organization (Umbrella)
                         </span>
-                        <span className="text-xs font-bold text-alloro-orange bg-orange-50 border border-alloro-orange/30 rounded-full px-2 py-0.5">
+                        <span className="text-xs font-semibold text-alloro-orange bg-orange-50 border border-alloro-orange/30 rounded-full px-2 py-0.5">
                           SEO Context
                         </span>
                       </div>
@@ -308,7 +308,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                           {loc.name}
                         </span>
                         {loc.is_primary && (
-                          <span className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
+                          <span className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
                             Primary
                           </span>
                         )}
@@ -449,17 +449,17 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                   <>
                     {/* Basic Info */}
                     <div className="space-y-2">
-                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         Basic Info
                       </h4>
                       <div className="grid grid-cols-[100px_1fr] gap-y-1.5 text-sm">
                         <span className="text-gray-500">Name</span>
                         <span className="text-gray-900 font-medium">
-                          {(d.name as string) || "—"}
+                          {(d.name as string) || "--"}
                         </span>
                         <span className="text-gray-500">Phone</span>
                         <span className="text-gray-900">
-                          {(d.phone as string) || "—"}
+                          {(d.phone as string) || "--"}
                         </span>
                         <span className="text-gray-500">Website</span>
                         <span className="text-gray-900 truncate">
@@ -473,12 +473,12 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                               {d.website as string}
                             </a>
                           ) : (
-                            "—"
+                            "--"
                           )}
                         </span>
                         <span className="text-gray-500">Place ID</span>
                         <span className="text-gray-900 font-mono text-xs break-all">
-                          {(d.place_id as string) || "—"}
+                          {(d.place_id as string) || "--"}
                         </span>
                       </div>
                     </div>
@@ -486,13 +486,13 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                     {/* Address */}
                     {addr && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                           Address
                         </h4>
                         <div className="grid grid-cols-[100px_1fr] gap-y-1.5 text-sm">
                           <span className="text-gray-500">Street</span>
                           <span className="text-gray-900">
-                            {(addr.street as string) || "—"}
+                            {(addr.street as string) || "--"}
                           </span>
                           {addr.suite ? (
                             <>
@@ -504,19 +504,19 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                           ) : null}
                           <span className="text-gray-500">City</span>
                           <span className="text-gray-900">
-                            {(addr.city as string) || "—"}
+                            {(addr.city as string) || "--"}
                           </span>
                           <span className="text-gray-500">State</span>
                           <span className="text-gray-900">
-                            {(addr.state as string) || "—"}
+                            {(addr.state as string) || "--"}
                           </span>
                           <span className="text-gray-500">ZIP</span>
                           <span className="text-gray-900">
-                            {(addr.zip as string) || "—"}
+                            {(addr.zip as string) || "--"}
                           </span>
                           <span className="text-gray-500">Country</span>
                           <span className="text-gray-900">
-                            {(addr.country as string) || "—"}
+                            {(addr.country as string) || "--"}
                           </span>
                         </div>
                       </div>
@@ -525,7 +525,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                     {/* Categories */}
                     {categories && categories.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                           Categories
                         </h4>
                         <div className="flex flex-wrap gap-1.5">
@@ -544,7 +544,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                     {/* Hours */}
                     {hours && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                           Business Hours
                         </h4>
                         <div className="grid grid-cols-[100px_1fr] gap-y-1.5 text-sm">
@@ -565,7 +565,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                                 </span>
                                 <span className="text-gray-900">
                                   {h
-                                    ? `${h.open} — ${h.close}`
+                                    ? `${h.open} -- ${h.close}`
                                     : "Closed"}
                                 </span>
                               </React.Fragment>
@@ -578,7 +578,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                     {/* Coordinates */}
                     {d.coordinates && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                           Coordinates
                         </h4>
                         <p className="text-sm text-gray-700 font-mono">
@@ -591,7 +591,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                     {/* Description */}
                     {d.description && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                           Description
                         </h4>
                         <p className="text-sm text-gray-700">
@@ -681,7 +681,7 @@ export function OrgSettingsSection({ org, orgId }: OrgSettingsSectionProps) {
                   <strong className="text-red-600">permanently delete</strong> "
                   {org.name}" and all associated data.
                 </p>
-                <p className="text-sm text-red-600 font-bold">
+                <p className="text-sm text-red-600 font-semibold">
                   This action cannot be undone.
                 </p>
               </div>

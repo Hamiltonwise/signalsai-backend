@@ -19,11 +19,11 @@ export default function HeroesPage() {
         </Link>
         <div className="flex items-center gap-3 mb-4">
           <Shield className="h-6 w-6 text-[#D56753]" />
-          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">
             Heroes Initiative
           </p>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] leading-tight">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] leading-tight">
           You protected something bigger than yourself. Now protect what you built.
         </h1>
         <p className="mt-6 text-base text-gray-600 leading-relaxed">
@@ -32,7 +32,7 @@ export default function HeroesPage() {
           skills built your business. Alloro gives you the clarity to protect it.
         </p>
         <div className="mt-6 rounded-xl bg-[#212D40] p-5 text-center">
-          <p className="text-sm font-bold text-white">
+          <p className="text-sm font-semibold text-white">
             Veterans, active duty spouses, first responders, Gold Star families: Alloro is free. Forever.
           </p>
           <p className="text-xs text-white/50 mt-1">
@@ -44,7 +44,7 @@ export default function HeroesPage() {
           <div className="flex gap-4">
             <Star className="h-5 w-5 text-[#D56753] mt-0.5 shrink-0" />
             <div>
-              <h3 className="font-bold text-[#212D40]">RISE Scholars Program</h3>
+              <h3 className="font-semibold text-[#1A1D23]">RISE Scholars Program</h3>
               <p className="text-sm text-gray-500 mt-1">
                 Full access to Alloro's business clarity platform. Market position
                 tracking, competitor monitoring, weekly intelligence briefs, and a
@@ -55,7 +55,7 @@ export default function HeroesPage() {
           <div className="flex gap-4">
             <Award className="h-5 w-5 text-[#D56753] mt-0.5 shrink-0" />
             <div>
-              <h3 className="font-bold text-[#212D40]">Your Story, Told Right</h3>
+              <h3 className="font-semibold text-[#1A1D23]">Your Story, Told Right</h3>
               <p className="text-sm text-gray-500 mt-1">
                 Every RISE Scholar gets a profile that tells their story. Not a case study.
                 Not a testimonial. Your story, in your words, presented with the respect
@@ -66,7 +66,7 @@ export default function HeroesPage() {
           <div className="flex gap-4">
             <Shield className="h-5 w-5 text-[#D56753] mt-0.5 shrink-0" />
             <div>
-              <h3 className="font-bold text-[#212D40]">VA Benefits Integration</h3>
+              <h3 className="font-semibold text-[#1A1D23]">VA Benefits Integration</h3>
               <p className="text-sm text-gray-500 mt-1">
                 100% P&T disability rating? Your VA benefits extend further than you think.
                 Alloro helps you understand exactly how your benefits intersect with

@@ -5,8 +5,8 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0, // Always stale — show cached instantly, refetch silently in background
-      gcTime: 24 * 60 * 60 * 1000, // 24 hours — cache retention
+      staleTime: 0, // Always stale -- show cached instantly, refetch silently in background
+      gcTime: 24 * 60 * 60 * 1000, // 24 hours -- cache retention
       refetchOnWindowFocus: false,
       refetchOnMount: true, // silent background refetch on every mount
       refetchOnReconnect: true, // refetch when network reconnects
@@ -37,30 +37,30 @@ export const persistOptions = {
 
 // ─── Query Key Factory ───────────────────────────────────────────
 export const QUERY_KEYS = {
-  // Admin — organizations
+  // Admin -- organizations
   organizations: ["admin", "organizations"] as const,
   organization: (id: number) => ["admin", "organization", id] as const,
   organizationLocations: (id: number) =>
     ["admin", "organization", id, "locations"] as const,
 
-  // Admin — minds
+  // Admin -- minds
   adminMinds: ["admin", "minds"] as const,
 
-  // Admin — websites
+  // Admin -- websites
   adminWebsites: (params?: { page?: number; limit?: number; status?: string }) =>
     ["admin", "websites", params] as const,
   adminWebsitesAll: ["admin", "websites"] as const,
   adminStatuses: ["admin", "website-statuses"] as const,
 
-  // Admin — templates
+  // Admin -- templates
   adminTemplates: ["admin", "templates"] as const,
 
-  // Admin — schedules
+  // Admin -- schedules
   adminSchedules: ["admin", "schedules"] as const,
   adminScheduleRuns: (scheduleId: number) =>
     ["admin", "schedule-runs", scheduleId] as const,
 
-  // Admin — org sub-tab data (tasks, notifications, rankings, PMS, agent outputs)
+  // Admin -- org sub-tab data (tasks, notifications, rankings, PMS, agent outputs)
   adminOrgTasks: (orgId: number, params?: Record<string, unknown>) =>
     ["admin", "org-tasks", orgId, params] as const,
   adminOrgTasksAll: (orgId: number) =>
@@ -82,7 +82,7 @@ export const QUERY_KEYS = {
   adminOrgAgentOutputsAll: (orgId: number) =>
     ["admin", "org-agent-outputs", orgId] as const,
 
-  // Admin — standalone pages
+  // Admin -- standalone pages
   adminAgentOutputs: (params?: Record<string, unknown>) =>
     ["admin", "agent-outputs", params] as const,
   adminAgentOutputsAll: ["admin", "agent-outputs"] as const,
@@ -100,28 +100,28 @@ export const QUERY_KEYS = {
   adminInsightsRecommendationsAll: (agentType: string) =>
     ["admin", "insights-recommendations", agentType] as const,
 
-  // Admin — website detail
+  // Admin -- website detail
   adminWebsiteDetail: (uuid: string) =>
     ["admin", "website-detail", uuid] as const,
 
-  // Client — notifications
+  // Client -- notifications
   notifications: (orgId: number | null, locationId: number | null) =>
     ["notifications", orgId, locationId] as const,
 
-  // Client — settings
+  // Client -- settings
   settings: {
     users: ["settings", "users"] as const,
     scopes: ["settings", "scopes"] as const,
     pmsStatus: (orgId: number) => ["settings", "pms", orgId] as const,
   },
 
-  // Client — agent data / dashboard
+  // Client -- agent data / dashboard
   agentData: (orgId: number | null, locationId?: number | null) =>
     ["agent-data", orgId, locationId] as const,
   tasks: (orgId: number | null, locationId?: number | null) =>
     ["tasks", orgId, locationId] as const,
 
-  // Client — DFY website
+  // Client -- DFY website
   userWebsite: ["user", "website"] as const,
   websiteSubmissions: (params?: { page?: number; limit?: number }) =>
     ["user", "website", "submissions", params] as const,

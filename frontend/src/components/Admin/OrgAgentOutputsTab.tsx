@@ -65,7 +65,7 @@ export function OrgAgentOutputsTab({
 
   const pageSize = 50;
 
-  // TanStack Query — replaces useEffect + useState
+  // TanStack Query -- replaces useEffect + useState
   const { data, isLoading: loading } = useAdminOrgAgentOutputs({
     organizationId,
     agentType,
@@ -98,7 +98,7 @@ export function OrgAgentOutputsTab({
   };
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "—";
+    if (!dateStr) return "--";
     try {
       return new Date(dateStr).toLocaleDateString();
     } catch {

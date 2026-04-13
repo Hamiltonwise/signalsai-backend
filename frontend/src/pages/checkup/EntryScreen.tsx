@@ -69,7 +69,7 @@ const SPECIALTY_TYPE_MAP: Record<string, string> = {
 
 /**
  * Keywords to detect specialty from a business name when types[] is too coarse.
- * Checked in order — first match wins.
+ * Checked in order -- first match wins.
  */
 const NAME_SPECIALTY_PATTERNS: [RegExp, string][] = [
   // Dental
@@ -309,7 +309,7 @@ export default function EntryScreen() {
         </div>
       )}
 
-      {/* Headline — warm, continues the homepage identity */}
+      {/* Headline -- warm, continues the homepage identity */}
       <div className="text-center mb-10">
         <TailorText editKey="checkup.entry.badge" defaultText="Free. 60 seconds." as="p" className="text-xs font-semibold tracking-[0.2em] text-[#D56753]/60 uppercase mb-4" />
         <TailorText editKey="checkup.entry.headline" defaultText="Let's see what your business has been saying." as="h1" className="text-2xl sm:text-[34px] font-semibold text-[#1A1D23] tracking-tight leading-tight font-heading" />
@@ -320,7 +320,7 @@ export default function EntryScreen() {
         </p>
       </div>
 
-      {/* Search input — premium styling */}
+      {/* Search input -- premium styling */}
       <div className="relative">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
@@ -440,7 +440,7 @@ export default function EntryScreen() {
         </div>
       )}
 
-      {/* Trust signals — refined */}
+      {/* Trust signals -- refined */}
       <div className="mt-12 flex items-center justify-center gap-4">
         {["Free", "60 seconds", "See how you compare"].map((text, i) => (
           <span key={text} className="flex items-center gap-1.5 text-xs text-slate-400">

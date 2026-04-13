@@ -63,7 +63,7 @@ export function KillSwitchBanner() {
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 shrink-0 animate-pulse" />
             <div>
-              <span className="font-bold text-sm">KILL SWITCH ACTIVE</span>
+              <span className="font-semibold text-sm">KILL SWITCH ACTIVE</span>
               {status?.reason && (
                 <span className="text-sm text-red-100 ml-2">
                   {status.reason}
@@ -79,7 +79,7 @@ export function KillSwitchBanner() {
           <button
             onClick={() => deactivateMutation.mutate()}
             disabled={deactivateMutation.isPending}
-            className="px-4 py-1.5 bg-white text-red-600 text-sm font-bold rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+            className="px-4 py-1.5 bg-white text-red-600 text-sm font-semibold rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
           >
             {deactivateMutation.isPending ? "Deactivating..." : "Deactivate"}
           </button>
@@ -91,7 +91,7 @@ export function KillSwitchBanner() {
         <div className="sticky top-0 z-50 flex justify-end px-4 py-2 pointer-events-none">
           <button
             onClick={() => setShowActivateDialog(true)}
-            className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors shadow-lg"
+            className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors shadow-lg"
             title="Emergency: Stop all agents"
           >
             <Power className="w-3.5 h-3.5" />
@@ -109,7 +109,7 @@ export function KillSwitchBanner() {
                 <ShieldOff className="w-5 h-5 text-red-600" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Activate Kill Switch</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Activate Kill Switch</h3>
                 <p className="text-sm text-slate-500">This will halt ALL agent execution</p>
               </div>
             </div>
@@ -129,7 +129,7 @@ export function KillSwitchBanner() {
               <button
                 onClick={() => reason.trim() && activateMutation.mutate(reason.trim())}
                 disabled={!reason.trim() || activateMutation.isPending}
-                className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {activateMutation.isPending ? "Activating..." : "Activate Kill Switch"}
               </button>

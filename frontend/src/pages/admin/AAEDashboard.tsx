@@ -256,7 +256,7 @@ export default function AAEDashboard() {
             <div className="w-16 h-16 rounded-full bg-[#D56753]/10 flex items-center justify-center mb-6">
               <Radio className="w-8 h-8 text-[#D56753]" />
             </div>
-            <h2 className="text-lg font-bold text-white mb-2">
+            <h2 className="text-lg font-semibold text-white mb-2">
               Standing by for first scan
             </h2>
             <p className="text-sm text-gray-500 max-w-xs leading-relaxed">
@@ -306,7 +306,7 @@ export default function AAEDashboard() {
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
               <div className="flex items-center gap-2 mb-4">
                 <span className="w-2 h-2 bg-[#D56753] rounded-full animate-pulse" />
-                <p className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">
                   Live Feed
                 </p>
               </div>
@@ -355,7 +355,7 @@ export default function AAEDashboard() {
 
             {/* Conversion Funnel */}
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">
                 Conversion Funnel
               </p>
               <div className="space-y-3">
@@ -417,7 +417,7 @@ export default function AAEDashboard() {
               {/* 7-day trend */}
               {data?.funnel?.last7days && data.funnel.last7days.scansStarted > 0 && (
                 <div className="mt-3 pt-3 border-t border-white/[0.06]">
-                  <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 mb-2">
                     7-Day Trend
                   </p>
                   <div className="flex items-center justify-between text-xs">
@@ -439,7 +439,7 @@ export default function AAEDashboard() {
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="w-4 h-4 text-amber-400" />
-                  <p className="text-xs font-bold uppercase tracking-widest text-amber-400">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-amber-400">
                     Oz Moments
                   </p>
                 </div>
@@ -472,7 +472,7 @@ export default function AAEDashboard() {
             <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-4">
               <div className="flex items-center gap-2 mb-4">
                 <DollarSign className="w-4 h-4 text-emerald-400" />
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
                   Revenue
                 </p>
               </div>
@@ -530,7 +530,7 @@ function BigNumber({
         >
           <Icon className={`w-4 h-4 ${color}`} />
         </div>
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
           {label}
         </p>
       </div>

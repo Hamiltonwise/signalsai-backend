@@ -253,7 +253,7 @@ export function NotificationPopover({
               <Bell size={20} />
             </div>
             <div>
-              <h3 className="text-xs font-bold font-heading text-alloro-navy uppercase tracking-[0.2em]">
+              <h3 className="text-xs font-semibold font-heading text-alloro-navy uppercase tracking-[0.2em]">
                 Intelligence Signals
               </h3>
               <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1">
@@ -268,7 +268,7 @@ export function NotificationPopover({
               <button
                 onClick={handleMarkAllAsRead}
                 disabled={loading}
-                className="text-[9px] text-slate-400 hover:text-alloro-navy font-bold uppercase tracking-widest flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                className="text-[9px] text-slate-400 hover:text-alloro-navy font-semibold uppercase tracking-widest flex items-center gap-1.5 disabled:opacity-50 transition-colors"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
                 Clear
@@ -291,7 +291,7 @@ export function NotificationPopover({
             <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-100">
               <Bell className="w-7 h-7 text-slate-300" />
             </div>
-            <p className="text-base font-bold text-alloro-navy font-heading tracking-tight">
+            <p className="text-base font-semibold text-alloro-navy font-heading tracking-tight">
               No signals yet
             </p>
             <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mt-1.5">
@@ -322,7 +322,7 @@ export function NotificationPopover({
                     </div>
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-sm font-bold text-alloro-navy font-heading tracking-tight leading-tight">
+                        <h4 className="text-sm font-semibold text-alloro-navy font-heading tracking-tight leading-tight">
                           {notification.title}
                           {!notification.read && (
                             <span className="inline-block w-2 h-2 bg-alloro-orange rounded-full animate-pulse ml-2 align-middle"></span>
@@ -345,7 +345,7 @@ export function NotificationPopover({
                           {notification.message}
                         </p>
                       )}
-                      <div className="flex items-center gap-4 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                      <div className="flex items-center gap-4 text-[9px] font-semibold text-slate-400 uppercase tracking-widest">
                         <span className="flex items-center gap-1.5">
                           <Clock size={12} className="opacity-40" />
                           {formatDistanceToNow(
@@ -385,7 +385,7 @@ export function NotificationPopover({
           <Bell className="h-4 w-4" />
           <span>Notifications</span>
           {unreadCount > 0 && (
-            <span className="absolute -top-1 left-4 bg-alloro-orange text-white text-[9px] font-bold rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center">
+            <span className="absolute -top-1 left-4 bg-alloro-orange text-white text-[9px] font-semibold rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}

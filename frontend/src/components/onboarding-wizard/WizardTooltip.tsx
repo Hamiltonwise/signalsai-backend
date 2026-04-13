@@ -246,7 +246,7 @@ export function WizardTooltip({
                       <Sparkles size={20} className="text-white" />
                     )}
                   </div>
-                  <span className="text-sm font-bold text-white/80 uppercase tracking-wider">
+                  <span className="text-sm font-semibold text-white/80 uppercase tracking-wider">
                     {isLastStep ? "Final Step" : `Step ${currentIndex} of ${totalSteps}`}
                   </span>
                 </div>
@@ -284,7 +284,7 @@ export function WizardTooltip({
                   {!isFirstStep && (
                     <button
                       onClick={onPrev}
-                      className="flex items-center gap-1.5 px-5 py-3 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors text-sm font-bold whitespace-nowrap"
+                      className="flex items-center gap-1.5 px-5 py-3 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors text-sm font-semibold whitespace-nowrap"
                     >
                       <ChevronLeft size={16} />
                       Back
@@ -359,7 +359,7 @@ export function WizardTooltip({
                 <div className="w-8 h-8 rounded-xl bg-alloro-orange flex items-center justify-center">
                   <Sparkles size={16} className="text-white" />
                 </div>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   Step {currentIndex} of {totalSteps}
                 </span>
               </div>
@@ -416,7 +416,7 @@ export function WizardTooltip({
 
                 <button
                   onClick={onNext}
-                  className="flex items-center gap-1 px-5 py-2.5 rounded-xl bg-alloro-orange text-white hover:bg-alloro-orange/90 transition-all shadow-lg shadow-alloro-orange/30 text-sm font-bold"
+                  className="flex items-center gap-1 px-5 py-2.5 rounded-xl bg-alloro-orange text-white hover:bg-alloro-orange/90 transition-all shadow-lg shadow-alloro-orange/30 text-sm font-semibold"
                 >
                   {isLastStep ? (
                     "Finish Tour"

@@ -370,13 +370,13 @@ export const PropertiesTab: React.FC = () => {
                     )}
                   </div>
 
-                  {/* GBP Info — full width below header */}
+                  {/* GBP Info -- full width below header */}
                   {gbpProp ? (
                     <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <p className="text-sm font-bold text-alloro-navy">
+                      <p className="text-sm font-semibold text-alloro-navy">
                         {gbpProp.display_name}
                       </p>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                      <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-widest mt-1">
                         Location ID: {gbpProp.external_id}
                       </p>
                     </div>
@@ -408,7 +408,7 @@ export const PropertiesTab: React.FC = () => {
         multiSelect={false}
       />
 
-      {/* Add Location Modal — only shown during name step */}
+      {/* Add Location Modal -- only shown during name step */}
       <AnimatePresence>
         {addModalOpen && addStep === "name" && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -446,14 +446,14 @@ export const PropertiesTab: React.FC = () => {
                 <div className="flex justify-end gap-3 mt-6">
                   <button
                     onClick={() => setAddModalOpen(false)}
-                    className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                    className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleAddNameSubmit}
                     disabled={!newLocationName.trim()}
-                    className="px-5 py-2.5 text-sm font-bold text-white bg-alloro-orange rounded-xl hover:bg-alloro-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-5 py-2.5 text-sm font-semibold text-white bg-alloro-orange rounded-xl hover:bg-alloro-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Next: Select GBP
                   </button>

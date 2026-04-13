@@ -194,7 +194,7 @@ export const IntegrationsRoute: React.FC = () => {
           />
         )}
 
-        {/* Connect Google Banner — show when no Google connection */}
+        {/* Connect Google Banner -- show when no Google connection */}
         {!hasGoogleConnection && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -226,7 +226,7 @@ export const IntegrationsRoute: React.FC = () => {
         {/* HubSpot CRM Integration */}
         <HubSpotCard />
 
-        {/* PMS Upload Banner — only show when at least one location is configured */}
+        {/* PMS Upload Banner -- only show when at least one location is configured */}
         {hasPmsData === false && hasProperties && <PMSUploadBanner />}
 
         {/* Location-centric properties management */}

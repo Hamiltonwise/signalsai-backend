@@ -575,7 +575,7 @@ export function MindSettingsTab({ mind, onMindUpdated, onMindDeleted }: MindSett
                       v{version.version_number}
                     </span>
                     {isPublished && (
-                      <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-alloro-orange">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-alloro-orange">
                         <Crown className="h-3 w-3" />
                         Published
                       </span>

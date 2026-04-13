@@ -43,7 +43,7 @@ const COLORS = {
   divider: "#E7E5E4",
 };
 
-const LOGO_URL = "https://app.getalloro.com/logo.png";
+const LOGO_URL = `${process.env.APP_URL || "https://app.getalloro.com"}/logo.png`;
 
 // ── Types ──────────────────────────────────────────────────────────
 

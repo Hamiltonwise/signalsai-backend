@@ -83,7 +83,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
                 <div className={`p-3 rounded-xl ${styles.iconBg}`}>
                   <Icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-alloro-navy font-heading">
+                <h3 className="text-lg font-semibold text-alloro-navy font-heading">
                   {title}
                 </h3>
               </div>
@@ -93,7 +93,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
               <div className="flex justify-end pt-4 border-t border-slate-200">
                 <button
                   onClick={onClose}
-                  className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl transition-colors shadow-md ${styles.button}`}
+                  className={`px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors shadow-md ${styles.button}`}
                 >
                   {buttonText}
                 </button>

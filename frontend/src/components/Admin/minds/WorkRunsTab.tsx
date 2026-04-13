@@ -294,7 +294,7 @@ function WorkRunDetail({
         </div>
       )}
 
-      {/* Artifacts — side-by-side when both present */}
+      {/* Artifacts -- side-by-side when both present */}
       {(run.artifact_url || run.artifact_content || run.artifact_attachment_url) && (
         <div className={`mb-4 ${run.artifact_attachment_url && (run.artifact_url || run.artifact_content) ? "grid grid-cols-2 gap-3" : ""}`}>
           {/* Main artifact */}
@@ -451,7 +451,7 @@ function WorkRunDetail({
         </div>
       )}
 
-      {/* Delete button — always visible */}
+      {/* Delete button -- always visible */}
       <div className="flex justify-end pt-4 mt-4 border-t border-white/8">
         <button
           onClick={handleDelete}
@@ -472,7 +472,7 @@ function WorkRunDetail({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="rounded-2xl shadow-xl p-6 w-full max-w-md mx-4" style={{ backgroundColor: "#1a1a18" }}>
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-base font-bold text-[#eaeaea]">
+              <h4 className="text-base font-semibold text-[#eaeaea]">
                 Reject Work Run
               </h4>
               <button

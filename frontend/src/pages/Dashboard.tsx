@@ -100,7 +100,7 @@ export default function Dashboard() {
     // Onboarding completed
 
     // Mark onboarding as complete immediately so the Dashboard renders
-    // (not null — null would fall through to the onboarding fallback)
+    // (not null -- null would fall through to the onboarding fallback)
     setOnboardingCompleted(true);
     localStorage.setItem("onboardingCompleted", "true");
 
@@ -111,7 +111,7 @@ export default function Dashboard() {
     // Prevent empty state flash while wizard loads
     setIsTransitioningToWizard(true);
 
-    // Run both concurrently — wizard check doesn't depend on property refresh
+    // Run both concurrently -- wizard check doesn't depend on property refresh
     try {
       await Promise.all([
         refreshUserProperties(),
@@ -446,7 +446,7 @@ export default function Dashboard() {
           </div>
         )
       ) : (
-        // Fallback: onboardingCompleted is null after loading finished — show onboarding
+        // Fallback: onboardingCompleted is null after loading finished -- show onboarding
         <div className="p-8">
           <OnboardingContainer onComplete={handleOnboardingComplete} />
         </div>

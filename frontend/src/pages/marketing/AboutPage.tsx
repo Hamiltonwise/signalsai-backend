@@ -16,7 +16,7 @@ export default function AboutPage() {
       description="USAF veteran. 100% service-connected disability. A decade inside specialty service businesses. Alloro is the tool he wished existed."
     >
       <section className="px-5 py-16 sm:py-24 bg-white">
-        <div className="max-w-xl mx-auto space-y-6 text-base text-[#212D40]/80 leading-relaxed">
+        <div className="max-w-xl mx-auto space-y-6 text-base text-[#1A1D23]/80 leading-relaxed">
           <p>
             Corey Wise served in the United States Air Force.
             He carries a 100% service-connected disability rating.
@@ -31,7 +31,7 @@ export default function AboutPage() {
             For years before Alloro existed, he taught webinars for veteran entrepreneurs.
             For free. Before there was anything to sell.
           </p>
-          <p className="font-semibold text-[#212D40] text-lg">
+          <p className="font-semibold text-[#1A1D23] text-lg">
             Alloro is not an idea he had.
             It is the tool he spent a decade wishing someone would build.
           </p>
@@ -48,24 +48,24 @@ export default function AboutPage() {
           </p>
 
           <div className="border-t border-gray-200 pt-6 space-y-2">
-            <p className="text-[#212D40]/60">He lives in Bend, Oregon.</p>
-            <p className="text-[#212D40]/60">He competes in USPSA.</p>
-            <p className="text-[#212D40]/60">He bakes sourdough for his daughter Sophie.</p>
-            <p className="text-[#212D40]/60">He drives air-cooled Porsches.</p>
-            <p className="text-[#212D40]/60">He fly fishes.</p>
+            <p className="text-[#1A1D23]/60">He lives in Bend, Oregon.</p>
+            <p className="text-[#1A1D23]/60">He competes in USPSA.</p>
+            <p className="text-[#1A1D23]/60">He bakes sourdough for his daughter Sophie.</p>
+            <p className="text-[#1A1D23]/60">He drives air-cooled Porsches.</p>
+            <p className="text-[#1A1D23]/60">He fly fishes.</p>
           </div>
 
           <p>
             He is building Alloro because the butterfly effect is real.
           </p>
-          <p className="text-[#212D40]/60">
+          <p className="text-[#1A1D23]/60">
             The business owner who opens Monday morning with clarity
             pays for the coffee of the person behind them in the drive-thru.
             That person smiles at the checkout teller.
             The teller takes that home.
           </p>
-          <p className="text-[#212D40]/60">Six degrees.</p>
-          <p className="font-semibold text-[#212D40]">
+          <p className="text-[#1A1D23]/60">Six degrees.</p>
+          <p className="font-semibold text-[#1A1D23]">
             The freedom Alloro gives back doesn't stop with the owner.
             It never did.
           </p>
@@ -79,7 +79,7 @@ export default function AboutPage() {
             </Link>
             <Link
               to="/foundation"
-              className="inline-flex items-center gap-2 rounded-xl border-2 border-[#212D40]/15 text-[#212D40] text-sm font-semibold px-6 py-3 hover:border-[#212D40]/30 transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl border-2 border-[#212D40]/15 text-[#1A1D23] text-sm font-semibold px-6 py-3 hover:border-[#212D40]/30 transition-colors"
             >
               Learn about Heroes & Founders <ArrowRight className="w-4 h-4" />
             </Link>

@@ -797,10 +797,10 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     return demoData.map((m) => ({
       month: m.month,
       selfReferrals: m.marketing,
-      doctorReferrals: m.doctor,
-      total: m.marketing + m.doctor,
-      totalReferrals: m.marketing + m.doctor,
-      productionTotal: (m.marketing + m.doctor) * 1200,
+      doctorReferrals: m.partner,
+      total: m.marketing + m.partner,
+      totalReferrals: m.marketing + m.partner,
+      productionTotal: (m.marketing + m.partner) * 1200,
     }));
   }, [wizardDemoData]);
 
@@ -888,7 +888,7 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     const realProduction = topSources.reduce((sum, s) => sum + (s.production || 0), 0);
     // Use wizard demo data if wizard is active and no real production data
     if (isWizardActive && realProduction === 0) {
-      return wizardDemoData?.referralData?.keyData?.mktProduction ?? 89000;
+      return wizardDemoData?.referralData?.keyData?.mktRevenue ?? 89000;
     }
     return realProduction;
   }, [topSources, isWizardActive, wizardDemoData]);
@@ -920,9 +920,9 @@ export const PMSVisualPillars: React.FC<PMSVisualPillarsProps> = ({
     if (isWizardActive) {
       const demoKeyData = wizardDemoData?.referralData?.keyData;
       if (demoKeyData) {
-        const total = (demoKeyData.mktProduction ?? 0) + (demoKeyData.docProduction ?? 0);
+        const total = (demoKeyData.mktRevenue ?? 0) + (demoKeyData.partnerRevenue ?? 0);
         if (total > 0) {
-          return Math.round(((demoKeyData.docProduction ?? 0) / total) * 100);
+          return Math.round(((demoKeyData.partnerRevenue ?? 0) / total) * 100);
         }
       }
       return 43; // Fallback percentage

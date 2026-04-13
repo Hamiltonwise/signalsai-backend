@@ -1,5 +1,5 @@
 /**
- * Dashboard Settings — /dashboard/settings
+ * Dashboard Settings -- /dashboard/settings
  *
  * Business info, NPI verification, notifications, billing.
  */

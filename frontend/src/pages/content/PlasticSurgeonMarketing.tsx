@@ -59,14 +59,14 @@ export default function PlasticSurgeonMarketing() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+            <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
               alloro
             </span>
           </div>
         </header>
 
         <main className="mx-auto max-w-2xl px-5 pb-16">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
             Business Clarity for Plastic Surgery Practices
           </h1>
 
@@ -87,7 +87,7 @@ export default function PlasticSurgeonMarketing() {
             <p className="text-sm font-semibold text-[#D56753] uppercase tracking-wider mb-2">
               See where you stand
             </p>
-            <p className="text-base text-[#212D40] font-medium leading-relaxed">
+            <p className="text-base text-[#1A1D23] font-medium leading-relaxed">
               Run your free Business Clarity Checkup to see your competitive
               position, review gaps, and the one thing most affecting your
               visibility right now.

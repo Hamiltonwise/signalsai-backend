@@ -1,5 +1,5 @@
 /**
- * Your Market — Leaderboard Visual (WO13)
+ * Your Market -- Leaderboard Visual (WO13)
  *
  * Replaces Practice Ranking history table with a leaderboard.
  * Each practice gets a horizontal position track showing where they
@@ -69,7 +69,7 @@ function PositionTrack({
         >
           {slot === position ? (
             <div className="h-6 w-6 rounded-full bg-[#D56753] flex items-center justify-center shadow-sm">
-              <span className="text-xs font-bold text-white">{slot}</span>
+              <span className="text-xs font-semibold text-white">{slot}</span>
             </div>
           ) : (
             <div className="h-5 w-5 rounded-full border-2 border-[#212D40]/20 flex items-center justify-center">
@@ -95,7 +95,7 @@ function DeltaBadge({ delta }: { delta: number | null }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full ${
+      className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full ${
         isUp
           ? "bg-emerald-50 text-emerald-700"
           : "bg-red-50 text-red-600"
@@ -125,7 +125,7 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
       {/* Top: name + delta */}
       <div className="flex items-center justify-between">
         <div className="min-w-0">
-          <h3 className="text-base font-bold text-[#212D40] truncate">
+          <h3 className="text-base font-semibold text-[#1A1D23] truncate">
             {entry.orgName}
           </h3>
           <p className="text-xs text-gray-400 truncate">
@@ -134,7 +134,7 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <div className="text-right">
-            <span className="text-2xl font-bold text-[#212D40]">
+            <span className="text-2xl font-semibold text-[#1A1D23]">
               #{entry.position}
             </span>
             <span className="text-xs text-gray-400 ml-1">
@@ -154,7 +154,7 @@ function LeaderboardRow({ entry }: { entry: LeaderboardEntry }) {
       {/* Score + gap */}
       <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-100">
         <span className="text-gray-500">
-          Score: <span className="font-semibold text-[#212D40]">{Math.round(entry.score)}</span>/100
+          Score: <span className="font-semibold text-[#1A1D23]">{Math.round(entry.score)}</span>/100
           {entry.specialty && (
             <span className="text-gray-400"> &middot; {entry.specialty}</span>
           )}
@@ -258,7 +258,7 @@ export default function YourMarket() {
     <div className="mx-auto max-w-5xl px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#212D40] flex items-center gap-3">
+        <h1 className="text-2xl font-semibold text-[#1A1D23] flex items-center gap-3">
           <TrendingUp className="h-6 w-6 text-[#D56753]" />
           Your Market
         </h1>
@@ -313,7 +313,7 @@ export default function YourMarket() {
       <div className="mt-10 border-t border-gray-200 pt-6">
         <button
           onClick={() => setShowHistory(!showHistory)}
-          className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#212D40] transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#1A1D23] transition-colors"
         >
           <History className="h-4 w-4" />
           View history

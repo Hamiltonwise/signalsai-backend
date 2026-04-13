@@ -102,14 +102,14 @@ export default function PTMarketing() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+            <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
               alloro
             </span>
           </div>
         </header>
 
         <main className="mx-auto max-w-2xl px-5 pb-16">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
             How Physical Therapy Practices Lose MD Referrals (And How to Know
             Before It Costs Them)
           </h1>
@@ -121,7 +121,7 @@ export default function PTMarketing() {
 
           {/* Three ICP Scenarios */}
           <div className="mt-12 space-y-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">
               Three PT practices that discovered the problem too late
             </h2>
             {SCENARIOS.map((scenario, i) => (
@@ -129,7 +129,7 @@ export default function PTMarketing() {
                 key={i}
                 className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
               >
-                <p className="text-sm font-semibold text-[#212D40] mb-2">
+                <p className="text-sm font-semibold text-[#1A1D23] mb-2">
                   {scenario.title}
                 </p>
                 <p className="text-sm text-gray-700 leading-relaxed">
@@ -141,7 +141,7 @@ export default function PTMarketing() {
 
           {/* Three Signals */}
           <div className="mt-12 space-y-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">
               Three signals that a referral relationship is moving
             </h2>
             {SIGNALS.map((signal, i) => (
@@ -153,7 +153,7 @@ export default function PTMarketing() {
                 <p className="text-sm font-semibold text-[#D56753] mb-2">
                   {signal.title}
                 </p>
-                <p className="text-sm text-[#212D40] leading-relaxed">
+                <p className="text-sm text-[#1A1D23] leading-relaxed">
                   {signal.body}
                 </p>
               </div>
@@ -162,7 +162,7 @@ export default function PTMarketing() {
 
           {/* What To Do */}
           <div className="mt-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-4">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-4">
               What to do when you see the signal
             </h2>
             <p className="text-base text-gray-700 leading-relaxed text-center">

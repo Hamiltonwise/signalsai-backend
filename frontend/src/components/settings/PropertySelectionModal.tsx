@@ -118,7 +118,7 @@ export const PropertySelectionModal: React.FC<PropertySelectionModalProps> = ({
           >
             {/* Header */}
             <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-alloro-navy font-heading">
+              <h3 className="text-lg font-semibold text-alloro-navy font-heading">
                 {title}
               </h3>
               <button
@@ -160,7 +160,7 @@ export const PropertySelectionModal: React.FC<PropertySelectionModalProps> = ({
                   <div className="p-3 bg-slate-100 rounded-xl w-fit mx-auto mb-3">
                     <Search className="w-8 h-8 text-slate-400" />
                   </div>
-                  <p className="text-alloro-navy font-bold">
+                  <p className="text-alloro-navy font-semibold">
                     No properties found
                   </p>
                   <p className="text-sm text-slate-500 mt-1">
@@ -190,7 +190,7 @@ export const PropertySelectionModal: React.FC<PropertySelectionModalProps> = ({
                       >
                         <div className="flex-1 min-w-0 mr-4">
                           <div
-                            className={`font-bold truncate ${
+                            className={`font-semibold truncate ${
                               isSelected
                                 ? "text-alloro-orange"
                                 : "text-alloro-navy"
@@ -242,14 +242,14 @@ export const PropertySelectionModal: React.FC<PropertySelectionModalProps> = ({
                   <button
                     onClick={onClose}
                     disabled={isSaving}
-                    className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors disabled:opacity-50"
+                    className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleConfirm}
                     disabled={isSaving || selectedIds.length === 0}
-                    className="px-5 py-2.5 text-sm font-bold text-white bg-alloro-orange hover:bg-blue-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
+                    className="px-5 py-2.5 text-sm font-semibold text-white bg-alloro-orange hover:bg-blue-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
                   >
                     {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                     Confirm Selection

@@ -59,7 +59,7 @@ export default function AIDataInsightsList() {
     setSearchParams({ month });
   };
 
-  // TanStack Query — replaces useEffect + useState
+  // TanStack Query -- replaces useEffect + useState
   const {
     data: queryData,
     isLoading: loading,
@@ -414,7 +414,7 @@ export default function AIDataInsightsList() {
                   {/* Confidence Rate */}
                   <div className="bg-gray-50 rounded-lg p-3">
                     <p className="text-xs text-gray-500 mb-1">AI Confidence</p>
-                    <p className="text-lg font-bold text-gray-900">
+                    <p className="text-lg font-semibold text-gray-900">
                       {agent.confidence_rate.toFixed(1)}<span className="text-sm font-normal text-gray-500">/10</span>
                     </p>
                   </div>

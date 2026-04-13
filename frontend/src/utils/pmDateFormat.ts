@@ -63,6 +63,6 @@ export function formatDeadline(date: string | Date | null): DeadlineDisplay | nu
     return { text: "Next week", colorClass: "text-[#3D8B40]", tooltip };
   }
 
-  // Further out — exact date
+  // Further out -- exact date
   return { text: format(d, "MMM d"), colorClass: "text-[var(--color-pm-text-muted)]", tooltip };
 }

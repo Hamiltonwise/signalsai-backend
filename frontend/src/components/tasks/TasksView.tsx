@@ -208,7 +208,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   placeholder="Ask your strategist a question..."
-                  className="w-full h-24 bg-alloro-bg border border-black/5 rounded-2xl px-5 py-4 text-alloro-navy font-bold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all resize-none"
+                  className="w-full h-24 bg-alloro-bg border border-black/5 rounded-2xl px-5 py-4 text-alloro-navy font-semibold text-sm focus:outline-none focus:border-alloro-orange focus:ring-4 focus:ring-alloro-orange/5 transition-all resize-none"
                 />
                 <button
                   onClick={handleHelpSubmit}
@@ -218,7 +218,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                   {sent ? <CheckCircle2 size={16} /> : <Send size={16} />}
                 </button>
               </div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-tight">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest leading-tight">
                 Alloro is processing your request.
               </p>
             </div>
@@ -228,7 +228,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                 <div>
                   <p
                     ref={descriptionRef}
-                    className={`text-[16px] leading-relaxed font-bold tracking-tight transition-all ${
+                    className={`text-[16px] leading-relaxed font-semibold tracking-tight transition-all ${
                       isDone ? "opacity-30" : "text-slate-500"
                     } ${!isExpanded ? "line-clamp-2" : ""} ${
                       isClamped ? "cursor-pointer hover:opacity-80" : ""
@@ -246,7 +246,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                         e.stopPropagation();
                         if (onExpand) onExpand();
                       }}
-                      className="text-xs text-alloro-orange hover:text-blue-700 font-bold mt-2 uppercase tracking-widest"
+                      className="text-xs text-alloro-orange hover:text-blue-700 font-semibold mt-2 uppercase tracking-widest"
                     >
                       {isExpanded ? "Show less" : "Read more"}
                     </button>
@@ -531,7 +531,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
           <div className="p-4 bg-slate-100 rounded-2xl w-fit mx-auto mb-4">
             <AlertCircle className="w-10 h-10 text-slate-400" />
           </div>
-          <h3 className="text-xl font-bold text-alloro-navy font-heading mb-2 tracking-tight">
+          <h3 className="text-xl font-semibold text-alloro-navy font-heading mb-2 tracking-tight">
             No Account Selected
           </h3>
           <p className="text-slate-500 text-sm font-medium">
@@ -553,7 +553,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
           <div className="p-4 bg-red-50 rounded-2xl w-fit mx-auto mb-4">
             <AlertCircle className="w-10 h-10 text-red-500" />
           </div>
-          <h3 className="text-xl font-bold text-alloro-navy font-heading mb-2 tracking-tight">
+          <h3 className="text-xl font-semibold text-alloro-navy font-heading mb-2 tracking-tight">
             Unable to Load Tasks
           </h3>
           <p className="text-slate-500 text-sm font-medium mb-6">{error}</p>
@@ -621,7 +621,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
               <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                 To-Do List
               </h1>
-              <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+              <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                 Tasks for your team
               </span>
             </div>
@@ -864,7 +864,7 @@ export function TasksView({ organizationId, locationId }: TasksViewProps) {
                 </div>
                 <div className="p-8 bg-alloro-navy rounded-3xl text-center border border-white/5 shadow-2xl relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-48 h-48 bg-alloro-orange/5 rounded-full blur-3xl -mr-24 -mt-24"></div>
-                  <p className="text-blue-100/40 text-sm font-bold tracking-tight relative z-10">
+                  <p className="text-blue-100/40 text-sm font-semibold tracking-tight relative z-10">
                     Alloro is automatically managing{" "}
                     <span className="text-white">
                       Reputation Monitoring, Rank Tracking, and Lead Flow

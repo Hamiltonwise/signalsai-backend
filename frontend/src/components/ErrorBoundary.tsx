@@ -1,5 +1,5 @@
 /**
- * ErrorBoundary — catches unhandled React errors and shows a branded recovery UI.
+ * ErrorBoundary -- catches unhandled React errors and shows a branded recovery UI.
  *
  * Usage:
  *   <ErrorBoundary key={location.pathname}>

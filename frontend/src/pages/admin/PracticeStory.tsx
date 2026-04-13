@@ -152,7 +152,7 @@ function PositionCard({ rankings }: { rankings: RankingJob[] }) {
             Market Position
           </p>
           <div className="mt-2 flex items-baseline gap-3">
-            <span className="text-5xl font-semibold text-[#212D40]">
+            <span className="text-5xl font-semibold text-[#1A1D23]">
               #{latest.rank_position ?? "–"}
             </span>
             <span className="text-sm text-gray-500">
@@ -230,7 +230,7 @@ function CompetitorGap({ rankings }: { rankings: RankingJob[] }) {
         className="rounded-2xl px-6 py-5"
         style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
       >
-        <p className="text-sm font-medium text-[#212D40]">
+        <p className="text-sm font-medium text-[#1A1D23]">
           Ranking data collected. Competitor gap analysis will appear after the
           next full scan.
         </p>
@@ -256,8 +256,8 @@ function CompetitorGap({ rankings }: { rankings: RankingJob[] }) {
       className="rounded-2xl px-6 py-5"
       style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
     >
-      <p className="text-base font-medium leading-relaxed text-[#212D40]">
-        <span className="font-bold">{topCompetitor.name || "Top competitor"}</span> holds position
+      <p className="text-base font-medium leading-relaxed text-[#1A1D23]">
+        <span className="font-semibold">{topCompetitor.name || "Top competitor"}</span> holds position
         #1
         {reviewDiff != null && reviewDiff > 0
           ? ` with ${reviewDiff} more review${reviewDiff !== 1 ? "s" : ""}`
@@ -334,7 +334,7 @@ function ProoflineAction({ orgId }: { orgId: number }) {
         </span>
       </div>
       {summary ? (
-        <p className="mt-3 text-sm leading-relaxed text-[#212D40]">{summary}</p>
+        <p className="mt-3 text-sm leading-relaxed text-[#1A1D23]">{summary}</p>
       ) : (
         <p className="mt-3 text-sm text-gray-500">
           Proofline ran {formatTimeAgo(data.created_at)}. Output processed
@@ -357,7 +357,7 @@ function OneAction({ rankings, orgId: _orgId, onNavigateManage }: { rankings: Ra
         <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
           Recommended Action
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-[#212D40]">
+        <p className="mt-3 text-sm leading-relaxed text-[#1A1D23]">
           This practice scores {latest.rank_score}/100. The fastest path to
           improvement is review velocity, ask happy patients to leave a Google
           review this week.
@@ -376,7 +376,7 @@ function OneAction({ rankings, orgId: _orgId, onNavigateManage }: { rankings: Ra
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-center gap-3">
         <Eye className="h-5 w-5 text-emerald-500" />
-        <p className="text-sm font-medium text-[#212D40]">
+        <p className="text-sm font-medium text-[#1A1D23]">
           Alloro is watching. Nothing urgent.
         </p>
       </div>
@@ -430,7 +430,7 @@ export default function PracticeStory() {
       {/* Back nav */}
       <button
         onClick={() => navigate("/admin")}
-        className="mb-6 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-[#212D40]"
+        className="mb-6 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-[#1A1D23]"
       >
         <ArrowLeft className="h-4 w-4" />
         Morning Brief
@@ -438,7 +438,7 @@ export default function PracticeStory() {
 
       {/* Practice name + health indicator */}
       <div className="mb-8 flex items-center gap-4">
-        <h1 className="text-2xl font-bold text-[#212D40]">{orgName}</h1>
+        <h1 className="text-2xl font-semibold text-[#1A1D23]">{orgName}</h1>
         <div className="flex items-center gap-2">
           <span
             className={`h-3 w-3 rounded-full ${health.color}`}
@@ -457,7 +457,7 @@ export default function PracticeStory() {
           className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
             activeTab === "story"
               ? "bg-[#212D40] text-white"
-              : "text-gray-500 hover:text-[#212D40] hover:bg-gray-100"
+              : "text-gray-500 hover:text-[#1A1D23] hover:bg-gray-100"
           }`}
         >
           <Eye className="h-3.5 w-3.5" />
@@ -468,7 +468,7 @@ export default function PracticeStory() {
           className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
             activeTab === "timeline"
               ? "bg-[#212D40] text-white"
-              : "text-gray-500 hover:text-[#212D40] hover:bg-gray-100"
+              : "text-gray-500 hover:text-[#1A1D23] hover:bg-gray-100"
           }`}
         >
           <Clock className="h-3.5 w-3.5" />
@@ -487,7 +487,7 @@ export default function PracticeStory() {
           {/* Persistent link to full customer data */}
           <button
             onClick={() => navigate(`/admin/organizations/${id}/manage`)}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-6 py-4 text-sm font-medium text-[#212D40] shadow-sm transition-colors hover:bg-gray-50"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-6 py-4 text-sm font-medium text-[#1A1D23] shadow-sm transition-colors hover:bg-gray-50"
           >
             <Activity className="h-4 w-4 text-gray-400" />
             View all customer data

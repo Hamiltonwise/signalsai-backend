@@ -138,12 +138,12 @@ export default function MenusTab({
   const [menuLoading, setMenuLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Local DnD state — changes here don't hit the API until "Save Order"
+  // Local DnD state -- changes here don't hit the API until "Save Order"
   const [localFlatItems, setLocalFlatItems] = useState<FlatItem[]>([]);
   const [hasUnsavedOrder, setHasUnsavedOrder] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
 
-  // Drag depth tracking — horizontal mouse movement → indent/outdent
+  // Drag depth tracking -- horizontal mouse movement → indent/outdent
   const dragStartXRef = useRef(0);
   const depthDeltaRef = useRef(0);
   const isDraggingRef = useRef(false);
@@ -670,7 +670,7 @@ export default function MenusTab({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Save Order button — only visible when dirty */}
+            {/* Save Order button -- only visible when dirty */}
             {hasUnsavedOrder && (
               <ActionButton
                 label="Save Order"

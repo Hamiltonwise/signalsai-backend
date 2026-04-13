@@ -83,10 +83,10 @@ export default function PitchRepTracker() {
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#D56753]/10 mb-4">
           <Mic className="w-6 h-6 text-[#D56753]" />
         </div>
-        <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-2">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753] mb-2">
           Pitch Prep
         </p>
-        <h1 className="text-lg font-bold text-[#212D40]">
+        <h1 className="text-lg font-semibold text-[#1A1D23]">
           AAE is April 15. Get your reps in.
         </h1>
       </div>
@@ -94,13 +94,13 @@ export default function PitchRepTracker() {
       {/* Counter */}
       <div className="text-center">
         {done ? (
-          <p className="text-4xl sm:text-5xl font-semibold text-[#212D40]">
+          <p className="text-4xl sm:text-5xl font-semibold text-[#1A1D23]">
             Ready for AAE.
           </p>
         ) : (
-          <p className="text-5xl sm:text-6xl font-semibold text-[#212D40]">
+          <p className="text-5xl sm:text-6xl font-semibold text-[#1A1D23]">
             {count}{" "}
-            <span className="text-2xl font-bold text-slate-300">
+            <span className="text-2xl font-semibold text-slate-300">
               / {TARGET}
             </span>
           </p>
@@ -132,7 +132,7 @@ export default function PitchRepTracker() {
       {/* Recent Reps */}
       {lastFive.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
             Recent
           </p>
           {lastFive.map((rep, i) => (
@@ -140,7 +140,7 @@ export default function PitchRepTracker() {
               key={rep.id}
               className="flex items-center justify-between rounded-xl bg-white border border-gray-200 px-4 py-3"
             >
-              <p className="text-sm font-medium text-[#212D40]">
+              <p className="text-sm font-medium text-[#1A1D23]">
                 Pitch rep #{count - i}
               </p>
               <p className="text-xs text-slate-400">

@@ -59,7 +59,7 @@ function getChecklistItems(category?: string | null): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Custom map markers — SVG-based, no external images
+// Custom map markers -- SVG-based, no external images
 // ---------------------------------------------------------------------------
 
 function createPinIcon(color: string) {
@@ -96,7 +96,7 @@ function createHighlightedPinIcon(color: string) {
 const highlightedCompetitorIcon = createHighlightedPinIcon(NAVY);
 
 // ---------------------------------------------------------------------------
-// Map Animator — cinematic camera for the scanning theater
+// Map Animator -- cinematic camera for the scanning theater
 // ---------------------------------------------------------------------------
 
 function MapAnimator({
@@ -222,7 +222,7 @@ function ChecklistItem({
 }
 
 // ---------------------------------------------------------------------------
-// Unified Discovery Feed — business data first, then competitors with map pins
+// Unified Discovery Feed -- business data first, then competitors with map pins
 // ---------------------------------------------------------------------------
 
 interface FeedItem {
@@ -393,7 +393,7 @@ function DiscoveryFeed({
         </div>
       )}
 
-      {/* Oz teaser findings — build anticipation for the results page */}
+      {/* Oz teaser findings -- build anticipation for the results page */}
       {visibleOzLines > 0 && (
         <>
           <p className="text-xs font-semibold tracking-widest text-slate-400 uppercase mt-3 mb-2">
@@ -420,7 +420,7 @@ function DiscoveryFeed({
 }
 
 // ---------------------------------------------------------------------------
-// Review Ticker — real reviews scroll through during scan
+// Review Ticker -- real reviews scroll through during scan
 // ---------------------------------------------------------------------------
 
 function ReviewTicker({ reviews }: { reviews: PlaceReview[] }) {
@@ -468,7 +468,7 @@ function ReviewTicker({ reviews }: { reviews: PlaceReview[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Photo Strip — real GBP photos appear during scan
+// Photo Strip -- real GBP photos appear during scan
 // ---------------------------------------------------------------------------
 
 function PhotoStrip({ photos }: { photos: PlacePhoto[] }) {
@@ -511,7 +511,7 @@ function PhotoStrip({ photos }: { photos: PlacePhoto[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Radar Pulse — CSS overlay on the map that pulses from center
+// Radar Pulse -- CSS overlay on the map that pulses from center
 // ---------------------------------------------------------------------------
 
 function RadarPulse({ active }: { active: boolean }) {
@@ -808,7 +808,7 @@ export default function ScanningTheater() {
 
   return (
     <div className="w-full max-w-4xl mt-2 sm:mt-6">
-      {/* Header — dramatic, branded */}
+      {/* Header -- dramatic, branded */}
       <div className="text-center mb-8">
         <p className="text-xs font-semibold tracking-widest text-[#D56753] uppercase mb-2">
           Market Analysis
@@ -821,9 +821,9 @@ export default function ScanningTheater() {
         </p>
       </div>
 
-      {/* Two-panel layout — map first on mobile, checklist first on desktop */}
+      {/* Two-panel layout -- map first on mobile, checklist first on desktop */}
       <div className="flex flex-col lg:flex-row gap-5">
-        {/* Left panel — Animated Checklist (second on mobile, first on desktop) */}
+        {/* Left panel -- Animated Checklist (second on mobile, first on desktop) */}
         <div className="order-last lg:order-first lg:w-[340px] shrink-0 bg-white border border-slate-200 rounded-2xl p-7 shadow-[0_4px_20px_rgba(0,0,0,0.06)] lg:max-h-[520px] lg:overflow-y-auto">
           <div className="space-y-4">
             {CHECKLIST_ITEMS.map((text, i) => (
@@ -841,7 +841,7 @@ export default function ScanningTheater() {
             ))}
           </div>
 
-          {/* Unified Discovery Feed — business data + competitors synced to map */}
+          {/* Unified Discovery Feed -- business data + competitors synced to map */}
           <DiscoveryFeed
             place={place}
             competitors={analysisRef.current?.competitors || []}
@@ -886,7 +886,7 @@ export default function ScanningTheater() {
           </div>
         </div>
 
-        {/* Right panel — Live Map with radar (first on mobile, second on desktop) */}
+        {/* Right panel -- Live Map with radar (first on mobile, second on desktop) */}
         <div className="order-first lg:order-last relative flex-1 min-h-[300px] lg:min-h-0 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
           <RadarPulse active={activeIndex < CHECKLIST_ITEMS.length} />
           <MapContainer
@@ -907,7 +907,7 @@ export default function ScanningTheater() {
               scanComplete={allRevealed}
             />
 
-            {/* Practice pin — Terracotta */}
+            {/* Practice pin -- Terracotta */}
             <Marker position={center} icon={practiceIcon}>
               <Popup>
                 <div className="text-center">
@@ -917,7 +917,7 @@ export default function ScanningTheater() {
               </Popup>
             </Marker>
 
-            {/* Competitor pins — Navy, synced with discovery feed */}
+            {/* Competitor pins -- Navy, synced with discovery feed */}
             {visibleCompetitors.map((comp, i) => {
               const isHighlighted = highlightedCompetitorIndex === i;
               return (

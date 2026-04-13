@@ -180,13 +180,13 @@ export default function CampaignIntelligence() {
           <div className="flex items-center gap-3">
             <a
               href="/partner"
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#212D40] transition-colors"
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#1A1D23] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Partner Portal
             </a>
             <span className="text-gray-300">|</span>
-            <h1 className="text-lg font-bold text-[#212D40]">Campaign Intelligence</h1>
+            <h1 className="text-lg font-semibold text-[#1A1D23]">Campaign Intelligence</h1>
           </div>
           {results.length > 0 && (
             <button
@@ -205,7 +205,7 @@ export default function CampaignIntelligence() {
         {/* Left panel: Practice input */}
         <div className="w-80 border-r border-gray-200 bg-white p-5 flex flex-col">
           <div className="mb-4">
-            <h2 className="text-sm font-semibold text-[#212D40] mb-1">Target Practices</h2>
+            <h2 className="text-sm font-semibold text-[#1A1D23] mb-1">Target Practices</h2>
             <p className="text-xs text-gray-500">
               One business per line. Optionally add city and state separated by commas.
             </p>
@@ -255,7 +255,7 @@ export default function CampaignIntelligence() {
           ) : (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-[#212D40]">
+                <h2 className="text-sm font-semibold text-[#1A1D23]">
                   Results ({results.length})
                 </h2>
               </div>
@@ -293,7 +293,7 @@ export default function CampaignIntelligence() {
                         }`}
                         onClick={() => setSelectedRow(r)}
                       >
-                        <td className="px-4 py-3 font-medium text-[#212D40]">{r.name}</td>
+                        <td className="px-4 py-3 font-medium text-[#1A1D23]">{r.name}</td>
                         <td className="px-4 py-3 text-gray-500">
                           {[r.city, r.state].filter(Boolean).join(", ") || "-"}
                         </td>
@@ -360,13 +360,13 @@ export default function CampaignIntelligence() {
           {generatingEmail ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <Loader2 className="w-8 h-8 animate-spin mb-3 text-[#D56753]" />
-              <p className="text-sm font-medium text-[#212D40]">Generating outreach...</p>
+              <p className="text-sm font-medium text-[#1A1D23]">Generating outreach...</p>
               <p className="text-xs mt-1 text-gray-500">Using intelligence data to personalize</p>
             </div>
           ) : email && selectedRow ? (
             <>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-[#212D40]">Email Preview</h2>
+                <h2 className="text-sm font-semibold text-[#1A1D23]">Email Preview</h2>
                 <button
                   onClick={handleCopyEmail}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
@@ -387,12 +387,12 @@ export default function CampaignIntelligence() {
 
               <div className="mb-3">
                 <p className="text-xs text-gray-500 mb-1">To</p>
-                <p className="text-sm text-[#212D40] font-medium">{selectedRow.name}</p>
+                <p className="text-sm text-[#1A1D23] font-medium">{selectedRow.name}</p>
               </div>
 
               <div className="mb-4">
                 <p className="text-xs text-gray-500 mb-1">Subject</p>
-                <p className="text-sm text-[#212D40] font-medium">{email.subject}</p>
+                <p className="text-sm text-[#1A1D23] font-medium">{email.subject}</p>
               </div>
 
               <div className="flex-1 overflow-auto">
@@ -405,10 +405,10 @@ export default function CampaignIntelligence() {
               {/* Confidence / quality indicators */}
               <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-4">
                 <div className="text-xs text-gray-500">
-                  Confidence: <span className="font-medium text-[#212D40]">{email.confidence}%</span>
+                  Confidence: <span className="font-medium text-[#1A1D23]">{email.confidence}%</span>
                 </div>
                 <div className="text-xs text-gray-500">
-                  Data quality: <span className="font-medium text-[#212D40]">{email.dataQuality}%</span>
+                  Data quality: <span className="font-medium text-[#1A1D23]">{email.dataQuality}%</span>
                 </div>
               </div>
 

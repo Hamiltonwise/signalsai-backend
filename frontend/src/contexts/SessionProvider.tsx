@@ -8,7 +8,7 @@ interface SessionProviderProps {
 }
 
 /**
- * Session provider — checks for JWT token and exposes disconnect (logout).
+ * Session provider -- checks for JWT token and exposes disconnect (logout).
  */
 export const SessionProvider: React.FC<SessionProviderProps> = ({
   children,

@@ -177,7 +177,7 @@ export function TaskDetailsModal({
         return (
           <h3
             key={idx}
-            className="text-lg font-bold text-alloro-navy font-heading mb-3 mt-4"
+            className="text-lg font-semibold text-alloro-navy font-heading mb-3 mt-4"
           >
             {para.trim().substring(4)}
           </h3>
@@ -187,7 +187,7 @@ export function TaskDetailsModal({
         return (
           <h2
             key={idx}
-            className="text-xl font-bold text-alloro-navy font-heading mb-3 mt-4"
+            className="text-xl font-semibold text-alloro-navy font-heading mb-3 mt-4"
           >
             {para.trim().substring(3)}
           </h2>
@@ -197,7 +197,7 @@ export function TaskDetailsModal({
         return (
           <h1
             key={idx}
-            className="text-2xl font-bold text-alloro-navy font-heading mb-4 mt-4"
+            className="text-2xl font-semibold text-alloro-navy font-heading mb-4 mt-4"
           >
             {para.trim().substring(2)}
           </h1>
@@ -235,7 +235,7 @@ export function TaskDetailsModal({
           {/* Header */}
           <div className="sticky top-0 z-10 flex items-start justify-between border-b border-slate-200 bg-white/95 backdrop-blur-md px-6 py-5 rounded-t-2xl">
             <div className="flex-1 pr-4">
-              <h2 className="text-2xl font-bold text-alloro-navy font-heading">
+              <h2 className="text-2xl font-semibold text-alloro-navy font-heading">
                 {parseHighlightTags(task.title, "underline")}
               </h2>
             </div>
@@ -253,11 +253,11 @@ export function TaskDetailsModal({
             {/* Badges Section */}
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Status:
                 </span>
                 <span
-                  className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-bold capitalize ${getStatusBadge(
+                  className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold capitalize ${getStatusBadge(
                     task.status
                   )}`}
                 >
@@ -265,11 +265,11 @@ export function TaskDetailsModal({
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Category:
                 </span>
                 <span
-                  className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-bold ${getCategoryBadge(
+                  className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${getCategoryBadge(
                     task.category
                   )}`}
                 >
@@ -277,17 +277,17 @@ export function TaskDetailsModal({
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Agent Type:
                 </span>
                 <AgentTypePill agentType={task.agent_type ?? null} />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Approval:
                 </span>
                 <span
-                  className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-bold ${
+                  className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold ${
                     task.is_approved
                       ? "border-green-200 bg-green-50 text-green-700"
                       : "border-amber-200 bg-amber-50 text-amber-700"
@@ -301,7 +301,7 @@ export function TaskDetailsModal({
             {/* Description */}
             {task.description && (
               <div>
-                <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+                <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Description
                 </h3>
                 <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5">
@@ -315,7 +315,7 @@ export function TaskDetailsModal({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {task.completed_at && (
                   <div className="rounded-xl border border-green-100 bg-green-50/50 p-4">
-                    <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-green-600">
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-green-600">
                       Completed
                     </h3>
                     <p className="text-sm text-alloro-navy font-medium">
@@ -325,7 +325,7 @@ export function TaskDetailsModal({
                 )}
                 {task.due_date && (
                   <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                    <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
                       Due Date
                     </h3>
                     <p className="text-sm text-alloro-navy font-medium">
@@ -342,7 +342,7 @@ export function TaskDetailsModal({
             <div className="flex justify-end">
               <button
                 onClick={onClose}
-                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 hover:border-slate-300"
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:border-slate-300"
               >
                 Close
               </button>

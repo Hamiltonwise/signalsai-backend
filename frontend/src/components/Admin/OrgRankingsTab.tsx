@@ -114,7 +114,7 @@ export function OrgRankingsTab({
 
   const confirm = useConfirm();
 
-  // TanStack Query — replaces useEffect + useState
+  // TanStack Query -- replaces useEffect + useState
   const { data: jobs = [], isLoading: loading } = useAdminOrgRankings(
     organizationId,
     locationId,
@@ -369,13 +369,13 @@ export function OrgRankingsTab({
           <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
             Total Rankings
           </p>
-          <p className="text-2xl font-bold text-gray-900">{jobs.length}</p>
+          <p className="text-2xl font-semibold text-gray-900">{jobs.length}</p>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
             Completed
           </p>
-          <p className="text-2xl font-bold text-green-600">
+          <p className="text-2xl font-semibold text-green-600">
             {completedJobs.length}
           </p>
         </div>
@@ -384,8 +384,8 @@ export function OrgRankingsTab({
             <Trophy className="h-3 w-3 inline mr-1" />
             Avg Score
           </p>
-          <p className="text-2xl font-bold text-gray-900">
-            {avgScore > 0 ? avgScore.toFixed(1) : "—"}
+          <p className="text-2xl font-semibold text-gray-900">
+            {avgScore > 0 ? avgScore.toFixed(1) : "--"}
           </p>
         </div>
       </motion.div>
@@ -555,7 +555,7 @@ function RankingJobRow({
           {job.status === "completed" && job.rank_score != null && (
             <div className="text-right">
               <div
-                className={`text-xl font-bold ${getScoreColor(
+                className={`text-xl font-semibold ${getScoreColor(
                   Number(job.rank_score)
                 )}`}
               >
@@ -655,7 +655,7 @@ function CompactResultView({
       <div className="grid gap-3 grid-cols-4">
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
           <div
-            className={`text-2xl font-bold ${getScoreColor(
+            className={`text-2xl font-semibold ${getScoreColor(
               Number(result.rankScore)
             )}`}
           >
@@ -664,7 +664,7 @@ function CompactResultView({
           <div className="text-xs text-gray-500 mt-1">Score</div>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
-          <div className="text-2xl font-bold text-gray-900">
+          <div className="text-2xl font-semibold text-gray-900">
             #{result.rankPosition}
           </div>
           <div className="text-xs text-gray-500 mt-1">
@@ -672,13 +672,13 @@ function CompactResultView({
           </div>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
-          <div className="text-2xl font-bold text-gray-900 flex items-center justify-center gap-1">
+          <div className="text-2xl font-semibold text-gray-900 flex items-center justify-center gap-1">
             {result.rawData?.client_gbp?.totalReviewCount || 0}
           </div>
           <div className="text-xs text-gray-500 mt-1">Reviews</div>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
-          <div className="text-2xl font-bold text-gray-900 flex items-center justify-center gap-1">
+          <div className="text-2xl font-semibold text-gray-900 flex items-center justify-center gap-1">
             {(
               factors?.star_rating?.value ??
               result.rawData?.client_gbp?.averageRating ??

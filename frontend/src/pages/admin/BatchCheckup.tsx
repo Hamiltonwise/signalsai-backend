@@ -205,7 +205,7 @@ export default function BatchCheckup() {
     <div className="mx-auto max-w-5xl px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#212D40] flex items-center gap-3">
+        <h1 className="text-2xl font-semibold text-[#1A1D23] flex items-center gap-3">
           <BarChart3 className="h-6 w-6 text-[#D56753]" />
           Market Checkup
         </h1>
@@ -219,7 +219,7 @@ export default function BatchCheckup() {
       {!batchId && (
         <div className="space-y-4">
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <label className="block text-sm font-semibold text-[#212D40] mb-2">
+            <label className="block text-sm font-semibold text-[#1A1D23] mb-2">
               Businesses to analyze
             </label>
             <textarea
@@ -227,7 +227,7 @@ export default function BatchCheckup() {
               onChange={(e) => setCsvText(e.target.value)}
               placeholder={`Cascade Endodontics, Bend, OR\nSmith Orthodontics, Portland, OR\nMountain View Dental, Denver, CO`}
               rows={8}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
+              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
             />
             <p className="text-xs text-gray-400 mt-1.5">
               One per line: Business Name, City, State
@@ -236,7 +236,7 @@ export default function BatchCheckup() {
             <div className="flex items-center gap-3 mt-4">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#212D40] hover:border-gray-300 hover:shadow-sm transition-all"
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#1A1D23] hover:border-gray-300 hover:shadow-sm transition-all"
               >
                 <Upload className="h-4 w-4" />
                 Upload CSV
@@ -319,7 +319,7 @@ export default function BatchCheckup() {
                         <td className="px-4 py-3"><CheckCircle2 className="h-4 w-4 text-gray-300" /></td>
                         <td className="px-4 py-3 font-medium text-gray-400">{r.name}</td>
                         <td className="px-4 py-3 text-gray-300">{r.city}</td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-300">{r.score}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-gray-300">{r.score}</td>
                         <td className="px-4 py-3 text-gray-300">{r.comp}</td>
                         <td className="px-4 py-3 text-gray-300">{r.gap}</td>
                       </tr>
@@ -338,7 +338,7 @@ export default function BatchCheckup() {
           {/* Progress bar */}
           <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-[#212D40]">
+              <span className="text-sm font-semibold text-[#1A1D23]">
                 {isComplete ? "Analysis Complete" : "Analyzing..."}
               </span>
               <span className="text-sm text-gray-500">
@@ -369,17 +369,17 @@ export default function BatchCheckup() {
           {isComplete && completedResults.length > 0 && (
             <div className="grid grid-cols-3 gap-4">
               <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-                <p className="text-2xl font-bold text-[#212D40]">
+                <p className="text-2xl font-semibold text-[#1A1D23]">
                   {completedResults.length}
                 </p>
                 <p className="text-xs text-gray-500">Analyzed</p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-                <p className="text-2xl font-bold text-[#212D40]">{avgScore}</p>
+                <p className="text-2xl font-semibold text-[#1A1D23]">{avgScore}</p>
                 <p className="text-xs text-gray-500">Avg Score</p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-                <p className="text-2xl font-bold text-red-500">
+                <p className="text-2xl font-semibold text-red-500">
                   {completedResults.filter((r) => (r.score || 0) < 60).length}
                 </p>
                 <p className="text-xs text-gray-500">Below 60</p>
@@ -408,7 +408,7 @@ export default function BatchCheckup() {
                         <td className="px-4 py-3">
                           <StatusDot status={r.status} />
                         </td>
-                        <td className="px-4 py-3 font-medium text-[#212D40]" title={r.practiceName}>
+                        <td className="px-4 py-3 font-medium text-[#1A1D23]" title={r.practiceName}>
                           {r.practiceName}
                         </td>
                         <td className="px-4 py-3 text-gray-500">
@@ -417,7 +417,7 @@ export default function BatchCheckup() {
                         <td className="px-4 py-3 text-right">
                           {r.score != null ? (
                             <span
-                              className={`font-bold ${
+                              className={`font-semibold ${
                                 r.score >= 80
                                   ? "text-emerald-600"
                                   : r.score >= 60
@@ -471,14 +471,14 @@ export default function BatchCheckup() {
                     setTimeout(() => setCopied(false), 2000);
                   });
                 }}
-                className="flex items-center gap-2 rounded-xl border border-[#212D40]/20 px-5 py-2.5 text-sm font-medium text-[#212D40] hover:border-[#212D40]/40 transition-colors"
+                className="flex items-center gap-2 rounded-xl border border-[#212D40]/20 px-5 py-2.5 text-sm font-medium text-[#1A1D23] hover:border-[#212D40]/40 transition-colors"
               >
                 <Copy className="h-4 w-4" />
                 {copied ? "Copied!" : "Copy for ProspectAI"}
               </button>
               <button
                 onClick={handleReset}
-                className="text-sm text-gray-500 hover:text-[#212D40] transition-colors px-3"
+                className="text-sm text-gray-500 hover:text-[#1A1D23] transition-colors px-3"
               >
                 Run another batch
               </button>

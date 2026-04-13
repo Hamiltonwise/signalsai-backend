@@ -1,5 +1,5 @@
 /**
- * CS Agent — Floating chat widget for the doctor dashboard.
+ * CS Agent -- Floating chat widget for the doctor dashboard.
  *
  * Terracotta FAB bottom-right → opens drawer with Claude-powered
  * account-aware conversation. Session-scoped history.
@@ -84,7 +84,7 @@ export default function CSAgentChat({
     }
   };
 
-  // Starter prompts — contextual to their data
+  // Starter prompts -- contextual to their data
   const starters = [
     "What do my readings mean?",
     ...(hasReferralData ? ["Who are my top referring GPs?"] : []),
@@ -134,7 +134,7 @@ export default function CSAgentChat({
             ref={scrollRef}
             className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
           >
-            {/* Empty state — starter prompts */}
+            {/* Empty state -- starter prompts */}
             {messages.length === 0 && (
               <div className="space-y-3 pt-4">
                 <p className="text-sm text-gray-500 text-center mb-4">

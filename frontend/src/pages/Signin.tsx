@@ -56,7 +56,7 @@ export default function SignIn() {
           window.location.href = destination;
         }, 800);
       } else if (response.requiresVerification) {
-        // Email not verified — redirect to verification page
+        // Email not verified -- redirect to verification page
         navigate("/verify-email", { state: { email } });
       } else {
         setError(response.error || response.errorMessage || "Invalid email or password");

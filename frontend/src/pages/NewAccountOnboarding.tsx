@@ -33,7 +33,7 @@ export default function NewAccountOnboarding() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 rounded-full mb-4">
             <span className="w-2 h-2 bg-alloro-orange rounded-full animate-pulse"></span>
-            <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">
+            <span className="text-xs font-semibold text-alloro-orange uppercase tracking-wider">
               New Account Setup
             </span>
           </div>
@@ -79,7 +79,7 @@ export default function NewAccountOnboarding() {
                       Review how Alloro uses Google APIs to provide you with
                       analytics and insights for your business.
                     </p>
-                    <div className="flex items-center gap-2 text-alloro-orange font-bold text-sm group-hover:gap-3 transition-all">
+                    <div className="flex items-center gap-2 text-alloro-orange font-semibold text-sm group-hover:gap-3 transition-all">
                       <FileText className="w-4 h-4" />
                       <span>Read Terms</span>
                     </div>

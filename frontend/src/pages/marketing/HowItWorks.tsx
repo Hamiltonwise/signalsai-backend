@@ -17,10 +17,10 @@ export default function HowItWorks() {
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">
             How Alloro works
           </h1>
-          <p className="mt-4 text-base sm:text-lg text-[#212D40]/60 leading-relaxed max-w-lg mx-auto">
+          <p className="mt-4 text-base sm:text-lg text-[#1A1D23]/60 leading-relaxed max-w-lg mx-auto">
             You type your business name. Monday morning, we tell you
             which competitor gained 11 reviews last week and what to do about it.
           </p>
@@ -52,13 +52,13 @@ export default function HowItWorks() {
 
           <div className="grid sm:grid-cols-2 gap-8 items-center">
             <div className="rounded-2xl overflow-hidden shadow-xl border border-gray-200 order-2 sm:order-1">
-              <img src="/product-dashboard.png" alt="Alloro Dashboard with Business Clarity Score" className="w-full" loading="lazy" />
+              <img src="/product-dashboard.png" alt="Alloro Dashboard" className="w-full" loading="lazy" />
             </div>
             <div className="order-1 sm:order-2">
               <Stage
-                icon={<Mail className="w-6 h-6 text-[#212D40]" />}
+                icon={<Mail className="w-6 h-6 text-[#1A1D23]" />}
                 title="The Monday Brief (automated, every week)"
-                body="Create an account. Every Monday at 7am, your Business Clarity Brief arrives. One score. One finding specific to your business. One action you can take this week. The brief takes 90 seconds to read. The action takes 10 minutes to do."
+                body="Create an account. Every Monday at 7am, your Monday Brief arrives. One finding specific to your business. One action you can take this week. The brief takes 90 seconds to read. The action takes 10 minutes to do."
               />
             </div>
           </div>
@@ -81,7 +81,7 @@ export default function HowItWorks() {
       {/* Expanded Monday Email */}
       <section className="px-5 py-16 sm:py-20">
         <div className="max-w-xl mx-auto">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#212D40] text-center mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold text-[#1A1D23] text-center mb-8">
             What shows up Monday morning
           </h2>
           <div className="rounded-2xl border border-[#212D40]/20 bg-white overflow-hidden shadow-sm">
@@ -89,24 +89,24 @@ export default function HowItWorks() {
             <div className="p-6 space-y-6">
               <div>
                 <p className="text-xs text-gray-400 mb-1">Subject:</p>
-                <p className="text-sm font-bold text-[#212D40]">
+                <p className="text-sm font-semibold text-[#1A1D23]">
                   Your market moved this week.
                 </p>
               </div>
 
               {/* Finding 1 */}
               <div className="border-l-2 border-[#D56753] pl-4">
-                <p className="text-sm text-[#212D40]/80 leading-relaxed">
-                  Cascade Endodontics gained 11 reviews last week. You gained 0.
+                <p className="text-sm text-[#1A1D23]/80 leading-relaxed">
+                  Your top competitor gained 11 reviews last week. You gained 0.
                   At this pace, they close the gap to rank #1 in your market
-                  within 8 weeks. One review request to your last 10 patients
+                  within 8 weeks. One review request to your last 10 customers
                   changes this trajectory.
                 </p>
               </div>
 
               {/* Finding 2 */}
               <div className="border-l-2 border-[#212D40]/20 pl-4">
-                <p className="text-sm text-[#212D40]/60 leading-relaxed">
+                <p className="text-sm text-[#1A1D23]/60 leading-relaxed">
                   Your top referral source hasn't sent business in 34 days. This
                   is the longest gap in 14 months. Worth a call this week.
                 </p>
@@ -114,10 +114,10 @@ export default function HowItWorks() {
 
               {/* Action card */}
               <div className="rounded-xl bg-[#D56753]/5 border border-[#D56753]/20 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753] mb-2">
                   This week
                 </p>
-                <p className="text-sm text-[#212D40]/80 leading-relaxed">
+                <p className="text-sm text-[#1A1D23]/80 leading-relaxed">
                   Request reviews from 10 customers who visited last month.
                   Takes 8 minutes.
                 </p>
@@ -130,7 +130,7 @@ export default function HowItWorks() {
       {/* FAQ */}
       <section className="px-5 py-16 sm:py-20 bg-white">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#212D40] text-center mb-10">
+          <h2 className="text-xl sm:text-2xl font-semibold text-[#1A1D23] text-center mb-10">
             Questions
           </h2>
           <div className="space-y-8">
@@ -184,10 +184,10 @@ export default function HowItWorks() {
               {
                 "@type": "HowTo",
                 "name": "How Alloro Works",
-                "description": "Three steps to Business Clarity for your business.",
+                "description": "Three steps to clarity about your business for your business.",
                 "step": [
                   { "@type": "HowToStep", "name": "The Checkup", "text": "Enter your business name. Alloro scans your market and delivers your score in 60 seconds." },
-                  { "@type": "HowToStep", "name": "The Monday Brief", "text": "Create an account. Every Monday at 7am, your Business Clarity Brief arrives." },
+                  { "@type": "HowToStep", "name": "The Monday Brief", "text": "Create an account. Every Monday at 7am, your Monday Brief arrives." },
                   { "@type": "HowToStep", "name": "The Clarity Layer", "text": "Connect your existing data. When your top referring source goes 30 days without sending a case, you get a note Monday morning. When a competitor opens a second location, you know before your staff hears about it." },
                 ],
               },
@@ -216,8 +216,8 @@ function Stage({ icon, title, body }: { icon: React.ReactNode; title: string; bo
         {icon}
       </div>
       <div>
-        <h3 className="text-lg font-bold text-[#212D40] mb-2">{title}</h3>
-        <p className="text-sm text-[#212D40]/70 leading-relaxed">{body}</p>
+        <h3 className="text-lg font-semibold text-[#1A1D23] mb-2">{title}</h3>
+        <p className="text-sm text-[#1A1D23]/70 leading-relaxed">{body}</p>
       </div>
     </div>
   );
@@ -226,8 +226,8 @@ function Stage({ icon, title, body }: { icon: React.ReactNode; title: string; bo
 function FAQ({ q, a }: { q: string; a: string }) {
   return (
     <div>
-      <h3 className="text-sm font-bold text-[#212D40] mb-2">{q}</h3>
-      <p className="text-sm text-[#212D40]/70 leading-relaxed">{a}</p>
+      <h3 className="text-sm font-semibold text-[#1A1D23] mb-2">{q}</h3>
+      <p className="text-sm text-[#1A1D23]/70 leading-relaxed">{a}</p>
     </div>
   );
 }

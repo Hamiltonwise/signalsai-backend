@@ -229,7 +229,7 @@ export default function ChatPanel({
 
       {/* Input */}
       <div className="px-4 pb-4 pt-2 border-t border-gray-200">
-        {/* Color Picker — shows when user types "color" */}
+        {/* Color Picker -- shows when user types "color" */}
         <AnimatePresence>
           {input.toLowerCase().includes("color") && (primaryColor || accentColor) && (
             <ColorPicker

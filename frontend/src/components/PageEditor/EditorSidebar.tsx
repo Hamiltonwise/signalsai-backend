@@ -24,7 +24,7 @@ interface EditorSidebarProps {
   debugInfo: EditDebugInfo | null;
   systemPrompt: string | null;
   projectId?: string;
-  /** Triggered from iframe label action icons — opens the corresponding sidebar quick action. */
+  /** Triggered from iframe label action icons -- opens the corresponding sidebar quick action. */
   externalAction?: QuickActionType | null;
   onExternalActionHandled?: () => void;
   /** Hide the Debug tab (default: true). */

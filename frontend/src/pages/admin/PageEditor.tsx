@@ -137,7 +137,7 @@ function ArtifactEditorView({
     <div className="flex-1 overflow-y-auto bg-gray-50">
       <div className="max-w-xl mx-auto py-12 px-6 space-y-6">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">Artifact Page</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Artifact Page</h2>
           <p className="text-sm text-gray-500 mt-1">
             This page serves an uploaded React app build. Replace the build by uploading a new zip.
           </p>
@@ -323,14 +323,14 @@ function PageEditorInner() {
   const deferredEditRef = useRef<string | null>(null);
   const handleIframeQuickAction = useCallback((payload: QuickActionPayload) => {
     if ((payload.action === "text" || payload.action === "link") && payload.value) {
-      // Text/link submitted from iframe input — queue for deferred handleSendEdit
+      // Text/link submitted from iframe input -- queue for deferred handleSendEdit
       deferredEditRef.current = payload.action === "text"
         ? `Change the text content to "${payload.value}"`
         : `Change the link href to "${payload.value}"`;
       // Force a re-render so the effect picks it up
       setPendingSidebarAction("__deferred__" as QuickActionType);
     } else {
-      // Media and hide — dispatch to sidebar
+      // Media and hide -- dispatch to sidebar
       setPendingSidebarAction(payload.action);
     }
   }, []);
@@ -394,7 +394,7 @@ function PageEditorInner() {
         let workingPageId = pageData.id;
 
         // If the page is published, create/get a draft for editing
-        // Skip draft creation for artifact pages — they're edited by replacing the build
+        // Skip draft creation for artifact pages -- they're edited by replacing the build
         if (pageData.status === "published" && pageData.page_type !== "artifact") {
           const draftResponse = await createDraftFromPage(projectId, pageId);
           workingPage = draftResponse.data;
@@ -552,7 +552,7 @@ function PageEditorInner() {
         // Capture debug info from LLM response
         setLastDebugInfo(result.debug ?? null);
 
-        // Handle rejection — LLM flagged the instruction as not allowed
+        // Handle rejection -- LLM flagged the instruction as not allowed
         if (result.rejected) {
           const rejectionMessage: ChatMessage = {
             role: "assistant",
@@ -956,7 +956,7 @@ function PageEditorInner() {
 
       {/* Main content: iframe + editor sidebar */}
       <div className="flex-1 flex overflow-hidden relative ml-[72px]">
-        {/* Admin sidebar — fixed position, collapsed by default.
+        {/* Admin sidebar -- fixed position, collapsed by default.
             Offset below both AdminTopBar (4rem) and EditorToolbar (~41px).
             ml-[72px] on parent reserves space for the collapsed sidebar. */}
         <AdminSidebar topOffset="calc(4rem + 41px)" />
@@ -1044,7 +1044,7 @@ function PageEditorInner() {
           </>
         )}
 
-        {/* Editor sidebar — shown only in visual view */}
+        {/* Editor sidebar -- shown only in visual view */}
         {activeView === "visual" && (
           <EditorSidebar
             selectedInfo={selectedInfo}

@@ -68,7 +68,7 @@ export default function ReferralProgram() {
 
         {/* Section 1: What your colleague found */}
         <div className="rounded-2xl border border-gray-200 bg-white p-6">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753] mb-3">
             What {validRef && referrerName ? referrerName : "your colleague"} found
           </p>
           {validRef && referrerName ? (
@@ -110,7 +110,7 @@ export default function ReferralProgram() {
         {/* Section 3: The offer */}
         <div className="rounded-2xl bg-[#212D40] p-6 text-center">
           <Gift className="w-6 h-6 text-[#D56753] mx-auto mb-3" />
-          <p className="text-base font-bold text-white">
+          <p className="text-base font-semibold text-white">
             You both split month one. $1,000 each instead of $2,000.
           </p>
           <p className="mt-2 text-xs text-white/40">

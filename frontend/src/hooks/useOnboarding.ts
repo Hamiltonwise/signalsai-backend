@@ -130,7 +130,7 @@ export const useOnboarding = (initialStep: number = 1) => {
 
   /**
    * Step 4: Initiate Stripe Checkout.
-   * Single-product model — always creates a DFY checkout session.
+   * Single-product model -- always creates a DFY checkout session.
    * Redirects to Stripe's hosted checkout page.
    */
   const initiateCheckout = useCallback(async () => {
@@ -153,7 +153,7 @@ export const useOnboarding = (initialStep: number = 1) => {
       setError(err.message || "Failed to start checkout");
       setIsCheckoutProcessing(false);
     }
-    // Note: no finally — if redirect succeeds, we never return here
+    // Note: no finally -- if redirect succeeds, we never return here
   }, []);
 
   /**

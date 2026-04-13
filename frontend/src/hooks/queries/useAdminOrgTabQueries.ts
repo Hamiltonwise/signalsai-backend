@@ -181,7 +181,7 @@ export function useAdminOrgRankings(
       const data = await response.json();
       return data.rankings || [];
     },
-    staleTime: 10 * 60 * 1000, // 10 minutes — rankings don't change often
+    staleTime: 10 * 60 * 1000, // 10 minutes -- rankings don't change often
     initialData: () => queryClient.getQueryData<RankingJob[]>(queryKey),
     initialDataUpdatedAt: () =>
       queryClient.getQueryState(queryKey)?.dataUpdatedAt,

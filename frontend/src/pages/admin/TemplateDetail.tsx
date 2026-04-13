@@ -1114,7 +1114,7 @@ export default function TemplateDetail() {
                                   <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
                                     item.ok ? "bg-green-100" : item.warn ? "bg-amber-100" : "bg-red-100"
                                   }`}>
-                                    <span className={`text-xs font-bold ${
+                                    <span className={`text-xs font-semibold ${
                                       item.ok ? "text-green-600" : item.warn ? "text-amber-600" : "text-red-500"
                                     }`}>
                                       {item.ok ? "✓" : item.warn ? "!" : "✕"}
@@ -1304,7 +1304,7 @@ export default function TemplateDetail() {
         >
           {/* Template Information */}
           <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-5">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
               Template Information
             </h3>
 
@@ -1428,7 +1428,7 @@ export default function TemplateDetail() {
 
           {/* Actions */}
           <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
               Actions
             </h3>
 
@@ -1464,7 +1464,7 @@ export default function TemplateDetail() {
 
           {/* Danger Zone */}
           <div className="rounded-xl border border-red-200 bg-red-50/30 p-6 space-y-4">
-            <h3 className="text-sm font-bold text-red-700 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-red-700 uppercase tracking-wide">
               Danger Zone
             </h3>
             <p className="text-sm text-red-600">

@@ -1,5 +1,5 @@
 /**
- * Morning Brief — The Briefing
+ * Morning Brief -- The Briefing
  *
  * Three-zone HQ home screen:
  * Zone 1: The Signal (single sentence, full width)
@@ -42,7 +42,7 @@ function SignalZone() {
           Signal data unavailable. Check back Monday.
         </p>
       ) : (
-        <p className="mx-auto max-w-3xl text-2xl font-medium leading-relaxed text-[#212D40]">
+        <p className="mx-auto max-w-3xl text-2xl font-medium leading-relaxed text-[#1A1D23]">
           {signal}
         </p>
       )}
@@ -100,7 +100,7 @@ function OrgCard({ org, healthMap }: { org: AdminOrganization; healthMap: Map<nu
           <span className="text-lg shrink-0" role="img">
             {specialtyIcon(org.name)}
           </span>
-          <h3 className="text-base font-bold text-[#212D40] truncate" title={org.name}>
+          <h3 className="text-base font-semibold text-[#1A1D23] truncate" title={org.name}>
             {org.name}
           </h3>
         </div>
@@ -109,7 +109,7 @@ function OrgCard({ org, healthMap }: { org: AdminOrganization; healthMap: Map<nu
           title={dot.label}
         />
       </div>
-      <p className="text-sm text-[#212D40] truncate">
+      <p className="text-sm text-[#1A1D23] truncate">
         {org.connections?.gbp
           ? "GBP connected"
           : "Waiting for data connection"}
@@ -308,7 +308,7 @@ function AgentQueueStrip() {
                 className={`h-2 w-2 rounded-full shrink-0 ${dot.color}`}
                 title={dot.label}
               />
-              <p className="text-sm font-semibold text-[#212D40] truncate">
+              <p className="text-sm font-semibold text-[#1A1D23] truncate">
                 {schedule.display_name}
               </p>
             </div>
@@ -378,20 +378,20 @@ export default function MorningBrief() {
       {/* Scene setter (WO-36) */}
       <SceneSetter />
 
-      {/* Zone 1 — The Signal */}
+      {/* Zone 1 -- The Signal */}
       <SignalZone />
 
-      {/* Zone 2 — Account Health Grid */}
+      {/* Zone 2 -- Account Health Grid */}
       <div>
-        <h2 className="mb-4 text-lg font-bold text-[#212D40]">
+        <h2 className="mb-4 text-lg font-semibold text-[#1A1D23]">
           Account Health
         </h2>
         <AccountHealthGrid />
       </div>
 
-      {/* Zone 3 — Agent Queue */}
+      {/* Zone 3 -- Agent Queue */}
       <div>
-        <h2 className="mb-4 text-lg font-bold text-[#212D40]">
+        <h2 className="mb-4 text-lg font-semibold text-[#1A1D23]">
           Agent Queue
         </h2>
         <AgentQueueStrip />

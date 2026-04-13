@@ -143,7 +143,7 @@ export default function BoardChat() {
           </div>
           <div className="flex flex-col text-left">
             <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">The Board</h1>
-            <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5">{config.subtitle}</span>
+            <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5">{config.subtitle}</span>
           </div>
         </div>
       </header>

@@ -17,7 +17,7 @@ export default function Story() {
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="max-w-xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">
             Why this exists.
           </h1>
           <Link
@@ -33,19 +33,19 @@ export default function Story() {
       {/* The Opening */}
       <section className="px-5 pb-12 sm:pb-16">
         <div className="max-w-xl mx-auto space-y-6">
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
+          <p className="text-base text-[#1A1D23]/80 leading-relaxed">
             I spent five years inside specialist service businesses
             watching incredibly talented people struggle with a
             problem that had nothing to do with their craft.
           </p>
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
+          <p className="text-base text-[#1A1D23]/80 leading-relaxed">
             They were excellent at their craft. The businesses around
             them, the referral relationships, the local visibility,
             the competitive dynamics, the things that determined
             whether they grew or slowly declined, were speaking
             a language nobody translated for them.
           </p>
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
+          <p className="text-base text-[#1A1D23]/80 leading-relaxed">
             They hired agencies. They got reports. The reports didn't
             tell them what to do. The agencies charged regardless.
             The problem persisted.
@@ -56,18 +56,18 @@ export default function Story() {
       {/* The Service Years */}
       <section className="px-5 py-12 sm:py-16 bg-white">
         <div className="max-w-xl mx-auto space-y-6">
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
+          <p className="text-base text-[#1A1D23]/80 leading-relaxed">
             I served in the United States Air Force. When I got out,
             I had a 100% service-connected disability rating and no
             idea what came next.
           </p>
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
+          <p className="text-base text-[#1A1D23]/80 leading-relaxed">
             What came next was ten years in the local service business
             space, first as an operator, then building the product
             I wish had existed when I was trying to help businesses
             understand what their own data was saying.
           </p>
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
+          <p className="text-base text-[#1A1D23]/80 leading-relaxed">
             I'm not a dentist. I'm not a software engineer. I'm
             someone who lived inside the problem long enough to
             understand it from the inside, then built the solution
@@ -79,19 +79,19 @@ export default function Story() {
       {/* The Reason */}
       <section className="px-5 py-12 sm:py-16">
         <div className="max-w-xl mx-auto space-y-6">
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
+          <p className="text-base text-[#1A1D23]/80 leading-relaxed">
             Alloro exists because 34 million people started a
             business to get their life back. Most of them are
             still waiting.
           </p>
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
+          <p className="text-base text-[#1A1D23]/80 leading-relaxed">
             The ones who built something worth building deserve
             the intelligence layer to protect it, grow it, and
             eventually hand it to someone who matters, whether
             that's a successor, a buyer, or their own kid.
           </p>
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
-            That's what Business Clarity means. Not a dashboard.
+          <p className="text-base text-[#1A1D23]/80 leading-relaxed">
+            That's what Alloro means. Not a dashboard.
             Not a report. The confidence that comes from knowing
             which referral source went quiet last month, which
             competitor just opened near you, and what to do about
@@ -103,7 +103,7 @@ export default function Story() {
       {/* Foundation */}
       <section className="px-5 py-12 sm:py-16 bg-white">
         <div className="max-w-xl mx-auto space-y-6">
-          <p className="text-base text-[#212D40]/80 leading-relaxed">
+          <p className="text-base text-[#1A1D23]/80 leading-relaxed">
             Heroes &amp; Founders Foundation is Alloro's commitment
             that the people who chose service first, in uniform,
             in medicine, in the trades, in public life, get the
@@ -126,10 +126,10 @@ export default function Story() {
             alt="Corey Wise, Founder of Alloro"
             className="w-32 h-32 rounded-full mx-auto mb-4 object-cover shadow-lg"
           />
-          <p className="text-sm font-bold text-[#212D40]">
+          <p className="text-sm font-semibold text-[#1A1D23]">
             Corey Wise
           </p>
-          <p className="text-xs text-[#212D40]/50">
+          <p className="text-xs text-[#1A1D23]/50">
             Founder, Alloro. USAF veteran, Bend Oregon.
           </p>
         </div>
@@ -140,7 +140,7 @@ export default function Story() {
         <div className="max-w-md mx-auto text-center">
           <Link
             to="/checkup"
-            className="inline-flex items-center justify-center rounded-xl bg-white text-[#212D40] text-base font-semibold px-8 py-4 hover:bg-gray-50 active:scale-[0.98] transition-all"
+            className="inline-flex items-center justify-center rounded-xl bg-white text-[#1A1D23] text-base font-semibold px-8 py-4 hover:bg-gray-50 active:scale-[0.98] transition-all"
           >
             See where you rank
           </Link>

@@ -42,7 +42,7 @@ export function useAgentDataQuery(
       return json;
     },
     enabled: !!orgId && !isWizardActive,
-    staleTime: 10 * 60 * 1000, // 10 minutes — agent data doesn't change frequently
+    staleTime: 10 * 60 * 1000, // 10 minutes -- agent data doesn't change frequently
     initialData: () => queryClient.getQueryData(queryKey),
     initialDataUpdatedAt: () =>
       queryClient.getQueryState(queryKey)?.dataUpdatedAt,

@@ -3,8 +3,8 @@
  *
  * User account settings: password management.
  * Handles two states:
- * 1. No password (legacy Google-only account) — "Set Password" mode
- * 2. Has password — "Change Password" mode (requires current password)
+ * 1. No password (legacy Google-only account) -- "Set Password" mode
+ * 2. Has password -- "Change Password" mode (requires current password)
  */
 
 import React, { useState, useEffect } from "react";

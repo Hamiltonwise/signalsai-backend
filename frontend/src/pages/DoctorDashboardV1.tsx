@@ -1,5 +1,5 @@
 /**
- * Doctor Dashboard — Client-Facing Intelligence Layer
+ * Doctor Dashboard -- Client-Facing Intelligence Layer
  *
  * UX Rules enforced:
  * - Every card has ONE job.
@@ -249,7 +249,7 @@ function narrativeSubhead(
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// POSITION CARD — One job: show where you rank
+// POSITION CARD -- One job: show where you rank
 // ═══════════════════════════════════════════════════════════════════
 
 function PositionCard({ ranking, subScores }: { ranking: RankingData | null; subScores?: { trustSignal: number; firstImpression: number; responsiveness: number; competitiveEdge: number } | null }) {
@@ -261,7 +261,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
             <MapPin className="w-5 h-5 text-[#D56753]" />
           </div>
           <div>
-            <TailorText editKey="dashboard.position.scanning.title" defaultText="Scanning your market" as="p" className="text-sm font-bold text-[#1A1D23]" />
+            <TailorText editKey="dashboard.position.scanning.title" defaultText="Scanning your market" as="p" className="text-sm font-semibold text-[#1A1D23]" />
             <TailorText editKey="dashboard.position.scanning.status" defaultText="Working on it now" as="p" className="text-xs text-[#D56753] font-medium" />
           </div>
         </div>
@@ -288,12 +288,12 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
   return (
     <div className="card-primary card-lift">
       <div className="flex items-start justify-between mb-1">
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D56753]/60">
           <TailorText editKey="dashboard.position.label" defaultText="Market Position" as="span" className="" />
         </p>
         {delta !== null && delta !== 0 && (
           <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
               delta > 0
                 ? "badge-success"
                 : delta <= -2
@@ -354,7 +354,7 @@ function PositionCard({ ranking, subScores }: { ranking: RankingData | null; sub
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// COMPETITOR GAP — One job: name who's beating you and by how much
+// COMPETITOR GAP -- One job: name who's beating you and by how much
 // ═══════════════════════════════════════════════════════════════════
 
 function CompetitorGap({ ranking, onCompetitorClick }: { ranking: RankingData | null; onCompetitorClick?: (comp: { name: string; rating: number; reviewCount: number }) => void }) {
@@ -373,11 +373,11 @@ function CompetitorGap({ ranking, onCompetitorClick }: { ranking: RankingData | 
       className="w-full text-left rounded-2xl px-5 py-4 hover:shadow-md transition-shadow"
       style={{ backgroundColor: "rgba(213, 103, 83, 0.05)" }}
     >
-      <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-2">
+      <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753] mb-2">
         <TailorText editKey="dashboard.competitor.label" defaultText="Your Top Competitor" as="span" className="" />
       </p>
       <p className="text-base font-semibold text-[#1A1D23] leading-relaxed">
-        <span className="font-bold">{comp.name || "your top competitor"}</span>{" "}
+        <span className="font-semibold">{comp.name || "your top competitor"}</span>{" "}
         {ranking.rankPosition === 1 ? "is closest to your position" : "holds position #1"}
         {comp.rating ? ` with a ${comp.rating}-star rating` : ""}
         {reviewGap != null && reviewGap > 0 ? ` and ${reviewGap} more review${reviewGap !== 1 ? "s" : ""} than you` : ""}.
@@ -392,7 +392,7 @@ function CompetitorGap({ ranking, onCompetitorClick }: { ranking: RankingData | 
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// CHECKUP INTELLIGENCE — Day 1: turn checkup data into intelligence
+// CHECKUP INTELLIGENCE -- Day 1: turn checkup data into intelligence
 // Biological-economic lens: need threatened + economic consequence
 // ═══════════════════════════════════════════════════════════════════
 
@@ -429,7 +429,7 @@ function buildCheckupIntelligence(ctx: any): string[] {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PROOFLINE FINDINGS — One job: show what the agents discovered
+// PROOFLINE FINDINGS -- One job: show what the agents discovered
 // Falls back to checkup intelligence on day 1
 // ═══════════════════════════════════════════════════════════════════
 
@@ -444,7 +444,7 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
             <Star className="w-5 h-5 text-[#D56753]" />
           </div>
           <div>
-            <TailorText editKey="dashboard.findings.title" defaultText="Your agents are working" as="p" className="text-sm font-bold text-[#1A1D23]" />
+            <TailorText editKey="dashboard.findings.title" defaultText="Your agents are working" as="p" className="text-sm font-semibold text-[#1A1D23]" />
             <TailorText editKey="dashboard.findings.status" defaultText="First report: Monday morning" as="p" className="text-xs text-[#D56753] font-medium" />
           </div>
         </div>
@@ -458,13 +458,13 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
   if (findings.length === 0 && checkupInsights.length > 0) {
     return (
       <div className="card-supporting">
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
           <TailorText editKey="dashboard.findings.found" defaultText="What We Found" as="span" className="" />
         </p>
         <div className="space-y-3.5">
           {checkupInsights.map((insight, i) => (
             <div key={i} className="flex gap-3" style={{ animation: `fade-in-up 0.4s ease-out ${i * 0.1}s both` }}>
-              <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
+              <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 text-[#D56753] flex items-center justify-center text-xs font-semibold mt-0.5">
                 {i + 1}
               </span>
               <p className="text-sm text-[#1A1D23]/80 leading-relaxed">{insight}</p>
@@ -480,13 +480,13 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
 
   return (
     <div className="card-supporting">
-      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">
         This Week's Findings
       </p>
       <div className="space-y-3.5">
         {findings.slice(0, 3).map((f, i) => (
           <div key={i} className="flex gap-3" style={{ animation: `fade-in-up 0.4s ease-out ${i * 0.1}s both` }}>
-            <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 text-[#D56753] flex items-center justify-center text-xs font-bold mt-0.5">
+            <span className="shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-[#D56753]/15 to-[#D56753]/5 text-[#D56753] flex items-center justify-center text-xs font-semibold mt-0.5">
               {i + 1}
             </span>
             <p className="text-sm text-[#1A1D23]/80 leading-relaxed">{f.detail || f.title}</p>
@@ -498,7 +498,7 @@ function ProoflineFindings({ findings, checkupCtx }: { findings: ProoflineFindin
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// WEBSITE CARD — One job: link to your live site
+// WEBSITE CARD -- One job: link to your live site
 // ═══════════════════════════════════════════════════════════════════
 
 function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
@@ -510,7 +510,7 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
             <Globe className="w-5 h-5 text-[#1A1D23]/60" />
           </div>
           <div>
-            <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-bold text-[#1A1D23]" />
+            <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-semibold text-[#1A1D23]" />
             <TailorText editKey="dashboard.website.status" defaultText="Being built for you" as="p" className="text-xs text-[#D56753] font-medium" />
           </div>
         </div>
@@ -531,7 +531,7 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
             <Globe className="w-5 h-5 text-emerald-600" />
           </div>
           <div>
-            <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-bold text-[#1A1D23]" />
+            <TailorText editKey="dashboard.website.title" defaultText="Your Website" as="p" className="text-sm font-semibold text-[#1A1D23]" />
             <p className="text-xs text-gray-500">{website.generated_hostname}</p>
           </div>
         </div>
@@ -550,7 +550,7 @@ function WebsiteCard({ website }: { website: WebsiteInfo | null }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// REFERRAL CARD — One job: let you share your referral link
+// REFERRAL CARD -- One job: let you share your referral link
 // ═══════════════════════════════════════════════════════════════════
 
 function ReferralCard({ referralCode }: { referralCode: string | null }) {
@@ -566,7 +566,7 @@ function ReferralCard({ referralCode }: { referralCode: string | null }) {
           <Share2 className="w-5 h-5 text-[#1A1D23]/60" />
         </div>
         <div>
-          <TailorText editKey="dashboard.referral.title" defaultText="Know someone who should see this?" as="p" className="text-sm font-bold text-[#1A1D23]" />
+          <TailorText editKey="dashboard.referral.title" defaultText="Know someone who should see this?" as="p" className="text-sm font-semibold text-[#1A1D23]" />
           <TailorText editKey="dashboard.referral.subtitle" defaultText="Send them the checkup. When they join, you both save on month one." as="p" className="text-xs text-gray-500" />
         </div>
       </div>
@@ -612,7 +612,7 @@ function GapToNext({ ranking }: { ranking: RankingData | null }) {
   if (!ranking?.rankPosition || ranking.rankPosition <= 1) {
     return (
       <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-6">
-        <p className="text-lg font-bold text-emerald-800">You're #1</p>
+        <p className="text-lg font-semibold text-emerald-800">You're #1</p>
         <p className="text-sm text-emerald-600 mt-1">Every review keeps you there. Don't stop.</p>
       </div>
     );
@@ -625,7 +625,7 @@ function GapToNext({ ranking }: { ranking: RankingData | null }) {
 
   return (
     <div className="rounded-2xl border-2 border-[#D56753]/20 bg-white p-6">
-      <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753] mb-3">
         What It Takes to Reach Position #{ranking.rankPosition - 1}
       </p>
       {comp && (
@@ -655,7 +655,7 @@ function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
             <Users className="w-5 h-5 text-[#1A1D23]/50" />
           </div>
           <div>
-            <p className="text-sm font-bold text-[#1A1D23]">Watching your competitors</p>
+            <p className="text-sm font-semibold text-[#1A1D23]">Watching your competitors</p>
             <p className="text-xs text-[#D56753] font-medium">Named activity appears after your first scan.</p>
           </div>
         </div>
@@ -673,7 +673,7 @@ function CompetitorActivityFeed({ ranking }: { ranking: RankingData | null }) {
 
   return (
     <div className="card-supporting">
-      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">Competitor Activity</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">Competitor Activity</p>
       <div className="space-y-3">
         {activities.map((a, i) => (
           <div key={i} className="flex items-start gap-3 text-sm">
@@ -694,12 +694,12 @@ function GrowthPositionTrack({ ranking }: { ranking: RankingData | null }) {
 
   return (
     <div className="card-supporting">
-      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">Your Position</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D56753]/60 mb-4">Your Position</p>
       <div className="flex items-center gap-1">
         {positions.map((pos) => (
           <div key={pos} className="flex-1 flex flex-col items-center gap-1.5">
             <div className={`w-full h-2.5 rounded-full ${pos === ranking.rankPosition ? "bg-[#D56753]" : pos < ranking.rankPosition! ? "bg-[#212D40]/15" : "bg-gray-100"}`} />
-            <span className={`text-xs font-bold ${pos === ranking.rankPosition ? "text-[#D56753]" : "text-gray-400"}`}>{pos}</span>
+            <span className={`text-xs font-semibold ${pos === ranking.rankPosition ? "text-[#D56753]" : "text-gray-400"}`}>{pos}</span>
           </div>
         ))}
       </div>
@@ -907,7 +907,7 @@ export default function DoctorDashboard() {
   void isProfileError; // consumed by error boundary
   const referralCode = profileData?.referral_code || profileData?.organization?.referral_code || null;
 
-  // Setup progress — tracks checklist completion state
+  // Setup progress -- tracks checklist completion state
   const queryClient = useQueryClient();
   const { data: setupProgress, isLoading: isSetupLoading } = useQuery({
     queryKey: ["setup-progress"],
@@ -959,7 +959,7 @@ export default function DoctorDashboard() {
     }
   }, [winData, winCelebrated]);
 
-  // One Action Card — backend intelligence engine
+  // One Action Card -- backend intelligence engine
   const { data: oneActionResponse } = useQuery({
     queryKey: ["one-action-card", orgId],
     queryFn: async () => {
@@ -1018,15 +1018,15 @@ export default function DoctorDashboard() {
 
   return (
     <>
-    {/* Trial countdown banner — shows when trial is ending soon. Hidden in conference mode. */}
+    {/* Trial countdown banner -- shows when trial is ending soon. Hidden in conference mode. */}
     {!isConferenceMode() && dashCtx?.trial && !dashCtx?.trial.is_subscribed && dashCtx?.trial.days_remaining <= 3 && dashCtx?.trial.days_remaining > 0 && (
       <div className="bg-[#D56753] text-white text-center py-2.5 px-4 text-sm font-medium">
         Your trial ends in {dashCtx?.trial.days_remaining} day{dashCtx?.trial.days_remaining !== 1 ? "s" : ""}. Your intelligence goes dark after that.{" "}
-        <a href="/settings/billing" className="underline font-bold hover:text-white/90">Subscribe now</a>
+        <a href="/settings/billing" className="underline font-semibold hover:text-white/90">Subscribe now</a>
       </div>
     )}
 
-    {/* Trial expired overlay — full lockout after trial ends. Hidden in conference mode. */}
+    {/* Trial expired overlay -- full lockout after trial ends. Hidden in conference mode. */}
     {!isConferenceMode() && dashCtx?.trial && !dashCtx?.trial.is_subscribed && dashCtx?.trial.days_remaining <= 0 && (
       <div className="fixed inset-0 z-50 bg-white/95 flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-6">
@@ -1050,7 +1050,7 @@ export default function DoctorDashboard() {
       </div>
     )}
 
-    {/* Billing prompt bar — top of dashboard, quiet, dismissable */}
+    {/* Billing prompt bar -- top of dashboard, quiet, dismissable */}
     <BillingPromptBar
       orgId={orgId}
       score={effectiveRanking?.rankScore ?? null}
@@ -1113,8 +1113,8 @@ export default function DoctorDashboard() {
       {/* GBP instant value reveal (WO-42) */}
       {showGbpReveal && (
         <motion.div variants={cardVariants} className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5">
-          <TailorText editKey="dashboard.gbpReveal.label" defaultText="Connected" as="p" className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-2" />
-          <p className="text-sm font-bold text-[#1A1D23]">
+          <TailorText editKey="dashboard.gbpReveal.label" defaultText="Connected" as="p" className="text-xs font-semibold uppercase tracking-widest text-emerald-600 mb-2" />
+          <p className="text-sm font-semibold text-[#1A1D23]">
             {effectiveRanking?.clientReviews != null && effectiveRanking.clientReviews > 0
               ? `${effectiveRanking.clientReviews} reviews`
               : null}
@@ -1138,7 +1138,7 @@ export default function DoctorDashboard() {
       {/* Milestone check-in card (WO-51/52) */}
       {!isLoading && milestoneCard && (
         <motion.div variants={cardVariants} className="rounded-2xl border border-[#212D40]/15 bg-white p-5">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753] mb-3">
             Your first {milestoneCard.milestone} days.
           </p>
           {milestoneCard.sunday_fear && (
@@ -1175,8 +1175,8 @@ export default function DoctorDashboard() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
           <div className="relative">
-            <TailorText editKey="dashboard.win.label" defaultText="This is a story worth telling" as="p" className="text-xs font-bold uppercase tracking-widest text-white/60 mb-2" />
-            <p className="text-base font-bold leading-snug">
+            <TailorText editKey="dashboard.win.label" defaultText="This is a story worth telling" as="p" className="text-xs font-semibold uppercase tracking-widest text-white/60 mb-2" />
+            <p className="text-base font-semibold leading-snug">
               {winData.headline || "Something changed. You acted. It worked."}
             </p>
             {winData.detail && (
@@ -1189,7 +1189,7 @@ export default function DoctorDashboard() {
         </motion.div>
       )}
 
-      {/* One Action Card — first visible element below greeting (WO-29) */}
+      {/* One Action Card -- first visible element below greeting (WO-29) */}
       {!isLoading && (
         <motion.div variants={scaleInFade}>
           <OneActionCard
@@ -1221,7 +1221,7 @@ export default function DoctorDashboard() {
         </motion.div>
       )}
 
-      {/* Card Capture — soft prompt during trial days 3-7 */}
+      {/* Card Capture -- soft prompt during trial days 3-7 */}
       {dashCtx?.trial && (
         <CardCapture
           trialDaysRemaining={dashCtx.trial.days_remaining}
@@ -1229,7 +1229,7 @@ export default function DoctorDashboard() {
         />
       )}
 
-      {/* Onboarding Checklist — below One Action Card */}
+      {/* Onboarding Checklist -- below One Action Card */}
       {!isLoading && (
         <OnboardingChecklist
           checkupScore={effectiveRanking?.rankScore ?? null}
@@ -1255,7 +1255,7 @@ export default function DoctorDashboard() {
               <Star className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm font-bold text-[#1A1D23]">{week1WinData.headline}</p>
+              <p className="text-sm font-semibold text-[#1A1D23]">{week1WinData.headline}</p>
               <p className="text-sm text-gray-500 leading-relaxed mt-1">{week1WinData.detail}</p>
             </div>
           </div>
@@ -1293,19 +1293,19 @@ export default function DoctorDashboard() {
             </motion.div>
           )}
 
-          {/* 2. One sentence finding — hide entirely when no competitor data */}
+          {/* 2. One sentence finding -- hide entirely when no competitor data */}
           {effectiveRanking?.topCompetitor && (
             <motion.div variants={cardVariants}>
               <CompetitorGap ranking={effectiveRanking} onCompetitorClick={setDrawerCompetitor} />
             </motion.div>
           )}
 
-          {/* Score Improvement Plan — actionable steps to raise the score */}
+          {/* Score Improvement Plan -- actionable steps to raise the score */}
           <motion.div variants={cardVariants} id="improvement-plan">
             <ScoreImprovementPlan />
           </motion.div>
 
-          {/* What If Score Simulator — interactive projections */}
+          {/* What If Score Simulator -- interactive projections */}
           <motion.div variants={cardVariants}>
             <ScoreSimulator />
           </motion.div>
@@ -1348,7 +1348,7 @@ export default function DoctorDashboard() {
           {/* PatientPath Research Brief reveal (WO-43) */}
           {checkupCtx?.research_findings && checkupCtx.research_findings.length > 0 && (
             <motion.div variants={warmCardVariants} className="card-supporting">
-              <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/60 mb-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D56753]/60 mb-3">
                 Before we built your site, we studied your business.
               </p>
               <div className="space-y-2.5">

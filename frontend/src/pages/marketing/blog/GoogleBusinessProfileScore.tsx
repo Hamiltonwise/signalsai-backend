@@ -17,18 +17,18 @@ export default function GoogleBusinessProfileScore() {
     >
       <article className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
         <header className="mb-12">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
+          <span className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">
             Local Search
           </span>
-          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-[#212D40] leading-tight tracking-tight">
+          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-[#1A1D23] leading-tight tracking-tight">
             What your Google Business Profile score actually means
           </h1>
-          <p className="mt-4 text-base text-[#212D40]/50">
+          <p className="mt-4 text-base text-[#1A1D23]/50">
             March 2026
           </p>
         </header>
 
-        <div className="space-y-6 text-base text-[#212D40]/80 leading-relaxed">
+        <div className="space-y-6 text-base text-[#1A1D23]/80 leading-relaxed">
           <p>
             When a potential client searches for your specialty in your city,
             Google decides who shows up first. That decision is not random. It
@@ -40,7 +40,7 @@ export default function GoogleBusinessProfileScore() {
             it's actually doing for them, or to them.
           </p>
 
-          <h2 className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 className="text-xl font-semibold text-[#1A1D23] pt-4">
             What Google is actually measuring
           </h2>
           <p>
@@ -48,19 +48,19 @@ export default function GoogleBusinessProfileScore() {
           </p>
           <ol className="list-decimal pl-6 space-y-3">
             <li>
-              <span className="font-semibold text-[#212D40]">Relevance.</span>{" "}
+              <span className="font-semibold text-[#1A1D23]">Relevance.</span>{" "}
               How well your profile matches what someone searched for. This
               is driven by your business category, your description, and the
               words people use in their reviews about you.
             </li>
             <li>
-              <span className="font-semibold text-[#212D40]">Distance.</span>{" "}
+              <span className="font-semibold text-[#1A1D23]">Distance.</span>{" "}
               How close your business is to the searcher. You can't change
               this, but you can influence how far Google is willing to stretch
               your visibility radius.
             </li>
             <li>
-              <span className="font-semibold text-[#212D40]">Prominence.</span>{" "}
+              <span className="font-semibold text-[#1A1D23]">Prominence.</span>{" "}
               How well-known your business is online. This is where reviews,
               review velocity, ratings, photos, and engagement all compound.
             </li>
@@ -71,7 +71,7 @@ export default function GoogleBusinessProfileScore() {
             and velocity.
           </p>
 
-          <h2 className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 className="text-xl font-semibold text-[#1A1D23] pt-4">
             The review velocity gap
           </h2>
           <p>
@@ -95,7 +95,7 @@ export default function GoogleBusinessProfileScore() {
             That's not a marketing problem. That's a clarity problem.
           </p>
 
-          <h2 className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 className="text-xl font-semibold text-[#1A1D23] pt-4">
             The one thing you can do this week
           </h2>
           <p>
@@ -117,10 +117,10 @@ export default function GoogleBusinessProfileScore() {
 
         {/* CTA */}
         <div className="mt-12 rounded-2xl bg-[#D56753]/5 border border-[#D56753]/20 p-8 text-center">
-          <p className="text-base font-bold text-[#212D40] mb-2">
+          <p className="text-base font-semibold text-[#1A1D23] mb-2">
             What's your review velocity vs. your top competitor?
           </p>
-          <p className="text-sm text-[#212D40]/50 mb-4">
+          <p className="text-sm text-[#1A1D23]/50 mb-4">
             Run the free Checkup. See the numbers side by side.
           </p>
           <Link
@@ -139,15 +139,15 @@ export default function GoogleBusinessProfileScore() {
 
         {/* Related reading */}
         <div className="mt-12">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Related reading</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">Related reading</h3>
           <div className="space-y-3">
             <Link to="/blog/the-second-job-problem" className="block rounded-xl border border-gray-200 p-4 hover:border-[#D56753]/30 transition-colors">
-              <p className="text-sm font-bold text-[#212D40]">The second job nobody warned you about</p>
-              <p className="text-xs text-[#212D40]/50 mt-1">Why 34 million business owners are still waiting for freedom.</p>
+              <p className="text-sm font-semibold text-[#1A1D23]">The second job nobody warned you about</p>
+              <p className="text-xs text-[#1A1D23]/50 mt-1">Why 34 million business owners are still waiting for freedom.</p>
             </Link>
             <Link to="/blog/why-your-competitor-keeps-showing-up" className="block rounded-xl border border-gray-200 p-4 hover:border-[#D56753]/30 transition-colors">
-              <p className="text-sm font-bold text-[#212D40]">Why your top competitor keeps showing up where you don't</p>
-              <p className="text-xs text-[#212D40]/50 mt-1">The compounding advantage nobody explained.</p>
+              <p className="text-sm font-semibold text-[#1A1D23]">Why your top competitor keeps showing up where you don't</p>
+              <p className="text-xs text-[#1A1D23]/50 mt-1">The compounding advantage nobody explained.</p>
             </Link>
           </div>
         </div>

@@ -106,7 +106,7 @@ export default function WhatIsBusinessClarity() {
 
         <div className="mx-auto max-w-2xl px-5 pb-16">
           {/* H1 */}
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
             Business Clarity: What It Is, Why It's Rare, and What Changes When
             You Have It
           </h1>
@@ -128,7 +128,7 @@ export default function WhatIsBusinessClarity() {
             <p className="text-sm font-semibold text-[#D56753] uppercase tracking-wider mb-2">
               The difference between a dashboard and intelligence
             </p>
-            <p className="text-base text-[#212D40] font-medium leading-relaxed">
+            <p className="text-base text-[#1A1D23] font-medium leading-relaxed">
               A dashboard shows you numbers. Intelligence tells you what to do
               about them. A dashboard says your reviews went from 4.7 to 4.5.
               Intelligence says: you lost three one-star reviews from the same
@@ -140,7 +140,7 @@ export default function WhatIsBusinessClarity() {
 
           {/* Three Scenarios */}
           <div className="mt-12 space-y-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">
               Three business owners who needed clarity
             </h2>
             {SCENARIOS.map((scenario, i) => (
@@ -148,7 +148,7 @@ export default function WhatIsBusinessClarity() {
                 key={i}
                 className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
               >
-                <p className="text-sm font-semibold text-[#212D40] mb-2">
+                <p className="text-sm font-semibold text-[#1A1D23] mb-2">
                   {scenario.title}
                 </p>
                 <p className="text-sm text-gray-700 leading-relaxed">
@@ -160,7 +160,7 @@ export default function WhatIsBusinessClarity() {
 
           {/* Monday Morning */}
           <div className="mt-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-4">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-4">
               What clarity feels like on Monday morning
             </h2>
             <p className="text-base text-gray-700 leading-relaxed text-center">

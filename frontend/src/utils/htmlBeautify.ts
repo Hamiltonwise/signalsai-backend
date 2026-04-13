@@ -28,7 +28,7 @@ export async function beautifyHtml(html: string): Promise<string> {
     htmlWhitespaceSensitivity: "ignore",
   });
 
-  // prettier adds a trailing newline — trim it for section content
+  // prettier adds a trailing newline -- trim it for section content
   return formatted.trimEnd();
 }
 

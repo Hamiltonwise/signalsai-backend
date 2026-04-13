@@ -172,7 +172,7 @@ export default function SessionIntelligence() {
           <Activity className="h-4 w-4 text-[#D56753]" />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-[#212D40]">Live Feed</h1>
+          <h1 className="text-lg font-semibold text-[#1A1D23]">Live Feed</h1>
           <p className="text-xs text-gray-400">Auto-refreshes every 60 seconds</p>
         </div>
       </div>
@@ -241,7 +241,7 @@ export default function SessionIntelligence() {
                 <span className="text-xs font-mono text-gray-400 shrink-0">
                   {timeAgo(event.occurred_at || event.created_at)}
                 </span>
-                <span className="text-sm font-semibold text-[#212D40]">
+                <span className="text-sm font-semibold text-[#1A1D23]">
                   {event.label}
                 </span>
                 {event.org_name && (

@@ -601,7 +601,7 @@ export const PMSLatestJobEditor: React.FC<PMSLatestJobEditorProps> = ({
                       className="rounded-2xl border p-6 flex flex-col justify-center cursor-pointer hover:border-gray-300 transition-colors"
                       onClick={openMonthPicker}
                     >
-                      <div className="flex items-center justify-center gap-2 text-xs font-bold text-gray-400 uppercase mb-3">
+                      <div className="flex items-center justify-center gap-2 text-xs font-semibold text-gray-400 uppercase mb-3">
                         <Calendar size={14} />
                         Month
                       </div>
@@ -777,7 +777,7 @@ export const PMSLatestJobEditor: React.FC<PMSLatestJobEditorProps> = ({
                   </AnimatePresence>
 
                   {/* ===== TABLE HEADER ===== */}
-                  <div className="grid grid-cols-13 gap-4 mb-3 px-2 text-xs font-bold text-gray-400 uppercase">
+                  <div className="grid grid-cols-13 gap-4 mb-3 px-2 text-xs font-semibold text-gray-400 uppercase">
                     <div className="col-span-3">Source</div>
                     <div className="col-span-2">Type</div>
                     <div className="col-span-3">Referral Count</div>

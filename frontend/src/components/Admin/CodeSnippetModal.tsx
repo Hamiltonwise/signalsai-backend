@@ -127,7 +127,7 @@ export default function CodeSnippetModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-black/10">
-          <h2 className="text-xl font-bold text-alloro-textDark">
+          <h2 className="text-xl font-semibold text-alloro-textDark">
             {snippet ? "Edit Code Snippet" : "Create Code Snippet"}
           </h2>
           <button

@@ -1,5 +1,5 @@
 /**
- * Step3_PlanChooser — Onboarding Step 4
+ * Step3_PlanChooser -- Onboarding Step 4
  *
  * Single-product model: displays one subscription card for Alloro
  * and proceeds to Stripe Checkout. No plan selection needed.
@@ -44,7 +44,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center space-y-2">
-        <h2 className="text-2xl md:text-3xl font-bold font-heading text-alloro-navy tracking-tight">
+        <h2 className="text-2xl md:text-3xl font-semibold font-heading text-alloro-navy tracking-tight">
           Subscribe to Alloro
         </h2>
         <p className="text-slate-500 text-sm">
@@ -70,7 +70,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
           <span className="text-3xl font-semibold text-alloro-navy tracking-tighter">
             $2,000
           </span>
-          <span className="text-slate-400 font-bold text-sm">/month</span>
+          <span className="text-slate-400 font-semibold text-sm">/month</span>
         </div>
 
         {/* Features */}
@@ -92,7 +92,7 @@ export const Step3PlanChooser: React.FC<Step3PlanChooserProps> = ({
         <button
           onClick={onSubscribe}
           disabled={isProcessing}
-          className="w-full px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-gradient-to-r from-alloro-orange to-[#c45a47] text-white hover:shadow-lg hover:shadow-alloro-orange/30 hover:-translate-y-0.5"
+          className="w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-gradient-to-r from-alloro-orange to-[#c45a47] text-white hover:shadow-lg hover:shadow-alloro-orange/30 hover:-translate-y-0.5"
         >
           {isProcessing ? (
             <>

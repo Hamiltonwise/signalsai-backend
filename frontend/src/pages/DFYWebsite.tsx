@@ -216,7 +216,7 @@ export function DFYWebsite() {
   const handleIframeQuickAction = useCallback(
     (payload: QuickActionPayload) => {
       if (payload.action === "text-up" || payload.action === "text-down") {
-        // Text size was mutated in the iframe DOM — extract updated sections
+        // Text size was mutated in the iframe DOM -- extract updated sections
         const iframe = iframeRef.current;
         if (iframe?.contentDocument) {
           setUndoStack((prev) => [...prev, structuredClone(sectionsRef.current)]);
@@ -254,7 +254,7 @@ export function DFYWebsite() {
     toggleHidden,
   } = useIframeSelector(iframeRef, handleIframeQuickAction);
 
-  // User-facing API wrappers (routes don't need projectId — inferred from auth)
+  // User-facing API wrappers (routes don't need projectId -- inferred from auth)
   const userFetchRecipients = async (_projectId: string) =>
     apiGet({ path: "/user/website/recipients" });
 
@@ -549,7 +549,7 @@ export function DFYWebsite() {
           setIsDirty(true);
         },
         (_selector, _currentSrc) => {
-          // Reuse same image handler — simplified for reload case
+          // Reuse same image handler -- simplified for reload case
         },
       );
     }
@@ -627,7 +627,7 @@ export function DFYWebsite() {
           return;
         }
 
-        // DOM mutation path — if API returns edited HTML
+        // DOM mutation path -- if API returns edited HTML
         if (result.editedHtml) {
           const validation = validateHtml(result.editedHtml);
           if (!validation.valid) {
@@ -910,7 +910,7 @@ export function DFYWebsite() {
           <div className="w-16 h-16 bg-alloro-orange/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-alloro-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
           </div>
-          <h2 className="text-xl font-semibold mb-2 text-[#212D40]">
+          <h2 className="text-xl font-semibold mb-2 text-[#1A1D23]">
             Your Website
           </h2>
           <p className="text-gray-500 mb-6">
@@ -945,7 +945,7 @@ export function DFYWebsite() {
     );
   }
 
-  // Empty state — project exists but no pages yet
+  // Empty state -- project exists but no pages yet
   if (status === "READY" && pages.length === 0) {
     return (
       <div className="min-h-screen bg-alloro-bg font-body flex items-center justify-center py-16 px-6">
@@ -961,7 +961,7 @@ export function DFYWebsite() {
 
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-alloro-orange/10 rounded-full mb-4">
             <Sparkles className="w-4 h-4 text-alloro-orange" />
-            <span className="text-xs font-bold text-alloro-orange uppercase tracking-wider">
+            <span className="text-xs font-semibold text-alloro-orange uppercase tracking-wider">
               Almost There
             </span>
           </div>
@@ -1106,7 +1106,7 @@ export function DFYWebsite() {
           })}
         </nav>
 
-        {/* Viewport toggle — slides in when on editor tab */}
+        {/* Viewport toggle -- slides in when on editor tab */}
         <AnimatePresence>
           {activeView === "editor" && (
             <motion.div
@@ -1171,7 +1171,7 @@ export function DFYWebsite() {
 
         {/* Right section: save, usage, domain, view live */}
         <div className="flex items-center gap-2.5 shrink-0">
-          {/* Save button — only visible when dirty */}
+          {/* Save button -- only visible when dirty */}
           <AnimatePresence>
             {isDirty && activeView === "editor" && (
               <motion.button

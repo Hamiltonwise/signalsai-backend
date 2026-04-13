@@ -82,7 +82,7 @@ export default function RecipientsConfig({ projectId, fetchRecipientsFn, updateR
         <Mail size={14} />
         <span>
           {recipients.length === 0
-            ? "No recipients configured — form submissions will be sent to org admins by default."
+            ? "No recipients configured -- form submissions will be sent to org admins by default."
             : `${recipients.length} recipient${recipients.length > 1 ? "s" : ""} configured`}
         </span>
       </div>

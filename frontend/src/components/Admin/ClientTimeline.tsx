@@ -236,7 +236,7 @@ export default function ClientTimeline({ orgId }: { orgId: number }) {
               <div className="flex-1 min-w-0 pb-4">
                 <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium text-[#212D40]">
+                    <p className="text-sm font-medium text-[#1A1D23]">
                       {config.label(props)}
                     </p>
                     <span className="text-xs text-gray-400 shrink-0 tabular-nums">

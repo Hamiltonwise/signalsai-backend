@@ -141,7 +141,7 @@ export function ParentingReadingView({
           {mindName} is reading...
         </h3>
 
-        {/* Narration text — typewriter style */}
+        {/* Narration text -- typewriter style */}
         <div className="max-w-md min-h-[3rem] flex items-center justify-center">
           <AnimatePresence mode="wait">
             <motion.div

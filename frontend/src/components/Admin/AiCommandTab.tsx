@@ -149,7 +149,7 @@ export default function AiCommandTab({ projectId, pages = [], onExecutionComplet
            (layoutsMode === "all") || (layoutsMode === "specific" && selectedLayouts.size > 0);
   };
 
-  // Poll batch status — interval-based with cleanup
+  // Poll batch status -- interval-based with cleanup
   useEffect(() => {
     if (!batch || (viewState !== "analyzing" && viewState !== "executing")) return;
 
@@ -520,12 +520,12 @@ export default function AiCommandTab({ projectId, pages = [], onExecutionComplet
                 <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
                   {pendingToolType === "ui_checker" ? <Layout className="w-4 h-4 text-purple-500" /> : <FileText className="w-4 h-4 text-blue-500" />}
                   <span className="text-sm font-medium text-gray-700">
-                    {pendingToolType === "ui_checker" ? "UI Check" : "Link Check"} — select targets
+                    {pendingToolType === "ui_checker" ? "UI Check" : "Link Check"} -- select targets
                   </span>
                 </div>
               )}
 
-              {/* Prompt textarea — only for AI Editor */}
+              {/* Prompt textarea -- only for AI Editor */}
               {!pendingToolType && (
                 <textarea
                   value={prompt}
@@ -535,7 +535,7 @@ export default function AiCommandTab({ projectId, pages = [], onExecutionComplet
                 />
               )}
 
-              {/* Target selection — shared by all tools */}
+              {/* Target selection -- shared by all tools */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Targets</p>
                 <TargetSection icon={<FileText className="w-3.5 h-3.5" />} label="Pages" mode={pagesMode} onModeChange={setPagesMode}>
@@ -548,7 +548,7 @@ export default function AiCommandTab({ projectId, pages = [], onExecutionComplet
                     </div>
                   )}
                 </TargetSection>
-                {/* Posts — only for AI Editor and Link Checker (not UI Checker since posts have their own templates) */}
+                {/* Posts -- only for AI Editor and Link Checker (not UI Checker since posts have their own templates) */}
                 {pendingToolType !== "ui_checker" && (
                   <TargetSection icon={<Newspaper className="w-3.5 h-3.5" />} label="Posts" mode={postsMode} onModeChange={setPostsMode}>
                     {postsMode === "specific" && (
@@ -624,7 +624,7 @@ export default function AiCommandTab({ projectId, pages = [], onExecutionComplet
                   <p className="text-sm text-gray-800 font-medium">Executing approved changes...</p>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  {stats.executed || 0} completed{stats.failed > 0 ? `, ${stats.failed} failed` : ""} — {stats.approved || 0} remaining of {totalToProcess} total
+                  {stats.executed || 0} completed{stats.failed > 0 ? `, ${stats.failed} failed` : ""} -- {stats.approved || 0} remaining of {totalToProcess} total
                 </p>
                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-500 flex">
@@ -898,7 +898,7 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
             <div className="flex items-center justify-between mb-2 pl-1 pr-1">
               <div className="flex items-center gap-2">
                 {groupProcessing && <Loader2 className="w-3.5 h-3.5 animate-spin text-alloro-orange" />}
-                <h4 className={`text-xs font-bold uppercase tracking-[0.12em] ${groupProcessing ? "text-alloro-orange" : "text-gray-400"}`}>{gk}</h4>
+                <h4 className={`text-xs font-semibold uppercase tracking-[0.12em] ${groupProcessing ? "text-alloro-orange" : "text-gray-400"}`}>{gk}</h4>
                 <span className="text-xs text-gray-300">{groupTotal}</span>
                 {groupExecuted > 0 && <span className="text-[9px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">{groupExecuted} done</span>}
               </div>
@@ -965,7 +965,7 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
                         <span className="text-[13px] font-semibold text-gray-800 truncate">{sk}</span>
                       </button>
 
-                      {/* Inline status bar — visible even when collapsed */}
+                      {/* Inline status bar -- visible even when collapsed */}
                       <div className="flex items-center gap-2 shrink-0">
                         {/* Mini progress bar */}
                         {recs.length > 1 && (
@@ -978,7 +978,7 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
                           </div>
                         )}
 
-                        {/* Count chips — distinct colors per status */}
+                        {/* Count chips -- distinct colors per status */}
                         <div className="flex items-center gap-0.5">
                           {counts.executed > 0 && (
                             <span className="w-5 h-5 rounded-full flex items-center justify-center bg-green-100 text-green-700">
@@ -990,9 +990,9 @@ function RecommendationList({ recommendations, expandedGroups, toggleGroup, onAp
                               <Loader2 className="w-3 h-3 animate-spin" />
                             </span>
                           )}
-                          {counts.approved > 0 && <span className="text-[9px] font-bold bg-purple-50 text-purple-600 w-5 h-5 rounded-full flex items-center justify-center">{counts.approved}</span>}
-                          {counts.pending > 0 && !isProcessing && <span className="text-[9px] font-bold bg-amber-50 text-amber-600 w-5 h-5 rounded-full flex items-center justify-center">{counts.pending}</span>}
-                          {counts.rejected > 0 && <span className="text-[9px] font-bold bg-red-50 text-red-300 w-5 h-5 rounded-full flex items-center justify-center">{counts.rejected}</span>}
+                          {counts.approved > 0 && <span className="text-[9px] font-semibold bg-purple-50 text-purple-600 w-5 h-5 rounded-full flex items-center justify-center">{counts.approved}</span>}
+                          {counts.pending > 0 && !isProcessing && <span className="text-[9px] font-semibold bg-amber-50 text-amber-600 w-5 h-5 rounded-full flex items-center justify-center">{counts.pending}</span>}
+                          {counts.rejected > 0 && <span className="text-[9px] font-semibold bg-red-50 text-red-300 w-5 h-5 rounded-full flex items-center justify-center">{counts.rejected}</span>}
                           {counts.failed > 0 && (
                             <span className="w-5 h-5 rounded-full flex items-center justify-center bg-red-100 text-red-600">
                               <X className="w-3 h-3" />
@@ -1254,7 +1254,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
             </div>
           )}
 
-          {/* Broken link fix — show suggested URL or manual input */}
+          {/* Broken link fix -- show suggested URL or manual input */}
           {isBrokenLink && rec.status === "pending" && (
             <div className="ml-6 mt-2 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
               <div className="flex items-center gap-2 mb-1.5">
@@ -1291,7 +1291,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
           {/* URL input for menu items with NEEDS_INPUT */}
           {needsUrlInput && rec.status === "pending" && (
             <div className="ml-6 mt-2 space-y-2 p-2.5 bg-amber-50/50 rounded-lg border border-amber-200/50">
-              <p className="text-xs font-medium text-amber-700">URL required — the AI doesn't know this link:</p>
+              <p className="text-xs font-medium text-amber-700">URL required -- the AI doesn't know this link:</p>
               <div className="flex gap-2">
                 <input
                   type="url"
@@ -1315,7 +1315,7 @@ function RecommendationCard({ rec, onApproveReject, readonly, isLoading }: {
             </div>
           )}
 
-          {/* Needs input indicator — only show for non-visible inputs */}
+          {/* Needs input indicator -- only show for non-visible inputs */}
           {needsUrlInput && rec.status === "pending" && (
             <p className="text-xs text-amber-600 mt-1 ml-6">Requires URL before approval</p>
           )}

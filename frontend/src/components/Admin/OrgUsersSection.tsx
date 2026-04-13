@@ -320,11 +320,11 @@ export function OrgUsersSection({
                   </td>
                   <td className="py-3">
                     {user.has_password ? (
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-bold rounded-full bg-green-50 text-green-600 border border-green-200">
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-semibold rounded-full bg-green-50 text-green-600 border border-green-200">
                         <Key className="h-2.5 w-2.5" /> Set
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-bold rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-semibold rounded-full bg-amber-50 text-amber-600 border border-amber-200">
                         <Key className="h-2.5 w-2.5" /> None
                       </span>
                     )}
@@ -365,7 +365,7 @@ export function OrgUsersSection({
                         className="p-1.5 text-gray-400 hover:text-alloro-orange hover:bg-alloro-orange/10 rounded-lg transition-colors"
                         title="Pilot as this user"
                       >
-                        <span className="text-xs font-bold">Pilot</span>
+                        <span className="text-xs font-semibold">Pilot</span>
                       </button>
                       <button
                         onClick={() => setModal({ type: "removeUser", user })}
@@ -582,11 +582,11 @@ export function OrgUsersSection({
                         </p>
 
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                          <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2">
+                          <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">
                             Temporary Password
                           </p>
                           <div className="flex items-center gap-3">
-                            <code className="text-lg font-mono font-bold text-gray-900 tracking-wider flex-1">
+                            <code className="text-lg font-mono font-semibold text-gray-900 tracking-wider flex-1">
                               {generatedPassword}
                             </code>
                             <button

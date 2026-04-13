@@ -13,7 +13,7 @@ export function OrgPmsTab({ organizationId, locationId }: OrgPmsTabProps) {
 
   const pageSize = 50;
 
-  // TanStack Query — replaces useEffect + useState + parallel fetch
+  // TanStack Query -- replaces useEffect + useState + parallel fetch
   const { data, isLoading: loading } = useAdminOrgPms(
     organizationId,
     locationId,
@@ -61,14 +61,14 @@ export function OrgPmsTab({ organizationId, locationId }: OrgPmsTabProps) {
             <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
               Total Jobs
             </p>
-            <p className="text-2xl font-bold text-gray-900">{total}</p>
+            <p className="text-2xl font-semibold text-gray-900">{total}</p>
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
               Data Months
             </p>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-2xl font-semibold text-gray-900">
               {keyData.months?.length || 0}
             </p>
           </div>
@@ -78,7 +78,7 @@ export function OrgPmsTab({ organizationId, locationId }: OrgPmsTabProps) {
               <TrendingUp className="h-3 w-3 inline mr-1" />
               Total Production
             </p>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-2xl font-semibold text-gray-900">
               ${(keyData.totals?.totalProduction || 0).toLocaleString()}
             </p>
           </div>
@@ -130,7 +130,7 @@ export function OrgPmsTab({ organizationId, locationId }: OrgPmsTabProps) {
                     #{job.id}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {job.location_name || "—"}
+                    {job.location_name || "--"}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {formatDate(job.timestamp)}
@@ -149,7 +149,7 @@ export function OrgPmsTab({ organizationId, locationId }: OrgPmsTabProps) {
                       </span>
                     ) : (
                       <span className="text-xs px-2 py-1 rounded bg-gray-50 text-gray-600 border border-gray-200 inline-block">
-                        —
+                        --
                       </span>
                     )}
                   </td>

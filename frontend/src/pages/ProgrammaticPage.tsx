@@ -176,7 +176,7 @@ export default function ProgrammaticPage() {
               <MapPin className="w-4 h-4" />
               <span>{page.cityName}, {page.stateAbbr}</span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-6">
+            <h1 className="text-3xl md:text-4xl font-semibold mb-6">
               {heroSection?.heading || page.title}
             </h1>
             <p className="text-lg text-gray-300 leading-relaxed max-w-3xl">
@@ -203,7 +203,7 @@ export default function ProgrammaticPage() {
         {marketSection && (
           <section className="py-12 px-4 bg-gray-50">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl font-bold text-[#212D40] mb-4">
+              <h2 className="text-2xl font-semibold text-[#1A1D23] mb-4">
                 {marketSection.heading}
               </h2>
               <p className="text-gray-700 leading-relaxed">
@@ -217,7 +217,7 @@ export default function ProgrammaticPage() {
         {page.competitors && page.competitors.length > 0 && (
           <section className="py-12 px-4">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl font-bold text-[#212D40] mb-6">
+              <h2 className="text-2xl font-semibold text-[#1A1D23] mb-6">
                 {competitorSection?.heading || `Top Practices in ${page.cityName}`}
               </h2>
               <div className="overflow-x-auto">
@@ -233,7 +233,7 @@ export default function ProgrammaticPage() {
                   <tbody>
                     {page.competitors.slice(0, 10).map((comp, i) => (
                       <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4 font-medium text-[#212D40]">{comp.name}</td>
+                        <td className="py-3 px-4 font-medium text-[#1A1D23]">{comp.name}</td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-1">
                             <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
@@ -255,13 +255,13 @@ export default function ProgrammaticPage() {
         {faqItems.length > 0 && (
           <section className="py-12 px-4 bg-gray-50">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl font-bold text-[#212D40] mb-6">
+              <h2 className="text-2xl font-semibold text-[#1A1D23] mb-6">
                 Frequently Asked Questions
               </h2>
               <div className="space-y-4">
                 {faqItems.map((faq, i) => (
                   <details key={i} className="bg-white rounded-lg border border-gray-200 p-4">
-                    <summary className="font-medium text-[#212D40] cursor-pointer">
+                    <summary className="font-medium text-[#1A1D23] cursor-pointer">
                       {faq.question}
                     </summary>
                     <p className="mt-3 text-gray-600 leading-relaxed">
@@ -277,7 +277,7 @@ export default function ProgrammaticPage() {
         {/* CTA */}
         <section className="py-16 px-4 bg-[#D56753] text-white">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+            <h2 className="text-2xl md:text-3xl font-semibold mb-4">
               {ctaSection?.heading || `See Where You Stand in ${page.cityName}`}
             </h2>
             <p className="text-lg opacity-90 mb-8 max-w-2xl mx-auto">

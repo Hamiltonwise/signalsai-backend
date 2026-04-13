@@ -73,7 +73,7 @@ export default function EndodontistMarketing() {
 
         <div className="mx-auto max-w-2xl px-5 pb-16">
           {/* H1 */}
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
             Why Endodontists Lose Referring GPs (And How to Know Before It
             Happens)
           </h1>
@@ -94,7 +94,7 @@ export default function EndodontistMarketing() {
             <p className="text-sm font-semibold text-[#D56753] uppercase tracking-wider mb-2">
               What the data suggests
             </p>
-            <p className="text-base text-[#212D40] font-medium leading-relaxed">
+            <p className="text-base text-[#1A1D23] font-medium leading-relaxed">
               Practices that monitor referral velocity -- the rate of change in
               case volume per GP, not just total referrals -- retain an estimated
               23% more referring GPs year over year.
@@ -107,7 +107,7 @@ export default function EndodontistMarketing() {
 
           {/* Three Signals */}
           <div className="mt-12 space-y-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">
               Three signals that predict a GP going dark
             </h2>
             {SIGNALS.map((signal, i) => (
@@ -115,7 +115,7 @@ export default function EndodontistMarketing() {
                 key={i}
                 className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
               >
-                <p className="text-sm font-semibold text-[#212D40] mb-2">
+                <p className="text-sm font-semibold text-[#1A1D23] mb-2">
                   {i + 1}. {signal.title}
                 </p>
                 <p className="text-sm text-gray-700 leading-relaxed">
@@ -127,7 +127,7 @@ export default function EndodontistMarketing() {
 
           {/* What To Do */}
           <div className="mt-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-4">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-4">
               What to do when you see the signal
             </h2>
             <p className="text-base text-gray-700 leading-relaxed text-center">

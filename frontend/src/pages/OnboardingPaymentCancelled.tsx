@@ -3,7 +3,7 @@
  *
  * Users land here when they cancel/exit Stripe Checkout during onboarding.
  * Provides a "Try Again" button to return to the onboarding plan chooser.
- * Onboarding is NOT complete — they must pay to enter the app.
+ * Onboarding is NOT complete -- they must pay to enter the app.
  */
 
 import { motion } from "framer-motion";
@@ -14,7 +14,7 @@ export default function OnboardingPaymentCancelled() {
   const navigate = useNavigate();
 
   const handleTryAgain = () => {
-    // Return to onboarding — the container will resume at Step 4 (plan chooser)
+    // Return to onboarding -- the container will resume at Step 4 (plan chooser)
     navigate("/new-account-onboarding");
   };
 
@@ -35,7 +35,7 @@ export default function OnboardingPaymentCancelled() {
           <div className="w-20 h-20 mx-auto rounded-2xl bg-slate-100 flex items-center justify-center">
             <XCircle className="w-10 h-10 text-slate-400" />
           </div>
-          <h1 className="text-3xl font-bold font-heading text-alloro-navy tracking-tight">
+          <h1 className="text-3xl font-semibold font-heading text-alloro-navy tracking-tight">
             Payment Cancelled
           </h1>
           <p className="text-slate-500">

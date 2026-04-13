@@ -7,7 +7,7 @@ import { useVocab } from "../../contexts/vocabularyContext";
 /**
  * /checkup/upload-prompt -- Closes the banner loop.
  *
- * Banner: "Every Endodontist Has A Referring GP They're About To Lose. We Know Which One."
+ * Closes the loop from the checkup promise.
  * Checkup: showed Google competitive intelligence (reviews, ratings).
  * This screen: "Upload your referral report and we'll show you which one."
  *

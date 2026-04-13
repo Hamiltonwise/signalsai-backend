@@ -11,7 +11,7 @@ import MarketingLayout from "../../components/marketing/MarketingLayout";
 const POSTS = [
   {
     slug: "the-second-job-problem",
-    category: "Business Clarity",
+    category: "Intelligence",
     title: "The second job nobody warned you about",
     summary:
       "We've watched hundreds of business owners realize the same thing in year two: the business they bought to have freedom became the job they left. This post is about the exact point where that turns.",
@@ -35,16 +35,16 @@ const POSTS = [
 export default function Blog() {
   return (
     <MarketingLayout
-      title="Blog - Business Clarity"
+      title="Blog - Alloro"
       description="One post a week. Each one comes from something we actually saw in client data. No aggregated advice."
     >
       {/* Hero */}
       <section className="px-5 py-16 sm:py-24">
         <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight">
             Alloro Blog
           </h1>
-          <p className="mt-4 text-base sm:text-lg text-[#212D40]/60 leading-relaxed">
+          <p className="mt-4 text-base sm:text-lg text-[#1A1D23]/60 leading-relaxed">
             One post a week. Each one comes from something
             we actually saw in client data. No aggregated advice.
           </p>
@@ -66,13 +66,13 @@ export default function Blog() {
               to={`/blog/${post.slug}`}
               className="group rounded-2xl border border-gray-200 bg-white p-6 hover:border-[#D56753]/30 hover:shadow-sm transition-all"
             >
-              <span className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
+              <span className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">
                 {post.category}
               </span>
-              <h2 className="mt-3 text-base font-bold text-[#212D40] leading-snug group-hover:text-[#D56753] transition-colors">
+              <h2 className="mt-3 text-base font-semibold text-[#1A1D23] leading-snug group-hover:text-[#D56753] transition-colors">
                 {post.title}
               </h2>
-              <p className="mt-3 text-sm text-[#212D40]/60 leading-relaxed">
+              <p className="mt-3 text-sm text-[#1A1D23]/60 leading-relaxed">
                 {post.summary}
               </p>
               <span className="mt-4 inline-block text-xs font-semibold text-[#D56753]">
@@ -93,7 +93,7 @@ export default function Blog() {
               { "@id": "https://getalloro.com/#organization", "@type": "Organization", "name": "Alloro", "url": "https://getalloro.com" },
               {
                 "@type": "Blog",
-                "name": "Business Clarity",
+                "name": "Alloro",
                 "description": "One post a week. Each one comes from something we actually saw in client data.",
                 "url": "https://getalloro.com/blog",
                 "publisher": { "@id": "https://getalloro.com/#organization" },

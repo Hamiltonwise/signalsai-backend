@@ -1,5 +1,5 @@
 /**
- * 404 — Page not found.
+ * 404 -- Page not found.
  * "This page doesn't exist. But your market data does."
  */
 

@@ -18,10 +18,10 @@ export default function MarketingFooter() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-sm font-bold text-[#212D40]">alloro</span>
+            <span className="text-sm font-semibold text-[#1A1D23]">alloro</span>
           </div>
           <p className="text-xs text-gray-500 leading-relaxed">
-            Business Clarity for local service professionals.
+            Intelligence for local service professionals.
           </p>
           <p className="mt-4 text-xs text-gray-400">
             &copy; 2026 Alloro, Inc. All rights reserved.
@@ -43,7 +43,7 @@ export default function MarketingFooter() {
               <Link
                 key={link.to}
                 to={link.to}
-                className="text-xs font-medium text-gray-500 hover:text-[#212D40] transition-colors"
+                className="text-xs font-medium text-gray-500 hover:text-[#1A1D23] transition-colors"
               >
                 {link.label}
               </Link>

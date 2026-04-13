@@ -41,7 +41,7 @@ export function PilotBanner() {
           </svg>
         </div>
         <div>
-          <span className="font-bold text-lg">Pilot Mode Active</span>
+          <span className="font-semibold text-lg">Pilot Mode Active</span>
           <span className="ml-2 text-sm opacity-90 hidden sm:inline">
             You are viewing the application as another user. Changes made here
             will affect the actual user account.

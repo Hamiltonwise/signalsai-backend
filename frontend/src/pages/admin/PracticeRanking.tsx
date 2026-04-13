@@ -1144,7 +1144,7 @@ export function PracticeRanking() {
         }
       />
 
-      {/* Leaderboard — WO13 */}
+      {/* Leaderboard -- WO13 */}
       <LeaderboardSection jobs={jobs} />
 
       {/* Summary Stats Bar */}
@@ -1159,7 +1159,7 @@ export function PracticeRanking() {
             <BarChart3 className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">{jobs.length}</p>
+            <p className="text-2xl font-semibold text-gray-900">{jobs.length}</p>
             <p className="text-xs text-gray-500">Total Analyses</p>
           </div>
         </div>
@@ -1168,7 +1168,7 @@ export function PracticeRanking() {
             <CheckCircle className="w-5 h-5 text-green-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-green-600">{completedJobs.length}</p>
+            <p className="text-2xl font-semibold text-green-600">{completedJobs.length}</p>
             <p className="text-xs text-gray-500">Completed</p>
           </div>
         </div>
@@ -1177,7 +1177,7 @@ export function PracticeRanking() {
             <Loader2 className="w-5 h-5 text-yellow-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-yellow-600">{processingJobs.length}</p>
+            <p className="text-2xl font-semibold text-yellow-600">{processingJobs.length}</p>
             <p className="text-xs text-gray-500">Processing</p>
           </div>
         </div>
@@ -1186,7 +1186,7 @@ export function PracticeRanking() {
             <Target className="w-5 h-5 text-purple-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-purple-600">
+            <p className="text-2xl font-semibold text-purple-600">
               {avgScore > 0 ? avgScore.toFixed(1) : "-"}
             </p>
             <p className="text-xs text-gray-500">Avg Score</p>
@@ -1717,7 +1717,7 @@ function JobRow({
           {job.status === "completed" && job.rank_score != null && (
             <div className="text-right">
               <div
-                className={`text-xl font-bold ${getScoreColor(
+                className={`text-xl font-semibold ${getScoreColor(
                   Number(job.rank_score)
                 )}`}
               >
@@ -1960,7 +1960,7 @@ function RankingResultsView({
             <span className="text-sm font-medium text-gray-500">Rank Score</span>
             <Trophy className={`w-5 h-5 ${getScoreColorLocal(Number(result.rankScore))}`} />
           </div>
-          <div className={`text-3xl font-bold ${getScoreColorLocal(Number(result.rankScore))}`}>
+          <div className={`text-3xl font-semibold ${getScoreColorLocal(Number(result.rankScore))}`}>
             {Number(result.rankScore).toFixed(1)}
             <span className="text-sm font-normal text-gray-400">/100</span>
           </div>
@@ -1973,7 +1973,7 @@ function RankingResultsView({
             <span className="text-sm font-medium text-gray-500">Position</span>
             <Users className="w-5 h-5 text-blue-500" />
           </div>
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-3xl font-semibold text-gray-900">
             #{result.rankPosition}
           </div>
           <p className="text-sm text-gray-500 mt-1">
@@ -1985,7 +1985,7 @@ function RankingResultsView({
             <span className="text-sm font-medium text-gray-500">Reviews</span>
             <Star className="w-5 h-5 text-yellow-500" />
           </div>
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-3xl font-semibold text-gray-900">
             {result.rawData?.client_gbp?.totalReviewCount || 0}
           </div>
           <p className="text-sm text-gray-500 mt-1">total reviews</p>
@@ -1996,7 +1996,7 @@ function RankingResultsView({
             <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-3xl font-bold text-gray-900">
+            <span className="text-3xl font-semibold text-gray-900">
               {(
                 factors?.star_rating?.value ??
                 result.rawData?.client_gbp?.averageRating ??
@@ -2146,7 +2146,7 @@ function RankingResultsView({
                   )}
                 </div>
                 <div className="flex items-baseline gap-1.5 ml-3 flex-shrink-0">
-                  <span className={`text-lg font-bold tabular-nums ${colors.text}`}>
+                  <span className={`text-lg font-semibold tabular-nums ${colors.text}`}>
                     {pct}
                   </span>
                   <span className="text-xs text-gray-400">/100</span>
@@ -2299,7 +2299,7 @@ function RankingResultsView({
                       {comp.rankPosition === 1 ? (
                         <Trophy className="h-4.5 w-4.5 text-amber-500 mx-auto" />
                       ) : (
-                        <span className="text-sm font-bold text-gray-400 tabular-nums">
+                        <span className="text-sm font-semibold text-gray-400 tabular-nums">
                           {comp.rankPosition}
                         </span>
                       )}
@@ -2326,18 +2326,18 @@ function RankingResultsView({
                     <div className="flex items-center gap-4 flex-shrink-0">
                       <div className="text-right">
                         <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Reviews</div>
-                        <div className="text-sm font-bold text-gray-800 tabular-nums">{comp.totalReviews.toLocaleString()}</div>
+                        <div className="text-sm font-semibold text-gray-800 tabular-nums">{comp.totalReviews.toLocaleString()}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Rating</div>
-                        <div className="text-sm font-bold text-gray-800 tabular-nums flex items-center justify-end gap-0.5">
+                        <div className="text-sm font-semibold text-gray-800 tabular-nums flex items-center justify-end gap-0.5">
                           {comp.averageRating?.toFixed(1) || "-"}
                           <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
                         </div>
                       </div>
                       <div className="text-right w-14">
                         <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Score</div>
-                        <div className={`text-sm font-bold tabular-nums ${scoreColor}`}>
+                        <div className={`text-sm font-semibold tabular-nums ${scoreColor}`}>
                           {comp.rankScore?.toFixed(1) || "-"}
                         </div>
                       </div>
@@ -2397,7 +2397,7 @@ function RankingResultsView({
                       transition={{ delay: idx * 0.05 }}
                     >
                       <div className="flex items-start gap-2.5">
-                        <span className={`text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${impactBadge} flex-shrink-0 mt-0.5`}>
+                        <span className={`text-xs font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${impactBadge} flex-shrink-0 mt-0.5`}>
                           {gap.impact}
                         </span>
                         <div className="min-w-0">

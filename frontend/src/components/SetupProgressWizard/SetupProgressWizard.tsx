@@ -166,7 +166,7 @@ export function SetupProgressWizard() {
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                <h3 className="text-sm font-bold text-alloro-navy uppercase tracking-wider">
+                <h3 className="text-sm font-semibold text-alloro-navy uppercase tracking-wider">
                   Setup Progress
                 </h3>
                 <button

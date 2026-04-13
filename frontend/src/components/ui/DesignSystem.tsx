@@ -165,7 +165,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             {title}
           </h1>
           {subtitle && (
-            <span className="text-xs font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+            <span className="text-xs font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
               {subtitle}
             </span>
           )}
@@ -262,7 +262,7 @@ export const AdminPageHeader: React.FC<AdminPageHeaderProps> = ({
           {icon}
         </motion.div>
         <div>
-          <h1 className="text-xl font-bold text-alloro-textDark">{title}</h1>
+          <h1 className="text-xl font-semibold text-alloro-textDark">{title}</h1>
           {description && (
             <p className="text-sm text-gray-500 mt-0.5">{description}</p>
           )}
@@ -497,7 +497,7 @@ export const CircularProgress: React.FC<CircularProgressProps> = ({
           animate={{ opacity: 1 }}
           transition={{ delay: delay + 0.5 }}
         >
-          <span className={`text-lg font-bold ${colors.text}`}>{score}%</span>
+          <span className={`text-lg font-semibold ${colors.text}`}>{score}%</span>
         </motion.div>
       </div>
     </motion.div>
@@ -546,7 +546,7 @@ export const HorizontalProgressBar: React.FC<HorizontalProgressBarProps> = ({
         )}
         {showValue && (
           <motion.span
-            className={`text-sm font-bold ${colors.text}`}
+            className={`text-sm font-semibold ${colors.text}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: delay + 0.3 }}
@@ -671,7 +671,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
         <div className="flex items-center gap-4 px-5 py-3 bg-white rounded-2xl border border-gray-200 shadow-2xl">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100">
-              <span className="text-sm font-bold text-blue-600">
+              <span className="text-sm font-semibold text-blue-600">
                 {selectedCount}
               </span>
             </div>
@@ -1172,7 +1172,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
   <div className={`card-supporting ${className}`}>
     <div className="flex items-center gap-2.5 mb-4">
       {icon && <div className="text-[#D56753]/50">{icon}</div>}
-      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/40">
+      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D56753]/40">
         {label}
       </p>
     </div>
@@ -1230,7 +1230,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     : "px-3 py-1 text-xs";
 
   return (
-    <span className={`inline-flex items-center rounded-full font-bold uppercase tracking-wider border ${styles[derivedStatus]} ${sizeStyles}`}>
+    <span className={`inline-flex items-center rounded-full font-semibold uppercase tracking-wider border ${styles[derivedStatus]} ${sizeStyles}`}>
       <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
         derivedStatus === "green" ? "bg-emerald-500" :
         derivedStatus === "amber" ? "bg-amber-500" :
@@ -1287,8 +1287,8 @@ export const InsightCard: React.FC<InsightCardProps> = ({
       {icon && (
         <div className="mb-3 text-[#D56753]/40">{icon}</div>
       )}
-      <p className="text-3xl font-semibold text-[#212D40] leading-none">{value}</p>
-      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#D56753]/40 mt-1">
+      <p className="text-3xl font-semibold text-[#1A1D23] leading-none">{value}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#D56753]/40 mt-1">
         {label}
       </p>
       {trendLabel && (

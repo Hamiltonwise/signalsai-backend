@@ -121,7 +121,7 @@ export default function BusinessClarity() {
       {/* Three business owners */}
       <section className="px-5 py-16 sm:py-20 bg-white">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-8">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-8">
             Three business owners who need this
           </h2>
           <div className="space-y-6">
@@ -147,7 +147,7 @@ export default function BusinessClarity() {
       {/* What it looks like */}
       <section className="px-5 py-16 sm:py-20">
         <div className="max-w-xl mx-auto text-center">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#1A1D23] mb-6">
+          <h2 className="text-xl sm:text-2xl font-semibold text-[#1A1D23] mb-6">
             What Business Clarity looks like
           </h2>
           <p className="text-base text-[#1A1D23]/70 leading-relaxed">
@@ -163,7 +163,7 @@ export default function BusinessClarity() {
       {/* Monday Brief preview */}
       <section className="px-5 py-12 sm:py-16 bg-white">
         <div className="max-w-xl mx-auto">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#1A1D23] text-center mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold text-[#1A1D23] text-center mb-8">
             What arrives Monday morning
           </h2>
           <div className="rounded-2xl border border-[#212D40]/20 bg-[#FAFAF8] overflow-hidden shadow-sm">
@@ -182,7 +182,7 @@ export default function BusinessClarity() {
                 </p>
               </div>
               <div className="rounded-xl bg-[#D56753]/5 border border-[#D56753]/20 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#D56753] mb-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-[#D56753] mb-1">
                   This week
                 </p>
                 <p className="text-sm text-[#1A1D23]/80">
@@ -204,7 +204,7 @@ export default function BusinessClarity() {
       {/* CTA */}
       <section className="bg-[#D56753] px-5 py-12 sm:py-16">
         <div className="max-w-md mx-auto text-center">
-          <p className="text-lg font-bold text-white mb-4">
+          <p className="text-lg font-semibold text-white mb-4">
             See what your business is saying right now.
           </p>
           <Link

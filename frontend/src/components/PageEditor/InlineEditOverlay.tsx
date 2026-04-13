@@ -1,5 +1,5 @@
 /**
- * Inline Edit Overlay — The Apple Standard
+ * Inline Edit Overlay -- The Apple Standard
  *
  * Enables direct click-to-edit on text and click-to-replace on images
  * inside the PatientPath site iframe. No modals. No sidebar forms.
@@ -149,7 +149,7 @@ export function DoctorPanel({
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold text-[#212D40]">Doctors</h3>
+        <h3 className="text-sm font-semibold text-[#1A1D23]">Doctors</h3>
         <button
           onClick={onAdd}
           className="flex items-center gap-1 text-xs font-semibold text-[#D56753] hover:text-[#D56753]/80"
@@ -181,7 +181,7 @@ export function DoctorPanel({
                 value={doc.name}
                 onChange={(e) => onEditName(doc.id, e.target.value)}
                 placeholder="Doctor name"
-                className="w-full text-sm font-semibold text-[#212D40] bg-transparent border-none p-0 focus:outline-none focus:ring-0 placeholder:text-gray-300"
+                className="w-full text-sm font-semibold text-[#1A1D23] bg-transparent border-none p-0 focus:outline-none focus:ring-0 placeholder:text-gray-300"
               />
               <input
                 type="text"
@@ -220,7 +220,7 @@ interface CertPanelProps {
 export function CertificationPanel({ activeCerts, onToggle }: CertPanelProps) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5">
-      <h3 className="text-sm font-bold text-[#212D40] mb-3">Certifications</h3>
+      <h3 className="text-sm font-semibold text-[#1A1D23] mb-3">Certifications</h3>
       <p className="text-xs text-gray-500 mb-4">
         Click to add or remove certification logos from your site.
       </p>
@@ -261,7 +261,7 @@ interface SectionToggleProps {
 export function SectionVisibilityPanel({ sections, onToggle }: SectionToggleProps) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5">
-      <h3 className="text-sm font-bold text-[#212D40] mb-3">Sections</h3>
+      <h3 className="text-sm font-semibold text-[#1A1D23] mb-3">Sections</h3>
       <p className="text-xs text-gray-500 mb-4">
         Show or hide sections on your site.
       </p>
@@ -272,7 +272,7 @@ export function SectionVisibilityPanel({ sections, onToggle }: SectionToggleProp
             onClick={() => onToggle(section.id)}
             className="flex items-center justify-between w-full rounded-lg px-3 py-2.5 text-sm text-left hover:bg-gray-50 transition-colors"
           >
-            <span className={section.visible ? "text-[#212D40] font-medium" : "text-gray-400"}>
+            <span className={section.visible ? "text-[#1A1D23] font-medium" : "text-gray-400"}>
               {section.name}
             </span>
             {section.visible ? (

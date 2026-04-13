@@ -54,7 +54,7 @@ export function FlagIssueButton() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-[#212D40] uppercase tracking-wider">Flag an Issue</h3>
+              <h3 className="text-sm font-semibold text-[#1A1D23] uppercase tracking-wider">Flag an Issue</h3>
               <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-4 w-4" />
               </button>
@@ -64,7 +64,7 @@ export function FlagIssueButton() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What's broken or wrong? Be specific."
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#D56753]/30 focus:border-[#D56753] resize-none"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#D56753]/30 focus:border-[#D56753] resize-none"
               rows={4}
               autoFocus
             />

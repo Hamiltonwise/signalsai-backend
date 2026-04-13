@@ -1,5 +1,5 @@
 /**
- * Batch Checkup API Client — WO18
+ * Batch Checkup API Client -- WO18
  */
 
 import { apiGet, apiPost } from "./index";

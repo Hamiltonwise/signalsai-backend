@@ -109,13 +109,13 @@ export function KnowledgeSyncWizard({
       if (!batchData) return 1;
 
       if (statusData.activeSyncRunId) {
-        // Active compile_publish run — go to slide 3 in compile mode
+        // Active compile_publish run -- go to slide 3 in compile mode
         if (statusData.activeSyncRunType === "compile_publish") {
           setScrapeRunIdForProposals(statusData.latestScrapeRunId);
           setInitialCompileRunId(statusData.activeSyncRunId);
           return 3;
         }
-        // Active scrape_compare run — go to slide 2
+        // Active scrape_compare run -- go to slide 2
         setActiveScrapeRunId(statusData.activeSyncRunId);
         return 2;
       }
@@ -215,7 +215,7 @@ export function KnowledgeSyncWizard({
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-      {/* Step indicator — prominent */}
+      {/* Step indicator -- prominent */}
       <div className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 px-8 py-5">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           {steps.map((step, i) => {

@@ -68,7 +68,7 @@ export default function BuildView() {
             <AlertTriangle className="h-6 w-6 text-red-600 shrink-0" />
           )}
           <div>
-            <p className={`text-lg font-bold ${apiHealthy ? "text-emerald-700" : "text-red-700"}`}>
+            <p className={`text-lg font-semibold ${apiHealthy ? "text-emerald-700" : "text-red-700"}`}>
               {apiHealthy ? "Systems operational." : "API health check failed."}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
@@ -83,7 +83,7 @@ export default function BuildView() {
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <GitBranch className="h-4 w-4 text-[#D56753]" />
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Your Queue ({tasks.length})</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Your Queue ({tasks.length})</p>
         </div>
         {tasks.length === 0 ? (
           <p className="text-sm text-emerald-600">Queue clear.</p>
@@ -94,7 +94,7 @@ export default function BuildView() {
                 <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
                   t.priority === "urgent" ? "bg-red-500" : t.priority === "high" ? "bg-amber-500" : "bg-gray-300"
                 }`} />
-                <p className="text-sm font-medium text-[#212D40] truncate flex-1">{t.title}</p>
+                <p className="text-sm font-medium text-[#1A1D23] truncate flex-1">{t.title}</p>
                 <span className={`text-xs px-1.5 py-0.5 rounded font-semibold shrink-0 ${
                   t.priority === "urgent" ? "bg-red-100 text-red-600" : t.priority === "high" ? "bg-amber-100 text-amber-600" : "bg-gray-100 text-gray-500"
                 }`}>{t.priority || "normal"}</span>
@@ -107,7 +107,7 @@ export default function BuildView() {
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <Server className="h-4 w-4 text-blue-500" />
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Infrastructure</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Infrastructure</p>
         </div>
         <div className="space-y-2 text-sm">
           <InfraRow label="API Server" ok={apiHealthy} detail={apiHealthy ? "Responding" : "Not responding"} />
@@ -127,7 +127,7 @@ export default function BuildView() {
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <Database className="h-4 w-4 text-purple-500" />
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Pending Migrations</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Pending Migrations</p>
         </div>
         <p className="font-mono text-xs text-gray-600">npx knex migrate:latest</p>
         <p className="text-xs text-gray-400 mt-2">Run on EC2 after pulling latest. Includes: week1_win, checkup_invitations, champion fields.</p>
@@ -143,7 +143,7 @@ function InfraRow({ label, ok, detail }: { label: string; ok: boolean | null; de
         : ok === false ? <Clock className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
         : <Clock className="h-4 w-4 text-gray-300 mt-0.5 shrink-0" />}
       <div>
-        <span className="font-medium text-[#212D40]">{label}</span>
+        <span className="font-medium text-[#1A1D23]">{label}</span>
         <span className="text-xs text-gray-400 ml-2">{detail}</span>
       </div>
     </div>

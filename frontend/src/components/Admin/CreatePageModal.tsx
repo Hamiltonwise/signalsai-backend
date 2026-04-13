@@ -225,7 +225,7 @@ export default function CreatePageModal({
         <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h2 className="text-lg font-bold text-gray-900">Create New Page</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Create New Page</h2>
             <button
               onClick={onClose}
               disabled={submitting}

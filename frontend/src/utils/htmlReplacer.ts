@@ -12,7 +12,7 @@ import type { Section } from "../api/templates";
  * Replace a component's HTML directly in the iframe DOM.
  * Returns the serialized full-page HTML string for persistence.
  *
- * This mutates the live DOM — no srcDoc re-render needed.
+ * This mutates the live DOM -- no srcDoc re-render needed.
  */
 export function replaceComponentInDom(
   iframeDoc: Document,
@@ -119,7 +119,7 @@ function extractAlloroClass(sectionContent: string): string | null {
  * Strategy: parse each section's stored content HTML to extract the actual
  * alloro-tpl class from its root element, then use that exact class to find
  * the element in the iframe DOM. This avoids relying on section.name matching
- * the DOM class — N8N-generated names can be more descriptive than the CSS
+ * the DOM class -- N8N-generated names can be more descriptive than the CSS
  * class identifiers (e.g., "section-legacy-software" vs "section-legacy").
  *
  * Falls back to the original section content if no matching element is found.
@@ -150,7 +150,7 @@ export function extractSectionsFromDom(
     // Strategy 1: find by data-alloro-section marker (injected by renderPage)
     const markerEl = iframeDoc.querySelector(`[data-alloro-section="${CSS.escape(section.name)}"]`);
     if (markerEl) {
-      // Strip the marker attribute before persisting — it's editor-only
+      // Strip the marker attribute before persisting -- it's editor-only
       markerEl.removeAttribute("data-alloro-section");
       let html = markerEl.outerHTML;
       // Re-add the marker so subsequent extractions still work

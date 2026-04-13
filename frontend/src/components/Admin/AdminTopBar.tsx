@@ -83,7 +83,7 @@ export function AdminTopBar() {
                     className="rounded-xl"
                   />
                 </motion.div>
-                <span className="font-bold text-xl text-white">
+                <span className="font-semibold text-xl text-white">
                   <span className="text-alloro-orange">Alloro</span> Admin
                 </span>
               </Link>
@@ -129,7 +129,7 @@ export function AdminTopBar() {
                         queryClient.invalidateQueries();
                         queryClient.clear();
                         setIsMenuOpen(false);
-                        toast.success("Cache purged — all data will refetch");
+                        toast.success("Cache purged -- all data will refetch");
                       }}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-300 transition hover:bg-gray-700/50 hover:text-white"
                     >
@@ -222,7 +222,7 @@ export function AdminTopBar() {
                 >
                   <LogOut className="h-7 w-7 text-red-500" />
                 </motion.div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   Log Out?
                 </h3>
                 <p className="text-sm text-gray-500">

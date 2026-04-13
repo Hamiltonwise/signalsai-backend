@@ -37,8 +37,8 @@ import { AlertModal } from "../../components/ui/AlertModal";
 /**
  * Templates & Imports Page
  * Tabbed admin page under Done For You > Templates
- * Tab 1: Templates — manage website-builder templates
- * Tab 2: Imports — manage self-hosted CSS/JS/images
+ * Tab 1: Templates -- manage website-builder templates
+ * Tab 2: Imports -- manage self-hosted CSS/JS/images
  */
 export default function TemplatesList() {
   const navigate = useNavigate();

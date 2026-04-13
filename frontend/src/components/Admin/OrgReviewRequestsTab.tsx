@@ -1,5 +1,5 @@
 /**
- * OrgReviewRequestsTab — Admin view of review request history and conversion funnel.
+ * OrgReviewRequestsTab -- Admin view of review request history and conversion funnel.
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -114,7 +114,7 @@ export function OrgReviewRequestsTab({
     <div className="space-y-6">
       {/* Conversion funnel */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h3 className="text-sm font-bold text-[#212D40] mb-4">
+        <h3 className="text-sm font-semibold text-[#1A1D23] mb-4">
           Conversion Funnel
         </h3>
         <div className="space-y-2.5">
@@ -142,7 +142,7 @@ export function OrgReviewRequestsTab({
       {/* Request list */}
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100">
-          <h3 className="text-sm font-bold text-[#212D40]">
+          <h3 className="text-sm font-semibold text-[#1A1D23]">
             Request History ({stats.total})
           </h3>
         </div>
@@ -161,7 +161,7 @@ export function OrgReviewRequestsTab({
                   <Send className="h-4 w-4 text-gray-300 shrink-0" />
                 )}
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-[#212D40] truncate">
+                  <p className="text-sm font-medium text-[#1A1D23] truncate">
                     {r.recipient_name || r.recipient_email}
                   </p>
                   {r.recipient_name && (

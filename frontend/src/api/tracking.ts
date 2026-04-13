@@ -1,6 +1,6 @@
 /**
  * Behavioral event tracking for the Checkup flow.
- * Fire-and-forget — never blocks UI.
+ * Fire-and-forget -- never blocks UI.
  * No PII. No patient data.
  */
 

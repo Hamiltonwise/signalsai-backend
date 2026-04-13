@@ -17,18 +17,18 @@ export default function WhyYourCompetitorKeepsShowingUp() {
     >
       <article className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
         <header className="mb-12">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
+          <span className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">
             Competitive Intelligence
           </span>
-          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-[#212D40] leading-tight tracking-tight">
+          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-[#1A1D23] leading-tight tracking-tight">
             Why your top competitor keeps showing up where you don't
           </h1>
-          <p className="mt-4 text-base text-[#212D40]/50">
+          <p className="mt-4 text-base text-[#1A1D23]/50">
             March 2026
           </p>
         </header>
 
-        <div className="space-y-6 text-base text-[#212D40]/80 leading-relaxed">
+        <div className="space-y-6 text-base text-[#1A1D23]/80 leading-relaxed">
           <p>
             You've noticed it. You search for your specialty in your city and
             the same competitor appears at the top. Again. You're not sure
@@ -40,7 +40,7 @@ export default function WhyYourCompetitorKeepsShowingUp() {
             you can't unsee it.
           </p>
 
-          <h2 className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 className="text-xl font-semibold text-[#1A1D23] pt-4">
             The compounding advantage
           </h2>
           <p>
@@ -60,7 +60,7 @@ export default function WhyYourCompetitorKeepsShowingUp() {
             the cycle first, and the cycle is doing the rest.
           </p>
 
-          <h2 className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 className="text-xl font-semibold text-[#1A1D23] pt-4">
             What they're actually doing differently
           </h2>
           <p>
@@ -69,27 +69,27 @@ export default function WhyYourCompetitorKeepsShowingUp() {
           </p>
           <ol className="list-decimal pl-6 space-y-3">
             <li>
-              <span className="font-semibold text-[#212D40]">Consistent review velocity.</span>{" "}
+              <span className="font-semibold text-[#1A1D23]">Consistent review velocity.</span>{" "}
               Not a burst of reviews from a one-time campaign. A steady stream
               of 5 to 10 reviews per month, every month. This signals to
               Google that the business is active and trusted.
             </li>
             <li>
-              <span className="font-semibold text-[#212D40]">Complete profile optimization.</span>{" "}
+              <span className="font-semibold text-[#1A1D23]">Complete profile optimization.</span>{" "}
               Photos updated quarterly. Business description matching search
               intent. Services listed individually. Posts published regularly.
               These aren't glamorous. They're table stakes that most
               businesses skip.
             </li>
             <li>
-              <span className="font-semibold text-[#212D40]">Review responses.</span>{" "}
+              <span className="font-semibold text-[#1A1D23]">Review responses.</span>{" "}
               The top-ranked businesses respond to every review. Not with a
               template. With a sentence that acknowledges the specific client.
               Google tracks engagement, and responding to reviews is engagement.
             </li>
           </ol>
 
-          <h2 className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 className="text-xl font-semibold text-[#1A1D23] pt-4">
             The intelligence gap
           </h2>
           <p>
@@ -103,7 +103,7 @@ export default function WhyYourCompetitorKeepsShowingUp() {
             can't make informed decisions about where to put your limited time.
           </p>
           <p>
-            That's not a marketing problem. That's a Business Clarity problem.
+            That's not a marketing problem. That's an intelligence problem.
           </p>
           <p>
             The businesses that win at local search are the ones that see the
@@ -114,10 +114,10 @@ export default function WhyYourCompetitorKeepsShowingUp() {
 
         {/* CTA */}
         <div className="mt-12 rounded-2xl bg-[#D56753]/5 border border-[#D56753]/20 p-8 text-center">
-          <p className="text-base font-bold text-[#212D40] mb-2">
+          <p className="text-base font-semibold text-[#1A1D23] mb-2">
             See exactly who's ahead of you, and by how much
           </p>
-          <p className="text-sm text-[#212D40]/50 mb-4">
+          <p className="text-sm text-[#1A1D23]/50 mb-4">
             Run the free Checkup. Your competitors, by name, in 60 seconds.
           </p>
           <Link
@@ -136,15 +136,15 @@ export default function WhyYourCompetitorKeepsShowingUp() {
 
         {/* Related reading */}
         <div className="mt-12">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Related reading</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">Related reading</h3>
           <div className="space-y-3">
             <Link to="/blog/the-second-job-problem" className="block rounded-xl border border-gray-200 p-4 hover:border-[#D56753]/30 transition-colors">
-              <p className="text-sm font-bold text-[#212D40]">The second job nobody warned you about</p>
-              <p className="text-xs text-[#212D40]/50 mt-1">Why 34 million business owners are still waiting for freedom.</p>
+              <p className="text-sm font-semibold text-[#1A1D23]">The second job nobody warned you about</p>
+              <p className="text-xs text-[#1A1D23]/50 mt-1">Why 34 million business owners are still waiting for freedom.</p>
             </Link>
             <Link to="/blog/google-business-profile-score" className="block rounded-xl border border-gray-200 p-4 hover:border-[#D56753]/30 transition-colors">
-              <p className="text-sm font-bold text-[#212D40]">What your Google Business Profile score actually means</p>
-              <p className="text-xs text-[#212D40]/50 mt-1">The one metric that determines who finds you first.</p>
+              <p className="text-sm font-semibold text-[#1A1D23]">What your Google Business Profile score actually means</p>
+              <p className="text-xs text-[#1A1D23]/50 mt-1">The one metric that determines who finds you first.</p>
             </Link>
           </div>
         </div>

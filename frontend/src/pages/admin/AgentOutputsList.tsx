@@ -195,7 +195,7 @@ export default function AgentOutputsList() {
   const [selectedAgentType, setSelectedAgentType] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
-  // TanStack Query — replaces useEffect + useState for data fetching
+  // TanStack Query -- replaces useEffect + useState for data fetching
   const {
     data: queryData,
     isLoading: loading,

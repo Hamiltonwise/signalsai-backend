@@ -18,7 +18,7 @@ export const BRAND_COLORS = {
   border: "#e2e8f0",
 };
 
-export const LOGO_URL = "https://app.getalloro.com/logo.png";
+export const LOGO_URL = `${process.env.APP_URL || "https://app.getalloro.com"}/logo.png`;
 // Use explicit APP_URL environment variable, fallback to production URL by default
 export const APP_URL =
   process.env.APP_URL ||

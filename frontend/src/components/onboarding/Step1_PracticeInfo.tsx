@@ -163,7 +163,7 @@ export const Step1PracticeInfo: React.FC<Step1PracticeInfoProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-2xl font-bold font-heading text-alloro-navy mb-2 tracking-tight">
+        <h2 className="text-2xl font-semibold font-heading text-alloro-navy mb-2 tracking-tight">
           Your Business
         </h2>
         <p className="text-slate-500 text-sm">

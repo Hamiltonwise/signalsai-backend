@@ -85,7 +85,7 @@ export default function GPReferralIntelligence() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+            <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
               alloro
             </span>
           </div>
@@ -93,7 +93,7 @@ export default function GPReferralIntelligence() {
 
         <main className="mx-auto max-w-2xl px-5 pb-16">
           {/* H1 */}
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
             GP Referral Intelligence: See Which Doctors Are Sending You Cases
             (And Which Ones Just Stopped)
           </h1>
@@ -111,14 +111,14 @@ export default function GPReferralIntelligence() {
             <p className="text-sm font-semibold text-[#D56753] uppercase tracking-wider mb-2">
               What live referral intelligence looks like
             </p>
-            <p className="text-base text-[#212D40] font-medium leading-relaxed">
+            <p className="text-base text-[#1A1D23] font-medium leading-relaxed">
               {LIVE_INTELLIGENCE}
             </p>
           </div>
 
           {/* Drift + Dollar Framework */}
           <div className="mt-12 space-y-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">
               The numbers behind referral drift
             </h2>
             {[DRIFT_CONCEPT, DOLLAR_FRAMEWORK].map((item, i) => (
@@ -126,7 +126,7 @@ export default function GPReferralIntelligence() {
                 key={i}
                 className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
               >
-                <p className="text-sm font-semibold text-[#212D40] mb-2">
+                <p className="text-sm font-semibold text-[#1A1D23] mb-2">
                   {item.title}
                 </p>
                 <p className="text-sm text-gray-700 leading-relaxed">
@@ -138,7 +138,7 @@ export default function GPReferralIntelligence() {
 
           {/* The Alternative */}
           <div className="mt-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-4">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-4">
               The alternative to finding out too late
             </h2>
             <p className="text-base text-gray-700 leading-relaxed text-center">

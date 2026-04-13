@@ -13,7 +13,7 @@ export default function AlloroPostsDocs() {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-semibold text-gray-900">
           Alloro Posts Documentation
         </h1>
       </div>

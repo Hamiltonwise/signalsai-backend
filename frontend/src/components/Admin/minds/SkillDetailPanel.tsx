@@ -110,13 +110,13 @@ function AnalyticsSection({
       {/* Big numbers */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="rounded-2xl bg-alloro-navy p-6 text-center">
-          <p className="text-3xl font-bold text-white">{data.totalCalls}</p>
+          <p className="text-3xl font-semibold text-white">{data.totalCalls}</p>
           <p className="text-xs text-gray-300 mt-1 font-medium uppercase tracking-wider">
             Total Work Points
           </p>
         </div>
         <div className="rounded-2xl bg-alloro-orange p-6 text-center">
-          <p className="text-3xl font-bold text-white">{data.callsToday}</p>
+          <p className="text-3xl font-semibold text-white">{data.callsToday}</p>
           <p className="text-xs text-orange-100 mt-1 font-medium uppercase tracking-wider">
             Work Points Today
           </p>
@@ -427,7 +427,7 @@ export function SkillDetailPanel({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-gray-900">
+                <h3 className="text-base font-semibold text-gray-900">
                   {skill.name}
                 </h3>
                 <StatusPill

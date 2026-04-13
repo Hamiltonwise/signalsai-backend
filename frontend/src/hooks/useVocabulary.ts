@@ -1,5 +1,5 @@
 /**
- * useVocabulary — loads org vocabulary config on mount
+ * useVocabulary -- loads org vocabulary config on mount
  *
  * Returns the merged vocabulary (vertical defaults + org overrides).
  * Falls back to universal defaults if the API fails or org has no config.
@@ -52,7 +52,7 @@ export function useVocabulary(): VocabularyConfig {
       return res?.success ? res.vocabulary : null;
     },
     enabled: !!orgId,
-    staleTime: 30 * 60_000, // 30 min — vocab doesn't change often
+    staleTime: 30 * 60_000, // 30 min -- vocab doesn't change often
   });
 
   return data ? { ...FALLBACK, ...data } : FALLBACK;

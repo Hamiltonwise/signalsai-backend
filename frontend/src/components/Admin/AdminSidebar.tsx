@@ -190,13 +190,13 @@ export function AdminSidebar({ topOffset }: AdminSidebarProps = {}) {
         <nav className={`space-y-0.5 overflow-y-auto admin-sidebar-scroll ${
           collapsed ? "px-1.5 py-2" : "flex-1 space-y-1 px-2 py-4"
         }`}>
-          {/* Top items — always visible */}
+          {/* Top items -- always visible */}
           {TOP_ITEMS.map((item) => renderNavLink(item))}
 
           {/* Agents Group */}
           <div className={collapsed ? "pt-1" : "pt-4"}>
             {!collapsed ? (
-              <div className="flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+              <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
                 <Bot className="h-3.5 w-3.5" />
                 <span>Agents</span>
               </div>
@@ -213,7 +213,7 @@ export function AdminSidebar({ topOffset }: AdminSidebarProps = {}) {
           {/* Done For You Group */}
           <div className={collapsed ? "pt-1" : "pt-4"}>
             {!collapsed ? (
-              <div className="flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+              <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
                 <Briefcase className="h-3.5 w-3.5" />
                 <span>Done For You</span>
               </div>

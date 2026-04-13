@@ -479,7 +479,7 @@ h1, h2, h3, h4, h5, h6, .font-heading {
    --color-alloro-danger: #ef4444;
    --color-alloro-textDark: #11151C;
 
-   /* PM Module — Dark Mode (primary, warm charcoal) */
+   /* PM Module -- Dark Mode (primary, warm charcoal) */
    --color-pm-bg-primary: #171615;
    --color-pm-bg-secondary: #1E1D1B;
    --color-pm-bg-tertiary: #252422;
@@ -613,7 +613,7 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
-/* PM Module — Light Mode overrides (when .pm-light is on a parent) */
+/* PM Module -- Light Mode overrides (when .pm-light is on a parent) */
 .pm-light {
   --color-pm-bg-primary: #F7F5F3;
   --color-pm-bg-secondary: #FFFFFF;
@@ -714,8 +714,8 @@ select {
 
 /* ═══════════════════════════════════════════════════════════════
    MINDS DARK INCOGNITO THEME
-   Scoped to .minds-theme — affects only the Minds section.
-   body.minds-page-active — darkens the full viewport.
+   Scoped to .minds-theme -- affects only the Minds section.
+   body.minds-page-active -- darkens the full viewport.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Full-page dark when on a Minds page ───────────────────── */
@@ -729,7 +729,7 @@ body.minds-page-active .glass-header {
   background: rgba(14, 14, 20, 0.92) !important;
   backdrop-filter: blur(16px) !important;
 }
-/* Admin sidebar scrollbar — dark themed */
+/* Admin sidebar scrollbar -- dark themed */
 .admin-sidebar-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
 .admin-sidebar-scroll::-webkit-scrollbar { width: 3px; }
 .admin-sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -987,7 +987,7 @@ body.minds-page-active .glass-header {
 .minds-theme ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
 .minds-theme ::-webkit-scrollbar-thumb:hover { background: rgba(214,104,83,0.4); }
 
-/* Chat sidebar scrollbar — extra slim */
+/* Chat sidebar scrollbar -- extra slim */
 .minds-chat-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.06) transparent; }
 .minds-chat-scrollbar::-webkit-scrollbar { width: 3px; }
 .minds-chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -1351,7 +1351,7 @@ body.minds-page-active .glass-header {
   }
 }
 
-/* The Team — Heartbeat pulse (WO12) */
+/* The Team -- Heartbeat pulse (WO12) */
 @keyframes heartbeat {
   0%, 100% {
     opacity: 0.3;

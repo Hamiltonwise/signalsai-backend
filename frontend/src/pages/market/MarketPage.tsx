@@ -140,7 +140,7 @@ export default function MarketPage() {
         </Helmet>
         <div className="min-h-screen bg-white">
           <div className="mx-auto max-w-3xl px-4 py-24 text-center">
-            <h1 className="mb-4 text-3xl font-bold text-[#212D40]">
+            <h1 className="mb-4 text-3xl font-semibold text-[#1A1D23]">
               {displaySpecialty} in {displayCity}
             </h1>
             <p className="mb-8 text-lg text-gray-500">
@@ -184,7 +184,7 @@ export default function MarketPage() {
                 Market Intelligence
               </span>
             </div>
-            <h1 className="mb-4 text-4xl font-bold text-white md:text-5xl">
+            <h1 className="mb-4 text-4xl font-semibold text-white md:text-5xl">
               {displaySpecialty} in {displayCity}
             </h1>
             <p className="mx-auto max-w-2xl text-lg text-white/60">
@@ -226,7 +226,7 @@ export default function MarketPage() {
         {data.competitors.length > 0 && (
           <section className="py-12">
             <div className="mx-auto max-w-4xl px-4">
-              <h2 className="mb-6 text-xl font-bold text-[#212D40]">
+              <h2 className="mb-6 text-xl font-semibold text-[#1A1D23]">
                 Top {displaySpecialty} Practices in {displayCity}
               </h2>
               <div className="overflow-hidden rounded-xl border border-gray-200">
@@ -251,7 +251,7 @@ export default function MarketPage() {
                         className="border-b border-gray-50 last:border-0"
                       >
                         <td className="px-4 py-3">
-                          <p className="font-medium text-[#212D40]">
+                          <p className="font-medium text-[#1A1D23]">
                             {comp.name}
                           </p>
                           {comp.address && (
@@ -261,7 +261,7 @@ export default function MarketPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className="font-semibold text-[#212D40]">
+                          <span className="font-semibold text-[#1A1D23]">
                             {comp.rating > 0 ? comp.rating.toFixed(1) : "N/A"}
                           </span>
                         </td>
@@ -280,7 +280,7 @@ export default function MarketPage() {
         {/* CTA */}
         <section className="border-t border-gray-100 bg-[#212D40] py-20">
           <div className="mx-auto max-w-3xl px-4 text-center">
-            <h2 className="mb-4 text-3xl font-bold text-white">
+            <h2 className="mb-4 text-3xl font-semibold text-white">
               See where you stand
             </h2>
             <p className="mb-8 text-lg text-white/60">
@@ -315,7 +315,7 @@ function StatCard({
       <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-50">
         {icon}
       </div>
-      <p className="text-2xl font-bold text-[#212D40]">{value}</p>
+      <p className="text-2xl font-semibold text-[#1A1D23]">{value}</p>
       <p className="text-xs font-medium text-gray-500">{label}</p>
     </div>
   );

@@ -69,14 +69,14 @@ export const DeleteOrgModal: React.FC<DeleteOrgModalProps> = ({
                 <div className="p-3 rounded-xl bg-red-50 text-red-600">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-alloro-navy font-heading">
+                <h3 className="text-lg font-semibold text-alloro-navy font-heading">
                   Delete Organization
                 </h3>
               </div>
 
               <div className="space-y-4 mb-6">
                 <p className="text-slate-600 leading-relaxed">
-                  This will <span className="font-bold text-red-600">permanently delete</span> your
+                  This will <span className="font-semibold text-red-600">permanently delete</span> your
                   organization and all associated data including:
                 </p>
                 <ul className="text-sm text-slate-500 space-y-1 pl-4">
@@ -86,14 +86,14 @@ export const DeleteOrgModal: React.FC<DeleteOrgModalProps> = ({
                   <li>All team member access</li>
                   <li>Website builder projects</li>
                 </ul>
-                <p className="text-sm text-red-600 font-bold">
+                <p className="text-sm text-red-600 font-semibold">
                   This action cannot be undone.
                 </p>
               </div>
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Type <span className="font-bold text-alloro-navy">"{organizationName}"</span> to confirm:
+                  Type <span className="font-semibold text-alloro-navy">"{organizationName}"</span> to confirm:
                 </label>
                 <input
                   type="text"
@@ -110,14 +110,14 @@ export const DeleteOrgModal: React.FC<DeleteOrgModalProps> = ({
                 <button
                   onClick={handleClose}
                   disabled={isDeleting}
-                  className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
+                  className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleConfirm}
                   disabled={!isConfirmed || isDeleting}
-                  className="px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
+                  className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
                 >
                   {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
                   Delete Organization

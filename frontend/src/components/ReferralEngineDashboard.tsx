@@ -543,7 +543,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
           <div className="flex items-center justify-center py-32">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-alloro-orange mx-auto mb-4"></div>
-              <p className="text-slate-500 font-bold">
+              <p className="text-slate-500 font-semibold">
                 Loading revenue attribution data...
               </p>
             </div>
@@ -601,7 +601,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                 <h1 className="text-xs font-semibold font-heading text-alloro-textDark uppercase tracking-[0.25em] leading-none">
                   Revenue Sources
                 </h1>
-                <span className="text-[9px] font-bold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
+                <span className="text-[9px] font-semibold text-alloro-textDark/40 uppercase tracking-widest mt-1.5 hidden sm:inline">
                   Where your revenue comes from
                 </span>
               </div>
@@ -716,7 +716,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                     <div className="text-sm font-semibold text-alloro-navy uppercase tracking-widest">
                       {monthData.month}
                     </div>
-                    <div className="text-xs text-slate-300 font-bold uppercase tracking-widest mt-1">
+                    <div className="text-xs text-slate-300 font-semibold uppercase tracking-widest mt-1">
                       FY {monthData.year}
                     </div>
                   </div>
@@ -805,7 +805,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                         <td className="px-4 py-7 text-center font-semibold text-alloro-navy text-xl font-sans tabular-nums">
                           {source.count}
                         </td>
-                        <td className="px-4 py-7 text-right font-bold text-slate-500 tabular-nums text-base font-sans">
+                        <td className="px-4 py-7 text-right font-semibold text-slate-500 tabular-nums text-base font-sans">
                           {source.avgPerReferral != null
                             ? formatCurrency(source.avgPerReferral)
                             : "N/A"}
@@ -909,7 +909,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   <span className="text-base font-semibold text-green-700 font-heading">
                     Upload Successful!
                   </span>
-                  <span className="text-xs font-bold text-green-600 mt-3 text-center px-4">
+                  <span className="text-xs font-semibold text-green-600 mt-3 text-center px-4">
                     {uploadMessage}
                   </span>
                 </>
@@ -921,7 +921,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   <span className="text-base font-semibold text-red-700 font-heading">
                     Upload Failed
                   </span>
-                  <span className="text-xs font-bold text-red-600 mt-3 text-center px-4">
+                  <span className="text-xs font-semibold text-red-600 mt-3 text-center px-4">
                     {uploadMessage}
                   </span>
                   <button
@@ -931,7 +931,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                       setUploadStatus("idle");
                       setUploadMessage("");
                     }}
-                    className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors"
+                    className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors"
                   >
                     Try Again
                   </button>
@@ -947,7 +947,7 @@ export function ReferralEngineDashboard(props: ReferralEngineDashboardProps) {
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-[0.2em] mt-3">
                     Max Ingestion: 50MB
                   </span>
-                  <span className="text-[9px] font-bold text-alloro-orange mt-2">
+                  <span className="text-[9px] font-semibold text-alloro-orange mt-2">
                     Click or drag to upload
                   </span>
                 </>

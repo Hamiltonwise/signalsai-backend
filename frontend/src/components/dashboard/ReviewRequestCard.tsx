@@ -1,5 +1,5 @@
 /**
- * ReviewRequestCard — Doctor-facing card for sending review requests.
+ * ReviewRequestCard -- Doctor-facing card for sending review requests.
  *
  * Supports email and SMS delivery. Shows toggle, patient input,
  * recent history with status badges, and conversion stats.

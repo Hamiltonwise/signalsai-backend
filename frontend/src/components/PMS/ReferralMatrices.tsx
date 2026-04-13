@@ -14,7 +14,7 @@ export interface DoctorReferral {
   avg_production_per_referral?: number | null;
   trend_label?: "increasing" | "decreasing" | "new" | "dormant" | "stable";
   notes?: string;
-  /** @deprecated Legacy field — no longer returned by n8n */
+  /** @deprecated Legacy field -- no longer returned by n8n */
   referrer_id?: string;
 }
 
@@ -143,7 +143,7 @@ const formatCurrency = (value: number | null | undefined): string => {
 const MatricesEmptyState = () => (
   <div className="bg-white rounded-2xl border border-slate-100 shadow-premium p-8 sm:p-12">
     <div className="text-center mb-8">
-      <h3 className="text-lg font-bold text-alloro-navy mb-2">
+      <h3 className="text-lg font-semibold text-alloro-navy mb-2">
         No source data available
       </h3>
       <p className="text-sm text-slate-500 font-medium">
@@ -274,7 +274,7 @@ const MatricesProcessingState: React.FC<MatricesProcessingStateProps> = ({
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-premium p-8 sm:p-12">
       <div className="text-center mb-8">
-        <h3 className="text-lg font-bold text-alloro-navy mb-2">{title}</h3>
+        <h3 className="text-lg font-semibold text-alloro-navy mb-2">{title}</h3>
         <p className="text-sm text-slate-500 font-medium">{subtitle}</p>
       </div>
 
@@ -418,7 +418,7 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
           <h2 className="text-xl font-semibold font-heading text-alloro-navy tracking-tight">
             See What Referrals Are Giving You the Most Value
           </h2>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
+          <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mt-1">
             Combined Doctor & Marketing Sources
           </p>
         </div>
@@ -505,7 +505,7 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
                 <td className="px-4 py-5 text-right font-semibold text-alloro-navy text-sm tabular-nums">
                   {formatCurrency(row.net_production)}
                 </td>
-                <td className="px-4 py-5 text-right font-bold text-slate-500 text-sm tabular-nums">
+                <td className="px-4 py-5 text-right font-semibold text-slate-500 text-sm tabular-nums">
                   {formatCurrency(row.avg_production_per_referral)}
                 </td>
                 <td className="px-6 py-5">
@@ -520,7 +520,7 @@ export const ReferralMatrices: React.FC<ReferralMatricesProps> = ({
                     {row.notes && row.notes.length > 80 && (
                       <button
                         onClick={() => toggleNoteExpansion(row.id)}
-                        className="flex items-center gap-1 text-xs font-bold text-alloro-orange hover:text-alloro-navy transition-colors"
+                        className="flex items-center gap-1 text-xs font-semibold text-alloro-orange hover:text-alloro-navy transition-colors"
                       >
                         {expandedNotes.has(row.id) ? (
                           <>

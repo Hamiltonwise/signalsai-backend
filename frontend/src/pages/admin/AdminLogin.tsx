@@ -108,7 +108,7 @@ export function AdminLogin() {
             className="mx-auto h-16 w-16 rounded-2xl shadow-lg mb-4"
             whileHover={{ scale: 1.05 }}
           />
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-semibold text-gray-900">
             <span className="text-alloro-orange">Alloro</span> Admin Hub
           </h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -229,7 +229,7 @@ export function AdminLogin() {
                   <input
                     type="text"
                     id="otp"
-                    className="block w-full rounded-xl border border-gray-200 bg-white py-4 text-center text-2xl font-bold tracking-[0.5em] text-gray-900 placeholder-gray-300 transition-all focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 focus:outline-none"
+                    className="block w-full rounded-xl border border-gray-200 bg-white py-4 text-center text-2xl font-semibold tracking-[0.5em] text-gray-900 placeholder-gray-300 transition-all focus:border-alloro-orange focus:ring-2 focus:ring-alloro-orange/20 focus:outline-none"
                     placeholder="------"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}

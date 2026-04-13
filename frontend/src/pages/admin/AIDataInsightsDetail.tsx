@@ -66,7 +66,7 @@ export default function AIDataInsightsDetail() {
     type?: "error" | "success" | "info";
   }>({ isOpen: false, title: "", message: "" });
 
-  // TanStack Query — replaces useEffect + useState
+  // TanStack Query -- replaces useEffect + useState
   const {
     data: queryData,
     isLoading: loading,
@@ -359,7 +359,7 @@ export default function AIDataInsightsDetail() {
             <FileText className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-900">{recommendations.length}</p>
+            <p className="text-2xl font-semibold text-gray-900">{recommendations.length}</p>
             <p className="text-xs text-gray-500">Total</p>
           </div>
         </div>
@@ -368,7 +368,7 @@ export default function AIDataInsightsDetail() {
             <CheckCircle className="w-5 h-5 text-green-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-green-600">{passedCount}</p>
+            <p className="text-2xl font-semibold text-green-600">{passedCount}</p>
             <p className="text-xs text-gray-500">Passed</p>
           </div>
         </div>
@@ -377,7 +377,7 @@ export default function AIDataInsightsDetail() {
             <AlertCircle className="w-5 h-5 text-red-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-red-600">{rejectedCount}</p>
+            <p className="text-2xl font-semibold text-red-600">{rejectedCount}</p>
             <p className="text-xs text-gray-500">Rejected</p>
           </div>
         </div>
@@ -386,7 +386,7 @@ export default function AIDataInsightsDetail() {
             <BarChart3 className="w-5 h-5 text-gray-600" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-gray-600">{pendingCount}</p>
+            <p className="text-2xl font-semibold text-gray-600">{pendingCount}</p>
             <p className="text-xs text-gray-500">Pending</p>
           </div>
         </div>

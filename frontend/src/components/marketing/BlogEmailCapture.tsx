@@ -54,7 +54,7 @@ export default function BlogEmailCapture() {
     return (
       <div className="rounded-2xl bg-[#212D40] p-8 text-center">
         <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
-        <p className="text-base font-bold text-white">You're in.</p>
+        <p className="text-base font-semibold text-white">You're in.</p>
         <p className="text-sm text-white/50 mt-2">
           Your first Monday Brief arrives next Monday at 7am.
         </p>
@@ -64,7 +64,7 @@ export default function BlogEmailCapture() {
 
   return (
     <div className="rounded-2xl bg-[#212D40] p-8">
-      <p className="text-base font-bold text-white text-center mb-1">
+      <p className="text-base font-semibold text-white text-center mb-1">
         Get the Monday Brief
       </p>
       <p className="text-sm text-white/50 text-center mb-5">

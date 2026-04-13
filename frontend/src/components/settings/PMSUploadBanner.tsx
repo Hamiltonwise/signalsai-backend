@@ -46,7 +46,7 @@ export const PMSUploadBanner: React.FC<PMSUploadBannerProps> = ({
         </div>
         <button
           onClick={handleGoToReferralsHub}
-          className="flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-lg shadow-green-600/20 whitespace-nowrap shrink-0"
+          className="flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-all shadow-lg shadow-green-600/20 whitespace-nowrap shrink-0"
         >
           Go to Referrals Hub
           <ArrowRight size={16} />

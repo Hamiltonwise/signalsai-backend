@@ -120,13 +120,13 @@ export default function BuildingScreen() {
         </div>
       </div>
 
-      {/* Website preview teaser -- builds anticipation */}
+      {/* What's waiting in the dashboard */}
       <div className="rounded-2xl border border-[#D56753]/15 bg-[#D56753]/[0.03] p-5 text-left">
         <p className="text-xs font-semibold text-[#D56753] uppercase tracking-wide mb-2">
-          Coming soon in your dashboard
+          In your dashboard now
         </p>
         <p className="text-sm text-[#1A1D23] leading-relaxed">
-          We're reading your reviews to find what makes {businessName} different. When it's ready, you'll see a website preview built from what your customers actually say about you, not stock copy.
+          See how {businessName} compares to your competitors, track your reviews, and monitor your online presence. Your readings update automatically.
         </p>
       </div>
     </div>

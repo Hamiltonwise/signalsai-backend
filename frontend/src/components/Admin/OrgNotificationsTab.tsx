@@ -43,7 +43,7 @@ export function OrgNotificationsTab({
   const [newMessage, setNewMessage] = useState("");
   const [newType, setNewType] = useState<string>("system");
 
-  // TanStack Query — replaces useEffect + useState
+  // TanStack Query -- replaces useEffect + useState
   const { data, isLoading: loading } = useAdminOrgNotifications({
     organizationId,
     locationId,

@@ -186,7 +186,7 @@ export function SyncStepTimeline({ steps, className = "" }: SyncStepTimelineProp
                       <AlertCircle className={isExpanded ? "h-7 w-7" : "h-5 w-5"} />
                     ) : (
                       <span
-                        className={`font-bold ${
+                        className={`font-semibold ${
                           isExpanded ? "text-lg" : "text-sm"
                         } ${state === "running" ? "text-alloro-orange" : "text-gray-300"}`}
                       >

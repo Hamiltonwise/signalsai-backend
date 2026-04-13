@@ -68,7 +68,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 >
                   <AlertTriangle className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-alloro-navy font-heading">
+                <h3 className="text-lg font-semibold text-alloro-navy font-heading">
                   {title}
                 </h3>
               </div>
@@ -79,14 +79,14 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 <button
                   onClick={onClose}
                   disabled={isLoading}
-                  className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
+                  className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
                 >
                   {cancelText}
                 </button>
                 <button
                   onClick={onConfirm}
                   disabled={isLoading}
-                  className={`px-5 py-2.5 text-sm font-bold text-white rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2 shadow-md ${
+                  className={`px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2 shadow-md ${
                     type === "danger"
                       ? "bg-red-600 hover:bg-red-700"
                       : type === "warning"

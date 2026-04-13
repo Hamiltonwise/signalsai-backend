@@ -157,7 +157,7 @@ function DepartmentBranch({
       {/* Department header */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-gray-600 transition-colors px-1 py-1"
+        className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400 hover:text-gray-600 transition-colors px-1 py-1"
       >
         {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         {department}
@@ -244,7 +244,7 @@ function ResumeDrawer({
         <div className="flex items-center gap-3 min-w-0">
           {node && <HealthDot status={node.health_status} size="h-4 w-4" />}
           <div className="min-w-0">
-            <h2 className="text-lg font-bold text-[#212D40] truncate">
+            <h2 className="text-lg font-semibold text-[#1A1D23] truncate">
               {node?.role_title || "Loading..."}
             </h2>
             {node && (
@@ -390,7 +390,7 @@ function ResumeDrawer({
 
           {/* Section 2: KPIs */}
           <div>
-            <h3 className="text-sm font-bold text-[#212D40] mb-3">KPIs</h3>
+            <h3 className="text-sm font-semibold text-[#1A1D23] mb-3">KPIs</h3>
             {kpis.length === 0 ? (
               <p className="text-sm text-gray-400">No KPI targets configured yet.</p>
             ) : (
@@ -407,7 +407,7 @@ function ResumeDrawer({
                   <tbody className="divide-y divide-gray-100">
                     {kpis.map((kpi, i) => (
                       <tr key={i}>
-                        <td className="px-4 py-3 text-[#212D40] font-medium">{kpi.name}</td>
+                        <td className="px-4 py-3 text-[#1A1D23] font-medium">{kpi.name}</td>
                         <td className="px-4 py-3 text-gray-500">{kpi.target ?? "--"}</td>
                         <td className="px-4 py-3 text-gray-500">{kpi.current ?? "--"}</td>
                         <td className="px-4 py-3">
@@ -423,7 +423,7 @@ function ResumeDrawer({
 
           {/* Section 3: Resume */}
           <div>
-            <h3 className="text-sm font-bold text-[#212D40] mb-3">Resume</h3>
+            <h3 className="text-sm font-semibold text-[#1A1D23] mb-3">Resume</h3>
             {resumeEntries.length === 0 ? (
               <p className="text-sm text-gray-400">No history yet.</p>
             ) : (
@@ -451,7 +451,7 @@ function ResumeDrawer({
           {/* Section 4: Recent Outputs */}
           {node?.node_type === "agent" && (
             <div>
-              <h3 className="text-sm font-bold text-[#212D40] mb-3">Recent Outputs</h3>
+              <h3 className="text-sm font-semibold text-[#1A1D23] mb-3">Recent Outputs</h3>
               {recentOutputs.length === 0 ? (
                 <p className="text-sm text-gray-400">No outputs yet. First results appear after next run.</p>
               ) : (
@@ -483,7 +483,7 @@ function ResumeDrawer({
 
           {/* Section 5: Edit Controls */}
           <div className="border-t border-gray-200 pt-6 space-y-4">
-            <h3 className="text-sm font-bold text-[#212D40]">Actions</h3>
+            <h3 className="text-sm font-semibold text-[#1A1D23]">Actions</h3>
 
             {/* Add note */}
             <div className="flex gap-2">
@@ -599,7 +599,7 @@ function NodeTaskList({ nodeId, nodeName: _nodeName }: { nodeId: string; nodeNam
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-[#212D40]">
+        <h3 className="text-sm font-semibold text-[#1A1D23]">
           Tasks {openTasks.length > 0 && <span className="text-[#D56753]">({openTasks.length})</span>}
         </h3>
         <button
@@ -678,7 +678,7 @@ function NodeTaskList({ nodeId, nodeName: _nodeName }: { nodeId: string; nodeNam
                   {TASK_STATUS_ICONS[task.status] || TASK_STATUS_ICONS.open}
                 </button>
                 <div className="min-w-0 flex-1">
-                  <p className={`text-[#212D40] ${task.status === "done" ? "line-through" : ""}`}>
+                  <p className={`text-[#1A1D23] ${task.status === "done" ? "line-through" : ""}`}>
                     {task.title}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
@@ -691,7 +691,7 @@ function NodeTaskList({ nodeId, nodeName: _nodeName }: { nodeId: string; nodeNam
                       </span>
                     )}
                     {task.priority !== "normal" && (
-                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${PRIORITY_BADGES[task.priority] || ""}`}>
+                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${PRIORITY_BADGES[task.priority] || ""}`}>
                         {task.priority}
                       </span>
                     )}
@@ -748,7 +748,7 @@ function TaskHealthTab() {
           { label: "Overdue", value: stats.overdue, color: "text-red-600" },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            <p className={`text-2xl font-semibold ${s.color}`}>{s.value}</p>
             <p className="text-xs text-gray-500">{s.label}</p>
           </div>
         ))}
@@ -822,7 +822,7 @@ function TaskHealthTab() {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <p className={`font-medium text-[#212D40] ${task.status === "done" ? "line-through" : ""}`}>
+                      <p className={`font-medium text-[#1A1D23] ${task.status === "done" ? "line-through" : ""}`}>
                         {task.title}
                       </p>
                       {task.source_meeting_title && (
@@ -832,20 +832,20 @@ function TaskHealthTab() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs font-semibold text-[#212D40] bg-gray-100 px-2 py-1 rounded">
+                      <span className="text-xs font-semibold text-[#1A1D23] bg-gray-100 px-2 py-1 rounded">
                         {task.owner_name}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       {task.priority !== "normal" && (
-                        <span className={`text-xs font-bold px-2 py-1 rounded ${PRIORITY_BADGES[task.priority] || ""}`}>
+                        <span className={`text-xs font-semibold px-2 py-1 rounded ${PRIORITY_BADGES[task.priority] || ""}`}>
                           {task.priority}
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {task.due_date ? (
-                        <span className={`text-xs ${isOverdue ? "font-bold text-red-600" : "text-gray-500"}`}>
+                        <span className={`text-xs ${isOverdue ? "font-semibold text-red-600" : "text-gray-500"}`}>
                           {isOverdue && <AlertTriangle className="inline h-3 w-3 mr-0.5" />}
                           {task.due_date}
                         </span>
@@ -899,7 +899,7 @@ export default function DreamTeam() {
       {/* Header + Tab Toggle */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-[#212D40] flex items-center gap-3">
+          <h1 className="text-2xl font-semibold text-[#1A1D23] flex items-center gap-3">
             <Users className="h-6 w-6 text-[#D56753]" />
             The Team
           </h1>
@@ -916,7 +916,7 @@ export default function DreamTeam() {
             onClick={() => setActiveTab("chart")}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
               activeTab === "chart"
-                ? "bg-white text-[#212D40] shadow-sm"
+                ? "bg-white text-[#1A1D23] shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
@@ -987,7 +987,7 @@ export default function DreamTeam() {
         <div className="space-y-6">
           {/* Leadership row */}
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 px-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2 px-1">
               Leadership
             </p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-3">

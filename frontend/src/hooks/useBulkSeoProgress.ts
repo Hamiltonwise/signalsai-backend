@@ -94,7 +94,7 @@ export function useBulkSeoProgress(
           }
         }
       } catch {
-        // Silently ignore — not critical
+        // Silently ignore -- not critical
       }
     })();
     return () => { cancelled = true; };

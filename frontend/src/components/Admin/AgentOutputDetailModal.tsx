@@ -122,7 +122,7 @@ export function AgentOutputDetailModal({
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white px-6 py-4">
           <div className="flex-1 pr-4">
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-semibold text-gray-900">
               {formatAgentType(output.agent_type)} Output
             </h2>
             <p className="mt-1 text-sm text-gray-500">

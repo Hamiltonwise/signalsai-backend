@@ -88,7 +88,7 @@ export function CreateTaskModal({
         <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Create New Task</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Create New Task</h2>
             <button
               onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"

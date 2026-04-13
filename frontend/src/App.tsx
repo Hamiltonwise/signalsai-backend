@@ -229,7 +229,7 @@ function App() {
             <ErrorBoundaryWithReset>
             <React.Suspense fallback={<LoadingFallback />}>
             <Routes>
-              {/* Public checkup flow — no auth required */}
+              {/* Public checkup flow -- no auth required */}
               <Route path="/checkup" element={<CheckupLayout />}>
                 <Route index element={<EntryScreen />} />
                 <Route path="scanning" element={<ScanningTheater />} />
@@ -241,16 +241,16 @@ function App() {
               <Route path="/checkup/share" element={<ColleagueShare />} />
               <Route path="/clarity/:id" element={<ClarityCard />} />
 
-              {/* Public demo — no auth required */}
+              {/* Public demo -- no auth required */}
               <Route path="/demo" element={<Demo />} />
 
-              {/* Business Clarity content page — SEO, no auth */}
+              {/* Business Clarity content page -- SEO, no auth */}
               <Route path="/business-clarity" element={<BusinessClarity />} />
               <Route path="/business-clarity/what-is" element={<WhatIsBusinessClarity />} />
               <Route path="/endodontist-marketing" element={<EndodontistMarketing />} />
               <Route path="/gp-referral-intelligence" element={<GPReferralIntelligenceContent />} />
 
-              {/* SEO/AEO content pages — every vertical gets a page.
+              {/* SEO/AEO content pages -- every vertical gets a page.
                   Each page is an inbound funnel for that vertical.
                   13 pages were built but never routed. Now they're live. */}
               <Route path="/law-firm-marketing" element={<LegalPracticeMarketing />} />
@@ -270,7 +270,7 @@ function App() {
               <Route path="/business-clarity" element={<BusinessClarityHub />} />
               <Route path="/local-service-business-clarity" element={<LocalServiceBusinessClarity />} />
 
-              {/* Public pages — no auth */}
+              {/* Public pages -- no auth */}
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/changelog" element={<Changelog />} />
               <Route path="/referral-program" element={<ReferralProgram />} />
@@ -279,17 +279,17 @@ function App() {
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
 
-              {/* Heroes & Founders Foundation — no auth (WO-11) */}
+              {/* Heroes & Founders Foundation -- no auth (WO-11) */}
               <Route path="/foundation" element={<FoundationHome />} />
               <Route path="/foundation/heroes" element={<HeroesPage />} />
               <Route path="/foundation/founders" element={<FoundersPage />} />
               <Route path="/foundation/apply" element={<FoundationApply />} />
 
-              {/* AAE conference pages — no auth */}
+              {/* AAE conference pages -- no auth */}
               <Route path="/aae" element={<AAELanding />} />
               <Route path="/thank-you" element={<ThankYou />} />
 
-              {/* Partner Portal — auth required, own layout */}
+              {/* Partner Portal -- auth required, own layout */}
               <Route
                 path="/partner"
                 element={
@@ -366,7 +366,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* Onboarding payment return pages — protected, standalone (no PageWrapper) */}
+              {/* Onboarding payment return pages -- protected, standalone (no PageWrapper) */}
               <Route
                 path="/onboarding/payment-success"
                 element={

@@ -336,7 +336,7 @@ export default function OrganizationDetail() {
 
           {activeSection === "agent" && (
             <div className="space-y-4">
-              {/* Location Selector — only in Agent Results */}
+              {/* Location Selector -- only in Agent Results */}
               <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">
                   Location context

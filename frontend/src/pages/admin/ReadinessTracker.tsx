@@ -225,7 +225,7 @@ function FeatureRow({ feature }: { feature: Feature }) {
           <p className={`text-sm font-semibold ${config.color}`}>{feature.name}</p>
           <p className="text-xs text-gray-500 mt-0.5">{feature.area}</p>
         </div>
-        <span className={`text-xs font-bold uppercase tracking-wider ${config.color} shrink-0`}>
+        <span className={`text-xs font-semibold uppercase tracking-wider ${config.color} shrink-0`}>
           {config.label}
         </span>
         {expanded ? <ChevronDown className="w-3 h-3 text-gray-400" /> : <ChevronRight className="w-3 h-3 text-gray-400" />}
@@ -235,7 +235,7 @@ function FeatureRow({ feature }: { feature: Feature }) {
           <p className="text-xs text-gray-600">{feature.notes}</p>
           {feature.dependencies.length > 0 && (
             <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Dependencies:</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Dependencies:</p>
               <ul className="mt-1 space-y-0.5">
                 {feature.dependencies.map((d, i) => (
                   <li key={i} className="text-xs text-gray-600 flex items-center gap-1.5">
@@ -267,8 +267,8 @@ export default function ReadinessTracker() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-[#212D40] font-heading">Production Readiness</h1>
-        <p className="text-sm text-[#212D40]/50 mt-1">
+        <h1 className="text-2xl font-semibold text-[#1A1D23] font-heading">Production Readiness</h1>
+        <p className="text-sm text-[#1A1D23]/50 mt-1">
           What can Dave push to production right now? Green = go. Amber = needs something first. Red = fix before push.
         </p>
         <div className="flex items-center gap-4 mt-4">
@@ -289,33 +289,33 @@ export default function ReadinessTracker() {
 
       {broken.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-red-500">Known Issues (fix first)</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-red-500">Known Issues (fix first)</p>
           {broken.map(f => <FeatureRow key={f.name} feature={f} />)}
         </div>
       )}
 
       <div className="space-y-3">
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-600">Ready to Push ({ready.length})</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-emerald-600">Ready to Push ({ready.length})</p>
         {ready.map(f => <FeatureRow key={f.name} feature={f} />)}
       </div>
 
       {needsWork.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-amber-600">Needs Dependencies ({needsWork.length})</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-amber-600">Needs Dependencies ({needsWork.length})</p>
           {needsWork.map(f => <FeatureRow key={f.name} feature={f} />)}
         </div>
       )}
 
       {untested.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-gray-500">Untested ({untested.length})</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-500">Untested ({untested.length})</p>
           {untested.map(f => <FeatureRow key={f.name} feature={f} />)}
         </div>
       )}
 
       <div className="text-center pt-4">
         <div className="h-px divider-warm mx-auto max-w-[10rem] mb-4" />
-        <p className="text-xs text-[#212D40]/30">
+        <p className="text-xs text-[#1A1D23]/30">
           360 commits on sandbox not on main. This page tracks what's safe to merge.
         </p>
       </div>

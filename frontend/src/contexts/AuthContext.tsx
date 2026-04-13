@@ -31,7 +31,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(() => {
     const isPilot = isPilotSession();
     if (isPilot) {
-      // Never seed from cache in pilot — always wait for API response
+      // Never seed from cache in pilot -- always wait for API response
       return null;
     }
     const cached = localStorage.getItem("onboardingCompleted");
@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (status.success) {
-        // Always set userProfile when status is available — needed for
+        // Always set userProfile when status is available -- needed for
         // onboarding resume logic (organizationId) even before completion.
         setUserProfile({
           firstName: status.profile?.firstName || null,
@@ -123,7 +123,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               });
             }
           } catch {
-            // Billing fetch failed — don't block app load
+            // Billing fetch failed -- don't block app load
             console.error("[AuthContext] Failed to fetch billing status");
           }
         }

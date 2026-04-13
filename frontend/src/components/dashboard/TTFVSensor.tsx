@@ -1,5 +1,5 @@
 /**
- * TTFV Sensor — Time-to-First-Value prompt.
+ * TTFV Sensor -- Time-to-First-Value prompt.
  *
  * Bottom bar (NOT modal). Appears 90 seconds after first dashboard load.
  * "Did this tell you something you didn't know about your practice?"

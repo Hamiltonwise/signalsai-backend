@@ -89,7 +89,7 @@ export const ConnectionDebugPanel: React.FC<ConnectionDebugPanelProps> = ({
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <Bug className="w-6 h-6 text-red-600" />
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-semibold text-gray-900">
               Connection Diagnostics
             </h2>
           </div>
@@ -151,19 +151,19 @@ export const ConnectionDebugPanel: React.FC<ConnectionDebugPanelProps> = ({
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
+                    <div className="text-2xl font-semibold text-green-600">
                       {testResults.passed}
                     </div>
                     <div className="text-sm text-gray-600">Passed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">
+                    <div className="text-2xl font-semibold text-red-600">
                       {testResults.failed}
                     </div>
                     <div className="text-sm text-gray-600">Failed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-2xl font-semibold text-blue-600">
                       {((testResults.passed / testResults.total) * 100).toFixed(
                         0
                       )}

@@ -266,10 +266,10 @@ export function OrgSubscriptionSection({
         <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Crown className="h-4 w-4 text-alloro-orange" />
-            <h3 className="text-sm font-bold text-gray-900">Overview</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Overview</h3>
           </div>
           {billingStatusBadge && (
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full ${billingStatusBadge.bg} ${billingStatusBadge.text} border ${billingStatusBadge.border}`}>
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full ${billingStatusBadge.bg} ${billingStatusBadge.text} border ${billingStatusBadge.border}`}>
               <billingStatusBadge.icon className="h-3 w-3" />
               {billingStatusBadge.label}
             </span>
@@ -280,9 +280,9 @@ export function OrgSubscriptionSection({
           <div className="grid grid-cols-3 gap-6">
             {/* Type */}
             <div>
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Type</div>
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Type</div>
               {org.organization_type ? (
-                <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-md bg-purple-50 text-purple-700">
+                <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-md bg-purple-50 text-purple-700">
                   {org.organization_type === "saas" ? "SaaS" : "Health"}
                 </span>
               ) : (
@@ -306,13 +306,13 @@ export function OrgSubscriptionSection({
 
             {/* Tier */}
             <div>
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Tier</div>
-              <span className="text-sm font-bold text-gray-900">DFY</span>
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Tier</div>
+              <span className="text-sm font-semibold text-gray-900">DFY</span>
             </div>
 
             {/* Website Project */}
             <div>
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Project</div>
+              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Project</div>
               {org.website ? (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700">
                   <Globe className="h-3 w-3" />
@@ -331,7 +331,7 @@ export function OrgSubscriptionSection({
         <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
           <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100 flex items-center gap-2">
             <CreditCard className="h-4 w-4 text-gray-400" />
-            <h3 className="text-sm font-bold text-gray-900">Billing</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Billing</h3>
           </div>
 
           <div className="px-5 py-4 space-y-4">
@@ -339,7 +339,7 @@ export function OrgSubscriptionSection({
             <div className="grid grid-cols-3 gap-6">
               {/* Payment Method */}
               <div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Payment Method</div>
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Payment Method</div>
                 {billingDetails?.paymentMethod ? (
                   <div className="flex items-center gap-1.5">
                     <CreditCard className="h-3.5 w-3.5 text-gray-400" />
@@ -357,9 +357,9 @@ export function OrgSubscriptionSection({
 
               {/* Coupon */}
               <div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Coupon</div>
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Coupon</div>
                 {billingDetails?.discount ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700">
                     <Tag className="h-3 w-3" />
                     {billingDetails.discount.couponName}
                     {billingDetails.discount.percentOff
@@ -375,7 +375,7 @@ export function OrgSubscriptionSection({
 
               {/* Cancel State */}
               <div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Cancel State</div>
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Cancel State</div>
                 {billingDetails?.canceledAt ? (
                   <span className="text-xs font-medium text-red-600">
                     Cancelled {new Date(billingDetails.canceledAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -393,7 +393,7 @@ export function OrgSubscriptionSection({
               <div>
                 <button
                   onClick={() => setShowInvoices(!showInvoices)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-700 transition-colors mb-2"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 transition-colors mb-2"
                 >
                   <Receipt className="h-3.5 w-3.5" />
                   Invoices ({billingDetails.invoices.length})
@@ -407,11 +407,11 @@ export function OrgSubscriptionSection({
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="px-3 py-2 font-bold text-xs text-gray-400 uppercase tracking-wider">Date</th>
-                          <th className="px-3 py-2 font-bold text-xs text-gray-400 uppercase tracking-wider">Amount</th>
-                          <th className="px-3 py-2 font-bold text-xs text-gray-400 uppercase tracking-wider">Status</th>
-                          <th className="px-3 py-2 font-bold text-xs text-gray-400 uppercase tracking-wider">Coupon</th>
-                          <th className="px-3 py-2 font-bold text-xs text-gray-400 uppercase tracking-wider">Invoice</th>
+                          <th className="px-3 py-2 font-semibold text-xs text-gray-400 uppercase tracking-wider">Date</th>
+                          <th className="px-3 py-2 font-semibold text-xs text-gray-400 uppercase tracking-wider">Amount</th>
+                          <th className="px-3 py-2 font-semibold text-xs text-gray-400 uppercase tracking-wider">Status</th>
+                          <th className="px-3 py-2 font-semibold text-xs text-gray-400 uppercase tracking-wider">Coupon</th>
+                          <th className="px-3 py-2 font-semibold text-xs text-gray-400 uppercase tracking-wider">Invoice</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -420,11 +420,11 @@ export function OrgSubscriptionSection({
                             <td className="px-3 py-2 text-gray-600 font-medium">
                               {new Date(inv.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                             </td>
-                            <td className="px-3 py-2 font-bold text-gray-900 tabular-nums">
+                            <td className="px-3 py-2 font-semibold text-gray-900 tabular-nums">
                               ${inv.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                             <td className="px-3 py-2">
-                              <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide ${
+                              <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${
                                 inv.status === "paid"
                                   ? "bg-green-50 text-green-700"
                                   : inv.status === "open"
@@ -465,14 +465,14 @@ export function OrgSubscriptionSection({
       <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
         <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100 flex items-center gap-2">
           <Clock className="h-4 w-4 text-gray-400" />
-          <h3 className="text-sm font-bold text-gray-900">Billing Controls</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Billing Controls</h3>
         </div>
 
         <div className="px-5 py-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             {/* Account Type */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Account Type</label>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Account Type</label>
               <select
                 value={controlAccountType}
                 onChange={(e) => setControlAccountType(e.target.value as AccountType | "")}
@@ -490,7 +490,7 @@ export function OrgSubscriptionSection({
 
             {/* Trial Extension */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Extend Trial (days from now)</label>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Extend Trial (days from now)</label>
               <input
                 type="number"
                 value={controlTrialDays}
@@ -558,7 +558,7 @@ export function OrgSubscriptionSection({
       {/* ─── Section 4: Actions ─── */}
       <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
         <div className="px-5 py-3 bg-gray-50/80 border-b border-gray-100">
-          <h3 className="text-sm font-bold text-gray-900">Actions</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Actions</h3>
         </div>
 
         <div className="px-5 py-4 flex items-center gap-3 flex-wrap">

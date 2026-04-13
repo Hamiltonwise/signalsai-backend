@@ -53,7 +53,7 @@ export function LocationSwitcher() {
     setIsOpen(false);
   }
 
-  // The button content — shared between the in-place and portal versions
+  // The button content -- shared between the in-place and portal versions
   const buttonContent = (
     <>
       <MapPin size={16} className="text-alloro-orange flex-shrink-0" />

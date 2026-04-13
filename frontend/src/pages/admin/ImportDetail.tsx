@@ -521,7 +521,7 @@ export default function ImportDetail() {
         >
           {/* File Preview */}
           <div className="rounded-xl border border-gray-200 bg-white p-6">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">
+            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
               Preview
             </h3>
             {importData.type === "image" && selectedVersion ? (
@@ -552,7 +552,7 @@ export default function ImportDetail() {
 
           {/* Upload New Version */}
           <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
               Upload New Version
             </h3>
             <div
@@ -635,7 +635,7 @@ export default function ImportDetail() {
         >
           {/* URL Reference */}
           <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
               Public URLs
             </h3>
             <div className="space-y-2">
@@ -686,7 +686,7 @@ export default function ImportDetail() {
                     {/* Version Header */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold text-gray-900">
+                        <span className="text-sm font-semibold text-gray-900">
                           Version {version.version}
                         </span>
                         <span
@@ -814,7 +814,7 @@ export default function ImportDetail() {
           {/* Upload New Version (for all types) */}
           {!isTextType && (
             <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
                 Upload New Version
               </h3>
               <div

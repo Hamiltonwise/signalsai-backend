@@ -146,7 +146,7 @@ export function OrganizationManagement() {
             <Badge label={`${organizations.length} total`} color="blue" />
             <motion.button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 rounded-xl bg-alloro-orange px-4 py-2 text-sm font-bold text-white hover:bg-alloro-navy transition-colors"
+              className="flex items-center gap-2 rounded-xl bg-alloro-orange px-4 py-2 text-sm font-semibold text-white hover:bg-alloro-navy transition-colors"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -233,15 +233,15 @@ export function OrganizationManagement() {
                           <Badge variant="orange">DFY</Badge>
                           {/* Billing status badge */}
                           {org.subscription_status === "inactive" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold rounded-full bg-red-50 text-red-700 border border-red-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-50 text-red-700 border border-red-200">
                               🔒 Locked
                             </span>
                           ) : org.stripe_customer_id ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold rounded-full bg-green-50 text-green-700 border border-green-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-50 text-green-700 border border-green-200">
                               ✓ Active
                             </span>
                           ) : org.subscription_status === "active" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                               ⚠ No Billing
                             </span>
                           ) : null}
@@ -317,7 +317,7 @@ export function OrganizationManagement() {
               <div className="space-y-6">
                 {/* Organization Section */}
                 <div>
-                  <h3 className="text-sm font-bold text-alloro-navy uppercase tracking-wider mb-3">
+                  <h3 className="text-sm font-semibold text-alloro-navy uppercase tracking-wider mb-3">
                     Organization
                   </h3>
                   <div className="space-y-3">
@@ -386,7 +386,7 @@ export function OrganizationManagement() {
 
                 {/* User Section */}
                 <div>
-                  <h3 className="text-sm font-bold text-alloro-navy uppercase tracking-wider mb-3">
+                  <h3 className="text-sm font-semibold text-alloro-navy uppercase tracking-wider mb-3">
                     Admin User
                   </h3>
                   <div className="space-y-3">
@@ -469,7 +469,7 @@ export function OrganizationManagement() {
 
                 {/* Location Section */}
                 <div>
-                  <h3 className="text-sm font-bold text-alloro-navy uppercase tracking-wider mb-3">
+                  <h3 className="text-sm font-semibold text-alloro-navy uppercase tracking-wider mb-3">
                     Primary Location
                   </h3>
                   <div className="space-y-3">
@@ -524,14 +524,14 @@ export function OrganizationManagement() {
                     setShowCreateModal(false);
                     setCreateForm(EMPTY_CREATE_FORM);
                   }}
-                  className="px-4 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-800 transition-colors"
+                  className="px-4 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors"
                 >
                   Cancel
                 </button>
                 <motion.button
                   onClick={handleCreateOrganization}
                   disabled={isCreating}
-                  className="flex items-center gap-2 rounded-xl bg-alloro-orange px-5 py-2.5 text-sm font-bold text-white hover:bg-alloro-navy transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl bg-alloro-orange px-5 py-2.5 text-sm font-semibold text-white hover:bg-alloro-navy transition-colors disabled:opacity-50"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >

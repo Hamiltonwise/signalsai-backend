@@ -50,7 +50,7 @@ const POLL_INTERVAL_MS = 3000;
 
 const formatTimestamp = (value: string): string => {
   if (!value) {
-    return "—";
+    return "--";
   }
 
   const date = new Date(value);

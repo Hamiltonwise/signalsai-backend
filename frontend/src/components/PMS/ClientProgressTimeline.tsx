@@ -190,7 +190,7 @@ export const ClientProgressTimeline: React.FC<ClientProgressTimelineProps> = ({
               </div>
               <div className="flex flex-col pt-0.5">
                 <span className={`transition-colors duration-300 ${
-                  state === "current" ? "text-base font-bold text-alloro-navy" :
+                  state === "current" ? "text-base font-semibold text-alloro-navy" :
                   state === "completed" ? "text-sm font-medium text-alloro-orange" : "text-sm font-medium text-gray-400"
                 } ${isClickable ? "cursor-pointer" : ""}`}>
                   {step.label}

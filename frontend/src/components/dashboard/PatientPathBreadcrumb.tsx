@@ -1,5 +1,5 @@
 /**
- * PatientPath Breadcrumb — quiet card, lower right, max 280px.
+ * PatientPath Breadcrumb -- quiet card, lower right, max 280px.
  *
  * Three states:
  * - building: "Your website preview is being prepared."

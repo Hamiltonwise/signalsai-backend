@@ -186,7 +186,7 @@ export const MissingScopeBanner: React.FC<MissingScopeBannerProps> = ({
             <button
               onClick={handleGrantAccess}
               disabled={isLoading}
-              className="flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold text-white bg-alloro-orange hover:bg-alloro-orange/90 rounded-xl transition-all shadow-lg shadow-alloro-orange/20 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-5 py-3 text-sm font-semibold text-white bg-alloro-orange hover:bg-alloro-orange/90 rounded-xl transition-all shadow-lg shadow-alloro-orange/20 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
@@ -202,7 +202,7 @@ export const MissingScopeBanner: React.FC<MissingScopeBannerProps> = ({
             </button>
             <button
               onClick={() => setShowTermsModal(true)}
-              className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-slate-600 hover:text-alloro-navy bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all whitespace-nowrap"
+              className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-slate-600 hover:text-alloro-navy bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all whitespace-nowrap"
             >
               <FileText size={16} />
               Read our Google API Terms

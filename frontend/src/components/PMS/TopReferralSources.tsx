@@ -86,7 +86,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
               <BarChart3 size={20} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-alloro-navy font-heading">
+              <h3 className="text-lg font-semibold text-alloro-navy font-heading">
                 Top Sources
               </h3>
               <p className="text-xs text-slate-500">{subtitle}</p>
@@ -102,7 +102,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
                   setActiveFilter(filter);
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
                   activeFilter === filter
                     ? "bg-white text-alloro-navy shadow-sm"
                     : "text-slate-500 hover:text-slate-700"
@@ -136,7 +136,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
       {/* Table */}
       <div className="flex-1 overflow-y-auto p-2">
         <table className="w-full text-left border-collapse">
-          <thead className="sticky top-0 bg-white z-10 text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <thead className="sticky top-0 bg-white z-10 text-xs font-semibold text-slate-400 uppercase tracking-wider">
             <tr>
               <th className="px-4 py-3 pl-6">Source Name</th>
               <th className="px-4 py-3 w-32">Volume</th>
@@ -156,7 +156,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
                   <div className="flex items-center gap-4">
                     <div
                       className={`
-                        w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm
+                        w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shadow-sm
                         ${
                           idx < 3
                             ? "bg-alloro-orange text-white"
@@ -167,7 +167,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
                       {source.rank}
                     </div>
                     <div className="min-w-0">
-                      <div className="font-bold text-sm text-alloro-navy truncate max-w-[200px]">
+                      <div className="font-semibold text-sm text-alloro-navy truncate max-w-[200px]">
                         {source.name}
                       </div>
                       <div className="text-xs text-slate-400 font-medium mt-0.5">
@@ -192,14 +192,14 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
                 </td>
                 <td className="px-4 py-4 align-top pt-5">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-slate-700 tabular-nums">
+                    <span className="text-sm font-semibold text-slate-700 tabular-nums">
                       {Math.round(source.referrals).toLocaleString()}
                     </span>
                     <span className="text-xs text-slate-400">refs</span>
                   </div>
                 </td>
                 <td className="px-4 py-4 text-right pr-6 align-top pt-5">
-                  <div className="text-sm font-bold text-alloro-navy tabular-nums font-heading">
+                  <div className="text-sm font-semibold text-alloro-navy tabular-nums font-heading">
                     $
                     {source.production.toLocaleString(undefined, {
                       minimumFractionDigits: 0,
@@ -244,7 +244,7 @@ export const TopReferralSources: React.FC<TopReferralSourcesProps> = ({
             <ChevronLeft size={14} />
           </button>
           <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-alloro-navy bg-alloro-navy text-white shadow-sm">
-            <span className="text-xs font-bold">{currentPage}</span>
+            <span className="text-xs font-semibold">{currentPage}</span>
           </button>
           <button
             onClick={() =>

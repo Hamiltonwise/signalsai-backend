@@ -169,7 +169,7 @@ export async function sendMondayEmailForOrg(
 
   if (!snapshot) {
     // First-week email: if org was created within the last 7 days and has checkup data,
-    // send a "first Business Clarity report" using the checkup findings
+    // send a "first Monday Brief" using the checkup findings
     const orgAgeMs = Date.now() - new Date(org.created_at).getTime();
     const isFirstWeek = orgAgeMs < 7 * 24 * 60 * 60 * 1000;
 

@@ -19,7 +19,7 @@ interface ConnectDomainModalProps {
   currentDomain: string | null;
   domainVerifiedAt: string | null;
   onDomainChange: () => void;
-  /** Connect fn — admin uses fetch-based, user uses apiPost-based */
+  /** Connect fn -- admin uses fetch-based, user uses apiPost-based */
   onConnect: (domain: string) => Promise<{ server_ip: string }>;
   onVerify: () => Promise<{ verified: boolean; resolved_ips?: string[] }>;
   onDisconnect: () => Promise<void>;
@@ -148,7 +148,7 @@ export default function ConnectDomainModal({
                   <Globe className="w-5 h-5 text-purple-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900">Custom Domain</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Custom Domain</h2>
                   <p className="text-sm text-gray-500">Connect your own domain to this site</p>
                 </div>
               </div>

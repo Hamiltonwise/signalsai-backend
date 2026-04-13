@@ -98,7 +98,7 @@ export default function ChangelogCard() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <GitCommit className="h-4 w-4 text-[#D56753]" />
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
             Changelog
           </p>
         </div>
@@ -137,7 +137,7 @@ export default function ChangelogCard() {
                 ) : (
                   <ChevronRight className="h-3 w-3 text-gray-400 shrink-0" />
                 )}
-                <span className="text-xs font-semibold text-[#212D40]">
+                <span className="text-xs font-semibold text-[#1A1D23]">
                   {formatDate(group.date)}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -161,7 +161,7 @@ export default function ChangelogCard() {
                       }}
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-[#212D40] leading-tight truncate">
+                        <p className="text-sm text-[#1A1D23] leading-tight truncate">
                           {commit.message}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">

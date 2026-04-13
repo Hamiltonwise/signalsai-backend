@@ -1,5 +1,5 @@
 /**
- * GP Referral Intelligence — /dashboard/referrals
+ * GP Referral Intelligence -- /dashboard/referrals
  *
  * The feature that makes Alloro worth $2,000/month to a specialist.
  * Three sections: Top Referrers, Drift Alerts, This Week's Move.

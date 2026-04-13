@@ -1,5 +1,5 @@
 /**
- * Backups API — Admin portal for website backup and restore
+ * Backups API -- Admin portal for website backup and restore
  */
 
 const BASE = "/api/admin/websites";

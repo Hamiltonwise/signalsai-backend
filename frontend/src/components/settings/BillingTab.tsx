@@ -178,7 +178,7 @@ export const BillingTab: React.FC = () => {
             <Lock size={20} className="text-red-600" />
           </div>
           <div>
-            <h3 className="text-red-900 font-bold text-sm">
+            <h3 className="text-red-900 font-semibold text-sm">
               Account Locked
             </h3>
             <p className="text-red-700 text-sm mt-1">
@@ -200,7 +200,7 @@ export const BillingTab: React.FC = () => {
             <AlertTriangle size={20} className="text-amber-600" />
           </div>
           <div>
-            <h3 className="text-amber-900 font-bold text-sm">
+            <h3 className="text-amber-900 font-semibold text-sm">
               Payment Method Required
             </h3>
             <p className="text-amber-700 text-sm mt-1">
@@ -221,7 +221,7 @@ export const BillingTab: React.FC = () => {
             <XCircle size={20} className="text-red-500" />
           </div>
           <div className="flex-1">
-            <h3 className="text-red-900 font-bold text-sm">
+            <h3 className="text-red-900 font-semibold text-sm">
               Subscription Cancelled
             </h3>
             <p className="text-red-700 text-sm mt-1">
@@ -239,7 +239,7 @@ export const BillingTab: React.FC = () => {
             <button
               onClick={handleManageSubscription}
               disabled={isPortalLoading}
-              className="mt-3 px-4 py-2 bg-alloro-orange text-white text-xs font-bold rounded-lg hover:bg-alloro-orange/90 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+              className="mt-3 px-4 py-2 bg-alloro-orange text-white text-xs font-semibold rounded-lg hover:bg-alloro-orange/90 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
             >
               {isPortalLoading ? "Opening..." : "Resume Subscription"}
             </button>
@@ -363,7 +363,7 @@ export const BillingTab: React.FC = () => {
               <button
                 onClick={handleManageSubscription}
                 disabled={isPortalLoading}
-                className="px-5 py-2.5 bg-alloro-navy text-white rounded-xl text-sm font-bold hover:bg-alloro-navy/90 transition-all flex items-center gap-2 disabled:opacity-50"
+                className="px-5 py-2.5 bg-alloro-navy text-white rounded-xl text-sm font-semibold hover:bg-alloro-navy/90 transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 <CreditCard size={16} />
                 {isPortalLoading ? "Opening..." : "Manage Subscription"}
@@ -404,7 +404,7 @@ export const BillingTab: React.FC = () => {
             <button
               onClick={handleCheckout}
               disabled={isCheckoutLoading}
-              className="px-6 py-3 bg-gradient-to-r from-alloro-orange to-[#c45a47] text-white rounded-xl text-sm font-bold hover:shadow-xl hover:shadow-alloro-orange/30 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-3 bg-gradient-to-r from-alloro-orange to-[#c45a47] text-white rounded-xl text-sm font-semibold hover:shadow-xl hover:shadow-alloro-orange/30 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50"
             >
               <CreditCard size={16} />
               {isCheckoutLoading ? "Processing..." : "Subscribe Again"}
@@ -468,7 +468,7 @@ export const BillingTab: React.FC = () => {
             <button
               onClick={handleCheckout}
               disabled={isCheckoutLoading}
-              className="px-6 py-3 bg-gradient-to-r from-alloro-orange to-[#c45a47] text-white rounded-xl text-sm font-bold hover:shadow-xl hover:shadow-alloro-orange/30 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-3 bg-gradient-to-r from-alloro-orange to-[#c45a47] text-white rounded-xl text-sm font-semibold hover:shadow-xl hover:shadow-alloro-orange/30 hover:-translate-y-0.5 transition-all flex items-center gap-2 disabled:opacity-50"
             >
               <CreditCard size={16} />
               {isCheckoutLoading ? "Processing..." : "Add Payment Method"}
@@ -526,7 +526,7 @@ export const BillingTab: React.FC = () => {
                         year: "numeric",
                       })}
                     </td>
-                    <td className="py-3 pr-4 text-sm text-alloro-navy font-bold">
+                    <td className="py-3 pr-4 text-sm text-alloro-navy font-semibold">
                       ${invoice.amount.toLocaleString("en-US", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
@@ -534,7 +534,7 @@ export const BillingTab: React.FC = () => {
                     </td>
                     <td className="py-3 pr-4">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
                           invoice.status === "paid"
                             ? "bg-green-50 text-green-700 border border-green-200"
                             : invoice.status === "open"
@@ -557,7 +557,7 @@ export const BillingTab: React.FC = () => {
                           className="text-alloro-orange hover:text-alloro-orange/80 transition-colors inline-flex items-center gap-1"
                         >
                           <ExternalLink size={12} />
-                          <span className="text-xs font-bold">View</span>
+                          <span className="text-xs font-semibold">View</span>
                         </a>
                       ) : (
                         <span className="text-slate-300 text-xs">-</span>

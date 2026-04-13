@@ -134,7 +134,7 @@ export const Step2DomainInfo: React.FC<Step2GbpConnectProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-2xl font-bold font-heading text-alloro-navy mb-2 tracking-tight">
+        <h2 className="text-2xl font-semibold font-heading text-alloro-navy mb-2 tracking-tight">
           Connect Google Business Profile
         </h2>
         <p className="text-slate-500 text-sm">
@@ -199,7 +199,7 @@ export const Step2DomainInfo: React.FC<Step2GbpConnectProps> = ({
               )}
             </button>
 
-            {/* Inline GBP Selector — flows in document so card expands naturally */}
+            {/* Inline GBP Selector -- flows in document so card expands naturally */}
             {gbpModalOpen && (
               <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                 {/* Header */}

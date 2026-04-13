@@ -606,7 +606,7 @@ export function MindKnowledgeSyncTab({ mindId, onStatusChange }: MindKnowledgeSy
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span
-                          className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                          className={`text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded ${
                             proposal.type === "NEW"
                               ? "bg-green-100 text-green-700"
                               : proposal.type === "UPDATE"

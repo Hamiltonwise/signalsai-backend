@@ -118,7 +118,7 @@ export function MindPublishChannelsTab() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-bold text-[#eaeaea]">Publish Channels</h3>
+          <h3 className="text-lg font-semibold text-[#eaeaea]">Publish Channels</h3>
           <p className="text-xs text-[#6a6a75] mt-1">
             Configure where approved work gets published. Each channel points to an n8n webhook.
           </p>
@@ -259,7 +259,7 @@ export function MindPublishChannelsTab() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h4 className="text-sm font-semibold text-[#eaeaea]">{ch.name}</h4>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider ${
                         ch.status === "active"
                           ? "bg-green-500/15 text-green-400"
                           : "bg-white/[0.06] text-[#6a6a75]"

@@ -1,5 +1,5 @@
 /**
- * PatientPath Website — /dashboard/website
+ * PatientPath Website -- /dashboard/website
  *
  * Shows website status + natural language editor.
  * EVERY client can edit their site. Not a premium feature.
@@ -146,7 +146,7 @@ export default function PatientPathWebsite() {
           <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-5">
             <Loader2 className="h-7 w-7 text-amber-600 animate-spin" />
           </div>
-          <h1 className="text-xl font-bold text-[#212D40] mb-2">
+          <h1 className="text-xl font-semibold text-[#1A1D23] mb-2">
             Your Website Is Being Built
           </h1>
           <p className="text-sm text-gray-500">
@@ -165,7 +165,7 @@ export default function PatientPathWebsite() {
           <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto mb-5">
             <Globe className="h-7 w-7 text-emerald-600" />
           </div>
-          <h1 className="text-xl font-bold text-[#212D40] mb-2">
+          <h1 className="text-xl font-semibold text-[#1A1D23] mb-2">
             Your Website Preview Is Ready
           </h1>
           <p className="text-sm text-gray-500 mb-6">
@@ -192,7 +192,7 @@ export default function PatientPathWebsite() {
     <div className="mx-auto max-w-2xl px-4 py-8 text-center">
       <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8">
         <Globe className="h-10 w-10 text-gray-300 mx-auto mb-4" />
-        <h1 className="text-xl font-bold text-[#212D40] mb-2">
+        <h1 className="text-xl font-semibold text-[#1A1D23] mb-2">
           Your Alloro Website
         </h1>
         <p className="text-sm text-gray-500">

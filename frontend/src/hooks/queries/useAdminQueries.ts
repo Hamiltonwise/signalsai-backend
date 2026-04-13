@@ -130,7 +130,7 @@ export function useAdminMinds() {
   return useQuery({
     queryKey,
     queryFn: async () => {
-      // listMinds() already unwraps the response — returns Mind[] directly
+      // listMinds() already unwraps the response -- returns Mind[] directly
       return listMinds();
     },
     initialData: () => queryClient.getQueryData<Mind[]>(queryKey),
@@ -215,7 +215,7 @@ export function useAdminWebsiteDetail(uuid: string | undefined) {
       return response.data;
     },
     enabled: !!uuid,
-    staleTime: 30 * 1000, // 30 seconds — user expects fresh state during editing
+    staleTime: 30 * 1000, // 30 seconds -- user expects fresh state during editing
     initialData: () =>
       queryClient.getQueryData<WebsiteProjectWithPages>(queryKey),
     initialDataUpdatedAt: () =>

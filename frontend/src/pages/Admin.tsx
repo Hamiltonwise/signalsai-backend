@@ -132,7 +132,7 @@ export default function Admin() {
   return (
     <AdminGuard>
       <Routes>
-        {/* Full-screen editors — no AdminLayout */}
+        {/* Full-screen editors -- no AdminLayout */}
         <Route
           path="websites/:id/pages/:pageId/edit"
           element={<PageEditor />}
@@ -142,7 +142,7 @@ export default function Admin() {
           element={<LayoutEditor />}
         />
 
-        {/* All other admin routes — with AdminLayout */}
+        {/* All other admin routes -- with AdminLayout */}
         <Route path="*" element={<AdminWithLayout />} />
       </Routes>
     </AdminGuard>

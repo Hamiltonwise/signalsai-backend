@@ -1,5 +1,5 @@
 /**
- * Footer — consistent footer for all public pages.
+ * Footer -- consistent footer for all public pages.
  *
  * NOT shown on dashboard, admin, or checkup screens.
  * Terracotta/Navy. Mobile-first. Minimal.
@@ -19,7 +19,7 @@ export default function Footer() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-sm font-bold text-[#1A1D23]">alloro</span>
+            <span className="text-sm font-semibold text-[#1A1D23]">alloro</span>
           </div>
           <p className="text-xs text-gray-400">
             Business Clarity for local service businesses

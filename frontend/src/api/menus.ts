@@ -1,5 +1,5 @@
 /**
- * Menus API — Admin portal for managing navigation menus
+ * Menus API -- Admin portal for managing navigation menus
  */
 
 const BASE = "/api/admin/websites";

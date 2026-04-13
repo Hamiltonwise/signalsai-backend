@@ -155,7 +155,7 @@ export default function CodeManagerTab({
               <div className="flex items-center justify-between px-4 py-3 border-b border-black/10">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`text-xs font-bold uppercase tracking-wider ${location.color}`}
+                    className={`text-xs font-semibold uppercase tracking-wider ${location.color}`}
                   >
                     {location.label}
                   </span>

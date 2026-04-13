@@ -16,12 +16,12 @@ export default function RisePage() {
     >
       <section className="px-5 py-16 sm:py-24 bg-white">
         <div className="max-w-xl mx-auto space-y-8">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight leading-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight leading-tight">
             Bring someone who needs this
             and you carry the cost together.
           </h1>
 
-          <div className="space-y-5 text-base text-[#212D40]/80 leading-relaxed">
+          <div className="space-y-5 text-base text-[#1A1D23]/80 leading-relaxed">
             <p>
               When a colleague joins, you both split month one.
               $1,000 each instead of $2,000. After that, standard rate.
@@ -32,7 +32,7 @@ export default function RisePage() {
               The pre-written message is already in your Monday email.
               One tap. Their name attached. Sixty seconds to send.
             </p>
-            <p className="font-semibold text-[#212D40]">
+            <p className="font-semibold text-[#1A1D23]">
               Because you know someone who is watching the same problem
               you were watching before Monday.
             </p>

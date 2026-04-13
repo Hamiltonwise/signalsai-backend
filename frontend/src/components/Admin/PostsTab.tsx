@@ -64,7 +64,7 @@ function quickPostSeoScore(seoData: SeoData | null): {
   // Critical (30)
   if (canonical.length > 0) score += 8;
   if (title.length >= 20) score += 7;
-  if (title.length > 0) score += 6; // uniqueness — give benefit of doubt
+  if (title.length > 0) score += 6; // uniqueness -- give benefit of doubt
   if (title.length >= 50 && title.length <= 60) score += 5;
   if (robots.includes("index") || robots === "") score += 4;
 
@@ -72,7 +72,7 @@ function quickPostSeoScore(seoData: SeoData | null): {
   if (desc.length > 0) score += 6;
   if (desc.length > 40) score += 5;
   if (desc.length >= 140 && desc.length <= 160) score += 5;
-  if (desc.length > 0) score += 5; // uniqueness — give benefit of doubt
+  if (desc.length > 0) score += 5; // uniqueness -- give benefit of doubt
   if (maxPreview === "large") score += 4;
 
   // Significant (22)
@@ -276,7 +276,7 @@ interface PostsTabProps {
   projectId: string;
   templateId: string | null;
   organizationId?: number;
-  /** Remove outer border/shadow — useful when embedded edge-to-edge (e.g. user editor). */
+  /** Remove outer border/shadow -- useful when embedded edge-to-edge (e.g. user editor). */
   borderless?: boolean;
   // Optional API overrides for user-facing context
   fetchPostsFn?: typeof defaultFetchPosts;
@@ -595,7 +595,7 @@ export default function PostsTab({
         {/* Sidebar content */}
         <div className="flex-1 overflow-y-auto">
           {showPostsList ? (
-            /* Posts list — shown when editing */
+            /* Posts list -- shown when editing */
             <div className="py-1">
               {typePosts.length === 0 ? (
                 <div className="text-center py-8 text-xs text-gray-400">
@@ -628,7 +628,7 @@ export default function PostsTab({
               )}
             </div>
           ) : (
-            /* Post types list — shown in list view */
+            /* Post types list -- shown in list view */
             <div className="py-1">
               {postTypes.map((pt) => {
                 const isActive = pt.id === selectedTypeId;
@@ -800,7 +800,7 @@ export default function PostsTab({
                           </span>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-300" title="No SEO data">—</span>
+                        <span className="text-xs text-gray-300" title="No SEO data">--</span>
                       );
                     })()}
                     <button
@@ -859,7 +859,7 @@ export default function PostsTab({
             <h3 className="text-lg font-semibold text-gray-900">
               {editingPost ? "Edit Post" : "New Post"}
             </h3>
-            {/* Content / SEO tab bar — only for existing posts */}
+            {/* Content / SEO tab bar -- only for existing posts */}
             {editingPost && (
               <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
                 <button
@@ -1259,12 +1259,12 @@ export default function PostsTab({
   /* ─── Layout: 30/70 sidebar ─── */
   return (
     <div className={`flex bg-white overflow-hidden ${borderless ? "h-full" : "rounded-xl border border-gray-200 shadow-sm"}`} style={borderless ? undefined : { minHeight: 480 }}>
-      {/* Sidebar — 30% */}
+      {/* Sidebar -- 30% */}
       <div className="w-[30%] min-w-[220px] max-w-[320px] flex-shrink-0 bg-gray-50/50">
         {renderSidebar()}
       </div>
 
-      {/* Main — 70% */}
+      {/* Main -- 70% */}
       <div className="flex-1 min-w-0">
         <AnimatePresence mode="wait">
           {view === "list" && (

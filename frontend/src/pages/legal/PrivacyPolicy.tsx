@@ -23,7 +23,7 @@ export default function PrivacyPolicy() {
               <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
             </svg>
           </div>
-          <span className="text-[22px] font-bold tracking-tight text-[#1A1D23]">
+          <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
             alloro
           </span>
         </button>
@@ -67,7 +67,7 @@ export default function PrivacyPolicy() {
           <Section title="How we use it">
             <p>Your data serves one purpose: giving you clarity about your business.</p>
             <ul className="mt-2 space-y-1.5 text-sm text-gray-700">
-              <Li>Generate your Business Clarity Score and competitive analysis</Li>
+              <Li>Generate your competitive analysis and market readings</Li>
               <Li>Build your Monday morning intelligence briefing</Li>
               <Li>Monitor your market position and alert you to changes</Li>
               <Li>Build and optimize your Alloro website</Li>
@@ -85,7 +85,7 @@ export default function PrivacyPolicy() {
               and write your intelligence briefings. Here is exactly what that means:
             </p>
             <ul className="mt-2 space-y-1.5 text-sm text-gray-700">
-              <Li><strong>What the AI sees:</strong> Your business name, review text, competitor data, market position. Never patient names, health records, or personal information.</Li>
+              <Li><strong>What the AI sees:</strong> Your business name, review text, competitor data, market position. Never client names, health records, or personal information.</Li>
               <Li><strong>What the AI does NOT do:</strong> Anthropic does not use your data to train their models. Your competitive intelligence is processed and returned to you. It is not stored by Anthropic or used to improve their general-purpose AI.</Li>
               <Li><strong>Aggregate patterns:</strong> We analyze patterns across all Alloro accounts to detect market trends (like regional ranking pressure). These patterns never include your business name and no individual account's data is visible to others.</Li>
             </ul>
@@ -130,7 +130,7 @@ export default function PrivacyPolicy() {
               <Li>A Business Associate Agreement (BAA) is required before data upload</Li>
               <Li>Raw scheduling data (including patient-identifiable information) is processed and deleted</Li>
               <Li>We store extracted intelligence (referral velocity, case trends) not patient records</Li>
-              <Li>Alloro gives you business clarity without requiring patient data to leave your existing systems</Li>
+              <Li>Alloro gives you business intelligence without requiring patient data to leave your existing systems</Li>
             </ul>
           </Section>
 
@@ -202,7 +202,7 @@ export default function PrivacyPolicy() {
 
       <footer className="py-8 text-center border-t border-slate-100">
         <p className="text-xs font-medium tracking-wide text-slate-300 uppercase">
-          Alloro &middot; Business Clarity
+          Alloro
         </p>
       </footer>
     </div>

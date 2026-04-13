@@ -325,3 +325,51 @@ Dependencies: Card 6 (UploadPrompt must exist)
 ### Done Gate
 
 All verification tests pass? Yes = done. No = fix before proceeding.
+
+---
+
+## Card 8: GBP OAuth Callback Must Read From Environment (Dave Task)
+
+Blast Radius: Red (auth)
+Complexity: Low
+Dependencies: Card 4 (APP_URL must be set first)
+
+### Problem
+
+`src/routes/auth/gbp.ts` line 22 hardcodes the OAuth2 redirect URI:
+
+```typescript
+"https://app.getalloro.com/api/auth/google/callback"
+```
+
+This means Google Business Profile connection only works on `app.getalloro.com`. On sandbox (or any other domain), the OAuth flow silently fails because Google rejects the redirect URI mismatch.
+
+GBP connection is a core feature. Without it, the customer cannot connect their Google Business Profile and the dashboard shows empty readings for review velocity, GBP completeness, and presence data.
+
+### What Changes
+
+`src/routes/auth/gbp.ts` line 22:
+- OLD: `"https://app.getalloro.com/api/auth/google/callback"`
+- NEW: `\`${process.env.APP_URL || "https://app.getalloro.com"}/api/auth/google/callback\``
+
+Then in Google Cloud Console, add the sandbox callback URL to the authorized redirect URIs:
+```
+https://sandbox.getalloro.com/api/auth/google/callback
+```
+
+### Touches
+
+- Database: no
+- Auth: yes (OAuth redirect URI)
+- Billing: no
+- New API endpoint: no
+
+### Verification Tests
+
+1. On sandbox: click "Connect Google Business Profile" in dashboard settings. Google consent screen appears (does not error with "redirect_uri_mismatch").
+2. Complete the OAuth flow. GBP data populates in the dashboard within 60 seconds.
+3. `grep -n "getalloro.com/api/auth/google/callback" src/routes/auth/gbp.ts` -- zero hardcoded hits.
+
+### Done Gate
+
+GBP connection works on sandbox. OAuth flow completes without redirect URI mismatch.

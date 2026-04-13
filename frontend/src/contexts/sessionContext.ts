@@ -6,7 +6,7 @@ export interface SessionContextType {
 }
 
 /**
- * Session context — provides auth state and logout functionality.
+ * Session context -- provides auth state and logout functionality.
  */
 export const SessionContext = createContext<
   SessionContextType | undefined

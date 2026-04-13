@@ -220,7 +220,7 @@ export const UsersTab: React.FC = () => {
             <h2 className="text-xl font-semibold text-alloro-navy font-heading tracking-tight">
               Team Members
             </h2>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest mt-0.5">
               Manage who has access to this organization
             </p>
           </div>
@@ -278,7 +278,7 @@ export const UsersTab: React.FC = () => {
                         <div className="text-sm font-semibold text-alloro-navy tracking-tight">
                           {user.name || "Unknown"}
                         </div>
-                        <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                        <div className="text-xs text-slate-400 font-semibold uppercase tracking-widest mt-0.5">
                           {user.email}
                         </div>
                       </div>
@@ -289,7 +289,7 @@ export const UsersTab: React.FC = () => {
                       <select
                         value={newRole || user.role}
                         onChange={(e) => setNewRole(e.target.value)}
-                        className="text-xs px-3 py-2 border border-black/10 rounded-xl focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange outline-none font-bold"
+                        className="text-xs px-3 py-2 border border-black/10 rounded-xl focus:ring-2 focus:ring-alloro-orange/20 focus:border-alloro-orange outline-none font-semibold"
                         autoFocus
                       >
                         <option value="viewer">Viewer</option>
@@ -311,7 +311,7 @@ export const UsersTab: React.FC = () => {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-5 text-xs text-slate-400 font-bold uppercase tracking-widest">
+                  <td className="px-6 py-5 text-xs text-slate-400 font-semibold uppercase tracking-widest">
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" />
                       {new Date(user.joined_at).toLocaleDateString()}
@@ -406,7 +406,7 @@ export const UsersTab: React.FC = () => {
                       {invite.role} (Pending)
                     </span>
                   </td>
-                  <td className="px-6 py-5 text-xs text-slate-400 font-bold uppercase tracking-widest">
+                  <td className="px-6 py-5 text-xs text-slate-400 font-semibold uppercase tracking-widest">
                     Expires: {new Date(invite.expires_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 sm:px-8 py-5 text-right">
@@ -478,7 +478,7 @@ export const UsersTab: React.FC = () => {
                       required
                       value={inviteEmail}
                       onChange={(e) => setInviteEmail(e.target.value)}
-                      className="w-full px-4 py-3.5 border border-black/10 rounded-2xl focus:ring-4 focus:ring-alloro-orange/10 focus:border-alloro-orange outline-none transition-all text-alloro-navy font-bold"
+                      className="w-full px-4 py-3.5 border border-black/10 rounded-2xl focus:ring-4 focus:ring-alloro-orange/10 focus:border-alloro-orange outline-none transition-all text-alloro-navy font-semibold"
                       placeholder="colleague@example.com"
                     />
                   </div>
@@ -490,7 +490,7 @@ export const UsersTab: React.FC = () => {
                       <select
                         value={inviteRole}
                         onChange={(e) => setInviteRole(e.target.value)}
-                        className="w-full px-4 py-3.5 border border-black/10 rounded-2xl focus:ring-4 focus:ring-alloro-orange/10 focus:border-alloro-orange outline-none transition-all text-alloro-navy font-bold appearance-none bg-white"
+                        className="w-full px-4 py-3.5 border border-black/10 rounded-2xl focus:ring-4 focus:ring-alloro-orange/10 focus:border-alloro-orange outline-none transition-all text-alloro-navy font-semibold appearance-none bg-white"
                       >
                         {availableRoles.map((role) => (
                           <option key={role.value} value={role.value}>
@@ -515,7 +515,7 @@ export const UsersTab: React.FC = () => {
                       </div>
                     </div>
                     {currentUserRole === "manager" && (
-                      <p className="text-xs text-slate-400 mt-2.5 font-bold uppercase tracking-widest">
+                      <p className="text-xs text-slate-400 mt-2.5 font-semibold uppercase tracking-widest">
                         Managers can only invite Viewers and Managers
                       </p>
                     )}

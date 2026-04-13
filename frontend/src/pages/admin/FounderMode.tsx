@@ -147,7 +147,7 @@ function FounderBrief({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Founder Brief</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">Founder Brief</h2>
 
       {/* Core metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -256,11 +256,11 @@ function FinancialCommand({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Financial Command</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">Financial Command</h2>
 
       {/* SOL */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-        <p className="text-xs font-bold text-white mb-3">SOL Position</p>
+        <p className="text-xs font-semibold text-white mb-3">SOL Position</p>
         <div className="grid grid-cols-3 gap-2 mb-2">
           <div>
             <p className="text-[9px] text-white/30 mb-1">Alert Low</p>
@@ -286,7 +286,7 @@ function FinancialCommand({
 
       {/* BTC */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-        <p className="text-xs font-bold text-white mb-3">BTC Position</p>
+        <p className="text-xs font-semibold text-white mb-3">BTC Position</p>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <div>
             <p className="text-[9px] text-white/30 mb-1">Alert Low</p>
@@ -375,13 +375,13 @@ function WatchLedger({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Watch Ledger</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">Watch Ledger</h2>
       <div className="space-y-3">
         {watches.map((w) => (
           <div key={w.id} className="rounded-xl bg-white/5 border border-white/10 p-4">
             <div className="flex items-start justify-between">
               <div className="min-w-0">
-                <p className="text-sm font-bold text-white">{w.name}</p>
+                <p className="text-sm font-semibold text-white">{w.name}</p>
                 <p className="text-xs text-white/30 font-mono">Ref. {w.ref}</p>
                 {w.giftingIntent && <p className="text-xs text-[#D56753] font-medium mt-1">{w.giftingIntent}</p>}
                 {w.floorPrice && editingId !== w.id && (
@@ -392,7 +392,7 @@ function WatchLedger({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {w.status === "hunting" && (
-                  <span className="text-[9px] uppercase tracking-widest bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold">Hunt</span>
+                  <span className="text-[9px] uppercase tracking-widest bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-semibold">Hunt</span>
                 )}
                 <button onClick={() => setEditingId(editingId === w.id ? null : w.id)} className="p-1.5 text-white/20 hover:text-white/60 transition-colors">
                   <Pen className="h-3 w-3" />
@@ -445,7 +445,7 @@ function ContentFlywheel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Content Flywheel</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">Content Flywheel</h2>
         <span className="text-xs text-white/30">{concepts.length} concepts</span>
       </div>
       <div className="space-y-2">
@@ -515,7 +515,7 @@ function CompetitiveIntel({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Competitive + IP Intelligence</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">Competitive + IP Intelligence</h2>
 
       {/* Trademark Watch */}
       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
@@ -651,7 +651,7 @@ function ExpandableField({ label, content }: { label: string; content: string | 
   if (!content) return null;
   return (
     <button onClick={() => setOpen(!open)} className="w-full text-left mt-2">
-      <p className="text-xs font-bold uppercase tracking-widest text-white/30">
+      <p className="text-xs font-semibold uppercase tracking-widest text-white/30">
         {label} {open ? "\u25B4" : "\u25BE"}
       </p>
       {open && <p className="text-xs text-white/50 mt-1 leading-relaxed">{content}</p>}
@@ -792,7 +792,7 @@ function TheLibrary() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xs font-bold uppercase tracking-widest text-[#D56753]">Knowledge Lattice</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">Knowledge Lattice</h2>
         <p className="text-xs text-white/30 mt-1">The intellectual backbone. Read before building. Updated monthly.</p>
       </div>
 
@@ -839,8 +839,8 @@ function TheLibrary() {
               {filteredKnowledge.map((entry) => (
                 <div key={entry.id} className="rounded-xl bg-white/5 border border-white/10 p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-bold text-white">{entry.name}</p>
-                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${CATEGORY_COLORS[entry.category] || CATEGORY_COLORS.Uncategorized}`}>
+                    <p className="text-sm font-semibold text-white">{entry.name}</p>
+                    <span className={`text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${CATEGORY_COLORS[entry.category] || CATEGORY_COLORS.Uncategorized}`}>
                       {entry.category}
                     </span>
                   </div>
@@ -885,7 +885,7 @@ function TheLibrary() {
                 <div key={entry.id} className="rounded-xl bg-white/5 border border-white/10 p-4">
                   <p className="text-sm text-white italic leading-relaxed">"{entry.quote}"</p>
                   <div className="mt-2 flex items-center gap-2">
-                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${PHASE_COLORS[entry.phase] || PHASE_COLORS.Uncategorized}`}>
+                    <span className={`text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${PHASE_COLORS[entry.phase] || PHASE_COLORS.Uncategorized}`}>
                       {entry.phase}
                     </span>
                   </div>
@@ -985,7 +985,7 @@ export default function FounderMode({ onClose }: { onClose: () => void }) {
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center text-white text-xs font-semibold">F</div>
             <div>
-              <p className="text-sm font-bold text-white">Founder Mode</p>
+              <p className="text-sm font-semibold text-white">Founder Mode</p>
               <p className="text-xs text-white/30">Personal intelligence. Not shared. Esc to close.</p>
             </div>
           </div>

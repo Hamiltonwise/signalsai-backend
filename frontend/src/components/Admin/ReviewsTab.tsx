@@ -29,11 +29,11 @@ export default function ReviewsTab({ projectId, organizationId }: ReviewsTabProp
           const data = JSON.parse(text);
           if (data.success) setStats(data.data);
         } catch {
-          // Non-JSON response — ignore
+          // Non-JSON response -- ignore
         }
       }
     } catch {
-      // Stats endpoint may not exist yet — non-fatal
+      // Stats endpoint may not exist yet -- non-fatal
     } finally {
       setLoading(false);
     }
@@ -103,12 +103,12 @@ export default function ReviewsTab({ projectId, organizationId }: ReviewsTabProp
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white border border-gray-200 rounded-xl p-5">
             <p className="text-sm text-gray-500">Total Reviews</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+            <p className="text-2xl font-semibold text-gray-900 mt-1">{stats.total}</p>
           </div>
           <div className="bg-white border border-gray-200 rounded-xl p-5">
             <p className="text-sm text-gray-500">Average Rating</p>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-2xl font-bold text-gray-900">{stats.average.toFixed(1)}</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.average.toFixed(1)}</p>
               <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
             </div>
           </div>

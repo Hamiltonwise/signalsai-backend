@@ -1,5 +1,5 @@
 /**
- * Imports API — Admin portal for managing self-hosted assets
+ * Imports API -- Admin portal for managing self-hosted assets
  * (CSS, JS, images, fonts, etc.) used by website-builder templates.
  */
 
@@ -75,7 +75,7 @@ export const fetchImport = async (
 };
 
 /**
- * Create a new import — supports both file upload and text content
+ * Create a new import -- supports both file upload and text content
  */
 export const createImport = async (
   data: FormData

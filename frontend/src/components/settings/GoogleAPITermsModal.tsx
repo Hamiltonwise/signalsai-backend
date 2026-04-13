@@ -70,7 +70,7 @@ export const GoogleAPITermsModal: React.FC<GoogleAPITermsModalProps> = ({
                 <div className="bg-green-50 border border-green-200 rounded-2xl p-5 flex gap-4">
                   <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold text-green-900 mb-1">
+                    <p className="font-semibold text-green-900 mb-1">
                       Read-Only Access
                     </p>
                     <p className="text-green-700 text-sm">
@@ -144,7 +144,7 @@ export const GoogleAPITermsModal: React.FC<GoogleAPITermsModalProps> = ({
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
                   <div className="flex items-center gap-3">
                     <AlertCircle size={20} className="text-slate-600" />
-                    <h4 className="font-bold text-alloro-navy">
+                    <h4 className="font-semibold text-alloro-navy">
                       Your Data, Your Control
                     </h4>
                   </div>
@@ -174,7 +174,7 @@ export const GoogleAPITermsModal: React.FC<GoogleAPITermsModalProps> = ({
               <div className="p-6 border-t border-slate-100 bg-slate-50/50 shrink-0">
                 <button
                   onClick={handleAccept}
-                  className="w-full py-4 bg-alloro-navy text-white font-bold rounded-xl hover:bg-alloro-navy/90 transition-colors"
+                  className="w-full py-4 bg-alloro-navy text-white font-semibold rounded-xl hover:bg-alloro-navy/90 transition-colors"
                 >
                   I Understand
                 </button>

@@ -151,7 +151,7 @@ export function usePasteHandler({
 
     try {
       // ===============================================
-      // PHASE 1: JS PARSING — batch by 50 rows
+      // PHASE 1: JS PARSING -- batch by 50 rows
       // ===============================================
       setPhase("parsing");
       const chunks = chunkByRows(raw);
@@ -179,7 +179,7 @@ export function usePasteHandler({
 
 
       // ===============================================
-      // PHASE 2: SANITIZATION — smart dedup
+      // PHASE 2: SANITIZATION -- smart dedup
       // ===============================================
       setPhase("sanitizing");
       setBatchProgress(null);

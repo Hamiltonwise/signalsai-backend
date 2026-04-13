@@ -1,5 +1,5 @@
 /**
- * Account Overview — Multi-Location Admin View (Phase 2)
+ * Account Overview -- Multi-Location Admin View (Phase 2)
  *
  * Shows all accounts with their locations, user counts, health status.
  * Replaces the old organization list with account-level aggregation.
@@ -43,7 +43,7 @@ function AccountCard({ org }: { org: AdminOrganization }) {
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold text-[#212D40] truncate">
+          <h3 className="text-base font-semibold text-[#1A1D23] truncate">
             {org.name}
           </h3>
           <span
@@ -90,7 +90,7 @@ export default function AccountOverview() {
     <div className="mx-auto max-w-4xl px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#212D40] flex items-center gap-3">
+        <h1 className="text-2xl font-semibold text-[#1A1D23] flex items-center gap-3">
           <Building2 className="h-6 w-6 text-[#D56753]" />
           Accounts
         </h1>

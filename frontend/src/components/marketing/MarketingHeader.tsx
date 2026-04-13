@@ -37,7 +37,7 @@ export default function MarketingHeader() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-lg font-bold tracking-tight text-[#212D40]">
+            <span className="text-lg font-semibold tracking-tight text-[#1A1D23]">
               alloro
             </span>
           </Link>
@@ -51,7 +51,7 @@ export default function MarketingHeader() {
                 className={`text-sm font-medium transition-colors ${
                   location.pathname === link.to
                     ? "text-[#D56753]"
-                    : "text-[#212D40]/70 hover:text-[#212D40]"
+                    : "text-[#1A1D23]/70 hover:text-[#1A1D23]"
                 }`}
               >
                 {link.label}
@@ -80,7 +80,7 @@ export default function MarketingHeader() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setOpen(!open)}
-            className="md:hidden p-2 text-[#212D40]"
+            className="md:hidden p-2 text-[#1A1D23]"
             aria-label="Toggle menu"
           >
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -99,7 +99,7 @@ export default function MarketingHeader() {
                   className={`py-2.5 text-sm font-medium transition-colors ${
                     location.pathname === link.to
                       ? "text-[#D56753]"
-                      : "text-[#212D40]/70"
+                      : "text-[#1A1D23]/70"
                   }`}
                 >
                   {link.label}

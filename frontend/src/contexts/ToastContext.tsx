@@ -1,5 +1,5 @@
 /**
- * Toast Context — app-wide toast notifications.
+ * Toast Context -- app-wide toast notifications.
  *
  * useToast() returns showToast(message, type).
  * Bottom-center, stacks up to 3, auto-dismiss 4s.
@@ -56,7 +56,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ showToast }}>
       {children}
 
-      {/* Toast container — fixed bottom center */}
+      {/* Toast container -- fixed bottom center */}
       {toasts.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 w-full max-w-sm px-4">
           {toasts.map((toast) => (

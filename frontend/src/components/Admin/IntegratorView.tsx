@@ -101,7 +101,7 @@ export default function IntegratorView() {
             <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0" />
           )}
           <div>
-            <p className={`text-lg font-bold ${opsStatus ? "text-emerald-700" : "text-amber-700"}`}>
+            <p className={`text-lg font-semibold ${opsStatus ? "text-emerald-700" : "text-amber-700"}`}>
               {opsStatus
                 ? "Operations clear. Nothing blocked."
                 : `${redCount} client${redCount !== 1 ? "s" : ""} need attention. ${urgentTasks.length} urgent task${urgentTasks.length !== 1 ? "s" : ""}.`}
@@ -117,7 +117,7 @@ export default function IntegratorView() {
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <Users className="h-4 w-4 text-blue-500" />
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Onboarding Pipeline</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Onboarding Pipeline</p>
         </div>
         <div className="space-y-2">
           <PipelineRow label="Signed up (last 7 days)" count={newSignups.length} color="blue" />
@@ -134,12 +134,12 @@ export default function IntegratorView() {
           if (stuck.length === 0) return null;
           return (
             <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-2">
+              <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider mb-2">
                 Stuck ({stuck.length})
               </p>
               {stuck.slice(0, 3).map((o) => (
                 <div key={o.id} className="flex items-center justify-between text-sm py-1">
-                  <span className="text-[#212D40] font-medium">{o.name}</span>
+                  <span className="text-[#1A1D23] font-medium">{o.name}</span>
                   <span className="text-xs text-amber-500">No GBP after {Math.floor((Date.now() - new Date(o.created_at).getTime()) / 86_400_000)}d</span>
                 </div>
               ))}
@@ -152,7 +152,7 @@ export default function IntegratorView() {
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <Zap className="h-4 w-4 text-[#D56753]" />
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Team Load</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Team Load</p>
         </div>
         <div className="space-y-2">
           <WorkloadRow name="Corey" count={coreyTasks.length} urgent={coreyTasks.filter((t) => t.priority === "urgent").length} />
@@ -163,12 +163,12 @@ export default function IntegratorView() {
         {/* Urgent tasks detail */}
         {urgentTasks.length > 0 && (
           <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-            <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Urgent</p>
+            <p className="text-xs font-semibold text-red-500 uppercase tracking-wider">Urgent</p>
             {urgentTasks.slice(0, 5).map((t) => (
               <div key={t.id} className="flex items-start gap-2 text-sm">
                 <ArrowRight className="h-3 w-3 text-red-500 mt-1 shrink-0" />
                 <div>
-                  <span className="text-[#212D40] font-medium">{t.title}</span>
+                  <span className="text-[#1A1D23] font-medium">{t.title}</span>
                   <span className="text-xs text-gray-400 ml-2">{t.owner}</span>
                 </div>
               </div>
@@ -182,7 +182,7 @@ export default function IntegratorView() {
 
       {/* Zone 4: Blockers */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Blockers</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Blockers</p>
         <div className="space-y-2 text-sm">
           <BlockerRow
             label="EC2 Pipeline"
@@ -222,7 +222,7 @@ function PipelineRow({ label, count, total, color }: { label: string; count: num
       <span className="text-sm text-gray-600">{label}</span>
       <div className="flex items-center gap-2">
         <div className={`w-2 h-2 rounded-full ${colorMap[color] || "bg-gray-400"}`} />
-        <span className="text-sm font-semibold text-[#212D40]">{count}{total ? ` / ${total}` : ""}</span>
+        <span className="text-sm font-semibold text-[#1A1D23]">{count}{total ? ` / ${total}` : ""}</span>
       </div>
     </div>
   );
@@ -231,10 +231,10 @@ function PipelineRow({ label, count, total, color }: { label: string; count: num
 function WorkloadRow({ name, count, urgent, label, status }: { name: string; count: number; urgent?: number; label?: string; status?: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm font-medium text-[#212D40]">{name}</span>
+      <span className="text-sm font-medium text-[#1A1D23]">{name}</span>
       <div className="flex items-center gap-2">
         {urgent && urgent > 0 && <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-semibold">{urgent} urgent</span>}
-        <span className={`text-sm font-semibold ${status === "green" ? "text-emerald-600" : "text-[#212D40]"}`}>
+        <span className={`text-sm font-semibold ${status === "green" ? "text-emerald-600" : "text-[#1A1D23]"}`}>
           {count} {label || "open"}
         </span>
       </div>
@@ -251,7 +251,7 @@ function BlockerRow({ label, status, detail }: { label: string; status: boolean;
         <Clock className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
       )}
       <div>
-        <span className="font-medium text-[#212D40]">{label}</span>
+        <span className="font-medium text-[#1A1D23]">{label}</span>
         <p className="text-xs text-gray-400">{detail}</p>
       </div>
     </div>

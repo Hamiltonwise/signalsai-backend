@@ -203,7 +203,7 @@ function SectionLabel({
         {label}
       </p>
       {count !== undefined && count > 0 && (
-        <span className="ml-auto text-xs font-bold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">
+        <span className="ml-auto text-xs font-semibold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">
           {count}
         </span>
       )}
@@ -249,7 +249,7 @@ function Greeting({
 
   return (
     <div className="pb-1">
-      <h1 className="text-2xl font-bold text-[#212D40] tracking-tight">
+      <h1 className="text-2xl font-semibold text-[#1A1D23] tracking-tight">
         {greeting}, {firstName}.
       </h1>
       <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
@@ -334,7 +334,7 @@ function WeeklyPulse({ orgs }: { orgs: AdminOrganization[] }) {
           <Minus className="w-5 h-5 text-amber-500" />
         )}
         <div>
-          <p className={`text-sm font-bold ${isGrowing ? "text-emerald-700" : "text-amber-700"}`}>
+          <p className={`text-sm font-semibold ${isGrowing ? "text-emerald-700" : "text-amber-700"}`}>
             {isGrowing ? "YES" : "NOT YET"}
             {growthRate !== 0 && (
               <span className="text-xs font-medium ml-1.5">
@@ -349,19 +349,19 @@ function WeeklyPulse({ orgs }: { orgs: AdminOrganization[] }) {
       {/* Stats row */}
       <div className="grid grid-cols-2 gap-3">
         <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
-          <p className="text-lg font-bold text-[#212D40]">{formatter.format(mrr)}</p>
+          <p className="text-lg font-semibold text-[#1A1D23]">{formatter.format(mrr)}</p>
           <p className="text-xs text-gray-400 uppercase font-medium tracking-wider mt-0.5">MRR</p>
         </div>
         <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
-          <p className="text-lg font-bold text-[#212D40]">{newSignupsThisWeek}</p>
+          <p className="text-lg font-semibold text-[#1A1D23]">{newSignupsThisWeek}</p>
           <p className="text-xs text-gray-400 uppercase font-medium tracking-wider mt-0.5">New Signups</p>
         </div>
         <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
-          <p className="text-lg font-bold text-[#212D40]">{checkupsThisWeek}</p>
+          <p className="text-lg font-semibold text-[#1A1D23]">{checkupsThisWeek}</p>
           <p className="text-xs text-gray-400 uppercase font-medium tracking-wider mt-0.5">Checkups</p>
         </div>
         <div className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
-          <p className="text-lg font-bold text-[#212D40]">{referralsThisWeek}</p>
+          <p className="text-lg font-semibold text-[#1A1D23]">{referralsThisWeek}</p>
           <p className="text-xs text-gray-400 uppercase font-medium tracking-wider mt-0.5">Referrals</p>
         </div>
       </div>
@@ -481,7 +481,7 @@ function AgentPipelineStatus() {
           className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50"
         >
           <PipelineDot status={p.status} />
-          <p className="text-sm text-[#212D40]">{p.label}</p>
+          <p className="text-sm text-[#1A1D23]">{p.label}</p>
         </div>
       ))}
     </div>
@@ -627,7 +627,7 @@ function ClientHealthCard({ entry }: { entry: ClientHealthEntry }) {
     <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
       <HealthDot health={entry.health} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-[#212D40] truncate">{entry.name}</p>
+        <p className="text-sm font-semibold text-[#1A1D23] truncate">{entry.name}</p>
         <p className="text-xs text-gray-400 mt-0.5">
           {entry.risk || (entry.last_login ? `Last login ${timeAgo(entry.last_login)}` : "No login yet")}
         </p>
@@ -787,7 +787,7 @@ function ActionItem({
       ) : (
         <Circle className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
       )}
-      <span className={`text-sm leading-relaxed ${checked ? "text-gray-400 line-through" : "text-[#212D40]"}`}>
+      <span className={`text-sm leading-relaxed ${checked ? "text-gray-400 line-through" : "text-[#1A1D23]"}`}>
         {text}
       </span>
     </button>
@@ -894,13 +894,13 @@ function TrialPipeline({ orgs }: { orgs: AdminOrganization[] }) {
             className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-3"
           >
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#212D40] truncate">{org.name}</p>
+              <p className="text-sm font-semibold text-[#1A1D23] truncate">{org.name}</p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {daysRemaining} day{daysRemaining !== 1 ? "s" : ""} remaining
                 {hasConnection ? " . Connected" : " . Not connected"}
               </p>
             </div>
-            <span className={`shrink-0 text-xs font-bold uppercase px-2.5 py-1 rounded-full ${lc.bg} ${lc.color}`}>
+            <span className={`shrink-0 text-xs font-semibold uppercase px-2.5 py-1 rounded-full ${lc.bg} ${lc.color}`}>
               {lc.label}
             </span>
           </div>
@@ -943,13 +943,13 @@ function RevenueSnapshot({ orgs }: { orgs: AdminOrganization[] }) {
           <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">
             <TailorText editKey="hq.integrator.revenue.label" defaultText="Monthly recurring" />
           </p>
-          <p className="text-2xl font-bold text-[#212D40] mt-1">{formatter.format(mrr)}</p>
+          <p className="text-2xl font-semibold text-[#1A1D23] mt-1">{formatter.format(mrr)}</p>
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-400">
             <TailorText editKey="hq.integrator.revenue.activeLabel" defaultText="Active clients" />
           </p>
-          <p className="text-lg font-bold text-[#212D40] mt-1">{activeOrgs.length}</p>
+          <p className="text-lg font-semibold text-[#1A1D23] mt-1">{activeOrgs.length}</p>
         </div>
       </div>
       <p className={`text-xs mt-2 ${isProfitable ? "text-emerald-600" : mrr > 0 ? "text-amber-600" : "text-gray-400"}`}>
@@ -981,7 +981,7 @@ function WeeklyNumbers({ orgs }: { orgs: AdminOrganization[] }) {
       {stats.map((stat) => (
         <div key={stat.label} className="text-center py-3 px-2 rounded-xl bg-gray-50/50 border border-gray-100">
           <stat.icon className="w-4 h-4 text-gray-400 mx-auto mb-1.5" />
-          <p className="text-lg font-bold text-[#212D40]">{stat.value}</p>
+          <p className="text-lg font-semibold text-[#1A1D23]">{stat.value}</p>
           <p className="text-xs text-gray-400 uppercase font-medium tracking-wider mt-0.5">
             <TailorText editKey={`hq.integrator.weekly.${stat.label.toLowerCase().replace(/\s/g, "_")}`} defaultText={stat.label} />
           </p>
@@ -1056,7 +1056,7 @@ function BlueTapeButton() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Flag className="w-4 h-4 text-[#D56753]" />
-                <h3 className="text-sm font-semibold text-[#212D40] uppercase tracking-wider">
+                <h3 className="text-sm font-semibold text-[#1A1D23] uppercase tracking-wider">
                   Flag something
                 </h3>
               </div>
@@ -1075,7 +1075,7 @@ function BlueTapeButton() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="What needs attention? Bug, idea, client concern..."
-                  className="w-full border border-gray-200 rounded-xl p-3 text-sm text-[#212D40] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#D56753]/30 focus:border-[#D56753] resize-none"
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm text-[#1A1D23] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#D56753]/30 focus:border-[#D56753] resize-none"
                   rows={3}
                   autoFocus
                   onKeyDown={(e) => {
@@ -1108,7 +1108,7 @@ function BlueTapeButton() {
             {response && (
               <div className="space-y-3">
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                  <p className="text-sm text-[#212D40] leading-relaxed">{response}</p>
+                  <p className="text-sm text-[#1A1D23] leading-relaxed">{response}</p>
                 </div>
                 <button
                   onClick={handleDismiss}
@@ -1149,7 +1149,7 @@ function BlastRadiusBadge({ radius }: { radius?: string }) {
   };
   const c = config[radius] || config.green;
   return (
-    <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
+    <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
       {c.label}
     </span>
   );
@@ -1202,7 +1202,7 @@ function StatusSelect({
       value={currentStatus}
       onChange={(e) => mutation.mutate(e.target.value)}
       disabled={mutation.isPending}
-      className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-[#212D40] focus:outline-none focus:ring-1 focus:ring-[#D56753]/30 cursor-pointer"
+      className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-[#1A1D23] focus:outline-none focus:ring-1 focus:ring-[#D56753]/30 cursor-pointer"
     >
       {statusOptions.map((opt) => (
         <option key={opt.value} value={opt.value}>
@@ -1219,7 +1219,7 @@ function TaskCard({ task }: { task: TaskEntry }) {
       <PriorityDot priority={task.priority} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-semibold text-[#212D40]">{task.title}</p>
+          <p className="text-sm font-semibold text-[#1A1D23]">{task.title}</p>
           <BlastRadiusBadge radius={task.blast_radius} />
         </div>
         <p className="text-xs text-gray-400 mt-1">
@@ -1334,7 +1334,7 @@ function AgentStatusBadge({ status }: { status: string }) {
   };
   const c = config[status] || { bg: "bg-gray-50", text: "text-gray-600" };
   return (
-    <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
+    <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
       {status}
     </span>
   );
@@ -1385,7 +1385,7 @@ function DreamTeamActivity() {
         >
           <Bot className="w-4 h-4 text-[#D56753] shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[#212D40] truncate">
+            <p className="text-sm font-semibold text-[#1A1D23] truncate">
               {agentLabel(entry.agent_type)}
             </p>
             <p className="text-xs text-gray-400 mt-0.5">

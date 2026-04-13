@@ -108,7 +108,7 @@ export default function GPDiscoveryPage() {
     return (
       <div className="min-h-dvh bg-[#FAFAF8] flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-lg font-bold text-[#212D40]">Practice not found</p>
+          <p className="text-lg font-semibold text-[#1A1D23]">Practice not found</p>
           <p className="text-sm text-gray-500 mt-1">This referral page may not be set up yet.</p>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function GPDiscoveryPage() {
         {/* Header */}
         <header className="bg-[#212D40] text-white py-6 px-5">
           <div className="mx-auto max-w-2xl">
-            <p className="text-xs font-bold uppercase tracking-widest text-white/40 mb-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-1">
               Refer a Patient
             </p>
             <h1 className="text-2xl font-semibold tracking-tight">{practice.name}</h1>
@@ -165,7 +165,7 @@ export default function GPDiscoveryPage() {
                   <Phone className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-white/70">Direct Scheduling</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-white/70">Direct Scheduling</p>
                   <a href={`tel:${practice.phone}`} className="text-xl font-semibold hover:underline">
                     {practice.phone}
                   </a>
@@ -178,11 +178,11 @@ export default function GPDiscoveryPage() {
           <div className="bg-white border border-gray-200 rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-4">
               <CheckCircle2 className="h-5 w-5 text-[#D56753]" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">Cases We Accept</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-[#D56753]">Cases We Accept</h2>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {practice.case_types.map((ct) => (
-                <div key={ct} className="flex items-center gap-2 text-sm text-[#212D40]">
+                <div key={ct} className="flex items-center gap-2 text-sm text-[#1A1D23]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#D56753] shrink-0" />
                   {ct}
                 </div>
@@ -194,9 +194,9 @@ export default function GPDiscoveryPage() {
           <div className="bg-white border border-gray-200 rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-3">
               <Clock className="h-5 w-5 text-[#D56753]" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">Turnaround</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-[#D56753]">Turnaround</h2>
             </div>
-            <p className="text-lg font-bold text-[#212D40]">
+            <p className="text-lg font-semibold text-[#1A1D23]">
               We contact your patient within {practice.turnaround_days} business day{practice.turnaround_days !== 1 ? "s" : ""}.
             </p>
             <p className="text-sm text-gray-500 mt-1">
@@ -209,12 +209,12 @@ export default function GPDiscoveryPage() {
             <div className="bg-white border border-gray-200 rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Heart className="h-5 w-5 text-[#D56753]" />
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">What Patients Say</h2>
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-[#D56753]">What Patients Say</h2>
               </div>
               <div className="space-y-3">
                 {practice.praise_patterns.map((pattern, i) => (
                   <div key={i} className="bg-[#D56753]/[0.03] rounded-xl px-4 py-3">
-                    <p className="text-sm text-[#212D40] italic leading-relaxed">"{pattern}"</p>
+                    <p className="text-sm text-[#1A1D23] italic leading-relaxed">"{pattern}"</p>
                   </div>
                 ))}
               </div>
@@ -226,11 +226,11 @@ export default function GPDiscoveryPage() {
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-amber-700">Emergency Cases</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-700">Emergency Cases</h2>
             </div>
             <p className="text-sm text-amber-900 leading-relaxed">
               For urgent or emergency referrals, {practice.phone
-                ? <>call <a href={`tel:${practice.phone}`} className="font-bold underline">{practice.phone}</a> directly</>
+                ? <>call <a href={`tel:${practice.phone}`} className="font-semibold underline">{practice.phone}</a> directly</>
                 : "submit the form below with urgency set to Emergency"
               }.
               Emergency referrals are triaged immediately and your patient will be contacted within 2 hours during business hours.
@@ -241,7 +241,7 @@ export default function GPDiscoveryPage() {
           {submitted ? (
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center">
               <CheckCircle2 className="h-10 w-10 text-emerald-600 mx-auto mb-3" />
-              <p className="text-lg font-bold text-emerald-900">Referral received.</p>
+              <p className="text-lg font-semibold text-emerald-900">Referral received.</p>
               <p className="text-sm text-emerald-700 mt-2">
                 We'll contact your patient within {practice.turnaround_days} business day{practice.turnaround_days !== 1 ? "s" : ""}.
                 Thank you for the trust.
@@ -257,56 +257,56 @@ export default function GPDiscoveryPage() {
             <div className="bg-white border border-gray-200 rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-5">
                 <Send className="h-5 w-5 text-[#D56753]" />
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[#D56753]">Refer a Patient</h2>
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-[#D56753]">Refer a Patient</h2>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[#212D40] mb-1">Your Name *</label>
+                    <label className="block text-xs font-semibold text-[#1A1D23] mb-1">Your Name *</label>
                     <input
                       type="text"
                       required
                       value={form.referring_doctor_name}
                       onChange={(e) => setForm({ ...form, referring_doctor_name: e.target.value })}
                       placeholder="Dr. Smith"
-                      className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
+                      className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-[#212D40] mb-1">Your Practice *</label>
+                    <label className="block text-xs font-semibold text-[#1A1D23] mb-1">Your Practice *</label>
                     <input
                       type="text"
                       required
                       value={form.referring_practice_name}
                       onChange={(e) => setForm({ ...form, referring_practice_name: e.target.value })}
                       placeholder="Smith Family Dental"
-                      className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
+                      className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#212D40] mb-1">Patient First Name *</label>
+                  <label className="block text-xs font-semibold text-[#1A1D23] mb-1">Patient First Name *</label>
                   <input
                     type="text"
                     required
                     value={form.patient_first_name}
                     onChange={(e) => setForm({ ...form, patient_first_name: e.target.value })}
                     placeholder="First name only"
-                    className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
+                    className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
                   />
                   <p className="text-xs text-gray-400 mt-1">First name only for PHI compliance</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-[#212D40] mb-1">Case Type *</label>
+                    <label className="block text-xs font-semibold text-[#1A1D23] mb-1">Case Type *</label>
                     <select
                       required
                       value={form.case_type}
                       onChange={(e) => setForm({ ...form, case_type: e.target.value })}
-                      className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#212D40] focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
+                      className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#1A1D23] focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
                     >
                       <option value="">Select...</option>
                       {practice.case_types.map((ct) => (
@@ -315,12 +315,12 @@ export default function GPDiscoveryPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-[#212D40] mb-1">Urgency *</label>
+                    <label className="block text-xs font-semibold text-[#1A1D23] mb-1">Urgency *</label>
                     <select
                       required
                       value={form.urgency}
                       onChange={(e) => setForm({ ...form, urgency: e.target.value })}
-                      className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#212D40] focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
+                      className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-[#1A1D23] focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10"
                     >
                       {practice.referral_form_data.urgency_options.map((u) => (
                         <option key={u} value={u}>{u}</option>
@@ -330,13 +330,13 @@ export default function GPDiscoveryPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#212D40] mb-1">Notes (optional)</label>
+                  <label className="block text-xs font-semibold text-[#1A1D23] mb-1">Notes (optional)</label>
                   <textarea
                     value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                     placeholder="Clinical notes, imaging details, patient preferences..."
                     rows={3}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none"
                   />
                 </div>
 

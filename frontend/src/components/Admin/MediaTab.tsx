@@ -180,7 +180,7 @@ export default function MediaTab({ projectId }: { projectId: string }) {
     });
 
     xhr.addEventListener("error", () => {
-      setError("Upload failed — network error");
+      setError("Upload failed -- network error");
       setUploading(false);
       setUploadProgress(0);
     });

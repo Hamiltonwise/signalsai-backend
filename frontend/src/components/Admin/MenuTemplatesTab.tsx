@@ -198,7 +198,7 @@ function replaceMenuPlaceholders(html: string): string {
     return before + rendered + after;
   }
 
-  // Fallback: no loop markers — single item replacement
+  // Fallback: no loop markers -- single item replacement
   let result = html;
   const first = SAMPLE_MENU_ITEMS[0];
   result = result.replaceAll("{{menu_item.label}}", first.label);

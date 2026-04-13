@@ -30,7 +30,7 @@ import type {
 } from "../../types/agentInsights";
 
 // =====================================================================
-// AI DATA INSIGHTS — SUMMARY LIST
+// AI DATA INSIGHTS -- SUMMARY LIST
 // =====================================================================
 
 export function useAdminInsightsSummary(page: number, month: string) {
@@ -63,7 +63,7 @@ export function useAdminInsightsSummary(page: number, month: string) {
 }
 
 // =====================================================================
-// AI DATA INSIGHTS — RECOMMENDATIONS DETAIL
+// AI DATA INSIGHTS -- RECOMMENDATIONS DETAIL
 // =====================================================================
 
 export function useAdminInsightsRecommendations(

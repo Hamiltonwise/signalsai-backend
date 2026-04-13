@@ -1,5 +1,5 @@
 /**
- * Leaderboard Section — WO13: Your Market
+ * Leaderboard Section -- WO13: Your Market
  *
  * Visual leaderboard showing practice positions on horizontal tracks.
  * Practice dot (Terracotta), competitor dots (Navy), delta badges, gap sentence.
@@ -39,7 +39,7 @@ interface LeaderboardEntry {
 // ---------------------------------------------------------------------------
 
 function buildLeaderboard(jobs: RankingJob[]): LeaderboardEntry[] {
-  // Group by org — take the two most recent completed jobs per org
+  // Group by org -- take the two most recent completed jobs per org
   const orgMap = new Map<
     number,
     { latest: RankingJob; previous: RankingJob | null }
@@ -86,7 +86,7 @@ function buildLeaderboard(jobs: RankingJob[]): LeaderboardEntry[] {
 }
 
 // ---------------------------------------------------------------------------
-// Position Track — horizontal visualization
+// Position Track -- horizontal visualization
 // ---------------------------------------------------------------------------
 
 function PositionTrack({ entry }: { entry: LeaderboardEntry }) {
@@ -102,7 +102,7 @@ function PositionTrack({ entry }: { entry: LeaderboardEntry }) {
     <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md">
       {/* Org name + specialty */}
       <div className="w-40 shrink-0 min-w-0">
-        <p className="text-sm font-bold text-[#212D40] truncate" title={entry.orgName}>
+        <p className="text-sm font-semibold text-[#1A1D23] truncate" title={entry.orgName}>
           {entry.orgName}
         </p>
         <p className="text-xs text-gray-400 truncate">
@@ -142,7 +142,7 @@ function PositionTrack({ entry }: { entry: LeaderboardEntry }) {
 
       {/* Position number + delta */}
       <div className="w-20 shrink-0 text-right">
-        <span className="text-lg font-semibold text-[#212D40]">
+        <span className="text-lg font-semibold text-[#1A1D23]">
           #{entry.position}
         </span>
         {entry.delta !== null && entry.delta !== 0 && (
@@ -180,7 +180,7 @@ function GapSentence({ entry }: { entry: LeaderboardEntry }) {
   return (
     <p className="text-xs text-gray-400 pl-44 -mt-1 mb-1">
       {gap} position{gap !== 1 ? "s" : ""} from first place
-      {entry.score < 70 ? " — review velocity is the fastest lever" : ""}
+      {entry.score < 70 ? " -- review velocity is the fastest lever" : ""}
     </p>
   );
 }

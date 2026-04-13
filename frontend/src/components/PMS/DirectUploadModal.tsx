@@ -180,7 +180,7 @@ export const DirectUploadModal: React.FC<DirectUploadModalProps> = ({
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">
+                <h2 className="text-xl font-semibold text-slate-900">
                   Direct Upload
                 </h2>
                 <p className="text-sm text-slate-500 mt-0.5">
@@ -304,7 +304,7 @@ export const DirectUploadModal: React.FC<DirectUploadModalProps> = ({
                   >
                     <CheckCircle className="w-10 h-10 text-emerald-600" />
                   </motion.div>
-                  <h4 className="text-xl font-bold text-slate-900 mb-2">
+                  <h4 className="text-xl font-semibold text-slate-900 mb-2">
                     Upload Successful!
                   </h4>
                   <p className="text-slate-600">{message}</p>
@@ -320,7 +320,7 @@ export const DirectUploadModal: React.FC<DirectUploadModalProps> = ({
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
                     <AlertCircle className="w-10 h-10 text-red-600" />
                   </div>
-                  <h4 className="text-xl font-bold text-slate-900 mb-2">Upload Failed</h4>
+                  <h4 className="text-xl font-semibold text-slate-900 mb-2">Upload Failed</h4>
                   <p className="text-red-600 mb-4">{message}</p>
                   <button
                     onClick={() => setUploadStatus("idle")}

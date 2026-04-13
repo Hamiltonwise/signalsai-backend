@@ -17,18 +17,18 @@ export default function TheSecondJobProblem() {
     >
       <article className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
         <header className="mb-12">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
-            Business Clarity
+          <span className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">
+            Intelligence
           </span>
-          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-[#212D40] leading-tight tracking-tight">
+          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-[#1A1D23] leading-tight tracking-tight">
             The second job nobody warned you about
           </h1>
-          <p className="mt-4 text-base text-[#212D40]/50">
+          <p className="mt-4 text-base text-[#1A1D23]/50">
             March 2026
           </p>
         </header>
 
-        <div className="space-y-6 text-base text-[#212D40]/80 leading-relaxed">
+        <div className="space-y-6 text-base text-[#1A1D23]/80 leading-relaxed">
           <p>
             Freedom is the number one reason people start businesses. Not money.
             Not legacy. Not even passion. Freedom. The ability to control your
@@ -43,7 +43,7 @@ export default function TheSecondJobProblem() {
             Nobody warned them about the second job.
           </p>
 
-          <h2 className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 className="text-xl font-semibold text-[#1A1D23] pt-4">
             The job you trained for, and the one you didn't
           </h2>
           <p>
@@ -61,7 +61,7 @@ export default function TheSecondJobProblem() {
             already fills their day.
           </p>
 
-          <h2 className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 className="text-xl font-semibold text-[#1A1D23] pt-4">
             The language problem
           </h2>
           <p>
@@ -82,11 +82,11 @@ export default function TheSecondJobProblem() {
             yourself. The business keeps talking. Nobody translates.
           </p>
 
-          <h2 className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 className="text-xl font-semibold text-[#1A1D23] pt-4">
             What clarity looks like
           </h2>
           <p>
-            Business Clarity is not a report. It's not a dashboard. It's the
+            Alloro is not a report. It's not a dashboard. It's the
             confidence that comes from knowing three things:
           </p>
           <ol className="list-decimal pl-6 space-y-2">
@@ -106,10 +106,10 @@ export default function TheSecondJobProblem() {
 
         {/* CTA */}
         <div className="mt-12 rounded-2xl bg-[#D56753]/5 border border-[#D56753]/20 p-8 text-center">
-          <p className="text-base font-bold text-[#212D40] mb-2">
+          <p className="text-base font-semibold text-[#1A1D23] mb-2">
             Curious what your business is saying?
           </p>
-          <p className="text-sm text-[#212D40]/50 mb-4">
+          <p className="text-sm text-[#1A1D23]/50 mb-4">
             See where you rank. 60 seconds.
           </p>
           <Link
@@ -128,15 +128,15 @@ export default function TheSecondJobProblem() {
 
         {/* Related reading */}
         <div className="mt-12">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Related reading</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">Related reading</h3>
           <div className="space-y-3">
             <Link to="/blog/google-business-profile-score" className="block rounded-xl border border-gray-200 p-4 hover:border-[#D56753]/30 transition-colors">
-              <p className="text-sm font-bold text-[#212D40]">What your Google Business Profile score actually means</p>
-              <p className="text-xs text-[#212D40]/50 mt-1">The one metric that determines who finds you first.</p>
+              <p className="text-sm font-semibold text-[#1A1D23]">What your Google Business Profile score actually means</p>
+              <p className="text-xs text-[#1A1D23]/50 mt-1">The one metric that determines who finds you first.</p>
             </Link>
             <Link to="/blog/why-your-competitor-keeps-showing-up" className="block rounded-xl border border-gray-200 p-4 hover:border-[#D56753]/30 transition-colors">
-              <p className="text-sm font-bold text-[#212D40]">Why your top competitor keeps showing up where you don't</p>
-              <p className="text-xs text-[#212D40]/50 mt-1">It's not luck. It's a pattern. Here's what drives it.</p>
+              <p className="text-sm font-semibold text-[#1A1D23]">Why your top competitor keeps showing up where you don't</p>
+              <p className="text-xs text-[#1A1D23]/50 mt-1">It's not luck. It's a pattern. Here's what drives it.</p>
             </Link>
           </div>
         </div>

@@ -18,9 +18,9 @@ export interface LocationContextType {
   transitionOrigin: TransitionOrigin | null;
   /** Name of the location being switched to (shown in overlay) */
   transitionLocationName: string | null;
-  /** Call from pages that fetch data on location change — tells the overlay to wait for content */
+  /** Call from pages that fetch data on location change -- tells the overlay to wait for content */
   registerContentLoading: () => void;
-  /** Call from pages after data has finished loading — tells the overlay content is ready */
+  /** Call from pages after data has finished loading -- tells the overlay content is ready */
   signalContentReady: () => void;
 }
 

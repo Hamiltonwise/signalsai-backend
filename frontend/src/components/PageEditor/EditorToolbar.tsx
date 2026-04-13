@@ -72,7 +72,7 @@ export default function EditorToolbar({
 
       {/* Center: Device switcher + Code + SEO tabs */}
       <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
-        {/* Device icons — grouped */}
+        {/* Device icons -- grouped */}
         {(
           [
             { key: "desktop", icon: Monitor, title: "Desktop (100%)" },
@@ -122,7 +122,7 @@ export default function EditorToolbar({
           title="SEO panel"
         >
           <BarChart3 className="w-4 h-4" />
-          <span className="text-xs font-bold">SEO</span>
+          <span className="text-xs font-semibold">SEO</span>
         </button>
       </div>
 

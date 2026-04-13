@@ -1,13 +1,13 @@
 import { Outlet } from "react-router-dom";
 
 /**
- * Public layout for the Checkup flow — no sidebar, no auth.
+ * Public layout for the Checkup flow -- no sidebar, no auth.
  * Centered, mobile-first, branded. $2,000/month product feel.
  */
 export default function CheckupLayout() {
   return (
     <div className="min-h-dvh bg-[#F7F8FA] flex flex-col">
-      {/* Branded header — Navy wordmark with Terracotta accent */}
+      {/* Branded header -- Navy wordmark with Terracotta accent */}
       <header className="flex items-center justify-center pt-10 pb-6 px-4">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-[#D56753] flex items-center justify-center">
@@ -30,7 +30,7 @@ export default function CheckupLayout() {
       <footer className="py-8 text-center">
         <div className="h-px divider-warm mx-auto max-w-[8rem] mb-6" />
         <p className="text-xs font-medium tracking-[0.15em] text-[#D56753]/25 uppercase">
-          Alloro &middot; Business Clarity
+          Alloro
         </p>
       </footer>
     </div>

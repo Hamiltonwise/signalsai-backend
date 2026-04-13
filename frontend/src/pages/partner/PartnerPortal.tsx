@@ -116,7 +116,7 @@ function PartnerSidebar({
           className={`flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
             active === item.key
               ? "bg-[#D56753] text-white shadow-sm"
-              : "text-gray-500 hover:text-[#212D40] hover:bg-gray-100"
+              : "text-gray-500 hover:text-[#1A1D23] hover:bg-gray-100"
           }`}
         >
           <item.icon className="h-4 w-4" />
@@ -197,10 +197,10 @@ function ProgressTracker() {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-5">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
           Getting Started
         </p>
-        <span className="text-xs font-bold text-[#D56753]">
+        <span className="text-xs font-semibold text-[#D56753]">
           {completedCount}/{steps.length}
         </span>
       </div>
@@ -224,10 +224,10 @@ function ProgressTracker() {
             }`}
           >
             {/* Step indicator */}
-            <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+            <div className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
               step.complete
                 ? "bg-[#D56753] text-white"
-                : "bg-[#212D40]/10 text-[#212D40]/40"
+                : "bg-[#212D40]/10 text-[#1A1D23]/40"
             }`}>
               {step.complete ? (
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -239,11 +239,11 @@ function ProgressTracker() {
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className={`text-sm font-semibold ${step.complete ? "text-[#D56753]" : "text-[#212D40]"}`}>
+                <p className={`text-sm font-semibold ${step.complete ? "text-[#D56753]" : "text-[#1A1D23]"}`}>
                   {step.label}
                 </p>
                 {step.progress && !step.complete && (
-                  <span className="text-xs font-bold text-[#212D40]/40 bg-[#212D40]/5 px-1.5 py-0.5 rounded">
+                  <span className="text-xs font-semibold text-[#1A1D23]/40 bg-[#212D40]/5 px-1.5 py-0.5 rounded">
                     {step.progress}
                   </span>
                 )}
@@ -290,16 +290,16 @@ function PortfolioView() {
       {/* Stats header */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-2xl font-semibold text-[#212D40]">{stats.totalReferred}</p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Practices</p>
+          <p className="text-2xl font-semibold text-[#1A1D23]">{stats.totalReferred}</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-1">Practices</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
           <p className="text-2xl font-semibold text-emerald-600">${stats.totalMRR}</p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">MRR Attributed</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-1">MRR Attributed</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-2xl font-semibold text-[#212D40]">{stats.avgScore ?? "-"}</p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Avg Score</p>
+          <p className="text-2xl font-semibold text-[#1A1D23]">{stats.avgScore ?? "-"}</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-1">Avg Score</p>
         </div>
       </div>
 
@@ -319,7 +319,7 @@ function PortfolioView() {
       {!isLoading && !isPortfolioError && portfolio.length === 0 && (
         <div className="rounded-2xl border border-dashed border-gray-300 p-10 text-center">
           <Search className="h-8 w-8 text-gray-300 mx-auto mb-3" />
-          <p className="text-base font-semibold text-[#212D40]">Run your first Checkup to add a practice.</p>
+          <p className="text-base font-semibold text-[#1A1D23]">Run your first Checkup to add a practice.</p>
           <p className="text-sm text-gray-400 mt-1">
             Use the Checkup tab to scan any practice and add it to your portfolio.
           </p>
@@ -333,16 +333,16 @@ function PortfolioView() {
         return (
           <div key={p.id} className="bg-white border border-gray-200 rounded-xl p-5 flex items-center justify-between">
             <div className="min-w-0">
-              <p className="text-sm font-bold text-[#212D40] truncate">{p.name}</p>
+              <p className="text-sm font-semibold text-[#1A1D23] truncate">{p.name}</p>
               <p className="text-xs text-gray-500">
                 {p.city && `${p.city} · `}{p.specialty || "Practice"}
               </p>
               <div className="flex items-center gap-3 mt-2">
                 {p.subscriptionStatus === "active" && (
-                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
+                  <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
                 )}
                 {p.subscriptionStatus !== "active" && (
-                  <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
                     {p.subscriptionStatus || "Pending"}
                   </span>
                 )}
@@ -409,7 +409,7 @@ function CheckupLauncher() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <h3 className="text-base font-bold text-[#212D40] mb-2">Share with a Colleague</h3>
+        <h3 className="text-base font-semibold text-[#1A1D23] mb-2">Share with a Colleague</h3>
         <p className="text-sm text-gray-500 mb-4">
           Send this link to a business owner. They'll see the full Checkup experience.
           When they sign up, the account is attributed to you.
@@ -439,7 +439,7 @@ function CheckupLauncher() {
         </div>
         {refCode && (
           <p className="text-xs text-gray-400 mt-2">
-            Your referral code: <span className="font-mono font-bold">{refCode}</span>
+            Your referral code: <span className="font-mono font-semibold">{refCode}</span>
           </p>
         )}
       </div>
@@ -495,11 +495,11 @@ function PerformanceDashboard() {
       {data.referralCode && (
         <div className="bg-[#212D40] rounded-2xl p-5 text-white flex items-center justify-between">
           <div>
-            <p className="text-xs text-white/50 uppercase tracking-wider font-bold">Your Referral Code</p>
+            <p className="text-xs text-white/50 uppercase tracking-wider font-semibold">Your Referral Code</p>
             <p className="text-2xl font-mono font-semibold mt-1">{data.referralCode}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-white/50 uppercase tracking-wider font-bold">Estimated MRR</p>
+            <p className="text-xs text-white/50 uppercase tracking-wider font-semibold">Estimated MRR</p>
             <p className="text-2xl font-semibold mt-1">${data.estimatedMRR}</p>
           </div>
         </div>
@@ -507,7 +507,7 @@ function PerformanceDashboard() {
 
       {/* Funnel */}
       <div className="space-y-2">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Conversion Funnel</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Conversion Funnel</p>
         {funnel.map((step, i) => {
           const pct = funnel[0].value > 0
             ? Math.round((step.value / funnel[0].value) * 100)
@@ -519,13 +519,13 @@ function PerformanceDashboard() {
                   <step.icon className="h-4 w-4 text-[#D56753]" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-[#212D40]">{step.label}</p>
+                  <p className="text-sm font-semibold text-[#1A1D23]">{step.label}</p>
                   {i > 0 && funnel[0].value > 0 && (
                     <p className="text-xs text-gray-400">{pct}% of scans</p>
                   )}
                 </div>
               </div>
-              <p className="text-xl font-semibold text-[#212D40]">{step.value}</p>
+              <p className="text-xl font-semibold text-[#1A1D23]">{step.value}</p>
             </div>
           );
         })}
@@ -606,7 +606,7 @@ function VoiceProfileSetup({
   return (
     <div className="space-y-6">
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <h3 className="text-base font-bold text-[#212D40] mb-2">
+        <h3 className="text-base font-semibold text-[#1A1D23] mb-2">
           {existingProfile ? "Update your voice profile" : "Let's make sure every email sounds like you."}
         </h3>
         <p className="text-sm text-gray-500 mb-5 leading-relaxed">
@@ -620,7 +620,7 @@ function VoiceProfileSetup({
           <div className="flex items-center justify-between mb-2">
             <button
               onClick={() => setShowFullPrompt(!showFullPrompt)}
-              className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-xs font-semibold uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
             >
               Voice Extraction Prompt {showFullPrompt ? "▾" : "▸"}
             </button>
@@ -653,7 +653,7 @@ function VoiceProfileSetup({
         </div>
 
         {/* Textarea for paste */}
-        <label className="block text-sm font-semibold text-[#212D40] mb-2">
+        <label className="block text-sm font-semibold text-[#1A1D23] mb-2">
           {existingProfile ? "Your Voice Profile" : "Paste your Voice Profile"}
         </label>
         <textarea
@@ -661,13 +661,13 @@ function VoiceProfileSetup({
           onChange={(e) => setProfileText(e.target.value)}
           placeholder={"VOICE PROFILE: Your Name\n\nRHYTHM:\n..."}
           rows={10}
-          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-y font-mono text-xs leading-relaxed"
+          className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-y font-mono text-xs leading-relaxed"
         />
 
         {/* Profile quality indicator */}
         {profileText.trim().length > 30 && (
           <div className={`mt-3 rounded-lg p-3 ${isValidProfile ? "bg-[#D56753]/[0.04]" : "bg-amber-50"}`}>
-            <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${isValidProfile ? "text-[#D56753]" : "text-amber-600"}`}>
+            <p className={`text-xs font-semibold uppercase tracking-widest mb-1 ${isValidProfile ? "text-[#D56753]" : "text-amber-600"}`}>
               {isValidProfile ? `Profile detected, ${sectionCount} sections found` : "Looks incomplete"}
             </p>
             <p className="text-xs text-gray-600">
@@ -826,7 +826,7 @@ function CMOAgent() {
       <div className="space-y-5">
         <button
           onClick={handleBack}
-          className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#212D40] transition-colors"
+          className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#1A1D23] transition-colors"
         >
           <ArrowRight className="h-3 w-3 rotate-180" />
           Back to recommendations
@@ -834,10 +834,10 @@ function CMOAgent() {
 
         {activeRec && (
           <div className="rounded-xl bg-[#212D40]/[0.03] px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-widest text-[#D56753] mb-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#D56753] mb-1">
               Campaign built from
             </p>
-            <p className="text-sm font-semibold text-[#212D40]">{activeRec}</p>
+            <p className="text-sm font-semibold text-[#1A1D23]">{activeRec}</p>
           </div>
         )}
 
@@ -846,10 +846,10 @@ function CMOAgent() {
             <div key={idx} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">
                     Option {idx + 1}
                   </span>
-                  <p className="text-sm font-bold text-[#212D40] mt-1">
+                  <p className="text-sm font-semibold text-[#1A1D23] mt-1">
                     {email.subject}
                   </p>
                 </div>
@@ -892,7 +892,7 @@ function CMOAgent() {
           <div className="w-10 h-10 rounded-full bg-[#D56753]/10 flex items-center justify-center mb-4">
             <Loader2 className="h-5 w-5 animate-spin text-[#D56753]" />
           </div>
-          <p className="text-sm font-semibold text-[#212D40]">Building your campaign...</p>
+          <p className="text-sm font-semibold text-[#1A1D23]">Building your campaign...</p>
           <p className="text-xs text-gray-400 mt-1">Your CMO is writing emails tailored to this situation.</p>
         </div>
       </div>
@@ -905,7 +905,7 @@ function CMOAgent() {
       <div className="space-y-5">
         <button
           onClick={handleBack}
-          className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#212D40] transition-colors"
+          className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#1A1D23] transition-colors"
         >
           <ArrowRight className="h-3 w-3 rotate-180" />
           Back to recommendations
@@ -914,10 +914,10 @@ function CMOAgent() {
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <MessageSquare className="h-4 w-4 text-[#D56753]" />
-            <h3 className="text-sm font-bold text-[#212D40]">Custom Campaign</h3>
+            <h3 className="text-sm font-semibold text-[#1A1D23]">Custom Campaign</h3>
           </div>
 
-          <label className="block text-sm font-semibold text-[#212D40] mb-2">
+          <label className="block text-sm font-semibold text-[#1A1D23] mb-2">
             Describe the situation
           </label>
           <textarea
@@ -925,7 +925,7 @@ function CMOAgent() {
             onChange={(e) => setSituation(e.target.value)}
             placeholder="I need to follow up with Dr. Martinez who watched our demo but mentioned the price was a concern"
             rows={3}
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none"
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:border-[#D56753] focus:ring-2 focus:ring-[#D56753]/10 resize-none"
           />
 
           <div className="flex items-center gap-2 mt-3">
@@ -971,7 +971,7 @@ function CMOAgent() {
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <div>
-              <p className="text-sm font-bold">Your CMO</p>
+              <p className="text-sm font-semibold">Your CMO</p>
               <p className="text-xs text-white/50">Analyzing your pipeline</p>
             </div>
           </div>
@@ -1005,11 +1005,11 @@ function CMOAgent() {
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-[#D56753] shrink-0" />
-                  <h3 className="text-sm font-bold text-[#212D40] leading-snug">
+                  <h3 className="text-sm font-semibold text-[#1A1D23] leading-snug">
                     {rec.headline}
                   </h3>
                 </div>
-                <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${priorityColor(rec.priority)}`}>
+                <span className={`text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${priorityColor(rec.priority)}`}>
                   {rec.priority}
                 </span>
               </div>
@@ -1044,7 +1044,7 @@ function CMOAgent() {
             <MessageSquare className="h-4 w-4 text-gray-400" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-[#212D40]">Custom campaign</p>
+            <p className="text-sm font-semibold text-[#1A1D23]">Custom campaign</p>
             <p className="text-xs text-gray-400 mt-0.5">Have something specific in mind? Describe it and I'll build it.</p>
           </div>
           <ArrowRight className="h-4 w-4 text-gray-300 ml-auto group-hover:text-gray-500 transition-colors" />
@@ -1088,8 +1088,8 @@ export default function PartnerPortal() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9"/>
               </svg>
             </div>
-            <span className="text-lg font-bold tracking-tight">alloro</span>
-            <span className="text-xs font-bold uppercase tracking-widest text-white/40 bg-white/10 px-2.5 py-0.5 rounded-full ml-2">
+            <span className="text-lg font-semibold tracking-tight">alloro</span>
+            <span className="text-xs font-semibold uppercase tracking-widest text-white/40 bg-white/10 px-2.5 py-0.5 rounded-full ml-2">
               Partner
             </span>
           </div>
@@ -1104,7 +1104,7 @@ export default function PartnerPortal() {
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="mb-6">
-              <h1 className="text-2xl font-semibold text-[#212D40]">
+              <h1 className="text-2xl font-semibold text-[#1A1D23]">
                 {activeTab === "portfolio" && "Your Portfolio"}
                 {activeTab === "checkup" && "Run a Checkup"}
                 {activeTab === "performance" && "Referral Performance"}

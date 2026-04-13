@@ -54,7 +54,7 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-alloro-orange rounded-lg flex items-center justify-center text-white font-bold text-sm">
+            <div className="w-8 h-8 bg-alloro-orange rounded-lg flex items-center justify-center text-white font-semibold text-sm">
               {onboardingCompleted
                 ? userProfile?.practiceName?.charAt(0)?.toUpperCase() || "A"
                 : "A"}
@@ -75,7 +75,7 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
           )}
           <button
             onClick={() => navigate("/settings")}
-            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold border border-slate-200"
+            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-semibold border border-slate-200"
           >
             {userProfile?.practiceName?.substring(0, 2).toUpperCase() || "AP"}
           </button>
@@ -97,7 +97,7 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
           collapsed ? "lg:pl-[68px]" : "lg:pl-72"
         }`}
       >
-        {/* Lockout Banner — persistent top bar when account is locked */}
+        {/* Lockout Banner -- persistent top bar when account is locked */}
         {isLockedOut && (
           <div className="bg-red-50 border-b border-red-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
             <div className="flex items-center gap-3">
@@ -110,7 +110,7 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
             {!isOnSettingsPage && (
               <button
                 onClick={() => navigate("/settings/billing")}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors shrink-0"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors shrink-0"
               >
                 <CreditCard size={14} />
                 Go to Settings
@@ -119,7 +119,7 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
           </div>
         )}
 
-        {/* Subscribe Banner — persistent for admin-granted users without Stripe. Hidden in conference mode. */}
+        {/* Subscribe Banner -- persistent for admin-granted users without Stripe. Hidden in conference mode. */}
         {!isLockedOut && billingStatus?.isAdminGranted && !billingStatus?.isFoundation && !isOnSettingsPage && !isConferenceMode() && (
           <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between gap-4 shrink-0">
             <div className="flex items-center gap-3">
@@ -131,7 +131,7 @@ const PageWrapperInner: React.FC<PageWrapperProps> = ({ children }) => {
             </div>
             <button
               onClick={() => navigate("/settings/billing")}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-alloro-orange text-white text-xs font-bold rounded-lg hover:bg-alloro-orange/90 transition-colors shrink-0"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-alloro-orange text-white text-xs font-semibold rounded-lg hover:bg-alloro-orange/90 transition-colors shrink-0"
             >
               <CreditCard size={14} />
               Subscribe

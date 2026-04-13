@@ -21,7 +21,7 @@ export function LocationProvider({ children }: LocationProviderProps) {
   // Content-ready signaling: pages call signalContentReady() after their data loads.
   // The transition overlay waits for both the minimum hold time AND content readiness.
   // If no page registers as loading (contentLoadingRef stays false), the overlay
-  // dismisses at the 1200ms minimum as before — backward compatible.
+  // dismisses at the 1200ms minimum as before -- backward compatible.
   const contentReadyRef = useRef(false);
   const contentLoadingRef = useRef(false);
   const minTimeElapsedRef = useRef(false);
@@ -96,12 +96,12 @@ export function LocationProvider({ children }: LocationProviderProps) {
         setSelectedLocationState(location);
         localStorage.setItem(STORAGE_KEY, String(location.id));
       }, 400);
-      // Minimum hold time (1200ms) — overlay won't dismiss before this
+      // Minimum hold time (1200ms) -- overlay won't dismiss before this
       setTimeout(() => {
         minTimeElapsedRef.current = true;
         tryDismiss();
       }, 1200);
-      // Safety max timeout (4s) — dismiss regardless if content never signals
+      // Safety max timeout (4s) -- dismiss regardless if content never signals
       setTimeout(() => {
         dismissTransition();
       }, 4000);

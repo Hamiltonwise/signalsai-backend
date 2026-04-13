@@ -66,7 +66,7 @@ export default function FoundationApply() {
         <div className="flex items-center justify-center px-6 py-20">
           <div className="text-center max-w-md">
             <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-[#212D40]">Application Received</h1>
+            <h1 className="text-2xl font-semibold text-[#1A1D23]">Application Received</h1>
             <p className="mt-3 text-gray-500">
               Thank you, {form.name}. We review every application personally.
               You'll hear from us within 5 business days.
@@ -89,7 +89,7 @@ export default function FoundationApply() {
         <Link to="/foundation" className="text-xs text-gray-400 hover:text-[#D56753] mb-6 block">
           &larr; Back to Foundation
         </Link>
-        <h1 className="text-2xl font-bold text-[#212D40] mb-2">Apply to the Foundation</h1>
+        <h1 className="text-2xl font-semibold text-[#1A1D23] mb-2">Apply to the Foundation</h1>
         <p className="text-sm text-gray-500 mb-8">
           Tell us about yourself and your practice. Every application is reviewed personally.
         </p>
@@ -97,7 +97,7 @@ export default function FoundationApply() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Program selection */}
           <fieldset>
-            <legend className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+            <legend className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
               Which program?
             </legend>
             <div className="flex gap-3">
@@ -145,7 +145,7 @@ export default function FoundationApply() {
           {/* Veteran status (if Heroes) */}
           {form.program === "heroes" && (
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">
+              <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1 block">
                 Veteran Status
               </label>
               <select
@@ -165,7 +165,7 @@ export default function FoundationApply() {
 
           {/* Story */}
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1 block">
               Your Story (Optional)
             </label>
             <textarea
@@ -209,7 +209,7 @@ function Input({
 }) {
   return (
     <div>
-      <label className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 block">
+      <label className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1 block">
         {label}
       </label>
       <input

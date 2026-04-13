@@ -22,7 +22,7 @@ export default function TermsOfService() {
               <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
             </svg>
           </div>
-          <span className="text-[22px] font-bold tracking-tight text-[#1A1D23]">
+          <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
             alloro
           </span>
         </button>
@@ -63,7 +63,7 @@ export default function TermsOfService() {
 
           <Section title="Billing, pause, and cancellation">
             <ul className="space-y-1.5">
-              <Li><strong>Free tier:</strong> The Business Clarity Score is free. No account required. No credit card.</Li>
+              <Li><strong>Free tier:</strong> The Google Health Check is free. No account required. No credit card.</Li>
               <Li><strong>When billing starts:</strong> After you experience first value, not at signup. We don't charge until you've seen something useful.</Li>
               <Li><strong>Pricing:</strong> $2,000/month. No contracts. No annual commitment required.</Li>
               <Li><strong>Pause:</strong> You can pause your subscription for up to 3 months. Your data stays. Resume anytime.</Li>
@@ -185,7 +185,7 @@ export default function TermsOfService() {
 
       <footer className="py-8 text-center border-t border-slate-100">
         <p className="text-xs font-medium tracking-wide text-slate-300 uppercase">
-          Alloro &middot; Business Clarity
+          Alloro
         </p>
       </footer>
     </div>

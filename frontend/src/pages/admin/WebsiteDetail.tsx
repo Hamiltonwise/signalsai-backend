@@ -1326,7 +1326,7 @@ export default function WebsiteDetail() {
                       className="rounded-2xl border-2 border-alloro-orange/30 overflow-visible"
                     >
                       <div className="bg-gradient-to-br from-alloro-orange to-orange-500 p-4 text-white">
-                        <h3 className="text-lg font-bold">
+                        <h3 className="text-lg font-semibold">
                           {selectedPlace.name}
                         </h3>
                         {selectedPlace.category && (
@@ -1980,7 +1980,7 @@ export default function WebsiteDetail() {
                                   style={{ width: `${seoScore.pct}%` }}
                                 />
                               </div>
-                              <span className={`text-xs font-bold tabular-nums ${seoScore.colorClass}`}>
+                              <span className={`text-xs font-semibold tabular-nums ${seoScore.colorClass}`}>
                                 {seoScore.pct > 0 ? seoScore.pct : "-"}
                               </span>
                             </div>

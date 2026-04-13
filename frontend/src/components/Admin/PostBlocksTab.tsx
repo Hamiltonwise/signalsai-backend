@@ -134,7 +134,7 @@ function replacePlaceholders(html: string): string {
     return before + rendered + after;
   }
 
-  // Fallback: no loop markers — single post replacement
+  // Fallback: no loop markers -- single post replacement
   let result = html;
   for (const [token, value] of Object.entries(PLACEHOLDER_POST)) {
     result = result.replaceAll(token, value);
@@ -471,7 +471,7 @@ export default function PostBlocksTab({
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-lg font-semibold text-gray-900">
-              Single Post Template — {pt?.name || "Unknown"}
+              Single Post Template -- {pt?.name || "Unknown"}
             </h3>
             <button onClick={() => setEditingSingleTemplateId(null)} className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />

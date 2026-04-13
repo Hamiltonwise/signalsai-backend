@@ -82,20 +82,20 @@ export default function GoogleReviewsGuide() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+            <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
               alloro
             </span>
           </div>
         </header>
 
         <main className="mx-auto max-w-2xl px-5 pb-16">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
             Google Reviews for Dental Practices: What Actually Works in 2026
           </h1>
 
           {/* Why Reviews Matter */}
           <div className="mt-8">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-4">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-4">
               Why reviews matter more than most dental marketing
             </h2>
             <p className="text-base sm:text-lg text-gray-700 leading-relaxed text-center max-w-xl mx-auto">
@@ -111,14 +111,14 @@ export default function GoogleReviewsGuide() {
             <p className="text-sm font-semibold text-[#D56753] uppercase tracking-wider mb-2">
               The one thing that predicts review velocity
             </p>
-            <p className="text-base text-[#212D40] font-medium leading-relaxed">
+            <p className="text-base text-[#1A1D23] font-medium leading-relaxed">
               {VELOCITY_INSIGHT}
             </p>
           </div>
 
           {/* Competitor Pulling Ahead */}
           <div className="mt-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-4">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-4">
               What to do when a competitor is pulling ahead
             </h2>
             <p className="text-base text-gray-700 leading-relaxed text-center max-w-xl mx-auto">

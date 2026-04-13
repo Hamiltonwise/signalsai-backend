@@ -1,5 +1,5 @@
 /**
- * CS Agent API — account-aware Claude chat
+ * CS Agent API -- account-aware Claude chat
  */
 
 import { apiPost } from "./index";

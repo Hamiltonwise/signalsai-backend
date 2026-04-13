@@ -66,7 +66,7 @@ function ProposalDiff({ proposal }: { proposal: SyncProposal }) {
         <div className="mt-2 grid grid-cols-2 gap-3">
           {proposal.target_excerpt && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-red-400 mb-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-red-400 mb-1.5">
                 Will Forget
               </p>
               <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-300 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -75,7 +75,7 @@ function ProposalDiff({ proposal }: { proposal: SyncProposal }) {
             </div>
           )}
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-green-400 mb-1.5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-green-400 mb-1.5">
               Will Learn
             </p>
             <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-xs text-green-300 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -283,7 +283,7 @@ export function ParentingProposals({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   <span
-                    className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg ${
+                    className={`text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-lg ${
                       proposal.type === "NEW"
                         ? "bg-green-500/15 text-green-400"
                         : proposal.type === "UPDATE"

@@ -112,14 +112,14 @@ export default function LocalServiceBusinessClarity() {
                 <path d="M8 2L14 14H2L8 2Z" fill="white" opacity="0.9" />
               </svg>
             </div>
-            <span className="text-[22px] font-bold tracking-tight text-[#212D40]">
+            <span className="text-[22px] font-semibold tracking-tight text-[#1A1D23]">
               alloro
             </span>
           </div>
         </header>
 
         <main className="mx-auto max-w-2xl px-5 pb-16">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#212D40] tracking-tight text-center mt-8">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[#1A1D23] tracking-tight text-center mt-8">
             The Information Gap That Kills Local Service Businesses (And How to
             Close It)
           </h1>
@@ -131,7 +131,7 @@ export default function LocalServiceBusinessClarity() {
 
           {/* Three ICP Scenarios */}
           <div className="mt-12 space-y-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center">
               Three business owners who discovered the gap too late
             </h2>
             {SCENARIOS.map((scenario, i) => (
@@ -139,7 +139,7 @@ export default function LocalServiceBusinessClarity() {
                 key={i}
                 className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
               >
-                <p className="text-sm font-semibold text-[#212D40] mb-2">
+                <p className="text-sm font-semibold text-[#1A1D23] mb-2">
                   {scenario.title}
                 </p>
                 <p className="text-sm text-gray-700 leading-relaxed">
@@ -151,7 +151,7 @@ export default function LocalServiceBusinessClarity() {
 
           {/* What Changes */}
           <div className="mt-12">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 text-center mb-4">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 text-center mb-4">
               What changes when the gap closes
             </h2>
             <p className="text-base text-gray-700 leading-relaxed text-center">
@@ -167,7 +167,7 @@ export default function LocalServiceBusinessClarity() {
             <p className="text-sm font-semibold text-[#D56753] uppercase tracking-wider mb-2">
               The pattern every local business owner should know
             </p>
-            <p className="text-base text-[#212D40] font-medium leading-relaxed">
+            <p className="text-base text-[#1A1D23] font-medium leading-relaxed">
               Competitive threats become visible in revenue 90 to 180 days after
               they become visible in data. The business owner who monitors the
               data acts in month one. The business owner who waits for revenue to

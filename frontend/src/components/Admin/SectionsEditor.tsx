@@ -165,7 +165,7 @@ export default function SectionsEditor({
       const parsed = parseSectionsJs(value || "[]");
       onChange(parsed);
     } catch {
-      // Don't block typing — just skip preview update
+      // Don't block typing -- just skip preview update
     }
   }, [onChange]);
 

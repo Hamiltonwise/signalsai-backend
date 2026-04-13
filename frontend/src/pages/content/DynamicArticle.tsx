@@ -78,11 +78,11 @@ export default function DynamicArticle() {
       >
         <section className="px-5 py-24 sm:py-32">
           <div className="max-w-md mx-auto text-center">
-            <p className="text-7xl font-semibold text-[#212D40]/10 mb-4">404</p>
-            <h1 className="text-2xl font-bold text-[#212D40] mb-4">
+            <p className="text-7xl font-semibold text-[#1A1D23]/10 mb-4">404</p>
+            <h1 className="text-2xl font-semibold text-[#1A1D23] mb-4">
               This article does not exist.
             </h1>
-            <p className="text-base text-[#212D40]/60 mb-8">
+            <p className="text-base text-[#1A1D23]/60 mb-8">
               Run your free Checkup while you are here.
             </p>
             <Link
@@ -118,7 +118,7 @@ export default function DynamicArticle() {
         elements.push(
           <ul key={`list-${elements.length}`} className="list-disc pl-6 space-y-2">
             {listItems.map((item, i) => (
-              <li key={i} className="text-base text-[#212D40]/80 leading-relaxed"
+              <li key={i} className="text-base text-[#1A1D23]/80 leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: inlineFormat(item) }}
               />
             ))}
@@ -150,25 +150,25 @@ export default function DynamicArticle() {
 
       if (trimmed.startsWith("### ")) {
         elements.push(
-          <h3 key={elements.length} className="text-lg font-bold text-[#212D40] pt-4">
+          <h3 key={elements.length} className="text-lg font-semibold text-[#1A1D23] pt-4">
             {trimmed.slice(4)}
           </h3>
         );
       } else if (trimmed.startsWith("## ")) {
         elements.push(
-          <h2 key={elements.length} className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 key={elements.length} className="text-xl font-semibold text-[#1A1D23] pt-4">
             {trimmed.slice(3)}
           </h2>
         );
       } else if (trimmed.startsWith("# ")) {
         elements.push(
-          <h2 key={elements.length} className="text-xl font-bold text-[#212D40] pt-4">
+          <h2 key={elements.length} className="text-xl font-semibold text-[#1A1D23] pt-4">
             {trimmed.slice(2)}
           </h2>
         );
       } else {
         elements.push(
-          <p key={elements.length} className="text-base text-[#212D40]/80 leading-relaxed"
+          <p key={elements.length} className="text-base text-[#1A1D23]/80 leading-relaxed"
             dangerouslySetInnerHTML={{ __html: inlineFormat(trimmed) }}
           />
         );
@@ -223,18 +223,18 @@ export default function DynamicArticle() {
       <article className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
         <header className="mb-12">
           {article.category && (
-            <span className="text-xs font-bold uppercase tracking-widest text-[#D56753]">
+            <span className="text-xs font-semibold uppercase tracking-widest text-[#D56753]">
               {article.category}
             </span>
           )}
-          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-[#212D40] leading-tight tracking-tight">
+          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-[#1A1D23] leading-tight tracking-tight">
             {article.title}
           </h1>
           {displayDate && (
-            <p className="mt-4 text-base text-[#212D40]/50">{displayDate}</p>
+            <p className="mt-4 text-base text-[#1A1D23]/50">{displayDate}</p>
           )}
           {article.authorName && (
-            <p className="mt-1 text-sm text-[#212D40]/40">
+            <p className="mt-1 text-sm text-[#1A1D23]/40">
               By {article.authorName}
             </p>
           )}
@@ -245,16 +245,16 @@ export default function DynamicArticle() {
         {/* FAQ section if present */}
         {article.faqItems && article.faqItems.length > 0 && (
           <div className="mt-12 border-t border-gray-200 pt-8">
-            <h2 className="text-xl font-bold text-[#212D40] mb-6">
+            <h2 className="text-xl font-semibold text-[#1A1D23] mb-6">
               Frequently Asked Questions
             </h2>
             <div className="space-y-6">
               {article.faqItems.map((faq, i) => (
                 <div key={i}>
-                  <h3 className="text-base font-semibold text-[#212D40]">
+                  <h3 className="text-base font-semibold text-[#1A1D23]">
                     {faq.question}
                   </h3>
-                  <p className="mt-2 text-sm text-[#212D40]/70 leading-relaxed">
+                  <p className="mt-2 text-sm text-[#1A1D23]/70 leading-relaxed">
                     {faq.answer}
                   </p>
                 </div>
@@ -265,10 +265,10 @@ export default function DynamicArticle() {
 
         {/* Checkup CTA */}
         <div className="mt-12 rounded-2xl bg-[#D56753]/5 border border-[#D56753]/20 p-8 text-center">
-          <p className="text-base font-bold text-[#212D40] mb-2">
+          <p className="text-base font-semibold text-[#1A1D23] mb-2">
             Curious what your business is saying?
           </p>
-          <p className="text-sm text-[#212D40]/50 mb-4">
+          <p className="text-sm text-[#1A1D23]/50 mb-4">
             See where you rank. 60 seconds. Free.
           </p>
           <Link

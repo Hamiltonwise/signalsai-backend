@@ -563,7 +563,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                       Back
                     </motion.button>
 
-                    {/* Option 1: CSV Template — hidden for now
+                    {/* Option 1: CSV Template -- hidden for now
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -636,7 +636,7 @@ export const PMSUploadWizardModal: React.FC<PMSUploadWizardModalProps> = ({
                       </div>
                     </motion.div>
 
-                    {/* Option 3: Support — hidden for now
+                    {/* Option 3: Support -- hidden for now
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}

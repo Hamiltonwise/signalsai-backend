@@ -108,7 +108,7 @@ export function ReportIssue() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-[#212D40]">What's wrong?</h3>
+              <h3 className="text-sm font-semibold text-[#1A1D23]">What's wrong?</h3>
               <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="h-4 w-4" />
               </button>
@@ -135,7 +135,7 @@ export function ReportIssue() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe what you see. Be specific."
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#212D40] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#D56753]/30 focus:border-[#D56753] resize-none"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1A1D23] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#D56753]/30 focus:border-[#D56753] resize-none"
               rows={3}
               autoFocus
             />
@@ -148,7 +148,7 @@ export function ReportIssue() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting || !description.trim()}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#D56753] px-5 py-2.5 text-xs font-bold text-white hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#D56753] px-5 py-2.5 text-xs font-semibold text-white hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="h-3.5 w-3.5" />
                 {submitting ? "Sending..." : "Flag It"}

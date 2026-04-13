@@ -222,7 +222,7 @@ function TermHeader({
   return (
     <div className="flex items-center gap-2 mb-4">
       <Icon className="h-4 w-4 text-green-500" />
-      <p className="text-xs font-bold uppercase tracking-wider text-green-600">
+      <p className="text-xs font-semibold uppercase tracking-wider text-green-600">
         {label}
       </p>
     </div>
@@ -482,7 +482,7 @@ function AgentHealthGrid() {
               {isExpanded && (
                 <div className="ml-4 mb-2 space-y-0.5">
                   {/* Column headers */}
-                  <div className="grid grid-cols-[1fr_60px_60px_70px_60px] gap-2 text-xs text-gray-600 uppercase font-bold pb-1 border-b border-gray-800 px-2">
+                  <div className="grid grid-cols-[1fr_60px_60px_70px_60px] gap-2 text-xs text-gray-600 uppercase font-semibold pb-1 border-b border-gray-800 px-2">
                     <span>Agent</span>
                     <span>Last Run</span>
                     <span>Duration</span>
@@ -507,7 +507,7 @@ function AgentHealthGrid() {
                         <span className="text-xs text-gray-500 font-mono">
                           {formatDuration(agent.lastRunDuration)}
                         </span>
-                        <span className={`text-xs font-mono font-bold ${circuit.color}`}>
+                        <span className={`text-xs font-mono font-semibold ${circuit.color}`}>
                           {circuit.text}
                         </span>
                         <span className={`text-xs font-mono ${
@@ -534,7 +534,7 @@ function AgentHealthGrid() {
       {/* Quick failed list (always visible if any failed) */}
       {sorted.filter((a) => a.status === "failed").length > 0 && (
         <div className="mt-3 pt-3 border-t border-gray-800">
-          <p className="text-xs text-red-500 uppercase font-bold mb-2">Failed Agents</p>
+          <p className="text-xs text-red-500 uppercase font-semibold mb-2">Failed Agents</p>
           {sorted.filter((a) => a.status === "failed").map((agent) => (
             <div key={agent.name} className="flex items-center gap-2 py-1">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -614,14 +614,14 @@ function CostDashboard() {
       <div className="space-y-4">
         {/* Total + trend */}
         <div className="flex items-baseline gap-3">
-          <span className="text-xl font-bold text-green-400 font-mono">
+          <span className="text-xl font-semibold text-green-400 font-mono">
             {formatCost(summary?.totalWeeklyCost ?? 0)}
           </span>
           <span className="text-xs text-gray-500 font-mono">
             {formatTokens(summary?.totalWeeklyTokens ?? 0)} tokens
           </span>
           {changePercent !== undefined && (
-            <span className={`text-xs font-mono font-bold ${
+            <span className={`text-xs font-mono font-semibold ${
               changePercent > 20 ? "text-red-400" : changePercent < -10 ? "text-green-400" : "text-gray-400"
             }`}>
               {changePercent > 0 ? "+" : ""}{changePercent.toFixed(0)}% vs last week
@@ -635,8 +635,8 @@ function CostDashboard() {
             const data = tierTotals[tier];
             return (
               <div key={tier} className="rounded-lg bg-[#0d1117] border border-gray-800 p-3">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">{tierLabel[tier]}</p>
-                <p className="text-sm text-green-400 font-mono font-bold">{formatCost(data.cost)}</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold mb-1">{tierLabel[tier]}</p>
+                <p className="text-sm text-green-400 font-mono font-semibold">{formatCost(data.cost)}</p>
                 <p className="text-xs text-gray-600 font-mono">{formatTokens(data.tokens)} tkn</p>
                 <p className="text-xs text-gray-600">{data.count} agents</p>
               </div>
@@ -647,9 +647,9 @@ function CostDashboard() {
         {/* Top cost agents table */}
         {topAgents.length > 0 && (
           <div>
-            <p className="text-xs text-gray-500 uppercase font-bold mb-2">Cost Per Agent</p>
+            <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Cost Per Agent</p>
             <div className="space-y-0.5">
-              <div className="grid grid-cols-[1fr_80px_80px_60px] gap-2 text-xs text-gray-600 uppercase font-bold pb-1 border-b border-gray-800">
+              <div className="grid grid-cols-[1fr_80px_80px_60px] gap-2 text-xs text-gray-600 uppercase font-semibold pb-1 border-b border-gray-800">
                 <span>Agent</span>
                 <span>Cost</span>
                 <span>Tokens</span>
@@ -865,7 +865,7 @@ function RecentErrorsPanel() {
           {/* Agent execution errors */}
           {agentErrors.length > 0 && (
             <div>
-              <p className="text-xs text-red-500 uppercase font-bold mb-2">Agent Execution Errors</p>
+              <p className="text-xs text-red-500 uppercase font-semibold mb-2">Agent Execution Errors</p>
               <div className="space-y-1">
                 {agentErrors.map((err) => (
                   <div
@@ -895,10 +895,10 @@ function RecentErrorsPanel() {
           {entries.length > 0 && (
             <div>
               {agentErrors.length > 0 && (
-                <p className="text-xs text-gray-500 uppercase font-bold mb-2">Behavioral Events</p>
+                <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Behavioral Events</p>
               )}
               <div className="space-y-1">
-                <div className="grid grid-cols-[1fr_80px_80px] gap-2 text-xs text-gray-600 uppercase font-bold pb-1 border-b border-gray-800">
+                <div className="grid grid-cols-[1fr_80px_80px] gap-2 text-xs text-gray-600 uppercase font-semibold pb-1 border-b border-gray-800">
                   <span>Event Type</span>
                   <span>Count</span>
                   <span>Last Seen</span>
@@ -959,7 +959,7 @@ function DeployStatusPanel() {
         </div>
 
         <div>
-          <TailorText editKey="hq.build.deploy.pendingMigrations" defaultText="Pending Migrations" as="p" className="text-xs text-gray-600 uppercase font-bold mb-2" />
+          <TailorText editKey="hq.build.deploy.pendingMigrations" defaultText="Pending Migrations" as="p" className="text-xs text-gray-600 uppercase font-semibold mb-2" />
           <p className="text-xs text-gray-500 font-mono">
             $ npx knex migrate:status
           </p>
@@ -1030,7 +1030,7 @@ function DaveTasksPanel({
                 </p>
                 <p className="text-xs text-gray-600">from agent brief</p>
               </div>
-              <span className="shrink-0 ml-2 text-xs font-bold uppercase px-2 py-0.5 rounded bg-blue-900/50 text-blue-400">
+              <span className="shrink-0 ml-2 text-xs font-semibold uppercase px-2 py-0.5 rounded bg-blue-900/50 text-blue-400">
                 brief
               </span>
             </div>
@@ -1071,7 +1071,7 @@ function DaveTasksPanel({
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 ml-2 text-xs font-bold uppercase px-2 py-0.5 rounded ${
+                  className={`shrink-0 ml-2 text-xs font-semibold uppercase px-2 py-0.5 rounded ${
                     t.priority === "urgent"
                       ? "bg-red-900/50 text-red-400"
                       : t.priority === "high"
@@ -1133,7 +1133,7 @@ function HealthScoreGauge({ score }: { score: number | null }) {
     <div className={`flex items-center gap-3 rounded-lg border ${borderColor} ${bgColor} px-4 py-2`}>
       <Gauge className={`h-5 w-5 ${color}`} />
       <div className="flex items-baseline gap-1.5">
-        <span className={`text-2xl font-bold tabular-nums ${color}`}>
+        <span className={`text-2xl font-semibold tabular-nums ${color}`}>
           {score}
         </span>
         <span className="text-sm text-gray-500">/100</span>
@@ -1204,7 +1204,7 @@ export default function BuildView() {
             </p>
             <div className="flex items-center gap-3">
               <Terminal className="h-5 w-5 text-green-500" />
-              <TailorText editKey="hq.build.header.prompt" defaultText="alloro@prod:~$" as="h1" className="text-lg font-bold text-green-400" />
+              <TailorText editKey="hq.build.header.prompt" defaultText="alloro@prod:~$" as="h1" className="text-lg font-semibold text-green-400" />
               <TailorText editKey="hq.build.header.subtitle" defaultText="Build Console" as="span" className="text-xs text-gray-600" />
             </div>
           </div>

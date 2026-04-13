@@ -1,5 +1,5 @@
 /**
- * LoadingSkeleton — reusable animated pulse bars.
+ * LoadingSkeleton -- reusable animated pulse bars.
  *
  * Props: width, height, borderRadius, count.
  * Use wherever data loads to prevent white flash.

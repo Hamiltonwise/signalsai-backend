@@ -76,7 +76,7 @@ export default function HQRouter() {
     <>
       {isSuperAdmin && (
         <div className="sticky top-0 z-50 bg-[#212D40] border-b border-white/10 px-4 py-2 flex items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-white/40 mr-2">View as:</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-white/40 mr-2">View as:</span>
           {[
             { key: null, label: "Corey (CEO)" },
             { key: "integrator", label: "Jo (COO)" },

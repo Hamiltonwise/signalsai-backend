@@ -1,5 +1,5 @@
 /**
- * Review Requests API — post-appointment review generation (email + SMS)
+ * Review Requests API -- post-appointment review generation (email + SMS)
  */
 
 import { apiGet, apiPost } from "./index";

@@ -136,8 +136,8 @@ export default function VisionaryView() {
         return (
           <div className="bg-white border border-gray-200 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">What Needs You</p>
-              <span className="text-xs font-bold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">{openTasks.length}</span>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">What Needs You</p>
+              <span className="text-xs font-semibold text-[#D56753] bg-[#D56753]/10 px-2 py-0.5 rounded-full">{openTasks.length}</span>
             </div>
             <div className="space-y-2">
               {openTasks.slice(0, 5).map((t) => (
@@ -146,7 +146,7 @@ export default function VisionaryView() {
                     t.priority === "urgent" ? "bg-red-500" : t.priority === "high" ? "bg-amber-500" : "bg-gray-300"
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-[#212D40] font-medium truncate">{t.title}</p>
+                    <p className="text-sm text-[#1A1D23] font-medium truncate">{t.title}</p>
                     {t.source && <p className="text-xs text-gray-400">{t.source}</p>}
                   </div>
                 </div>
@@ -158,19 +158,19 @@ export default function VisionaryView() {
 
       {/* Zone 3: Client Health at a Glance */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Client Health</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Client Health</p>
         <div className="flex items-center gap-4 mb-4">
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span className="text-sm font-semibold text-[#212D40]">{greenClients.length}</span>
+            <span className="text-sm font-semibold text-[#1A1D23]">{greenClients.length}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span className="text-sm font-semibold text-[#212D40]">{amberClients.length}</span>
+            <span className="text-sm font-semibold text-[#1A1D23]">{amberClients.length}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-            <span className="text-sm font-semibold text-[#212D40]">{redClients.length}</span>
+            <span className="text-sm font-semibold text-[#1A1D23]">{redClients.length}</span>
           </div>
         </div>
 
@@ -179,11 +179,11 @@ export default function VisionaryView() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-              <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Needs your decision</p>
+              <p className="text-xs font-semibold text-red-500 uppercase tracking-wider">Needs your decision</p>
             </div>
             {redClients.map((c) => (
               <div key={c.id} className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <p className="text-sm font-semibold text-[#212D40]">{c.name}</p>
+                <p className="text-sm font-semibold text-[#1A1D23]">{c.name}</p>
                 <p className="text-xs text-red-600 mt-0.5">{c.risk || "Engagement dropped. Call or defer?"}</p>
               </div>
             ))}
@@ -206,19 +206,19 @@ export default function VisionaryView() {
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">
           <Heart className="h-4 w-4 text-[#D56753]" />
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Foundation</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Foundation</p>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="text-center">
-            <p className="text-2xl font-semibold text-[#212D40]">{championCount}</p>
+            <p className="text-2xl font-semibold text-[#1A1D23]">{championCount}</p>
             <p className="text-xs text-gray-400 uppercase tracking-wider">Champions</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-semibold text-[#212D40]">{championCount}</p>
+            <p className="text-2xl font-semibold text-[#1A1D23]">{championCount}</p>
             <p className="text-xs text-gray-400 uppercase tracking-wider">Heroes Funded</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-semibold text-[#212D40]">2</p>
+            <p className="text-2xl font-semibold text-[#1A1D23]">2</p>
             <p className="text-xs text-gray-400 uppercase tracking-wider">RISE Scholars</p>
           </div>
         </div>
@@ -226,15 +226,15 @@ export default function VisionaryView() {
 
       {/* Zone 5: Flywheel Status */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Flywheel</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Flywheel</p>
         <div className="space-y-2 text-sm text-gray-600">
           <div className="flex items-center justify-between">
             <span>Checkup to signup</span>
-            <span className="font-semibold text-[#212D40]">{conversionRate}%</span>
+            <span className="font-semibold text-[#1A1D23]">{conversionRate}%</span>
           </div>
           <div className="flex items-center justify-between">
             <span>Monday email (system)</span>
-            <span className="font-semibold text-[#212D40]">{activeOrgs.length > 0 ? "Active" : "Waiting for Mailgun"}</span>
+            <span className="font-semibold text-[#1A1D23]">{activeOrgs.length > 0 ? "Active" : "Waiting for Mailgun"}</span>
           </div>
           <div className="flex items-center justify-between">
             <span>Agent signal bus</span>
@@ -242,7 +242,7 @@ export default function VisionaryView() {
           </div>
           <div className="flex items-center justify-between">
             <span>Competitor invites</span>
-            <span className="font-semibold text-[#212D40]">Wired</span>
+            <span className="font-semibold text-[#1A1D23]">Wired</span>
           </div>
           <div className="flex items-center justify-between">
             <span>Lob card pipeline</span>
@@ -271,9 +271,9 @@ function NumberCard({
     <div className="bg-white border border-gray-200 rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{label}</span>
+        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
       </div>
-      <p className={`text-2xl font-semibold ${valueColor || "text-[#212D40]"}`}>{value}</p>
+      <p className={`text-2xl font-semibold ${valueColor || "text-[#1A1D23]"}`}>{value}</p>
       <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
     </div>
   );

@@ -23,7 +23,7 @@ import { trackEvent, getSessionId } from "../../api/tracking";
 import { withTimeout, getSourceChannel } from "./conferenceFallback";
 
 // ---------------------------------------------------------------------------
-// Types — passed via React Router state from the scanning phase
+// Types -- passed via React Router state from the scanning phase
 // ---------------------------------------------------------------------------
 
 export interface CheckupCompetitor {
@@ -105,7 +105,7 @@ export interface CheckupResults {
 }
 
 // ---------------------------------------------------------------------------
-// Score Labels — WO4: Never use "Poor", "Fair", "Good"
+// Score Labels -- WO4: Never use "Poor", "Fair", "Good"
 // ---------------------------------------------------------------------------
 
 // getScoreLabel removed: no composite scores displayed per Known 6.
@@ -188,11 +188,11 @@ function FindingCard({
 }
 
 // ---------------------------------------------------------------------------
-// Gap Progress Bar — concrete closeable units, not percentages
+// Gap Progress Bar -- concrete closeable units, not percentages
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Review Race Card — velocity-based progress, framed as a race
+// Review Race Card -- velocity-based progress, framed as a race
 // ---------------------------------------------------------------------------
 
 function ReviewRaceCard({ gap }: { gap: CheckupGapItem }) {
@@ -335,7 +335,7 @@ function GapBar({ gap }: { gap: CheckupGapItem }) {
 }
 
 // ---------------------------------------------------------------------------
-// Gap Section — routes review_race to ReviewRaceCard, others to GapBar
+// Gap Section -- routes review_race to ReviewRaceCard, others to GapBar
 // ---------------------------------------------------------------------------
 
 // ─── Viral Loop: Competitor Invite Section ──────────────────────────
@@ -440,7 +440,7 @@ function GapSection({ gaps }: { gaps: CheckupGapItem[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Main Component — all data arrives via React Router state
+// Main Component -- all data arrives via React Router state
 // ---------------------------------------------------------------------------
 
 export default function ResultsScreen() {
@@ -692,7 +692,7 @@ export default function ResultsScreen() {
       return;
     }
 
-    // Mark gate as complete — unblurs findings, shows share UI
+    // Mark gate as complete -- unblurs findings, shows share UI
     setEmailSubmitted(true);
     setEmailSending(false);
 
@@ -793,7 +793,7 @@ export default function ResultsScreen() {
         )}
       </div>
 
-      {/* ═══ OZ MOMENTS — Lead with the gut punch ═══ */}
+      {/* ═══ OZ MOMENTS -- Lead with the gut punch ═══ */}
       {/* These hit first. Before the readings. Before the data.
           The goal: "how did they know that?" within 10 seconds of seeing results. */}
       {state.ozMoments && state.ozMoments.length > 0 && (
@@ -823,7 +823,7 @@ export default function ResultsScreen() {
         </div>
       )}
 
-      {/* ═══ HEAD-TO-HEAD — the "oh shit" moment ═══ */}
+      {/* ═══ HEAD-TO-HEAD -- the "oh shit" moment ═══ */}
       {/* This is the centerpiece. Every doctor who scans the QR sees this.
           Side-by-side comparison, not flat reading cards. */}
       <div className={`space-y-4 transition-all duration-700 ${revealStage >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
@@ -980,7 +980,7 @@ export default function ResultsScreen() {
         )}
       </div>
 
-      {/* ═══ TARGET COMPETITOR PICKER — "Who do you want to beat?" ═══ */}
+      {/* ═══ TARGET COMPETITOR PICKER -- "Who do you want to beat?" ═══ */}
       {/* Shows when the scan found competitors. Pre-selects the top one.
           One tap to change. This writes target_competitor on account creation
           so the entire system runs against their chosen competitor from day one. */}
@@ -1031,7 +1031,7 @@ export default function ResultsScreen() {
         </div>
       )}
 
-      {/* Gap Progress Bars — concrete closeable units */}
+      {/* Gap Progress Bars -- concrete closeable units */}
       <div className={`transition-all duration-700 ${revealStage >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
         {state.gaps && state.gaps.length > 0 && (
           <GapSection gaps={state.gaps} />
@@ -1046,7 +1046,7 @@ export default function ResultsScreen() {
         />
       )}
 
-      {/* Findings — first visible, rest blurred */}
+      {/* Findings -- first visible, rest blurred */}
       <div className={`space-y-3 transition-all duration-700 ${revealStage >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
         <h2 className="text-sm font-semibold text-[#1A1D23] uppercase tracking-wide">Key Findings</h2>
         {state.userQuestion && (
@@ -1066,7 +1066,7 @@ export default function ResultsScreen() {
         ))}
       </div>
 
-      {/* Blur Gate — Voss-style: they're receiving something, not being extracted from.
+      {/* Blur Gate -- Voss-style: they're receiving something, not being extracted from.
           Frame as delivery, not transaction. "Your full checkup is ready." */}
       {!emailSubmitted ? (
         <div className={`transition-all duration-700 ${revealStage >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
@@ -1121,7 +1121,7 @@ export default function ResultsScreen() {
                 </p>
               )}
             </div>
-            {/* Password — creates account directly */}
+            {/* Password -- creates account directly */}
             <div>
               <div className="relative">
                 <input
@@ -1151,7 +1151,7 @@ export default function ResultsScreen() {
                 <p className="text-xs text-red-500 mt-1">{passwordError}</p>
               )}
             </div>
-            {/* Relationship — spec: owner/vendor/other */}
+            {/* Relationship -- spec: owner/vendor/other */}
             <fieldset className="space-y-1">
               <legend className="text-xs font-medium text-slate-600 mb-1.5">
                 Are you the owner or manager of this business?
@@ -1183,7 +1183,7 @@ export default function ResultsScreen() {
                 {!vendorSubmitted ? (
                   <>
                     <p className="text-xs text-slate-600">
-                      Your email, so we can notify you if this business's results change.
+                      Your email, so we can send you a copy of these results.
                     </p>
                     <input
                       type="email"
@@ -1336,7 +1336,7 @@ export default function ResultsScreen() {
           </p>
         </div>
 
-        {/* ═══ SHAREABLE CARD — the Spotify Wrapped artifact ═══ */}
+        {/* ═══ SHAREABLE CARD -- the Spotify Wrapped artifact ═══ */}
         {/* Designed for screenshots. Uses readings, not scores. */}
         <div className="rounded-2xl overflow-hidden shadow-lg">
           <div className="bg-[#212D40] p-6">
@@ -1374,7 +1374,7 @@ export default function ResultsScreen() {
           </div>
         </div>
 
-        {/* Share prompt — viral loop */}
+        {/* Share prompt -- viral loop */}
         <div className="bg-stone-50/80 border border-stone-200/60 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-2">
             <Share2 className="w-4 h-4 text-gray-400" />

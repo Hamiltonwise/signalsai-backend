@@ -20,11 +20,11 @@ export function normalizeSections(raw: unknown): Section[] {
 
 /**
  * Build the inline form-handler script for a given project.
- * Mirrors the backend buildFormScript() — kept here because the frontend
+ * Mirrors the backend buildFormScript() -- kept here because the frontend
  * cannot import from signalsai-backend.
  */
 function buildFormScript(projectId: string): string {
-  const apiBase = "https://app.getalloro.com";
+  const apiBase = typeof window !== "undefined" ? window.location.origin : "https://app.getalloro.com";
   return `<script data-alloro-form-handler>
 (function(){
   'use strict';
@@ -238,7 +238,7 @@ export function parseSectionsJs(input: string): Section[] {
 
 /**
  * Serialize sections to JS format with backtick content values.
- * This is the inverse of parseSectionsJs — produces human-friendly
+ * This is the inverse of parseSectionsJs -- produces human-friendly
  * editor content where HTML doesn't need quote escaping.
  */
 export function serializeSectionsJs(sections: Section[]): string {
